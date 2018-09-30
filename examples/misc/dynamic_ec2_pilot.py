@@ -29,7 +29,7 @@ dh = ru.DebugHelper()
 
 
 # we use a reporter class for nicer output
-report = ru.LogReporter(name='radical.pilot')
+report = ru.Reporter(name='radical.pilot')
 report.title('Getting Started (RP version %s)' % rp.version)
 
 
@@ -203,7 +203,7 @@ def start_pilot(cr=None):
     new_cfg['ssh']['filesystem_endpoint']  = cr.access
 
     # the new config needs to make sure we can bootstrap on the VM
-    new_cfg['pre_bootstrap_1'] = ['sudo apt-get update', 
+    new_cfg['pre_bootstrap_0'] = ['sudo apt-get update', 
                                   'sudo apt-get install -y python-virtualenv python-dev dnsutils bc']
     session.add_resource_config(new_cfg)
 

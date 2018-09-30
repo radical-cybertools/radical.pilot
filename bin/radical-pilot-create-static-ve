@@ -1,13 +1,24 @@
 #!/bin/sh
 
-scriptname="radical-pilot-create-static-ve"
+script="$0"
+prefix="$1"
+arg="$2"
+
+echo 
+echo "script : $script"
+echo "prefix : $prefix"
+echo "arg    : $arg"
+echo
 
 reqs="pymongo==2.8 python-hostlist netifaces==0.10.4 setproctitle ntplib pyzmq"
 reqs="$reqs apache-libcloud colorama backports.ssl-match-hostname msgpack-python"
 reqs="$reqs future"
 
-setuptools="setuptools==0.6c11"
-pip="pip==1.4.1"
+# setuptools="setuptools==0.6c11"
+# pip="pip==1.4.1"
+
+setuptools="setuptools"
+pip="pip"
 
 # ------------------------------------------------------------------------------
 #
@@ -37,7 +48,17 @@ EOT
 
 # ------------------------------------------------------------------------------
 #
-prefix=$1
+progress(){
+
+  while read X
+  do
+    echo -n .
+  done
+  echo
+}
+
+# ------------------------------------------------------------------------------
+#
 
 if test "$prefix" = "-h"
 then
@@ -64,76 +85,104 @@ case $prefix in
         prefix="`pwd`/$prefix"
         ;;
 esac
-echo "using install prefix $prefix"
+
+
+if test "$arg" = "bw"
+then
+    # BW wants us to run all things python in its own process group (I assume
+    # a cgroup or something), so we spawn that here and continue the script at
+    # the same place
+    echo "invoke BW magic"
+    module load bwpy
+    exec bwpy-environ -- /bin/sh "$script" "$prefix" bwpy
+
+elif test "$arg" = "bwpy"
+then
+    # this is where we end up after the `exec` call in the branch above
+    echo "create bwpy ve [$prefix]"
+    PYTHON=python2.7
+else
+    # this is not BW.
+    echo "create rct ve [$prefix]"
+    PYTHON=python
+fi
 
 # create the ve, install bare necessities
 mkdir -p "$prefix"
-mkdir -p "$prefix/rp_install"
+cd $prefix
 
-virtualenv "$prefix"
+echo -n "install virtualenv "
+VIRTENV_TGZ="virtualenv-1.9.tar.gz"
+VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/$VIRTENV_TGZ"
+curl -k -L -O "$VIRTENV_TGZ_URL" 2>&1 | progress
+tar zxmf "$VIRTENV_TGZ"
+VIRTENV_CMD="$PYTHON virtualenv-1.9/virtualenv.py"
+
+echo -n "create  virtualenv "
+stdbuf -oL $VIRTENV_CMD "$prefix" | progress
 .          "$prefix"/bin/activate
-pip install --upgrade $setuptools || exit 1
-pip install --upgrade $pip        || exit 1
-pip install --upgrade $reqs       || exit 1
+
+echo -n "update  setuptools "
+pip install --upgrade $setuptools | progress || exit 1
+echo -n "update  pip "
+pip install --upgrade $pip        | progress || exit 1
+
+for req in $reqs
+do
+    echo -n "install $req "
+    stdbuf -oL pip install --upgrade $req | progress   || exit 1
+done
 
 # install the radical stack (utils, saga, pilot) into a separate tree
 # ($prefix/rp_install(, so that any local install can use the ve *w/o* 
 # the radical stack, by re-routing PYTHONPATH
-python_version=`python -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
-ve_mod_prefix=` python -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
+python_version=`$PYTHON -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
+ve_mod_prefix=` $PYTHON -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
 rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$prefix|$prefix/rp_install/|"`
 
-# we actually stop at this point.  RP has other dependencies nowadays, which are
-# not always solved by the simple script above, namely ORTE, and
-# morespecifically (and indirectly) libffi.  radical-pilot-deploy-ompi.sh needs
-# to run before rp installation has a chance to succeed (usually).
-exit
+# BW doesn't like us anymore: after loading the bwpy module, we also need to
+# create a new process group to get a  workable Python.  We thus patch the
+# virtualenv to do the necessary actions automatically, by wrapping the python
+# executable in a small script which sets up that environment.
+if test "$arg" = "bwpy"
+then
 
+    echo "fix bwpy ve"
+    old_cwd=$(pwd)
+    cd $prefix/bin
+    cwd=$(pwd -P)
 
-# NOTE: the code below is left in, as it might get reactivated at some point.
-PYTHONPATH="$rp_mod_prefix:$PYTHONPATH"
-export PYTHONPATH
-
-PATH="$prefix/rp_install/bin:$PATH"
-export PATH
-
-# we need to add the radical name __init__.py manually here --
-# distutil is broken and will not install it.  That file is necessary to have
-# the 'radical' namespace searchable by python's import.
-mkdir -p   "$rp_mod_prefix/radical/"
-ru_ns_init="$rp_mod_prefix/radical/__init__.py"
-echo                                              >  $ru_ns_init
-echo 'import pkg_resources'                       >> $ru_ns_init
-echo 'pkg_resources.declare_namespace (__name__)' >> $ru_ns_init
-echo                                              >> $ru_ns_init
-
-PIP_INSTALL="pip install --install-option='--prefix=$prefix/rp_install'"
-$PIP_INSTALL radical.utils || exit 1
-$PIP_INSTALL saga-python   || exit 1
-$PIP_INSTALL radical.pilot || exit 1
-
-OLD_SAGA_VERBOSE=$SAGA_VERBOSE
-OLD_RADICAL_VERBOSE=$RADICAL_VERBOSE
-OLD_RADICAL_PILOT_VERBOSE=$RADICAL_PILOT_VERBOSE
-
-SAGA_VERBOSE=WARNING
-RADICAL_VERBOSE=WARNING
-RADICAL_PILOT_VERBOSE=WARNING
+    # find binary - fucking virtualenv seems to pick the bin name randomly or
+    # whatever...
+    for p in python*
+    do
+        if   ! test -e $p; then echo "miss   $p"
+        elif ! test -x $p; then echo "ignore $p"
+        elif   test -h $p
+        then
+            echo "wrap   $p"
+            tgt=$(readlink $p)
+            rm -f $p
+            echo "#!/bin/sh" > $p
+            echo "exec bwpy-environ -- $tgt \"\$@\"" >> $p
+            chmod 0755  $p
+        else
+            echo "patch  $p"
+            mv   $p $p.rp
+            echo "#!/bin/sh" > $p
+            echo "exec bwpy-environ -- $cwd/$p.rp \"\$@\"" >> $p
+            chmod 0755  $p
+        fi
+    done
+fi
 
 # print the ve information and stack versions for verification
 echo
 echo "---------------------------------------------------------------------"
 echo
 echo "PYTHONPATH: $PYTHONPATH"
-echo "python: `which python` (`python --version`)"
-python -c 'print "utils :",; import radical.utils as ru; print ru.version_detail,; print ru.__file__'
-python -c 'print "saga  :",; import saga          as rs; print rs.version_detail,; print rs.__file__'
-python -c 'print "pilot :",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__'
+echo "python: `which python` (`python -V`)"
 echo
 echo "---------------------------------------------------------------------"
 echo
-
-SAGA_VERBOSE=$OLD_SAGA_VERBOSE
-RADICAL_VERBOSE=$OLD_RADICAL_VERBOSE
-RADICAL_PILOT_VERBOSE=$OLD_RADICAL_PILOT_VERBOSE
 

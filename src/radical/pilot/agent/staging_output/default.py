@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import errno
 import shutil
 
 import saga          as rs
@@ -19,7 +20,7 @@ from .base import AgentStagingOutputComponent
 from ...staging_directives import complete_url
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Default(AgentStagingOutputComponent):
     """
@@ -158,12 +159,10 @@ class Default(AgentStagingOutputComponent):
         unit_prof = "%s/%s.prof" % (sandbox, uid)
 
         if os.path.isfile(unit_prof):
-            self._log.debug(' === found profile for %s', uid)
             try:
                 with open(unit_prof, 'r') as prof_f:
                     txt = prof_f.read()
                     for line in txt.split("\n"):
-                        self._log.debug(' === line: %s', line)
                         if line:
                             ts, event, comp, tid, _uid, state, msg = line.split(',')
                             self._prof.prof(timestamp=float(ts), event=event,
@@ -171,9 +170,6 @@ class Default(AgentStagingOutputComponent):
                                             state=state, msg=msg)
             except Exception as e:
                 self._log.error("Pre/Post profile read failed: `%s`" % e)
-        else:
-            self._log.debug(' === miss  profile for %s: %s (%s)',
-                    uid, unit_prof, os.getcwd())
 
         self._prof.prof('staging_uprof_stop', uid=uid)
 
@@ -238,53 +234,83 @@ class Default(AgentStagingOutputComponent):
 
             # we only handle staging which does *not* include 'client://' src or
             # tgt URLs - those are handled by the umgr staging components
-            if '://' in src and src.startswith('client://'):
+            if src.startswith('client://'):
                 self._log.debug('skip staging for src %s', src)
                 self._prof.prof('staging_out_skip', uid=uid, msg=did)
                 continue
 
-            if '://' in tgt and tgt.startswith('client://'):
+            if tgt.startswith('client://'):
                 self._log.debug('skip staging for tgt %s', tgt)
                 self._prof.prof('staging_out_skip', uid=uid, msg=did)
                 continue
 
+            # Fix for when the target PATH is empty
+            # we assume current directory is the unit staging 'unit://'
+            # and we assume the file to be copied is the base filename of the source
+            if tgt is None: tgt = ''
+            if tgt.strip() == '':
+                tgt = 'unit:///{}'.format(os.path.basename(src))
+            # Fix for when the target PATH is exists *and* it is a folder
+            # we assume the 'current directory' is the target folder
+            # and we assume the file to be copied is the base filename of the source
+            elif os.path.exists(tgt.strip()) and os.path.isdir(tgt.strip()):
+                tgt = os.path.join(tgt, os.path.basename(src))
+
             src = complete_url(src, src_context, self._log)
             tgt = complete_url(tgt, tgt_context, self._log)
 
+            # Currently, we use the same schema for files and folders.
             assert(src.schema == 'file'), 'staging src must be file://'
 
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 assert(tgt.schema == 'file'), 'staging tgt expected as file://'
-
 
             # SAGA will take care of dir creation - but we do it manually
             # for local ops (copy, link, move)
             if flags & rpc.CREATE_PARENTS and action != rpc.TRANSFER:
                 tgtdir = os.path.dirname(tgt.path)
                 if tgtdir != sandbox:
-                    # TODO: optimization point: create each dir only once
                     self._log.debug("mkdir %s", tgtdir)
                     rpu.rec_makedir(tgtdir)
 
-            if   action == rpc.COPY: shutil.copyfile(src.path, tgt.path)
-            elif action == rpc.LINK: os.symlink     (src.path, tgt.path)
-            elif action == rpc.MOVE: shutil.move    (src.path, tgt.path)
-            elif action == rpc.TRANSFER:
-
+            if   action == rpc.COPY: 
+                try:
+                    shutil.copytree(src.path, tgt.path)
+                except OSError as exc: 
+                    if exc.errno == errno.ENOTDIR:
+                        shutil.copy(src.path, tgt.path)
+                    else: 
+                        raise
+                
+            elif action == rpc.LINK:
+                # Fix issue/1513 if link source is file and target is folder
+                # should support POSIX standard where link is created
+                # with the same name as the source
+                if os.path.isfile(src.path) and os.path.isdir(tgt.path):
+                    os.symlink(src.path, 
+                               os.path.join(tgt.path, 
+                                            os.path.basename(src.path)))
+                else:  # default behavior
+                    os.symlink(src.path, tgt.path)
+            elif action == rpc.MOVE: shutil.move(src.path, tgt.path)
+            elif action == rpc.TRANSFER: pass
+                # This is currently never executed. Commenting it out.
+                # Uncomment and implement when uploads directly to remote URLs
+                # from units are supported.
                 # FIXME: we only handle srm staging right now, and only for
                 #        a specific target proxy. Other TRANSFER directives are
                 #        left to umgr output staging.  We should use SAGA to
                 #        attempt all staging ops which do not target the client
                 #        machine.
-                if tgt.schema == 'srm':
-                    # FIXME: cache saga handles
-                    srm_dir = rs.filesystem.Directory('srm://proxy/?SFN=bogus')
-                    srm_dir.copy(src, tgt)
-                    srm_dir.close()
-                else:
-                    self._log.error('no transfer for %s -> %s', src, tgt)
-                    self._prof.prof('staging_out_fail', uid=uid, msg=did)
-                    raise NotImplementedError('unsupported transfer %s' % tgt)
+                # if tgt.schema == 'srm':
+                #     # FIXME: cache saga handles
+                #     srm_dir = rs.filesystem.Directory('srm://proxy/?SFN=bogus')
+                #     srm_dir.copy(src, tgt)
+                #     srm_dir.close()
+                # else:
+                #     self._log.error('no transfer for %s -> %s', src, tgt)
+                #     self._prof.prof('staging_out_fail', uid=uid, msg=did)
+                #     raise NotImplementedError('unsupported transfer %s' % tgt)
 
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 

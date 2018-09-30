@@ -72,8 +72,10 @@ class PBSPro(LRMS):
         if not (pbspro_node_count * pbspro_num_ppn == pbspro_num_pes == pbspro_nodes_length):
             self._log.warning("NUM_PES != NODE_COUNT * NUM_PPN != len($PBS_NODEFILE)")
 
+        # node names are unique, so can serve as node uids
+        self.node_list      = [[node, node] for node in pbspro_vnodes]
         self.cores_per_node = pbspro_num_ppn
-        self.node_list = pbspro_vnodes
+        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
 
 
     # --------------------------------------------------------------------------

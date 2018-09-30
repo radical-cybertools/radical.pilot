@@ -34,7 +34,7 @@ class Torus(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     def __init__(self, cfg, session):
 
-        self.slots            = None
+        self.nodes            = None
         self._cores_per_node  = None
 
         AgentSchedulingComponent.__init__(self, cfg, session)
@@ -50,7 +50,7 @@ class Torus(AgentSchedulingComponent):
         self._cores_per_node = self._lrms_cores_per_node
 
         # TODO: get rid of field below
-        self.slots = 'bogus'
+        self.nodes = 'bogus'
 
 
     # --------------------------------------------------------------------------
@@ -78,12 +78,15 @@ class Torus(AgentSchedulingComponent):
     # Currently only implements full-node allocation, so core count must
     # be a multiple of cores_per_node.
     #
-    def _allocate_slot(self, cores_requested):
+    def _allocate_slot(self, cores_requested, gpus_requested):
 
         block = self._lrms.torus_block
         sub_block_shape_table = self._lrms.shape_table
 
-        self._log.info("Trying to allocate %d core(s).", cores_requested)
+        self._log.info("Trying to allocate %d core(s / %d gpus.",
+                cores_requested, gpus_requested)
+
+        # FIXME GPU
 
         if cores_requested % self._lrms_cores_per_node:
             num_cores = int(math.ceil(cores_requested / float(self._lrms_cores_per_node))) \

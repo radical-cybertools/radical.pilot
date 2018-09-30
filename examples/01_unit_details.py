@@ -20,12 +20,12 @@ import radical.utils as ru
 # ------------------------------------------------------------------------------
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot', level=verbose)
+    report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
@@ -55,15 +55,14 @@ if __name__ == '__main__':
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
-        pd_init = {
-                'resource'      : resource,
-                'runtime'       : 15,  # pilot runtime (min)
-                'exit_on_error' : True,
-                'project'       : config[resource]['project'],
-                'queue'         : config[resource]['queue'],
-                'access_schema' : config[resource]['schema'],
-                'cores'         : config[resource]['cores'],
-                }
+        pd_init = {'resource'      : resource,
+                   'runtime'       : 15,  # pilot runtime (min)
+                   'exit_on_error' : True,
+                   'project'       : config[resource]['project'],
+                   'queue'         : config[resource]['queue'],
+                   'access_schema' : config[resource]['schema'],
+                   'cores'         : config[resource]['cores']
+                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
         # Launch the pilot.
@@ -78,7 +77,6 @@ if __name__ == '__main__':
 
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
-
         n = 128  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
@@ -91,6 +89,7 @@ if __name__ == '__main__':
             cud.executable = '/bin/date'
             cuds.append(cud)
             report.progress()
+
         report.ok('>>ok\n')
 
         # Submit the previously created ComputeUnit descriptions to the
@@ -101,19 +100,27 @@ if __name__ == '__main__':
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
-    
+
         report.info('\n')
         for unit in units:
-            report.plain('  * %s: %s, exit: %3s, out: %s\n' \
+            report.plain('  * %s: %s, exit: %3s, out: %s\n'
                     % (unit.uid, unit.state[:4],
-                        unit.exit_code, unit.stdout.strip()[:35]))
+                        unit.exit_code, unit.stdout[:35]))
 
         # get some more details for one unit:
         unit_dict = units[0].as_dict()
         report.plain("unit workdir : %s\n" % unit_dict['unit_sandbox'])
         report.plain("pilot id     : %s\n" % unit_dict['pilot'])
         report.plain("exit code    : %s\n" % unit_dict['exit_code'])
-    
+        report.plain("stdout       : %s\n" % unit_dict['stdout'])
+
+        # get some more details for one unit:
+        unit_dict = units[1].as_dict()
+        report.plain("unit workdir : %s\n" % unit_dict['unit_sandbox'])
+        report.plain("pilot id     : %s\n" % unit_dict['pilot'])
+        report.plain("exit code    : %s\n" % unit_dict['exit_code'])
+        report.plain("exit stdout  : %s\n" % unit_dict['stdout'])
+
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
@@ -136,5 +143,5 @@ if __name__ == '__main__':
     report.header()
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 

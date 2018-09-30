@@ -17,7 +17,7 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "POE",
         "forward_tunnel_endpoint"     : "yslogin6",
-        "pre_bootstrap_1"             : ["module purge", "module load ncarenv", "module load ncarbinlibs", "module load python"],
+        "pre_bootstrap_0"             : ["module purge", "module load ncarenv", "module load ncarbinlibs", "module load python"],
         "valid_roots"                 : ["/glade/u", "/glade/p", "/glade/scratch"],
         "rp_version"                  : "installed",
         "virtenv"                     : "/glade/u/home/marksant/pilotve",

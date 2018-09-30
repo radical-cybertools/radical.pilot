@@ -44,7 +44,7 @@ class Component(ru.Process):
     ownership over it, and that no other component will change the 'thing's
     state during that time.
 
-    The main event loop of the component -- run() -- is executed as a separate
+    The main event loop of the component -- work_cb() -- is executed as a separate
     process.  Components inheriting this class should be fully self sufficient,
     and should specifically attempt not to use shared resources.  That will
     ensure that multiple instances of the component can coexist for higher
@@ -301,7 +301,7 @@ class Component(ru.Process):
             raise ValueError('Component needs a uid (%s)' % type(self))
 
         # state we carry over the fork
-        self._debug      = cfg.get('debug', 'DEBUG')
+        self._debug      = cfg.get('debug')
         self._owner      = cfg.get('owner', self.uid)
         self._ctype      = "%s.%s" % (self.__class__.__module__,
                                       self.__class__.__name__)
@@ -321,8 +321,10 @@ class Component(ru.Process):
         if self._owner == self.uid:
             self._owner = 'root'
 
-        self._log  = self._session._get_logger(self.uid, level=self._debug)
-        self._prof = ru.Profiler(self.uid, path=self._session.logdir)
+        self._prof = self._session._get_profiler(name=self.uid)
+        self._rep  = self._session._get_reporter(name=self.uid)
+        self._log  = self._session._get_logger  (name=self.uid,
+                                                 level=self._debug)
       # self._prof.register_timing(name='component_lifetime',
       #                            scope='uid=%s' % self.uid,
       #                            start='component_start',
@@ -507,8 +509,9 @@ class Component(ru.Process):
 
             # get debugging, logging, profiling set up
           # self._dh   = ru.DebugHelper(name=self.uid)
-            self._log  = self._session._get_logger(self.uid, level=self._debug)
-            self._prof = ru.Profiler(self.uid, path=self._session.logdir)
+            self._prof = self._session._get_profiler(name=self.uid)
+            self._log  = self._session._get_logger  (name=self.uid,
+                                                     level=self._debug)
 
             # make sure that the Process base class uses the same logger
             # FIXME: do same for profiler?
@@ -727,7 +730,7 @@ class Component(ru.Process):
 
     # --------------------------------------------------------------------------
     #
-    def register_input(self, states, input, worker):
+    def register_input(self, states, input, worker=None):
         """
         Using this method, the component can be connected to a queue on which
         things are received to be worked upon.  The given set of states (which
@@ -751,7 +754,6 @@ class Component(ru.Process):
         if not isinstance(states, list):
             states = [states]
 
-
         name = '%s.%s.%s' % (self.uid, worker.__name__, '_'.join(states))
 
         if name in self._inputs:
@@ -762,8 +764,8 @@ class Component(ru.Process):
         self._log.debug("using addr %s for input %s", addr, input)
 
         q = rpu_Queue(self._session, input, rpu_QUEUE_OUTPUT, self._cfg, addr=addr)
-        self._inputs['name'] = {'queue'  : q,
-                                'states' : states}
+        self._inputs[name] = {'queue'  : q,
+                              'states' : states}
 
         self._log.debug('registered input %s', name)
 

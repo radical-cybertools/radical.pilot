@@ -15,6 +15,8 @@ from . import states    as rps
 from . import constants as rpc
 from . import types     as rpt
 
+from . import compute_unit_description as cud
+
 from .staging_directives import expand_description
 from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA
 
@@ -35,7 +37,6 @@ class ComputeUnit(object):
 
                       ud = radical.pilot.ComputeUnitDescription()
                       ud.executable = "/bin/date"
-                      ud.cores      = 1
 
                       unit = umgr.submit_units(ud)
     """
@@ -55,6 +56,14 @@ class ComputeUnit(object):
     # --------------------------------------------------------------------------
     #
     def __init__(self, umgr, descr):
+
+        # NOTE GPU: we allow `mpi` for backward compatibility - but need to
+        #      convert the bool into a decent value for `cpu_process_type`
+        if  descr[cud.CPU_PROCESS_TYPE] in [True, 'True']:
+            descr[cud.CPU_PROCESS_TYPE] = cud.MPI
+
+        # ensure that the description is viable
+        descr.verify()
 
         # 'static' members
         self._descr = descr.as_dict()
@@ -84,32 +93,12 @@ class ComputeUnit(object):
                 'cb'      : self._default_state_cb, 
                 'cb_data' : None}
 
-        # sanity checks on description
-        for check in ['cores']:
-            if not self._descr.get(check):
-                raise ValueError("ComputeUnitDescription needs '%s'" % check)
-
-        if  not self._descr.get('executable') and \
-            not self._descr.get('kernel')     :
-            raise ValueError("CU description needs 'executable' or 'kernel'")
-
         # If staging directives exist, expand them to the full dict version.  Do
         # not, however, expand any URLs as of yet, as we likely don't have
         # sufficient information about pilot sandboxes etc.
         expand_description(self._descr)
 
         self._umgr.advance(self.as_dict(), rps.NEW, publish=False, push=False)
-
-
-    # --------------------------------------------------------------------------
-    #
-    @staticmethod
-    def create(umgr, descr):
-        """ 
-        PRIVATE: Create a new compute unit (in NEW state)
-        """
-
-        return ComputeUnit(umgr=umgr, descr=descr)
 
 
     # --------------------------------------------------------------------------

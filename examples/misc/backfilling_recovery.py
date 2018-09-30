@@ -110,7 +110,7 @@ if __name__ == "__main__":
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
         umgr = rp.UnitManager (session   = session,
-                               scheduler = rp.SCHED_BACKFILLING)
+                               scheduler = rp.SCHEDULER_BACKFILLING)
     
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager

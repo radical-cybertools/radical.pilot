@@ -24,12 +24,12 @@ helloworld_mpi_bin  = 'helloworld_mpi.py'
 helloworld_mpi_path = '%s/%s' % (PWD, helloworld_mpi_bin)
 
 
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot', level=verbose)
+    report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
@@ -60,20 +60,18 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {
-                'resource'      : resource,
-                'runtime'       : 15,  # pilot runtime (min)
-                'exit_on_error' : True,
-                'project'       : config[resource]['project'],
-                'queue'         : config[resource]['queue'],
-                'access_schema' : config[resource]['schema'],
-                'cores'         : config[resource]['cores'],
-                }
+                   'resource'      : resource,
+                   'runtime'       : 15,  # pilot runtime (min)
+                   'exit_on_error' : True,
+                   'project'       : config[resource]['project'],
+                   'queue'         : config[resource]['queue'],
+                   'access_schema' : config[resource]['schema'],
+                   'cores'         : config[resource]['cores'],
+                  }
         pdesc = rp.ComputePilotDescription(pd_init)
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
-
-
         report.header('submit units')
 
         # Register the ComputePilot in a UnitManager object.
@@ -83,7 +81,9 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits. 
         # Each compute unit runs a MPI test application.
 
-        n = 128   # number of units to run
+        n = 2   # number of units to run
+        t_num = 1  # number of threads   (OpenMP)
+        p_num = 3  # number of processes (MPI)
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -95,7 +95,7 @@ if __name__ == '__main__':
             cud.executable     = '/bin/sh'
             cud.arguments      = ['09_mpi_units.sh']
             cud.input_staging  = ['%s/09_mpi_units.sh' % PWD]
-            cud.cores          = 2
+            cud.cores          = 3
             cud.mpi            = True
             cuds.append(cud)
             report.progress()
@@ -106,15 +106,23 @@ if __name__ == '__main__':
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
 
-        # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+        # Wait for all units to reach a final state (DONE, CANCELED or FAILED)
         report.header('gather results')
         umgr.wait_units()
-    
+
         report.info('\n')
         for unit in units:
-            report.plain('  * %s: %s, exit: %3s, MPI ranks: %s\n' \
-                    % (unit.uid, unit.state[:4], unit.exit_code,
-                       ','.join(unit.stdout.split('\n'))))
+            report.plain('  * %s: %s, exit: %3s, ranks: %s\n'
+                    % (unit.uid, unit.state[:4], unit.exit_code, unit.stdout))
+            ranks = list()
+            for line in unit.stdout.split('\n'):
+                if line.strip():
+                    rank = line.split()[1]
+                    ranks.append(rank)
+            for p in range(p_num):
+                for t in range(t_num):
+                    rank = '%d:%d/1' % (p, t)
+                    assert(rank in ranks), 'missing rank %s' % rank
 
 
     except Exception as e:
@@ -138,5 +146,5 @@ if __name__ == '__main__':
     report.header()
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
