@@ -48,7 +48,7 @@ def setUp():
     return test_cases.pop('cfg'),test_cases['allocate'],test_cases['release'], session
 #-----------------------------------------------------------------------------------------------------------------------
 
-def tearDown():
+def tearDown(session):
     session.close()
     rp = glob.glob('%s/rp.session.*' % os.getcwd())
     for fold in rp:
@@ -94,6 +94,8 @@ def test_allocate_slot(
             slot = component._allocate_slot(test_cases['trigger'][i])
             assert slot == test_cases['slot'][i]
             assert component.nodes ==  test_cases['final_state'][i]
+
+    tearDown(session)
 #-----------------------------------------------------------------------------------------------------------------------
 
 # Test Summit Scheduler release_slot method
@@ -127,3 +129,6 @@ def test_release_slot(
         component.nodes = test_cases['init_state'][i]
         component._release_slot(test_cases['trigger'][i])
         assert component.nodes ==  test_cases['final_state'][i]
+
+    tearDown(session)    
+
