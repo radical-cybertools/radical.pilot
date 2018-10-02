@@ -50,7 +50,7 @@ def setUp():
     cfg['lrms_info']['lm_info'] = 'INFO'
     cfg['lrms_info']['node_list'] = [['a', 1],['b', 2],['c', 3]]
     cfg['lrms_info']['sockets_per_node'] = 2
-    cfg['lrms_info']['cores_per_socket'] = 7
+    cfg['lrms_info']['cores_per_socket'] = 8
     cfg['lrms_info']['gpus_per_socket'] = 3
     cfg['lrms_info']['lfs_per_node'] = {'size': 0, 'path': '/dev/null'}
 
@@ -58,13 +58,13 @@ def setUp():
 #-----------------------------------------------------------------------------------------------------------------------
 
 
-def nompi():
+def mpi():
     cud = dict()
     cud['environment'] = dict()
-    cud['cpu_process_type'] = None
+    cud['cpu_process_type'] = 'MPI'
     cud['gpu_process_type'] = None
-    cud['cpu_processes'] = 1
-    cud['cpu_threads'] = 1
+    cud['cpu_processes'] = 2
+    cud['cpu_threads'] = 2
     cud['gpu_processes'] = 0
     cud['lfs_per_process'] = 0
 
@@ -88,7 +88,7 @@ def tearDown():
 @mock.patch.object(ContinuousSummit, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
 @mock.patch('radical.utils.raise_on')
-def test_nonmpi_unit(
+def test_mpi_unit(
         mocked_init,
         mocked_method,
         mocked_profiler,
@@ -106,18 +106,17 @@ def test_nonmpi_unit(
     component._lrms_gpus_per_socket = cfg['lrms_info']['gpus_per_socket']
     component._lrms_lfs_per_node = cfg['lrms_info']['lfs_per_node']
     component._tag_history = dict()
+    component._log = ru.get_logger('test.component')
     component._configure()
 
-    # pprint(component.nodes)
-
     # Allocate first CUD -- should land on first node
-    cud = nompi()
+    cud = mpi()
     slot = component._allocate_slot(cud)
 
-    assert slot == {'cores_per_node': 14,
+    assert slot == {'cores_per_node': 16,
                     'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{'lfs': {'size': 0, 'path': '/dev/null'},
-                               'core_map': [[0]],
+                               'core_map': [[0,1],[2,3]],
                                'name': 'a',
                                'gpu_map': [],
                                'uid': 1}],
@@ -126,35 +125,35 @@ def test_nonmpi_unit(
 
     # Assert resulting node list values after first CUD
     assert component.nodes == [{'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [1,0,0,0,0,0,0],
+                                'sockets': [{'cores': [1,1,1,1,0,0,0,0],
                                             'gpus': [0,0,0]},
-                                            {'cores': [0,0,0,0,0,0,0],
+                                            {'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]}],
                                 'name': 'a',
                                 'uid': 1},
                                 {'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [0,0,0,0,0,0,0],
+                                'sockets': [{'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]},
-                                            {'cores': [0,0,0,0,0,0,0],
+                                            {'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]}],
                                 'name': 'b',
                                 'uid': 2},
                                 {'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [0,0,0,0,0,0,0],
+                                'sockets': [{'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]},
-                                            {'cores': [0,0,0,0,0,0,0],
+                                            {'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]}],
                                 'name': 'c',
                                 'uid': 3}]
 
     # Allocate second CUD -- should land on first node, fill up first socket
-    cud = nompi()
-    cud['cpu_threads'] = 6
+    cud = mpi()
     slot = component._allocate_slot(cud)
-    assert slot == {'cores_per_node': 14,
+
+    assert slot == {'cores_per_node': 16,
                     'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{'lfs': {'path': '/dev/null', 'size': 0},
-                               'core_map': [[1,2,3,4,5,6]],
+                               'core_map': [[4,5],[6,7]],
                                'name': 'a',
                                'gpu_map': [],
                                'uid': 1}],
@@ -163,35 +162,34 @@ def test_nonmpi_unit(
 
     # Assert resulting node list values after second CUD
     assert component.nodes == [{'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [1,1,1,1,1,1,1],
+                                'sockets': [{'cores': [1,1,1,1,1,1,1,1],
                                             'gpus': [0,0,0]},
-                                            {'cores': [0,0,0,0,0,0,0],
+                                            {'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]}],
                                 'name': 'a',
                                 'uid': 1},
                                 {'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [0,0,0,0,0,0,0],
+                                'sockets': [{'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]},
-                                            {'cores': [0,0,0,0,0,0,0],
+                                            {'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]}],
                                 'name': 'b',
                                 'uid': 2},
                                 {'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [0,0,0,0,0,0,0],
+                                'sockets': [{'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]},
-                                            {'cores': [0,0,0,0,0,0,0],
+                                            {'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]}],
                                 'name': 'c',
                                 'uid': 3}]
 
-    # Allocate third CUD -- should land on first node, get 3 cores on 2nd socket
-    cud = nompi()
-    cud['cpu_threads'] = 3
+    # # Allocate third CUD -- should land on first node, get 4 cores on 2nd socket
+    cud = mpi()
     slot = component._allocate_slot(cud)
-    assert slot == {'cores_per_node': 14,
+    assert slot == {'cores_per_node': 16,
                     'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{'lfs': {'path': '/dev/null', 'size': 0},
-                               'core_map': [[7,8,9]],
+                               'core_map': [[8,9],[10,11]],
                                'name': 'a',
                                'gpu_map': [],
                                'uid': 1}],
@@ -200,35 +198,36 @@ def test_nonmpi_unit(
     
     # Assert resulting node list values after third CUD
     assert component.nodes == [{'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [1,1,1,1,1,1,1],
+                                'sockets': [{'cores': [1,1,1,1,1,1,1,1],
                                             'gpus': [0,0,0]},
-                                            {'cores': [1,1,1,0,0,0,0],
+                                            {'cores': [1,1,1,1,0,0,0,0],
                                             'gpus': [0,0,0]}],
                                 'name': 'a',
                                 'uid': 1},
                                 {'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [0,0,0,0,0,0,0],
+                                'sockets': [{'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]},
-                                            {'cores': [0,0,0,0,0,0,0],
+                                            {'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]}],
                                 'name': 'b',
                                 'uid': 2},
                                 {'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [0,0,0,0,0,0,0],
+                                'sockets': [{'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]},
-                                            {'cores': [0,0,0,0,0,0,0],
+                                            {'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]}],
                                 'name': 'c',
                                 'uid': 3}]
 
-    # Allocate four CUD -- should land on second node, first socket - no partial socket allocations
-    cud = nompi()
+    # # Allocate four CUD -- should land on second node, one process on each socket - no partial socket allocations
+    cud = mpi()
     cud['cpu_threads'] = 6
     slot = component._allocate_slot(cud)
-    assert slot == {'cores_per_node': 14,
+    assert slot == {'cores_per_node': 16,
                     'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{'lfs': {'path': '/dev/null', 'size': 0},
-                               'core_map': [[0,1,2,3,4,5]],
+                               'core_map': [[0,1,2,3,4,5],
+                                            [8,9,10,11,12,13]],
                                'name': 'b',
                                'gpu_map': [],
                                'uid': 2}],
@@ -238,62 +237,61 @@ def test_nonmpi_unit(
 
     # Assert resulting node list values after fourth CUD
     assert component.nodes == [{'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [1,1,1,1,1,1,1],
+                                'sockets': [{'cores': [1,1,1,1,1,1,1,1],
                                             'gpus': [0,0,0]},
-                                            {'cores': [1,1,1,0,0,0,0],
+                                            {'cores': [1,1,1,1,0,0,0,0],
                                             'gpus': [0,0,0]}],
                                 'name': 'a',
                                 'uid': 1},
                                 {'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [1,1,1,1,1,1,0],
+                                'sockets': [{'cores': [1,1,1,1,1,1,0,0],
                                             'gpus': [0,0,0]},
-                                            {'cores': [0,0,0,0,0,0,0],
+                                            {'cores': [1,1,1,1,1,1,0,0],
                                             'gpus': [0,0,0]}],
                                 'name': 'b',
                                 'uid': 2},
                                 {'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [0,0,0,0,0,0,0],
+                                'sockets': [{'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]},
-                                            {'cores': [0,0,0,0,0,0,0],
+                                            {'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]}],
                                 'name': 'c',
                                 'uid': 3}]
 
 
-    # Allocate fifth CUD -- should land on first node, second socket -- search from first node for cores
-    cud = nompi()
-    cud['cpu_threads'] = 4
+    # # Allocate fifth CUD -- should land on first node, second socket -- search from first node for cores
+    cud = mpi()
     slot = component._allocate_slot(cud)
-    assert slot == {'cores_per_node': 14,
+    assert slot == {'cores_per_node': 16,
                     'lfs_per_node': component._lrms_lfs_per_node,
-                    'nodes': [{'lfs': {'path': '/dev/null', 'size': 0},
-                               'core_map': [[10,11,12,13]],
-                               'name': 'a',
-                               'gpu_map': [],
-                               'uid': 1}],
+                    'nodes': [{ 'lfs': {'path': '/dev/null', 'size': 0},
+                                'core_map': [[12,13],[14,15]],
+                                'name': 'a',
+                                'gpu_map': [],
+                                'uid': 1}],
                     'lm_info': 'INFO',
                     'gpus_per_node': 6}
 
 
-    # Assert resulting node list values after fifth CUD
+    # # Assert resulting node list values after fifth CUD
     assert component.nodes == [{'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [1,1,1,1,1,1,1],
+                                'sockets': [{'cores': [1,1,1,1,1,1,1,1],
                                             'gpus': [0,0,0]},
-                                            {'cores': [1,1,1,1,1,1,1],
+                                            {'cores': [1,1,1,1,1,1,1,1],
                                             'gpus': [0,0,0]}],
                                 'name': 'a',
                                 'uid': 1},
                                 {'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [1,1,1,1,1,1,0],
+                                'sockets': [{'cores': [1,1,1,1,1,1,0,0],
                                             'gpus': [0,0,0]},
-                                            {'cores': [0,0,0,0,0,0,0],
+                                            {'cores': [1,1,1,1,1,1,0,0],
                                             'gpus': [0,0,0]}],
                                 'name': 'b',
                                 'uid': 2},
                                 {'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [0,0,0,0,0,0,0],
+                                'sockets': [{'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]},
-                                            {'cores': [0,0,0,0,0,0,0],
+                                            {'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]}],
                                 'name': 'c',
                                 'uid': 3}]
@@ -301,16 +299,108 @@ def test_nonmpi_unit(
     # Fail with ValueError if number of threads is greater than cores per socket
     with pytest.raises(ValueError):
 
-        cud = nompi()
-        cud['cpu_threads'] = 8
+        cud = mpi()
+        cud['cpu_threads'] = 10
         slot = component._allocate_slot(cud)
 
 
+    # Allocate sixth CUD to fill up third node
+    cud = mpi()
+    cud['cpu_threads']=8
+    slot = component._allocate_slot(cud)
+    assert slot == {'cores_per_node': 16,
+                    'lfs_per_node': component._lrms_lfs_per_node,
+                    'nodes': [{ 'lfs': {'path': '/dev/null', 'size': 0},
+                                'core_map': [   [0,1,2,3,4,5,6,7],
+                                                [8,9,10,11,12,13,14,15]],
+                                'name': 'c',
+                                'gpu_map': [],
+                                'uid': 3}],
+                    'lm_info': 'INFO',
+                    'gpus_per_node': 6}
+
+
+    # # Assert resulting node list values after fifth CUD
+    assert component.nodes == [{'lfs': {'size': 0, 'path': '/dev/null'},
+                                'sockets': [{'cores': [1,1,1,1,1,1,1,1],
+                                            'gpus': [0,0,0]},
+                                            {'cores': [1,1,1,1,1,1,1,1],
+                                            'gpus': [0,0,0]}],
+                                'name': 'a',
+                                'uid': 1},
+                                {'lfs': {'size': 0, 'path': '/dev/null'},
+                                'sockets': [{'cores': [1,1,1,1,1,1,0,0],
+                                            'gpus': [0,0,0]},
+                                            {'cores': [1,1,1,1,1,1,0,0],
+                                            'gpus': [0,0,0]}],
+                                'name': 'b',
+                                'uid': 2},
+                                {'lfs': {'size': 0, 'path': '/dev/null'},
+                                'sockets': [{'cores': [1,1,1,1,1,1,1,1],
+                                            'gpus': [0,0,0]},
+                                            {'cores': [1,1,1,1,1,1,1,1],
+                                            'gpus': [0,0,0]}],
+                                'name': 'c',
+                                'uid': 3}]
+
+
+    # Attempt to allocate seventh CUD -- no cores, should return empty slot
+    cud = mpi()
+    cud['cpu_threads']=3
+    slot = component._allocate_slot(cud)
+    assert slot == None     # @Andre: Slot returns None, should it be an empty dict??
+
+
+    # Allocate eigth CUD -- fill up first socket of second node
+    cud = mpi()
+    cud['cpu_processes'] = 1
+    slot = component._allocate_slot(cud)
+    assert slot == {'cores_per_node': 16,
+                    'lfs_per_node': component._lrms_lfs_per_node,
+                    'nodes': [{ 'lfs': {'path': '/dev/null', 'size': 0},
+                                'core_map': [[6,7]],
+                                'name': 'b',
+                                'gpu_map': [],
+                                'uid': 2}],
+                    'lm_info': 'INFO',
+                    'gpus_per_node': 6}
+
+
+    # Assert resulting node list values after eighth CUD
+    assert component.nodes == [{'lfs': {'size': 0, 'path': '/dev/null'},
+                                'sockets': [{'cores': [1,1,1,1,1,1,1,1],
+                                            'gpus': [0,0,0]},
+                                            {'cores': [1,1,1,1,1,1,1,1],
+                                            'gpus': [0,0,0]}],
+                                'name': 'a',
+                                'uid': 1},
+                                {'lfs': {'size': 0, 'path': '/dev/null'},
+                                'sockets': [{'cores': [1,1,1,1,1,1,1,1],
+                                            'gpus': [0,0,0]},
+                                            {'cores': [1,1,1,1,1,1,0,0],
+                                            'gpus': [0,0,0]}],
+                                'name': 'b',
+                                'uid': 2},
+                                {'lfs': {'size': 0, 'path': '/dev/null'},
+                                'sockets': [{'cores': [1,1,1,1,1,1,1,1],
+                                            'gpus': [0,0,0]},
+                                            {'cores': [1,1,1,1,1,1,1,1],
+                                            'gpus': [0,0,0]}],
+                                'name': 'c',
+                                'uid': 3}]
+
+
+    # Allocate ninth CUD, one process fits but no cores for other process
+    cud = mpi()
+    slot = component._allocate_slot(cud)
+    assert slot == None
+
+
     # Release cores of second node, first socket
-    slot = {    'cores_per_node': 14,
+    slot = {    'cores_per_node': 16,
                 'lfs_per_node': component._lrms_lfs_per_node,
                 'nodes': [{'lfs': {'path': '/dev/null', 'size': 0},
-                            'core_map': [[0,1,2,3,4,5]],
+                            'core_map': [[0,1,2,3,4,5,6,7]],
                             'name': 'b',
                             'gpu_map': [],
                             'uid': 2}],
@@ -320,63 +410,109 @@ def test_nonmpi_unit(
 
     # Assert resulting node list after release
     assert component.nodes == [{'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [1,1,1,1,1,1,1],
+                                'sockets': [{'cores': [1,1,1,1,1,1,1,1],
                                             'gpus': [0,0,0]},
-                                            {'cores': [1,1,1,1,1,1,1],
+                                            {'cores': [1,1,1,1,1,1,1,1],
                                             'gpus': [0,0,0]}],
                                 'name': 'a',
                                 'uid': 1},
                                 {'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [0,0,0,0,0,0,0],
+                                'sockets': [{'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]},
-                                            {'cores': [0,0,0,0,0,0,0],
+                                            {'cores': [1,1,1,1,1,1,0,0],
                                             'gpus': [0,0,0]}],
                                 'name': 'b',
                                 'uid': 2},
                                 {'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [0,0,0,0,0,0,0],
+                                'sockets': [{'cores': [1,1,1,1,1,1,1,1],
                                             'gpus': [0,0,0]},
-                                            {'cores': [0,0,0,0,0,0,0],
+                                            {'cores': [1,1,1,1,1,1,1,1],
                                             'gpus': [0,0,0]}],
                                 'name': 'c',
                                 'uid': 3}]
-                                
-    # Release all cores of first node
-    slot = {    'cores_per_node': 14,
+
+    # Release cores of second node, second socket
+    slot = {    'cores_per_node': 16,
                 'lfs_per_node': component._lrms_lfs_per_node,
-                'nodes': [  {'lfs': {'path': '/dev/null', 'size': 0},
-                            'core_map': [[0,1,2,3,4,5,6]],
-                            'name': 'a',
+                'nodes': [{'lfs': {'path': '/dev/null', 'size': 0},
+                            'core_map': [[8,9,10,11,12,13]],
+                            'name': 'b',
                             'gpu_map': [],
-                            'uid': 1},
-                            {'lfs': {'path': '/dev/null', 'size': 0},
-                            'core_map': [[7,8,9,10,11,12,13]],
-                            'name': 'a',
-                            'gpu_map': [],
-                            'uid': 1}],
+                            'uid': 2}],
                 'lm_info': 'INFO',
                 'gpus_per_node': 6}
     component._release_slot(slot)
 
     # Assert resulting node list after release
     assert component.nodes == [{'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [0,0,0,0,0,0,0],
+                                'sockets': [{'cores': [1,1,1,1,1,1,1,1],
                                             'gpus': [0,0,0]},
-                                            {'cores': [0,0,0,0,0,0,0],
+                                            {'cores': [1,1,1,1,1,1,1,1],
                                             'gpus': [0,0,0]}],
                                 'name': 'a',
                                 'uid': 1},
                                 {'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [0,0,0,0,0,0,0],
+                                'sockets': [{'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]},
-                                            {'cores': [0,0,0,0,0,0,0],
+                                            {'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]}],
                                 'name': 'b',
                                 'uid': 2},
                                 {'lfs': {'size': 0, 'path': '/dev/null'},
-                                'sockets': [{'cores': [0,0,0,0,0,0,0],
+                                'sockets': [{'cores': [1,1,1,1,1,1,1,1],
                                             'gpus': [0,0,0]},
-                                            {'cores': [0,0,0,0,0,0,0],
+                                            {'cores': [1,1,1,1,1,1,1,1],
+                                            'gpus': [0,0,0]}],
+                                'name': 'c',
+                                'uid': 3}]
+
+
+    # # Release all cores of first and third node
+    slot = {    'cores_per_node': 16,
+                'lfs_per_node': component._lrms_lfs_per_node,
+                'nodes': [  {'lfs': {'path': '/dev/null', 'size': 0},
+                            'core_map': [[0,1,2,3,4,5,6,7]],
+                            'name': 'a',
+                            'gpu_map': [],
+                            'uid': 1},
+                            {'lfs': {'path': '/dev/null', 'size': 0},
+                            'core_map': [[8,9,10,11,12,13,14,15]],
+                            'name': 'a',
+                            'gpu_map': [],
+                            'uid': 1},
+                            {'lfs': {'path': '/dev/null', 'size': 0},
+                            'core_map': [[0,1,2,3,4,5,6,7]],
+                            'name': 'c',
+                            'gpu_map': [],
+                            'uid': 3},
+                            {'lfs': {'path': '/dev/null', 'size': 0},
+                            'core_map': [[8,9,10,11,12,13,14,15]],
+                            'name': 'c',
+                            'gpu_map': [],
+                            'uid': 3}],
+                'lm_info': 'INFO',
+                'gpus_per_node': 6}
+    component._release_slot(slot)
+
+    # Assert resulting node list after release
+    assert component.nodes == [{'lfs': {'size': 0, 'path': '/dev/null'},
+                                'sockets': [{'cores': [0,0,0,0,0,0,0,0],
+                                            'gpus': [0,0,0]},
+                                            {'cores': [0,0,0,0,0,0,0,0],
+                                            'gpus': [0,0,0]}],
+                                'name': 'a',
+                                'uid': 1},
+                                {'lfs': {'size': 0, 'path': '/dev/null'},
+                                'sockets': [{'cores': [0,0,0,0,0,0,0,0],
+                                            'gpus': [0,0,0]},
+                                            {'cores': [0,0,0,0,0,0,0,0],
+                                            'gpus': [0,0,0]}],
+                                'name': 'b',
+                                'uid': 2},
+                                {'lfs': {'size': 0, 'path': '/dev/null'},
+                                'sockets': [{'cores': [0,0,0,0,0,0,0,0],
+                                            'gpus': [0,0,0]},
+                                            {'cores': [0,0,0,0,0,0,0,0],
                                             'gpus': [0,0,0]}],
                                 'name': 'c',
                                 'uid': 3}]

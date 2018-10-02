@@ -452,9 +452,14 @@ class ContinuousSummit(AgentSchedulingComponent):
         # This is way quicker than actually finding the core IDs.
         free_cores = 0
         free_gpus = 0
+        free_cores_per_socket = list()
+        free_gpus_per_socket = list()
         for socket in node['sockets']:
             free_cores += socket['cores'].count(rpc.FREE)
             free_gpus += socket['gpus'].count(rpc.FREE)
+            free_cores_per_socket.append(socket['cores'].count(rpc.FREE))
+            free_gpus_per_socket.append(socket['gpus'].count(rpc.FREE))
+
         free_lfs = node['lfs']['size']
 
         alloc_lfs = alloc_cores = alloc_gpus = 0
@@ -492,11 +497,46 @@ class ContinuousSummit(AgentSchedulingComponent):
             alloc_lfs = min(requested_lfs, free_lfs)
             num_procs.append(alloc_lfs / lfs_chunk)
         if requested_cores:
-            alloc_cores = min(requested_cores, free_cores)
-            num_procs.append(alloc_cores / core_chunk)
+            
+            if not self._cross_socket_threads:
+                # If no cross socket threads are allowed, we first make sure that the total
+                # number of cores is greater than the core_chunk. If not, we can't use the
+                # current node.
+                if sum(free_cores_per_socket) < core_chunk:
+                    return [], [], None
+
+                # If we can use this node, then we visit each socket of the node and
+                # determine the number of continuous core_chunks that can be use on the 
+                # socket till we either run out of continuous cores or have acquired
+                # the requested number of cores.
+                usable_cores = 0
+
+                # Determine maximum procs on each socket - required during assignment
+                max_procs_on_socket = [0 for _ in range(self._lrms_sockets_per_node)]
+
+                for socket_id, free_cores in enumerate(free_cores_per_socket):
+                    tmp_num_cores = free_cores
+                    
+                    while (tmp_num_cores >= core_chunk) and (usable_cores<requested_cores):
+                        usable_cores += core_chunk
+                        tmp_num_cores -= core_chunk
+                        max_procs_on_socket[socket_id] += 1
+
+                    if usable_cores == requested_cores:
+                        break
+
+                # We convert the number of usable cores into a number of procs so that
+                # we can find the minimum number of procs across lfs, cpus, gpus that can
+                # be allocated on this node
+                num_procs.append(usable_cores/core_chunk)
+            else:
+                alloc_cores = min(requested_cores, free_cores)
+                num_procs.append(alloc_cores / core_chunk)
+
         if requested_gpus:
             alloc_gpus = min(requested_gpus, free_gpus)
             num_procs.append(alloc_gpus / gpu_chunk)
+        
 
         # Find min number of procs determined across lfs, cores, gpus
         num_procs = min(num_procs)
@@ -509,8 +549,13 @@ class ContinuousSummit(AgentSchedulingComponent):
         if requested_gpus:
             alloc_gpus = num_procs * gpu_chunk
 
+        # # Maximum number of processes allocatable on a socket
+        if self._cross_socket_threads:
+            max_procs_on_socket = [num_procs for _ in range(self._lrms_sockets_per_node)]
+
         # now dig out the core IDs.
         for socket_idx, socket in enumerate(node['sockets']):
+            procs_on_socket = 0
             for core_idx, state in enumerate(socket['cores']):
 
                 # break if we have enough cores, else continue to pick FREE ones
@@ -518,6 +563,14 @@ class ContinuousSummit(AgentSchedulingComponent):
                     break
                 if state == rpc.FREE:
                     cores.append(socket_idx*self._lrms_cores_per_socket + core_idx)
+
+                # check if we have placed one complete process on current socket
+                if cores and (len(cores) % core_chunk == 0):
+                    procs_on_socket += 1
+
+                # if we have reached max procs on socket, move to next socket
+                if procs_on_socket == max_procs_on_socket[socket_idx]:
+                    break
 
             # break if we have enough cores, else continue to pick FREE ones
             if alloc_cores == len(cores):
@@ -553,6 +606,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         gpu_map = list()
 
         # make sure the core sets can host the requested number of threads
+        # print 'Assert cores: ', cores
         assert(not len(cores) % threads_per_proc)
         n_procs = len(cores) / threads_per_proc
 
