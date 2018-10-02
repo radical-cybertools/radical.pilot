@@ -125,7 +125,6 @@ def test_release_slot(
     component._configure()
 
     for i in range(len(test_cases['trigger'])):
-        print i
         component.nodes = test_cases['init_state'][i]
         component._release_slot(test_cases['trigger'][i])
         assert component.nodes ==  test_cases['final_state'][i]
