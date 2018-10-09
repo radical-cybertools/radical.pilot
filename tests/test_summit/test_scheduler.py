@@ -66,7 +66,7 @@ def test_allocate_slot(
         mocked_profiler,
         mocked_raise_on):
 
-    cfg, test_cases, _,  = setUp()
+    cfg, test_cases, _  = setUp()
 
     component = ContinuousSummit(cfg=cfg, session=None)
     component._cfg = cfg
@@ -84,6 +84,7 @@ def test_allocate_slot(
     # pprint(component.nodes)
 
     for i in range(len(test_cases['trigger'])):
+        print i
         if test_cases['final_state'][i] == "Error":
             with pytest.raises(ValueError):
                 component.nodes = test_cases['init_state'][i]
