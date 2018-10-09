@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.11 Release                                                       2018-10-09
+--------------------------------------------------------------------------------
+
+  - fix 'getting_started' example (no MPI)
+
+
 0.50.10 Release                                                       2018-09-29
 --------------------------------------------------------------------------------
 
