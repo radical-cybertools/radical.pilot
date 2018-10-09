@@ -279,7 +279,7 @@
         "project"  : "BIP149",
         "queue"    : "debug",
         "schema"   : "local",
-        "cores"    : 64
+        "cores"    : 160
     },
 
     "ornl.titan_aprun"   : {

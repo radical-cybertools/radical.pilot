@@ -82,12 +82,13 @@ class MPIRunDPlace(LaunchMethod):
         core_list = list()
         for node in slots['nodes']:
             tmp_list = list()
-            for cpu_proc in node[2]:
+            for cpu_proc in node['core_map']:
                 tmp_list.append(cpu_proc[0])
-                host_list.append(node[0])
-            for gpu_proc in node[3]:
-                tmp_list.append(cpu_proc[0])
-                host_list.append(node[0])
+                host_list.append(node['name'])
+            for gpu_proc in node['gpu_map']:
+                tmp_list.append(gpu_proc[0])
+                host_list.append(node['name'])
+
             if core_list:
                 if sorted(core_list) != sorted(tmp_list):
                     raise ValueError('dplace expects heterogeneous layouts')
