@@ -13,6 +13,7 @@ RM_NAME_FORK        = 'FORK'
 RM_NAME_CCM         = 'CCM'
 RM_NAME_LOADLEVELER = 'LOADLEVELER'
 RM_NAME_LSF         = 'LSF'
+RM_NAME_LSF_SUMMIT  = 'LSF_SUMMIT'
 RM_NAME_PBSPRO      = 'PBSPRO'
 RM_NAME_SGE         = 'SGE'
 RM_NAME_SLURM       = 'SLURM'
@@ -74,15 +75,13 @@ class LRMS(object):
 
         self._log.info("Configuring LRMS %s.", self.name)
 
-        self.lm_info            = dict()
-        self.lrms_info          = dict()
-        self.slot_list          = list()
-        self.node_list          = list()
-        self.agent_nodes        = dict()
-        self.sockets_per_node   = None
-        self.cores_per_socket   = None
-        self.gpus_per_socket    = None
-        self.lfs_per_node       = None
+        self.lm_info         = dict()
+        self.lrms_info       = dict()
+        self.slot_list       = list()
+        self.node_list       = list()
+        self.agent_nodes     = dict()
+        self.cores_per_node  = None
+        self.gpus_per_node   = None
 
         # The LRMS will possibly need to reserve nodes for the agent, according
         # to the agent layout.  We dig out the respective requirements from the
@@ -113,9 +112,9 @@ class LRMS(object):
 
         # Make sure we got a valid nodelist and a valid setting for
         # cores_per_node
-        if not self.node_list or self.sockets_per_node < 1 or self.cores_per_socket < 1:
-            raise RuntimeError('LRMS configuration invalid (%s)(%s)(%s)' % \
-                    (self.node_list, self.sockets_per_node, self.cores_per_socket))
+        if not self.node_list or self.cores_per_node < 1:
+            raise RuntimeError('LRMS configuration invalid (%s)(%s)' % \
+                    (self.node_list, self.cores_per_node))
 
         # Check if the LRMS implementation reserved agent nodes.  If not, pick
         # the first couple of nodes from the nodelist as a fallback.
@@ -161,8 +160,8 @@ class LRMS(object):
                 self._log.info("lrms config hook succeeded (%s)" % lm)
 
         # For now assume that all nodes have equal amount of cores and gpus
-        cores_avail = (len(self.node_list) + len(self.agent_nodes)) * self.cores_per_socket * self.sockets_per_node
-        gpus_avail  = (len(self.node_list) + len(self.agent_nodes)) * self.gpus_per_socket * self.sockets_per_node
+        cores_avail = (len(self.node_list) + len(self.agent_nodes)) * self.cores_per_node
+        gpus_avail  = (len(self.node_list) + len(self.agent_nodes)) * self.gpus_per_node
         if 'RADICAL_PILOT_PROFILE' not in os.environ:
             if cores_avail < int(self.requested_cores):
                 raise ValueError("Not enough cores available (%s) to satisfy allocation request (%s)." \
@@ -183,14 +182,12 @@ class LRMS(object):
         # for example may need to communicate YARN service endpoints etc.  an
         # LRMS can thus expand this dict, but is then likely bound to a specific
         # scheduler which can interpret the additional information.
-        self.lrms_info['name']              = self.name
-        self.lrms_info['lm_info']           = self.lm_info
-        self.lrms_info['node_list']         = self.node_list
-        self.lrms_info['sockets_per_node']  = self.sockets_per_node
-        self.lrms_info['cores_per_socket']  = self.cores_per_socket
-        self.lrms_info['gpus_per_socket']   = self.gpus_per_socket
-        self.lrms_info['agent_nodes']       = self.agent_nodes
-        self.lrms_info['lfs_per_node']      = self.lfs_per_node
+        self.lrms_info['name']           = self.name
+        self.lrms_info['lm_info']        = self.lm_info
+        self.lrms_info['node_list']      = self.node_list
+        self.lrms_info['cores_per_node'] = self.cores_per_node
+        self.lrms_info['gpus_per_node']  = self.gpus_per_node
+        self.lrms_info['agent_nodes'] = self.agent_nodes
 
 
     # --------------------------------------------------------------------------
@@ -204,6 +201,7 @@ class LRMS(object):
         from .fork        import Fork
         from .loadleveler import LoadLeveler
         from .lsf         import LSF
+        from .lsf_summit  import LSF_SUMMIT
         from .pbspro      import PBSPro
         from .sge         import SGE
         from .slurm       import Slurm
@@ -221,6 +219,7 @@ class LRMS(object):
                 RM_NAME_CCM         : CCM,
                 RM_NAME_LOADLEVELER : LoadLeveler,
                 RM_NAME_LSF         : LSF,
+                RM_NAME_LSF_SUMMIT  : LSF_SUMMIT,
                 RM_NAME_PBSPRO      : PBSPro,
                 RM_NAME_SGE         : SGE,
                 RM_NAME_SLURM       : Slurm,
