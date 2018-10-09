@@ -64,7 +64,7 @@ class LRMS(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg, session):        
 
         self.name            = type(self).__name__
         self._cfg            = cfg
@@ -82,6 +82,7 @@ class LRMS(object):
         self.agent_nodes     = dict()
         self.cores_per_node  = None
         self.gpus_per_node   = None
+        self.lfs_per_node    = None
 
         # The LRMS will possibly need to reserve nodes for the agent, according
         # to the agent layout.  We dig out the respective requirements from the
@@ -187,7 +188,8 @@ class LRMS(object):
         self.lrms_info['node_list']      = self.node_list
         self.lrms_info['cores_per_node'] = self.cores_per_node
         self.lrms_info['gpus_per_node']  = self.gpus_per_node
-        self.lrms_info['agent_nodes'] = self.agent_nodes
+        self.lrms_info['agent_nodes']    = self.agent_nodes
+        self.lrms_info['lfs_per_node']   = self.lfs_per_node
 
 
     # --------------------------------------------------------------------------
@@ -197,17 +199,17 @@ class LRMS(object):
     @classmethod
     def create(cls, name, cfg, session):
 
-        from .ccm         import CCM
-        from .fork        import Fork
+        from .ccm         import CCM        
+        from .fork        import Fork       
         from .loadleveler import LoadLeveler
         from .lsf         import LSF
         from .lsf_summit  import LSF_SUMMIT
-        from .pbspro      import PBSPro
-        from .sge         import SGE
-        from .slurm       import Slurm
-        from .torque      import Torque
-        from .yarn        import Yarn
-        from .spark       import Spark
+        from .pbspro      import PBSPro     
+        from .sge         import SGE        
+        from .slurm       import Slurm      
+        from .torque      import Torque     
+        from .yarn        import Yarn      
+        from .spark       import Spark       
 
         # Make sure that we are the base-class!
         if cls != LRMS:
