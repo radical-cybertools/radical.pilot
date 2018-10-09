@@ -179,23 +179,27 @@ class LSF_SUMMIT(LRMS):
         # Grab the core (slot) count from the environment
         # Format: hostX N hostY N hostZ N
         lsf_cores_count_list = map(int, lsb_mcpu_hosts.split()[1::2])
-        lsf_core_counts = list(set(lsf_cores_count_list))
+        lsf_core_counts      = list(set(lsf_cores_count_list))
         lsf_sockets_per_node = self._cfg.get('sockets_per_node', 1)
+
         # For now, assume all sockets have an equal number of cores and gpus
-        lsf_cores_per_socket = min(lsf_core_counts)/lsf_sockets_per_node
-        lsf_gpus_per_socket = self._cfg.get(
-            'gpus_per_node', 0)/lsf_sockets_per_node  # FIXME GPU
+        lsf_cores_per_socket = min(lsf_core_counts) / lsf_sockets_per_node
+        lsf_gpus_per_socket  = self._cfg.get('gpus_per_node', 0) \
+                                                    / lsf_sockets_per_node
 
         lsf_lfs_per_node = {'path': self._cfg.get('lfs_path_per_node', None),
-                            'size': self._cfg.get('lfs_size_per_node', 0)
-                            }
+                            'size': self._cfg.get('lfs_size_per_node', 0)}
 
         self._log.info("Found unique core counts: %s Using: %d",
                        lsf_core_counts, lsf_cores_per_socket)
 
         # node names are unique, so can serve as node uids
-        self.node_list = [[node, node] for node in lsf_node_list]
+        self.node_list        = [[node, node] for node in lsf_node_list]
         self.sockets_per_node = lsf_sockets_per_node
         self.cores_per_socket = lsf_cores_per_socket
-        self.gpus_per_socket = lsf_gpus_per_socket
-        self.lfs_per_node = lsf_lfs_per_node
+        self.gpus_per_socket  = lsf_gpus_per_socket
+        self.lfs_per_node     = lsf_lfs_per_node
+
+
+# ------------------------------------------------------------------------------
+

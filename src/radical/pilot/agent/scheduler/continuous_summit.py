@@ -4,17 +4,21 @@ __license__ = "MIT"
 
 
 import os
+import inspect
+import logging
+import pprint
+
+import threading as mt
+
 
 import radical.utils as ru
 
-from ... import constants as rpc
+from ...   import constants as rpc
+from ...   import states    as rps
+
 from .base import AgentSchedulingComponent
 
-import inspect
-import threading as mt
-from math import ceil
-import logging
-import pprint
+
 # ------------------------------------------------------------------------------
 #
 # ------------------------------------------------------------------------------
@@ -148,22 +152,21 @@ class ContinuousSummit(AgentSchedulingComponent):
                               % self._lrms_info['name'])
 
         # create and initialize the wait pool
-        self._wait_pool = list()             # pool of waiting units
-        self._wait_lock = threading.RLock()  # look on the above pool
-        self._slot_lock = threading.RLock()  # lock slot allocation/deallocation
+        self._wait_pool = list()      # pool of waiting units
+        self._wait_lock = mt.RLock()  # look on the above pool
+        self._slot_lock = mt.RLock()  # lock slot allocation/deallocation
 
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
         self.nodes = []
         for node, node_uid in self._lrms_node_list:
-            self.nodes.append({
-                'name' : node,
-                'uid'  : node_uid,
-                'cores': [rpc.FREE] * self._lrms_cores_per_node,
-                'gpus' : [rpc.FREE] * self._lrms_gpus_per_node
-                })
+            self.nodes.append({'name' : node,
+                               'uid'  : node_uid,
+                               'cores': [rpc.FREE] * self._lrms_cores_per_node,
+                               'gpus' : [rpc.FREE] * self._lrms_gpus_per_node
+                               })
 
-                
+
         # configure the scheduler instance
         self._configure()
         self._log.debug("slot status after  init      : %s",
@@ -181,7 +184,8 @@ class ContinuousSummit(AgentSchedulingComponent):
             cprof.dump_stats("python-%s.profile" % self_thread.name)
 
         # make sure that parent finalizers are called
-        super(Continuous, self).finalize_child()
+        super(ContinuousSummit, self).finalize_child()
+
 
     # --------------------------------------------------------------------------
     #
@@ -246,6 +250,7 @@ class ContinuousSummit(AgentSchedulingComponent):
 
             self.nodes.append(node_entry)
 
+
     # --------------------------------------------------------------------------
     #
     # Change the reserved state of slots (rpc.FREE or rpc.BUSY)
@@ -261,17 +266,20 @@ class ContinuousSummit(AgentSchedulingComponent):
         '''
         # This method needs to change if the DS changes.
         # Current slot DS:
-        # slots = {'nodes': [{'name': node_name,
-        #                     'uid': node_uid,
+        # slots = {'nodes': [{'name'    : node_name,
+        #                     'uid'     : node_uid,
         #                     'core_map': core_map,
-        #                     'gpu_map': gpu_map,
-        #                     'lfs': {'size': lfs, 'path': self._lrms_lfs_per_node['path']}}],
-        #          'cores_per_node': cores_per_node,
-        #          'gpus_per_node': gpus_per_node,
-        #          'lfs_per_node': self._lrms_lfs_per_node,
-        #          'lm_info': self._lrms_lm_info
+        #                     'gpu_map' : gpu_map,
+        #                     'lfs'     : {'size': lfs, 
+        #                                  'path': self._lrms_lfs_per_node['path']
+        #                                 }
+        #                    }],
+        #          'cores_per_node' : cores_per_node,
+        #          'gpus_per_node'  : gpus_per_node,
+        #          'lfs_per_node'   : self._lrms_lfs_per_node,
+        #          'lm_info'        : self._lrms_lm_info
         #          }
-
+        # 
         # self.nodes = [{
         #                   'name'    : 'node_1',
         #                   'uid'     : xxxx,
@@ -307,13 +315,15 @@ class ContinuousSummit(AgentSchedulingComponent):
 
             # nodes['sockets'] = [
             #     {   'uid': 0,     # not actually present in socket list
-            #         'core_ids': [0,1,2,3,4,5,6,7,8,9,10,11
-            #                     12,13,14,15,16,17,18,19,20],
+            #         'core_ids': [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+            #                      10,11,12,13,14,15,16,17,18,19,
+            #                      20],
             #         'gpu_ids':  [0,1,2]
             #     }
             #     {   'uid': 1,    # not actually present in socket list
-            #         'core_ids': [21,22,23,24,25,26,27,28,29,30,31
-            #                     32,33,34,35,36,37,38,39,40,41],
+            #         'core_ids': [21,22,23,24,25,26,27,28,29,30,
+            #                      31,32,33,34,35,36,37,38,39,40,
+            #                      41],
             #         'gpu_ids':  [3,4,5]
             #     }
             # ]
@@ -392,7 +402,7 @@ class ContinuousSummit(AgentSchedulingComponent):
 
         # single_node allocation is enforced for non-message passing tasks
         if cud['cpu_process_type'] == 'MPI' or \
-                cud['gpu_process_type'] == 'MPI':
+           cud['gpu_process_type'] == 'MPI':
             slots = self._alloc_mpi(cud)
         else:
             slots = self._alloc_nompi(cud)
@@ -445,18 +455,20 @@ class ContinuousSummit(AgentSchedulingComponent):
 
         # list of core and gpu ids available in this node.
         cores = list()
-        gpus = list()
-        lfs = 0
+        gpus  = list()
+        lfs   = 0
 
         # first count the number of free cores, gpus, and local file storage.
         # This is way quicker than actually finding the core IDs.
         free_cores = 0
-        free_gpus = 0
+        free_gpus  = 0
         free_cores_per_socket = list()
-        free_gpus_per_socket = list()
+        free_gpus_per_socket  = list()
+
         for socket in node['sockets']:
             free_cores += socket['cores'].count(rpc.FREE)
-            free_gpus += socket['gpus'].count(rpc.FREE)
+            free_gpus  += socket['gpus'].count(rpc.FREE)
+
             free_cores_per_socket.append(socket['cores'].count(rpc.FREE))
             free_gpus_per_socket.append(socket['gpus'].count(rpc.FREE))
 
@@ -470,12 +482,12 @@ class ContinuousSummit(AgentSchedulingComponent):
             # request
             if (requested_cores and not free_cores) and \
                 (requested_gpus and not free_gpus) and \
-                    (requested_lfs and not free_lfs):
+                (requested_lfs  and not free_lfs):
                 return [], [], None
 
             if requested_lfs and \
                 ((requested_cores and not free_cores) and
-                 (requested_gpus and not free_gpus)):
+                 (requested_gpus  and not free_gpus)):
                 return [], [], None
 
         else:
@@ -496,8 +508,8 @@ class ContinuousSummit(AgentSchedulingComponent):
         if requested_lfs:
             alloc_lfs = min(requested_lfs, free_lfs)
             num_procs.append(alloc_lfs / lfs_chunk)
+
         if requested_cores:
-            
             if not self._cross_socket_threads:
                 # If no cross socket threads are allowed, we first make sure that the total
                 # number of cores is greater than the core_chunk. If not, we can't use the
@@ -536,7 +548,6 @@ class ContinuousSummit(AgentSchedulingComponent):
         if requested_gpus:
             alloc_gpus = min(requested_gpus, free_gpus)
             num_procs.append(alloc_gpus / gpu_chunk)
-        
 
         # Find min number of procs determined across lfs, cores, gpus
         num_procs = min(num_procs)
@@ -549,7 +560,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         if requested_gpus:
             alloc_gpus = num_procs * gpu_chunk
 
-        # # Maximum number of processes allocatable on a socket
+        # Maximum number of processes allocatable on a socket
         if self._cross_socket_threads:
             max_procs_on_socket = [num_procs for _ in range(self._lrms_sockets_per_node)]
 
@@ -591,6 +602,7 @@ class ContinuousSummit(AgentSchedulingComponent):
 
         return cores, gpus, alloc_lfs
 
+
     # --------------------------------------------------------------------------
     #
     def _get_node_maps(self, cores, gpus, threads_per_proc):
@@ -606,7 +618,6 @@ class ContinuousSummit(AgentSchedulingComponent):
         gpu_map = list()
 
         # make sure the core sets can host the requested number of threads
-        # print 'Assert cores: ', cores
         assert(not len(cores) % threads_per_proc)
         n_procs = len(cores) / threads_per_proc
 
@@ -641,11 +652,12 @@ class ContinuousSummit(AgentSchedulingComponent):
         """
 
         # dig out the allocation request details
-        requested_procs = cud['cpu_processes']
+        requested_procs  = cud['cpu_processes']
         threads_per_proc = cud['cpu_threads']
-        requested_gpus = cud['gpu_processes']
-        requested_lfs = cud['lfs_per_process']
-        lfs_chunk = requested_lfs if requested_lfs > 0 else 1
+        requested_gpus   = cud['gpu_processes']
+        requested_lfs    = cud['lfs_per_process']
+        lfs_chunk        = requested_lfs if requested_lfs > 0 else 1
+
         tag = cud.get('tag')
         uid = cud.get('uid')
 
@@ -669,22 +681,22 @@ class ContinuousSummit(AgentSchedulingComponent):
             requested_gpus > gpus_per_node or \
             requested_lfs > lfs_per_node:
 
-            txt = 'Non-mpi unit does not fit onto available resources \n'
-            txt += 'requested cores=%s; available cores=%s \n' % (
-                requested_cores, cores_per_node)
-            txt += 'requested gpus=%s; available gpus=%s \n' % (
-                requested_gpus, gpus_per_node)
-            txt += 'requested lfs=%s; available lfs=%s' % (
-                requested_lfs, lfs_per_node)
+            txt  = 'Non-mpi unit does not fit onto available resources \n'
+            txt += 'requested cores=%s; available cores=%s \n' \
+                 % (requested_cores, cores_per_node)
+            txt += 'requested gpus=%s; available gpus=%s \n' \
+                 % (requested_gpus, gpus_per_node)
+            txt += 'requested lfs=%s; available lfs=%s' \
+                 % (requested_lfs, lfs_per_node)
 
             raise ValueError(txt)
 
         # ok, we can go ahead and try to find a matching node
-        cores = list()
-        gpus = list()
-        lfs = None
+        cores     = list()
+        gpus      = list()
+        lfs       = None
         node_name = None
-        node_uid = None
+        node_uid  = None
 
         for node in self.nodes:  # FIXME optimization: iteration start
 
@@ -732,18 +744,22 @@ class ContinuousSummit(AgentSchedulingComponent):
         cud['environment']['NODE_LFS_PATH'] = self._lrms_lfs_per_node['path']
 
         # all the information for placing the unit is acquired - return them
-        slots = {'nodes': [{'name': node_name,
-                            'uid': node_uid,
+        slots = {'nodes': [{'name'    : node_name,
+                            'uid'     : node_uid,
                             'core_map': core_map,
-                            'gpu_map': gpu_map,
-                            'lfs': {'size': lfs, 'path': self._lrms_lfs_per_node['path']}}],
+                            'gpu_map' : gpu_map,
+                            'lfs'     : {'size': lfs, 
+                                         'path': self._lrms_lfs_per_node['path']
+                                        }
+                           }],
                  'cores_per_node': cores_per_node,
-                 'gpus_per_node': gpus_per_node,
-                 'lfs_per_node': self._lrms_lfs_per_node,
-                 'lm_info': self._lrms_lm_info
+                 'gpus_per_node' : gpus_per_node,
+                 'lfs_per_node'  : self._lrms_lfs_per_node,
+                 'lm_info'       : self._lrms_lm_info
                  }
 
         return slots
+
 
     # --------------------------------------------------------------------------
     #
@@ -805,12 +821,12 @@ class ContinuousSummit(AgentSchedulingComponent):
         # requested_cores > cores_per_node on impossible full-node-chunking
 
         # cores_per_node = self._lrms_cores_per_node
-        # gpus_per_node = self._lrms_gpus_per_node
-        # lfs_per_node = self._lrms_lfs_per_node
+        # gpus_per_node  = self._lrms_gpus_per_node
+        # lfs_per_node   = self._lrms_lfs_per_node
 
         cores_per_node = self._lrms_cores_per_socket * self._lrms_sockets_per_node
-        gpus_per_node = self._lrms_gpus_per_socket * self._lrms_sockets_per_node
-        lfs_per_node = self._lrms_lfs_per_node
+        gpus_per_node  = self._lrms_gpus_per_socket  * self._lrms_sockets_per_node
+        lfs_per_node   = self._lrms_lfs_per_node
 
         if not self._cross_socket_threads:
             if threads_per_proc > self._lrms_cores_per_socket:
@@ -951,3 +967,4 @@ class ContinuousSummit(AgentSchedulingComponent):
 
 
 # ------------------------------------------------------------------------------
+
