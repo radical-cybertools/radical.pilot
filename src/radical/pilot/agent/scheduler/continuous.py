@@ -125,7 +125,7 @@ class Continuous(AgentSchedulingComponent):
         #   this option is set.  This implementation is not optimized for the
         #   scattered mode!  The default is 'False'.
         #
-        self._scattered     = self._cfg.get('scattered',     False)
+        self._scattered = self._cfg.get('scattered',     False)
 
         # NOTE:  for non-oversubscribing mode, we reserve a number of cores
         #        for the GPU processes - even if those GPUs are not used by
@@ -447,7 +447,6 @@ class Continuous(AgentSchedulingComponent):
                                                     )
             if len(cores) == requested_cores and \
                     len(gpus) == requested_gpus:
-
                 # we found the needed resources - break out of search loop
                 node_uid = node['uid']
                 node_name = node['name']
