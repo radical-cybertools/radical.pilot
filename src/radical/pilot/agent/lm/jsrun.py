@@ -77,8 +77,8 @@ class JSRUN(LaunchMethod):
             node_id = node[1].rsplit('_', 1)[-1] 
 
             # add all cpu and gpu process slots to the node list.
-            for cpu_slot in node[2]: hosts_string += '%s,' % node_id
             for gpu_slot in node[3]: hosts_string += '%s,' % node_id
+            for cpu_slot in node[2]: hosts_string += '%s,' % node_id
             for cpu_slot in node[2]: depths.add(len(cpu_slot))
             for cpu_slot in node[2]: cores += len(cpu_slot)
             for cpu_slot in node[2]: procs += 1
@@ -89,8 +89,7 @@ class JSRUN(LaunchMethod):
         # remove trailing ','
         hosts_string = hosts_string.rstrip(',')
 
-        flags = '-n 1 -g 1 -a %d -c16 -bpacked:%d' % (cores, procs * depth, depth)
-
+        flags   = '-n %d -g 1 -a %d -c16 -bpacked:%d' % (cores, procs * depth, depth)
         command = '%s %s -host %s %s %s' % (self.launch_command, flags,
                                             hosts_string, env_string, 
                                             task_command)
