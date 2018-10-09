@@ -89,7 +89,7 @@ class JSRUN(LaunchMethod):
         # remove trailing ','
         hosts_string = hosts_string.rstrip(',')
 
-        flags   = '-n %d -g 1 -a %d -c16 -bpacked:%d' % (cores, procs * depth, depth)
+        flags   = '-n %d -g 1 -a %d -c16 -bpacked:%d' % (procs, procs * depth, depth)
         command = '%s %s -host %s %s %s' % (self.launch_command, flags,
                                             hosts_string, env_string, 
                                             task_command)
