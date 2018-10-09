@@ -240,12 +240,12 @@
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        //  "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.titan.20017.10.06",
+        #  "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.titan.20017.10.06",
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system",
         "gpus_per_node"               : 1
      #  "saga_jd_supplement"          : {"candidate_hosts" : ["titan"]}
-    },
+    }
 }
 
