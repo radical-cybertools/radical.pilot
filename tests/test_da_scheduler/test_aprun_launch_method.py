@@ -20,7 +20,7 @@ class TestAPRUNlaunchMethod(unittest.TestCase):
 
     def setUp(self):
 
-        self._session = rp.Session()
+        self._session = rp.Session(uid=session_id)
 
         self._cu = dict()
 
@@ -70,6 +70,7 @@ class TestAPRUNlaunchMethod(unittest.TestCase):
     def tearDown(self):
 
         self._session.close(cleanup=True)
+        shutil.rmtree(os.getcwd()+'/'+session_id)
 
     @mock.patch.object(APRun, '__init__', return_value=None)
 
@@ -81,11 +82,7 @@ class TestAPRUNlaunchMethod(unittest.TestCase):
 
         aprun_cmd, _ = launch_method.construct_command(
             self._cu, launch_script_hop=1)
-
-        print ''
-        print aprun_cmd
-        print 'aprun -n 2 -N 1 -L node1,node2 -d 1 -cc 0 test_exe'
-        self.assertTrue(aprun_cmd == 'aprun -n 2 -N 1 -L node1,node2 -d 1 -cc 0 test_exe')
+        self.assertTrue(aprun_cmd == 'aprun -n 2 -N 1 -L node1,node2 -d 1 -cc 0 test_exe ')
 
 
 # ------------------------------------------------------------------------------

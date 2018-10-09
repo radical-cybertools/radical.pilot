@@ -20,7 +20,7 @@ class TestMPIRUNlaunchMethod(unittest.TestCase):
 
     def setUp(self):
 
-        self._session = rp.Session()
+        self._session = rp.Session(uid=session_id)
 
         self._cu = dict()
 
@@ -70,6 +70,7 @@ class TestMPIRUNlaunchMethod(unittest.TestCase):
     def tearDown(self):
 
         self._session.close(cleanup=True)
+        shutil.rmtree(os.getcwd()+'/'+session_id)
 
     @mock.patch.object(MPIRun,'__init__',return_value=None)
     @mock.patch('radical.utils.raise_on')       
