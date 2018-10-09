@@ -86,11 +86,7 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable       = '/bin/date'
-            cud.gpu_processes    = 0
             cud.cpu_processes    = 1
-            cud.cpu_threads      = 1
-            #cud.cpu_process_type = rp.MPI
-            #cud.cpu_thread_type  = rp.OpenMP
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
