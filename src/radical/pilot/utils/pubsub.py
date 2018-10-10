@@ -1,19 +1,11 @@
 
-import os
-import sys
 import zmq
 import copy
-import math
-import time
 import errno
-import pprint
 import msgpack
 
-import Queue           as pyq
-import setproctitle    as spt
-import multiprocessing as mp
-
-import radical.utils   as ru
+import threading         as mt
+import radical.utils     as ru
 
 from .misc import hostip as rpu_hostip
 
@@ -27,7 +19,6 @@ PUBSUB_BRIDGE = 'bridge'
 PUBSUB_ROLES  = [PUBSUB_PUB, PUBSUB_SUB, PUBSUB_BRIDGE]
 
 _USE_MULTIPART   = False  # send [topic, data] as multipart message
-_BRIDGE_TIMEOUT  =     5  # how long to wait for bridge startup
 _LINGER_TIMEOUT  =   250  # ms to linger after close
 _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 
@@ -67,16 +58,15 @@ def _uninterruptible(f, *args, **kwargs):
 # have different scope (bound to the channel name).  Only one specific topic is
 # predefined: 'state' will be used for unit state updates.
 #
-class Pubsub(ru.Process):
+class Pubsub(object):
 
-    def __init__(self, session, channel, role, cfg, addr=None):
+    def __init__(self, channel, role, cfg, addr=None):
         """
         Addresses are of the form 'tcp://host:port'.  Both 'host' and 'port' can
         be wildcards for BRIDGE roles -- the bridge will report the in and out
         addresses as obj.addr_in and obj.addr_out.
         """
 
-        self._session = session
         self._channel = channel
         self._role    = role
         self._cfg     = copy.deepcopy(cfg)
@@ -84,13 +74,13 @@ class Pubsub(ru.Process):
 
         assert(self._role in PUBSUB_ROLES), 'invalid role %s' % self._role
 
-        self._uid = "%s.%s" % (self._channel.replace('_', '.'), self._role)
-        self._uid = ru.generate_id(self._uid)
-        self._log = self._session._get_logger(name=self._uid, 
-                         level=self._cfg.get('log_level'))
+        self._uid = ru.generate_id("rp.%s.%s" % (self._channel.replace('_', '.'),
+                                                 self._role))
+        self._log = ru.Logger(name=self._uid, 
+                              level=self._cfg.get('log_level'))
 
         # avoid superfluous logging calls in critical code sections
-        if self._log.getEffectiveLevel() == 10: # logging.DEBUG:
+        if self._log.getEffectiveLevel() == 10:  # logging.DEBUG:
             self._debug = True
         else:
             self._debug = False
@@ -108,62 +98,32 @@ class Pubsub(ru.Process):
 
         self._log.info("create %s - %s - %s", self._channel, self._role, self._addr)
 
-        super(Pubsub, self).__init__(name=self._uid, log=self._log)
-
 
         # ----------------------------------------------------------------------
         # behavior depends on the role...
         if self._role == PUBSUB_PUB:
 
-            self._ctx = zmq.Context()
-            self._session._to_destroy.append(self._ctx)
-
-            self._q   = self._ctx.socket(zmq.PUB)
+            self._ctx      = zmq.Context()  # rely on the GC destroy the context
+            self._q        = self._ctx.socket(zmq.PUB)
             self._q.linger = _LINGER_TIMEOUT
             self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(self._addr)
-            self.start(spawn=False)
-
-
-        # ----------------------------------------------------------------------
-        elif self._role == PUBSUB_BRIDGE:
-
-            # we expect bridges to always use a port wildcard. Make sure
-            # that's the case
-            elems = self._addr.split(':')
-            if len(elems) > 2 and elems[2] and elems[2] != '*':
-                raise RuntimeError('wildcard port (*) required for bridge addresses (%s)' \
-                                % self._addr)
-
-            self._pqueue = mp.Queue()
-            self.start()
-
-            try:
-                [addr_in, addr_out] = self._pqueue.get(True, _BRIDGE_TIMEOUT)
-
-                # store addresses
-                self._addr_in  = ru.Url(addr_in)
-                self._addr_out = ru.Url(addr_out)
-
-                # use the local hostip for bridge addresses
-                self._addr_in.host  = rpu_hostip()
-                self._addr_out.host = rpu_hostip()
-
-            except pyq.Empty as e:
-                raise RuntimeError ("bridge did not come up! (%s)" % e)
 
 
         # ----------------------------------------------------------------------
         elif self._role == PUBSUB_SUB:
 
-            self._ctx = zmq.Context()
-            self._session._to_destroy.append(self._ctx)
-
-            self._q   = self._ctx.socket(zmq.SUB)
+            self._ctx      = zmq.Context()  # rely on the GC destroy the context
+            self._q        = self._ctx.socket(zmq.SUB)
             self._q.linger = _LINGER_TIMEOUT
             self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(self._addr)
-            self.start(spawn=False)
+
+
+        # ----------------------------------------------------------------------
+        elif self._role == PUBSUB_BRIDGE:
+
+            self._initialize_bridge()
 
 
     # --------------------------------------------------------------------------
@@ -201,26 +161,26 @@ class Pubsub(ru.Process):
 
     # --------------------------------------------------------------------------
     # 
-    def ru_initialize_child(self):
+    def _initialize_bridge(self):
 
-        assert(self._role == PUBSUB_BRIDGE), 'only bridges can be started'
+        # we assume that the bridge has a process for itself.  I am not sure how
+        # to enforce this w/o getting into the whole Python process management
+        # quagmire...
 
-        self._uid = self._uid + '.child'
-        self._log = self._session._get_logger(name=self._uid, 
-                         level=self._cfg.get('log_level'))
-
-        spt.setproctitle('rp.%s' % self._uid)
         self._log.info('start bridge %s on %s', self._uid, self._addr)
 
-        self._ctx = zmq.Context()
-        self._session._to_destroy.append(self._ctx)
+        # we expect bridges to always use a port wildcard. Make sure
+        # that's the case
+        if self._addr.split(':')[2:3] != ['*']:
+            raise RuntimeError('bridge needs wildcard port [%s]' % self._addr)
 
-        self._in  = self._ctx.socket(zmq.XSUB)
-        self._in.linger = _LINGER_TIMEOUT
-        self._in.hwm    = _HIGH_WATER_MARK
+        self._ctx        = zmq.Context()  # rely on the GC destroy the context
+        self._in         = self._ctx.socket(zmq.XSUB)
+        self._in.linger  = _LINGER_TIMEOUT
+        self._in.hwm     = _HIGH_WATER_MARK
         self._in.bind(self._addr)
 
-        self._out = self._ctx.socket(zmq.XPUB)
+        self._out        = self._ctx.socket(zmq.XPUB)
         self._out.linger = _LINGER_TIMEOUT
         self._out.hwm    = _HIGH_WATER_MARK
         self._out.bind(self._addr)
@@ -229,62 +189,70 @@ class Pubsub(ru.Process):
         _addr_in  = self._in.getsockopt( zmq.LAST_ENDPOINT)
         _addr_out = self._out.getsockopt(zmq.LAST_ENDPOINT)
 
-        self._pqueue.put([_addr_in, _addr_out])
+        # store addresses
+        self._addr_in  = ru.Url(_addr_in)
+        self._addr_out = ru.Url(_addr_out)
 
-        self._log.info('bound bridge %s to %s : %s', self._uid, _addr_in, _addr_out)
+        # use the local hostip for bridge addresses
+        self._addr_in.host  = rpu_hostip()
+        self._addr_out.host = rpu_hostip()
+
+        self._log.info('bound bridge %s to %s : %s', 
+                       self._uid, _addr_in, _addr_out)
 
         # start polling for messages
         self._poll = zmq.Poller()
         self._poll.register(self._in,  zmq.POLLIN)
         self._poll.register(self._out, zmq.POLLIN)
 
-
-    # --------------------------------------------------------------------------
-    # 
-    def ru_finalize_common(self):
-
-        if self._q   : self._q  .close()
-        if self._in  : self._in .close()
-        if self._out : self._out.close()
-        if self._ctx : self._ctx.destroy()
+        thread = mt.Thread(target=self._bridge_work)
+        thread.daemon = True
+        thread.start()
 
 
     # --------------------------------------------------------------------------
     # 
-    def work_cb(self):
+    def _bridge_work(self):
 
-        _socks = dict(_uninterruptible(self._poll.poll, timeout=1000)) # timeout in ms
+        try:
 
-        if self._in in _socks:
-            
-            # if any incoming socket signals a message, get the
-            # message on the subscriber channel, and forward it
-            # to the publishing channel, no questions asked.
-            if _USE_MULTIPART:
-                msg = _uninterruptible(self._in.recv_multipart, flags=zmq.NOBLOCK)
-                _uninterruptible(self._out.send_multipart, msg)
-            else:
-                msg = _uninterruptible(self._in.recv, flags=zmq.NOBLOCK)
-                _uninterruptible(self._out.send, msg)
-          # if self._debug:
-          #     self._log.debug("-> %s", pprint.pformat(msg))
+            while True:
+
+                _socks = dict(_uninterruptible(self._poll.poll, timeout=1000))
+                # timeout in ms
+
+                if self._in in _socks:
+
+                    # if any incoming socket signals a message, get the
+                    # message on the subscriber channel, and forward it
+                    # to the publishing channel, no questions asked.
+                    if _USE_MULTIPART:
+                        msg = _uninterruptible(self._in.recv_multipart, flags=zmq.NOBLOCK)
+                        _uninterruptible(self._out.send_multipart, msg)
+                    else:
+                        msg = _uninterruptible(self._in.recv, flags=zmq.NOBLOCK)
+                        _uninterruptible(self._out.send, msg)
+                  # if self._debug:
+                  #     self._log.debug("-> %s", pprint.pformat(msg))
 
 
-        if self._out in _socks:
-            # if any outgoing socket signals a message, it's
-            # likely a topic subscription.  We forward that on
-            # the incoming channels to subscribe for the
-            # respective messages.
-            if _USE_MULTIPART:
-                msg = _uninterruptible(self._out.recv_multipart)
-                _uninterruptible(self._in.send_multipart, msg)
-            else:
-                msg = _uninterruptible(self._out.recv)
-                _uninterruptible(self._in.send, msg)
-          # if self._debug:
-          #     self._log.debug("<- %s", pprint.pformat(msg))
+                if self._out in _socks:
+                    # if any outgoing socket signals a message, it's
+                    # likely a topic subscription.  We forward that on
+                    # the incoming channels to subscribe for the
+                    # respective messages.
+                    if _USE_MULTIPART:
+                        msg = _uninterruptible(self._out.recv_multipart)
+                        _uninterruptible(self._in.send_multipart, msg)
+                    else:
+                        msg = _uninterruptible(self._out.recv)
+                        _uninterruptible(self._in.send, msg)
+                  # if self._debug:
+                  #     self._log.debug("<- %s", pprint.pformat(msg))
 
-        return True
+        except  Exception as e:
+            print 'error: %s' % e
+            self._log.exception('bridge failed')
 
 
     # --------------------------------------------------------------------------

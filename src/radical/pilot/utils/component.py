@@ -117,7 +117,7 @@ class Component(ru.Process):
         if those bridges have endpoints documented.  If so, we assume they are
         running, and that's fine.  If not, we start them and add the respective
         enspoint information to the config.  
-        
+
         This method will return a list of created bridge instances.  It is up to
         the callee to watch those bridges for health and to terminate them as
         needed.
@@ -144,15 +144,15 @@ class Component(ru.Process):
 
             # bridge needs starting
             log.info('create bridge %s', bname)
-            
+
             bcfg_clone = copy.deepcopy(bcfg)
 
             # The type of bridge (queue or pubsub) is derived from the name.
             if bname.endswith('queue'):
-                bridge = rpu_Queue(session, bname, rpu_QUEUE_BRIDGE, bcfg_clone)
+                bridge = rpu_Queue(bname, rpu_QUEUE_BRIDGE, bcfg_clone)
 
             elif bname.endswith('pubsub'):
-                bridge = rpu_Pubsub(session, bname, rpu_PUBSUB_BRIDGE, bcfg_clone)
+                bridge = rpu_Pubsub(bname, rpu_PUBSUB_BRIDGE, bcfg_clone)
 
             else:
                 raise ValueError('unknown bridge type for %s' % bname)

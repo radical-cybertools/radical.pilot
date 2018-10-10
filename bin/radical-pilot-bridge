@@ -1,0 +1,105 @@
+#!/usr/bin/env python
+
+__copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+
+import sys
+
+import setproctitle        as spt
+
+import radical.utils       as ru
+import radical.pilot.utils as rpu
+
+
+# ------------------------------------------------------------------------------
+#
+def start_bridge(name, role, cfgf):
+    """
+    This thin wrapper starts a ZMQ communication bridge as stand-alone process.
+    It expects two arguments:
+
+      - name: name of the communication bridge to start
+      - role: 'pub', 'sub' or 'bridge'
+      - cfgf: path to a config file to use
+
+    It is the responsibility of the caller to ensure that `$name` is unique.
+    Only the role `bridge` is implemented at this point.
+
+    The given  config file in `$cfgf` is read, and searched for a subsection
+    `bridges.$name`.  That config will be extracted and written to `$name.cfgf`,
+    which is then used by the bridge.  If `$name` is not found in the `bridges`
+    subsection, an error will be raised.  If no `bridges` subsection is found,
+    the config is considered to be self-sufficient, and will be used as is.
+
+    The bridge's stdout and stderr will be written to `$name.out` and
+    `$name.err`, respectively, log messages will appear in `$name.log`.
+    After startup, it will write the bridge's communication endpoint URLs
+    to the file `$name.url`, in the form:
+
+        IN:  $addr_in
+        OUT: $addr_out
+
+    The script will return when once the script process is gone.  If killed
+    otherwise, the script will attempt to kill the bridge process.
+    """
+
+    if role in ['pub', 'sub']:
+        raise ValueError('pub and sub roles are not supported, yet')
+
+    assert(role == 'bridge')
+
+    cfg = ru.read_json(cfgf)
+
+    if 'bridges' in cfg:
+        bcfg = cfg['bridges'].get(name)
+        if not bcfg:
+            raise ValueError('no bridges.%s section found in %s' % (name, cfgf))
+    else:
+        bcfg = cfg
+
+    # transplant some global settings
+    for key in ['logdir', 'session_id']:
+        if key in cfg:
+            bcfg[key] = cfg[key]
+
+    print "bridge %s starts" % name
+
+    # redirect stdout/stderr
+    sys.stdout = open('%s/%s.out' % (bcfg.get('logdir', '.'), name), 'w')
+    sys.stderr = open('%s/%s.err' % (bcfg.get('logdir', '.'), name), 'w')
+
+    # mark this process as bridge
+    spt.setproctitle('rp.%s' % name)
+
+    print "bridge %s starts" % name
+
+    if   'pubsub' in name.lower(): bridge = rpu.Pubsub(name, role, bcfg)
+    elif 'queue'  in name.lower(): bridge = rpu.Queue (name, role, bcfg)
+    else:
+        raise ValueError('invalid bridge name [%s]' % name)
+
+    with open('%s.url' % name, 'w') as fout:
+        fout.write('IN  %s\n' % bridge.addr_in)
+        fout.write('OUT %s\n' % bridge.addr_out)
+
+    import time
+    time.sleep(3)
+
+    print 'bridge %s stopped [%s]' % (name, bridge)
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+
+    if len(sys.argv) != 4:
+        sys.stderr.write('error: missing arguments\n'
+                         'usage: %s <name> <role> <cfg>\n\n')
+        raise RuntimeError('missing arguments')
+
+    start_bridge(sys.argv[1], sys.argv[2], sys.argv[3])
+
+
+# ------------------------------------------------------------------------------
+
