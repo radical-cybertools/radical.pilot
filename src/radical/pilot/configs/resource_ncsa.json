@@ -20,8 +20,12 @@
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
         "pre_bootstrap_0"             : [
+            "ulimit -s 8192",
             "module switch PrgEnv-cray PrgEnv-gnu",
             "module load bwpy"
+        ],
+        "pre_bootstrap_1"             : [
+            "ulimit -s 8192"
         ],
         "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
