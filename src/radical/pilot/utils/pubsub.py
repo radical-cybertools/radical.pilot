@@ -87,13 +87,14 @@ class Pubsub(ru.Process):
         self._uid = "%s.%s" % (self._channel.replace('_', '.'), self._role)
         self._uid = ru.generate_id(self._uid)
         self._log = self._session._get_logger(name=self._uid, 
-                         level=self._cfg.get('log_level'))
+                         level=self._cfg.get('log_level', 'debug'))
 
         # avoid superfluous logging calls in critical code sections
         if self._log.getEffectiveLevel() == 10: # logging.DEBUG:
             self._debug = True
         else:
             self._debug = False
+        self._debug = True
 
         self._addr_in   = None  # bridge input  addr
         self._addr_out  = None  # bridge output addr
