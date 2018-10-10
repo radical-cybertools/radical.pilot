@@ -14,14 +14,11 @@ then
     exec 2>&1
 fi
 
-
 if test "`uname`" = 'Darwin'
 then
     echo 'Darwin: increasing open file limit'
     ulimit -n 512
 fi
-
-
 
 # trap 'echo TRAP QUIT' QUIT
 # trap 'echo TRAP EXIT' EXIT
