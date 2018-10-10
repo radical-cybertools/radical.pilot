@@ -16,6 +16,15 @@ class LSF_SUMMIT(LRMS):
     #
     def __init__(self, cfg, session):
 
+        # We call the base class constructor to make sure we don't 
+        # miss any future critical changes. But as such, 
+        # the LSF_SUMMIT LRMS, currently, does not need the base
+        # constructor due to the difference in the assumed node
+        # structure. If the node-structure with sockets needs to
+        # be extended to other LRMS we will change the base 
+        # constructor.
+        LRMS.__init__(self, cfg, session)
+
         self.name            = type(self).__name__
         self._cfg            = cfg
         self._session        = session
