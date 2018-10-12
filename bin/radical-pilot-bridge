@@ -63,8 +63,6 @@ def start_bridge(name, role, cfgf):
         if key in cfg:
             bcfg[key] = cfg[key]
 
-    print "bridge %s starts" % name
-
     # redirect stdout/stderr
     sys.stdout = open('%s/%s.out' % (bcfg.get('logdir', '.'), name), 'w')
     sys.stderr = open('%s/%s.err' % (bcfg.get('logdir', '.'), name), 'w')
@@ -83,8 +81,7 @@ def start_bridge(name, role, cfgf):
         fout.write('IN  %s\n' % bridge.addr_in)
         fout.write('OUT %s\n' % bridge.addr_out)
 
-    import time
-    time.sleep(3)
+    bridge.wait()
 
     print 'bridge %s stopped [%s]' % (name, bridge)
 

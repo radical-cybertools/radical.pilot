@@ -1,6 +1,7 @@
 
 import zmq
 import copy
+import time
 import errno
 import msgpack
 
@@ -52,7 +53,7 @@ def _uninterruptible(f, *args, **kwargs):
                 raise
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 # Notifications between components are based on pubsub channels.  Those channels
 # have different scope (bound to the channel name).  Only one specific topic is
@@ -61,11 +62,11 @@ def _uninterruptible(f, *args, **kwargs):
 class Pubsub(object):
 
     def __init__(self, channel, role, cfg, addr=None):
-        """
+        '''
         Addresses are of the form 'tcp://host:port'.  Both 'host' and 'port' can
         be wildcards for BRIDGE roles -- the bridge will report the in and out
         addresses as obj.addr_in and obj.addr_out.
-        """
+        '''
 
         self._channel = channel
         self._role    = role
@@ -81,17 +82,17 @@ class Pubsub(object):
 
         # avoid superfluous logging calls in critical code sections
         if self._log.getEffectiveLevel() == 10:  # logging.DEBUG:
-            self._debug = True
+            self._debug  = True
         else:
-            self._debug = False
+            self._debug  = False
 
-        self._addr_in   = None  # bridge input  addr
-        self._addr_out  = None  # bridge output addr
+        self._addr_in    = None  # bridge input  addr
+        self._addr_out   = None  # bridge output addr
 
-        self._q    = None
-        self._in   = None
-        self._out  = None
-        self._ctx  = None
+        self._q          = None
+        self._in         = None
+        self._out        = None
+        self._ctx        = None
 
         if not self._addr:
             self._addr = 'tcp://*:*'
@@ -163,10 +164,6 @@ class Pubsub(object):
     # 
     def _initialize_bridge(self):
 
-        # we assume that the bridge has a process for itself.  I am not sure how
-        # to enforce this w/o getting into the whole Python process management
-        # quagmire...
-
         self._log.info('start bridge %s on %s', self._uid, self._addr)
 
         # we expect bridges to always use a port wildcard. Make sure
@@ -205,9 +202,34 @@ class Pubsub(object):
         self._poll.register(self._in,  zmq.POLLIN)
         self._poll.register(self._out, zmq.POLLIN)
 
-        thread = mt.Thread(target=self._bridge_work)
-        thread.daemon = True
-        thread.start()
+        self._bridge_thread = mt.Thread(target=self._bridge_work)
+        self._bridge_thread.daemon = True
+        self._bridge_thread.start()
+
+
+    # --------------------------------------------------------------------------
+    # 
+    def wait(self, timeout=None):
+        '''
+        join negates the daemon thread settings, in that it stops us from
+        killing the parent process w/o hanging it.  So we do a slow pull on the
+        thread state.
+        '''
+
+        start = time.time()
+
+        if self._role == PUBSUB_BRIDGE:
+
+            while True:
+
+                if not self._bridge_thread.is_alive():
+                    return True
+
+                if  timeout is not None and \
+                    timeout < time.time() - start:
+                    return False
+
+                time.sleep(1)
 
 
     # --------------------------------------------------------------------------
@@ -305,15 +327,17 @@ class Pubsub(object):
             raw = _uninterruptible(self._q.recv)
             topic, data = raw.split(' ', 1)
 
-        msg = msgpack.unpackb(data) 
+        msg  = msgpack.unpackb(data) 
+
       # if self._debug:
       #     self._log.debug("<- %s", ([topic, pprint.pformat(msg)]))
+
         return [topic, msg]
 
 
     # --------------------------------------------------------------------------
     #
-    def get_nowait(self, timeout=None): # timeout in ms
+    def get_nowait(self, timeout=None):  # timeout in ms
 
         assert(self._role == PUBSUB_SUB), 'invalid role on get_nowait'
 
