@@ -14,17 +14,15 @@ import radical.pilot.utils as rpu
 
 # ------------------------------------------------------------------------------
 #
-def start_bridge(name, role, cfgf):
+def start_bridge(name, cfgf):
     """
     This thin wrapper starts a ZMQ communication bridge as stand-alone process.
     It expects two arguments:
 
       - name: name of the communication bridge to start
-      - role: 'pub', 'sub' or 'bridge'
       - cfgf: path to a config file to use
 
     It is the responsibility of the caller to ensure that `$name` is unique.
-    Only the role `bridge` is implemented at this point.
 
     The given  config file in `$cfgf` is read, and searched for a subsection
     `bridges.$name`.  That config will be extracted and written to `$name.cfgf`,
@@ -44,11 +42,6 @@ def start_bridge(name, role, cfgf):
     otherwise, the script will attempt to kill the bridge process.
     """
 
-    if role in ['pub', 'sub']:
-        raise ValueError('pub and sub roles are not supported, yet')
-
-    assert(role == 'bridge')
-
     cfg = ru.read_json(cfgf)
 
     if 'bridges' in cfg:
@@ -67,19 +60,15 @@ def start_bridge(name, role, cfgf):
     sys.stdout = open('%s/%s.out' % (bcfg.get('logdir', '.'), name), 'w')
     sys.stderr = open('%s/%s.err' % (bcfg.get('logdir', '.'), name), 'w')
 
-    # mark this process as bridge
-    spt.setproctitle('rp.%s' % name)
-
-    print "bridge %s starts" % name
-
-    if   'pubsub' in name.lower(): bridge = rpu.Pubsub(name, role, bcfg)
-    elif 'queue'  in name.lower(): bridge = rpu.Queue (name, role, bcfg)
+    if   'pubsub' in name.lower(): bridge = rpu.Pubsub(name, 'bridge', bcfg)
+    elif 'queue'  in name.lower(): bridge = rpu.Queue (name, 'bridge', bcfg)
     else:
         raise ValueError('invalid bridge name [%s]' % name)
 
-    with open('%s.url' % name, 'w') as fout:
-        fout.write('IN  %s\n' % bridge.addr_in)
-        fout.write('OUT %s\n' % bridge.addr_out)
+    # mark this process as bridge
+    spt.setproctitle(bridge.uid)
+
+    print "bridge %s started" % bridge.uid
 
     bridge.wait()
 
@@ -90,12 +79,13 @@ def start_bridge(name, role, cfgf):
 #
 if __name__ == "__main__":
 
-    if len(sys.argv) != 4:
-        sys.stderr.write('error: missing arguments\n'
-                         'usage: %s <name> <role> <cfg>\n\n')
-        raise RuntimeError('missing arguments')
+    if len(sys.argv) != 3:
+        print len(sys.argv)
+        sys.stderr.write('error: argument error\n'
+                         'usage: %s <name> <cfg>\n\n')
+        raise RuntimeError('argument error')
 
-    start_bridge(sys.argv[1], sys.argv[2], sys.argv[3])
+    start_bridge(sys.argv[1], sys.argv[2])
 
 
 # ------------------------------------------------------------------------------

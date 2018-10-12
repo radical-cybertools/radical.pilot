@@ -61,7 +61,7 @@ def _uninterruptible(f, *args, **kwargs):
 #
 class Pubsub(object):
 
-    def __init__(self, channel, role, cfg, addr=None):
+    def __init__(self, channel, role, cfg):
         '''
         Addresses are of the form 'tcp://host:port'.  Both 'host' and 'port' can
         be wildcards for BRIDGE roles -- the bridge will report the in and out
@@ -69,14 +69,20 @@ class Pubsub(object):
         '''
 
         self._channel = channel
+        self._cid     = channel.replace('_', '.')
         self._role    = role
         self._cfg     = copy.deepcopy(cfg)
-        self._addr    = addr
 
         assert(self._role in PUBSUB_ROLES), 'invalid role %s' % self._role
 
-        self._uid = ru.generate_id("rp.%s.%s" % (self._channel.replace('_', '.'),
-                                                 self._role))
+        if self._role == PUBSUB_BRIDGE:
+            self._uid = ru.generate_id("rp.%s.%s" % (self._cid, self._role),
+                                       ru.ID_CUSTOM)
+        else:
+            self._uid = ru.generate_id("rp.%s.%s.%(counter)04d" 
+                                       % (self._cid, self._role),
+                                       ru.ID_CUSTOM)
+
         self._log = ru.Logger(name=self._uid, 
                               level=self._cfg.get('log_level'))
 
@@ -86,23 +92,22 @@ class Pubsub(object):
         else:
             self._debug  = False
 
-        self._addr_in    = None  # bridge input  addr
-        self._addr_out   = None  # bridge output addr
-
-        self._q          = None
-        self._in         = None
-        self._out        = None
-        self._ctx        = None
-
-        if not self._addr:
-            self._addr = 'tcp://*:*'
-
-        self._log.info("create %s - %s - %s", self._channel, self._role, self._addr)
+        self._log.info("create %s - %s", self._channel, self._role)
 
 
         # ----------------------------------------------------------------------
         # behavior depends on the role...
         if self._role == PUBSUB_PUB:
+
+            # get addr from bridge.url
+            bridge_uid = ru.generate_id("rp.%s.bridge" % (self._cid))
+
+            with open('%s.url' % bridge_uid, 'r') as fin:
+                for line in fin.readlines():
+                    elems = line.split()
+                    if elems and elems[0] == 'IN':
+                        self._addr = elems[1]
+                        break
 
             self._ctx      = zmq.Context()  # rely on the GC destroy the context
             self._q        = self._ctx.socket(zmq.PUB)
@@ -113,6 +118,16 @@ class Pubsub(object):
 
         # ----------------------------------------------------------------------
         elif self._role == PUBSUB_SUB:
+
+            # get addr from bridge.url
+            bridge_uid = ru.generate_id("rp.%s.bridge" % (self._cid))
+
+            with open('%s.url' % bridge_uid, 'r') as fin:
+                for line in fin.readlines():
+                    elems = line.split()
+                    if elems and elems[0] == 'OUT':
+                        self._addr = elems[1]
+                        break
 
             self._ctx      = zmq.Context()  # rely on the GC destroy the context
             self._q        = self._ctx.socket(zmq.SUB)
@@ -164,12 +179,9 @@ class Pubsub(object):
     # 
     def _initialize_bridge(self):
 
-        self._log.info('start bridge %s on %s', self._uid, self._addr)
+        self._log.info('start bridge %s', self._uid)
 
-        # we expect bridges to always use a port wildcard. Make sure
-        # that's the case
-        if self._addr.split(':')[2:3] != ['*']:
-            raise RuntimeError('bridge needs wildcard port [%s]' % self._addr)
+        self._addr       = 'tcp://*:*'
 
         self._ctx        = zmq.Context()  # rely on the GC destroy the context
         self._in         = self._ctx.socket(zmq.XSUB)
@@ -205,6 +217,10 @@ class Pubsub(object):
         self._bridge_thread = mt.Thread(target=self._bridge_work)
         self._bridge_thread.daemon = True
         self._bridge_thread.start()
+
+        with open(self.uid, 'w') as fout:
+            fout.write('IN  %s\n' % self.addr_in)
+            fout.write('OUT %s\n' % self.addr_out)
 
 
     # --------------------------------------------------------------------------
