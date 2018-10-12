@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.12 Release                                                       2018-10-12
+--------------------------------------------------------------------------------
+
+  - fix stacksize usage on BW
+
+
 0.50.11 Release                                                       2018-10-09
 --------------------------------------------------------------------------------
 
