@@ -30,14 +30,16 @@ class JSRUN(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        slots        = cu['slots']
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_mpi     = bool('mpi' in cud.get('cpu_process_type', '').lower())
-        task_cores   = cud.get('cpu_processes', 0) + cud.get('gpu_processes', 0)
-        task_env     = cud.get('environment') or dict()
-        task_args    = cud.get('arguments')   or list()
-        task_argstr  = self._create_arg_string(task_args)
+        slots         = cu['slots']
+        cud           = cu['description']
+        task_exec     = cud['executable']
+        task_mpi      = bool('mpi' in cud.get('cpu_process_type', '').lower())
+        task_procs    = cud.get('cpu_processes', 0)
+        task_threads  = cud.get('cpu_threads', 0)
+        task_gpu_pros = cud.get('gpu_processes', 0)
+        task_env      = cud.get('environment') or dict()
+        task_args     = cud.get('arguments')   or list()
+        task_argstr   = self._create_arg_string(task_args)
 
      #  import pprint
      #  self._log.debug('prep %s', pprint.pformat(cu))
@@ -65,33 +67,19 @@ class JSRUN(LaunchMethod):
         depths       = set()
         cores        = 0
         procs        = 0
+        rs_id        = 0
         for node in slots['nodes']:
+            hosts_string += 'RS %d : {host: %d ' %(rs_id,node['uid'])
+            hosts_string += 'cpu: %s ' % ' '.join(map(str, node['core_map'][0]))
+            hosts_string += 'cpu: %s ' % ' '.join(map(str, node['gpu_map'][0]))
+            hosts_string += '}\n'
 
-            # On some Crays, like on ARCHER, the hostname is "archer_N".  In
-            # that case we strip off the part upto and including the underscore.
-            #
-            # TODO: If this ever becomes a problem, i.e. we encounter "real"
-            #       hostnames with underscores in it, or other hostname 
-            #       mangling, we need to turn this into a system specific 
-            #       regexp or so.
-            node_id = node[1].rsplit('_', 1)[-1] 
-
-            # add all cpu and gpu process slots to the node list.
-            for gpu_slot in node[3]: hosts_string += '%s,' % node_id
-            for cpu_slot in node[2]: hosts_string += '%s,' % node_id
-            for cpu_slot in node[2]: depths.add(len(cpu_slot))
-            for cpu_slot in node[2]: cores += len(cpu_slot)
-            for cpu_slot in node[2]: procs += 1
-
-        assert(len(depths) == 1), depths
-        depth = list(depths)[0]
-
-        # remove trailing ','
-        hosts_string = hosts_string.rstrip(',')
-
-        flags   = '-n %d -g 1 -a %d -c16 -bpacked:%d' % (procs, procs * depth, depth)
-        command = '%s %s -host %s %s %s' % (self.launch_command, flags,
-                                            hosts_string, env_string, 
+        with open('rs_layout_cu_%s' % cud['uid']) as rs_layout:
+            rs_layout.write(hosts_string)
+        
+        flags   = '-U %d -n1 -a1 ' % ('rs_layout_cu_%s' % cud['uid'])
+        command = '%s %s %s %s' % (self.launch_command, flags,
+                                            env_string, 
                                             task_command)
         return command, None
 
