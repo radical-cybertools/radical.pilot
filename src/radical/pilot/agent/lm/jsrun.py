@@ -130,7 +130,7 @@ class JSRUN(LaunchMethod):
 
         self._create_resource_set_file(slots = slots, cuid = cu['uid'])
 
-        flags   = '-U %d -n%d -a%d ' % ('rs_layout_cu_%06d' % cud['uid'], 
+        flags   = '-U %s -n%d -a%d ' % ('rs_layout_cu_%06d' % cu['uid'], 
                                         task_procs, task_procs)
         command = '%s %s %s %s' % (self.launch_command, flags,
                                             env_string, 
