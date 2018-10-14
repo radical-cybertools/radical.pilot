@@ -126,7 +126,7 @@ class JSRUN(LaunchMethod):
         env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
         if env_list:
             for var in env_list:
-                env_string += '-x "%s" ' % var
+                env_string += '-E "%s" ' % var
 
         self._create_resource_set_file(slots = slots, cuid = cu['uid'])
 
