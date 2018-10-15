@@ -8,7 +8,7 @@ addr = None
 with open('test.bridge.url', 'r') as fin:
     for line in fin.readlines():
         tag, addr = line.split()
-        if tag == 'OUT':
+        if tag == 'SUB':
             break
 
 print 'add: %s' % addr
@@ -16,7 +16,7 @@ print 'add: %s' % addr
 ctx = zmq.Context()
 sub = ctx.socket(zmq.SUB)
 sub.connect(addr)
-sub.setsockopt_string(zmq.SUBSCRIBE, u'topic_1')
+sub.setsockopt_string(zmq.SUBSCRIBE, u'topic')
 
 n = 0
 start = time.time()

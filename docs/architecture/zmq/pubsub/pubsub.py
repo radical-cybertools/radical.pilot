@@ -15,12 +15,12 @@ socket_out.bind("tcp://*:*")
 addr_in  = socket_in .getsockopt(zmq.LAST_ENDPOINT)
 addr_out = socket_out.getsockopt(zmq.LAST_ENDPOINT)
 
-print 'IN : %s' % addr_in
-print 'OUT: %s' % addr_out
+print 'PUB: %s' % addr_in
+print 'SUB: %s' % addr_out
 
 with open('test.bridge.url', 'w') as fout:
-    fout.write('IN  %s\n' % addr_in)
-    fout.write('OUT %s\n' % addr_out)
+    fout.write('PUB %s\n' % addr_in)
+    fout.write('SUB %s\n' % addr_out)
 
 zmq.proxy(socket_in, socket_out)
 

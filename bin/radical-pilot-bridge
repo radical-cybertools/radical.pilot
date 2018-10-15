@@ -14,8 +14,8 @@ import radical.pilot.utils as rpu
 
 # ------------------------------------------------------------------------------
 #
-def start_bridge(name, cfgf):
-    """
+if __name__ == "__main__":
+    '''
     This thin wrapper starts a ZMQ communication bridge as stand-alone process.
     It expects two arguments:
 
@@ -33,58 +33,53 @@ def start_bridge(name, cfgf):
     The bridge's stdout and stderr will be written to `$name.out` and
     `$name.err`, respectively, log messages will appear in `$name.log`.
     After startup, it will write the bridge's communication endpoint URLs
-    to the file `$name.url`, in the form:
+    to the file `$name.bridge.url`, in the form:
 
-        IN:  $addr_in
-        OUT: $addr_out
+        SUB: $addr_in
+        PUB: $addr_out
 
-    The script will return when once the script process is gone.  If killed
-    otherwise, the script will attempt to kill the bridge process.
-    """
+    The `SUB` address is to be used for subscribers, the `PUB` address for
+    publishers -- but the respective RP classes will dig the correct addresses
+    from that file.
+    
+    A typical test scenario would be:
 
-    cfg = ru.read_json(cfgf)
+        > radical-pilot-bridge command pubsub             [1]
+        > radical-pilot-sub    command foo bar            [2]
+        > radical-pilot-pub    command foo_1 foo_2 bar_1  [3]
+        > radical-pilot-sub    command bar baz pop        [4]
+        > radical-pilot-pub    command bar_2 baz_1 buz_1  [5]
 
-    if 'bridges' in cfg:
-        bcfg = cfg['bridges'].get(name)
-        if not bcfg:
-            raise ValueError('no bridges.%s section found in %s' % (name, cfgf))
+    [1] establishes the pubsub channel 'command'
+    [2] and [4] connect to the command channel, and subscribe for certain topics
+    [3] and [5] connect to the command channel, and send messages for some topics
+
+    Note that the `buz_1` messages will never be received [5], and that the
+    `pop` subscriber [4] will get no messages for that topic.
+
+    '''
+
+    if len(sys.argv) != 3:
+        sys.stderr.write('error: argument error\n'
+                         'usage: %s <channel>\n\n')
+        raise RuntimeError('argument error')
+
+    name = sys.argv[1]
+    kind = sys.argv[2]
+
+    cfg = {'bulk_size': 0, 
+           'stall_hwm': 1,
+           'log_level': "debug"}
+
+    if   kind == 'pubsub': bridge = rpu.Pubsub(name, 'bridge', cfg)
+    elif kind == 'queue' : bridge = rpu.Queue (name, 'bridge', cfg)
     else:
-        bcfg = cfg
-
-    # transplant some global settings
-    for key in ['logdir', 'session_id']:
-        if key in cfg:
-            bcfg[key] = cfg[key]
-
- #  # redirect stdout/stderr
- #  sys.stdout = open('%s/%s.out' % (bcfg.get('logdir', '.'), name), 'w')
- #  sys.stderr = open('%s/%s.err' % (bcfg.get('logdir', '.'), name), 'w')
-
-    if   'pubsub' in name.lower(): bridge = rpu.Pubsub(name, 'bridge', bcfg)
-    elif 'queue'  in name.lower(): bridge = rpu.Queue (name, 'bridge', bcfg)
-    else:
-        raise ValueError('invalid bridge name [%s]' % name)
+        raise ValueError('invalid bridge type [%s]' % name)
 
     # mark this process as bridge
     spt.setproctitle('rp.%s'  % bridge.uid)
-    print "bridge %s started" % bridge.uid
 
     bridge.wait()
-
-    print 'bridge %s stopped [%s]' % (name, bridge)
-
-
-# ------------------------------------------------------------------------------
-#
-if __name__ == "__main__":
-
-    if len(sys.argv) != 3:
-        print len(sys.argv)
-        sys.stderr.write('error: argument error\n'
-                         'usage: %s <name> <cfg>\n\n')
-        raise RuntimeError('argument error')
-
-    start_bridge(sys.argv[1], sys.argv[2])
 
 
 # ------------------------------------------------------------------------------

@@ -7,7 +7,7 @@ addr = None
 with open('test.bridge.url', 'r') as fin:
     for line in fin.readlines():
         tag, addr = line.split()
-        if tag == 'IN':
+        if tag == 'PUB':
             break
 
 print 'add: %s' % addr
@@ -18,7 +18,7 @@ socket.connect(addr)
 
 n     = 300000
 start = time.time()
-topic = 'topic_1'
+topic = 'topic'
 for index in range(n):
     socket.send_multipart([topic, '-'])
     socket.send_multipart([topic, '+'])

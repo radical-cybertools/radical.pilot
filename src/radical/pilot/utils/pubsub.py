@@ -20,7 +20,6 @@ PUBSUB_SUB    = 'sub'
 PUBSUB_BRIDGE = 'bridge'
 PUBSUB_ROLES  = [PUBSUB_PUB, PUBSUB_SUB, PUBSUB_BRIDGE]
 
-_USE_MULTIPART   = False  # send [topic, data] as multipart message
 _LINGER_TIMEOUT  =   250  # ms to linger after close
 _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 
@@ -114,7 +113,7 @@ class Pubsub(object):
                         self._addr = elems[1]
                         break
 
-            print 'pub on %s : %s'  % (bridge_uid, self._addr)
+            self._log.info('connect pub to %s: %s'  % (bridge_uid, self._addr))
 
             self._ctx      = zmq.Context()  # rely on the GC destroy the context
             self._q        = self._ctx.socket(zmq.PUB)
@@ -136,7 +135,7 @@ class Pubsub(object):
                         self._addr = elems[1]
                         break
 
-            print 'sub on %s : %s'  % (bridge_uid, self._addr)
+            self._log.info('connect sub to %s: %s'  % (bridge_uid, self._addr))
 
             self._ctx      = zmq.Context()  # rely on the GC destroy the context
             self._q        = self._ctx.socket(zmq.SUB)
@@ -218,21 +217,27 @@ class Pubsub(object):
         self._log.info('bound bridge %s to %s : %s', 
                        self._uid, _addr_in, _addr_out)
 
+        self._log.info('bridge in  on  %s: %s'  % (self._uid, self._addr_in ))
+        self._log.info('       out on  %s: %s'  % (self._uid, self._addr_out))
+
         # start polling for messages
         self._poll = zmq.Poller()
         self._poll.register(self._in,  zmq.POLLIN)
         self._poll.register(self._out, zmq.POLLIN)
 
+        # the bridge runs in a daemon thread, so that the main process will not
+        # wait for it.  But, give Python's thread performance (or lack thereof),
+        # this means that the user of this class should create a separate
+        # process instance to host the bridge thread.
         self._bridge_thread = mt.Thread(target=self._bridge_work)
         self._bridge_thread.daemon = True
         self._bridge_thread.start()
 
+        # inform clients about the bridge, no that the sockets are connected and
+        # work is about to start.
         with open('%s.url' % self.uid, 'w') as fout:
             fout.write('PUB %s\n' % self.addr_in)
             fout.write('SUB %s\n' % self.addr_out)
-
-        print 'in  on %s'  % self.addr_in
-        print 'out on %s'  % self.addr_out
 
 
     # --------------------------------------------------------------------------
@@ -264,53 +269,44 @@ class Pubsub(object):
     # 
     def _bridge_work(self):
 
-        try:
+        # we could use a zmq proxy - but we rather code it directly to have
+        # proper logging, timing, etc.  But the code for the proxy would be:
+        #
+        #     zmq.proxy(socket_in, socket_out)
+        #
+        # That's the equivalent of the code below.
 
-            print 'start work'
+        try:
 
             while True:
 
-
                 _socks = dict(_uninterruptible(self._poll.poll, timeout=1000))
                 # timeout in ms
-
-                print 'in   : %s'   % self._in
-                print 'out  : %s'   % self._out
-                print 'socks: %s' %  _socks
 
                 if self._in in _socks:
 
                     # if any incoming socket signals a message, get the
                     # message on the subscriber channel, and forward it
                     # to the publishing channel, no questions asked.
-                    if _USE_MULTIPART:
-                        msg = _uninterruptible(self._in.recv_multipart, flags=zmq.NOBLOCK)
-                        _uninterruptible(self._out.send_multipart, msg)
-                    else:
-                        msg = _uninterruptible(self._in.recv, flags=zmq.NOBLOCK)
-                        _uninterruptible(self._out.send, msg)
-                  # if self._debug:
-                    if True:
-                        self._log.debug("-> %s [rec]", pprint.pformat(msg))
-
+                    msg = _uninterruptible(self._in.recv_multipart, flags=zmq.NOBLOCK)
+                    _uninterruptible(self._out.send_multipart, msg)
+                    if self._debug:
+                        self._log.debug("-> %s", pprint.pformat(msg))
 
                 if self._out in _socks:
                     # if any outgoing socket signals a message, it's
                     # likely a topic subscription.  We forward that on
                     # the incoming channels to subscribe for the
                     # respective messages.
-                    if _USE_MULTIPART:
-                        msg = _uninterruptible(self._out.recv_multipart)
-                        _uninterruptible(self._in.send_multipart, msg)
-                    else:
-                        msg = _uninterruptible(self._out.recv)
-                        _uninterruptible(self._in.send, msg)
+                    msg = _uninterruptible(self._out.recv_multipart)
+                    _uninterruptible(self._in.send_multipart, msg)
                     if self._debug:
-                        self._log.debug("<- %s (sub)", pprint.pformat(msg))
+                        self._log.debug("<- %s", pprint.pformat(msg))
 
-        except  Exception as e:
-            print 'error: %s' % e
+        except Exception:
             self._log.exception('bridge failed')
+
+        # thread ends here
 
 
     # --------------------------------------------------------------------------
@@ -332,9 +328,6 @@ class Pubsub(object):
         assert(self._role == PUBSUB_PUB), 'incorrect role on put'
         assert(isinstance(msg,dict)),     'invalide message type'
 
-
-        self._log.debug("?> %s", pprint.pformat(msg))
-
         topic = topic.replace(' ', '_')
         data  = msgpack.packb(msg) 
 
@@ -355,7 +348,7 @@ class Pubsub(object):
         msg         = msgpack.unpackb(data) 
 
         if self._debug:
-            self._log.debug("<- %s (get)", ([topic, pprint.pformat(msg)]))
+            self._log.debug("<- %s", ([topic, pprint.pformat(msg)]))
 
         return [topic, msg]
 
@@ -368,13 +361,8 @@ class Pubsub(object):
 
         if _uninterruptible(self._q.poll, flags=zmq.POLLIN, timeout=timeout):
 
-            if _USE_MULTIPART:
-                topic, data = _uninterruptible(self._q.recv_multipart, 
-                                               flags=zmq.NOBLOCK)
-            else:
-                raw = _uninterruptible(self._q.recv)
-                topic, data = raw.split(' ', 1)
-
+            topic, data = _uninterruptible(self._q.recv_multipart, 
+                                           flags=zmq.NOBLOCK)
             msg = msgpack.unpackb(data) 
             if self._debug:
                 self._log.debug("<< %s", ([topic, pprint.pformat(msg)]))
