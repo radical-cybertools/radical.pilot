@@ -56,9 +56,9 @@ def start_bridge(name, cfgf):
         if key in cfg:
             bcfg[key] = cfg[key]
 
-    # redirect stdout/stderr
-    sys.stdout = open('%s/%s.out' % (bcfg.get('logdir', '.'), name), 'w')
-    sys.stderr = open('%s/%s.err' % (bcfg.get('logdir', '.'), name), 'w')
+ #  # redirect stdout/stderr
+ #  sys.stdout = open('%s/%s.out' % (bcfg.get('logdir', '.'), name), 'w')
+ #  sys.stderr = open('%s/%s.err' % (bcfg.get('logdir', '.'), name), 'w')
 
     if   'pubsub' in name.lower(): bridge = rpu.Pubsub(name, 'bridge', bcfg)
     elif 'queue'  in name.lower(): bridge = rpu.Queue (name, 'bridge', bcfg)
@@ -66,8 +66,7 @@ def start_bridge(name, cfgf):
         raise ValueError('invalid bridge name [%s]' % name)
 
     # mark this process as bridge
-    spt.setproctitle(bridge.uid)
-
+    spt.setproctitle('rp.%s'  % bridge.uid)
     print "bridge %s started" % bridge.uid
 
     bridge.wait()

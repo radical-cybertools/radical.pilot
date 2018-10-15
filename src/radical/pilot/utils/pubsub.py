@@ -3,6 +3,7 @@ import zmq
 import copy
 import time
 import errno
+import pprint
 import msgpack
 
 import threading         as mt
@@ -61,7 +62,7 @@ def _uninterruptible(f, *args, **kwargs):
 #
 class Pubsub(object):
 
-    def __init__(self, channel, role, cfg):
+    def __init__(self, channel, role, cfg=None):
         '''
         Addresses are of the form 'tcp://host:port'.  Both 'host' and 'port' can
         be wildcards for BRIDGE roles -- the bridge will report the in and out
@@ -73,24 +74,28 @@ class Pubsub(object):
         self._role    = role
         self._cfg     = copy.deepcopy(cfg)
 
+        if not self._cfg:
+            self._cfg = dict()
+
         assert(self._role in PUBSUB_ROLES), 'invalid role %s' % self._role
 
         if self._role == PUBSUB_BRIDGE:
-            self._uid = ru.generate_id("rp.%s.%s" % (self._cid, self._role),
-                                       ru.ID_CUSTOM)
+            self._uid = ru.generate_id('%s.%s' % (self._cid, self._role),
+                                                  ru.ID_CUSTOM)
         else:
-            self._uid = ru.generate_id("rp.%s.%s.%(counter)04d" 
-                                       % (self._cid, self._role),
-                                       ru.ID_CUSTOM)
+            self._uid = ru.generate_id('%s.%s.%s' % (self._cid, self._role,
+                                                     '%(counter)04d'),
+                                        ru.ID_CUSTOM)
 
         self._log = ru.Logger(name=self._uid, 
-                              level=self._cfg.get('log_level'))
+                              level=self._cfg.get('log_level', 'DEBUG'))
 
         # avoid superfluous logging calls in critical code sections
         if self._log.getEffectiveLevel() == 10:  # logging.DEBUG:
             self._debug  = True
         else:
             self._debug  = False
+        self._debug  = True
 
         self._log.info("create %s - %s", self._channel, self._role)
 
@@ -100,14 +105,16 @@ class Pubsub(object):
         if self._role == PUBSUB_PUB:
 
             # get addr from bridge.url
-            bridge_uid = ru.generate_id("rp.%s.bridge" % (self._cid))
+            bridge_uid = ru.generate_id("%s.bridge" % self._cid, ru.ID_CUSTOM)
 
             with open('%s.url' % bridge_uid, 'r') as fin:
                 for line in fin.readlines():
                     elems = line.split()
-                    if elems and elems[0] == 'IN':
+                    if elems and elems[0] == 'PUB':
                         self._addr = elems[1]
                         break
+
+            print 'pub on %s : %s'  % (bridge_uid, self._addr)
 
             self._ctx      = zmq.Context()  # rely on the GC destroy the context
             self._q        = self._ctx.socket(zmq.PUB)
@@ -120,14 +127,16 @@ class Pubsub(object):
         elif self._role == PUBSUB_SUB:
 
             # get addr from bridge.url
-            bridge_uid = ru.generate_id("rp.%s.bridge" % (self._cid))
+            bridge_uid = ru.generate_id("%s.bridge" % (self._cid), ru.ID_CUSTOM)
 
             with open('%s.url' % bridge_uid, 'r') as fin:
                 for line in fin.readlines():
                     elems = line.split()
-                    if elems and elems[0] == 'OUT':
+                    if elems and elems[0] == 'SUB':
                         self._addr = elems[1]
                         break
+
+            print 'sub on %s : %s'  % (bridge_uid, self._addr)
 
             self._ctx      = zmq.Context()  # rely on the GC destroy the context
             self._q        = self._ctx.socket(zmq.SUB)
@@ -195,7 +204,7 @@ class Pubsub(object):
         self._out.bind(self._addr)
 
         # communicate the bridge ports to the parent process
-        _addr_in  = self._in.getsockopt( zmq.LAST_ENDPOINT)
+        _addr_in  = self._in.getsockopt (zmq.LAST_ENDPOINT)
         _addr_out = self._out.getsockopt(zmq.LAST_ENDPOINT)
 
         # store addresses
@@ -218,9 +227,12 @@ class Pubsub(object):
         self._bridge_thread.daemon = True
         self._bridge_thread.start()
 
-        with open(self.uid, 'w') as fout:
-            fout.write('IN  %s\n' % self.addr_in)
-            fout.write('OUT %s\n' % self.addr_out)
+        with open('%s.url' % self.uid, 'w') as fout:
+            fout.write('PUB %s\n' % self.addr_in)
+            fout.write('SUB %s\n' % self.addr_out)
+
+        print 'in  on %s'  % self.addr_in
+        print 'out on %s'  % self.addr_out
 
 
     # --------------------------------------------------------------------------
@@ -254,10 +266,17 @@ class Pubsub(object):
 
         try:
 
+            print 'start work'
+
             while True:
+
 
                 _socks = dict(_uninterruptible(self._poll.poll, timeout=1000))
                 # timeout in ms
+
+                print 'in   : %s'   % self._in
+                print 'out  : %s'   % self._out
+                print 'socks: %s' %  _socks
 
                 if self._in in _socks:
 
@@ -271,7 +290,8 @@ class Pubsub(object):
                         msg = _uninterruptible(self._in.recv, flags=zmq.NOBLOCK)
                         _uninterruptible(self._out.send, msg)
                   # if self._debug:
-                  #     self._log.debug("-> %s", pprint.pformat(msg))
+                    if True:
+                        self._log.debug("-> %s [rec]", pprint.pformat(msg))
 
 
                 if self._out in _socks:
@@ -285,8 +305,8 @@ class Pubsub(object):
                     else:
                         msg = _uninterruptible(self._out.recv)
                         _uninterruptible(self._in.send, msg)
-                  # if self._debug:
-                  #     self._log.debug("<- %s", pprint.pformat(msg))
+                    if self._debug:
+                        self._log.debug("<- %s (sub)", pprint.pformat(msg))
 
         except  Exception as e:
             print 'error: %s' % e
@@ -301,7 +321,7 @@ class Pubsub(object):
 
         topic = topic.replace(' ', '_')
 
-      # self._log.debug("~~ %s", topic)
+        self._log.debug("~~ %s", topic)
         _uninterruptible(self._q.setsockopt, zmq.SUBSCRIBE, topic)
 
 
@@ -312,20 +332,15 @@ class Pubsub(object):
         assert(self._role == PUBSUB_PUB), 'incorrect role on put'
         assert(isinstance(msg,dict)),     'invalide message type'
 
-      # self._log.debug("?> %s", pprint.pformat(msg)
+
+        self._log.debug("?> %s", pprint.pformat(msg))
 
         topic = topic.replace(' ', '_')
         data  = msgpack.packb(msg) 
 
-        if _USE_MULTIPART:
-          # if self._debug:
-          #     self._log.debug("-> %s", ([topic, pprint.pformat(msg)]))
-            _uninterruptible(self._q.send_multipart, [topic, data])
-
-        else:
-          # if self._debug:
-          #     self._log.debug("-> %s %s", topic, pprint.pformat(msg))
-            _uninterruptible(self._q.send, "%s %s" % (topic, data))
+        if self._debug:
+            self._log.debug("-> %s", ([topic, pprint.pformat(msg)]))
+        _uninterruptible(self._q.send_multipart, [topic, data])
 
 
     # --------------------------------------------------------------------------
@@ -336,17 +351,11 @@ class Pubsub(object):
 
         # FIXME: add timeout to allow for graceful termination
 
-        if _USE_MULTIPART:
-            topic, data = _uninterruptible(self._q.recv_multipart)
+        topic, data = _uninterruptible(self._q.recv_multipart)
+        msg         = msgpack.unpackb(data) 
 
-        else:
-            raw = _uninterruptible(self._q.recv)
-            topic, data = raw.split(' ', 1)
-
-        msg  = msgpack.unpackb(data) 
-
-      # if self._debug:
-      #     self._log.debug("<- %s", ([topic, pprint.pformat(msg)]))
+        if self._debug:
+            self._log.debug("<- %s (get)", ([topic, pprint.pformat(msg)]))
 
         return [topic, msg]
 
@@ -362,14 +371,13 @@ class Pubsub(object):
             if _USE_MULTIPART:
                 topic, data = _uninterruptible(self._q.recv_multipart, 
                                                flags=zmq.NOBLOCK)
-
             else:
                 raw = _uninterruptible(self._q.recv)
                 topic, data = raw.split(' ', 1)
 
             msg = msgpack.unpackb(data) 
-          # if self._debug:
-          #     self._log.debug("<< %s", ([topic, pprint.pformat(msg)]))
+            if self._debug:
+                self._log.debug("<< %s", ([topic, pprint.pformat(msg)]))
             return [topic, msg]
 
         else:

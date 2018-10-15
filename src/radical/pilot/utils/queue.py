@@ -124,8 +124,8 @@ class Queue(object):
 
         assert(self._role in QUEUE_ROLES), 'invalid role %s' % self._role
 
-        self._uid = ru.generate_id("rp.%s.%s" % (self._channel.replace('_', '.'),
-                                                 self._role))
+        self._uid = ru.generate_id("%s.%s" % (self._channel.replace('_', '.'),
+                                              self._role))
         self._log = ru.Logger(name=self._uid, 
                               level=self._cfg.get('log_level'))
 
