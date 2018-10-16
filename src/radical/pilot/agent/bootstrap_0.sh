@@ -1705,7 +1705,7 @@ then
     RADICAL_PILOT_NTPHOST="46.101.140.169"
 fi
 echo "ntphost: $RADICAL_PILOT_NTPHOST"
-ping -c 1 "$RADICAL_PILOT_NTPHOST"
+ping -c 1 "$RADICAL_PILOT_NTPHOST" || true  # ignore errors
 
 # Before we start the (sub-)agent proper, we'll create a bootstrap_2.sh script
 # to do so.  For a single agent this is not needed -- but in the case where
