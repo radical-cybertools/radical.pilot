@@ -15,8 +15,8 @@ from ..          import constants      as rpc
 from ..          import states         as rps
 
 from .queue      import Queue          as rpu_Queue
-from .queue      import QUEUE_OUTPUT   as rpu_QUEUE_OUTPUT
-from .queue      import QUEUE_INPUT    as rpu_QUEUE_INPUT
+from .queue      import QUEUE_GET      as rpu_QUEUE_GET
+from .queue      import QUEUE_PUT      as rpu_QUEUE_PUT  
 from .queue      import QUEUE_BRIDGE   as rpu_QUEUE_BRIDGE
 
 from .pubsub     import Pubsub         as rpu_Pubsub
@@ -763,7 +763,7 @@ class Component(ru.Process):
         addr = self._cfg['bridges'][input]['addr_out']
         self._log.debug("using addr %s for input %s", addr, input)
 
-        q = rpu_Queue(self._session, input, rpu_QUEUE_OUTPUT, self._cfg, addr=addr)
+        q = rpu_Queue(self._session, input, rpu_QUEUE_GET, self._cfg, addr=addr)
         self._inputs[name] = {'queue'  : q,
                               'states' : states}
 
@@ -854,7 +854,7 @@ class Component(ru.Process):
                 self._log.debug("using addr %s for output %s", addr, output)
 
                 # non-final state, ie. we want a queue to push to
-                q = rpu_Queue(self._session, output, rpu_QUEUE_INPUT, self._cfg, addr=addr)
+                q = rpu_Queue(self._session, output, rpu_QUEUE_PUT, self._cfg, addr=addr)
                 self._outputs[state] = q
 
                 self._log.debug('registered output    : %s : %s : %s' \

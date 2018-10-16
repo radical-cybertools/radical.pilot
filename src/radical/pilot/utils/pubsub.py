@@ -94,9 +94,6 @@ class Pubsub(object):
             self._debug  = True
         else:
             self._debug  = False
-        self._debug  = True
-
-        self._log.info("create %s - %s", self._channel, self._role)
 
 
         # ----------------------------------------------------------------------
@@ -126,7 +123,7 @@ class Pubsub(object):
         elif self._role == PUBSUB_SUB:
 
             # get addr from bridge.url
-            bridge_uid = ru.generate_id("%s.bridge" % (self._cid), ru.ID_CUSTOM)
+            bridge_uid = ru.generate_id("%s.bridge" % self._cid, ru.ID_CUSTOM)
 
             with open('%s.url' % bridge_uid, 'r') as fin:
                 for line in fin.readlines():

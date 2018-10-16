@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+
+__copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+
+import sys
+import time
+
+import setproctitle        as spt
+import radical.pilot.utils as rpu
+
+DELAY = 1.0
+N     = 100
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+    '''
+    This thin wrapper connects to a ZMQ communication bridge and sends whatever
+    messages it gets on stdin (line breaks separate messages).  The single
+    argument specifies the bridge to connect to.  We expect to find
+    a `$name.url` file in `$PWD`, from which we'll dig the bridge address to
+    use.  It is the responsibility of the caller to ensure that the respective
+    bridge exists.
+    '''
+
+    if len(sys.argv) < 2:
+        sys.stderr.write('error: missing argument\n'
+                         'usage: %s <queue>\n')
+        raise RuntimeError('missing argument')
+
+    queue = rpu.Queue(sys.argv[1], 'put')
+
+    # mark this process
+    spt.setproctitle('rp.%s' % queue.uid)
+
+    start = time.time()
+    for i in range(N):
+
+        queue.put({'data': i})
+        time.sleep(DELAY)
+
+    queue.put({'cmd': 'QUIT'})
+
+    stop = time.time()
+    print 'rate: %.2f msg/s' % (N / (stop - start))
+
+
+# ------------------------------------------------------------------------------
+

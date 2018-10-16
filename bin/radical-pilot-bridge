@@ -42,7 +42,7 @@ if __name__ == "__main__":
     publishers -- but the respective RP classes will dig the correct addresses
     from that file.
     
-    A typical test scenario would be:
+    A typical pubsub test scenario would be:
 
         > radical-pilot-bridge command pubsub             [1]
         > radical-pilot-sub    command foo bar            [2]
@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     if len(sys.argv) != 3:
         sys.stderr.write('error: argument error\n'
-                         'usage: %s <channel>\n\n')
+                         'usage: %s <name> <kind>\n\n')
         raise RuntimeError('argument error')
 
     name = sys.argv[1]

@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
-import sys
 import zmq
 import time
+import msgpack
 
-name  = 'put'
-delay = 0.0
+DELAY = 0.5
 
 
 # ------------------------------------------------------------------------------
@@ -14,20 +13,21 @@ addr = None
 with open('test.bridge.url', 'r') as fin:
     for line in fin.readlines():
         tag, addr = line.split()
-        if tag == 'IN':
+        if tag == 'PUT':
             break
 
-print 'add: %s' % addr
+print 'PUT: %s' % addr
 
 context    = zmq.Context()
 socket     = context.socket(zmq.PUSH)
-socket.hwm = 10
+socket.hwm = 1
 socket.connect(addr)
 
-for num in xrange(1000):
-    socket.send_multipart([name, str(num)])
-  # print '-> %s [%s]' % (num, name)
-    time.sleep(delay)
+for n in xrange(1000):
+    msg = {'data' : n}
+    socket.send(msgpack.packb(msg))
+    print '-> %s' % msg
+    time.sleep(DELAY)
 
 
 # ------------------------------------------------------------------------------

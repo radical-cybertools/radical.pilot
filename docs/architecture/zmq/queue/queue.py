@@ -1,35 +1,34 @@
 #!/usr/bin/env python
 
 import zmq
-import sys
 import time
-
+import msgpack
 
 # ------------------------------------------------------------------------------
 #
 delay = 0.0
 
 # src side is proper push/pull (queue)
-context        = zmq.Context()
+context       = zmq.Context()
 socket_in     = context.socket(zmq.PULL)
-socket_in.hwm = 10
+socket_in.hwm = 1
 socket_in.bind("tcp://*:*")
 
 # out side is req/resp for load balancing
-context         = zmq.Context()
+context        = zmq.Context()
 socket_out     = context.socket(zmq.REP)
-socket_out.hwm = 10
+socket_out.hwm = 1
 socket_out.bind("tcp://*:*")
 
 addr_in  = socket_in .getsockopt(zmq.LAST_ENDPOINT)
 addr_out = socket_out.getsockopt(zmq.LAST_ENDPOINT)
 
-print 'IN : %s' % addr_in
-print 'OUT: %s' % addr_out
+print 'PUT: %s' % addr_in
+print 'GET: %s' % addr_out
 
 with open('test.bridge.url', 'w') as fout:
-    fout.write('IN  %s\n' % addr_in)
-    fout.write('OUT %s\n' % addr_out)
+    fout.write('PUT %s\n' % addr_in)
+    fout.write('GET %s\n' % addr_out)
 
 # zmq.proxy(socket_in, socket_out)
 
@@ -38,9 +37,10 @@ while True:
     # socket_out.
     # TODO: For multiple sinks, make sure we send replies to the right one
     req = socket_out.recv()
-    msg = socket_in.recv_multipart()
-  # print '-> %s [%s]' % (msg, req)
-    socket_out.send_multipart(msg)
+    msg = msgpack.unpackb(socket_in.recv())
+    msg['req'] = req
+    print '<> %s' % msg
+    socket_out.send(msgpack.packb(msg))
 
     time.sleep(delay)
 

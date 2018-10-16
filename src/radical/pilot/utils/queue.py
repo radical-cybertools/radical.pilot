@@ -4,6 +4,7 @@ import copy
 import math
 import time
 import errno
+import pprint
 import msgpack
 
 import threading         as mt
@@ -15,10 +16,10 @@ from .misc import hostip as rpu_hostip
 # --------------------------------------------------------------------------
 # defines for queue roles
 #
-QUEUE_INPUT   = 'input'
-QUEUE_OUTPUT  = 'output'
-QUEUE_BRIDGE  = 'bridge'
-QUEUE_ROLES   = [QUEUE_INPUT, QUEUE_BRIDGE, QUEUE_OUTPUT]
+QUEUE_PUT    = 'put'
+QUEUE_GET    = 'get'
+QUEUE_BRIDGE = 'bridge'
+QUEUE_ROLES  = [QUEUE_PUT, QUEUE_BRIDGE, QUEUE_GET]
 
 _LINGER_TIMEOUT  =   250  # ms to linger after close
 _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
@@ -96,7 +97,7 @@ def _uninterruptible(f, *args, **kwargs):
 #
 class Queue(object):
 
-    def __init__(self, channel, role, cfg, addr=None):
+    def __init__(self, channel, role, cfg=None):
         '''
         This Queue type sets up an zmq channel of this kind:
 
@@ -118,16 +119,25 @@ class Queue(object):
         '''
 
         self._channel = channel
+        self._cid     = channel.replace('_', '.')
         self._role    = role
         self._cfg     = copy.deepcopy(cfg)
-        self._addr    = addr
+
+        if not self._cfg:
+            self._cfg = dict()
 
         assert(self._role in QUEUE_ROLES), 'invalid role %s' % self._role
 
-        self._uid = ru.generate_id("%s.%s" % (self._channel.replace('_', '.'),
-                                              self._role))
+        if self._role == QUEUE_BRIDGE:
+            self._uid = ru.generate_id('%s.%s' % (self._cid, self._role),
+                                                  ru.ID_CUSTOM)
+        else:
+            self._uid = ru.generate_id('%s.%s.%s' % (self._cid, self._role,
+                                                     '%(counter)04d'),
+                                        ru.ID_CUSTOM)
+
         self._log = ru.Logger(name=self._uid, 
-                              level=self._cfg.get('log_level'))
+                              level=self._cfg.get('log_level', 'DEBUG'))
 
         # avoid superfluous logging calls in critical code sections
         if self._log.getEffectiveLevel() == 10:  # logging.DEBUG:
@@ -135,28 +145,36 @@ class Queue(object):
         else:
             self._debug  = False
 
-        self._addr_in    = None  # bridge input  addr
-        self._addr_out   = None  # bridge output addr
+     #  self._addr_in    = None  # bridge input  addr
+     #  self._addr_out   = None  # bridge output addr
+     #
+     #  self._q          = None
+     #  self._in         = None
+     #  self._out        = None
+     #  self._ctx        = None
+     #
+     #  self._lock       = mt.RLock()     # for _requested
+     #  self._requested  = False          # send/recv sync
 
-        self._q          = None
-        self._in         = None
-        self._out        = None
-        self._ctx        = None
-
-        self._lock       = mt.RLock()     # for _requested
-        self._requested  = False          # send/recv sync
-        self._stall_hwm  = cfg.get('stall_hwm', 1)
-        self._bulk_size  = cfg.get('bulk_size', 1)
-
-        if not self._addr:
-            self._addr = 'tcp://*:*'
-
-        self._log.info("create %s - %s - %s", self._channel, self._role, self._addr)
+        self._stall_hwm  = self._cfg.get('stall_hwm', 1)
+        self._bulk_size  = self._cfg.get('bulk_size', 1)
 
 
         # ----------------------------------------------------------------------
         # behavior depends on the role...
-        if self._role == QUEUE_INPUT:
+        if self._role == QUEUE_PUT:
+
+            # get addr from bridge.url
+            bridge_uid = ru.generate_id("%s.bridge" % self._cid, ru.ID_CUSTOM)
+
+            with open('%s.url' % bridge_uid, 'r') as fin:
+                for line in fin.readlines():
+                    elems = line.split()
+                    if elems and elems[0] == 'PUT':
+                        self._addr = elems[1]
+                        break
+
+            self._log.info('connect put to %s: %s'  % (bridge_uid, self._addr))
 
             self._ctx      = zmq.Context()  # rely on the GC destroy the context
             self._q        = self._ctx.socket(zmq.PUSH)
@@ -166,7 +184,19 @@ class Queue(object):
 
 
         # ----------------------------------------------------------------------
-        elif self._role == QUEUE_OUTPUT:
+        elif self._role == QUEUE_GET:
+
+            # get addr from bridge.url
+            bridge_uid = ru.generate_id("%s.bridge" % self._cid, ru.ID_CUSTOM)
+
+            with open('%s.url' % bridge_uid, 'r') as fin:
+                for line in fin.readlines():
+                    elems = line.split()
+                    if elems and elems[0] == 'GET':
+                        self._addr = elems[1]
+                        break
+
+            self._log.info('connect get to %s: %s'  % (bridge_uid, self._addr))
 
             self._ctx      = zmq.Context()  # rely on the GC destroy the context
             self._q        = self._ctx.socket(zmq.REQ)
@@ -218,15 +248,9 @@ class Queue(object):
     # 
     def _initialize_bridge(self):
 
-        self._log.info('start bridge %s on %s', self._uid, self._addr)
+        self._log.info('start bridge %s', self._uid)
 
-        # we expect bridges to always use a port wildcard. Make sure
-        # that's the case
-        if self._addr.split(':')[2:3] != ['*']:
-            raise RuntimeError('bridge needs wildcard port [%s]' % self._addr)
-
-        # FIXME: should we cache messages coming in at the pull/push 
-        #        side, so as not to block the push end?
+        self._addr       = 'tcp://*:*'
 
         self._ctx        = zmq.Context()  # rely on the GC destroy the context
         self._in         = self._ctx.socket(zmq.PULL)
@@ -240,7 +264,7 @@ class Queue(object):
         self._out.bind(self._addr)
 
         # communicate the bridge ports to the parent process
-        _addr_in  = self._in.getsockopt( zmq.LAST_ENDPOINT)
+        _addr_in  = self._in.getsockopt (zmq.LAST_ENDPOINT)
         _addr_out = self._out.getsockopt(zmq.LAST_ENDPOINT)
 
         # store addresses
@@ -254,13 +278,26 @@ class Queue(object):
         self._log.info('bound bridge %s to %s : %s', 
                        self._uid, _addr_in, _addr_out)
 
+        self._log.info('bridge in  on  %s: %s'  % (self._uid, self._addr_in ))
+        self._log.info('       out on  %s: %s'  % (self._uid, self._addr_out))
+
         # start polling for messages
         self._poll = zmq.Poller()
         self._poll.register(self._out, zmq.POLLIN)
 
+        # the bridge runs in a daemon thread, so that the main process will not
+        # wait for it.  But, give Python's thread performance (or lack thereof),
+        # this means that the user of this class should create a separate
+        # process instance to host the bridge thread.
         self._bridge_thread = mt.Thread(target=self._bridge_work)
         self._bridge_thread.daemon = True
         self._bridge_thread.start()
+
+        # inform clients about the bridge, no that the sockets are connected and
+        # work is about to start.
+        with open('%s.url' % self.uid, 'w') as fout:
+            fout.write('PUT %s\n' % self.addr_in)
+            fout.write('GET %s\n' % self.addr_out)
 
 
     # --------------------------------------------------------------------------
@@ -299,46 +336,16 @@ class Queue(object):
                 # We wait for an incoming message.  When one is received,
                 # we'll poll all outgoing sockets for requests, and the
                 # forward the message to whoever requested it.
-                #
-                # If so configured, we can stall messages until reaching
-                # a certain high-water-mark, and upon reaching that will
-                # release all messages at once.  When stalling for such set
-                # of messages, we wait for self._stall_hwm messages, and
-                # then forward those to whatever output channel requesting
-                # them (individually),
-                # FIXME: we may want to release all stalled messages after
-                #        some (configurable) timeout?
-                # FIXME: is it worth introducing a 'flush' command or
-                #        message type?
-                # NOTE:  hwm collection interferes with termination:
-                #        while we wait for messages to arrive, we will not leave this
-                #        work_cb, and thus will not allow the `ru.Process` main loop to
-                #        terminate gracefully as needed.  One solution would be to
-                #        inject manual statements to check for termination conditions.
-                #        The other option would be to collect the messages across
-                #        multiple work_cb invocations -- but the latter options would
-                #        significantly increase the code complexity, as we would need to
-                #        maintain state across method invocations, so we opt for the
-                #        first option.
-                hwm  = self._stall_hwm
                 bulk = self._bulk_size
-
-                msgs = list()
-                while len(msgs) < hwm:
-                    data = None
-                    while True:
-                        if _uninterruptible(self._in.poll, flags=zmq.POLLIN, 
+                while not _uninterruptible(self._in.poll, flags=zmq.POLLIN, 
                                            timeout=1000):
-                            data = _uninterruptible(self._in.recv)
-                            break
-                    if data:
-                        msg = msgpack.unpackb(data) 
-                        if isinstance(msg, list): 
-                            msgs += msg
-                        else: 
-                            msgs.append(msg)
-                        self._log.debug('stall %s/%s', len(msgs), hwm)
-                self._log.debug('hwm   %s/%s', len(msgs), hwm)
+                    pass
+
+                data = _uninterruptible(self._in.recv)
+                msgs = msgpack.unpackb(data) 
+
+                if not isinstance(msgs, list):
+                    msgs = [msgs]
 
                 # if 'bulk' is '0', we send all messages as
                 # a single bulk.  Otherwise, we chop them up
@@ -350,21 +357,19 @@ class Queue(object):
                     nbulks = int(math.ceil(len(msgs) / float(bulk)))
                     bulks  = ru.partition(msgs, nbulks)
 
-                while bulks:
+                for bulk in bulks:
                     # timeout in ms
                     events = dict(_uninterruptible(self._poll.poll, 1000))
 
                     if self._out in events:
 
                         req  = _uninterruptible(self._out.recv)
-                        data = msgpack.packb(bulks.pop(0)) 
+                        data = msgpack.packb(bulk) 
                         _uninterruptible(self._out.send, data)
+                        if self._debug:
+                            self._log.debug("<> %s", pprint.pformat(bulk))
 
-                        # go to next message/bulk (break while loop)
-                        self._log.debug('sent  %s [hwm: %s]', (nbulks-len(bulks)), hwm)
-
-        except  Exception as e:
-            print 'error: %s' % e
+        except  Exception:
             self._log.exception('bridge failed')
 
 
@@ -372,11 +377,11 @@ class Queue(object):
     #
     def put(self, msg):
 
-        if not self._role == QUEUE_INPUT:
+        if not self._role == QUEUE_PUT:
             raise RuntimeError("queue %s (%s) can't put()" % (self._channel, self._role))
 
-      # if self._debug:
-      #     self._log.debug("-> %s", pprint.pformat(msg))
+        if self._debug:
+            self._log.debug("-> %s", pprint.pformat(msg))
         data = msgpack.packb(msg) 
         _uninterruptible(self._q.send, data)
 
@@ -385,15 +390,15 @@ class Queue(object):
     #
     def get(self):
 
-        assert(self._role == QUEUE_OUTPUT), 'invalid role on get'
+        assert(self._role == QUEUE_GET), 'invalid role on get'
 
-        _uninterruptible(self._q.send, 'request')
+        _uninterruptible(self._q.send, 'request %s' % self._uid)
 
         data = _uninterruptible(self._q.recv)
         msg  = msgpack.unpackb(data) 
 
-      # if self._debug:
-      #     self._log.debug("<- %s", pprint.pformat(msg))
+        if self._debug:
+            self._log.debug("<- %s", pprint.pformat(msg))
 
         return msg
 
@@ -402,7 +407,7 @@ class Queue(object):
     #
     def get_nowait(self, timeout=None):  # timeout in ms
 
-        assert(self._role == QUEUE_OUTPUT), 'invalid role on get_nowait'
+        assert(self._role == QUEUE_GET), 'invalid role on get_nowait'
 
         with self._lock:  # need to protect self._requested
 
