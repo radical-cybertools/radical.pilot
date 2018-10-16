@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.13 Release                                                       2018-10-16
+--------------------------------------------------------------------------------
+
+  - survive if SAGA does not support job.name (#1744)
+
+
 0.50.12 Release                                                       2018-10-12
 --------------------------------------------------------------------------------
 
