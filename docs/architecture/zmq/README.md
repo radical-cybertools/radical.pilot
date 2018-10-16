@@ -25,3 +25,54 @@ contains the input and output addresses to be used by message producers and
 consumers in order to use those bridges (i.e. in order to join those
 communication channels).
 
+
+Pubsub Tools::
+
+   Bridge:
+        pubsub/pubsub.py         <channel>
+        bin/radical-pilot-bridge <channel> pubsub
+
+    Producer:
+        pubsub/pub.py            <channel> <topic_1> ...
+        bin/radical-pilot-pub    <channel> <topic_1> ...
+
+    Consumer:
+        pubsub/sub.py            <channel> <topic_1> ...
+        bin/radical-pilot-sub    <channel> <topic_1> ...
+
+
+Queue Tools::
+
+   Bridge:
+        queue/queue.py           <name>
+        bin/radical-pilot-bridge <name> queue
+
+    Producer:
+        pubsub/put.py            <name>
+        bin/radical-pilot-put    <name>
+
+    Consumer:
+        pubsub/get.py            <name>
+        bin/radical-pilot-get    <name>
+
+Pubsub Scenario:
+
+    cd  pubsub
+    ./pubsub.py states
+    ./pub.py    states unit
+    ./pub.py    states pilot
+    ./sub.py    states unit pilot
+    ./sub.py    states unit pilot
+
+
+Queue Scenario:
+
+    cd  queue
+    ./queue.py  execution
+    ./pub.py    execution
+    ./pub.py    execution
+    ./sub.py    execution
+    ./sub.py    execution
+    ./sub.py    execution
+
+
