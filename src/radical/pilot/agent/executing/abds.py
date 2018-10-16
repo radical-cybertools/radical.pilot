@@ -251,7 +251,7 @@ class ABDS(AgentExecutingComponent):
             env_string += 'export RP_SPAWNER_ID="%s"\n'   % self.uid
             env_string += 'export RP_UNIT_ID="%s"\n'      % cu['uid']
             env_string += 'export RP_GTOD="%s"\n'         % self.gtod
-            env_string += 'export RP_PILOT_SBOX="%s/staging_area"\n' \
+            env_string += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
                                                           % self._pwd
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
