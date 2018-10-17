@@ -89,7 +89,6 @@ if __name__ == '__main__':
             cud.gpu_processes    = 0
             cud.cpu_processes    = 1
             cud.cpu_process_type = rp.POSIX
-            cud.metadata         = {'a' : 'b'}
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
