@@ -6,7 +6,7 @@ __license__   = "MIT"
 import os
 
 import radical.utils as ru
-
+import pprint
 
 # 'enum' for resource manager types
 RM_NAME_FORK        = 'FORK'

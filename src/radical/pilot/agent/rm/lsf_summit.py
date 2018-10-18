@@ -6,7 +6,8 @@ __license__ = "MIT"
 import os
 
 from base import LRMS
-
+import radical.utils as ru
+from pprint import pprint
 
 # ==============================================================================
 #
@@ -23,7 +24,7 @@ class LSF_SUMMIT(LRMS):
         # structure. If the node-structure with sockets needs to
         # be extended to other LRMS we will change the base 
         # constructor.
-        LRMS.__init__(self, cfg, session)
+        # LRMS.__init__(self, cfg, session)
 
         self.name            = type(self).__name__
         self._cfg            = cfg
@@ -72,7 +73,6 @@ class LSF_SUMMIT(LRMS):
         self._log.info("Discovered execution environment: %s", self.node_list)
 
         # Make sure we got a valid nodelist and a valid setting for
-        # cores_per_node
         if not self.node_list or self.sockets_per_node < 1 or self.cores_per_socket < 1:
             raise RuntimeError('LRMS configuration invalid (%s)(%s)(%s)' % \
                     (self.node_list, self.sockets_per_node, self.cores_per_socket))
@@ -135,8 +135,6 @@ class LSF_SUMMIT(LRMS):
         # five elements are well defined:
         #   lm_info:        the dict received via the LM's lrms_config_hook
         #   node_list:      a list of node names to be used for unit execution
-        #   cores_per_node: as the name says
-        #   gpus_per_node:  as the name says
         #   agent_nodes:    list of node names reserved for agent execution
         #
         # That list may turn out to be insufficient for some schedulers.  Yarn
@@ -180,21 +178,32 @@ class LSF_SUMMIT(LRMS):
         # and "-R" entries per host (tasks per host).
         # (That results in "-n" / "-R" unique hosts)
         #
-        lsf_nodes = [line.strip() for line in open(lsf_hostfile)]
+
+        # We exclude nodes with login in there -- Required for Summitdev
+        lsf_nodes = [line.strip() for line in open(lsf_hostfile) if 'login' not in line]
         self._log.info("Found LSB_DJOB_HOSTFILE %s. Expanded to: %s",
                        lsf_hostfile, lsf_nodes)
         lsf_node_list = list(set(lsf_nodes))
 
         # Grab the core (slot) count from the environment
         # Format: hostX N hostY N hostZ N
+        
+        # Remove login node details if it is in mcpu_hosts
+        copy_lsb_mcpu_hosts =  lsb_mcpu_hosts.split()
+        for entry in lsb_mcpu_hosts.split():
+            if 'login' in entry:
+                del copy_lsb_mcpu_hosts[lsb_mcpu_hosts.index(entry)]
+                # Remove the following core count of the login node as well
+                del copy_lsb_mcpu_hosts[lsb_mcpu_hosts.index(entry)]
+        lsb_mcpu_hosts = ' '.join(copy_lsb_mcpu_hosts)
+
         lsf_cores_count_list = map(int, lsb_mcpu_hosts.split()[1::2])
         lsf_core_counts      = list(set(lsf_cores_count_list))
         lsf_sockets_per_node = self._cfg.get('sockets_per_node', 1)
 
         # For now, assume all sockets have an equal number of cores and gpus
         lsf_cores_per_socket = min(lsf_core_counts) / lsf_sockets_per_node
-        lsf_gpus_per_socket  = self._cfg.get('gpus_per_node', 0) \
-                                                    / lsf_sockets_per_node
+        lsf_gpus_per_socket  = self._cfg.get('gpus_per_socket', 0)
 
         lsf_lfs_per_node = {'path': self._cfg.get('lfs_path_per_node', None),
                             'size': self._cfg.get('lfs_size_per_node', 0)}
@@ -208,7 +217,6 @@ class LSF_SUMMIT(LRMS):
         self.cores_per_socket = lsf_cores_per_socket
         self.gpus_per_socket  = lsf_gpus_per_socket
         self.lfs_per_node     = lsf_lfs_per_node
-
 
 # ------------------------------------------------------------------------------
 
