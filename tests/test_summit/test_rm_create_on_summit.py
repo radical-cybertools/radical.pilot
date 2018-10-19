@@ -26,8 +26,9 @@ cur_dir = os.path.dirname(os.path.abspath(__file__))
 
 def setUp():
 
-    cfg = ru.read_json('sample_agent_cfg_for_summit.json')
     session = rp.Session()
+    cfg = session.get_resource_config(resource='ornl.summitdev')
+    cfg["cores"] = 40
 
     return cfg, session
 # -----------------------------------------------------------------------------------------------------------------------
@@ -40,7 +41,7 @@ def tearDown():
 # -----------------------------------------------------------------------------------------------------------------------
 
 
-def test_rm_create():
+def test_rm_create_on_summit():
 
     cfg, session = setUp()
 
@@ -48,10 +49,9 @@ def test_rm_create():
     assert lrms.lrms_info['agent_nodes'] == {}
     assert lrms.lrms_info['cores_per_socket'] == 10
     assert lrms.lrms_info['gpus_per_socket'] == 6
-    assert lrms.lrms_info['lfs_per_node'] == {'path': u'/tmp', 'size': 1024}
+    assert lrms.lrms_info['lfs_per_node'] == {'path': None, 'size': 0}
     assert lrms.lrms_info['lm_info'] == {}
     assert lrms.lrms_info['name'] == 'LSF_SUMMIT'
     assert lrms.lrms_info['sockets_per_node'] == 2
-
 
     # tearDown() -- failing on Summitdev

@@ -1,5 +1,5 @@
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2018, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 
@@ -16,13 +16,28 @@ class LSF_SUMMIT(LRMS):
     #
     def __init__(self, cfg, session):
 
-        # We call the base class constructor to make sure we don't 
-        # miss any future critical changes. But as such, 
-        # the LSF_SUMMIT LRMS, currently, does not need the base
-        # constructor due to the difference in the assumed node
-        # structure. If the node-structure with sockets needs to
-        # be extended to other LRMS we will change the base 
-        # constructor.
+        # We temporarily do not call the base class constructor. The 
+        # constraint was not to change the base class at any point. 
+        # The constructor of the base class performs certain computations
+        # that are specific to a node architecture, i.e., (i) requirement of
+        # cores_per_node and gpus_per_node, (ii) no requirement for 
+        # sockets_per_node, and (iii) no validity checks on cores_per_socket,
+        # gpus_per_socket, and sockets_per_node. It is, hence, incompatible
+        # with the node architecture expected within this module.
+
+        # We have three options:
+        # 1) Change the child class, do not call the base class constructor
+        # 2) Call the base class constructor, make the child class and its node
+        #    structure compatible with that expected in the base class.
+        # 3) Change the base class --- Out of scope of this project
+
+        # 3 is probably the correct approach, but long term. 2 is not a
+        # good approach as we are striving to keep a child class compatible
+        # with a base class (this should never be the case).
+        # We go ahead with 1, process of elimination really, but with the
+        # advantage that we have the code content that will be required when
+        # we implement 3, the long term approach.
+
         # LRMS.__init__(self, cfg, session)
 
         self.name            = type(self).__name__

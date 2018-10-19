@@ -4,6 +4,7 @@ from radical.pilot.agent import rm as rpa_rm
 import os
 import glob
 import shutil
+from pprint import pprint
 
 try:
     import mock
@@ -26,8 +27,10 @@ cur_dir = os.path.dirname(os.path.abspath(__file__))
 
 def setUp():
 
-    cfg = ru.read_json('sample_agent_cfg_for_summit.json')
     session = rp.Session()
+    cfg = session.get_resource_config(resource='ornl.summitdev')
+    cfg["cores"] = 40
+    # pprint(cfg)
 
     # LSB_DJOB_HOSTFILE = ./sample_summitdev_hostfile
     os.environ['LSB_DJOB_HOSTFILE'] = './sample_summitdev_hostfile'
@@ -46,7 +49,7 @@ def tearDown():
 # -----------------------------------------------------------------------------------------------------------------------
 
 
-def test_rm_create():
+def test_rm_create_on_localhost():
 
     cfg, session = setUp()
 
@@ -58,7 +61,7 @@ def test_rm_create():
     assert lrms.lrms_info == {'agent_nodes': {},
                               'cores_per_socket': 10,
                               'gpus_per_socket': 6,
-                              'lfs_per_node': {'path': u'/tmp', 'size': 1024},
+                              'lfs_per_node': {'path': None, 'size': 0},
                               'lm_info': {},
                               'name': 'LSF_SUMMIT',
                               'node_list': [['summitdev-r0c0n18', 'summitdev-r0c0n18'],
