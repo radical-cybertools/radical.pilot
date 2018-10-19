@@ -58,18 +58,19 @@ def test_rm_create_on_localhost():
     # The structure of the node list is 
     # [[node1 name, node1 uid],[node2 name, node2 uid]]
     # The node name and uid can be the same
+
+    # Check if the lrms object has the expected lrms_info dict
+    # This dict is required by the scheduler and lm
     assert lrms.lrms_info == {'agent_nodes': {},
                               'cores_per_socket': 10,
                               'gpus_per_socket': 6,
                               'lfs_per_node': {'path': None, 'size': 0},
                               'lm_info': {},
                               'name': 'LSF_SUMMIT',
-                              'node_list': [['summitdev-r0c0n18', 'summitdev-r0c0n18'],
-                                            ['summitdev-r0c0n11',
-                                             'summitdev-r0c0n11'],
-                                            ['summitdev-r0c1n16',
-                                             'summitdev-r0c1n16'],
-                                            ['summitdev-r0c1n15', 'summitdev-r0c1n15']],
+                              'node_list': [['summitdev-r0c0n18', 1],
+                                            ['summitdev-r0c0n11', 2],
+                                            ['summitdev-r0c1n16', 3],
+                                            ['summitdev-r0c1n15', 4]],
                               'sockets_per_node': 2}
 
     tearDown()

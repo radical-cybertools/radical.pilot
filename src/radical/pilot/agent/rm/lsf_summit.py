@@ -244,7 +244,7 @@ class LSF_SUMMIT(LRMS):
         # [[node1 name, node1 uid],[node2 name, node2 uid]]
         # The node name and uid can be the same
 
-        self.node_list        = [[node, node] for node in lsf_node_list]
+        self.node_list        = [[node, int(ind)+1] for ind, node in enumerate(lsf_node_list)]
         self.sockets_per_node = lsf_sockets_per_node
         self.cores_per_socket = lsf_cores_per_socket
         self.gpus_per_socket  = lsf_gpus_per_socket
