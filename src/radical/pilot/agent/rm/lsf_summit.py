@@ -7,7 +7,6 @@ import os
 
 from base import LRMS
 import radical.utils as ru
-from pprint import pprint
 
 # ==============================================================================
 #
@@ -73,6 +72,7 @@ class LSF_SUMMIT(LRMS):
         self._log.info("Discovered execution environment: %s", self.node_list)
 
         # Make sure we got a valid nodelist and a valid setting for
+        # cores_per_socket and sockets_per_node
         if not self.node_list or self.sockets_per_node < 1 or self.cores_per_socket < 1:
             raise RuntimeError('LRMS configuration invalid (%s)(%s)(%s)' % \
                     (self.node_list, self.sockets_per_node, self.cores_per_socket))
@@ -132,15 +132,16 @@ class LSF_SUMMIT(LRMS):
         # ultimately use, as it is included into the cfg passed to all
         # components.
         #
-        # five elements are well defined:
-        #   lm_info:        the dict received via the LM's lrms_config_hook
-        #   node_list:      a list of node names to be used for unit execution
-        #   agent_nodes:    list of node names reserved for agent execution
+        # seven elements are well defined:
+        #   lm_info:            dict received via the LM's lrms_config_hook
+        #   node_list:          list of node names to be used for unit execution
+        #   sockets_per_node:   integer number of sockets on a node
+        #   cores_per_socket:   integer number of cores per socket
+        #   gpus_per_socket:    integer number of gpus per socket
+        #   agent_nodes:        list of node names reserved for agent execution
+        #   lfs_per_node:       dict consisting the path and size of lfs on each node
         #
-        # That list may turn out to be insufficient for some schedulers.  Yarn
-        # for example may need to communicate YARN service endpoints etc.  an
-        # LRMS can thus expand this dict, but is then likely bound to a specific
-        # scheduler which can interpret the additional information.
+
         self.lrms_info['name']              = self.name
         self.lrms_info['lm_info']           = self.lm_info
         self.lrms_info['node_list']         = self.node_list
@@ -179,16 +180,28 @@ class LSF_SUMMIT(LRMS):
         # (That results in "-n" / "-R" unique hosts)
         #
 
-        # We exclude nodes with login in there -- Required for Summitdev
+        # Summitdev seems to be providing, in the hostfile, the login node (with
+        # 1 core) in addition to the set of compute nodes obtained via LSF
+        # We exclude nodes with 'login' in their name and keep only the compute
+        # nodes
         lsf_nodes = [line.strip() for line in open(lsf_hostfile) if 'login' not in line]
         self._log.info("Found LSB_DJOB_HOSTFILE %s. Expanded to: %s",
                        lsf_hostfile, lsf_nodes)
+        
+        # Hostfile provides an entry with the node name for every core in the
+        # node. So for a node with 20 cores, there will 20 entries with the
+        # same node name. To get the node list, we create a set to find the 
+        # uniqueu node names.
         lsf_node_list = list(set(lsf_nodes))
 
         # Grab the core (slot) count from the environment
         # Format: hostX N hostY N hostZ N
         
         # Remove login node details if it is in mcpu_hosts
+        # Summitdev seems to be providing, in the cpu_hosts list, the login node
+        # (with 1 core) in addition to the set of compute nodes obtained via LSF
+        # We exclude nodes with 'login' in their name and their corresponding
+        # core count, and keep only the compute nodes and their core counts
         copy_lsb_mcpu_hosts =  lsb_mcpu_hosts.split()
         for entry in lsb_mcpu_hosts.split():
             if 'login' in entry:
@@ -212,6 +225,10 @@ class LSF_SUMMIT(LRMS):
                        lsf_core_counts, lsf_cores_per_socket)
 
         # node names are unique, so can serve as node uids
+        # The structure of the node list is 
+        # [[node1 name, node1 uid],[node2 name, node2 uid]]
+        # The node name and uid can be the same
+
         self.node_list        = [[node, node] for node in lsf_node_list]
         self.sockets_per_node = lsf_sockets_per_node
         self.cores_per_socket = lsf_cores_per_socket

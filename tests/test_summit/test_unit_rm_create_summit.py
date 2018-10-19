@@ -51,6 +51,10 @@ def test_rm_create():
     cfg, session = setUp()
 
     lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
+
+    # The structure of the node list is 
+    # [[node1 name, node1 uid],[node2 name, node2 uid]]
+    # The node name and uid can be the same
     assert lrms.lrms_info == {'agent_nodes': {},
                               'cores_per_socket': 10,
                               'gpus_per_socket': 6,
