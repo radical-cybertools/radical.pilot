@@ -6,7 +6,6 @@ __license__ = "MIT"
 import os
 import inspect
 import logging
-import pprint
 
 import threading as mt
 
@@ -155,17 +154,6 @@ class ContinuousSummit(AgentSchedulingComponent):
         self._wait_pool = list()      # pool of waiting units
         self._wait_lock = mt.RLock()  # look on the above pool
         self._slot_lock = mt.RLock()  # lock slot allocation/deallocation
-
-        # initialize the node list to be used by the scheduler.  A scheduler
-        # instance may decide to overwrite or extend this structure.
-        self.nodes = []
-        for node, node_uid in self._lrms_node_list:
-            self.nodes.append({'name' : node,
-                               'uid'  : node_uid,
-                               'cores': [rpc.FREE] * self._lrms_cores_per_node,
-                               'gpus' : [rpc.FREE] * self._lrms_gpus_per_node
-                               })
-
 
         # configure the scheduler instance
         self._configure()
@@ -967,4 +955,3 @@ class ContinuousSummit(AgentSchedulingComponent):
 
 
 # ------------------------------------------------------------------------------
-
