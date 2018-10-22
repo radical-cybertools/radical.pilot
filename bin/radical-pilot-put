@@ -26,23 +26,23 @@ if __name__ == "__main__":
     bridge exists.
     '''
 
-    if len(sys.argv) < 2:
+    if len(sys.argv) != 2:
         sys.stderr.write('error: missing argument\n'
-                         'usage: %s <queue>\n')
+                         'usage: %s <queue>\n' % sys.argv[0])
         raise RuntimeError('missing argument')
 
-    queue = rpu.Queue(sys.argv[1], 'put')
+    putter = rpu.Putter(sys.argv[1])
 
     # mark this process
-    spt.setproctitle('rp.%s' % queue.uid)
+    spt.setproctitle('rp.%s' % putter.uid)
 
     start = time.time()
     for i in range(N):
 
-        queue.put({'data': i})
+        putter.put({'data': i})
         time.sleep(DELAY)
 
-    queue.put({'cmd': 'QUIT'})
+    putter.put({'cmd': 'QUIT'})
 
     stop = time.time()
     print 'rate: %.2f msg/s' % (N / (stop - start))

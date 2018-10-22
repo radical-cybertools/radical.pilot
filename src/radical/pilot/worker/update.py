@@ -49,11 +49,10 @@ class Update(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         self._session_id = self._cfg['session_id']
         self._dburl      = self._cfg['dburl']
-        self._owner      = self._cfg['owner']
 
         # TODO: get db handle from a connected session
         _, db, _, _, _   = ru.mongodb_connect(self._dburl)
@@ -79,14 +78,6 @@ class Update(rpu.Worker):
 
         self._session._log.debug('%s stop called', self._uid)
         super(Update, self).stop()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize_child(self):
-
-        self.unregister_timed_cb(self._idle_cb)
-        self.unregister_subscriber(rpc.STATE_PUBSUB, self._state_cb)
 
 
     # --------------------------------------------------------------------------
@@ -141,8 +132,11 @@ class Update(rpu.Worker):
     #
     def _idle_cb(self):
 
-        with self._lock:
-             self._timed_bulk_execute()
+        try:
+            with self._lock:
+                self._timed_bulk_execute()
+        except:
+            self._log.exception('bulk execute failed')
 
         return True
 
@@ -150,6 +144,19 @@ class Update(rpu.Worker):
     # --------------------------------------------------------------------------
     #
     def _state_cb(self, topic, msg):
+
+        try:
+            ret = self.__state_cb(topic, msg)
+            self._log.debug('state cb: %s' % ret)
+        except:
+            self._log.exception('state cb failed')
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __state_cb(self, topic, msg):
         """
 
         # FIXME: this documentation is not final, nor does it reflect reality!

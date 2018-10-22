@@ -26,14 +26,14 @@ if __name__ == "__main__":
 
     if len(sys.argv) < 3:
         sys.stderr.write('error: missing argument\n'
-                         'usage: %s <channel> <topic1> [...]\n\n')
+                         'usage: %s <channel> <topic1> [...]\n\n' % sys.argv[0])
         raise RuntimeError('missing argument')
 
 
     # setup channel
     name   = sys.argv[1]
     topics = sys.argv[2:]
-    sub    = rpu.Pubsub(name, 'sub')
+    sub    = rpu.Subscriber(name)
 
     for topic in topics:
         sub.subscribe(topic)

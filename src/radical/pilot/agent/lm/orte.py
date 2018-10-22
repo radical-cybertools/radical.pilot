@@ -147,7 +147,7 @@ class ORTE(LaunchMethod):
                 if line:
                     logger.debug('dvm output: %s', line)
                 else:
-                    time.sleep(1.0)
+                    time.sleep(0.1)
 
             if retval != 0:
                 # send a kill signal to the main thread.

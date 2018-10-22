@@ -23,12 +23,8 @@ class PMGRLaunchingComponent(rpu.Component):
     #
     def __init__(self, cfg, session):
 
-        self._uid = ru.generate_id(cfg['owner'] + '.launching.%(counter)s',
-                                   ru.ID_CUSTOM)
-
         rpu.Component.__init__(self, cfg, session)
 
-        self._pmgr = self._owner
 
     # --------------------------------------------------------------------------
     #

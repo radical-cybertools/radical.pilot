@@ -36,6 +36,7 @@ if __name__ == '__main__':
     # fails, there is not much we can do anyways...
     session = rp.Session()
 
+
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
     # the whole RP stack down via a 'session.close()' call in the 'finally'
@@ -67,6 +68,7 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
+
         report.header('submit units')
 
         # Register the ComputePilot in a UnitManager object.
@@ -76,7 +78,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 32  # number of units to run
+        n = 1024   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()

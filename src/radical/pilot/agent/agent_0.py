@@ -13,6 +13,7 @@ import subprocess         as sp
 
 import radical.utils      as ru
 
+from ..  import db
 from ..  import utils     as rpu
 from ..  import states    as rps
 from ..  import constants as rpc
@@ -43,6 +44,9 @@ class Agent_0(rpu.Worker):
     #
     def __init__(self, agent_name):
 
+        # synchronization timestamp
+        t_zero = time.time()
+
         assert(agent_name == 'agent_0'), 'expect agent_0, not subagent'
         print 'startup agent %s' % agent_name
 
@@ -61,7 +65,11 @@ class Agent_0(rpu.Worker):
         self._lrms        = None
 
         # this better be on a shared FS!
-        cfg['workdir']    = os.getcwd()
+        cfg['uid']             = self._uid
+        cfg['owner']           = self._sid
+        cfg['workdir']         = os.getcwd()
+        cfg['logdir']          = cfg['pilot_sandbox']
+        cfg['session_sandbox'] = cfg['pilot_sandbox']
 
         # sanity check on config settings
         if 'cores'               not in cfg: raise ValueError('Missing number of cores')
@@ -90,40 +98,37 @@ class Agent_0(rpu.Worker):
         # config -- we merge that information into our own config.
         # We don't want the session to start components though, so remove them
         # from the config copy.
-        session_cfg = copy.deepcopy(cfg)
-        session_cfg['components'] = dict()
-        session = rp_Session(cfg=session_cfg, uid=self._sid)
-
-        # we still want the bridge addresses known though, so make sure they are
-        # merged into our own copy, along with any other additions done by the
-        # session.
-        ru.dict_merge(cfg, session._cfg, ru.PRESERVE)
-        pprint.pprint(cfg)
-
-        if not session.is_connected:
-            raise RuntimeError('agent_0 could not connect to mongodb')
-
-        # at this point the session is up and connected, and it should have
-        # brought up all communication bridges and the UpdateWorker.  We are
-        # ready to rumble!
-        rpu.Worker.__init__(self, cfg, session)
-
-        # this is the earlier point to sync bootstrapper and agent # profiles
-        self._prof.prof('sync_rel', msg='agent_0 start', uid=self._pid)
+        scfg = {'dburl'           : cfg['dburl'],
+                'logdir'          : cfg['logdir'],
+                'session_sandbox' : cfg['session_sandbox']}
+        self._session = rp_Session(uid=self._sid, _cfg=scfg)
 
         # Create LRMS which will give us the set of agent_nodes to use for
         # sub-agent startup.  Add the remaining LRMS information to the
         # config, for the benefit of the scheduler).
-        self._lrms = rpa_rm.RM.create(name=self._cfg['lrms'], cfg=self._cfg,
-                                      session=self._session)
+        self._lrms = rpa_rm.RM.create(cfg['lrms'], cfg, self._session)
 
         # add the resource manager information to our own config
-        self._cfg['lrms_info'] = self._lrms.lrms_info
+        cfg['lrms_info'] = self._lrms.lrms_info
+
+        # only now, after the lrms is created, we can instantiate components, as
+        # those need the LRMS info.
+        self._db      = db.DB(self._session, cfg=cfg)
+        self._cmgr    = rpu.ComponentManager(self._session, cfg, self._uid)
+
+        # at this point the session is up and connected, and we should have
+        # brought up all communication bridges and the UpdateWorker.  We are
+        # ready to rumble!
+        rpu.Worker.__init__(self, cfg, self._session)
+
+        # this is the point to sync bootstrapper and agent profiles
+        self._prof.prof('sync_rel', msg='agent_0 start', uid=self._pid,
+                        timestamp=t_zero)
 
 
     # --------------------------------------------------------------------------
     #
-    def initialize_parent(self):
+    def initialize(self):
 
         # create the sub-agent configs
         self._write_sa_configs()
@@ -163,17 +168,13 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_parent(self):
+    def finalize(self):
 
         # tear things down in reverse order
         self._prof.flush()
         self._log.info('publish "terminate" cmd')
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
                                           'arg' : None})
-
-        self.unregister_timed_cb(self._check_units_cb)
-        self.unregister_output(rps.AGENT_STAGING_INPUT_PENDING)
-        self.unregister_timed_cb(self._agent_command_cb)
 
         if self._lrms:
             self._log.debug('stop    lrms %s', self._lrms)
@@ -186,11 +187,6 @@ class Agent_0(rpu.Worker):
         else                                 : state = rps.FAILED
 
         self._log.debug('final state: %s (%s)', state, self._final_cause)
-      # # we don't rely on the existence / viability of the update worker at
-      # # that point.
-      # FIXME:
-      # self._log.debug('update db state: %s: %s', state, self._final_cause)
-      # self._update_db(state, self._final_cause)
 
 
     # --------------------------------------------------------------------------
@@ -198,15 +194,9 @@ class Agent_0(rpu.Worker):
     def wait_final(self):
 
         while self._final_cause is None:
-          # self._log.info('no final cause -> alive')
-            time.sleep(1)
+            time.sleep(0.1)
 
         self._log.debug('final: %s', self._final_cause)
-
-      # if self._session:
-      #     self._log.debug('close  session %s', self._session.uid)
-      #     self._session.close()
-      #     self._log.debug('closed session %s', self._session.uid)
 
 
     # --------------------------------------------------------------------------
@@ -234,13 +224,12 @@ class Agent_0(rpu.Worker):
         try    : log = open('./agent_0.log', 'r').read(1024)
         except Exception: pass
 
-        ret = self._session._dbs._c.update(
-                {'type'   : 'pilot',
-                 'uid'    : self._pid},
-                {'$set'   : {'stdout'        : rpu.tail(out),
-                             'stderr'        : rpu.tail(err),
-                             'logfile'       : rpu.tail(log)}
-                })
+        ret = self._db._c.update({'type'   : 'pilot',
+                                  'uid'    : self._pid},
+                                 {'$set'   : {'stdout'        : rpu.tail(out),
+                                              'stderr'        : rpu.tail(err),
+                                              'logfile'       : rpu.tail(log)}
+                                 })
         self._log.debug('update ret: %s', ret)
 
 
@@ -363,6 +352,7 @@ class Agent_0(rpu.Worker):
             self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
 
             # ------------------------------------------------------------------
+            # FIXME: use component manager?
             class _SA(ru.Process):
                 def __init__(self, sa, cmd, log):
                     self._sa   = sa
@@ -417,16 +407,14 @@ class Agent_0(rpu.Worker):
     #
     def _check_commands(self):
 
-        # Check if there's a command waiting
+        # Check if there's a command waiting - if so retrieve and purge
         # FIXME: this pull should be done by the update worker, and commands
         #        should then be communicated over the command pubsub
         # FIXME: commands go to pmgr, umgr, session docs
         # FIXME: this is disabled right now
-        retdoc = self._session._dbs._c.find_and_modify(
-                    query ={'uid'  : self._pid},
-                    update={'$set' : {'cmd': []}},  # Wipe content of array
-                    fields=['cmd'])
-
+        retdoc = self._db._c.find_and_modify(query ={'uid'  : self._pid},
+                                             update={'$set' : {'cmd': []}},
+                                             fields=['cmd'])
         if not retdoc:
             return True  # this is not an error
 
@@ -491,7 +479,7 @@ class Agent_0(rpu.Worker):
         self.is_valid()
 
         # FIXME: this should probably go into a custom `is_valid()`
-        if not self._session._dbs._c:
+        if not self._db._c:
             self._log.warn('db connection gone - abort')
             return False
 
@@ -504,9 +492,9 @@ class Agent_0(rpu.Worker):
         #        find -- so we do it right here.
         #        This also blocks us from using multiple ingest threads, or from
         #        doing late binding by unit pull :/
-        unit_cursor = self._session._dbs._c.find({'type'    : 'unit',
-                                                  'pilot'   : self._pid,
-                                                  'control' : 'agent_pending'})
+        unit_cursor = self._db._c.find({'type'    : 'unit',
+                                        'pilot'   : self._pid,
+                                        'control' : 'agent_pending'})
         if not unit_cursor.count():
             # no units whatsoever...
             self._log.info('units pulled:    0')
@@ -518,10 +506,10 @@ class Agent_0(rpu.Worker):
 
         self._log.info('units PULLED: %4d', len(unit_list))
 
-        self._session._dbs._c.update({'type'  : 'unit',
-                                      'uid'   : {'$in'     : unit_uids}},
-                                     {'$set'  : {'control' : 'agent'}},
-                                     multi=True)
+        self._db._c.update({'type'  : 'unit',
+                            'uid'   : {'$in'     : unit_uids}},
+                           {'$set'  : {'control' : 'agent'}},
+                           multi=True)
 
         self._log.info("units pulled: %4d", len(unit_list))
         self._prof.prof('get', msg='bulk size: %d' % len(unit_list),

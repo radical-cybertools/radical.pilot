@@ -58,7 +58,7 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         # we don't really have an output queue, as we pass control over the
         # pilot jobs to the resource management system (RM).
@@ -92,12 +92,9 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
+    def finalize(self):
 
         # avoid shutdown races:
-
-        self.unregister_timed_cb(self._pilot_watcher_cb)
-        self.unregister_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
 
         # FIXME: always kill all saga jobs for non-final pilots at termination,
         #        and set the pilot states to CANCELED.  This will confluct with
@@ -405,7 +402,7 @@ class Default(PMGRLaunchingComponent):
                 return
 
             # avoid busy poll)
-            time.sleep(1)
+            time.sleep(0.1)
 
         to_advance = list()
 
@@ -558,7 +555,7 @@ class Default(PMGRLaunchingComponent):
             assert(schema == pilot['description'].get('access_schema')), \
                     'inconsistent scheme on launch / staging'
 
-        session_sandbox = self._session._get_session_sandbox(pilots[0]).path
+        session_sandbox = self._session.get_session_sandbox(pilots[0]).path
 
 
         # we will create the session sandbox before we untar, so we can use that
@@ -577,7 +574,6 @@ class Default(PMGRLaunchingComponent):
         for ft in ft_list:
             src     = os.path.abspath(ft['src'])
             tgt     = os.path.relpath(os.path.normpath(ft['tgt']), session_sandbox)
-          # src_dir = os.path.dirname(src)
             tgt_dir = os.path.dirname(tgt)
 
             if tgt_dir.startswith('..'):
@@ -825,13 +821,13 @@ class Default(PMGRLaunchingComponent):
                                  % (ma, resource))
 
         # get pilot and global sandbox
-        resource_sandbox = self._session._get_resource_sandbox (pilot).path
-        session_sandbox  = self._session._get_session_sandbox(pilot).path
-        pilot_sandbox    = self._session._get_pilot_sandbox  (pilot).path
+        resource_sandbox = self._session.get_resource_sandbox(pilot).path
+        session_sandbox  = self._session.get_session_sandbox (pilot).path
+        pilot_sandbox    = self._session.get_pilot_sandbox   (pilot).path
 
-        pilot['resource_sandbox'] = str(self._session._get_resource_sandbox(pilot))
-        pilot['pilot_sandbox']    = str(self._session._get_pilot_sandbox(pilot))
-        pilot['client_sandbox']   = str(self._session._get_client_sandbox())
+        pilot['resource_sandbox'] = str(self._session.get_resource_sandbox(pilot))
+        pilot['pilot_sandbox']    = str(self._session.get_pilot_sandbox(pilot))
+        pilot['client_sandbox']   = str(self._session.get_client_sandbox())
 
         # Agent configuration that is not part of the public API.
         # The agent config can either be a config dict, or

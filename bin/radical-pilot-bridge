@@ -4,10 +4,10 @@ __copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import os
 import sys
 
 import setproctitle        as spt
-
 import radical.utils       as ru
 import radical.pilot.utils as rpu
 
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     The bridge's stdout and stderr will be written to `$name.out` and
     `$name.err`, respectively, log messages will appear in `$name.log`.
     After startup, it will write the bridge's communication endpoint URLs
-    to the file `$name.bridge.url`, in the form:
+    to the file `$name.url`, in the form:
 
         SUB: $addr_in
         PUB: $addr_out
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     The `SUB` address is to be used for subscribers, the `PUB` address for
     publishers -- but the respective RP classes will dig the correct addresses
     from that file.
-    
+
     A typical pubsub test scenario would be:
 
         > radical-pilot-bridge command pubsub             [1]
@@ -59,26 +59,26 @@ if __name__ == "__main__":
 
     '''
 
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 2:
         sys.stderr.write('error: argument error\n'
-                         'usage: %s <name> <kind>\n\n')
-        raise RuntimeError('argument error')
+                         'usage: %s <cfg_file>\n\n')
+        raise RuntimeError('argument error: %s' % sys.argv)
 
-    name = sys.argv[1]
-    kind = sys.argv[2]
+    # ensure we have a config file
+    cfg = ru.read_json(sys.argv[1])
 
-    cfg = {'bulk_size': 0, 
-           'stall_hwm': 1,
-           'log_level': "debug"}
+    pwd = cfg['pwd']
+    uid = cfg['uid']
 
-    if   kind == 'pubsub': bridge = rpu.Pubsub(name, 'bridge', cfg)
-    elif kind == 'queue' : bridge = rpu.Queue (name, 'bridge', cfg)
-    else:
-        raise ValueError('invalid bridge type [%s]' % name)
+    # first things first: inform the caller about our pit
+    spt.setproctitle('rp.%s' % uid)
+    with open('%s/%s.pid'  % (pwd, uid), 'w') as fout:
+        fout.write('%d\n' % os.getpid())
+        fout.flush
 
-    # mark this process as bridge
-    spt.setproctitle('rp.%s'  % bridge.uid)
-
+    # create the bridge
+    bridge = rpu.Bridge.create(cfg)
+    bridge.start()
     bridge.wait()
 
 

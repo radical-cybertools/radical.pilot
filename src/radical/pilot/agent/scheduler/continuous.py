@@ -64,7 +64,7 @@ class Continuous(AgentSchedulingComponent):
     #
     # FIXME: this should not be overloaded here, but in the base class
     #
-    def finalize_child(self):
+    def finalize(self):
 
         cprof_env = os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "")
         if "CONTINUOUS" in cprof_env.split():

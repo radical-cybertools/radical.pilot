@@ -218,10 +218,10 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    # Once the component process is spawned, `initialize_child()` will be called
+    # Once the component process is spawned, `initialize()` will be called
     # before control is given to the component's main loop.
     #
-    def initialize_child(self):
+    def initialize(self):
 
         # register unit input channels
         self.register_input(rps.AGENT_SCHEDULING_PENDING,
@@ -324,11 +324,10 @@ class AgentSchedulingComponent(rpu.Component):
                 SCHEDULER_NAME_SPARK           : Spark
             }[name]
 
-            impl = impl(cfg, session)
-            return impl
-
         except KeyError:
             raise ValueError("Scheduler '%s' unknown or defunct" % name)
+
+        return impl(cfg, session)
 
 
     # --------------------------------------------------------------------------

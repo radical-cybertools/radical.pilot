@@ -25,24 +25,24 @@ if __name__ == "__main__":
     respective bridge exists.
     '''
 
-    if len(sys.argv) < 2:
+    if len(sys.argv) != 2:
         sys.stderr.write('error: missing argument\n'
-                         'usage: %s <queue> <topic1> [...]\n\n')
+                         'usage: %s <queue> [...]\n\n' %  sys.argv[0])
         raise RuntimeError('missing argument')
 
-    # setup queue
+    # setup getter
     name   = sys.argv[1]
-    queue  = rpu.Queue(name, 'get')
+    getter  = rpu.Getter(name)
 
     # mark this process
-    spt.setproctitle('rp.%s' % queue.uid)
+    spt.setproctitle('rp.%s' % getter.uid)
 
     start = time.time()
     n     = 0
     work  = True
     while work:
 
-        msgs = queue.get()
+        msgs = getter.get()
         for msg in msgs:
             if msg.get('cmd') == 'QUIT':
                 work = False

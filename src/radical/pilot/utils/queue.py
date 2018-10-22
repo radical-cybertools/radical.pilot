@@ -10,17 +10,12 @@ import msgpack
 import threading         as mt
 import radical.utils     as ru
 
-from .misc import hostip as rpu_hostip
+from .bridge import Bridge
+from .misc   import hostip as rpu_hostip
 
 
 # --------------------------------------------------------------------------
-# defines for queue roles
 #
-QUEUE_PUT    = 'put'
-QUEUE_GET    = 'get'
-QUEUE_BRIDGE = 'bridge'
-QUEUE_ROLES  = [QUEUE_PUT, QUEUE_BRIDGE, QUEUE_GET]
-
 _LINGER_TIMEOUT  =   250  # ms to linger after close
 _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 
@@ -95,9 +90,9 @@ def _uninterruptible(f, *args, **kwargs):
 # the same identifier, they will get the same queue instance (are connected to
 # the same bridge).
 #
-class Queue(object):
+class Queue(Bridge):
 
-    def __init__(self, channel, role, cfg=None):
+    def __init__(self, cfg, session):
         '''
         This Queue type sets up an zmq channel of this kind:
 
@@ -118,97 +113,13 @@ class Queue(object):
         addresses as obj.addr_in and obj.addr_out.
         '''
 
-        self._channel = channel
-        self._cid     = channel.replace('_', '.')
-        self._role    = role
-        self._cfg     = copy.deepcopy(cfg)
+        super(Queue, self).__init__(cfg, session)
 
-        if not self._cfg:
-            self._cfg = dict()
-
-        assert(self._role in QUEUE_ROLES), 'invalid role %s' % self._role
-
-        if self._role == QUEUE_BRIDGE:
-            self._uid = ru.generate_id('%s.%s' % (self._cid, self._role),
-                                                  ru.ID_CUSTOM)
-        else:
-            self._uid = ru.generate_id('%s.%s.%s' % (self._cid, self._role,
-                                                     '%(counter)04d'),
-                                        ru.ID_CUSTOM)
-
-        self._log = ru.Logger(name=self._uid, 
-                              level=self._cfg.get('log_level', 'DEBUG'))
-
-        # avoid superfluous logging calls in critical code sections
-        if self._log.getEffectiveLevel() == 10:  # logging.DEBUG:
-            self._debug  = True
-        else:
-            self._debug  = False
-
-     #  self._addr_in    = None  # bridge input  addr
-     #  self._addr_out   = None  # bridge output addr
-     #
-     #  self._q          = None
-     #  self._in         = None
-     #  self._out        = None
-     #  self._ctx        = None
-     #
-     #  self._lock       = mt.RLock()     # for _requested
-     #  self._requested  = False          # send/recv sync
-
+        self._channel    = self._cfg['name']
         self._stall_hwm  = self._cfg.get('stall_hwm', 1)
         self._bulk_size  = self._cfg.get('bulk_size', 1)
 
-
-        # ----------------------------------------------------------------------
-        # behavior depends on the role...
-        if self._role == QUEUE_PUT:
-
-            # get addr from bridge.url
-            bridge_uid = ru.generate_id("%s.bridge" % self._cid, ru.ID_CUSTOM)
-
-            with open('%s.url' % bridge_uid, 'r') as fin:
-                for line in fin.readlines():
-                    elems = line.split()
-                    if elems and elems[0] == 'PUT':
-                        self._addr = elems[1]
-                        break
-
-            self._log.info('connect put to %s: %s'  % (bridge_uid, self._addr))
-
-            self._ctx      = zmq.Context()  # rely on the GC destroy the context
-            self._q        = self._ctx.socket(zmq.PUSH)
-            self._q.linger = _LINGER_TIMEOUT
-            self._q.hwm    = _HIGH_WATER_MARK
-            self._q.connect(self._addr)
-
-
-        # ----------------------------------------------------------------------
-        elif self._role == QUEUE_GET:
-
-            # get addr from bridge.url
-            bridge_uid = ru.generate_id("%s.bridge" % self._cid, ru.ID_CUSTOM)
-
-            with open('%s.url' % bridge_uid, 'r') as fin:
-                for line in fin.readlines():
-                    elems = line.split()
-                    if elems and elems[0] == 'GET':
-                        self._addr = elems[1]
-                        break
-
-            self._log.info('connect get to %s: %s'  % (bridge_uid, self._addr))
-
-            self._ctx      = zmq.Context()  # rely on the GC destroy the context
-            self._q        = self._ctx.socket(zmq.REQ)
-            self._q.linger = _LINGER_TIMEOUT
-            self._q.hwm    = _HIGH_WATER_MARK
-            self._q.connect(self._addr)
-
-
-        # ----------------------------------------------------------------------
-        elif self._role == QUEUE_BRIDGE:
-
-            self._initialize_bridge()
+        self._initialize_bridge()
 
 
     # --------------------------------------------------------------------------
@@ -224,24 +135,6 @@ class Queue(object):
     @property
     def channel(self):
         return self._channel
-
-    @property
-    def role(self):
-        return self._role
-
-    @property
-    def addr(self):
-        return self._addr
-
-    @property
-    def addr_in(self):
-        assert(self._role == QUEUE_BRIDGE), 'addr_in only set on bridges'
-        return self._addr_in
-
-    @property
-    def addr_out(self):
-        assert(self._role == QUEUE_BRIDGE), 'addr_out only set on bridges'
-        return self._addr_out
 
 
     # --------------------------------------------------------------------------
@@ -295,9 +188,9 @@ class Queue(object):
 
         # inform clients about the bridge, no that the sockets are connected and
         # work is about to start.
-        with open('%s.url' % self.uid, 'w') as fout:
-            fout.write('PUT %s\n' % self.addr_in)
-            fout.write('GET %s\n' % self.addr_out)
+        with open('%s/%s.url' % (self._pwd, self.channel), 'w') as fout:
+            fout.write('PUT %s\n' % self._addr_in)
+            fout.write('GET %s\n' % self._addr_out)
 
 
     # --------------------------------------------------------------------------
@@ -311,18 +204,16 @@ class Queue(object):
 
         start = time.time()
 
-        if self._role == QUEUE_BRIDGE:
+        while True:
 
-            while True:
+            if not self._bridge_thread.is_alive():
+                return True
 
-                if not self._bridge_thread.is_alive():
-                    return True
+            if  timeout is not None and \
+                timeout < time.time() - start:
+                return False
 
-                if  timeout is not None and \
-                    timeout < time.time() - start:
-                    return False
-
-                time.sleep(1)
+            time.sleep(0.1)
 
 
     # --------------------------------------------------------------------------
@@ -373,12 +264,65 @@ class Queue(object):
             self._log.exception('bridge failed')
 
 
+# ------------------------------------------------------------------------------
+
+class Putter(object):
+
+    def __init__(self, channel, session=None):
+
+        self._channel = channel
+        self._session = session
+
+        if self._session:
+            self._pwd = self._session.get_session_sandbox()
+        else:
+            self._pwd = '.'
+
+        self._uid = ru.generate_id('%s.put.%s' % (self._channel, '%(counter)04d'),
+                                    ru.ID_CUSTOM)
+        self._log = ru.Logger(name=self._uid)
+
+        # avoid superfluous logging calls in critical code sections
+        if self._log.getEffectiveLevel() == 10:  # logging.DEBUG:
+            self._debug  = True
+        else:
+            self._debug  = False
+
+        # get addr from bridge.url
+        with open('%s/%s.url' % (self._pwd, self._channel), 'r') as fin:
+            for line in fin.readlines():
+                elems = line.split()
+                if elems and elems[0] == 'PUT':
+                    self._addr = elems[1]
+                    break
+
+        self._log.info('connect put to %s: %s'  % (self._channel, self._addr))
+
+        self._ctx      = zmq.Context()  # rely on the GC destroy the context
+        self._q        = self._ctx.socket(zmq.PUSH)
+        self._q.linger = _LINGER_TIMEOUT
+        self._q.hwm    = _HIGH_WATER_MARK
+        self._q.connect(self._addr)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def name(self):
+        return self._uid
+
+    @property
+    def uid(self):
+        return self._uid
+
+    @property
+    def channel(self):
+        return self._channel
+
+
     # --------------------------------------------------------------------------
     #
     def put(self, msg):
-
-        if not self._role == QUEUE_PUT:
-            raise RuntimeError("queue %s (%s) can't put()" % (self._channel, self._role))
 
         if self._debug:
             self._log.debug("-> %s", pprint.pformat(msg))
@@ -386,11 +330,68 @@ class Queue(object):
         _uninterruptible(self._q.send, data)
 
 
+# ------------------------------------------------------------------------------
+
+class Getter(object):
+
+    def __init__(self, channel, session=None):
+
+        self._channel = channel
+        self._session = session
+
+        if self._session:
+            self._pwd = self._session.get_session_sandbox()
+        else:
+            self._pwd = '.'
+
+        self._uid = ru.generate_id('%s.get.%s' % (self._channel, '%(counter)04d'),
+                                    ru.ID_CUSTOM)
+        self._log = ru.Logger(name=self._uid)
+
+        # avoid superfluous logging calls in critical code sections
+        if self._log.getEffectiveLevel() == 10:  # logging.DEBUG:
+            self._debug  = True
+        else:
+            self._debug  = False
+
+        # get addr from bridge.url
+        with open('%s/%s.url' % (self._pwd, self._channel), 'r') as fin:
+            for line in fin.readlines():
+                elems = line.split()
+                if elems and elems[0] == 'GET':
+                    self._addr = elems[1]
+                    break
+
+        self._log.info('connect get to %s: %s'  % (self._channel, self._addr))
+
+        self._lock     = mt.RLock()
+        self._requested  = False        # send/recv sync
+
+        self._ctx      = zmq.Context()  # rely on the GC destroy the context
+        self._q        = self._ctx.socket(zmq.REQ)
+        self._q.linger = _LINGER_TIMEOUT
+        self._q.hwm    = _HIGH_WATER_MARK
+        self._q.connect(self._addr)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def name(self):
+        return self._uid
+
+    @property
+    def uid(self):
+        return self._uid
+
+    @property
+    def channel(self):
+        return self._channel
+
+
     # --------------------------------------------------------------------------
     #
     def get(self):
-
-        assert(self._role == QUEUE_GET), 'invalid role on get'
 
         _uninterruptible(self._q.send, 'request %s' % self._uid)
 
@@ -406,8 +407,6 @@ class Queue(object):
     # --------------------------------------------------------------------------
     #
     def get_nowait(self, timeout=None):  # timeout in ms
-
-        assert(self._role == QUEUE_GET), 'invalid role on get_nowait'
 
         with self._lock:  # need to protect self._requested
 

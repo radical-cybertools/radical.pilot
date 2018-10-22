@@ -33,7 +33,7 @@ class Shell(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         from .... import pilot as rp
 
@@ -120,8 +120,8 @@ class Shell(AgentExecutingComponent):
         self._cus_to_cancel  = list()
         self._cancel_lock    = threading.RLock()
 
-        self._cached_events = list() # keep monitoring events for pid's which
-                                     # are not yet known
+        self._cached_events = list()  # keep monitoring events for pid's which
+                                      # are not yet known
 
         # get some threads going -- those will do all the work.
         import saga.utils.pty_shell as sups
@@ -137,13 +137,13 @@ class Shell(AgentExecutingComponent):
         self._spawner_tmp = "/%s/%s-%s" % (self._pwd, self._pilot_id, self.uid)
 
         ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/agent/executing/shell_spawner.sh %s" \
+                           ("/bin/sh %s/agent/executing/shell_spawner.sh %s"
                            % (os.path.dirname (rp.__file__), self._spawner_tmp))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
         ret, out, _  = self.monitor_shell.run_sync \
-                           ("/bin/sh %s/agent/executing/shell_spawner.sh %s" \
+                           ("/bin/sh %s/agent/executing/shell_spawner.sh %s"
                            % (os.path.dirname (rp.__file__), self._spawner_tmp))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
@@ -219,7 +219,7 @@ class Shell(AgentExecutingComponent):
                         # we own that cu, cancel it!
                         ret, out, _ = self.launcher_shell.run_sync ('CANCEL %s\n', pid)
                         if  ret != 0 :
-                            self._log.error("failed to cancel unit '%s': (%s)(%s)", \
+                            self._log.error("failed to cancel unit '%s': (%s)(%s)",
                                             cu_uid, ret, out)
                         # successful or not, we only try once
                         del(self._registry[pid])
@@ -364,7 +364,7 @@ prof(){
             post += "\n"
 
         if  descr['arguments']  :
-            args  = ' ' .join (quote_args (descr['arguments']))
+            args = ' ' .join (quote_args (descr['arguments']))
 
       # if  descr['stdin']  : io  += "<%s "  % descr['stdin']
       # else                : io  += "<%s "  % '/dev/null'
@@ -397,7 +397,7 @@ prof(){
         script += "%s"        %  pre
         script += "\n# CU execution\n"
         script += 'prof cu_exec_start\n'
-        script += "%s %s\n\n" % (cmd, io)
+        script += "%s %s %s\n\n" % (cmd, args, io)
         script += "RETVAL=$?\n"
         script += 'prof cu_exec_stop\n'
         script += "%s"        %  post
@@ -433,7 +433,7 @@ prof(){
         ret, out, _ = self.launcher_shell.run_sync (run_cmd)
 
         if  ret != 0 :
-            raise RuntimeError("failed to run unit '%s': (%s)(%s)" % \
+            raise RuntimeError("failed to run unit '%s': (%s)(%s)" %
                                (run_cmd, ret, out))
 
         lines = filter (None, out.split ("\n"))

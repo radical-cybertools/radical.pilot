@@ -50,7 +50,7 @@ class Default(UMGRStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         # we keep a cache of SAGA dir handles
         self._fs_cache    = dict()
@@ -72,9 +72,7 @@ class Default(UMGRStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
-
-        self.unregister_subscriber(rpc.STATE_PUBSUB, self._base_command_cb)
+    def finalize(self):
 
         try:
             [fs.close() for fs in self._fs_cache.values()]
@@ -191,7 +189,7 @@ class Default(UMGRStagingInputComponent):
                 self._log.debug('pid unknown - skip optimizion', pid)
                 continue
 
-            session_sbox = self._session._get_session_sandbox(pilot)
+            session_sbox = self._session.get_session_sandbox(pilot)
             unit_sboxes  = units_by_pid[pid]
 
             if len(unit_sboxes) >= UNIT_BULK_MKDIR_THRESHOLD:

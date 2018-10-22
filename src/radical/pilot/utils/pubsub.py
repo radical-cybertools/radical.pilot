@@ -9,17 +9,12 @@ import msgpack
 import threading         as mt
 import radical.utils     as ru
 
-from .misc import hostip as rpu_hostip
+from .bridge import Bridge
+from .misc   import hostip as rpu_hostip
 
 
 # --------------------------------------------------------------------------
-# defines for pubsub roles
 #
-PUBSUB_PUB    = 'pub'
-PUBSUB_SUB    = 'sub'
-PUBSUB_BRIDGE = 'bridge'
-PUBSUB_ROLES  = [PUBSUB_PUB, PUBSUB_SUB, PUBSUB_BRIDGE]
-
 _LINGER_TIMEOUT  =   250  # ms to linger after close
 _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 
@@ -59,92 +54,13 @@ def _uninterruptible(f, *args, **kwargs):
 # have different scope (bound to the channel name).  Only one specific topic is
 # predefined: 'state' will be used for unit state updates.
 #
-class Pubsub(object):
+class Pubsub(Bridge):
 
-    def __init__(self, channel, role, cfg=None):
-        '''
-        Addresses are of the form 'tcp://host:port'.  Both 'host' and 'port' can
-        be wildcards for BRIDGE roles -- the bridge will report the in and out
-        addresses as obj.addr_in and obj.addr_out.
-        '''
+    def __init__(self, cfg, session):
 
-        self._channel = channel
-        self._cid     = channel.replace('_', '.')
-        self._role    = role
-        self._cfg     = copy.deepcopy(cfg)
+        super(Pubsub, self).__init__(cfg, session)
 
-        if not self._cfg:
-            self._cfg = dict()
-
-        assert(self._role in PUBSUB_ROLES), 'invalid role %s' % self._role
-
-        if self._role == PUBSUB_BRIDGE:
-            self._uid = ru.generate_id('%s.%s' % (self._cid, self._role),
-                                                  ru.ID_CUSTOM)
-        else:
-            self._uid = ru.generate_id('%s.%s.%s' % (self._cid, self._role,
-                                                     '%(counter)04d'),
-                                        ru.ID_CUSTOM)
-
-        self._log = ru.Logger(name=self._uid, 
-                              level=self._cfg.get('log_level', 'DEBUG'))
-
-        # avoid superfluous logging calls in critical code sections
-        if self._log.getEffectiveLevel() == 10:  # logging.DEBUG:
-            self._debug  = True
-        else:
-            self._debug  = False
-
-
-        # ----------------------------------------------------------------------
-        # behavior depends on the role...
-        if self._role == PUBSUB_PUB:
-
-            # get addr from bridge.url
-            bridge_uid = ru.generate_id("%s.bridge" % self._cid, ru.ID_CUSTOM)
-
-            with open('%s.url' % bridge_uid, 'r') as fin:
-                for line in fin.readlines():
-                    elems = line.split()
-                    if elems and elems[0] == 'PUB':
-                        self._addr = elems[1]
-                        break
-
-            self._log.info('connect pub to %s: %s'  % (bridge_uid, self._addr))
-
-            self._ctx      = zmq.Context()  # rely on the GC destroy the context
-            self._q        = self._ctx.socket(zmq.PUB)
-            self._q.linger = _LINGER_TIMEOUT
-            self._q.hwm    = _HIGH_WATER_MARK
-            self._q.connect(self._addr)
-
-
-        # ----------------------------------------------------------------------
-        elif self._role == PUBSUB_SUB:
-
-            # get addr from bridge.url
-            bridge_uid = ru.generate_id("%s.bridge" % self._cid, ru.ID_CUSTOM)
-
-            with open('%s.url' % bridge_uid, 'r') as fin:
-                for line in fin.readlines():
-                    elems = line.split()
-                    if elems and elems[0] == 'SUB':
-                        self._addr = elems[1]
-                        break
-
-            self._log.info('connect sub to %s: %s'  % (bridge_uid, self._addr))
-
-            self._ctx      = zmq.Context()  # rely on the GC destroy the context
-            self._q        = self._ctx.socket(zmq.SUB)
-            self._q.linger = _LINGER_TIMEOUT
-            self._q.hwm    = _HIGH_WATER_MARK
-            self._q.connect(self._addr)
-
-
-        # ----------------------------------------------------------------------
-        elif self._role == PUBSUB_BRIDGE:
-
-            self._initialize_bridge()
+        self._initialize_bridge()
 
 
     # --------------------------------------------------------------------------
@@ -160,24 +76,6 @@ class Pubsub(object):
     @property
     def channel(self):
         return self._channel
-
-    @property
-    def role(self):
-        return self._role
-
-    @property
-    def addr(self):
-        return self._addr
-
-    @property
-    def addr_in(self):
-        assert(self._role == PUBSUB_BRIDGE), 'addr_in only set on bridges'
-        return self._addr_in
-
-    @property
-    def addr_out(self):
-        assert(self._role == PUBSUB_BRIDGE), 'addr_out only set on bridges'
-        return self._addr_out
 
 
     # --------------------------------------------------------------------------
@@ -232,9 +130,9 @@ class Pubsub(object):
 
         # inform clients about the bridge, no that the sockets are connected and
         # work is about to start.
-        with open('%s.url' % self.uid, 'w') as fout:
-            fout.write('PUB %s\n' % self.addr_in)
-            fout.write('SUB %s\n' % self.addr_out)
+        with open('%s/%s.url' % (self._pwd, self.uid), 'w') as fout:
+            fout.write('PUB %s\n' % self._addr_in)
+            fout.write('SUB %s\n' % self._addr_out)
 
 
     # --------------------------------------------------------------------------
@@ -248,18 +146,16 @@ class Pubsub(object):
 
         start = time.time()
 
-        if self._role == PUBSUB_BRIDGE:
+        while True:
 
-            while True:
+            if not self._bridge_thread.is_alive():
+                return True
 
-                if not self._bridge_thread.is_alive():
-                    return True
+            if  timeout is not None and \
+                timeout < time.time() - start:
+                return False
 
-                if  timeout is not None and \
-                    timeout < time.time() - start:
-                    return False
-
-                time.sleep(1)
+            time.sleep(0.1)
 
 
     # --------------------------------------------------------------------------
@@ -287,8 +183,9 @@ class Pubsub(object):
                     # to the publishing channel, no questions asked.
                     msg = _uninterruptible(self._in.recv_multipart, flags=zmq.NOBLOCK)
                     _uninterruptible(self._out.send_multipart, msg)
-                    if self._debug:
-                        self._log.debug("-> %s", pprint.pformat(msg))
+
+                  # if self._debug:
+                  #     self._log.debug('>> %s %s', self.channel, msg)
 
                 if self._out in _socks:
                     # if any outgoing socket signals a message, it's
@@ -297,8 +194,9 @@ class Pubsub(object):
                     # respective messages.
                     msg = _uninterruptible(self._out.recv_multipart)
                     _uninterruptible(self._in.send_multipart, msg)
-                    if self._debug:
-                        self._log.debug("<- %s", pprint.pformat(msg))
+
+                  # if self._debug:
+                  #     self._log.debug('<< %s %s', self.channel, msg)
 
         except Exception:
             self._log.exception('bridge failed')
@@ -306,11 +204,142 @@ class Pubsub(object):
         # thread ends here
 
 
+# ------------------------------------------------------------------------------
+#
+class Publisher(object):
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, channel, session=None):
+
+        self._channel = channel
+        self._session = session
+
+        if self._session:
+            self._pwd = self._session.get_session_sandbox()
+        else:
+            self._pwd = '.'
+
+        self._uid = ru.generate_id('%s.pub.%s' % (self._channel, '%(counter)04d'),
+                                   ru.ID_CUSTOM)
+        self._log = ru.Logger(name=self._uid, level='DEBUG')  ## FIXME
+
+        # avoid superfluous logging calls in critical code sections
+        if self._log.getEffectiveLevel() == 10:  # logging.DEBUG:
+            self._debug  = True
+        else:
+            self._debug  = False
+
+        # get addr from bridge.url
+        bridge_uid = ru.generate_id("%s" % self._channel, ru.ID_CUSTOM)
+
+        with open('%s/%s.url' % (self._pwd, bridge_uid), 'r') as fin:
+            for line in fin.readlines():
+                elems = line.split()
+                if elems and elems[0] == 'PUB':
+                    self._addr = elems[1]
+                    break
+
+        self._log.info('connect pub to %s: %s'  % (bridge_uid, self._addr))
+
+        self._ctx      = zmq.Context()  # rely on the GC destroy the context
+        self._q        = self._ctx.socket(zmq.PUB)
+        self._q.linger = _LINGER_TIMEOUT
+        self._q.hwm    = _HIGH_WATER_MARK
+        self._q.connect(self._addr)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def name(self):
+        return self._uid
+
+    @property
+    def uid(self):
+        return self._uid
+
+    @property
+    def channel(self):
+        return self._channel
+
+
+    # --------------------------------------------------------------------------
+    #
+    def put(self, topic, msg):
+
+        assert(isinstance(msg,dict)), 'invalide message type'
+
+        topic = topic.replace(' ', '_')
+        data  = msgpack.packb(msg) 
+
+        if self._debug:
+            self._log.debug('-> %s %s', self.channel, msg)
+
+        msg = [topic, data]
+        _uninterruptible(self._q.send_multipart, msg)
+
+
+# ------------------------------------------------------------------------------
+#
+class Subscriber(object):
+
+    def __init__(self, channel, session=None):
+
+        self._channel = channel
+        self._session = session
+
+        if self._session:
+            self._pwd = self._session.get_session_sandbox()
+        else:
+            self._pwd = '.'
+
+        self._uid = ru.generate_id('%s.sub.%s' % (self._channel, '%(counter)04d'),
+                                    ru.ID_CUSTOM)
+        self._log = ru.Logger(name=self._uid, level='DEBUG') ## FIXME
+
+        # avoid superfluous logging calls in critical code sections
+        if self._log.getEffectiveLevel() == 10:  # logging.DEBUG:
+            self._debug  = True
+        else:
+            self._debug  = False
+
+
+        # get addr from bridge.url
+        with open('%s/%s.url' % (self._pwd, self._channel), 'r') as fin:
+            for line in fin.readlines():
+                elems = line.split()
+                if elems and elems[0] == 'SUB':
+                    self._addr = elems[1]
+                    break
+
+        self._log.info('connect sub to %s: %s'  % (self._channel, self._addr))
+
+        self._ctx      = zmq.Context()  # rely on the GC destroy the context
+        self._q        = self._ctx.socket(zmq.SUB)
+        self._q.linger = _LINGER_TIMEOUT
+        self._q.hwm    = _HIGH_WATER_MARK
+        self._q.connect(self._addr)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def name(self):
+        return self._uid
+
+    @property
+    def uid(self):
+        return self._uid
+
+    @property
+    def channel(self):
+        return self._channel
+
+
     # --------------------------------------------------------------------------
     #
     def subscribe(self, topic):
-
-        assert(self._role == PUBSUB_SUB), 'incorrect role on subscribe'
 
         topic = topic.replace(' ', '_')
 
@@ -320,32 +349,15 @@ class Pubsub(object):
 
     # --------------------------------------------------------------------------
     #
-    def put(self, topic, msg):
-
-        assert(self._role == PUBSUB_PUB), 'incorrect role on put'
-        assert(isinstance(msg,dict)),     'invalide message type'
-
-        topic = topic.replace(' ', '_')
-        data  = msgpack.packb(msg) 
-
-        if self._debug:
-            self._log.debug("-> %s", ([topic, pprint.pformat(msg)]))
-        _uninterruptible(self._q.send_multipart, [topic, data])
-
-
-    # --------------------------------------------------------------------------
-    #
     def get(self):
-
-        assert(self._role == PUBSUB_SUB), 'invalid role on get'
 
         # FIXME: add timeout to allow for graceful termination
 
         topic, data = _uninterruptible(self._q.recv_multipart)
         msg         = msgpack.unpackb(data) 
 
-        if self._debug:
-            self._log.debug("<- %s", ([topic, pprint.pformat(msg)]))
+      # if self._debug:
+      #     self._log.debug('<- %s %s', self.channel, msg)
 
         return [topic, msg]
 
@@ -354,15 +366,30 @@ class Pubsub(object):
     #
     def get_nowait(self, timeout=None):  # timeout in ms
 
-        assert(self._role == PUBSUB_SUB), 'invalid role on get_nowait'
-
         if _uninterruptible(self._q.poll, flags=zmq.POLLIN, timeout=timeout):
 
-            topic, data = _uninterruptible(self._q.recv_multipart, 
-                                           flags=zmq.NOBLOCK)
-            msg = msgpack.unpackb(data) 
-            if self._debug:
-                self._log.debug("<< %s", ([topic, pprint.pformat(msg)]))
+            data  = _uninterruptible(self._q.recv_multipart, flags=zmq.NOBLOCK)
+            topic = None
+
+            # we run into an intermitant failure mode where the topic element of
+            # the multipart message is duplicated, but only when a *previous*
+            # receive got interrupted.  We correct this here
+            # FIXME: understand *why* this happens
+            if isinstance(data, list):
+                if len(data) == 2:
+                    topic, data = data[0], data[1]
+                elif len(data) == 3 and data[0] == data[1]:
+                    self._log.error('====== XXX 1 %s', pprint.pformat(data))
+                    topic, data = data[1], data[2]
+
+            if not topic or not data:
+                return [None, None]
+
+            msg = msgpack.unpackb(data)
+
+          # if self._debug:
+          #     self._log.debug('<- %s %s', self.channel, msg)
+
             return [topic, msg]
 
         else:
