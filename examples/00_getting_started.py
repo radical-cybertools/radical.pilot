@@ -12,12 +12,6 @@ import radical.utils as ru
 
 dh = ru.DebugHelper()
 
-N = 2
-N = 1024 * 64
-N = 1024 * 2
-
-P = 16
-U = 33
 
 # ------------------------------------------------------------------------------
 #
@@ -67,8 +61,7 @@ if __name__ == '__main__':
                    'project'       : config[resource]['project'],
                    'queue'         : config[resource]['queue'],
                    'access_schema' : config[resource]['schema'],
-                 # 'cores'         : N/128 + 16
-                   'cores'         : P + 16
+                   'cores'         : config[resource]['cores'],
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
@@ -84,10 +77,11 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        report.info('create %d unit description(s)\n\t' % U)
+        n = 128
+        report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
-        for i in range(0, U):
+        for i in range(0, n):
 
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
