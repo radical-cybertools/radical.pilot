@@ -5,6 +5,27 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.11 Release                                                       2018-10-09
+--------------------------------------------------------------------------------
+
+  - fix 'getting_started' example (no MPI)
+
+
+0.50.10 Release                                                       2018-09-29
+--------------------------------------------------------------------------------
+
+  - ensure the correct code path in SAGA for Blue Waters
+
+
+0.50.9  Release                                                       2018-09-28
+--------------------------------------------------------------------------------
+
+  - fix examples
+  - fix issue #1715 (#1716) 
+  - remove Stampede's resource configs. issue #1711
+  - supermic does not like `curl -1` (#1723) 
+
+
 0.50.8  Release                                                       2018-08-03
 --------------------------------------------------------------------------------
 

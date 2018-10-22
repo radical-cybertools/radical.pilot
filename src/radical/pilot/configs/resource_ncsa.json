@@ -9,8 +9,8 @@
             "filesystem_endpoint"     : "gsisftp://bw.ncsa.illinois.edu/"
         },
         "local"                       : {
-            "job_manager_endpoint"    : "torque://localhost",
-            "filesystem_endpoint"     : "file://localhost/"
+            "job_manager_endpoint"    : "torque://bw.ncsa.illinois.edu",
+            "filesystem_endpoint"     : "file://bw.ncsa.illinois.edu"
         },
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
@@ -78,8 +78,8 @@
             "filesystem_endpoint"     : "gsisftp://bw.ncsa.illinois.edu/"
         },
         "local"                      : {
-            "job_manager_endpoint"    : "torque://localhost",
-            "filesystem_endpoint"     : "file://localhost/"
+            "job_manager_endpoint"    : "torque://bw.ncsa.illinois.edu",
+            "filesystem_endpoint"     : "file://bw.ncsa.illinois.edu/"
         },
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
