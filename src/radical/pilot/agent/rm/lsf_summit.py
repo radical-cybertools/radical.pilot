@@ -1,12 +1,12 @@
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2018, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 
 import os
 
 from base import LRMS
-
+import radical.utils as ru
 
 # ==============================================================================
 #
@@ -16,14 +16,29 @@ class LSF_SUMMIT(LRMS):
     #
     def __init__(self, cfg, session):
 
-        # We call the base class constructor to make sure we don't 
-        # miss any future critical changes. But as such, 
-        # the LSF_SUMMIT LRMS, currently, does not need the base
-        # constructor due to the difference in the assumed node
-        # structure. If the node-structure with sockets needs to
-        # be extended to other LRMS we will change the base 
-        # constructor.
-        LRMS.__init__(self, cfg, session)
+        # We temporarily do not call the base class constructor. The 
+        # constraint was not to change the base class at any point. 
+        # The constructor of the base class performs certain computations
+        # that are specific to a node architecture, i.e., (i) requirement of
+        # cores_per_node and gpus_per_node, (ii) no requirement for 
+        # sockets_per_node, and (iii) no validity checks on cores_per_socket,
+        # gpus_per_socket, and sockets_per_node. It is, hence, incompatible
+        # with the node architecture expected within this module.
+
+        # We have three options:
+        # 1) Change the child class, do not call the base class constructor
+        # 2) Call the base class constructor, make the child class and its node
+        #    structure compatible with that expected in the base class.
+        # 3) Change the base class --- Out of scope of this project
+
+        # 3 is probably the correct approach, but long term. 2 is not a
+        # good approach as we are striving to keep a child class compatible
+        # with a base class (this should never be the case).
+        # We go ahead with 1, process of elimination really, but with the
+        # advantage that we have the code content that will be required when
+        # we implement 3, the long term approach.
+
+        # LRMS.__init__(self, cfg, session)
 
         self.name            = type(self).__name__
         self._cfg            = cfg
@@ -72,7 +87,7 @@ class LSF_SUMMIT(LRMS):
         self._log.info("Discovered execution environment: %s", self.node_list)
 
         # Make sure we got a valid nodelist and a valid setting for
-        # cores_per_node
+        # cores_per_socket and sockets_per_node
         if not self.node_list or self.sockets_per_node < 1 or self.cores_per_socket < 1:
             raise RuntimeError('LRMS configuration invalid (%s)(%s)(%s)' % \
                     (self.node_list, self.sockets_per_node, self.cores_per_socket))
@@ -132,17 +147,16 @@ class LSF_SUMMIT(LRMS):
         # ultimately use, as it is included into the cfg passed to all
         # components.
         #
-        # five elements are well defined:
-        #   lm_info:        the dict received via the LM's lrms_config_hook
-        #   node_list:      a list of node names to be used for unit execution
-        #   cores_per_node: as the name says
-        #   gpus_per_node:  as the name says
-        #   agent_nodes:    list of node names reserved for agent execution
+        # seven elements are well defined:
+        #   lm_info:            dict received via the LM's lrms_config_hook
+        #   node_list:          list of node names to be used for unit execution
+        #   sockets_per_node:   integer number of sockets on a node
+        #   cores_per_socket:   integer number of cores per socket
+        #   gpus_per_socket:    integer number of gpus per socket
+        #   agent_nodes:        list of node names reserved for agent execution
+        #   lfs_per_node:       dict consisting the path and size of lfs on each node
         #
-        # That list may turn out to be insufficient for some schedulers.  Yarn
-        # for example may need to communicate YARN service endpoints etc.  an
-        # LRMS can thus expand this dict, but is then likely bound to a specific
-        # scheduler which can interpret the additional information.
+
         self.lrms_info['name']              = self.name
         self.lrms_info['lm_info']           = self.lm_info
         self.lrms_info['node_list']         = self.node_list
@@ -180,21 +194,44 @@ class LSF_SUMMIT(LRMS):
         # and "-R" entries per host (tasks per host).
         # (That results in "-n" / "-R" unique hosts)
         #
-        lsf_nodes = [line.strip() for line in open(lsf_hostfile)]
+
+        # Summitdev seems to be providing, in the hostfile, the login node (with
+        # 1 core) in addition to the set of compute nodes obtained via LSF
+        # We exclude nodes with 'login' in their name and keep only the compute
+        # nodes
+        lsf_nodes = [line.strip() for line in open(lsf_hostfile) if 'login' not in line]
         self._log.info("Found LSB_DJOB_HOSTFILE %s. Expanded to: %s",
                        lsf_hostfile, lsf_nodes)
+        
+        # Hostfile provides an entry with the node name for every core in the
+        # node. So for a node with 20 cores, there will 20 entries with the
+        # same node name. To get the node list, we create a set to find the 
+        # uniqueu node names.
         lsf_node_list = list(set(lsf_nodes))
 
         # Grab the core (slot) count from the environment
         # Format: hostX N hostY N hostZ N
+        
+        # Remove login node details if it is in mcpu_hosts
+        # Summitdev seems to be providing, in the cpu_hosts list, the login node
+        # (with 1 core) in addition to the set of compute nodes obtained via LSF
+        # We exclude nodes with 'login' in their name and their corresponding
+        # core count, and keep only the compute nodes and their core counts
+        copy_lsb_mcpu_hosts =  lsb_mcpu_hosts.split()
+        for entry in lsb_mcpu_hosts.split():
+            if 'login' in entry:
+                del copy_lsb_mcpu_hosts[lsb_mcpu_hosts.index(entry)]
+                # Remove the following core count of the login node as well
+                del copy_lsb_mcpu_hosts[lsb_mcpu_hosts.index(entry)]
+        lsb_mcpu_hosts = ' '.join(copy_lsb_mcpu_hosts)
+
         lsf_cores_count_list = map(int, lsb_mcpu_hosts.split()[1::2])
         lsf_core_counts      = list(set(lsf_cores_count_list))
         lsf_sockets_per_node = self._cfg.get('sockets_per_node', 1)
 
         # For now, assume all sockets have an equal number of cores and gpus
         lsf_cores_per_socket = min(lsf_core_counts) / lsf_sockets_per_node
-        lsf_gpus_per_socket  = self._cfg.get('gpus_per_node', 0) \
-                                                    / lsf_sockets_per_node
+        lsf_gpus_per_socket  = self._cfg.get('gpus_per_socket', 0)
 
         lsf_lfs_per_node = {'path': self._cfg.get('lfs_path_per_node', None),
                             'size': self._cfg.get('lfs_size_per_node', 0)}
@@ -203,12 +240,15 @@ class LSF_SUMMIT(LRMS):
                        lsf_core_counts, lsf_cores_per_socket)
 
         # node names are unique, so can serve as node uids
-        self.node_list        = [[node, node] for node in lsf_node_list]
+        # The structure of the node list is 
+        # [[node1 name, node1 uid],[node2 name, node2 uid]]
+        # The node name and uid can be the same
+
+        self.node_list        = [[node, int(ind)+1] for ind, node in enumerate(lsf_node_list)]
         self.sockets_per_node = lsf_sockets_per_node
         self.cores_per_socket = lsf_cores_per_socket
         self.gpus_per_socket  = lsf_gpus_per_socket
         self.lfs_per_node     = lsf_lfs_per_node
-
 
 # ------------------------------------------------------------------------------
 

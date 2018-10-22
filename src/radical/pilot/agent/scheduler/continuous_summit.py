@@ -142,12 +142,16 @@ class ContinuousSummit(AgentSchedulingComponent):
             raise RuntimeError("LRMS %s didn't _configure node_list."
                               % self._lrms_info['name'])
 
-        if self._lrms_cores_per_node is None:
-            raise RuntimeError("LRMS %s didn't _configure cores_per_node."
+        if self._lrms_cores_per_socket is None:
+            raise RuntimeError("LRMS %s didn't _configure cores_per_socket."
                               % self._lrms_info['name'])
 
-        if self._lrms_gpus_per_node is None:
-            raise RuntimeError("LRMS %s didn't _configure gpus_per_node."
+        if self._lrms_sockets_per_node is None:
+            raise RuntimeError("LRMS %s didn't _configure sockets_per_node."
+                              % self._lrms_info['name'])
+
+        if self._lrms_gpus_per_socket is None:
+            raise RuntimeError("LRMS %s didn't _configure gpus_per_socket."
                               % self._lrms_info['name'])
 
         # create and initialize the wait pool
@@ -335,6 +339,31 @@ class ContinuousSummit(AgentSchedulingComponent):
                 else:
                     node['lfs']['size'] += nodes['lfs']['size']
 
+    # --------------------------------------------------------------------------
+    #
+    # Overloaded from Base
+    def slot_status(self):
+        '''
+        Returns a multi-line string corresponding to the status of the node list
+        '''
+
+        ret = "|"
+        for node in self.nodes:
+            for socket in node['sockets']:
+                for core in socket['cores']:
+                    if core == rpc.FREE:
+                        ret += '-'
+                    else:
+                        ret += '#'
+                ret += ':'
+                for gpu in socket['gpus']:
+                    if gpu == rpc.FREE:
+                        ret += '-'
+                    else:
+                        ret += '#'
+                ret += '|'
+
+        return ret
 
     def _try_allocation(self, unit):
         """

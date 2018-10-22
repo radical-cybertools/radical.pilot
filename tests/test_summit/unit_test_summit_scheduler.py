@@ -132,3 +132,27 @@ def test_release_slot(
 
     tearDown()    
 
+@mock.patch.object(ContinuousSummit, '__init__', return_value=None)
+@mock.patch.object(ContinuousSummit, 'advance')
+@mock.patch.object(ru.Profiler, 'prof')
+@mock.patch('radical.utils.raise_on')
+@mock.patch.object(ContinuousSummit, 'register_input')
+@mock.patch.object(ContinuousSummit, 'register_output')
+@mock.patch.object(ContinuousSummit, 'register_subscriber')
+@mock.patch.object(ContinuousSummit, 'register_publisher')
+def test_initialize_child(
+                    mocked_init,
+                    mocked_method,
+                    mocked_profiler,
+                    mocked_raise_on,
+                    mocked_input,
+                    mocked_output,
+                    mocked_subscriber,
+                    mocked_publisher):
+
+    cfg, _, test_cases = setUp()
+
+    component = ContinuousSummit(cfg=cfg, session=None)
+    component._cfg = cfg
+    component._log  = ru.get_logger('dummy')
+    component.initialize_child()
