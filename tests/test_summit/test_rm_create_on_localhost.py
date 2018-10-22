@@ -4,7 +4,6 @@ from radical.pilot.agent import rm as rpa_rm
 import os
 import glob
 import shutil
-from pprint import pprint
 
 try:
     import mock
@@ -30,7 +29,6 @@ def setUp():
     session = rp.Session()
     cfg = session.get_resource_config(resource='ornl.summitdev')
     cfg["cores"] = 40
-    # pprint(cfg)
 
     # LSB_DJOB_HOSTFILE = ./sample_summitdev_hostfile
     os.environ['LSB_DJOB_HOSTFILE'] = './sample_summitdev_hostfile'
