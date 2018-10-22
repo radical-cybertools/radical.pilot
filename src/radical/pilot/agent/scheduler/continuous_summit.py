@@ -340,6 +340,31 @@ class ContinuousSummit(AgentSchedulingComponent):
                 else:
                     node['lfs']['size'] += nodes['lfs']['size']
 
+    # --------------------------------------------------------------------------
+    #
+    # Overloaded from Base
+    def slot_status(self):
+        '''
+        Returns a multi-line string corresponding to the status of the node list
+        '''
+
+        ret = "|"
+        for node in self.nodes:
+            for socket in node['sockets']:
+                for core in socket['cores']:
+                    if core == rpc.FREE:
+                        ret += '-'
+                    else:
+                        ret += '#'
+                ret += ':'
+                for gpu in socket['gpus']:
+                    if gpu == rpc.FREE:
+                        ret += '-'
+                    else:
+                        ret += '#'
+                ret += '|'
+
+        return ret
 
     def _try_allocation(self, unit):
         """
