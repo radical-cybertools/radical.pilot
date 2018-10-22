@@ -22,6 +22,7 @@ LM_NAME_MPIRUN        = 'MPIRUN'
 LM_NAME_MPIRUN_CCMRUN = 'MPIRUN_CCMRUN'
 LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
+LM_NAME_JSRUN         = 'JSRUN'
 LM_NAME_ORTE          = 'ORTE'
 LM_NAME_ORTE_LIB      = 'ORTE_LIB'
 LM_NAME_POE           = 'POE'
@@ -100,6 +101,7 @@ class LaunchMethod(object):
         from .mpirun_ccmrun  import MPIRunCCMRun
         from .mpirun_dplace  import MPIRunDPlace
         from .mpirun_rsh     import MPIRunRSH
+        from .jsrun          import JSRUN
         from .orte           import ORTE
         from .orte_lib       import ORTELib
         from .poe            import POE
@@ -121,6 +123,7 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_CCMRUN : MPIRunCCMRun,
                 LM_NAME_MPIRUN_DPLACE : MPIRunDPlace,
                 LM_NAME_MPIRUN_RSH    : MPIRunRSH,
+                LM_NAME_JSRUN         : JSRUN,
                 LM_NAME_ORTE          : ORTE,
                 LM_NAME_ORTE_LIB      : ORTELib,
                 LM_NAME_POE           : POE,

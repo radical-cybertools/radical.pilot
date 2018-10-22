@@ -4,7 +4,7 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 1,
+        "cores"    : 1024,
         "gpus"     : 2
     },
 

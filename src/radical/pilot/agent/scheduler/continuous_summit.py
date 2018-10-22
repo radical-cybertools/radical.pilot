@@ -6,7 +6,6 @@ __license__ = "MIT"
 import os
 import inspect
 import logging
-import pprint
 
 import threading as mt
 
@@ -985,4 +984,3 @@ class ContinuousSummit(AgentSchedulingComponent):
 
 
 # ------------------------------------------------------------------------------
-
