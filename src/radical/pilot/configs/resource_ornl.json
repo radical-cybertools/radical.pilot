@@ -211,7 +211,7 @@
         "schemas"                     : ["local"],
         "local"                       : {
             "job_manager_hop"         : "fork://localhost/",
-            "job_manager_endpoint"    : "lsfsummit://summitdev/",
+            "job_manager_endpoint"    : "lsfsummit://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "batch",
