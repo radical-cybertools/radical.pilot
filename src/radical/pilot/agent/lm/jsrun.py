@@ -27,7 +27,7 @@ class JSRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _create_resource_set_file(self, slots, cuid):
+    def _create_resource_set_file(self, slots, cuid, sandbox):
         """
         This method takes as input a CU slots and creates the necessary
         resource set file. This resource set file is then use by jsrun to 
@@ -59,8 +59,11 @@ class JSRUN(LaunchMethod):
              "gpus_per_node": 6
             }
 
-        id : int
+        id : str
             The ID of the unit.
+        
+        sandbox : str
+            The unit's sandbox path
         """
 
         node_ids = list()
@@ -87,7 +90,7 @@ class JSRUN(LaunchMethod):
                 rs_str += '}\n'
                 rs_id += 1
         
-        rs_name = 'rs_layout_cu_%06d' % cuid
+        rs_name = sandbox + '/rs_layout_cu_%s' % cuid
         with open(rs_name, 'w') as rs_file:
             rs_file.write(rs_str)      
 
@@ -106,18 +109,9 @@ class JSRUN(LaunchMethod):
         task_env       = cud.get('environment') or dict()
         task_args      = cud.get('arguments')   or list()
         task_argstr    = self._create_arg_string(task_args)
+        task_sandbox   = ru.Url(cu['unit_sandbox']).path
 
-     #  import pprint
-     #  self._log.debug('prep %s', pprint.pformat(cu))
         self._log.debug('prep %s', cu['uid'])
-
-        if 'lm_info' not in slots:
-            raise RuntimeError('No lm_info to launch via %s: %s'
-                               % (self.name, slots))
-
-        if not slots['lm_info']:
-            raise RuntimeError('slots missing for %s: %s'
-                               % (self.name, slots))
 
         if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
         else          : task_command = task_exec
@@ -128,10 +122,12 @@ class JSRUN(LaunchMethod):
             for var in env_list:
                 env_string += '-E "%s" ' % var
 
-        self._create_resource_set_file(slots = slots, cuid = cu['uid'])
+        #self._create_resource_set_file(slots = slots, cuid = cu['uid'],
+        #                               sandbox = task_sandbox)
 
-        flags   = '-U %s -n%d -a%d ' % ('rs_layout_cu_%06d' % cu['uid'], 
-                                        task_procs, task_procs)
+        #flags = '-U %s -n%d -a%d ' % ('rs_layout_cu_%s' % cu['uid'], 
+        #                               task_procs, task_procs)
+        flags = '-n%d -a ' % (task_procs)
         command = '%s %s %s %s' % (self.launch_command, flags,
                                             env_string, 
                                             task_command)
