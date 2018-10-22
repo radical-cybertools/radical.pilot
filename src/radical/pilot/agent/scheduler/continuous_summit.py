@@ -143,12 +143,16 @@ class ContinuousSummit(AgentSchedulingComponent):
             raise RuntimeError("LRMS %s didn't _configure node_list."
                               % self._lrms_info['name'])
 
-        if self._lrms_cores_per_node is None:
-            raise RuntimeError("LRMS %s didn't _configure cores_per_node."
+        if self._lrms_cores_per_socket is None:
+            raise RuntimeError("LRMS %s didn't _configure cores_per_socket."
                               % self._lrms_info['name'])
 
-        if self._lrms_gpus_per_node is None:
-            raise RuntimeError("LRMS %s didn't _configure gpus_per_node."
+        if self._lrms_sockets_per_node is None:
+            raise RuntimeError("LRMS %s didn't _configure sockets_per_node."
+                              % self._lrms_info['name'])
+
+        if self._lrms_gpus_per_socket is None:
+            raise RuntimeError("LRMS %s didn't _configure gpus_per_socket."
                               % self._lrms_info['name'])
 
         # create and initialize the wait pool
