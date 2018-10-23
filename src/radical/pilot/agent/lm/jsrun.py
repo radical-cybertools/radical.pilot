@@ -127,7 +127,7 @@ class JSRUN(LaunchMethod):
 
         #flags = '-U %s -n%d -a%d ' % ('rs_layout_cu_%s' % cu['uid'], 
         #                               task_procs, task_procs)
-        flags = '-n%d -a ' % (task_procs)
+        flags = '-n%d -a1 ' % (task_procs)
         command = '%s %s %s %s' % (self.launch_command, flags,
                                             env_string, 
                                             task_command)
