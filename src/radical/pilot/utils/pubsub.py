@@ -1,6 +1,5 @@
 
 import zmq
-import copy
 import time
 import errno
 import pprint
