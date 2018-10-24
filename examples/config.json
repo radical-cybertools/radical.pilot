@@ -65,13 +65,6 @@
         "cores"    : 2
     },
 
-    "ncar.cheyenne_mpirun" : {
-        "project"  : "urtg0014",
-        "queue"    : "regular",
-        "schema"   : "fork",
-        "cores"    : 64
-    },
-
     "ncsa.bw_orte" : {
         "project"  : "gk4",
         "queue"    : "debug",
@@ -259,6 +252,13 @@
         "queue"    : null,
         "schema"   : null,
         "cores"    : 64
+    },
+
+    "ncar.cheyenne": {
+	"project"      : "URTG0014",
+	"queue"        : "regular",
+	"schema"       : "local",
+	"cores"        : 72
     },
 
     "ornl.titan" : {
