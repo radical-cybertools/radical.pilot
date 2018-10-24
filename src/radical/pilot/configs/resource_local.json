@@ -28,7 +28,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "cores_per_node"              : 8,
+        "cores_per_node"              : 128,
         "gpus_per_node"               : 1
     },
 

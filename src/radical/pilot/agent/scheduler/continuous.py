@@ -247,9 +247,9 @@ class Continuous(AgentSchedulingComponent):
         '''
 
         # dig out the allocation request details
-        requested_procs  = cud['cpu_processes']
-        threads_per_proc = cud['cpu_threads']
-        requested_gpus   = cud['gpu_processes']
+        requested_procs  = int(cud['cpu_processes'])
+        threads_per_proc = int(cud['cpu_threads'])
+        requested_gpus   = int(cud['gpu_processes'])
 
         # make sure that processes are at least single-threaded
         if not threads_per_proc:
@@ -261,7 +261,7 @@ class Continuous(AgentSchedulingComponent):
         # make sure that the requested allocation fits on a single node
         if  requested_cores > self._lrms_cores_per_node or \
             requested_gpus  > self._lrms_gpus_per_node     :
-            raise ValueError('Non-mpi unit does not fit onto single node (%3d/%3d : %3d/%3d XXX)',
+            raise ValueError('Non-mpi unit does not fit onto single node (cpu: %3d > %3d | gpu: %3d > %3d)',
                     requested_cores, self._lrms_cores_per_node, 
                     requested_gpus,  self._lrms_gpus_per_node)
 
@@ -324,9 +324,9 @@ class Continuous(AgentSchedulingComponent):
         '''
 
         # dig out the allocation request details
-        requested_procs  = cud['cpu_processes']
-        threads_per_proc = cud['cpu_threads']
-        requested_gpus   = cud['gpu_processes']
+        requested_procs  = int(cud['cpu_processes'])
+        threads_per_proc = int(cud['cpu_threads'])
+        requested_gpus   = int(cud['gpu_processes'])
 
         # make sure that processes are at least single-threaded
         if not threads_per_proc:
@@ -443,7 +443,7 @@ class Continuous(AgentSchedulingComponent):
         # if we did not find enough, there is not much we can do at this point
         if  alloced_cores < requested_cores or \
             alloced_gpus  < requested_gpus     :
-            return None # signal failure
+            return None  # signal failure
 
         # this should be nicely filled out now - return
         return slots
