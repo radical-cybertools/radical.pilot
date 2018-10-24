@@ -76,7 +76,9 @@ class MPIRun_MPT(LaunchMethod):
         ## On Cheyenne (which is the only machine that requires mpirun_mpt
         # currently), we also have to set MPI_SHEPHERD=true, we add it to the
         # environment of the cu which will get parsed in the spawner
-        cu['environment']['MPI_SHEPHERD'] = True
+        if 'environment' not in cu['description'].keys():
+            cu['description']['environment'] = dict()
+        cu['description']['environment']['MPI_SHEPHERD'] = True
 
         command = "%s %s -np %d %s %s" % (  self.launch_command, 
                                             hosts_string, 
