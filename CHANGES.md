@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.14 Release                                                       2018-10-24
+--------------------------------------------------------------------------------
+
+  - add Cheyenne support - thanks Vivek!
+
+
 0.50.13 Release                                                       2018-10-16
 --------------------------------------------------------------------------------
 
