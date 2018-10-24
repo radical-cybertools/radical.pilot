@@ -73,23 +73,18 @@ class MPIRun_MPT(LaunchMethod):
                 hostlist.append(node[0])
         hosts_string = ",".join(hostlist)
 
-        ## On Cheyenne (which is the only machine that requires mpirun_mpt
+        # On Cheyenne (which is the only machine that requires mpirun_mpt
         # currently), we also have to set MPI_SHEPHERD=true, we add it to the
         # environment of the cu which will get parsed in the spawner
         if 'environment' not in cu['description'].keys():
             cu['description']['environment'] = dict()
         cu['description']['environment']['MPI_SHEPHERD'] = True
 
-        command = "%s %s -np %d %s %s" % (  self.launch_command, 
-                                            hosts_string, 
-                                            1, # usually it is len(hostlist),
-                                            # as it means run N processes over
-                                            # N hosts but for Cheyenne it is 1 
-                                            # since specification of the host 
-                                            # means land N processes on EACH
-                                            # host, where N is specified as arg
-                                            # to -np
-                                            env_string, task_command)
+        # -np:  usually it is len(hostlist), as it means run N processes over
+        # N hosts but for Cheyenne it is 1 since specification of the host means
+        # land N processes on EACH host, where N is specified as arg to -np
+        command = "%s %s -np %d %s %s" % (self.launch_command, hosts_string, 1,
+                                          env_string, task_command)
 
         return command, None
 

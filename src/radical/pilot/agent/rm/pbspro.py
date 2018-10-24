@@ -43,12 +43,11 @@ class PBSPro(LRMS):
         val = os.environ.get('NUM_PPN')
         if not val:
             val = os.environ.get('SAGA_PPN')
+        
         if not val:
-            msg = "$NUM_PPN not set!"
-            self._log.error(msg)
-            raise RuntimeError(msg)
-        else:
-            pbspro_num_ppn = int(val)
+            raise RuntimeError("$NUM_PPN / $SAGA_PPN not set!")
+
+        pbspro_num_ppn = int(val)
 
         # Number of Nodes allocated
         val = os.environ.get('NODE_COUNT')
