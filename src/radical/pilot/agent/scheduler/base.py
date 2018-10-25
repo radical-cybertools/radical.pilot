@@ -426,6 +426,7 @@ class AgentSchedulingComponent(rpu.Component):
         t_spec = descr.get('cpu_threads',   '')
         tags   = descr.get('tags')
         stid   = tags.get('app-stats')
+        constr = tags.get('constraint')
 
         if not stid:
             return
@@ -447,9 +448,11 @@ class AgentSchedulingComponent(rpu.Component):
             combinations = list()
             for p in range(pmin, pmax + 1):
                 for t in range(tmin, tmax + 1):
-                    combinations.append([p, t])
+                    if constr and eval(constr):
+                        combinations.append([p, t])
 
             with self._app_lock:
+
                 self._app_stats[stid] = {'to_test' : combinations,
                                          'n_tests' : len(combinations),
                                          'tested'  : dict(),
@@ -474,15 +477,18 @@ class AgentSchedulingComponent(rpu.Component):
 
         # still anything to test?
         elif self._app_stats[stid]['to_test']:
-            p, t = self._app_stats[stid]['to_test'].pop()
+            p, t = self._app_stats[stid]['to_test'].pop(0)
             self._log.debug('==== test     %s: %d %d', uid, p, t)
 
         # or is nothing to decide right now>
         else:
             prange = self._app_stats[stid]['prange']
             trange = self._app_stats[stid]['trange']
-            p = random.choice(range(prange[0], prange[1] + 1))
-            t = random.choice(range(trange[0], trange[1] + 1))
+            while True:
+                p = random.choice(range(prange[0], prange[1] + 1))
+                t = random.choice(range(trange[0], trange[1] + 1))
+                if eval(constr):
+                    break
             self._log.debug('==== random   %s: %d %d', uid, p, t)
 
         unit['t_orig'] = t_spec

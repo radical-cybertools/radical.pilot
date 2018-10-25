@@ -81,7 +81,6 @@ if __name__ == '__main__':
                         'action': rp.TRANSFER})
         report.ok('>>ok\n')
 
-
         report.header('submit units')
 
         # Register the ComputePilot in a UnitManager object.

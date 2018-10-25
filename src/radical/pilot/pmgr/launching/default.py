@@ -199,6 +199,9 @@ class Default(PMGRLaunchingComponent):
             # FIXME: honor sd flags if given (recursive...)
             flags = rsfs.CREATE_PARENTS
 
+            if os.path.isdir(src.path):
+                flags |= rs.filesystem.RECURSIVE
+
             # Define and open the staging directory for the pilot
             # We use the target dir construct here, so that we can create
             # the directory if it does not yet exist.

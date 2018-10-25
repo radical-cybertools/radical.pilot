@@ -1,0 +1,53 @@
+; mdpfile used for one iteration
+;
+;nstcomm                 = 1000
+;comm-grps               = Protein
+
+integrator               = sd
+dt                       = 0.001
+nsteps                   = 6000000
+nstxout                  = 1000
+nstvout                  = 0
+nstlog                   = 0 
+nstenergy                = 0 
+nstxtcout                = 0
+xtc_grps                 = Protein
+energygrps               = Protein
+
+; non-bonded interactions 
+; cut=12.0  nonbonded cutoff 12angstrom
+
+cutoff-scheme            = verlet
+pbc                      = xyz
+nstlist                  = 10
+comm_mode                = none
+
+nstcalcenergy            = 0
+ns_type                  = simple
+coulombtype              = cut-off
+;pme-order               = 4
+;fourierspacing          = 0.1
+rlist                    = 1.2
+rcoulomb                 = 1.2
+vdwtype                  = cut-off
+;rvdw_switch             = 0.7
+rvdw                     = 1.2
+;dispcorr                = EnerPres
+
+; TEMPERATURE COUPLING
+tcoupl                   = ;<-- ignored with stochastic dynamics
+tc-grps                  = Protein
+tau_t                    = 1 ;tau_t is originally 2. larger number = less friction
+ref_t                    = 300
+
+;ref_p              
+gen_vel                  = yes
+gen_temp                 = 300
+gen_seed                 = -1
+
+ld-seed = -1
+
+; ntc=2, ntf=2
+constraints              = hbonds
+constraint_algorithm     = SHAKE
+
