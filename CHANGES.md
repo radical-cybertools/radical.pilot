@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.15 Release                                                       2018-10-24
+--------------------------------------------------------------------------------
+
+  - fix recursive pilot staging             
+
+
 0.50.14 Release                                                       2018-10-24
 --------------------------------------------------------------------------------
 
