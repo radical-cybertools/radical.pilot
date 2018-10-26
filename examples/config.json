@@ -27,6 +27,13 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
+        "cores"    : 64
+    },
+
+    "local.localhost_ortelib" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
         "cores"    : 2
     },
 
@@ -45,20 +52,6 @@
     },
 
     "local.localhost_spark_ana" : {
-        "project"  : null,
-        "queue"    : null,
-        "schema"   : null,
-        "cores"    : 2
-    },
-
-    "local.localhost_orte" : {
-        "project"  : null,
-        "queue"    : null,
-        "schema"   : null,
-        "cores"    : 2
-    },
-
-    "local.localhost_ortelib" : {
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
@@ -262,6 +255,13 @@
     },
 
     "ornl.titan" : {
+        "project"  : "BIP149",
+        "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    : 160
+    },
+
+    "ornl.titan_aprun" : {
         "project"  : "BIP149",
         "queue"    : "debug",
         "schema"   : "local",
