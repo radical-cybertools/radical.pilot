@@ -843,7 +843,9 @@ class Component(object):
         self.is_valid()
 
         if not self._publishers.get(pubsub):
-            raise RuntimeError("can't route notification '%s'" % pubsub)
+            self._log.warn("can't route '%s' notification: %s" % (pubsub,
+                self._publishers.keys()))
+            return
 
         self._log.debug('pub %s', msg)
         self._log.debug('====== x4 %s', [pubsub, msg])

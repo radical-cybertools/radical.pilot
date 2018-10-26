@@ -458,6 +458,8 @@ class UnitManager(rpu.Component):
                 unit_dict['state'] = s
                 self._units[uid]._update(unit_dict)
 
+                # we don't usually advance state at this point, but just keep up
+                # with state changes reported from elsewhere
                 if advance:
                     self.advance(unit_dict, s, publish=publish, push=False,
                                  prof=False)

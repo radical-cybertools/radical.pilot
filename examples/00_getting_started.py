@@ -12,6 +12,7 @@ import radical.utils as ru
 
 dh = ru.DebugHelper()
 
+
 # ------------------------------------------------------------------------------
 #
 # READ the RADICAL-Pilot documentation: http://radicalpilot.readthedocs.org/
@@ -28,7 +29,7 @@ if __name__ == '__main__':
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
-    if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
+    if   len(sys.argv)  > 2: report.exit('Usage: %s [resource]\n' % sys.argv[0])
     elif len(sys.argv) == 2: resource = sys.argv[1]
     else                   : resource = 'local.localhost'
 
@@ -45,7 +46,8 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
+        pwd    = os.path.dirname(os.path.abspath(__file__))
+        config = ru.read_json('%s/config.json' % pwd)
         report.ok('>>ok\n')
 
         report.header('submit pilots')
@@ -56,12 +58,12 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {'resource'      : resource,
-                   'runtime'       : 15,  # pilot runtime (min)
+                   'runtime'       : 60,  # pilot runtime (min)
                    'exit_on_error' : True,
                    'project'       : config[resource]['project'],
                    'queue'         : config[resource]['queue'],
                    'access_schema' : config[resource]['schema'],
-                   'cores'         : config[resource]['cores']
+                   'cores'         : config[resource]['cores'],
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
@@ -78,7 +80,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 1024   # number of units to run
+        n = 128   # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -87,12 +89,13 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = '/bin/date'
+            cud.executable       = '/bin/sleep'
+            cud.arguments        = ['10']
             cud.gpu_processes    = 0
-            cud.cpu_processes    = 2
-            cud.cpu_threads      = 2
-            cud.cpu_process_type = rp.MPI
-            cud.cpu_thread_type  = rp.OpenMP
+            cud.cpu_processes    = 1
+            cud.cpu_threads      = 1
+            cud.cpu_process_type = rp.POSIX
+            cud.cpu_thread_type  = rp.POSIX
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -102,7 +105,7 @@ if __name__ == '__main__':
         # assigning ComputeUnits to the ComputePilots.
         umgr.submit_units(cuds)
 
-        # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+        # Wait for units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
 

@@ -36,10 +36,13 @@ class Fork(LRMS):
         # cores into that many virtual nodes.  cpn defaults to requested_cores,
         # to preserve the previous behavior (1 node).
         self.cores_per_node = self._cfg.get('cores_per_node', self.requested_cores)
-        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
+        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
+
+        if not self.cores_per_node:
+            self.cores_per_node = 1
 
         self.node_list  = list()
-        requested_nodes = int(math.ceil(float(self.requested_cores) / \
+        requested_nodes = int(math.ceil(float(self.requested_cores) /
                                         float(self.cores_per_node ) ) )
         for i in range(requested_nodes):
             # enumerate the node list entries for a unique uis
