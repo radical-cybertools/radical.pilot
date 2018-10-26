@@ -164,6 +164,8 @@ class ShellFS(AgentExecutingComponent):
         try:
             os.unlink(self._fifo_cmd_name)
             os.unlink(self._fifo_inf_name)
+            self._fifo_cmd.close()
+            self._fifo_inf.close()
         except:
             pass
 
