@@ -45,7 +45,7 @@ LOCAL_SCHEME   = 'file'
 BOOTSTRAPPER_0 = "bootstrap_0.sh"
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Default(PMGRLaunchingComponent):
 
@@ -79,8 +79,13 @@ class Default(PMGRLaunchingComponent):
         self.register_input(rps.PMGR_LAUNCHING_PENDING, 
                             rpc.PMGR_LAUNCHING_QUEUE, self.work)
 
-        # FIXME: make interval configurable
-        self.register_timed_cb(self._pilot_watcher_cb, timer=10.0)
+        # FIXME: make these configurable in config files
+        self._poll_mode = os.environ.get('RADICAL_PILOT_POLL_MODE', 'CACHED')
+        self._poll_time = float(os.environ.get('RADICAL_PILOT_POLL_TIME', 10.0))
+        self.register_timed_cb(self._pilot_watcher_cb, timer=self._poll_time)
+
+        assert(self._poll_mode in ['FRESH', 'CACHE'])
+        assert(self._poll_time >  0.0)
 
         # we listen for pilot cancel and input staging commands
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
@@ -255,13 +260,39 @@ class Default(PMGRLaunchingComponent):
         # use a copy of the pilots_tocheck list and iterate over that, and only
         # lock other members when they are manipulated.
 
+        # if poll mode is 'CACHE`, we use the existing pilot job handles to
+        # check for state.  If set to `FRESH`, we create a new job service
+        # instance and reconnect to the jobs.
+        # NOTE: this relies on the SAGA layer ability to reconnect to the jobs.
+
+
         ru.raise_on('pilot_watcher_cb')
 
+        to_close = list()
         tc = rs.job.Container()
         with self._pilots_lock, self._check_lock:
 
             for pid in self._checking:
-                tc.add(self._pilots[pid]['job'])
+
+                if self._poll_mode == 'CACHE':
+                    job = self._pilots[pid]['job']
+
+                elif self._poll_mode == 'FRESH':
+
+                    # FIXME: this must be bulked by js_ep for many pilots
+                    js_ep = self._pilots[pid]['jsurl']
+                    jid   = self._pilots[pid]['jid']
+                    js    = rs.job.Service(js_ep)
+                    job   = js.get_job(jid)
+                    self._log.debug('check [%s] on [%s]', js_ep, jid)
+                    to_close.append(js)
+
+                else:
+
+                    raise ValueError('unknown poll mode: %s' % self._poll_mode)
+
+                tc.add(job)
+
 
         states = tc.get_states()
 
@@ -324,6 +355,9 @@ class Default(PMGRLaunchingComponent):
 
         if to_cancel:
             self._kill_pilots(to_cancel)
+
+        for js in to_close:
+            js.close()
 
         return True
 
@@ -431,6 +465,8 @@ class Default(PMGRLaunchingComponent):
 
                     pilot = self._pilots[pid]['pilot']
                     job   = self._pilots[pid]['job']
+
+                    # FIXME: reconnect to the job when using FRESH poll mode
 
                     if pilot['state'] in rp.FINAL:
                         continue
@@ -717,7 +753,9 @@ class Default(PMGRLaunchingComponent):
 
                 self._pilots[pid] = dict()
                 self._pilots[pid]['pilot'] = pilot
+                self._pilots[pid]['jid']   = j.id
                 self._pilots[pid]['job']   = j
+                self._pilots[pid]['jsurl'] = js_ep
 
             # make sure we watch that pilot
             with self._check_lock:
