@@ -64,8 +64,8 @@ if __name__ == '__main__':
         for f in ['grompp.mdp', 'mdout.mdp', 'start.gro',
                   'topol.top',  'topol.tpr']:
             cudis.append({'source': 'pilot:///gromacs/%s' % f, 
-                         'target': 'unit:///%s' % f,
-                         'action': rp.LINK})
+                          'target': 'unit:///%s' % f,
+                          'action': rp.LINK})
 
         n = 2 * 1024  # number of units to run
         n = 2
