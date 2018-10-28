@@ -200,7 +200,7 @@ class Default(PMGRLaunchingComponent):
             flags = rsfs.CREATE_PARENTS
 
             if os.path.isdir(src.path):
-                flags |= rs.filesystem.RECURSIVE
+                flags |= rsfs.RECURSIVE
 
             # Define and open the staging directory for the pilot
             # We use the target dir construct here, so that we can create
