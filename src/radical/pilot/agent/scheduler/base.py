@@ -434,15 +434,11 @@ class AgentSchedulingComponent(rpu.Component):
         # yes - record stats.  Is this the first one?
         if stid not in self._app_stats:
 
-            if '-' in p_spec:
-                pmin, pmax = [int(n) for n in p_spec.split('-')]
-            else:
-                pmin, pmax = [int(p_spec), int(p_spec)]
+            if '-' in p_spec: pmin, pmax = [int(n) for n in p_spec.split('-')]
+            else            : pmin, pmax = [int(p_spec), int(p_spec)]
 
-            if '-' in p_spec:
-                tmin, tmax = [int(n) for n in t_spec.split('-')]
-            else:
-                pmin, pmax = [int(t_spec), int(t_spec)]
+            if '-' in t_spec: tmin, tmax = [int(n) for n in t_spec.split('-')]
+            else            : tmin, tmax = [int(t_spec), int(t_spec)]
 
             # yes = prepare record. search for parameters to change
             combinations = list()
@@ -459,9 +455,8 @@ class AgentSchedulingComponent(rpu.Component):
                                          'prange'  : [pmin, pmax],
                                          'trange'  : [tmin, tmax],
                                          'optimal' : None}
-            self._log.info('=== stat init: \n%s', pprint.pformat(self._app_stats))
+            self._log.info('=== init: \n%s', pprint.pformat(self._app_stats))
 
-        
         p = unit.get('p_stat')
         t = unit.get('t_stat')
 
@@ -487,7 +482,10 @@ class AgentSchedulingComponent(rpu.Component):
             while True:
                 p = random.choice(range(prange[0], prange[1] + 1))
                 t = random.choice(range(trange[0], trange[1] + 1))
-                if eval(constr):
+                if constr:
+                    if eval(constr):
+                        break
+                else:
                     break
             self._log.debug('==== random   %s: %d %d', uid, p, t)
 
@@ -505,7 +503,8 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def app_stats_unapply(self, unit):
 
-        self._log.debug('==== un-apply %s: %d %d', unit['uid'], unit['p_orig'], unit['t_orig'])
+        self._log.debug('==== un-apply %s: %d %d',
+                        unit['uid'], unit['p_orig'], unit['t_orig'])
         unit['description']['cpu_processes'] = unit['p_orig']
         unit['description']['cpu_threads'  ] = unit['t_orig'] 
 
@@ -537,7 +536,7 @@ class AgentSchedulingComponent(rpu.Component):
             # straight away and move it to execution, or we have to
             # put it in the wait pool.
             if self._try_allocation(unit):
-                
+
                 # we could schedule the unit - advance its state, notify worls
                 # about the state change, and push the unit out toward the next
                 # component.

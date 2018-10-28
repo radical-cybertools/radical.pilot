@@ -88,9 +88,11 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
             cud.executable       = '%s/wl_shape.sh' %  pwd
             cud.tags             = {'app-stats' : 'this_app'}
-            cud.gpu_processes    = 0
             cud.cpu_processes    = '1-6'
             cud.cpu_threads      = '1-6'
+         #  cud.cpu_processes    = 2
+         #  cud.cpu_threads      = 2
+            cud.gpu_processes    = 0
             cud.cpu_process_type = rp.POSIX
             cud.cpu_thread_type  = rp.OpenMP
             cuds.append(cud)
