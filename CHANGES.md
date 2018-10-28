@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.16 Release                                                       2018-10-26
+--------------------------------------------------------------------------------
+
+  - add new shell spawner as popen replacement
+
+
 0.50.15 Release                                                       2018-10-24
 --------------------------------------------------------------------------------
 

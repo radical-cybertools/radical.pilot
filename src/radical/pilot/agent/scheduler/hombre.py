@@ -102,6 +102,8 @@ class Hombre(AgentSchedulingComponent):
         #       resources into suitable static slots.
         self._configured = False
 
+        self.free = list()     # declare for early debug output
+
 
     # --------------------------------------------------------------------------
     #
@@ -237,6 +239,7 @@ class Hombre(AgentSchedulingComponent):
         a unit needs to be mapped to a set of cores / gpus.
         '''
 
+      # self._log.debug('=> allocate [%d]', len(self.free))
         if not self._configured:
             self._delayed_configure(cud)
 
@@ -245,7 +248,15 @@ class Hombre(AgentSchedulingComponent):
             if cud[k] != v:
                 raise ValueError('hetbre?  %d != %d' % (v, cud[k]))
 
+      # self._log.debug('find new slot')
         slots = self._find_slots(cud)
+        if slots:
+            self._log.debug('allocate slot %s', slots['nodes'])
+        else:
+            self._log.debug('allocate slot %s', slots)
+
+      # self._log.debug('<= allocate [%d]', len(self.free))
+
 
         return slots
 
@@ -259,9 +270,11 @@ class Hombre(AgentSchedulingComponent):
         `_allocate_slots()`.
         '''
 
+      # self._log.debug('=> release  [%d]', len(self.free))
+        self._log.debug('release  slot %s', slots['nodes'])
         with self.lock:
-            for slot in slots:
-                self.free.append(slots)
+             self.free.append(slots)
+      # self._log.debug('<= release  [%d]', len(self.free))
 
 
     # --------------------------------------------------------------------------
