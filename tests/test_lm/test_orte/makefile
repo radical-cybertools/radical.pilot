@@ -6,17 +6,14 @@ PWD=$(shell pwd)
 deploy:
 	$(PWD)/../../../bin/radical-pilot-deploy-ompi.sh $(PWD)/ompi/ 2>&1 | tee deploy.log
 
-workload:
+workload: pbs
 	$(PWD)/mk_workload.sh
 
-test:
+test: workload
 	$(PWD)/test_orte.sh
 
 clean:
-	rm -rf workload
-
-distclean: clean
-	rm -rf ompi
+	rm -rf workload nodes dvm.log dvm.uri
 
 local:
 	cp nodes.local nodes

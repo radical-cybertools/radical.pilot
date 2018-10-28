@@ -46,7 +46,7 @@ usage(){
         printf "\n\t%s" "$msg"
     fi
 
-    printf "\n\tusage: $0 <BASE> <UID>\n\n"
+    printf "\n\tusage: $0 <BASE> <SID>\n\n"
 
     exit $ret
 }
@@ -85,7 +85,7 @@ prof(){
 #
 #   $1 - BASE: where to keep state for all tasks (defaults to pwd)
 #              should be on a fast FS (eg. `/tmp/`)
-#   $2 - UID : UID for this shell instance  (in case multiple instances coexist)
+#   $2 - SID : UID for this shell instance  (in case multiple instances coexist)
 #
 # setup() will respawn this script in irder to redirect all stdout and stderr 
 # to $LOG - we ensure here that the respawn happened.
@@ -97,32 +97,32 @@ setup(){
     then
         # setup before respawn (only env settings, please)
         BASE="$1"
-        UID="$2"
-        LOG="$BASE/sh.$UID.log"
+        SID="$2"
+        LOG="$BASE/sh.$SID.log"
         
         test -z "$BASE" && usage 1 'missing base' 
-        test -z "$UID"  && usage 1 'missing uid'
+        test -z "$SID"  && usage 1 'missing uid'
     
         export BASE
-        export UID
+        export SID
         export LOG
     
-        _RESPAWNED=$UID
+        _RESPAWNED=$SID
         export _RESPAWNED
         exec > $LOG 2>&1 
     fi
 
 
     # remaining setup after respawn
-    test "$_RESPAWNED" = "$UID" \
-        || (\printf "respawn failure: [$_RESPAWNED] [$UID]\n";
+    test "$_RESPAWNED" = "$SID" \
+        || (\printf "respawn failure: [$_RESPAWNED] [$SID]\n";
             exit)
 
     log 'startup'
 
-    PIPE_CMD="$BASE/$UID.cmd.pipe"
-    PIPE_INF="$BASE/$UID.inf.pipe"
-    MAP="$BASE/sh.$UID.pids"
+    PIPE_CMD="$BASE/$SID.cmd.pipe"
+    PIPE_INF="$BASE/$SID.inf.pipe"
+    MAP="$BASE/sh.$SID.pids"
 
     test -e "$PIPE_CMD" || error "missing input  pipe $PIP_IN"
     test -e "$PIPE_INF" || error "missing output pipe $PIP_OUT"
