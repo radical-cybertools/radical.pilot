@@ -235,6 +235,15 @@ def isgood(name):
     return False
 
 
+import glob
+
+examples   = glob.glob('examples/*.py')
+examples  += glob.glob('examples/*.json')
+examples  += glob.glob('examples/misc/*.py')
+data_files = list()
+data_files.append(('share/%s/examples' % name, examples))
+data_files.append(('share/%s/'         % name, ['docs/source/events.md']))
+
 # -------------------------------------------------------------------------------
 setup_args = {
     'name'               : name,
@@ -314,7 +323,8 @@ setup_args = {
     # This copies the contents of the examples/ dir under
     # sys.prefix/share/$name
     # It needs the MANIFEST.in entries to work.
-    'data_files'         : makeDataFiles('share/%s/examples/' % name, 'examples'),
+  # 'data_files'         : makeDataFiles('share/%s/examples/' % name, 'examples'),
+    'data_files'         : data_files
 }
 
 # ------------------------------------------------------------------------------
