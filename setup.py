@@ -159,10 +159,15 @@ def read(fname):
 
 
 df = list()
-df.append(('share/%s'               % name, ['docs/source/events.md']))
-df.append(('share/%s/examples'      % name, glob.glob('examples/*.py')))
-df.append(('share/%s/examples'      % name, glob.glob('examples/*.json')))
-df.append(('share/%s/examples/misc' % name, glob.glob('examples/misc/*.py')))
+df.append(('share/%s'                       % name, ['docs/source/events.md']))
+df.append(('share/%s/examples'              % name, glob.glob('examples/[01]*.py')))
+df.append(('share/%s/examples'              % name, glob.glob('examples/hello*')))
+df.append(('share/%s/examples'              % name, glob.glob('examples/*.json')))
+df.append(('share/%s/examples/docs'         % name, glob.glob('examples/docs/*')))
+df.append(('share/%s/examples/misc'         % name, glob.glob('examples/misc/*')))
+df.append(('share/%s/examples/kmeans'       % name, glob.glob('examples/kmeans/*')))
+df.append(('share/%s/examples/mandelbrot'   % name, glob.glob('examples/mandelbrot/*')))
+df.append(('share/%s/examples/data_staging' % name, glob.glob('examples/data_staging/*')))
 
 
 # -------------------------------------------------------------------------------
