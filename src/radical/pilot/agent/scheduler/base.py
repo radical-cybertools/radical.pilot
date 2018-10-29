@@ -498,6 +498,10 @@ class AgentSchedulingComponent(rpu.Component):
         descr['cpu_processes'] = p
         descr['cpu_threads']   = t
 
+        # FIXME:
+        descr['gpu_processes'] = int(descr.get('gpu_processes', 0))
+        descr['gpu_threads']   = int(descr.get('gpu_threads', 1))
+
 
     # --------------------------------------------------------------------------
     #
