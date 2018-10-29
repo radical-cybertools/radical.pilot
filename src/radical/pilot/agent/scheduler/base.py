@@ -674,7 +674,7 @@ class AgentSchedulingComponent(rpu.Component):
                     sbox  = self._session.get_session_sandbox()
                     mapf  = '%s/app_map.dat' % sbox,
                     self._log.debug('=== map: %s' % mapf)
-                    with open(mapf 'w') as fout:
+                    with open(mapf, 'w') as fout:
                         for c,v in self._app_stats[stid]['tested'].iteritems():
                             p, t = [int(x) for x in c.split()]
                             fout.write('%4d   %4d   %10.2f\n' % (p, t, v))
