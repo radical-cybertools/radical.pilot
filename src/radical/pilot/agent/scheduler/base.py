@@ -429,6 +429,11 @@ class AgentSchedulingComponent(rpu.Component):
         constr = tags.get('constraint')
 
         if not stid:
+            # just convert the specs to in, and return
+            descr['cpu_processes'] = int(descr.get('cpu_processes', 0))
+            descr['cpu_threads'  ] = int(descr.get('cpu_threads'  , 1))
+            descr['gpu_processes'] = int(descr.get('gpu_processes', 0))
+            descr['gpu_threads'  ] = int(descr.get('gpu_threads'  , 1))
             return
 
         # yes - record stats.  Is this the first one?
@@ -498,14 +503,19 @@ class AgentSchedulingComponent(rpu.Component):
         descr['cpu_processes'] = p
         descr['cpu_threads']   = t
 
-        # FIXME:
+        # ensure we end up with integers
+        descr['cpu_processes'] = int(descr.get('cpu_processes', 0))
+        descr['cpu_threads'  ] = int(descr.get('cpu_threads'  , 1))
         descr['gpu_processes'] = int(descr.get('gpu_processes', 0))
-        descr['gpu_threads']   = int(descr.get('gpu_threads', 1))
+        descr['gpu_threads'  ] = int(descr.get('gpu_threads'  , 1))
 
 
     # --------------------------------------------------------------------------
     #
     def app_stats_unapply(self, unit):
+
+        if 'p_orig' not in unit:
+            return
 
         self._log.debug('==== un-apply %s: %d %d',
                         unit['uid'], unit['p_orig'], unit['t_orig'])
@@ -661,7 +671,10 @@ class AgentSchedulingComponent(rpu.Component):
                     # all tests are done - store and define optimum
                     c_opt = None
                     v_opt = None
-                    with open('/tmp/app_map.dat', 'w') as fout:
+                    sbox  = self._session.get_session_sandbox()
+                    mapf  = '%s/app_map.dat' % sbox,
+                    self._log.debug('=== map: %s' % mapf)
+                    with open(mapf 'w') as fout:
                         for c,v in self._app_stats[stid]['tested'].iteritems():
                             p, t = [int(x) for x in c.split()]
                             fout.write('%4d   %4d   %10.2f\n' % (p, t, v))
