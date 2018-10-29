@@ -11,6 +11,7 @@ __license__   = 'MIT'
 import re
 import os
 import sys
+import glob
 import shutil
 import subprocess as sp
 
@@ -150,99 +151,19 @@ class our_test(Command):
 
 # ------------------------------------------------------------------------------
 #
-def read(*rnames):
+def read(fname):
     try :
-        return open(os.path.join(os.path.dirname(__file__), *rnames)).read()
+        return open(fname).read()
     except Exception :
         return ''
 
 
-# ------------------------------------------------------------------------------
-#
-# borrowed from the MoinMoin-wiki installer
-#
-def makeDataFiles(prefix, dir):
-    """ Create distutils data_files structure from dir
+df = list()
+df.append(('share/%s'               % name, ['docs/source/events.md']))
+df.append(('share/%s/examples'      % name, glob.glob('examples/*.py')))
+df.append(('share/%s/examples'      % name, glob.glob('examples/*.json')))
+df.append(('share/%s/examples/misc' % name, glob.glob('examples/misc/*.py')))
 
-    distutil will copy all file rooted under dir into prefix, excluding
-    dir itself, just like 'ditto src dst' works, and unlike 'cp -r src
-    dst, which copy src into dst'.
-
-    Typical usage:
-        # install the contents of 'wiki' under sys.prefix+'share/moin'
-        data_files = makeDataFiles('share/moin', 'wiki')
-
-    For this directory structure:
-        root
-            file1
-            file2
-            dir
-                file
-                subdir
-                    file
-
-    makeDataFiles('prefix', 'root')  will create this distutil data_files structure:
-        [('prefix', ['file1', 'file2']),
-         ('prefix/dir', ['file']),
-         ('prefix/dir/subdir', ['file'])]
-
-    """
-    # Strip 'dir/' from of path before joining with prefix
-    dir = dir.rstrip('/')
-    strip = len(dir) + 1
-    found = []
-    os.path.walk(dir, visit, (prefix, strip, found))
-    return found
-
-
-def visit((prefix, strip, found), dirname, names):
-    """ Visit directory, create distutil tuple
-
-    Add distutil tuple for each directory using this format:
-        (destination, [dirname/file1, dirname/file2, ...])
-
-    distutil will copy later file1, file2, ... info destination.
-    """
-    files = []
-    # Iterate over a copy of names, modify names
-    for name in names[:]:
-        path = os.path.join(dirname, name)
-        # Ignore directories -  we will visit later
-        if os.path.isdir(path):
-            # Remove directories we don't want to visit later
-            if isbad(name):
-                names.remove(name)
-            continue
-        elif isgood(name):
-            files.append(path)
-    destination = os.path.join(prefix, dirname[strip:])
-    found.append((destination, files))
-
-
-def isbad(name):
-    """ Whether name should not be installed """
-    return (name.startswith('.') or
-            name.startswith('#') or
-            name.endswith('.pickle') or
-            name == 'CVS')
-
-
-def isgood(name):
-    """ Whether name should be installed """
-    if not isbad(name):
-        if name.endswith('.py') or name.endswith('.json'):
-            return True
-    return False
-
-
-import glob
-
-examples   = glob.glob('examples/*.py')
-examples  += glob.glob('examples/*.json')
-examples  += glob.glob('examples/misc/*.py')
-data_files = list()
-data_files.append(('share/%s/examples' % name, examples))
-data_files.append(('share/%s/'         % name, ['docs/source/events.md']))
 
 # -------------------------------------------------------------------------------
 setup_args = {
@@ -295,7 +216,8 @@ setup_args = {
                             'bin/radical-pilot-agent',
                             'bin/radical-pilot-agent-statepush'
                            ],
-    'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', 'VERSION', 'SDIST', sdist_name]},
+    'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz',
+                                 'VERSION', 'SDIST', sdist_name]},
     'cmdclass'           : {
         'test'           : our_test,
                            },
@@ -324,7 +246,7 @@ setup_args = {
     # sys.prefix/share/$name
     # It needs the MANIFEST.in entries to work.
   # 'data_files'         : makeDataFiles('share/%s/examples/' % name, 'examples'),
-    'data_files'         : data_files
+    'data_files'         : df,
 }
 
 # ------------------------------------------------------------------------------
