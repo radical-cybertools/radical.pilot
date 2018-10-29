@@ -20,7 +20,7 @@
         ],
         "default_remote_workdir"      : "$HOME",
         "lrms"                        : "FORK",
-        "agent_scheduler"             : "HOMBRE",
+        "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "SHELLFS",
         "agent_launch_method"         : "FORK",
         "task_launch_method"          : "FORK",
