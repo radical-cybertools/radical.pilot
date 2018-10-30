@@ -1,8 +1,6 @@
 
 ### Format of this file:
 
-    event_name          : semantic event description (details on 'uid', 'msg', 'state' fields)
-
 Events marked as `optional` depend on the content of unit descriptions etc, all
 other events will usually be present in 'normal' runs.  All events have an event
 name, a timestamp, and a component (which recorded the event) defined - all
@@ -106,7 +104,7 @@ indication on event ordering *within each individual component*.
 ### bootstrap_0.sh
 
     bootstrap_0_start   : pilot bootstrapper 1 starts                (uid: pilot)
-    tunnel_setup_start  : setting up tunnel    starts                (uid: pilot)
+    tunnel_setup_start  : setting up tunnel    starts                (uid: pilot, [CFG-R])
     tunnel_setup_stop   : setting up tunnel    stops                 (uid: pilot, [CFG-R])
     ve_setup_start      : pilot ve setup       starts                (uid: pilot)
     ve_create_start     : pilot ve creation    starts                (uid: pilot, [CFG-R])
