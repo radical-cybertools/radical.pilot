@@ -24,14 +24,16 @@ class ShellFS(AgentExecutingComponent):
     #
     def __init__(self, cfg, session):
 
-        AgentExecutingComponent.__init__ (self, cfg, session)
+        super(ShellFS, self).__init__ (cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         from .... import pilot as rp
+
+        super(ShellFS, self).initialize()
 
         self._pwd = os.getcwd() 
         self._tmp = self._pwd   # keep temporary files in $PWD for now (slow)
@@ -152,14 +154,7 @@ class ShellFS(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
-
-        self._terminate.set()
-
-        try:
-            self._sh.kill()
-        except:
-            pass
+    def finalize(self):
 
         try:
             os.unlink(self._fifo_cmd_name)

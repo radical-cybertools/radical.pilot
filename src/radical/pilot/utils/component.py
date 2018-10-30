@@ -825,7 +825,9 @@ class Component(object):
 
                 # push the thing down the drain
                 self._log.debug('=== put bulk %s: %s', _state, len(_things))
+                self._log.debug('===              %s', output)
                 output.put(_things)
+                self._log.debug('===              %s ok', output)
 
                 ts = time.time()
                 for thing in _things:
