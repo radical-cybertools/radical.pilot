@@ -10,6 +10,8 @@ import time
 import subprocess    as sp
 import radical.utils as ru
 
+# FIXME: this depends on nohup - implement in python or sh...
+
 
 # ------------------------------------------------------------------------------
 #
@@ -73,6 +75,7 @@ class ComponentManager(object):
             bcfg['fpid']      = fpid
             bcfg['furl']      = furl
             bcfg['owner']     = self._owner
+            bcfg['ppid']      = os.getpid()
             bcfg['log_level'] = 'DEBUG'  ## FIXME
 
             if   'pubsub' in bname: bcfg['kind'] = 'pubsub'
@@ -81,8 +84,9 @@ class ComponentManager(object):
 
             ru.write_json(bcfg, fcfg)
             fout = open(bout, 'w')
-            cmd  = ['radical-pilot-bridge', fcfg]
-            pid  = sp.Popen(cmd, shell=False, stdout=fout, stderr=sp.STDOUT)
+            cmd  = 'radical-pilot-bridge %s &' % fcfg
+            pid  = sp.Popen(cmd, shell=True, 
+                            stdout=fout, stderr=sp.STDOUT)
             self._bridges[buid] = pid
 
             to_check.append(bcfg)
@@ -156,13 +160,15 @@ class ComponentManager(object):
                 ccfg['fchk']  = fchk
                 ccfg['dburl'] = self._session.dburl
                 ccfg['owner'] = self._owner
+                ccfg['ppid']  = os.getpid()
 
                 ccfg['log_level'] = 'DEBUG'  ## FIXME
 
                 ru.write_json(ccfg, fcfg)
                 fout = open(cout, 'w')
-                cmd  = ['radical-pilot-component', fcfg]
-                pid  = sp.Popen(cmd, shell=False, stdout=fout, stderr=sp.STDOUT)
+                cmd  = 'nohup radical-pilot-component %s &' % fcfg
+                pid  = sp.Popen(cmd, shell=True,
+                                stdout=fout, stderr=sp.STDOUT)
                 self._components[cuid] = pid
 
                 to_check.append(ccfg)

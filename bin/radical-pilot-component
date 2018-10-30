@@ -6,37 +6,86 @@ __license__   = "MIT"
 
 import os
 import sys
+import time
+import signal
 
+import threading           as mt
 import setproctitle        as spt
+
 import radical.utils       as ru
 import radical.pilot.utils as rpu
+
+
+def out(msg):
+    sys.stdout.write('%s\n' % msg)
+    sys.stdout.flush()
+
+
+def term():
+    out('=== TERMINATE')
+
+
+import atexit
+atexit.register(term)
+
+
+# ------------------------------------------------------------------------------
+#
+def ppid_watcher(ppid):
+
+    out(" === ppid_watcher starts: %s watches %s" % (os.getpid(), ppid))
+
+    try:
+        while True:
+            time.sleep(1)
+            os.kill(ppid, 0)
+            out(" === ppid_watcher: parent %s is alive" % ppid)
+    except:
+        out(" === ppid_watcher: parent %s is gone - bye" % ppid)
+        os.kill(os.getpid(), signal.SIGTERM)
+        os.kill(os.getpid(), signal.SIGKILL)
 
 
 # ------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
-    if len(sys.argv) != 2:
-        sys.stderr.write('error: argument error\n'
-                         'usage: %s <cfg_file>\n\n')
-        raise RuntimeError('argument error: %s' % sys.argv)
+    try:
+        if len(sys.argv) != 2:
+            sys.stderr.write('error: argument error\n'
+                             'usage: %s <cfg_file>\n\n')
+            raise RuntimeError('argument error: %s' % sys.argv)
 
-    # ensure we have a config file
-    cfg = ru.read_json(sys.argv[1])
+        # ensure we have a config file
+        cfg = ru.read_json(sys.argv[1])
 
-    pwd = cfg['pwd']
-    uid = cfg['uid']
+        pwd = cfg['pwd']
+        uid = cfg['uid']
 
-    # first things first: inform the caller about our pit
-    spt.setproctitle('rp.%s' % uid)
-    with open('%s/%s.pid'  % (pwd, uid), 'w') as fout:
-        fout.write('%d\n' % os.getpid())
-        fout.flush
+        # first things first: inform the caller about our pit
+        spt.setproctitle('rp.%s' % uid)
+        with open('%s/%s.pid'  % (pwd, uid), 'w') as fout:
+            fout.write('%d\n' % os.getpid())
+            fout.flush
 
-    # create the component
-    comp  = rpu.Component.create(cfg)
-    comp.start()
-    comp.wait()
+        if 'ppid' in cfg:
+            out(" === ppid_watcher: run")
+            watcher = mt.Thread(target=ppid_watcher, args=[int(cfg['ppid'])])
+            watcher.daemon = True
+            watcher.start()
+        else:
+            out(" === ppid_watcher: nope")
+
+        # create the component
+        comp = rpu.Component.create(cfg)
+        comp.start()
+        comp.wait()
+
+    except:
+        sys.exit(1)
+
+    sys.exit(0)
+
 
 
 # ------------------------------------------------------------------------------

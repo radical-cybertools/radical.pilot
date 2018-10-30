@@ -6,10 +6,44 @@ __license__   = "MIT"
 
 import os
 import sys
+import time
+import signal
 
+import threading           as mt
 import setproctitle        as spt
+
 import radical.utils       as ru
 import radical.pilot.utils as rpu
+
+
+def out(msg):
+    sys.stdout.write('%s\n' % msg)
+    sys.stdout.flush()
+
+
+def term():
+    out('=== TERMINATE')
+
+
+import atexit
+atexit.register(term)
+
+
+# ------------------------------------------------------------------------------
+#
+def ppid_watcher(ppid):
+
+    print " === ppid_watcher starts: %s watches %s" % (os.getpid(), ppid)
+
+    try:
+        while True:
+            time.sleep(1)
+            os.kill(ppid, 0)
+            print " === ppid_watcher: parent %s is alive" % ppid
+    except:
+        print " === ppid_watcher: parent %s is gone - bye" % ppid
+        os.kill(os.getpid(), signal.SIGTERM)
+        os.kill(os.getpid(), signal.SIGKILL)
 
 
 # ------------------------------------------------------------------------------
@@ -75,6 +109,14 @@ if __name__ == "__main__":
     with open('%s/%s.pid'  % (pwd, uid), 'w') as fout:
         fout.write('%d\n' % os.getpid())
         fout.flush
+
+    if 'ppid' in cfg:
+        print " === ppid_watcher: run"
+        watcher = mt.Thread(target=ppid_watcher, args=[int(cfg['ppid'])])
+        watcher.daemon = True
+        watcher.start()
+    else:
+        print " === ppid_watcher: nope"
 
     # create the bridge
     bridge = rpu.Bridge.create(cfg)

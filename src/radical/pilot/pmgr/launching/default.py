@@ -10,7 +10,7 @@ import time
 import pprint
 import shutil
 import tempfile
-import threading
+import threading as mt
 
 import subprocess           as sp
 
@@ -63,14 +63,14 @@ class Default(PMGRLaunchingComponent):
         # we don't really have an output queue, as we pass control over the
         # pilot jobs to the resource management system (RM).
 
-        self._pilots        = dict()             # dict for all known pilots
-        self._pilots_lock   = threading.RLock()  # lock on maipulating the above
-        self._checking      = list()             # pilots to check state on
-        self._check_lock    = threading.RLock()  # lock on maipulating the above
-        self._saga_fs_cache = dict()             # cache of saga directories
-        self._saga_js_cache = dict()             # cache of saga job services
-        self._sandboxes     = dict()             # cache of resource sandbox URLs
-        self._cache_lock    = threading.RLock()  # lock for cache
+        self._pilots        = dict()      # dict for all known pilots
+        self._pilots_lock   = mt.RLock()  # lock on maipulating the above
+        self._checking      = list()      # pilots to check state on
+        self._check_lock    = mt.RLock()  # lock on maipulating the above
+        self._saga_fs_cache = dict()      # cache of saga directories
+        self._saga_js_cache = dict()      # cache of saga job services
+        self._sandboxes     = dict()      # cache of resource sandbox URLs
+        self._cache_lock    = mt.RLock()  # lock for cache
 
         self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
         self._root_dir      = "%s/../../"   % self._mod_dir  
@@ -80,7 +80,9 @@ class Default(PMGRLaunchingComponent):
                             rpc.PMGR_LAUNCHING_QUEUE, self.work)
 
         # FIXME: make interval configurable
-        self.register_timed_cb(self._pilot_watcher_cb, timer=10.0)
+        self._pilot_watcher_period = 3.0
+        self.register_timed_cb(self._pilot_watcher_cb, 
+                               timer=self._pilot_watcher_period)
 
         # we listen for pilot cancel and input staging commands
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
@@ -147,9 +149,7 @@ class Default(PMGRLaunchingComponent):
                 pids = [pids]
 
             self._log.info('received pilot_cancel command (%s)', pids)
-
             self._cancel_pilots(pids)
-
 
         return True
 
@@ -271,24 +271,26 @@ class Default(PMGRLaunchingComponent):
         # querying the pilots individually
 
         final_pilots = list()
+        live_pilots  = list()
+
         with self._pilots_lock, self._check_lock:
 
             for pid in self._checking:
 
                 state = self._pilots[pid]['job'].state
+                pilot = self._pilots[pid]['pilot']
                 self._log.debug('saga job state: %s %s', pid, state)
 
-                if state in [rs.job.DONE, rs.job.FAILED, rs.job.CANCELED]:
-                    pilot = self._pilots[pid]['pilot']
+                if state not in [rs.job.DONE, rs.job.FAILED, rs.job.CANCELED]:
+                    live_pilots.append(pilot)
+                else:
                     if state == rs.job.DONE    : pilot['state'] = rps.DONE
                     if state == rs.job.FAILED  : pilot['state'] = rps.FAILED
                     if state == rs.job.CANCELED: pilot['state'] = rps.CANCELED
                     final_pilots.append(pilot)
 
         if final_pilots:
-
             for pilot in final_pilots:
-
                 with self._check_lock:
                     # stop monitoring this pilot
                     self._checking.remove(pilot['uid'])
@@ -296,6 +298,16 @@ class Default(PMGRLaunchingComponent):
                 self._log.debug('final pilot %s %s', pilot['uid'], pilot['state'])
 
             self.advance(final_pilots, push=False, publish=True)
+
+
+        if live_pilots:
+            # send a heartbeat
+            pids = [pilot['uid'] for pilot in live_pilots]
+            self._session._db.pilot_command('heartbeat', 
+                           args={'period' : self._pilot_watcher_period, 
+                                 'tstamp' : time.time()},
+                           pids=pids)
+
 
         # all checks are done, final pilots are weeded out.  Now check if any
         # pilot is scheduled for cancellation and is overdue, and kill it
@@ -340,7 +352,7 @@ class Default(PMGRLaunchingComponent):
         # send the cancelation request to the pilots
         # FIXME: the cancellation request should not go directly to the DB, but
         #        through the DB abstraction layer...
-        self._session._dbs.pilot_command('cancel_pilot', [], pids)
+        self._session._dbs.pilot_command('cancel_pilot', pids=pids)
         self._log.debug('pilot(s).need(s) cancellation %s', pids)
 
         # recod time of request, so that forceful termination can happen

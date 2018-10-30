@@ -20,7 +20,7 @@
         ],
         "default_remote_workdir"      : "$HOME",
         "lrms"                        : "FORK",
-        "agent_scheduler"             : "CONTINUOUS",
+        "agent_scheduler"             : "HOMBRE",
         "agent_spawner"               : "SHELLFS",
         "agent_launch_method"         : "FORK",
         "task_launch_method"          : "FORK",
@@ -230,7 +230,7 @@
         "mpi_launch_method"           : "PRTE",
         "rp_version"                  : "installed",
         "virtenv_mode"                : "use",
-        "virtenv"                     : "$HOME/radical/radical.pilot.merge/ve/",
+        "virtenv"                     : "$HOME/radical/radical.pilot.test/ve/",
         "python_dist"                 : "default",
         "pre_bootstrap_0"             : [
             "export PRTE_HOME=$HOME/radical/ompi/src/prrte/install/",

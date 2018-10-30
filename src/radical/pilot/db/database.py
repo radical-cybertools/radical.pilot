@@ -253,7 +253,7 @@ class DB(object):
 
     # --------------------------------------------------------------------------
     #
-    def pilot_command(self, cmd, arg, pids=None):
+    def pilot_command(self, cmd, args=None, pids=None):
         """
         send a command and arg to a set of pilots
         """

@@ -9,6 +9,7 @@ import copy
 import stat
 import time
 import pprint
+import signal
 import subprocess         as sp
 
 import radical.utils      as ru
@@ -63,6 +64,8 @@ class Agent_0(rpu.Worker):
         self._starttime   = time.time()
         self._final_cause = None
         self._lrms        = None
+        self._hb_last     = time.time()
+        self._hb_timeout  = 40.0  # FIXME: make configurable / adaptive
 
         # this better be on a shared FS!
         cfg['uid']             = self._uid
@@ -135,6 +138,9 @@ class Agent_0(rpu.Worker):
 
         # and start the sub agents
         self._start_sub_agents()
+
+        # refresh heartbeat before checking it the first time
+        self._hb_last = time.time()
 
         # register the command callback which pulls the DB for commands
         self.register_timed_cb(self._agent_command_cb,
@@ -426,7 +432,8 @@ class Agent_0(rpu.Worker):
             self._prof.prof('cmd', msg="%s : %s" % (cmd, arg), uid=self._pid)
 
             if cmd == 'heartbeat':
-                self._log.info('heartbeat_in')
+                self._log.info('=== heartbeat refresh')
+                self._hb_last = time.time()
 
 
             elif cmd == 'cancel_pilot':
@@ -464,10 +471,15 @@ class Agent_0(rpu.Worker):
         # we have, terminate.
         if self._runtime:
             if time.time() >= self._starttime + (int(self._runtime) * 60):
-                self._log.info('reached runtime limit (%ss).', self._runtime*60)
+                self._log.info('walltime limit (%ss).', self._runtime * 60)
                 self._final_cause = 'timeout'
                 self.stop()
                 return False  # we are done
+
+        # make sure we did not lose connection to client
+        if time.time() - self._hb_last > self._hb_timeout:
+            self._log.info('=== heartbeat timeout - terminate')
+            os.kill(os.getpid(), signal.SIGTERM)
 
         return True
 

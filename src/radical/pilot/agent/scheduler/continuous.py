@@ -72,7 +72,7 @@ class Continuous(AgentSchedulingComponent):
             cprof.dump_stats("python-%s.profile" % self_thread.name)
 
         # make sure that parent finalizers are called
-        super(Continuous, self).finalize_child()
+        super(Continuous, self).finalize()
 
 
     # --------------------------------------------------------------------------

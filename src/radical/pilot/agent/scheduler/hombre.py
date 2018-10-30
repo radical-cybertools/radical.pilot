@@ -81,7 +81,7 @@ class Hombre(AgentSchedulingComponent):
             cprof.dump_stats("python-%s.profile" % self_thread.name)
 
         # make sure that parent finalizers are called
-        super(Hombre, self).finalize_child()
+        super(Hombre, self).finalize()
 
 
     # --------------------------------------------------------------------------
