@@ -37,7 +37,7 @@ if __name__ == '__main__':
                    'project'       :     config[resource]['project'],
                    'queue'         :     config[resource]['queue'],
                    'access_schema' :     config[resource]['schema'],
-                   'cores'         : 8
+                   'cores'         : max(config[resource]['cores'], 128)
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
         pmgr  = rp.PilotManager(session=session)
