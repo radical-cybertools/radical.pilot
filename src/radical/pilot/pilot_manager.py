@@ -13,7 +13,6 @@ from . import db
 from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
-from . import types     as rpt
 
 from .staging_directives import expand_staging_directives
 
@@ -87,7 +86,7 @@ class PilotManager(rpu.Component):
         self._closed      = False
         self._rec_id      = 0       # used for session recording
 
-        for m in rpt.PMGR_METRICS:
+        for m in rpc.PMGR_METRICS:
             self._callbacks[m] = dict()
 
         self._cfg = ru.read_json("%s/configs/pmgr_%s.json" \
@@ -157,7 +156,7 @@ class PilotManager(rpu.Component):
         # we don't want any callback invokations during shutdown
         # FIXME: really?
         with self._pcb_lock:
-            for m in rpt.PMGR_METRICS:
+            for m in rpc.PMGR_METRICS:
                 self._callbacks[m] = dict()
 
         # cancel all remaining pilots
@@ -329,7 +328,7 @@ class PilotManager(rpu.Component):
     def _call_pilot_callbacks(self, pilot_obj, state):
 
         with self._pcb_lock:
-            for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
+            for cb_name, cb_val in self._callbacks[rpc.PILOT_STATE].iteritems():
 
                 cb      = cb_val['cb']
                 cb_data = cb_val['cb_data']
@@ -700,7 +699,7 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def register_callback(self, cb, metric=rpt.PILOT_STATE, cb_data=None):
+    def register_callback(self, cb, metric=rpc.PILOT_STATE, cb_data=None):
         """
         Registers a new callback function with the PilotManager.  Manager-level
         callbacks get called if the specified metric changes.  The default
@@ -726,7 +725,7 @@ class PilotManager(rpu.Component):
 
         # FIXME: the signature should be (self, metrics, cb, cb_data)
 
-        if metric not in rpt.PMGR_METRICS :
+        if metric not in rpc.PMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
 
         with self._pcb_lock:
@@ -737,13 +736,13 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def unregister_callback(self, cb, metric=rpt.PILOT_STATE):
+    def unregister_callback(self, cb, metric=rpc.PILOT_STATE):
 
-        if metric and metric not in rpt.PMGR_METRICS :
+        if metric and metric not in rpc.PMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
 
         if not metric:
-            metrics = rpt.PMGR_METRICS
+            metrics = rpc.PMGR_METRICS
         elif isinstance(metric, list):
             metrics =  metric
         else:

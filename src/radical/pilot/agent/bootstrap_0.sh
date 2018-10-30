@@ -110,6 +110,7 @@ export PYTHONNOUSERSITE=True
 #
 create_gtod()
 {
+    echo "=== create gtod (`pwd`)"
     # we "should" be able to build this everywhere ...
 
     cat > gtod.c <<EOT
@@ -130,6 +131,24 @@ EOT
 
     if ! test -e "./gtod"
     then
+        echo "=== link?"
+        if test -e ../../gtod
+        then
+            echo "=== link!"
+            ln -s ../../gtod ./gtod
+        fi
+    fi
+
+    if ! test -e "./gtod"
+    then
+        echo "=== link failed, build with cc"
+        echo -n "build gtod with cc... $(which cc) "
+        cc -o gtod gtod.c
+    fi
+
+    if ! test -e "./gtod"
+    then
+        echo "=== cc failed, build with gcc"
         echo -n "build gtod with gcc... $(which gcc)"
         echo
         gcc -o gtod gtod.c
@@ -137,13 +156,7 @@ EOT
 
     if ! test -e "./gtod"
     then
-        echo "failed"
-        echo -n "build gtod with cc... $(which cc) "
-        cc -o gtod gtod.c
-    fi
-
-    if ! test -e "./gtod"
-    then
+        echo "=== gcc failed, use date"
         tmp=`date '+%s.%N'`
         if test "$?" = 0
         then
@@ -159,7 +172,7 @@ EOT
 
     if ! test -e "./gtod"
     then
-        echo "failed - giving up"
+        echo "=== failed - giving up"
         exit 1
     fi
 
@@ -176,7 +189,7 @@ profile_event()
 {
     PROFILE="bootstrap_0.prof"
 
-    if test -z "$RADICAL_PILOT_PROFILE"
+    if test -z "$RADICAL_PROFILE$RADICAL_PILOT_PROFILE"
     then
         return
     fi
@@ -1527,7 +1540,7 @@ PB1_LDLB="$LD_LIBRARY_PATH"
 #        We should split the parsing and the execution of those.
 #        "bootstrap start" is here so that $PILOT_ID is known.
 # Create header for profile log
-if ! test -z "$RADICAL_PILOT_PROFILE"
+if ! test -z "$RADICAL_PROFILE$RADICAL_PILOT_PROFILE"
 then
     echo 'create gtod'
     create_gtod

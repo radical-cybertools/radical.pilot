@@ -97,7 +97,8 @@
         "lrms"                        : "TORQUE",
         "agent_type"                  : "multicore",
         "agent_config"                : "cray",
-        "agent_scheduler"             : "CONTINUOUS",
+        "agent_scheduler"             : "HOMBRE",
+      # "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "SHELLFS",
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE",
@@ -108,7 +109,7 @@
             "module swap PrgEnv-pgi PrgEnv-gnu",
             "module load python",
             "module use --append /lustre/atlas/world-shared/csc230/openmpi/modules/",
-            "module load openmpi/2018_07_26_539f71d",
+            "module load openmpi/2018_10_24_539f71d",
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],

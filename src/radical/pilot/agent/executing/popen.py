@@ -252,6 +252,8 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_UNIT_ID="%s"\n'      % cu['uid']
             env_string += 'export RP_GTOD="%s"\n'         % self.gtod
             env_string += 'export RP_TMP="%s"\n'          % self._cu_tmp
+            env_string += 'export RP_PROCESSES="%d"\n'    % descr['cpu_processes']
+            env_string += 'export RP_THREADS="%d"\n'      % descr['cpu_threads']
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
             else:
@@ -467,6 +469,12 @@ prof(){
                 self._log.info("Unit %s has return code %s.", uid, exit_code)
 
                 cu['exit_code'] = exit_code
+
+                sandbox  = '%s/%s' % (self._pwd, cu['uid'])
+                statfile = '%s/app_stats.dat' % sandbox
+                if os.path.isfile(statfile):
+                    with open ('%s/app_stats.dat' % sandbox, 'r') as fin:
+                        cu['app_stats'] = float(fin.read().strip())
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._cus_to_watch.remove(cu)
