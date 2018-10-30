@@ -214,7 +214,9 @@ work(){
     do
         cmd=''
         id=''
+      # log DEBUG "read"
         read -r cmd id < $PIPE_CMD || do_exit 1 'read failed'
+      # log DEBUG "read: [$cmd $id]"
 
         case "$cmd" in 
             EXEC) do_exec   "$id";;

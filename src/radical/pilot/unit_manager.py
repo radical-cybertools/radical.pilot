@@ -12,7 +12,6 @@ import radical.utils as ru
 from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
-from . import types     as rpt
 
 from . import compute_unit_description as rpcud
 
@@ -94,7 +93,7 @@ class UnitManager(rpu.Component):
         self._closed      = False
         self._rec_id      = 0       # used for session recording
 
-        for m in rpt.UMGR_METRICS:
+        for m in rpc.UMGR_METRICS:
             self._callbacks[m] = dict()
 
         cfg = ru.read_json("%s/configs/umgr_%s.json" \
@@ -206,7 +205,7 @@ class UnitManager(rpu.Component):
         # FIXME: really?
         with self._cb_lock:
             self._callbacks = dict()
-            for m in rpt.UMGR_METRICS:
+            for m in rpc.UMGR_METRICS:
                 self._callbacks[m] = dict()
 
         self._log.info("Closed UnitManager %s." % self._uid)
@@ -499,7 +498,7 @@ class UnitManager(rpu.Component):
     def _call_unit_callbacks(self, unit_obj, state):
 
         with self._cb_lock:
-            for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
+            for cb_name, cb_val in self._callbacks[rpc.UNIT_STATE].iteritems():
 
                 self._log.debug('%s calls state cb %s for %s', 
                                 self.uid, cb_name, unit_obj.uid)
@@ -989,7 +988,7 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def register_callback(self, cb, metric=rpt.UNIT_STATE, cb_data=None):
+    def register_callback(self, cb, metric=rpc.UNIT_STATE, cb_data=None):
         """
         Registers a new callback function with the UnitManager.  Manager-level
         callbacks get called if the specified metric changes.  The default
@@ -1019,7 +1018,7 @@ class UnitManager(rpu.Component):
 
         # FIXME: the signature should be (self, metrics, cb, cb_data)
 
-        if  metric not in rpt.UMGR_METRICS :
+        if  metric not in rpc.UMGR_METRICS :
             raise ValueError ("Metric '%s' not available on the umgr" % metric)
 
         with self._cb_lock:
@@ -1033,11 +1032,11 @@ class UnitManager(rpu.Component):
     def unregister_callback(self, cb=None, metric=None):
 
 
-        if metric and metric not in rpt.UMGR_METRICS :
+        if metric and metric not in rpc.UMGR_METRICS :
             raise ValueError ("Metric '%s' not available on the umgr" % metric)
 
         if not metric:
-            metrics = rpt.UMGR_METRICS
+            metrics = rpc.UMGR_METRICS
         elif isinstance(metric, list):
             metrics = metric
         else:
