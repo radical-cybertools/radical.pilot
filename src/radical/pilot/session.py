@@ -30,7 +30,6 @@ import saga.utils.pty_shell as rsup
 from . import utils         as rpu
 from . import states        as rps
 from . import constants     as rpc
-from . import types         as rpt
 
 from .unit_manager    import UnitManager
 from .pilot_manager   import PilotManager

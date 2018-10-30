@@ -37,7 +37,7 @@ if __name__ == '__main__':
                    'project'       :     config[resource]['project'],
                    'queue'         :     config[resource]['queue'],
                    'access_schema' :     config[resource]['schema'],
-                   'cores'         : max(config[resource]['cores'], 1024)
+                   'cores'         : 8
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
         pmgr  = rp.PilotManager(session=session)
@@ -67,8 +67,8 @@ if __name__ == '__main__':
                           'target': 'unit:///%s' % f,
                           'action': rp.LINK})
 
-        n = 2 * 1024  # number of units to run
         n = 2
+        n = 2 * 1024  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
         cuds = list()
         for i in range(0, n):
@@ -76,15 +76,17 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = 'gmx'
-            cud.arguments        = args.split()
+            cud.executable       = 'date'
+          # cud.arguments        = '1'.split()
+          # cud.executable       = 'gmx'
+          # cud.arguments        = args.split()
             cud.tags             = tags
             cud.gpu_processes    = 0
-            cud.cpu_processes    = 1  #'1-32'
-            cud.cpu_threads      = 1  #'1-16'
+            cud.cpu_processes    = 2  #'1-32'
+            cud.cpu_threads      = 2  #'1-16'
             cud.cpu_process_type = rp.MPI
             cud.cpu_thread_type  = rp.OpenMP
-            cud.input_staging    = cudis
+      #     cud.input_staging    = cudis
 
             cuds.append(cud)
             report.progress()

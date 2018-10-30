@@ -130,9 +130,14 @@ indication on event ordering *within each individual component*.
     cmd                 : command received from pmgr                 (uid: pid, msg: command, [API])
     get                 : units   received from unit manager         (uid: pid, msg: 'bulk size: %d')
     get                 : unit    received from unit manager         (uid: uid)
+    dvm_start           : DVM started                                (uid: pid, [CFG-DVM])
+    dvm_ok              : DVM startup completed                      (uid: pid, [CFG-DVM])
+    dvm_fail            : DVM startup failed                         (uid: pid, [CFG-DVM])
+    dvm_stop            : DVM terminated                             (uid: pid, [CFG-DVM])
 
     partial orders
     * per instance      : sync_rel, hostname, (cmd | get)*
+    * per instance      : dvm_start, (dvm_ok | dvm_fail), dvm_stop
 
 
 ### AgentSchedulingComponent (Component)
@@ -248,8 +253,7 @@ indication on event ordering *within each individual component*.
     - [API]           - only for corresponding RP API calls
     - [CFG]           - only for some RP configurations
       - [CFG-R]       - only for some bootstrapping configurations
-      - [CFG-ORTE]    - only for ORTE launch method
-      - [CFG-ORTELIB] - only for ORTELIB launch method
+      - [CFG-DVM]     - only for launch methods which use a DVM
     - [CU]            - only for some CU descriptions
       - [CU-DS]       - only for units specifying data staging directives
       - [CU-PRE]      - only for units specifying pre-exec directives
