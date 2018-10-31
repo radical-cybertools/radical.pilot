@@ -148,10 +148,10 @@ class Update(rpu.Worker):
         try:
             ret = self.__state_cb(topic, msg)
             self._log.debug('state cb: %s' % ret)
+            return ret
         except:
             self._log.exception('state cb failed')
-
-        return ret
+            return False
 
 
     # --------------------------------------------------------------------------
@@ -183,6 +183,7 @@ class Update(rpu.Worker):
           - state_flush : update is sent immediately (possibly in a bulk)
                           only state and state history are updated
           - flush       : flush pending bulk
+          - cmd         : send a command, flush immediately
 
         The 'thing' can contains '$set' and '$push' fields, which will then be
         used as given.  For all other fields, we use the following convention:
@@ -199,66 +200,91 @@ class Update(rpu.Worker):
         does not exist, an exception is raised.
         """
 
-        cmd    = msg['cmd']
-        things = msg['arg']
+        self._log.debug('=== state cb msg: %s', msg)
 
-      # cmds = ['delete',       'update',       'state',
-      #         'delete_flush', 'update_flush', 'state_flush', 'flush']
-        if cmd not in ['update']:
+        cmd = msg['cmd']
+
+        if cmd not in ['update', 'cmd']:
             self._log.info('ignore cmd %s', cmd)
             return True
 
-        if not isinstance(things, list):
-            things = [things]
+        if cmd in ['update']:
+        
+            things = msg['arg']
 
+            if not isinstance(things, list):
+                things = [things]
 
-        # FIXME: we don't have any error recovery -- any failure to update
-        #        state in the DB will thus result in an exception here and tear
-        #        down the module.
-        for thing in things:
+            for thing in things:
+                self._log.debug('=== state cb thing: %s', thing)
 
-            # got a new request.  Add to bulk (create as needed),
-            # and push bulk if time is up.
-            uid   = thing['uid']
-            ttype = thing['type']
-            state = thing['state']
+                # got a new request.  Add to bulk (create as needed),
+                # and push bulk if time is up.
+                # we expect `thing` to have uid, type and state
+                uid   = thing['uid']
+                ttype = thing['type']
+                state = thing['state']
 
-            if 'clone' in uid:
-                # we don't push clone states to DB
-                return True
+                if 'clone' in uid:
+                    # we don't push clone states to DB
+                    return True
 
-            self._prof.prof('update_request', msg=state, uid=uid)
+                self._log.debug('=== state cb update: %s %s', uid, state)
+                self._prof.prof('update_request', msg=state, uid=uid)
 
-            if not state:
-                # nothing to push
-                return True
+                # create an update document
+                update_dict          = dict()
+                update_dict['$set']  = dict()
+                update_dict['$push'] = dict()
 
-            # create an update document
-            update_dict          = dict()
-            update_dict['$set']  = dict()
-            update_dict['$push'] = dict()
+                for key,val in thing.iteritems():
+                    # never set _id, states (avoid index clash, duplicated ops)
+                    if key not in ['_id', 'states']:
+                        update_dict['$set'][key] = val
 
-            for key,val in thing.iteritems():
-                # we never set _id, states (to avoid index clash, duplicated ops)
-                if key not in ['_id', 'states']:
-                    update_dict['$set'][key] = val
+                # we set state, put (more importantly) we push the state onto
+                # the 'states' list, so that we can later get state progression
+                # in sync with the state model, even if they have been pushed
+                # here out-of-order
+                update_dict['$push']['states'] = state
 
-            # we set state, put (more importantly) we push the state onto the
-            # 'states' list, so that we can later get state progression in sync with
-            # the state model, even if they have been pushed here out-of-order
-            update_dict['$push']['states'] = state
+                with self._lock:
+
+                    # push the update request onto the bulk
+                    self._uids.append([uid, ttype, state])
+                    self._bulk.find  ({'uid'  : uid, 
+                                       'type' : ttype}) \
+                              .update(update_dict)
 
             with self._lock:
+                # attempt a timed update
+                self._timed_bulk_execute()
 
-                # push the update request onto the bulk
-                self._uids.append([uid, ttype, state])
-                self._bulk.find  ({'uid'  : uid, 
-                                   'type' : ttype}) \
-                          .update(update_dict)
 
-        with self._lock:
-            # attempt a timed update
-            self._timed_bulk_execute()
+        # ------------------------------------------------------------------
+        elif cmd in ['cmd']:
+
+
+            cmdspec = msg['arg']
+
+            self._log.debug('=== state cb cmd: %s', cmdspec)
+            self._prof.prof('cmd_request',
+                            msg=cmdspec['cmd'], uid=cmdspec['uid'])
+
+            # create an update documents for each cmd
+            with self._lock:
+                self._log.debug('=== send cmd to %s: %s',
+                                cmdspec['uid'], cmdspec['cmd'])
+
+                # FIXME: interprete retval
+                ret = self._coll.update({'type'  : cmdspec['type'],
+                                         'uid'   : cmdspec['uid']},
+                                        {'$push' : {'cmd': cmdspec}})
+                self._log.debug('=== update ret: %s', ret)
+
+        else: 
+            self._log.debug('=== state cb what: %s', cmd)
+
 
         return True
 

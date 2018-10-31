@@ -100,9 +100,9 @@ class DB(object):
                 raise ValueError('cannot reconnect to session %s' % self._sid)
 
             doc = docs[0]
-            self._created    = doc['created']
+            self._created = doc['created']
 
-        self._connected  = time.time()
+        self._connected = time.time()
 
 
     # --------------------------------------------------------------------------
@@ -270,7 +270,7 @@ class DB(object):
 
         try:
             cmd_spec = {'cmd' : cmd,
-                        'arg' : arg}
+                        'arg' : args}
 
             # FIXME: evaluate res
             if pids:

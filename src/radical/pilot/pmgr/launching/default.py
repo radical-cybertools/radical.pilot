@@ -76,6 +76,8 @@ class Default(PMGRLaunchingComponent):
         self._root_dir      = "%s/../../"   % self._mod_dir  
         self._conf_dir      = "%s/configs/" % self._root_dir 
 
+        self._pmgr          = self._cfg['owner']
+
         self.register_input(rps.PMGR_LAUNCHING_PENDING, 
                             rpc.PMGR_LAUNCHING_QUEUE, self.work)
 
@@ -301,12 +303,23 @@ class Default(PMGRLaunchingComponent):
 
 
         if live_pilots:
+
             # send a heartbeat
             pids = [pilot['uid'] for pilot in live_pilots]
-            self._session._db.pilot_command('heartbeat', 
-                           args={'period' : self._pilot_watcher_period, 
-                                 'tstamp' : time.time()},
-                           pids=pids)
+            arg  = {'period' : self._pilot_watcher_period, 
+                    'tstamp' : time.time()}
+
+            self._log.debug('live pilots: %s', pids)
+
+            for pid in pids:
+
+                # FIXME: use control pubsub?  But then updater needs to listen
+                #        on that...
+                self.publish(rpc.STATE_PUBSUB, {'cmd' :  'cmd', 
+                                                'arg' : {'type': 'pilot', 
+                                                         'uid' :  pid, 
+                                                         'cmd' : 'heartbeat', 
+                                                         'arg' :  arg}})
 
 
         # all checks are done, final pilots are weeded out.  Now check if any
@@ -349,10 +362,13 @@ class Default(PMGRLaunchingComponent):
             # nothing to do
             return
 
-        # send the cancelation request to the pilots
-        # FIXME: the cancellation request should not go directly to the DB, but
-        #        through the DB abstraction layer...
-        self._session._dbs.pilot_command('cancel_pilot', pids=pids)
+        # send the cancelation request to the pilots (via the update worker)
+        for pid in pids:
+            self.publish(rpc.STATE_PUBSUB, {'cmd' : 'cmd', 
+                                            'arg' : {'type': 'pilot', 
+                                                     'uid' :  pid,
+                                                     'cmd' : 'cancel_pilot', 
+                                                     'arg' :  None}})
         self._log.debug('pilot(s).need(s) cancellation %s', pids)
 
         # recod time of request, so that forceful termination can happen

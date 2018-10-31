@@ -426,6 +426,7 @@ class Agent_0(rpu.Worker):
 
         for spec in retdoc.get('cmd', []):
 
+            self._log.info('=== cmd %s', spec)
             cmd = spec['cmd']
             arg = spec['arg']
 
