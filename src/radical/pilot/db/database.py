@@ -338,8 +338,11 @@ class DB(object):
             return None
           # raise Exception("No active session.")
 
-        # we only pull units which are not yet owned by the umgr
+      # if unit_ids: n = len(unit_ids)
+      # else       : n = 0
+      # start = time.time()
 
+        # we only pull units which are not yet owned by the umgr
         if not unit_ids:
             cursor = self._c.find({'type'   : 'unit',
                                    'umgr'   : umgr_uid,
@@ -355,8 +358,13 @@ class DB(object):
 
         # make sure we return every unit doc only once
         # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
-        ret = {doc['uid'] : doc for doc in cursor}
+        ret  = {doc['uid'] : doc for doc in cursor}
         docs = ret.values()
+      # N    = len(docs)
+      # stop = time.time()
+      # if N:
+      #     with open('./mongo_find_%s.dat' % self._dburl.host, 'a+') as fout:
+      #         fout.write('%10d %10d %10.2f\n' % (n, N, stop - start))
 
         # for each doc, we make sure the unit state is according to the state
         # model, ie. is the largest of any state the unit progressed through
@@ -403,8 +411,11 @@ class DB(object):
         # make sure that the insert is executed before handing off control over
         # the unit to other components, thus the synchronous insert call.
         # (FIXME)
-        bcs = 1024  # bulk_collection_size
-        cur = 0     # bulk index
+        bcs = 8 * 1024  # bulk_collection_size
+        cur = 0         # bulk index
+
+      # n     = len(unit_docs)
+      # start = time.time()
 
         while True:
 
@@ -432,6 +443,10 @@ class DB(object):
             except pymongo.errors.OperationFailure as e:
                 self._log.exception('pymongo error')
                 raise RuntimeError('pymongo error: %s' % e.details)
+
+      # stop = time.time()
+      # with open('./mongo_ins_bulk_%s.dat' % self._dburl.host, 'a+') as fout:
+      #     fout.write('%10d %10d %10.2f\n' % (bcs, n, stop - start))
 
     # --------------------------------------------------------------------------
     #
