@@ -53,6 +53,8 @@ class ShellFS(AgentExecutingComponent):
         old_home  = os.environ.get('_OLD_VIRTUAL_PYTHONHOME', None)
         old_ps1   = os.environ.get('_OLD_VIRTUAL_PS1',        None)
 
+        old_path += ":/usr/bin:/bin:/usr/local/bin:/sbin:/usr/sbin"  # hi titan nodes
+
         if old_ppath: self._deactivate += 'export PATH="%s"\n'        % old_ppath
         if old_path : self._deactivate += 'export PYTHONPATH="%s"\n'  % old_path
         if old_home : self._deactivate += 'export PYTHON_HOME="%s"\n' % old_home
