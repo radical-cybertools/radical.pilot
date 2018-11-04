@@ -53,7 +53,8 @@ class ShellFS(AgentExecutingComponent):
         old_home  = os.environ.get('_OLD_VIRTUAL_PYTHONHOME', None)
         old_ps1   = os.environ.get('_OLD_VIRTUAL_PS1',        None)
 
-        old_path += ":/usr/bin:/bin:/usr/local/bin:/sbin:/usr/sbin"  # hi titan nodes
+        if old_path:
+            old_path += ":/usr/bin:/bin:/usr/local/bin:/sbin:/usr/sbin"  # hi titan nodes
 
         if old_ppath: self._deactivate += 'export PATH="%s"\n'        % old_ppath
         if old_path : self._deactivate += 'export PYTHONPATH="%s"\n'  % old_path
@@ -307,27 +308,30 @@ class ShellFS(AgentExecutingComponent):
 
         sandbox  = '%s/%s' % (self._pwd, cu['uid'])
 
-        env  += "# CU environment\n"
-        env  += "export RP_SESSION_ID=%s\n"     % self._cfg['session_id']
-        env  += "export RP_PILOT_ID=%s\n"       % self._cfg['pilot_id']
-        env  += "export RP_AGENT_ID=%s\n"       % self._cfg['agent_name']
-        env  += "export RP_SPAWNER_ID=%s\n"     % self.uid
-        env  += "export RP_UNIT_ID=%s\n"        % cu['uid']
-        env  += 'export RP_GTOD="%s"\n'         % self.gtod
-        env  += 'export RP_TMP="%s"\n'          % self._cu_tmp
-        env  += 'export RP_PROCESSES="%d"\n'    % descr['cpu_processes']
-        env  += 'export RP_THREADS="%d"\n'      % descr['cpu_threads']
+        cu['description']['environment']['RP_SESSION_ID'] = str(self._cfg['session_id'])
+        cu['description']['environment']['RP_PILOT_ID'  ] = str(self._cfg['pilot_id'])
+        cu['description']['environment']['RP_AGENT_ID'  ] = str(self._cfg['agent_name'])
+        cu['description']['environment']['RP_SPAWNER_ID'] = str(self.uid)
+        cu['description']['environment']['RP_UNIT_ID'   ] = str(cu['uid'])
+        cu['description']['environment']['RP_GTOD'      ] = str(self.gtod)
+        cu['description']['environment']['RP_PROF'      ] = '%s/%s.prof' % (sandbox, cu['uid'])
+        cu['description']['environment']['RP_TMP'       ] = str(self._cu_tmp)
+        cu['description']['environment']['RP_PROCESSES' ] = str(descr['cpu_processes'])
+        cu['description']['environment']['RP_THREADS'   ] = str(descr['cpu_threads'])
+
         if 'RADICAL_PILOT_PROFILE' in os.environ or \
            'RADICAL_PROFILE'       in os.environ :
-            env += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
-        env  += '''
+            env  += '''
+export RP_PROF="%s/%s.prof"
+export RP_GTOD="%s"
+export RP_UNIT_ID="%s"
 prof(){
     test -z "$RP_PROF" && return
     event=$1
     now=$($RP_GTOD)
-    echo "$now,$event,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING," >> $RP_PROF
+    echo "$now,$event,unit_script,,$RP_UNIT_ID,AGENT_EXECUTING," >> $RP_PROF
 }
-'''
+''' % (sandbox, cu['uid'], self.gtod, cu['uid'])
 
         # also add any env vars requested for export by the resource config
         for k,v in self._env_cu_export.iteritems():
