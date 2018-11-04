@@ -76,17 +76,15 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = 'date'
-          # cud.arguments        = '1'.split()
-          # cud.executable       = 'gmx'
-          # cud.arguments        = args.split()
+            cud.executable       = 'gmx'
+            cud.arguments        = args.split()
             cud.tags             = tags
             cud.gpu_processes    = 0
-            cud.cpu_processes    = 2  #'1-32'
-            cud.cpu_threads      = 2  #'1-16'
+            cud.cpu_processes    = '1-32'
+            cud.cpu_threads      = '1-16'
             cud.cpu_process_type = rp.MPI
             cud.cpu_thread_type  = rp.OpenMP
-      #     cud.input_staging    = cudis
+            cud.input_staging    = cudis
 
             cuds.append(cud)
             report.progress()

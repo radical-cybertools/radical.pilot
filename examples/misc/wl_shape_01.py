@@ -86,7 +86,7 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = '%s/wl_shape.sh' %  pwd
+            cud.executable       = '%s/wl_shape_01.sh' %  pwd
             cud.tags             = {'app-stats'  : 'this_app',
                                     'constraint' : 'p * t <= 16'}
             cud.cpu_processes    = '1-6'
