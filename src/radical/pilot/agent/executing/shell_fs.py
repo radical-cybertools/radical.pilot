@@ -314,6 +314,9 @@ class ShellFS(AgentExecutingComponent):
         env  += "export RP_SPAWNER_ID=%s\n"     % self.uid
         env  += "export RP_UNIT_ID=%s\n"        % cu['uid']
         env  += 'export RP_GTOD="%s"\n'         % self.gtod
+        env  += 'export RP_TMP="%s"\n'          % self._cu_tmp
+        env  += 'export RP_PROCESSES="%d"\n'    % descr['cpu_processes']
+        env  += 'export RP_THREADS="%d"\n'      % descr['cpu_threads']
         if 'RADICAL_PILOT_PROFILE' in os.environ or \
            'RADICAL_PROFILE'       in os.environ :
             env += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
