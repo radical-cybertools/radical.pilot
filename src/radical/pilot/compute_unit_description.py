@@ -403,26 +403,26 @@ class ComputeUnitDescription(attributes.Attributes):
         This method encapsulates checks beyond the SAGA attribute level checks.
         '''
 
-        # replace 'None' values for strng types with '', for int types with '0'. 
-        if self.get(KERNEL          ) is None: self[KERNEL          ] = ''
-        if self.get(NAME            ) is None: self[NAME            ] = ''
-        if self.get(EXECUTABLE      ) is None: self[EXECUTABLE      ] = ''
-        if self.get(ARGUMENTS       ) is None: self[ARGUMENTS       ] = ''
-        if self.get(ENVIRONMENT     ) is None: self[ENVIRONMENT     ] = ''
-        if self.get(PRE_EXEC        ) is None: self[PRE_EXEC        ] = ''
-        if self.get(POST_EXEC       ) is None: self[POST_EXEC       ] = ''
-        if self.get(PILOT           ) is None: self[PILOT           ] = ''
-        if self.get(STDOUT          ) is None: self[STDOUT          ] = ''
-        if self.get(STDERR          ) is None: self[STDERR          ] = ''
-        if self.get(CPU_PROCESS_TYPE) is None: self[CPU_PROCESS_TYPE] = ''
-        if self.get(CPU_THREAD_TYPE ) is None: self[CPU_THREAD_TYPE ] = ''
-        if self.get(GPU_PROCESS_TYPE) is None: self[GPU_PROCESS_TYPE] = ''
-        if self.get(GPU_THREAD_TYPE ) is None: self[GPU_THREAD_TYPE ] = ''
-
-        if self.get(CPU_PROCESSES   ) is None: self[CPU_PROCESSES   ] = 0
-        if self.get(CPU_THREADS     ) is None: self[CPU_THREADS     ] = 0
-        if self.get(GPU_PROCESSES   ) is None: self[GPU_PROCESSES   ] = 0
-        if self.get(GPU_THREADS     ) is None: self[GPU_THREADS     ] = 0
+      # # replace 'None' values for strng types with '', for int types with '0'. 
+      # if self.get(KERNEL          ) is None: self[KERNEL          ] = ''
+      # if self.get(NAME            ) is None: self[NAME            ] = ''
+      # if self.get(EXECUTABLE      ) is None: self[EXECUTABLE      ] = ''
+      # if self.get(ARGUMENTS       ) is None: self[ARGUMENTS       ] = ''
+      # if self.get(ENVIRONMENT     ) is None: self[ENVIRONMENT     ] = ''
+      # if self.get(PRE_EXEC        ) is None: self[PRE_EXEC        ] = ''
+      # if self.get(POST_EXEC       ) is None: self[POST_EXEC       ] = ''
+      # if self.get(PILOT           ) is None: self[PILOT           ] = ''
+      # if self.get(STDOUT          ) is None: self[STDOUT          ] = ''
+      # if self.get(STDERR          ) is None: self[STDERR          ] = ''
+      # if self.get(CPU_PROCESS_TYPE) is None: self[CPU_PROCESS_TYPE] = ''
+      # if self.get(CPU_THREAD_TYPE ) is None: self[CPU_THREAD_TYPE ] = ''
+      # if self.get(GPU_PROCESS_TYPE) is None: self[GPU_PROCESS_TYPE] = ''
+      # if self.get(GPU_THREAD_TYPE ) is None: self[GPU_THREAD_TYPE ] = ''
+      #
+      # if self.get(CPU_PROCESSES   ) is None: self[CPU_PROCESSES   ] = 0
+      # if self.get(CPU_THREADS     ) is None: self[CPU_THREADS     ] = 0
+      # if self.get(GPU_PROCESSES   ) is None: self[GPU_PROCESSES   ] = 0
+      # if self.get(GPU_THREADS     ) is None: self[GPU_THREADS     ] = 0
 
         if  not self.get('executable') and \
             not self.get('kernel')     :

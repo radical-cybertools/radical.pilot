@@ -509,6 +509,12 @@ prof(){
             cu = self._registry[uid]
             del(self._registry[uid])
 
+        sandbox  = '%s/%s' % (self._pwd, cu['uid'])
+        statfile = '%s/app_stats.dat' % sandbox
+        if os.path.isfile(statfile):
+            with open ('%s/app_stats.dat' % sandbox, 'r') as fin:
+                cu['app_stats'] = float(fin.read().strip())
+
         # free unit slots.
         self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 

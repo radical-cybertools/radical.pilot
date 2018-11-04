@@ -1333,7 +1333,7 @@ class Component(ru.Process):
                 self._prof.prof('advance', uid=uid, state=_state,
                                 timestamp=timestamp)
 
-            if not _state in buckets:
+            if _state not in buckets:
                 buckets[_state] = list()
             buckets[_state].append(thing)
 

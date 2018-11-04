@@ -648,15 +648,21 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def app_stats_eval(self, unit):
 
+        self._log.debug('=== app_stat eval %s',  unit['uid'])
+
         if 'app_stats' not in unit: 
             return unit
 
+        uid   = unit['uid']
         descr = unit['description']
         tags  = descr.get('tags')
         stid  = tags.get('app-stats')
-        p, t  = [descr['cpu_processes'], descr['cpu_threads']]
+        p     = descr['cpu_processes']
+        t     = descr['cpu_threads']
         v     = float(unit['app_stats'])
-        uid   = unit['uid']
+
+        self._log.debug('=== app_stat eval %s [%s]',  unit['uid'],
+                        self._app_stats[stid]['optimal'])
 
         if self._app_stats[stid]['optimal'] is None:
 
@@ -671,8 +677,7 @@ class AgentSchedulingComponent(rpu.Component):
                     # all tests are done - store and define optimum
                     c_opt = None
                     v_opt = None
-                    sbox  = self._session.get_session_sandbox()
-                    mapf  = '%s/app_map.dat' % sbox,
+                    mapf  = './app_map.dat'
                     self._log.debug('=== map: %s' % mapf)
                     with open(mapf, 'w') as fout:
                         for c,v in self._app_stats[stid]['tested'].iteritems():
@@ -688,7 +693,7 @@ class AgentSchedulingComponent(rpu.Component):
                     self._log.info('stat fini: \n%s', pprint.pformat(self._app_stats))
 
 
-        with open('/tmp/app_stats.dat', 'a') as fout:
+        with open('./app_stats.dat', 'a') as fout:
             n = int(uid.split('.')[1])
             fout.write('%6d   %4d   %4d   %10.2f\n' % (n, p, t, v))
 
