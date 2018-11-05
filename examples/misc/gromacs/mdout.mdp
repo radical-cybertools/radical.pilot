@@ -2,14 +2,14 @@
 ;	File 'mdout.mdp' was generated
 ;	By user: merzky (1000)
 ;	On host: rivendell
-;	At date: Mon Oct 29 15:18:30 2018
+;	At date: Mon Nov  5 11:40:02 2018
 ;
 ;	Created by:
 ;	                     :-) GROMACS - gmx grompp, 2018.1 (-:
 ;	
 ;	Executable:   /usr/bin/gmx
 ;	Data prefix:  /usr
-;	Working dir:  /home/merzky/radical/radical.pilot.merge/examples/misc/gromacs
+;	Working dir:  /home/merzky/experiments/radical.canon/gromacs/small/experiment_6000000_001
 ;	Command line:
 ;	  gmx grompp -f grompp.mdp -p topol.top -c start.gro -o topol.tpr -po mdout.mdp
 
@@ -25,7 +25,7 @@ integrator               = sd
 ; Start time and timestep in ps
 tinit                    = 0
 dt                       = 0.001
-nsteps                   = 60000
+nsteps                   = 6000000
 ; For exact run continuation or redoing part of a run
 init-step                = 0
 ; Part index is updated automatically on checkpointing (keeps files separate)
@@ -82,7 +82,7 @@ cutoff-scheme            = verlet
 ; nblist update frequency
 nstlist                  = 10
 ; ns algorithm (simple or grid)
-ns_type                  = simple
+ns_type                  = grid
 ; Periodic boundary conditions: xyz, no, xy
 pbc                      = xyz
 periodic-molecules       = no
