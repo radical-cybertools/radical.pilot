@@ -67,8 +67,8 @@ if __name__ == '__main__':
                           'target': 'unit:///%s' % f,
                           'action': rp.LINK})
 
-        n = 2
         n = 2 * 1024  # number of units to run
+        n = 16
         report.info('create %d unit description(s)\n\t' % n)
         cuds = list()
         for i in range(0, n):

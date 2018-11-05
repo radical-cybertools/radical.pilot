@@ -236,12 +236,14 @@ class ShellFS(AgentExecutingComponent):
 
         # launch the new unit
         try:
-            mpi = cu['description'].get('mpi', False) 
-            if mpi: launcher = self._mpi_launcher
-            else  : launcher = self._task_launcher
+            cpt = cu['description']['cpu_process_type']
+            gpt = cu['description']['gpu_process_type']
+
+            if rpc.MPI in [cpt, gpt]: launcher = self._mpi_launcher
+            else                    : launcher = self._task_launcher
 
             if not launcher:
-                raise RuntimeError("no launcher (mpi=%s)" % mpi)
+                raise RuntimeError("no launcher (mpi=%s)" % [cpt, gpt])
 
             self._log.debug("Launching with %s (%s).", launcher.name,
                             launcher.launch_command)
@@ -308,16 +310,22 @@ class ShellFS(AgentExecutingComponent):
 
         sandbox  = '%s/%s' % (self._pwd, cu['uid'])
 
-        cu['description']['environment']['RP_SESSION_ID'] = str(self._cfg['session_id'])
-        cu['description']['environment']['RP_PILOT_ID'  ] = str(self._cfg['pilot_id'])
-        cu['description']['environment']['RP_AGENT_ID'  ] = str(self._cfg['agent_name'])
-        cu['description']['environment']['RP_SPAWNER_ID'] = str(self.uid)
-        cu['description']['environment']['RP_UNIT_ID'   ] = str(cu['uid'])
-        cu['description']['environment']['RP_GTOD'      ] = str(self.gtod)
-        cu['description']['environment']['RP_PROF'      ] = '%s/%s.prof' % (sandbox, cu['uid'])
-        cu['description']['environment']['RP_TMP'       ] = str(self._cu_tmp)
-        cu['description']['environment']['RP_PROCESSES' ] = str(descr['cpu_processes'])
-        cu['description']['environment']['RP_THREADS'   ] = str(descr['cpu_threads'])
+        cu_env = cu['description']['environment']
+
+        cu_env['RP_SESSION_ID'] = str(self._cfg['session_id'])
+        cu_env['RP_PILOT_ID'  ] = str(self._cfg['pilot_id'])
+        cu_env['RP_AGENT_ID'  ] = str(self._cfg['agent_name'])
+        cu_env['RP_SPAWNER_ID'] = str(self.uid)
+        cu_env['RP_UNIT_ID'   ] = str(cu['uid'])
+        cu_env['RP_GTOD'      ] = str(self.gtod)
+        cu_env['RP_PROF'      ] = '%s/%s.prof' % (sandbox, cu['uid'])
+        cu_env['RP_TMP'       ] = str(self._cu_tmp)
+        cu_env['RP_PROCESSES' ] = str(descr['cpu_processes'])
+        cu_env['RP_THREADS'   ] = str(descr['cpu_threads'])
+
+        # FIXME: this should be set by an LM filter or something (GPU)
+        if descr['cpu_thread_type'] == rpc.OpenMP:
+            cu_env['OMP_NUM_THREADS'] = str(descr['cpu_threads'])
 
         if 'RADICAL_PILOT_PROFILE' in os.environ or \
            'RADICAL_PROFILE'       in os.environ :
