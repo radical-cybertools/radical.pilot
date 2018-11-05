@@ -2,7 +2,7 @@
 ;	File 'mdout.mdp' was generated
 ;	By user: merzky (1000)
 ;	On host: rivendell
-;	At date: Mon Nov  5 11:40:02 2018
+;	At date: Mon Nov  5 12:38:08 2018
 ;
 ;	Created by:
 ;	                     :-) GROMACS - gmx grompp, 2018.1 (-:
@@ -218,7 +218,7 @@ gen_seed                 = -1
 ; OPTIONS FOR BONDS    
 constraints              = hbonds
 ; Type of constraint algorithm
-constraint_algorithm     = SHAKE
+constraint_algorithm     = LINCS
 ; Do not constrain the start configuration
 continuation             = no
 ; Use successive overrelaxation to reduce the number of shake iterations

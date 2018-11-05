@@ -49,5 +49,5 @@ ld-seed = -1
 
 ; ntc=2, ntf=2
 constraints              = hbonds
-constraint_algorithm     = SHAKE
+constraint_algorithm     = LINCS
 
