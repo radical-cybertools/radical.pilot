@@ -82,7 +82,7 @@ cutoff-scheme            = verlet
 ; nblist update frequency
 nstlist                  = 10
 ; ns algorithm (simple or grid)
-ns_type                  = simple
+ns_type                  = grid
 ; Periodic boundary conditions: xyz, no, xy
 pbc                      = xyz
 periodic-molecules       = no

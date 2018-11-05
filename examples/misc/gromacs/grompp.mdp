@@ -23,7 +23,7 @@ nstlist                  = 10
 comm_mode                = none
 
 nstcalcenergy            = 0
-ns_type                  = simple
+ns_type                  = grid
 coulombtype              = cut-off
 ;pme-order               = 4
 ;fourierspacing          = 0.1
