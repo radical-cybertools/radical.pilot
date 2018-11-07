@@ -346,26 +346,26 @@ prof(){
     test -z "$RP_PROF" && return
     event=$1
     now=$($RP_GTOD)
-    echo "$now,$event,unit_script,,$RP_UNIT_ID,AGENT_EXECUTING," >> $RP_PROF
+    /bin/echo "$now,$event,unit_script,,$RP_UNIT_ID,AGENT_EXECUTING," >> $RP_PROF
 }
 
 export RP_TIMEOUT=%(timeout)s
 trap handle_alrm ALRM
 handle_alrm(){
-    echo 'timeout'
-    test -z "$upid" || kill $upid
-    echo "FINAL $RP_UNIT_ID -1" > %(fifo)s
+    /bin/echo 'timeout'
+    test -z "$upid" || /bin/kill $upid
+    /bin/echo "FINAL $RP_UNIT_ID -1" > %(fifo)s
     exit 1
 }
 
 test -z "$RP_TIMEOUT" || (
     ppid=$$
     trap sig TERM
-    sig(){ kill -s TERM $spid; ppid=;}
-    sleep $RP_TIMEOUT &
+    sig(){ /bin/kill -s TERM $spid; ppid=;}
+    /bin/sleep $RP_TIMEOUT &
     spid=$!
     wait $spid
-    test -z "$ppid" || kill -s ALRM $ppid
+    test -z "$ppid" || /bin/kill -s ALRM $ppid
 ) &
 test -z "$RP_TIMEOUT" || watcher=$!
 
@@ -390,7 +390,7 @@ test -z "$RP_TIMEOUT" || watcher=$!
         cwd  += "\n"
 
         if  descr['pre_exec'] :
-            fail  = ' (echo "pre_exec failed"; false) || exit'
+            fail  = ' (/bin/echo "pre_exec failed"; false) || exit'
             pre  += "\n# CU pre-exec\n"
             pre  += 'prof cu_pre_start\n'
             for elem in descr['pre_exec']:
@@ -400,7 +400,7 @@ test -z "$RP_TIMEOUT" || watcher=$!
             pre  += "\n"
 
         if  descr['post_exec'] :
-            fail  = ' (echo "post_exec failed"; false) || exit'
+            fail  = ' (/bin/echo "post_exec failed"; false) || exit'
             post += "\n# CU post-exec\n"
             post += 'prof cu_post_start\n'
             for elem in descr['post_exec']:
@@ -450,10 +450,10 @@ prof cu_exec_start
 upid=$!
 wait $upid
 RETVAL=$?
-(test -z "$watcher" || kill -s TERM $watcher || true)> /dev/null 2>&1
+(test -z "$watcher" || /bin/kill -s TERM $watcher || true)> /dev/null 2>&1
 prof cu_exec_stop
 %(post)s
-echo "FINAL $RP_UNIT_ID $RETVAL" > %(fifo)s
+/bin/echo "FINAL $RP_UNIT_ID $RETVAL" > %(fifo)s
 # ------------------------------------------------------
 
 '''  % {'cwd'  : cwd,

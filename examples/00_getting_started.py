@@ -69,15 +69,34 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
+        report.header('stage data')
+        pilot.stage_in({'source': 'client:///examples/misc/gromacs/',
+                        'target': 'pilot:///',
+                        'action': rp.TRANSFER})
+        report.ok('>>ok\n')
+
         report.header('submit units')
 
-        # Register the ComputePilot in a UnitManager object.
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-        # Create a workload of ComputeUnits.
-        # Each compute unit runs '/bin/date'.
+        args = 'mdrun -o traj.trr -e ener.edr -s topol.tpr -g mdlog.log ' \
+             + '-c outgro -cpo state.cpt -ntomp $OMP_NUM_THREADS'
 
+        tags = {'app-stats'  : 'this_app',
+                'constraint' : 'p * t <= 32'}
+
+        cudis = list()
+        for f in ['grompp.mdp', 'mdout.mdp', 'start.gro',
+                  'topol.top',  'topol.tpr']:
+            cudis.append({'source': 'pilot:///gromacs/%s' % f, 
+                          'target': 'unit:///%s' % f,
+                          'action': rp.LINK})
+
+        share = '/lustre/atlas//world-shared/csc230'
+        path  = '%s/openmpi/applications/gromacs-2018.2/install/bin' % share
+        gmx   = '%s/gmx_mpi' % path
+        
         n = 128  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
@@ -88,11 +107,17 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable       = '/bin/date'
+          # cud.cpu_processes    = 4
+          # cud.cpu_threads      = 2
+          # cud.executable       = gmx
+          # cud.arguments        = args.split()
+          # cud.tags             = tags
             cud.gpu_processes    = 0
-            cud.cpu_processes    = 1
-            cud.cpu_threads      = 1
-            cud.cpu_process_type = rp.POSIX
-            cud.cpu_thread_type  = rp.POSIX
+            cud.cpu_processes    = 4
+            cud.cpu_threads      = 2
+            cud.cpu_process_type = rp.MPI
+            cud.cpu_thread_type  = rp.OpenMP
+            cud.input_staging    = cudis
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
