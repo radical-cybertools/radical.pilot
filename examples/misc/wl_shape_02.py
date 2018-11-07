@@ -37,7 +37,7 @@ if __name__ == '__main__':
                    'project'       :     config[resource]['project'],
                    'queue'         :     config[resource]['queue'],
                    'access_schema' :     config[resource]['schema'],
-                   'cores'         : max(config[resource]['cores'], 128)
+                   'cores'         : 32
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
         pmgr  = rp.PilotManager(session=session)
@@ -67,8 +67,13 @@ if __name__ == '__main__':
                           'target': 'unit:///%s' % f,
                           'action': rp.LINK})
 
+        share = '/lustre/atlas//world-shared/csc230'
+        path  = '%s/openmpi/applications/gromacs-2018.2/install/bin' % share
+        gmx   = '%s/gmx_mpi' % path
+
         n = 2 * 1024  # number of units to run
-        n = 16
+        n = 12
+
         report.info('create %d unit description(s)\n\t' % n)
         cuds = list()
         for i in range(0, n):
@@ -76,7 +81,7 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = 'gmx_mpi'
+            cud.executable       = gmx
             cud.arguments        = args.split()
             cud.tags             = tags
             cud.gpu_processes    = 0

@@ -360,10 +360,11 @@ class Continuous(AgentSchedulingComponent):
         cores_per_node = self._lrms_cores_per_node
         gpus_per_node  = self._lrms_gpus_per_node
 
-        if  requested_cores  > cores_per_node   and \
-            cores_per_node   % threads_per_proc and \
-            self._scattered is False:
-            raise ValueError('cannot allocate under given constrains')
+     #  #   cores_per_node   % threads_per_proc and \
+     #  if  requested_cores  > cores_per_node   and \
+     #      self._scattered is False:
+     #      self._log.debug('=== %s > %s and !scattered', requested_cores, cores_per_node)
+     #      raise ValueError('cannot allocate under given constrains')
 
         # we always fail when too many threads are requested
         if threads_per_proc > cores_per_node:
