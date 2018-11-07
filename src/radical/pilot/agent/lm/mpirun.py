@@ -73,7 +73,7 @@ class MPIRun(LaunchMethod):
                 hostlist.append(node[0])
         hosts_string = ",".join(hostlist)
 
-        command = "%s -np %d -host %s %s %s" \
+        command = "%s -oversubscribe -np %d -host %s %s %s" \
                 % (self.launch_command, len(hostlist), hosts_string, 
                    env_string, task_command)
 
