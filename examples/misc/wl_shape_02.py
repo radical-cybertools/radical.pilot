@@ -58,7 +58,7 @@ if __name__ == '__main__':
              + '-c outgro -cpo state.cpt'
 
         tags = {'app-stats'  : 'this_app',
-                'constraint' : 'p * t <= 16'}
+                'constraint' : 'p * t <= 32'}
 
         cudis = list()
         for f in ['grompp.mdp', 'mdout.mdp', 'start.gro',
@@ -85,7 +85,7 @@ if __name__ == '__main__':
             cud.arguments        = args.split()
             cud.tags             = tags
             cud.gpu_processes    = 0
-            cud.cpu_processes    = '1-16'
+            cud.cpu_processes    = '1-32'
             cud.cpu_threads      = '1-16'
             cud.cpu_process_type = rp.MPI
             cud.cpu_thread_type  = rp.OpenMP
