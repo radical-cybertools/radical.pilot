@@ -469,6 +469,7 @@ class AgentSchedulingComponent(rpu.Component):
         if self._app_stats[stid]['optimal'] is not None:
             p, t = self._app_stats[stid]['optimal']
             self._log.debug('==== optimize %s: %d %d', uid, p, t)
+            descr['timeout'] = ''
 
         # do we have an earlier decision to re-apply?
         elif p and t:
@@ -659,7 +660,7 @@ class AgentSchedulingComponent(rpu.Component):
         stid  = tags.get('app-stats')
         p     = descr['cpu_processes']
         t     = descr['cpu_threads']
-        v     = float(unit['app_stats'])
+        v     = unit.get('app_stats')
 
         self._log.debug('=== app_stat eval %s [%s]',  unit['uid'],
                         self._app_stats[stid]['optimal'])
@@ -681,11 +682,12 @@ class AgentSchedulingComponent(rpu.Component):
                     self._log.debug('=== map: %s' % mapf)
                     with open(mapf, 'w') as fout:
                         for c,v in self._app_stats[stid]['tested'].iteritems():
-                            p, t = [int(x) for x in c.split()]
-                            fout.write('%4d   %4d   %10.2f\n' % (p, t, v))
-                            if not v_opt or v_opt > v:
-                                v_opt = v
-                                c_opt = [p, t]
+                            if v is not None:
+                                p, t = [int(x) for x in c.split()]
+                                fout.write('%4d   %4d   %10.2f\n' % (p, t, v))
+                                if not v_opt or v_opt > v:
+                                    v_opt = v
+                                    c_opt = [p, t]
 
                     self._app_stats[stid]['optimal'] = c_opt
 
@@ -693,9 +695,11 @@ class AgentSchedulingComponent(rpu.Component):
                     self._log.info('stat fini: \n%s', pprint.pformat(self._app_stats))
 
 
-        with open('./app_stats.dat', 'a') as fout:
-            n = int(uid.split('.')[1])
-            fout.write('%6d   %4d   %4d   %10.2f\n' % (n, p, t, v))
+        if v is None:
+            with open('./app_stats.dat', 'a') as fout:
+                n = int(uid.split('.')[1])
+                fout.write('%6d   %4d   %4d   %10.2f\n' % (n, p, t, v))
+
 
 
     # --------------------------------------------------------------------------

@@ -298,7 +298,6 @@ class ShellFS(AgentExecutingComponent):
 
         # ----------------------------------------------------------------------
 
-        args  = ""
         env   = self._deactivate
         cwd   = ""
         pre   = ""
@@ -306,6 +305,10 @@ class ShellFS(AgentExecutingComponent):
         io    = ""
         cmd   = ""
         descr = cu['description']
+        tout  = descr.get('timeout', '')
+
+        if tout == 0:
+            tout = ''
 
         sandbox  = '%s/%s' % (self._pwd, cu['uid'])
 
@@ -355,7 +358,7 @@ handle_alrm(){
     exit 1
 }
 
-(   test -z "$RP_TIMEOUT" && exit
+test -z "$RP_TIMEOUT" || (
     ppid=$$
     trap sig TERM
     sig(){ kill -s TERM $spid; ppid=;}
@@ -364,10 +367,10 @@ handle_alrm(){
     wait $spid
     test -z "$ppid" || kill -s ALRM $ppid
 ) &
-watcher=$!
+test -z "$RP_TIMEOUT" || watcher=$!
 
 '''  % {'fifo'   : self._fifo_inf_name, 
-        'timeout': descr.get('timeout', '')
+        'timeout': tout
        }
 
         # also add any env vars requested for export by the resource config
@@ -446,8 +449,8 @@ prof cu_exec_start
 %(cmd)s %(io)s &
 upid=$!
 wait $upid
-kill -s TERM $watcher > /dev/null
 RETVAL=$?
+(test -z "$watcher" || kill -s TERM $watcher || true)> /dev/null 2>&1
 prof cu_exec_stop
 %(post)s
 echo "FINAL $RP_UNIT_ID $RETVAL" > %(fifo)s

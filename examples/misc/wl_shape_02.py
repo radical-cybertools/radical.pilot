@@ -90,6 +90,7 @@ if __name__ == '__main__':
             cud.cpu_process_type = rp.MPI
             cud.cpu_thread_type  = rp.OpenMP
             cud.input_staging    = cudis
+            cud.timeout          = 300
 
             cuds.append(cud)
             report.progress()
