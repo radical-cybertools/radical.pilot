@@ -7,8 +7,6 @@ import os
 import threading
 import subprocess    as sp
 
-import radical.utils as ru
-
 from ... import states    as rps
 from ... import constants as rpc
 
@@ -54,7 +52,8 @@ class ShellFS(AgentExecutingComponent):
         old_ps1   = os.environ.get('_OLD_VIRTUAL_PS1',        None)
 
         if old_path:
-            old_path += ":/usr/bin:/bin:/usr/local/bin:/sbin:/usr/sbin"  # hi titan nodes
+            # hi titan nodes
+            old_path += ":/usr/bin:/bin:/usr/local/bin:/sbin:/usr/sbin"
 
         if old_ppath: self._deactivate += 'export PATH="%s"\n'        % old_ppath
         if old_path : self._deactivate += 'export PYTHONPATH="%s"\n'  % old_path
@@ -329,17 +328,47 @@ class ShellFS(AgentExecutingComponent):
 
         if 'RADICAL_PILOT_PROFILE' in os.environ or \
            'RADICAL_PROFILE'       in os.environ :
-            env  += '''
-export RP_PROF="%s/%s.prof"
+            env += 'export RP_PROF="%s/%s.prof\n"'
+        else:
+            env += 'export RP_PROF=\n"'
+
+        env  += '''
 export RP_GTOD="%s"
 export RP_UNIT_ID="%s"
+export RETVAL=""
+''' % (self.gtod, cu['uid'])
+
+        env  += '''
 prof(){
     test -z "$RP_PROF" && return
     event=$1
     now=$($RP_GTOD)
     echo "$now,$event,unit_script,,$RP_UNIT_ID,AGENT_EXECUTING," >> $RP_PROF
 }
-''' % (sandbox, cu['uid'], self.gtod, cu['uid'])
+
+export RP_TIMEOUT=%(timeout)s
+trap handle_alrm ALRM
+handle_alrm(){
+    echo 'timeout'
+    test -z "$upid" || kill $upid
+    echo "FINAL $RP_UNIT_ID -1" > %(fifo)s
+    exit 1
+}
+
+(   test -z "$RP_TIMEOUT" && exit
+    ppid=$$
+    trap sig TERM
+    sig(){ kill -s TERM $spid; ppid=;}
+    sleep $RP_TIMEOUT &
+    spid=$!
+    wait $spid
+    test -z "$ppid" || kill -s ALRM $ppid
+) &
+watcher=$!
+
+'''  % {'fifo'   : self._fifo_inf_name, 
+        'timeout': descr.get('timeout', '')
+       }
 
         # also add any env vars requested for export by the resource config
         for k,v in self._env_cu_export.iteritems():
@@ -376,9 +405,6 @@ prof(){
             post += 'prof cu_post_stop\n'
             post += "\n"
 
-        if  descr['arguments']  :
-            args  = ' ' .join (quote_args (descr['arguments']))
-
         stdout_file = descr.get('stdout') or 'STDOUT'
         stderr_file = descr.get('stderr') or 'STDERR'
 
@@ -407,20 +433,32 @@ prof(){
             script += '    exit\n'
             script += 'fi\n\n'
 
-        script += "\n# ------------------------------------------------------\n"
-        script += "%s"        %  cwd
-        script += "%s"        %  pre
-        script += "\n# CU execution\n"
-        script += 'prof cu_exec_start\n'
-        script += "%s %s\n\n" % (cmd, io)
-        script += "RETVAL=$?\n"
-        script += 'prof cu_exec_stop\n'
-        script += "%s"        %  post
-        script += "# notify the agent\n"
-        script += "echo \"FINAL %s $RETVAL\" > %s\n" % (cu['uid'],
-                                                        self._fifo_inf_name)
-        script += "exit $RETVAL\n"
-        script += "# ------------------------------------------------------\n\n"
+
+
+
+        script += '''
+
+# ------------------------------------------------------
+%(cwd)s"
+%(pre)s"
+\n# CU execution
+prof cu_exec_start
+%(cmd)s %(io)s &
+upid=$!
+wait $upid
+kill -s TERM $watcher > /dev/null
+RETVAL=$?
+prof cu_exec_stop
+%(post)s
+echo "FINAL $RP_UNIT_ID $RETVAL" > %(fifo)s
+# ------------------------------------------------------
+
+'''  % {'cwd'  : cwd,
+        'cmd'  : cmd,
+        'io'   : io,
+        'pre'  : pre,
+        'post' : post,
+        'fifo' : self._fifo_inf_name}
 
       # self._log.debug ("execution script:\n%s\n", script)
 

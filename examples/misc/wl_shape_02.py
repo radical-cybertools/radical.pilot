@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
         report.header('submit pilots')
         pd_init = {'resource'      : resource,
-                   'runtime'       : 15,  # pilot runtime (min)
+                   'runtime'       : 360,
                    'exit_on_error' : True,
                    'project'       :     config[resource]['project'],
                    'queue'         :     config[resource]['queue'],
@@ -76,7 +76,7 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = 'gmx'
+            cud.executable       = 'gmx_mpi'
             cud.arguments        = args.split()
             cud.tags             = tags
             cud.gpu_processes    = 0

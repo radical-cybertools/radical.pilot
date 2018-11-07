@@ -96,6 +96,7 @@ if __name__ == '__main__':
             cud.gpu_processes    = 0
             cud.cpu_process_type = rp.POSIX
             cud.cpu_thread_type  = rp.OpenMP
+            cud.timeout          = 100
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
