@@ -85,10 +85,11 @@ class ORTE(LaunchMethod):
             debug_strings = [
                              '--debug-devel',
                              '--mca odls_base_verbose 100',
-                             '--mca rml_base_verbose 100'
+                             '--mca rml_base_verbose 100', 
                             ]
         else:
-            debug_strings = []
+            debug_strings = [
+                            ]
 
         # Split up the debug strings into args and add them to the cmdline
         cmdline += ' '.join(debug_strings)
@@ -283,16 +284,19 @@ class ORTE(LaunchMethod):
                              '-display-allocation', 
                              '--debug-devel',
                              '--mca oob_base_verbose 100',
-                             '--mca rml_base_verbose 100'
+                             '--mca rml_base_verbose 100', 
+                             '--report-bindings'
                             ]
         else:
-            debug_strings = []
+            debug_strings = [
+                             '--report-bindings', 
+                            ]
         debug_string = ' '.join(debug_strings)
 
         if task_mpi: np_flag = '-np %s' % task_cores
         else       : np_flag = '-np 1'
 
-        command = '%s %s --hnp "%s" %s %s -host %s %s %s' % (
+        command = '%s %s -oversubscribe --hnp "%s" %s %s -host %s %s %s' % (
                   self.launch_command, debug_string, dvm_uri, np_flag,
                   map_flag, hosts_string, env_string, task_command)
 

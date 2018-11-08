@@ -562,7 +562,10 @@ prof cu_exec_stop
         statfile = '%s/app_stats.dat' % sandbox
         if os.path.isfile(statfile):
             with open ('%s/app_stats.dat' % sandbox, 'r') as fin:
-                cu['app_stats'] = float(fin.read().strip())
+                data = fin.read().strip()
+                if data:
+                    cu['apap_stats'] = float(data)
+
 
         # free unit slots.
         self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)

@@ -427,6 +427,7 @@ class AgentSchedulingComponent(rpu.Component):
         tags   = descr.get('tags')
         stid   = tags.get('app-stats')
         constr = tags.get('constraint')
+        optim  = tags.get('optimizer')
 
         if not stid:
             # just convert the specs to in, and return
@@ -439,27 +440,33 @@ class AgentSchedulingComponent(rpu.Component):
         # yes - record stats.  Is this the first one?
         if stid not in self._app_stats:
 
-            if '-' in p_spec: pmin, pmax = [int(n) for n in p_spec.split('-')]
-            else            : pmin, pmax = [int(p_spec), int(p_spec)]
 
-            if '-' in t_spec: tmin, tmax = [int(n) for n in t_spec.split('-')]
-            else            : tmin, tmax = [int(t_spec), int(t_spec)]
+            elems  = p_spec.split('-')
+            if   '-' in p_spec: prange = range(int(elems[0]), int(elems[1] + 1))
+            elif ',' in p_spec: prange = [int(x) for x in p_spec.split(',')]
+            else              : prange = [int(p_spec)]
+
+            elems  = t_spec.split('-')
+            if   '-' in t_spec: trange = range(int(elems[0]), int(elems[1] + 1)) 
+            elif ',' in t_spec: trange = [int(x) for x in t_spec.split(',')]
+            else              : trange = [int(t_spec)]                       
 
             # yes = prepare record. search for parameters to change
             combinations = list()
-            for p in range(pmin, pmax + 1):
-                for t in range(tmin, tmax + 1):
+            for p in prange:
+                for t in trange:
                     if constr and eval(constr):
                         combinations.append([p, t])
 
             with self._app_lock:
 
-                self._app_stats[stid] = {'to_test' : combinations,
-                                         'n_tests' : len(combinations),
-                                         'tested'  : dict(),
-                                         'prange'  : [pmin, pmax],
-                                         'trange'  : [tmin, tmax],
-                                         'optimal' : None}
+                self._app_stats[stid] = {'to_test'  : combinations,
+                                         'n_tests'  : len(combinations),
+                                         'tested'   : dict(),
+                                         'prange'   : prange,
+                                         'trange'   : trange,
+                                         'optimizer': optim,
+                                         'optimal'  : None}
             self._log.info('=== init: \n%s', pprint.pformat(self._app_stats))
 
         p = unit.get('p_stat')
@@ -495,11 +502,11 @@ class AgentSchedulingComponent(rpu.Component):
                     break
             self._log.debug('==== random   %s: %d %d', uid, p, t)
 
-        unit['t_orig'] = t_spec
         unit['p_orig'] = p_spec
+        unit['t_orig'] = t_spec
 
-        unit['t_stat'] = p
-        unit['p_stat'] = t
+        unit['p_stat'] = p
+        unit['t_stat'] = t
 
         descr['cpu_processes'] = p
         descr['cpu_threads']   = t
@@ -680,14 +687,18 @@ class AgentSchedulingComponent(rpu.Component):
                     v_opt = None
                     mapf  = './app_map.dat'
                     self._log.debug('=== map: %s' % mapf)
+                    optimizer = self._app_stats[stid]['optimizer']
                     with open(mapf, 'w') as fout:
                         for c,v in self._app_stats[stid]['tested'].iteritems():
                             if v is not None:
                                 p, t = [int(x) for x in c.split()]
                                 fout.write('%4d   %4d   %10.2f\n' % (p, t, v))
-                                if not v_opt or v_opt > v:
+                                if not v_opt or \
+                                   (optimizer == 'max' and v > v_opt) or \
+                                   (optimizer == 'min' and v < v_opt) :
                                     v_opt = v
                                     c_opt = [p, t]
+
 
                     self._app_stats[stid]['optimal'] = c_opt
 
