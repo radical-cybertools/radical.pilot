@@ -727,7 +727,7 @@ class AgentSchedulingComponent(rpu.Component):
                     self._log.info('stat fini: \n%s', pprint.pformat(self._app_stats))
 
 
-        if v is None:
+        if v is not None:
             with open('./app_stats.dat', 'a') as fout:
                 n = int(uid.split('.')[1])
                 fout.write('%6d   %4d   %4d   %10.2f\n' % (n, p, t, v))
