@@ -440,29 +440,46 @@ class AgentSchedulingComponent(rpu.Component):
         # yes - record stats.  Is this the first one?
         if stid not in self._app_stats:
 
-
             elems  = p_spec.split('-')
-            if   '-' in p_spec: prange = range(int(elems[0]), int(elems[1] + 1))
+            if   '-' in p_spec: prange = range(int(elems[0]), int(elems[1]) + 1)
             elif ',' in p_spec: prange = [int(x) for x in p_spec.split(',')]
             else              : prange = [int(p_spec)]
 
             elems  = t_spec.split('-')
-            if   '-' in t_spec: trange = range(int(elems[0]), int(elems[1] + 1)) 
+            if   '-' in t_spec: trange = range(int(elems[0]), int(elems[1]) + 1) 
             elif ',' in t_spec: trange = [int(x) for x in t_spec.split(',')]
             else              : trange = [int(t_spec)]                       
+
+            # check if we find a list from previous runs
+            tested = dict()
+            try:
+                with open('./staging_area/app_stats.dat', 'r') as fin:
+                    for line in fin.readlines():
+                        _, p, t, v = line.split()
+                        p = int(p)
+                        t = int(t)
+                        v = float(v)
+                        self._log.debug('=== old stats: %s %s %s', p, t, v)
+                        tested['%d %d' % (p, t)] = v
+            except:
+                self._log.debug('=== no old stats')
+
 
             # yes = prepare record. search for parameters to change
             combinations = list()
             for p in prange:
                 for t in trange:
-                    if constr and eval(constr):
-                        combinations.append([p, t])
+                    key = '%d %d' % (p, t)
+                    if key not in tested:
+                        if constr and eval(constr):
+                            combinations.append([p, t])
 
             with self._app_lock:
 
                 self._app_stats[stid] = {'to_test'  : combinations,
-                                         'n_tests'  : len(combinations),
-                                         'tested'   : dict(),
+                                         'n_tests'  : len(combinations)
+                                         + len(tested),
+                                         'tested'   : tested,
                                          'prange'   : prange,
                                          'trange'   : trange,
                                          'optimizer': optim,
@@ -659,6 +676,7 @@ class AgentSchedulingComponent(rpu.Component):
         self._log.debug('=== app_stat eval %s',  unit['uid'])
 
         if 'app_stats' not in unit: 
+            self._log.debug('=== app_stat eval %s - nope',  unit['uid'])
             return unit
 
         uid   = unit['uid']
@@ -680,7 +698,10 @@ class AgentSchedulingComponent(rpu.Component):
                         len(self._app_stats[stid]['tested']),
                         self._app_stats[stid]['n_tests'])
 
-                if len(self._app_stats[stid]['tested']) == self._app_stats[stid]['n_tests']:
+                n_tested = len(self._app_stats[stid]['tested'])
+                n_tests  = self._app_stats[stid]['n_tests']
+                self._log.debug('==== tested %s == %s?', n_tested, n_tests)
+                if n_tested == n_tests:
 
                     # all tests are done - store and define optimum
                     c_opt = None

@@ -561,10 +561,13 @@ prof cu_exec_stop
         sandbox  = '%s/%s' % (self._pwd, cu['uid'])
         statfile = '%s/app_stats.dat' % sandbox
         if os.path.isfile(statfile):
+            self._log.debug('==== as 1')
             with open ('%s/app_stats.dat' % sandbox, 'r') as fin:
+                self._log.debug('==== as 2')
                 data = fin.read().strip()
                 if data:
-                    cu['apap_stats'] = float(data)
+                    self._log.debug('==== as 3')
+                    cu['app_stats'] = float(data)
 
 
         # free unit slots.

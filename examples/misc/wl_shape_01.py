@@ -64,20 +64,21 @@ if __name__ == '__main__':
                    'cores'         : max(config[resource]['cores'], 64)
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
-
-        # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        report.header('submit units')
 
-        # Register the ComputePilot in a UnitManager object.
+        report.header('stage data')
+        pilot.stage_in({'source': 'client:///app_stats.dat',
+                        'target': 'pilot:///',
+                        'action': rp.TRANSFER})
+        report.ok('>>ok\n')
+
+
+        report.header('submit units')
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-        # Create a workload of ComputeUnits.
-        # Each compute unit runs '/bin/date'.
-
-        n = 2 * 1024  # number of units to run
+        n = 128  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -96,7 +97,7 @@ if __name__ == '__main__':
             cud.gpu_processes    = 0
             cud.cpu_process_type = rp.POSIX
             cud.cpu_thread_type  = rp.OpenMP
-            cud.timeout          = i % 10
+         #  cud.timeout          = i % 10
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
