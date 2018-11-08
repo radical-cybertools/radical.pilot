@@ -453,7 +453,9 @@ class AgentSchedulingComponent(rpu.Component):
             # check if we find a list from previous runs
             tested = dict()
             try:
+                fout = open('./app_stats.dat', 'a')
                 with open('./staging_area/app_stats.dat', 'r') as fin:
+                    i = 0
                     for line in fin.readlines():
                         _, p, t, v = line.split()
                         p = int(p)
@@ -461,8 +463,13 @@ class AgentSchedulingComponent(rpu.Component):
                         v = float(v)
                         self._log.debug('=== old stats: %s %s %s', p, t, v)
                         tested['%d %d' % (p, t)] = v
+                        fout.write('%6d   %4d   %4d   %10.2f\n' % (i, p, t, v))
+                        i += 1
             except:
                 self._log.debug('=== no old stats')
+            finally:
+                if fout:
+                    fout.close()
 
 
             # yes = prepare record. search for parameters to change
