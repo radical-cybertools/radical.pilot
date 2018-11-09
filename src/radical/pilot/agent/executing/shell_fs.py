@@ -442,8 +442,8 @@ test -z "$RP_TIMEOUT" || watcher=$!
         script += '''
 
 # ------------------------------------------------------
-%(cwd)s"
-%(pre)s"
+%(cwd)s
+%(pre)s
 \n# CU execution
 prof cu_exec_start
 %(cmd)s %(io)s &
