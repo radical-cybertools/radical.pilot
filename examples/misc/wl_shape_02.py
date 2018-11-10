@@ -28,8 +28,8 @@ if __name__ == '__main__':
         pd_init = {'resource'      : resource,
                    'runtime'       : 60,
                    'exit_on_error' : True,
-                   'project'       : 'BIP149',
-                   'queue'         : 'batch',
+                 # 'project'       : 'BIP149',
+                 # 'queue'         : 'batch',
                    'access_schema' : 'local',
                    'cores'         : 16 + 16
                   }
@@ -38,7 +38,9 @@ if __name__ == '__main__':
         pilot = pmgr.submit_pilots(pdesc)
 
         report.header('stage data')
-        pilot.stage_in({'source': 'client:///examples/misc/gromacs/',
+        pwd   = os.path.dirname(__file__)
+        canon = 'radical.canon/gromacs/large/rawdata'
+        pilot.stage_in({'source': 'client://%s/%s/' % (pwd, canon),
                         'target': 'pilot:///',
                         'action': rp.TRANSFER})
         pilot.stage_in({'source': 'client:///app_stats.dat',
@@ -57,9 +59,10 @@ if __name__ == '__main__':
                 'optimizer'  : 'max'}
 
         cudis = list()
-        for f in ['grompp.mdp', 'mdout.mdp', 'start.gro',
-                  'topol.top',  'topol.tpr']:
-            cudis.append({'source': 'pilot:///gromacs/%s' % f, 
+        for f in ['dynamic2_new.mdp', 'FF.itp', 'FNF.itp',
+                  'Martini.top', 'WF.itp', 'em_results.gro',
+                  'eq_results.gro', 'eq_results.log', 'martini_v2.2.itp']:
+            cudis.append({'source': 'pilot:///rawdata/%s' % f, 
                           'target': 'unit:///%s' % f,
                           'action': rp.LINK})
 
@@ -67,8 +70,16 @@ if __name__ == '__main__':
         path  = '%s/openmpi/applications/gromacs-2018.2/install/bin' % share
         gmx   = '%s/gmx_mpi' % path
 
-        args  = "mdrun -o traj.trr -e ener.edr -s topol.tpr -g mdlog.log -c outgro -cpo state.cpt -ntomp $RP_THREADS"
-        
+
+        pre_1 = '/usr/bin/sed -e "s/###ITER###/$iter/g" dynamic2_new.mdp ' \
+                    + '> dynamic2.mdp'
+        pre_2 = gmx + ' grompp $GROMPP_OPTS $NDXFILE_OPTS' \
+                    + ' -f dynamic2.mdp' \
+                    + ' -c em_results.gro' \
+                    + ' -o equilibrium.tpr' \
+                    + ' -p Martini.top'
+        args  = 'mdrun $MDRUN_OPTS -s equilibrium.tpr -v -deffnm eq_results'
+
         report.info('create %d unit description(s)\n\t' % n)
         cuds = list()
         for i in range(0, n):
@@ -80,13 +91,17 @@ if __name__ == '__main__':
             cud.arguments        = args.split()
             cud.tags             = tags
             cud.gpu_processes    = 0
-            cud.cpu_processes    = '1,2,4,8,16,32'
-            cud.cpu_threads      = '1-8'
+          # cud.cpu_processes    = '1,2,4,8,16,32'
+          # cud.cpu_threads      = '1-8'
+            cud.cpu_processes    = '1,2,4'
+            cud.cpu_threads      = '1-4'
             cud.cpu_process_type = rp.MPI  
             cud.cpu_thread_type  = rp.OpenMP
             cud.input_staging    = cudis
             cud.timeout          = 300
-            cud.pre_exec         = ["export fmt=\"CPU:%P \""]
+            cud.pre_exec         = [pre_1,
+                                    pre_2,
+                                    'export fmt="CPU:%P "']
             cud.post_exec        = ['xargs=/usr/bin/xargs', 
                                     'grep=/usr/bin/grep',
                                     'cut=/usr/bin/cut', 
