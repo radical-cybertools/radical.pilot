@@ -18,26 +18,20 @@ if __name__ == '__main__':
     report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
-    if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
-    elif len(sys.argv) == 2: resource = sys.argv[1]
-    else                   : resource = 'local.localhost'
+    resource = str(sys.argv[1])
+    n        = int(sys.argv[2])
 
     session = rp.Session()
     try:
-
-        report.info('read config')
-        pwd    = os.path.dirname(os.path.abspath(__file__))
-        config = ru.read_json('%s/../config.json' % pwd)
-        report.ok('>>ok\n')
 
         report.header('submit pilots')
         pd_init = {'resource'      : resource,
                    'runtime'       : 60,
                    'exit_on_error' : True,
-                   'project'       : config[resource]['project'],
+                   'project'       : 'BIP149',
                    'queue'         : 'batch',
-                   'access_schema' : config[resource]['schema'],
-                   'cores'         : 48
+                   'access_schema' : 'local',
+                   'cores'         : 16 + 16
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
         pmgr  = rp.PilotManager(session=session)
@@ -47,6 +41,10 @@ if __name__ == '__main__':
         pilot.stage_in({'source': 'client:///examples/misc/gromacs/',
                         'target': 'pilot:///',
                         'action': rp.TRANSFER})
+        pilot.stage_in({'source': 'client:///app_stats.dat',
+                        'target': 'pilot:///',
+                        'action': rp.TRANSFER})
+
         report.ok('>>ok\n')
 
         report.header('submit units')
@@ -55,7 +53,8 @@ if __name__ == '__main__':
         umgr.add_pilots(pilot)
 
         tags = {'app-stats'  : 'this_app',
-                'constraint' : 'p * t <= 32'}
+                'constraint' : 'p * t <= 16', 
+                'optimizer'  : 'max'}
 
         cudis = list()
         for f in ['grompp.mdp', 'mdout.mdp', 'start.gro',
@@ -70,29 +69,53 @@ if __name__ == '__main__':
 
         args  = "mdrun -o traj.trr -e ener.edr -s topol.tpr -g mdlog.log -c outgro -cpo state.cpt -ntomp $RP_THREADS"
         
-        n = 12
-        n = 2 * 1024  # number of units to run
-
         report.info('create %d unit description(s)\n\t' % n)
         cuds = list()
         for i in range(0, n):
 
-            # create a new CU description, and fill it.
-            # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
           # cud.executable       = '%s/wl_shape_02.sh' %  pwd
+          # cud.executable       = '/usr/bin/time -f $fmt %s %s' % gmx
             cud.executable       = gmx
             cud.arguments        = args.split()
             cud.tags             = tags
             cud.gpu_processes    = 0
-            cud.cpu_processes    = '1-4'
-            cud.cpu_threads      = '1-2'
-            cud.cpu_process_type = rp.MPI
+            cud.cpu_processes    = '1,2,4,8,16,32'
+            cud.cpu_threads      = '1-8'
+            cud.cpu_process_type = rp.MPI  
             cud.cpu_thread_type  = rp.OpenMP
             cud.input_staging    = cudis
             cud.timeout          = 300
-          # cud.post_exec        = [ '%s/wl_shape_02.sh' %  pwd]
+            cud.pre_exec         = ["export fmt=\"CPU:%P \""]
+            cud.post_exec        = ['xargs=/usr/bin/xargs', 
+                                    'grep=/usr/bin/grep',
+                                    'cut=/usr/bin/cut', 
+                                    'sed=/usr/bin/sed',
+                                    'bc=/usr/bin/bc',
+                                    'echo=/bin/echo', 
+                                    'cat=/bin/cat', 
+                                    'u=$RP_UNIT_ID', 
 
+                                    # runtime per RP profiles
+                                  # 'start=$($grep cu_exec_start $u.prof | $cut -f 1 -d ",")',
+                                  # 'stop=$( $grep cu_exec_stop  $u.prof | $cut -f 1 -d ",")',
+                                  # 'val=$($echo "($stop - $start)" | $bc)',
+                                  # '$echo $val > app_stats.dat',
+
+                                    # avg CPU utilization (via `time -f CPU:%P\n`)
+                                    'vals=$($grep -e "^CPU:" STDERR | $cut -f 2 -d ":" | $sed -e "s/%/ /g")',
+                                    '$echo "vals: $vals"',
+                                    'sum="0";n=0; for val in $vals; do sum="$sum + $val"; n=$((n+1)); done',
+                                    '$echo "sum:  $sum"',
+                                    'avg=$($echo  "($sum)/$n/$RP_THREADS" | $bc)',
+                                    '$echo "avg:  $avg"',
+                                    '$echo "$avg" > app_stats.dat',
+
+                                    # gromacs performance (ns/day)
+                                  # "val=$($grep Performance mdlog.log | $xargs $echo | $cut -f 2 -d " ")",
+                                  # '$echo $val > app_stats.dat',
+
+                                   ]
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
