@@ -42,34 +42,14 @@ if __name__ == '__main__':
         pdesc = rp.ComputePilotDescription(pd_init)
         pmgr  = rp.PilotManager(session=session)
         pilot = pmgr.submit_pilots(pdesc)
-
-        report.header('stage data')
-        pilot.stage_in({'source': 'client:///examples/misc/gromacs/',
-                        'target': 'pilot:///',
-                        'action': rp.TRANSFER})
         report.ok('>>ok\n')
 
         report.header('submit units')
-
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-        tags = {'app-stats'  : 'this_app',
-                'constraint' : 'p * t <= 32'}
+        tags = {'app-stats'  : 'this_app'}
 
-        cudis = list()
-        for f in ['grompp.mdp', 'mdout.mdp', 'start.gro',
-                  'topol.top',  'topol.tpr']:
-            cudis.append({'source': 'pilot:///gromacs/%s' % f, 
-                          'target': 'unit:///%s' % f,
-                          'action': rp.LINK})
-
-        share = '/lustre/atlas//world-shared/csc230'
-        path  = '%s/openmpi/applications/gromacs-2018.2/install/bin' % share
-        gmx   = '%s/gmx_mpi' % path
-
-        args  = "mdrun -o traj.trr -e ener.edr -s topol.tpr -g mdlog.log -c outgro -cpo state.cpt -ntomp $RP_THREADS"
-        
         n = 12
         n = 2 * 1024  # number of units to run
 
@@ -80,18 +60,15 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-          # cud.executable       = '%s/wl_shape_02.sh' %  pwd
-            cud.executable       = gmx
-            cud.arguments        = args.split()
+            cud.executable       = '%s/wl_shape_03.sh' %  pwd
+            cud.arguments        = ['app-stats:1-10']
             cud.tags             = tags
             cud.gpu_processes    = 0
-            cud.cpu_processes    = '1-4'
-            cud.cpu_threads      = '1-2'
+            cud.cpu_processes    = 1
+            cud.cpu_threads      = 1
             cud.cpu_process_type = rp.MPI
             cud.cpu_thread_type  = rp.OpenMP
-            cud.input_staging    = cudis
             cud.timeout          = 300
-          # cud.post_exec        = [ '%s/wl_shape_02.sh' %  pwd]
 
             cuds.append(cud)
             report.progress()

@@ -13,10 +13,11 @@ set title  "Application Performance Map"
 set xlabel "# Processes"
 set ylabel "# Threads"
 
+set xrange [1:]
+set yrange [1:]
 set pm3d map
 splot "./app_map.dat" using 1:2:3 with pm3d
 
-# set yrange [0:7]
 
 # set output "app_cfg.pdf"
 # 
@@ -26,6 +27,8 @@ splot "./app_map.dat" using 1:2:3 with pm3d
 
 
 
+set xrange [0:]
+set yrange [0:]
 set term pdf size 20cm,20cm
 set output "app_cfg_multi.pdf"
 set multiplot layout 3,1 rowsfirst title "Adaptive Application Configuration"
@@ -34,10 +37,10 @@ set xlabel ""
 set ylabel "# procs"
 plot "< sort -n ./app_stats.dat" using 1:2 title 'processes' with steps
 set ylabel "# threads"
-plot "< sort -n ./app_stats.dat" using 1:3 title 'treads'    with steps
+plot "< sort -n ./app_stats.dat" using 1:3 title 'threads'   with steps
 set xlabel "Task ID"
 set ylabel "runtime (s)"
-set yrange [0:]
+set yrange [80:105]
 plot "< sort -n ./app_stats.dat" using 1:4 title 'metric'    with steps
 unset multiplot
 
