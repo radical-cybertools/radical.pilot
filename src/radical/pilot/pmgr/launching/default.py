@@ -199,6 +199,9 @@ class Default(PMGRLaunchingComponent):
             # FIXME: honor sd flags if given (recursive...)
             flags = rsfs.CREATE_PARENTS
 
+            if os.path.isdir(src.path):
+                flags |= rsfs.RECURSIVE
+
             # Define and open the staging directory for the pilot
             # We use the target dir construct here, so that we can create
             # the directory if it does not yet exist.
@@ -661,7 +664,7 @@ class Default(PMGRLaunchingComponent):
         self._log.debug('tar done: %s, %s, %s', j.state, j.stdout, j.stderr)
 
         for pilot in pilots:
-            self._prof.prof('staging_in_stop', uid=pilot['uid'])
+            self._prof.prof('staging_in_stop',  uid=pilot['uid'])
             self._prof.prof('submission_start', uid=pilot['uid'])
 
         # look up or create JS for actual pilot submission.  This might result
@@ -684,29 +687,25 @@ class Default(PMGRLaunchingComponent):
 
         jc.run()
 
-        for j in jc.get_tasks():
+        # we assume here that the tasks arrive in the same order as the job
+        # descriptions.  For uniform sets of pilots the order does not matter
+        # much though.  Either way, this needs confirming on SAGA level
+        # FIXME
+        for j,jd in zip(jc.get_tasks(), jd_list):
 
             # do a quick error check
             if j.state == rs.FAILED:
                 self._log.error('%s: %s : %s : %s', j.id, j.state, j.stderr, j.stdout)
-                raise RuntimeError ("SAGA Job state is FAILED.")
-
-            if not j.name:
-                raise RuntimeError('cannot get job name for %s' % j.id)
+                raise RuntimeError ("SAGA Job state is FAILED. (%s)" % jd.name)
 
             pilot = None
+            pid   = jd.name
             for p in pilots:
-                if p['uid'] == j.name:
+                if p['uid'] == pid:
                     pilot = p
                     break
 
-            if not pilot:
-                raise RuntimeError('job does not match any pilot: %s : %s'
-                                  % (j.name, j.id))
-
-            pid = pilot['uid']
-            self._log.debug('pilot job: %s : %s : %s : %s', 
-                            pid, j.id, j.name, j.state)
+            assert(pilot)
 
             # Update the Pilot's state to 'PMGR_ACTIVE_PENDING' if SAGA job
             # submission was successful.  Since the pilot leaves the scope of

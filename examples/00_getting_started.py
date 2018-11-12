@@ -12,6 +12,7 @@ import radical.utils as ru
 
 dh = ru.DebugHelper()
 
+
 # ------------------------------------------------------------------------------
 #
 # READ the RADICAL-Pilot documentation: http://radicalpilot.readthedocs.org/
@@ -55,12 +56,12 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {'resource'      : resource,
-                   'runtime'       : 15,  # pilot runtime (min)
+                   'runtime'       : 60,  # pilot runtime (min)
                    'exit_on_error' : True,
                    'project'       : config[resource]['project'],
                    'queue'         : config[resource]['queue'],
                    'access_schema' : config[resource]['schema'],
-                   'cores'         : config[resource]['cores']
+                   'cores'         : config[resource]['cores'],
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
@@ -76,7 +77,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 32  # number of units to run
+        n = 128
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -85,8 +86,13 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = '/bin/date'
+            cud.executable       = '/bin/sleep'
+            cud.arguments        = ['1']
+            cud.gpu_processes    = 0
             cud.cpu_processes    = 1
+            cud.cpu_threads      = 1
+            cud.cpu_process_type = rp.POSIX
+            cud.cpu_thread_type  = rp.POSIX
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
