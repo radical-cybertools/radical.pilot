@@ -1,5 +1,4 @@
 import radical.utils as ru
-import radical.pilot as rp
 from radical.pilot.agent.lm.mpirun import MPIRun
 import json
 import os
