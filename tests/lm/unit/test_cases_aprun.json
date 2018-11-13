@@ -83,12 +83,34 @@
                     "10"
                 ]
             }
+        },
+        {
+            "slots": {
+                "nodes": [
+                    [
+                        "test",
+                        "test",
+                        [[0,1],[2,3]],
+                        []
+                    ]
+                ],
+                "cores_per_node": 16,
+                "gpus_per_node": 1,
+                "lm_info": {}
+            },
+            "description": {
+                "executable": "/bin/sleep",
+                "arguments": [
+                    "10"
+                ]
+            }
         }
     ],
     "result": [
         "aprun -n 1 -N 1 -L test -d 1 -cc 0 /bin/sleep \"10\"  ",
         "aprun -n 1 -N 1 -L test -d 4 -cc 0,1,2,3 /bin/sleep \"10\"  ",
         "aprun -n 1 -N 1 -L test -d 1 -cc 0 /bin/sleep \"10\"  ",
-        "aprun -n 2 -N 2 -L test -d 1 -cc 0:0 /bin/sleep \"10\"  "
+        "aprun -n 2 -N 2 -L test -d 1 -cc 0:0 /bin/sleep \"10\"  ",
+        "aprun -n 2 -N 2 -L test -d 2 -cc 0,1:2,3 /bin/sleep \"10\"  "
     ]
 }

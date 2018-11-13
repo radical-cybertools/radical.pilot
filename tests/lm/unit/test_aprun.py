@@ -1,9 +1,8 @@
 import radical.utils as ru
-import radical.pilot as rp
 from radical.pilot.agent.lm.aprun import APRun
 import json
 import os
-from glob import glob
+
 try:
     import mock
 except ImportError:
@@ -19,19 +18,14 @@ def setUp():
 
     curdir = os.path.dirname(os.path.abspath(__file__))
     test_cases = json.load(open('%s/test_cases_aprun.json' % curdir))
-    session = rp.Session()
 
-    return test_cases, session
+    return test_cases
 # -----------------------------------------------------------------------------
 
 
 def tearDown():
 
-    rp_folds = glob('./rp.session.*')
-    if rp_folds:
-        import shutil
-        for fold in rp_folds:
-            shutil.rmtree(fold)
+    pass
 
 # -----------------------------------------------------------------------------
 
@@ -44,9 +38,9 @@ def tearDown():
 def test_construct_command(mocked_init, mocked_configure,
                            mocked_raise_on):
 
-    test_cases, session = setUp()
+    test_cases = setUp()
 
-    component = APRun(cfg=None, session=session)
+    component = APRun(cfg=None, session=None)
     component._log = ru.get_logger('dummy')
     component.launch_command = 'aprun'
     for i in range(len(test_cases['trigger'])):
