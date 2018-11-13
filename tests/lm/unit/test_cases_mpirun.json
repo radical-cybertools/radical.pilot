@@ -1,0 +1,3 @@
+{"trigger": [{"slots": {"nodes": [["test","test",[[0]],[]]]},"description": {"executable": "/bin/sleep","arguments": ["10"]}}],
+ "result": ["mpirun -np 1 -host test  /bin/sleep \"10\" "]
+}
