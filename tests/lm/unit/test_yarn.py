@@ -7,7 +7,8 @@ try:
 except ImportError:
     from unittest import mock
 
-#pylint: disable=protected-access, unused-argument
+# pylint: disable=protected-access, unused-argument
+
 
 # Setup to be done for every test
 # -----------------------------------------------------------------------------
@@ -24,7 +25,7 @@ def tearDown():
 # -----------------------------------------------------------------------------
 
 
-# Test Summit Scheduler construct_command method
+# Test YARN construct_command method
 # -----------------------------------------------------------------------------
 @mock.patch.object(Yarn, '__init__', return_value=None)
 @mock.patch.object(Yarn, '_configure', return_value=None)
@@ -34,7 +35,7 @@ def test_construct_command(mocked_init, mocked_configure,
 
     test_cases = setUp()
 
-    component = Yarn(cfg=None, logger=None)
+    component = Yarn(cfg=None, session=None)
     component._log  = ru.get_logger('dummy')
     component.launch_command = 'yarn'
     for i in range(len(test_cases['trigger'])):

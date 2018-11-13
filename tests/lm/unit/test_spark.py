@@ -7,7 +7,8 @@ try:
 except ImportError:
     from unittest import mock
 
-#pylint: disable=protected-access, unused-argument
+# pylint: disable=protected-access, unused-argument
+
 
 # Setup to be done for every test
 # -----------------------------------------------------------------------------
@@ -24,7 +25,7 @@ def tearDown():
 # -----------------------------------------------------------------------------
 
 
-# Test Summit Scheduler construct_command method
+# Test Spark construct_command method
 # -----------------------------------------------------------------------------
 @mock.patch.object(Spark, '__init__', return_value=None)
 @mock.patch.object(Spark, '_configure', return_value=None)
