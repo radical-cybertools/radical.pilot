@@ -1,0 +1,5 @@
+{"trigger": [{"slots": {"nodes": [["test","test",[[0]],[]]]},"description": {"executable": "/bin/sleep","arguments": ["10"]}},
+	{"slots": {"nodes": [["test","test",[[0]],[]],["test2","test2",[[0]],[]]]},"description": {"executable": "/bin/sleep","arguments": ["10"]}}],
+ "result": ["mpirun -np 1 -host test  /bin/sleep \"10\" ",
+	 "mpirun -np 2 -host test,test2  /bin/sleep \"10\" "]
+}

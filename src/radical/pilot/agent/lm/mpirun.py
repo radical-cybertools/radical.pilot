@@ -94,7 +94,7 @@ class MPIRun(LaunchMethod):
 
         if 'nodes' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'
-                              % (self.name, slots))
+                               % (self.name, slots))
 
         # Extract all the hosts from the slots
         host_list = list()
@@ -149,6 +149,7 @@ class MPIRun(LaunchMethod):
                    (self.ccmrun_command, self.launch_command, np,
                     self.dplace_command, hosts_string, env_string, 
                     task_command)).strip()
+
 
         return command, None
 
