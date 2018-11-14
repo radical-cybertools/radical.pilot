@@ -55,9 +55,9 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, name, cfg, session):
 
-        self.name     = type(self).__name__
+        self.name     = name
         self._cfg     = cfg
         self._session = session
         self._log     = self._session._log
@@ -130,7 +130,7 @@ class LaunchMethod(object):
               # LM_NAME_POE           : POE,
               # LM_NAME_RUNJOB        : Runjob,
             }[name]
-            return impl(cfg, session)
+            return impl(name, cfg, session)
 
         except KeyError:
             session._log.exception("LM '%s' unknown or defunct" % name)
@@ -270,7 +270,7 @@ class LaunchMethod(object):
         hosts = []
         [hosts.extend([host] * count)
                 for (host, count) in count_dict.iteritems()]
-        # Esthetically sort the list, as we lost ordering by moving to a dict/set
+        # sort the list for readbility
         hosts.sort()
 
         return hosts

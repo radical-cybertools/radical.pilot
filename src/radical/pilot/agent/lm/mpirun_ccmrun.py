@@ -16,9 +16,9 @@ class MPIRunCCMRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, session)
+        LaunchMethod.__init__(self, name, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -73,7 +73,6 @@ class MPIRunCCMRun(LaunchMethod):
                               % (self.name, slots))
 
         # Extract all the hosts from the slots
-        # TODO: is there any use in using $HOME/.crayccm/ccm_nodelist.$JOBID?
         hostlist = list()
         for node in slots['nodes']:
             for cpu_proc in node['core_map']:
@@ -82,8 +81,9 @@ class MPIRunCCMRun(LaunchMethod):
                 hostlist.append(node['name'])
         hosts_string = ",".join(hostlist)
 
-        command = "%s %s -np %d -host %s %s %s" % \
-                  (self.ccmrun_command, self.launch_command, len(hostlist), 
+        command = "%s%s -np %d -host %s %s %s" % \
+                  (self.ccmrun_command,
+                   self.launch_command, len(hostlist),
                    hosts_string, env_string, task_command)
 
         return command, None

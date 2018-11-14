@@ -14,9 +14,9 @@ class MPIRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, session)
+        LaunchMethod.__init__(self, name, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -29,6 +29,13 @@ class MPIRun(LaunchMethod):
             'mpirun-mpich-mp',   # Mac OSX MacPorts
             'mpirun-openmpi-mp'  # Mac OSX MacPorts
         ])
+
+        self.ccmrun_command = ru.which([
+            'ccmrun',            # General case
+        ])
+
+        if not self.ccmrun_command:
+            raise RuntimeError("ccmrun not found!")
 
         self.mpi_version, self.mpi_flavor = self._get_mpi_info(self.launch_command)
 
@@ -59,7 +66,6 @@ class MPIRun(LaunchMethod):
                 for var in env_list:
                     env_string += '-x "%s" ' % var
 
-
         if 'nodes' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'
                               % (self.name, slots))
@@ -73,9 +79,10 @@ class MPIRun(LaunchMethod):
                 hostlist.append(node['name'])
         hosts_string = ",".join(hostlist)
 
-        command = "%s -np %d -host %s %s %s" \
-                % (self.launch_command, len(hostlist), hosts_string, 
-                   env_string, task_command)
+        command = "%s%s -np %d -host %s %s %s" % \
+                  (self.ccmrun_command,
+                   self.launch_command, len(hostlist),
+                   hosts_string, env_string, task_command)
 
         return command, None
 
