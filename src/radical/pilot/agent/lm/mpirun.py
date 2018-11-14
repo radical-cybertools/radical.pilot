@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import os
 import radical.utils as ru
 
 from .base import LaunchMethod
@@ -23,18 +24,29 @@ class MPIRun(LaunchMethod):
     #
     def _configure(self):
 
-        self.launch_command = ru.which([
-            'mpirun',            # General case
-            'mpirun_rsh',        # Gordon @ SDSC
-            'mpirun-mpich-mp',   # Mac OSX MacPorts
-            'mpirun-openmpi-mp'  # Mac OSX MacPorts
-        ])
+        if '_rsh' in self.name:
+            self.launch_command = ru.which([
+                'mpirun_rsh',        # Gordon @ SDSC
+            ])
+
+        else:
+            self.launch_command = ru.which([
+                'mpirun',            # General case
+                'mpirun-mpich-mp',   # Mac OSX MacPorts
+                'mpirun-openmpi-mp'  # Mac OSX MacPorts
+            ])
+
+        # don't use the full pathname as the user might load a different
+        # compiler / MPI library suite from his CU pre_exec that requires
+        # the launcher from that version -- see #572.
+        self.launch_command = os.path.basename(self.launch_command)
+
 
         self.ccmrun_command = ''  # do *not* set to none - we use this in
                                   # a string completion later on
 
         # do we need ccmrun?
-        if 'ccmrun' in self.name:
+        if '_ccmrun' in self.name:
             self.ccmrun_command = ru.which('ccmrun')
             if not self.ccmrun_command:
                 raise RuntimeError("ccmrun not found!")
@@ -49,6 +61,7 @@ class MPIRun(LaunchMethod):
     def construct_command(self, cu, launch_script_hop):
 
         slots        = cu['slots']
+        uid          = cu['uid']
         cud          = cu['description']
         task_exec    = cud['executable']
         task_env     = cud.get('environment') or dict()
@@ -81,11 +94,21 @@ class MPIRun(LaunchMethod):
                 hostlist.append(node['name'])
             for gpu_proc in node['gpu_map']:
                 hostlist.append(node['name'])
-        hosts_string = ",".join(hostlist)
 
-        command = "%s%s -np %d -host %s %s %s" % \
-                  (self.ccmrun_command,
-                   self.launch_command, len(hostlist),
+        # If we have a CU with many cores, we will create a hostfile and pass
+        # that as an argument instead of the individual hosts
+        if len(hostlist) > 42:
+
+            # Create a hostfile from the list of hosts
+            hostfile = self._create_hostfile(uid, hostlist, impaired=True)
+            hosts_string = '-hostfile %s' % hostfile
+
+        else:
+            # Construct the hosts_string ('h1,h2,..,hN')
+            hosts_string = '-host %s' % ",".join(hostlist)
+
+        command = "%s%s -np %d %s %s %s" % \
+                  (self.ccmrun_command, self.launch_command, len(hostlist),
                    hosts_string, env_string, task_command)
 
         return command, None

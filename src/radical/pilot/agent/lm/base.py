@@ -5,7 +5,6 @@ __license__   = "MIT"
 
 import os
 import fractions
-import tempfile
 import collections
 
 import radical.utils as ru
@@ -92,7 +91,6 @@ class LaunchMethod(object):
         from .mpirun         import MPIRun
         from .mpirun_mpt     import MPIRun_MPT
         from .mpirun_dplace  import MPIRunDPlace
-        from .mpirun_rsh     import MPIRunRSH
         from .orte           import ORTE
         from .orte_lib       import ORTELib
         from .rsh            import RSH
@@ -102,6 +100,7 @@ class LaunchMethod(object):
 
       # # deprecated
       # from .mpirun_ccmrun  import MPIRunCCMRun
+      # from .mpirun_rsh     import MPIRunRSH
       # from .dplace         import DPlace
       # from .poe            import POE
       # from .runjob         import Runjob
@@ -114,10 +113,10 @@ class LaunchMethod(object):
                 LM_NAME_IBRUN         : IBRun,
                 LM_NAME_MPIEXEC       : MPIExec,
                 LM_NAME_MPIRUN        : MPIRun,
+                LM_NAME_MPIRUN_CCMRUN : MPIRun,
+                LM_NAME_MPIRUN_RSH    : MPIRun,
                 LM_NAME_MPIRUN_MPT    : MPIRun_MPT,
-                LM_NAME_MPIRUN_CCMRUN : MPIRunCCMRun,
                 LM_NAME_MPIRUN_DPLACE : MPIRunDPlace,
-                LM_NAME_MPIRUN_RSH    : MPIRunRSH,
                 LM_NAME_ORTE          : ORTE,
                 LM_NAME_ORTE_LIB      : ORTELib,
                 LM_NAME_RSH           : RSH,
@@ -215,33 +214,31 @@ class LaunchMethod(object):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def _create_hostfile(cls, all_hosts, separator=' ', impaired=False):
+    def _create_hostfile(cls, uid, all_hosts, separator=' ', impaired=False):
 
         # Open appropriately named temporary file
-        handle, filename = tempfile.mkstemp(prefix='rp_hostfile', dir=os.getcwd())
+        # NOTE: we make an assumption about the unit sandbox here
+        filename = '%s/%s.hosts' % (uid, uid)
+        handle   = open(filename, 'w') 
 
         if not impaired:
-            #
             # Write "hostN x\nhostM y\n" entries
-            #
-
             # Create a {'host1': x, 'host2': y} dict
             counter = collections.Counter(all_hosts)
+
             # Convert it into an ordered dict,
             # which hopefully resembles the original ordering
-            count_dict = collections.OrderedDict(sorted(counter.items(), key=lambda t: t[0]))
+            count_dict = collections.OrderedDict(sorted(counter.items(), 
+                                                 key=lambda t: t[0]))
 
             for (host, count) in count_dict.iteritems():
                 os.write(handle, '%s%s%d\n' % (host, separator, count))
 
         else:
-            #
             # Write "hostN\nhostM\n" entries
-            #
             for host in all_hosts:
                 os.write(handle, '%s\n' % host)
 
-        # No longer need to write
         os.close(handle)
 
         # Return the filename, caller is responsible for cleaning up
