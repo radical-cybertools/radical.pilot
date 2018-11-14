@@ -4,7 +4,7 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 32,
+        "cores"    : 1,
         "gpus"     : 2
     },
 
@@ -279,7 +279,7 @@
         "project"  : "BIP149",
         "queue"    : "debug",
         "schema"   : "local",
-        "cores"    : 64
+        "cores"    : 160
     },
 
     "ornl.titan_aprun"   : {

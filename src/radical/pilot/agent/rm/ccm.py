@@ -54,6 +54,9 @@ class CCM(LRMS):
         # Some simple arithmetic
         self.cores_per_node = ccm_nodes_length / ccm_node_list_length
         self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
+        self.lfs_per_node   = {'path' : self._cfg.get('lfs_path_per_node', None),
+                               'size' : self._cfg.get('lfs_size_per_node', 0)
+                              }
 
         # node names are unique, so can serve as node uids
         self.node_list = [[node, node] for node in ccm_node_list]

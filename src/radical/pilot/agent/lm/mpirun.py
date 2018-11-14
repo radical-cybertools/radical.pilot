@@ -67,10 +67,8 @@ class MPIRun(LaunchMethod):
         # Extract all the hosts from the slots
         hostlist = list()
         for node in slots['nodes']:
-            # for cpu_proc in node[2]:
-            hostlist += [node[0]] * len(node[2])
-            # for gpu_proc in node[3]:
-            hostlist += [node[0]] * len(node[3])
+            hostlist += [node[0]] * len(node[2])  # cpu procs
+            hostlist += [node[0]] * len(node[3])  # gpu procs
         hosts_string = ",".join(hostlist)
 
         command = "%s -np %d -host %s %s %s" \
