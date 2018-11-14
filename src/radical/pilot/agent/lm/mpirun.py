@@ -42,15 +42,19 @@ class MPIRun(LaunchMethod):
         self.launch_command = os.path.basename(self.launch_command)
 
 
-        self.ccmrun_command = ''  # do *not* set to none - we use this in
-                                  # a string completion later on
-
-        # do we need ccmrun?
+        # do we need ccmrun or dplace?
+        self.ccmrun_command = ''
         if '_ccmrun' in self.name:
             self.ccmrun_command = ru.which('ccmrun')
             if not self.ccmrun_command:
                 raise RuntimeError("ccmrun not found!")
-            self.ccmrun_command += ' '  # simplifies later string replacement
+
+        self.dplace_command = ''
+        if '_dplace' in self.name:
+            self.dplace_command = ru.which('dplace')
+            if not self.dplace_command:
+                raise RuntimeError("dplace not found!")
+
 
         self.mpi_version, self.mpi_flavor = \
                                        self._get_mpi_info(self.launch_command)
@@ -64,9 +68,14 @@ class MPIRun(LaunchMethod):
         uid          = cu['uid']
         cud          = cu['description']
         task_exec    = cud['executable']
+        task_threads = cud['cpu_threads']
         task_env     = cud.get('environment') or dict()
         task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
+
+        if '_dplace' in self.name and task_threads > 1:
+            # dplace pinning would disallow threads to map to other cores
+            raise ValueError('dplace can not place threads [%d]' % task_threads)
 
         # Construct the executable and arguments
         if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
@@ -88,12 +97,26 @@ class MPIRun(LaunchMethod):
                               % (self.name, slots))
 
         # Extract all the hosts from the slots
-        hostlist = list()
+        host_list = list()
+        core_list = list()
+        save_list = list()
         for node in slots['nodes']:
             for cpu_proc in node['core_map']:
-                hostlist.append(node['name'])
+                host_list.append(node['name'])
+                core_list.append(cpu_proc[0])
             for gpu_proc in node['gpu_map']:
-                hostlist.append(node['name'])
+                host_list.append(node['name'])
+                core_list.append(gpu_proc[0])
+
+            if save_list:
+                assert(save_list == core_list), 'dprun needs homog. core sets'
+            else:
+                save_list = core_list
+
+        if '_dplace' in self.launch_command:
+            self.dplace_command += ' -c '
+            self.dplace_command += ','.join(core_list)
+
 
         # Cheyenne is the only machine that requires mpirun_mpt.  We then 
         # have to set MPI_SHEPHERD=true
@@ -104,27 +127,28 @@ class MPIRun(LaunchMethod):
 
         # If we have a CU with many cores, we will create a hostfile and pass
         # that as an argument instead of the individual hosts
-        if len(hostlist) > 42:
+        if len(host_list) > 42:
 
             # Create a hostfile from the list of hosts
-            hostfile = self._create_hostfile(uid, hostlist, impaired=True)
+            hostfile = self._create_hostfile(uid, host_list, impaired=True)
             hosts_string = '-hostfile %s' % hostfile
 
         else:
             # Construct the hosts_string ('h1,h2,..,hN')
-            hosts_string = '-host %s' % ",".join(hostlist)
+            hosts_string = '-host %s' % ",".join(host_list)
 
-        # -np:  usually len(hostlist), meaning N processes over N hosts, but
+        # -np:  usually len(host_list), meaning N processes over N hosts, but
         # for Cheyenne (mpt) the specification of -host lands N processes on
         # EACH host, where N is specified as arg to -np
         if '_mpt' in self.launch_command:
             np = 1
         else:
-            np = len(hostlist)
+            np = len(host_list)
 
-        command = "%s%s -np %d %s %s %s" % \
-                  (self.ccmrun_command, self.launch_command, np,
-                   hosts_string, env_string, task_command)
+        command = ("%s %s -np %d %s %s %s %s" %
+                   (self.ccmrun_command, self.launch_command, np,
+                    self.dplace_command, hosts_string, env_string, 
+                    task_command)).strip()
 
         return command, None
 
