@@ -55,7 +55,6 @@ class MPIRun(LaunchMethod):
             if not self.dplace_command:
                 raise RuntimeError("dplace not found!")
 
-
         self.mpi_version, self.mpi_flavor = \
                                        self._get_mpi_info(self.launch_command)
 
@@ -92,38 +91,34 @@ class MPIRun(LaunchMethod):
                 for var in env_list:
                     env_string += '-x "%s" ' % var
 
-        if 'nodes' not in slots:
-            raise RuntimeError('insufficient information to launch via %s: %s'
-                               % (self.name, slots))
+        # Cheyenne is the only machine that requires mpirun_mpt.  We then 
+        # have to set MPI_SHEPHERD=true
+        if '_mpt' in self.name:
+            if not cu.get['description'].get('environment'):
+                cu['description']['environment'] = dict()
+            cu['description']['environment']['MPI_SHEPHERD'] = 'true'
 
         # Extract all the hosts from the slots
         host_list = list()
         core_list = list()
         save_list = list()
         for node in slots['nodes']:
-            for cpu_proc in node['core_map']:
+            for cpu_proc in node[2]:
                 host_list.append(node['name'])
                 core_list.append(cpu_proc[0])
-            for gpu_proc in node['gpu_map']:
+            for gpu_proc in node[3]:
                 host_list.append(node['name'])
                 core_list.append(gpu_proc[0])
 
-            if save_list:
-                assert(save_list == core_list), 'dprun needs homog. core sets'
+            if '_dplace' in self.name and save_list:
+                assert(save_list == core_list), 'inhomog. core sets (dplace)'
             else:
                 save_list = core_list
 
-        if '_dplace' in self.launch_command:
+        if '_dplace' in self.name:
             self.dplace_command += ' -c '
             self.dplace_command += ','.join(core_list)
 
-
-        # Cheyenne is the only machine that requires mpirun_mpt.  We then 
-        # have to set MPI_SHEPHERD=true
-        if '_mpt' in self.launch_command:
-            if not cu.get['description'].get('environment'):
-                cu['description']['environment'] = dict()
-            cu['description']['environment']['MPI_SHEPHERD'] = 'true'
 
         # If we have a CU with many cores, we will create a hostfile and pass
         # that as an argument instead of the individual hosts
@@ -140,7 +135,7 @@ class MPIRun(LaunchMethod):
         # -np:  usually len(host_list), meaning N processes over N hosts, but
         # for Cheyenne (mpt) the specification of -host lands N processes on
         # EACH host, where N is specified as arg to -np
-        if '_mpt' in self.launch_command:
+        if '_mpt' in self.name:
             np = 1
         else:
             np = len(host_list)
@@ -149,7 +144,6 @@ class MPIRun(LaunchMethod):
                    (self.ccmrun_command, self.launch_command, np,
                     self.dplace_command, hosts_string, env_string, 
                     task_command)).strip()
-
 
         return command, None
 
