@@ -24,17 +24,17 @@ class MPIRun(LaunchMethod):
     #
     def _configure(self):
 
-        if '_rsh' in self.name:
-            self.launch_command = ru.which([
-                'mpirun_rsh',        # Gordon @ SDSC
-            ])
+        if   '_rsh' in self.name:
+            self.launch_command = ru.which('mpirun_rsh')  # Gordon   @ SDSC
+
+        elif '_mpt' in self.name:
+            self.launch_command = ru.which('mpirun_mpt')  # Cheyenne @ NCAR
 
         else:
-            self.launch_command = ru.which([
-                'mpirun',            # General case
-                'mpirun-mpich-mp',   # Mac OSX MacPorts
-                'mpirun-openmpi-mp'  # Mac OSX MacPorts
-            ])
+            self.launch_command = ru.which(['mpirun',            # general case
+                                            'mpirun-mpich-mp',   # Mac OSX
+                                            'mpirun-openmpi-mp'  # Mac OSX
+                                           ])
 
         # don't use the full pathname as the user might load a different
         # compiler / MPI library suite from his CU pre_exec that requires
@@ -95,6 +95,13 @@ class MPIRun(LaunchMethod):
             for gpu_proc in node['gpu_map']:
                 hostlist.append(node['name'])
 
+        # Cheyenne is the only machine that requires mpirun_mpt.  We then 
+        # have to set MPI_SHEPHERD=true
+        if '_mpt' in self.launch_command:
+            if not cu.get['description'].get('environment'):
+                cu['description']['environment'] = dict()
+            cu['description']['environment']['MPI_SHEPHERD'] = 'true'
+
         # If we have a CU with many cores, we will create a hostfile and pass
         # that as an argument instead of the individual hosts
         if len(hostlist) > 42:
@@ -107,8 +114,16 @@ class MPIRun(LaunchMethod):
             # Construct the hosts_string ('h1,h2,..,hN')
             hosts_string = '-host %s' % ",".join(hostlist)
 
+        # -np:  usually len(hostlist), meaning N processes over N hosts, but
+        # for Cheyenne (mpt) the specification of -host lands N processes on
+        # EACH host, where N is specified as arg to -np
+        if '_mpt' in self.launch_command:
+            np = 1
+        else:
+            np = len(hostlist)
+
         command = "%s%s -np %d %s %s %s" % \
-                  (self.ccmrun_command, self.launch_command, len(hostlist),
+                  (self.ccmrun_command, self.launch_command, np,
                    hosts_string, env_string, task_command)
 
         return command, None

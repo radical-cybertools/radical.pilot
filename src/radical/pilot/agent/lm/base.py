@@ -89,7 +89,6 @@ class LaunchMethod(object):
         from .ibrun          import IBRun
         from .mpiexec        import MPIExec
         from .mpirun         import MPIRun
-        from .mpirun_mpt     import MPIRun_MPT
         from .mpirun_dplace  import MPIRunDPlace
         from .orte           import ORTE
         from .orte_lib       import ORTELib
@@ -100,6 +99,7 @@ class LaunchMethod(object):
 
       # # deprecated
       # from .mpirun_ccmrun  import MPIRunCCMRun
+      # from .mpirun_mpt     import MPIRun_MPT
       # from .mpirun_rsh     import MPIRunRSH
       # from .dplace         import DPlace
       # from .poe            import POE
@@ -115,7 +115,7 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN        : MPIRun,
                 LM_NAME_MPIRUN_CCMRUN : MPIRun,
                 LM_NAME_MPIRUN_RSH    : MPIRun,
-                LM_NAME_MPIRUN_MPT    : MPIRun_MPT,
+                LM_NAME_MPIRUN_MPT    : MPIRun,
                 LM_NAME_MPIRUN_DPLACE : MPIRunDPlace,
                 LM_NAME_ORTE          : ORTE,
                 LM_NAME_ORTE_LIB      : ORTELib,
