@@ -91,7 +91,6 @@ class LaunchMethod(object):
         from .mpiexec        import MPIExec
         from .mpirun         import MPIRun
         from .mpirun_mpt     import MPIRun_MPT
-        from .mpirun_ccmrun  import MPIRunCCMRun
         from .mpirun_dplace  import MPIRunDPlace
         from .mpirun_rsh     import MPIRunRSH
         from .orte           import ORTE
@@ -102,6 +101,7 @@ class LaunchMethod(object):
         from .spark          import Spark
 
       # # deprecated
+      # from .mpirun_ccmrun  import MPIRunCCMRun
       # from .dplace         import DPlace
       # from .poe            import POE
       # from .runjob         import Runjob

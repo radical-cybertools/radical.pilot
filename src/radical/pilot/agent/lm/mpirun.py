@@ -30,14 +30,18 @@ class MPIRun(LaunchMethod):
             'mpirun-openmpi-mp'  # Mac OSX MacPorts
         ])
 
-        self.ccmrun_command = ru.which([
-            'ccmrun',            # General case
-        ])
+        self.ccmrun_command = ''  # do *not* set to none - we use this in
+                                  # a string completion later on
 
-        if not self.ccmrun_command:
-            raise RuntimeError("ccmrun not found!")
+        # do we need ccmrun?
+        if 'ccmrun' in self.name:
+            self.ccmrun_command = ru.which('ccmrun')
+            if not self.ccmrun_command:
+                raise RuntimeError("ccmrun not found!")
+            self.ccmrun_command += ' '  # simplifies later string replacement
 
-        self.mpi_version, self.mpi_flavor = self._get_mpi_info(self.launch_command)
+        self.mpi_version, self.mpi_flavor = \
+                                       self._get_mpi_info(self.launch_command)
 
 
     # --------------------------------------------------------------------------
