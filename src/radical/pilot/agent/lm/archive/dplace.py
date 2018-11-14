@@ -34,28 +34,23 @@ class DPlace(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cpu_processes']  # FIXME: cpu_threads
+        task_cores   = cud['cpu_processes']  # FIXME: also use cpu_threads
         task_args    = cud.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
 
         if 'task_offsets' not in slots :
-            raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, slots))
+            raise RuntimeError('insufficient information to launch via %s: %s'
+                               % (self.name, slots))
 
-        task_offsets = slots['task_offsets']        # This needs to revisited 
-        assert(len(task_offsets) == 1)              # since slots structure has 
-        dplace_offset = task_offsets[0]             # changed
+        # FIXME: This is broken due to changes lot structure
+        task_offsets   = slots['task_offsets']
+        assert(len(task_offsets) == 1)
+        dplace_offset  = task_offsets[0]
 
-        if task_argstr:
-            task_command = "%s %s" % (task_exec, task_argstr)
-        else:
-            task_command = task_exec
-
-
-        dplace_command = "%s -c %d-%d %s" % (
-            self.launch_command, dplace_offset,
-            dplace_offset+task_cores-1, task_command)
-
+        task_command   = "%s %s" % (task_exec, task_argstr)
+        dplace_command = "%s -c %d-%d %s" % (self.launch_command, dplace_offset,
+                                             dplace_offset + task_cores - 1,
+                                             task_command)
         return dplace_command, None
 
 

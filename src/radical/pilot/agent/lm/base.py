@@ -77,7 +77,7 @@ class LaunchMethod(object):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
-            raise TypeError("LaunchMethod factory only available to base class!")
+            raise TypeError("LM create() only available to base class!")
 
         # In case of undefined LM just return None
         if not name:
