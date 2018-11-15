@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.19 Release                                                       2018-11-15
+--------------------------------------------------------------------------------
+
+  - ensure profile fetching on empty tarballs
+
+
 0.50.18 Release                                                       2018-11-13
 --------------------------------------------------------------------------------
 
