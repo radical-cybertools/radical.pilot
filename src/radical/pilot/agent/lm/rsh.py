@@ -60,7 +60,7 @@ class RSH(LaunchMethod):
         if len(slots['nodes'] > 1):
             raise RuntimeError('rsh cannot run multinode units')
 
-        host = slots['nodes'][0][0]
+        host = slots['nodes']['name'][0]
 
         # Pass configured and available environment variables to the remote shell
         export_vars  = ' '.join(['%s=%s' % (var, os.environ[var]) 
