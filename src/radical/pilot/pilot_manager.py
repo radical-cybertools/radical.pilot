@@ -181,7 +181,6 @@ class PilotManager(rpu.Component):
         # terminate component base
         super(PilotManager, self).stop()
 
-        self._prof.prof('close', uid=self._uid)
         self._log.info("Closed PilotManager %s." % self._uid)
 
         self._closed = True

@@ -5,6 +5,19 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.18 Release                                                       2018-11-13
+--------------------------------------------------------------------------------
+
+  - support for data locality aware scheduling
+
+
+0.50.17 Release                                                       2018-10-31
+--------------------------------------------------------------------------------
+
+  - improve event documentation
+  - support CU level metadata
+
+
 0.50.16 Release                                                       2018-10-26
 --------------------------------------------------------------------------------
 
