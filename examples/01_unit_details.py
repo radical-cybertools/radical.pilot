@@ -20,7 +20,7 @@ import radical.utils as ru
 # ------------------------------------------------------------------------------
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
@@ -55,15 +55,14 @@ if __name__ == '__main__':
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
-        pd_init = {
-                'resource'      : resource,
-                'runtime'       : 15,  # pilot runtime (min)
-                'exit_on_error' : True,
-                'project'       : config[resource]['project'],
-                'queue'         : config[resource]['queue'],
-                'access_schema' : config[resource]['schema'],
-                'cores'         : config[resource]['cores'],
-                }
+        pd_init = {'resource'      : resource,
+                   'runtime'       : 15,  # pilot runtime (min)
+                   'exit_on_error' : True,
+                   'project'       : config[resource]['project'],
+                   'queue'         : config[resource]['queue'],
+                   'access_schema' : config[resource]['schema'],
+                   'cores'         : config[resource]['cores']
+                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
         # Launch the pilot.
@@ -78,22 +77,18 @@ if __name__ == '__main__':
 
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
-
-        report.info('create %d unit description(s)\n\t' % 2)
+        n = 128  # number of units to run
+        report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
+        for i in range(0, n):
 
-        cud = rp.ComputeUnitDescription()
-        cud.executable = '/usr/bin/mongo'
-        cud.arguments  = 'mongodb://$RP_APP_TUNNEL/ --eval db.stats()'.split()
-        cuds.append(cud)
-        report.progress()
-
-        cud = rp.ComputeUnitDescription()
-        cud.executable = 'echo'
-        cud.arguments  = '$RP_APP_TUNNEL'
-        cuds.append(cud)
-        report.progress()
+            # create a new CU description, and fill it.
+            # Here we don't use dict initialization.
+            cud = rp.ComputeUnitDescription()
+            cud.executable = '/bin/date'
+            cuds.append(cud)
+            report.progress()
 
         report.ok('>>ok\n')
 
@@ -105,27 +100,27 @@ if __name__ == '__main__':
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
-    
+
         report.info('\n')
         for unit in units:
-            report.plain('  * %s: %s, exit: %3s, out: %s\n' \
+            report.plain('  * %s: %s, exit: %3s, out: %s\n'
                     % (unit.uid, unit.state[:4],
-                        unit.exit_code, unit.stderr[:35]))
+                        unit.exit_code, unit.stdout[:35]))
 
         # get some more details for one unit:
         unit_dict = units[0].as_dict()
         report.plain("unit workdir : %s\n" % unit_dict['unit_sandbox'])
         report.plain("pilot id     : %s\n" % unit_dict['pilot'])
         report.plain("exit code    : %s\n" % unit_dict['exit_code'])
-        report.plain("exit stdout  : %s\n" % unit_dict['stdout'])
-    
+        report.plain("stdout       : %s\n" % unit_dict['stdout'])
+
         # get some more details for one unit:
         unit_dict = units[1].as_dict()
         report.plain("unit workdir : %s\n" % unit_dict['unit_sandbox'])
         report.plain("pilot id     : %s\n" % unit_dict['pilot'])
         report.plain("exit code    : %s\n" % unit_dict['exit_code'])
         report.plain("exit stdout  : %s\n" % unit_dict['stdout'])
-    
+
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
@@ -148,5 +143,5 @@ if __name__ == '__main__':
     report.header()
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 

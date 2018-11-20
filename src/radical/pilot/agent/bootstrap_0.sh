@@ -124,17 +124,22 @@ int main ()
     return (0);
 }
 EOT
+    echo
+    module list
+    echo
+
     if ! test -e "./gtod"
     then
-        echo -n "build gtod with cc... "
-        cc -o gtod gtod.c
+        echo -n "build gtod with gcc... $(which gcc)"
+        echo
+        gcc -o gtod gtod.c
     fi
 
     if ! test -e "./gtod"
     then
         echo "failed"
-        echo -n "build gtod with gcc... "
-        gcc -o gtod gtod.c
+        echo -n "build gtod with cc... $(which cc) "
+        cc -o gtod gtod.c
     fi
 
     if ! test -e "./gtod"
@@ -923,8 +928,14 @@ virtenv_create()
 
         if test "$virtenv_dist" = "1.9"
         then
+            flags='-1 -k -L -O'
+            if (hostname -f | grep -e '^smic' > /dev/null)
+            then
+                flags='-k -L -O'
+            fi
+
             run_cmd "Download virtualenv tgz" \
-                    "curl -k -L -O '$VIRTENV_TGZ_URL'"
+                    "curl $flags '$VIRTENV_TGZ_URL'"
 
             if ! test "$?" = 0
             then

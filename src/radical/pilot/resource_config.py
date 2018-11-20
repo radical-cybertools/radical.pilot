@@ -43,5 +43,4 @@ __license__   = "MIT"
 # VIRTENV_DISTRIBUTION        = 'virtenv_dist'
 # SAGA_JD_SUPPLEMENT          = 'saga_jd_supplement'
 #
-# ------------------------------------------------------------------------------
 
