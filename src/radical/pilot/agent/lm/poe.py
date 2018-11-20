@@ -53,7 +53,7 @@ class POE(LaunchMethod):
         hosts_string = ''
         for node in slots['nodes']:
                                      # nodename, n cores      + n gpus
-            hosts_string += '%s %d ' % (node[0], len(node[2]) + len(node[3]))
+            hosts_string += '%s %d ' % (node['name'], len(node['core_map']) + len(node['gpu_map']))
 
         # Override the LSB_MCPU_HOSTS env variable as this is set by
         # default to the size of the whole pilot.

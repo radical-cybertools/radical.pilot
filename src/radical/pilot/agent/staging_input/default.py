@@ -240,10 +240,14 @@ class Default(AgentStagingInputComponent):
             elif action == rpc.TARBALL:
 
                 # If somethig was staged via the tarball method, the tarball is
-                # extracted and then removed from the unit folder.
-                self._log.debug('extract tarball for %s',uid)
-                tar = tarfile.open('%s/%s.tar' % (os.path.dirname(tgt.path), uid))
-                tar.extractall(path=os.path.dirname(tgt.path))
+                # extracted and then removed from the unit folder.  The target
+                # path is expected to be an *absolute* path on the target system
+                # - any relative paths specified by the application are expected
+                # to get expanded on the client side.
+                tarball = '%s/%s.tar' % (os.path.dirname(tgt.path), uid)
+                self._log.debug('extract tarball for %s', tarball)
+                tar = tarfile.open(tarball)
+                tar.extractall(path='/')
                 tar.close()
 
               # FIXME: make tarball removal dependent on debug settings

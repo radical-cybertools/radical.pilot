@@ -46,9 +46,9 @@ class IBRun(LaunchMethod):
             raise RuntimeError('insufficient information to launch via %s: %s' \
                     % (self.name, slots))
 
-        task_offsets = slots['task_offsets']
-        assert(len(task_offsets) == 1)
-        ibrun_offset = task_offsets[0]
+        task_offsets = slots['task_offsets']        # This needs to revisited 
+        assert(len(task_offsets) == 1)              # since slots structure has 
+        ibrun_offset = task_offsets[0]              # changed
 
         if task_argstr:
             task_command = "%s %s" % (task_exec, task_argstr)
