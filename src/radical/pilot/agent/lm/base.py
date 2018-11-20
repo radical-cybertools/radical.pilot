@@ -19,6 +19,7 @@ LM_NAME_FORK          = 'FORK'
 LM_NAME_IBRUN         = 'IBRUN'
 LM_NAME_MPIEXEC       = 'MPIEXEC'
 LM_NAME_MPIRUN        = 'MPIRUN'
+LM_NAME_MPIRUN_MPT    = 'MPIRUN_MPT'
 LM_NAME_MPIRUN_CCMRUN = 'MPIRUN_CCMRUN'
 LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
@@ -98,6 +99,7 @@ class LaunchMethod(object):
         from .ibrun          import IBRun
         from .mpiexec        import MPIExec
         from .mpirun         import MPIRun
+        from .mpirun_mpt     import MPIRun_MPT
         from .mpirun_ccmrun  import MPIRunCCMRun
         from .mpirun_dplace  import MPIRunDPlace
         from .mpirun_rsh     import MPIRunRSH
@@ -120,6 +122,7 @@ class LaunchMethod(object):
                 LM_NAME_IBRUN         : IBRun,
                 LM_NAME_MPIEXEC       : MPIExec,
                 LM_NAME_MPIRUN        : MPIRun,
+                LM_NAME_MPIRUN_MPT    : MPIRun_MPT,
                 LM_NAME_MPIRUN_CCMRUN : MPIRunCCMRun,
                 LM_NAME_MPIRUN_DPLACE : MPIRunDPlace,
                 LM_NAME_MPIRUN_RSH    : MPIRunRSH,

@@ -7,15 +7,15 @@ import os
 import radical.utils as ru
 
 from ... import utils     as rpu
-from ... import constants as rpc
 
 
 # ------------------------------------------------------------------------------
 # 'enum' for RP's spawner types
-EXECUTING_NAME_POPEN = "POPEN"
-EXECUTING_NAME_SHELL = "SHELL"
-EXECUTING_NAME_ABDS  = "ABDS"
-EXECUTING_NAME_ORTE  = "ORTE"
+EXECUTING_NAME_POPEN   = "POPEN"
+EXECUTING_NAME_SHELL   = "SHELL"
+EXECUTING_NAME_SHELLFS = "SHELLFS"
+EXECUTING_NAME_ABDS    = "ABDS"
+EXECUTING_NAME_ORTE    = "ORTE"
 
 
 # ==============================================================================
@@ -54,22 +54,25 @@ class AgentExecutingComponent(rpu.Component):
         if cls != AgentExecutingComponent:
             raise TypeError("Factory only available to base class!")
 
-        if name == EXECUTING_NAME_POPEN:
-            from .popen import Popen
-            impl = Popen(cfg, session)
-        elif name == EXECUTING_NAME_SHELL:
-            from .shell import Shell
-            impl = Shell(cfg, session)
-        elif name == EXECUTING_NAME_ABDS:
-            from .abds import ABDS
-            impl = ABDS(cfg, session)
-        elif name == EXECUTING_NAME_ORTE:
-            from .orte import ORTE
-            impl = ORTE(cfg, session)
-        else:
-            raise ValueError("AgentExecutingComponent '%s' unknown or defunct" % name)
+        from .popen    import Popen
+        from .shell    import Shell
+        from .shell_fs import ShellFS
+        from .abds     import ABDS
+
+        try:
+            from .orte     import ORTE
+        except:
+            pass
+
+        if   name == EXECUTING_NAME_POPEN  : impl = Popen  (cfg, session)
+        elif name == EXECUTING_NAME_SHELL  : impl = Shell  (cfg, session)
+        elif name == EXECUTING_NAME_SHELLFS: impl = ShellFS(cfg, session)
+        elif name == EXECUTING_NAME_ABDS   : impl = ABDS   (cfg, session)
+        elif name == EXECUTING_NAME_ORTE   : impl = ORTE   (cfg, session)
+        else: raise ValueError("invalid AgentExecutingComponent '%s'" % name)
 
         return impl
 
 
 # ------------------------------------------------------------------------------
+
