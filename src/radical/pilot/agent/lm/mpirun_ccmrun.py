@@ -76,10 +76,10 @@ class MPIRunCCMRun(LaunchMethod):
         # TODO: is there any use in using $HOME/.crayccm/ccm_nodelist.$JOBID?
         hostlist = list()
         for node in slots['nodes']:
-            for cpu_proc in node[2]:
-                hostlist.append(node[0])
-            for gpu_proc in node[3]:
-                hostlist.append(node[0])
+            for cpu_proc in node['core_map']:
+                hostlist.append(node['name'])
+            for gpu_proc in node['gpu_map']:
+                hostlist.append(node['name'])
         hosts_string = ",".join(hostlist)
 
         command = "%s %s -np %d -host %s %s %s" % \

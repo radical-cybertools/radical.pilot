@@ -199,6 +199,9 @@ class Default(PMGRLaunchingComponent):
             # FIXME: honor sd flags if given (recursive...)
             flags = rsfs.CREATE_PARENTS
 
+            if os.path.isdir(src.path):
+                flags |= rsfs.RECURSIVE
+
             # Define and open the staging directory for the pilot
             # We use the target dir construct here, so that we can create
             # the directory if it does not yet exist.
@@ -692,7 +695,7 @@ class Default(PMGRLaunchingComponent):
         self._log.debug('tar done: %s, %s, %s', j.state, j.stdout, j.stderr)
 
         for pilot in pilots:
-            self._prof.prof('staging_in_stop', uid=pilot['uid'])
+            self._prof.prof('staging_in_stop',  uid=pilot['uid'])
             self._prof.prof('submission_start', uid=pilot['uid'])
 
         # look up or create JS for actual pilot submission.  This might result
@@ -715,29 +718,25 @@ class Default(PMGRLaunchingComponent):
 
         jc.run()
 
-        for j in jc.get_tasks():
+        # we assume here that the tasks arrive in the same order as the job
+        # descriptions.  For uniform sets of pilots the order does not matter
+        # much though.  Either way, this needs confirming on SAGA level
+        # FIXME
+        for j,jd in zip(jc.get_tasks(), jd_list):
 
             # do a quick error check
             if j.state == rs.FAILED:
                 self._log.error('%s: %s : %s : %s', j.id, j.state, j.stderr, j.stdout)
-                raise RuntimeError ("SAGA Job state is FAILED.")
-
-            if not j.name:
-                raise RuntimeError('cannot get job name for %s' % j.id)
+                raise RuntimeError ("SAGA Job state is FAILED. (%s)" % jd.name)
 
             pilot = None
+            pid   = jd.name
             for p in pilots:
-                if p['uid'] == j.name:
+                if p['uid'] == pid:
                     pilot = p
                     break
 
-            if not pilot:
-                raise RuntimeError('job does not match any pilot: %s : %s'
-                                  % (j.name, j.id))
-
-            pid = pilot['uid']
-            self._log.debug('pilot job: %s : %s : %s : %s', 
-                            pid, j.id, j.name, j.state)
+            assert(pilot)
 
             # Update the Pilot's state to 'PMGR_ACTIVE_PENDING' if SAGA job
             # submission was successful.  Since the pilot leaves the scope of
@@ -808,6 +807,8 @@ class Default(PMGRLaunchingComponent):
         virtenv                 = rcfg.get('virtenv',             default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
         gpus_per_node           = rcfg.get('gpus_per_node',  0)
+        lfs_path_per_node       = rcfg.get('lfs_path_per_node', None)
+        lfs_size_per_node       = rcfg.get('lfs_size_per_node',  0)
         python_dist             = rcfg.get('python_dist')
         virtenv_dist            = rcfg.get('virtenv_dist',        DEFAULT_VIRTENV_DIST)
         cu_tmp                  = rcfg.get('cu_tmp')
@@ -1053,31 +1054,33 @@ class Default(PMGRLaunchingComponent):
         for arg in pre_bootstrap_1:
             bootstrap_args += " -w '%s'" % arg
 
-        agent_cfg['owner']               = 'agent_0'
-        agent_cfg['cores']               = number_cores
-        agent_cfg['gpus']                = number_gpus
-        agent_cfg['lrms']                = lrms
-        agent_cfg['spawner']             = agent_spawner
-        agent_cfg['scheduler']           = agent_scheduler
-        agent_cfg['runtime']             = runtime
-        agent_cfg['dburl']               = str(database_url)
-        agent_cfg['session_id']          = sid
-        agent_cfg['pilot_id']            = pid
-        agent_cfg['logdir']              = '.'
-        agent_cfg['pilot_sandbox']       = pilot_sandbox
-        agent_cfg['session_sandbox']     = session_sandbox
-        agent_cfg['resource_sandbox']    = resource_sandbox
-        agent_cfg['agent_launch_method'] = agent_launch_method
-        agent_cfg['task_launch_method']  = task_launch_method
-        agent_cfg['mpi_launch_method']   = mpi_launch_method
-        agent_cfg['cores_per_node']      = cores_per_node
-        agent_cfg['gpus_per_node']       = gpus_per_node
-        agent_cfg['cu_tmp']              = cu_tmp
-        agent_cfg['export_to_cu']        = export_to_cu
-        agent_cfg['cu_pre_exec']         = cu_pre_exec
-        agent_cfg['cu_post_exec']        = cu_post_exec
-        agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
-        agent_cfg['debug']               = self._log.getEffectiveLevel()
+        agent_cfg['owner']              = 'agent_0'
+        agent_cfg['cores']              = number_cores
+        agent_cfg['gpus']               = number_gpus
+        agent_cfg['lrms']               = lrms
+        agent_cfg['spawner']            = agent_spawner
+        agent_cfg['scheduler']          = agent_scheduler
+        agent_cfg['runtime']            = runtime
+        agent_cfg['dburl']              = str(database_url)
+        agent_cfg['session_id']         = sid
+        agent_cfg['pilot_id']           = pid
+        agent_cfg['logdir']             = '.'
+        agent_cfg['pilot_sandbox']      = pilot_sandbox
+        agent_cfg['session_sandbox']    = session_sandbox
+        agent_cfg['resource_sandbox']   = resource_sandbox
+        agent_cfg['agent_launch_method']= agent_launch_method
+        agent_cfg['task_launch_method'] = task_launch_method
+        agent_cfg['mpi_launch_method']  = mpi_launch_method
+        agent_cfg['cores_per_node']     = cores_per_node
+        agent_cfg['gpus_per_node']      = gpus_per_node
+        agent_cfg['lfs_path_per_node']  = lfs_path_per_node
+        agent_cfg['lfs_size_per_node']  = lfs_size_per_node
+        agent_cfg['cu_tmp']             = cu_tmp
+        agent_cfg['export_to_cu']       = export_to_cu
+        agent_cfg['cu_pre_exec']        = cu_pre_exec
+        agent_cfg['cu_post_exec']       = cu_post_exec
+        agent_cfg['resource_cfg']       = copy.deepcopy(rcfg)
+        agent_cfg['debug']              = self._log.getEffectiveLevel()
 
         # we'll also push the agent config into MongoDB
         pilot['cfg'] = agent_cfg

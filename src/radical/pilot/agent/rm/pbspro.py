@@ -36,34 +36,34 @@ class PBSPro(LRMS):
 
         # Dont need to parse the content of nodefile for PBSPRO, only the length
         # is interesting, as there are only duplicate entries in it.
-        pbspro_nodes_length = len([line.strip() for line in open(pbspro_nodefile)])
+        pbspro_nodes        = [line.strip() for line in open(pbspro_nodefile)]
+        pbspro_nodes_length = len(pbspro_nodes)
 
         # Number of Processors per Node
         val = os.environ.get('NUM_PPN')
-        if val:
-            pbspro_num_ppn = int(val)
-        else:
-            msg = "$NUM_PPN not set!"
-            self._log.error(msg)
-            raise RuntimeError(msg)
+        if not val:
+            val = os.environ.get('SAGA_PPN')
+        
+        if not val:
+            raise RuntimeError("$NUM_PPN / $SAGA_PPN not set!")
+
+        pbspro_num_ppn = int(val)
 
         # Number of Nodes allocated
         val = os.environ.get('NODE_COUNT')
         if val:
             pbspro_node_count = int(val)
         else:
-            msg = "$NODE_COUNT not set!"
-            self._log.error(msg)
-            raise RuntimeError(msg)
+            pbspro_node_count = len(set(pbspro_nodes))
+            self._log.error("$NODE_COUNT not set - use %d" % pbspro_node_count)
 
         # Number of Parallel Environments
         val = os.environ.get('NUM_PES')
         if val:
             pbspro_num_pes = int(val)
         else:
-            msg = "$NUM_PES not set!"
-            self._log.error(msg)
-            raise RuntimeError(msg)
+            pbspro_num_pes = len(pbspro_nodes)
+            self._log.error("$NUM_PES not set - use %d" % pbspro_num_pes)
 
         pbspro_vnodes = self._parse_pbspro_vnodes()
 
@@ -75,6 +75,9 @@ class PBSPro(LRMS):
         self.node_list      = [[node, node] for node in pbspro_vnodes]
         self.cores_per_node = pbspro_num_ppn
         self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
+        self.lfs_per_node   = {'path' : self._cfg.get('lfs_path_per_node', None),
+                               'size' : self._cfg.get('lfs_size_per_node', 0)
+                              }
 
 
     # --------------------------------------------------------------------------
