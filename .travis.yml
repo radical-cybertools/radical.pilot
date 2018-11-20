@@ -30,8 +30,8 @@ script:
  - coverage run --source $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/ -m pytest -vvv tests/
  - flake8 tests/
  - pylint tests/
- - flake8 src/radical/pilot/agent/lm/
- - pylint src/radical/pilot/agent/lm/ 
+ - flake8 --config=.flake8 $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/
+ - pylint $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/ 
  
 after_success:
   - coverage combine

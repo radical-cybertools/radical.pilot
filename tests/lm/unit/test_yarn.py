@@ -35,7 +35,7 @@ def test_construct_command(mocked_init, mocked_configure,
 
     test_cases = setUp()
 
-    component = Yarn(cfg=None, session=None)
+    component = Yarn(cfg=None, session=None, name=None)
     component._log  = ru.get_logger('dummy')
     component.launch_command = 'yarn'
     for i in range(len(test_cases['trigger'])):

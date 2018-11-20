@@ -5,7 +5,6 @@ __license__   = "MIT"
 
 import os
 import time
-import threading
 import subprocess    as mp
 import radical.utils as ru
 
@@ -134,7 +133,6 @@ class ORTE(LaunchMethod):
                     # Process is gone: fatal!
                     raise Exception("ORTE DVM process disappeared")
                     profiler.prof(event='orte_dvm_fail', uid=cfg['pilot_id'])
-
 
         # ----------------------------------------------------------------------
         def _watch_dvm():
@@ -267,7 +265,7 @@ class ORTE(LaunchMethod):
             for cpu_slot in node['core_map']: depths.add(len(cpu_slot))
 
         assert(len(depths) == 1), depths
-        depth = list(depths)[0]
+        # depth = list(depths)[0]
 
         # FIXME: is this binding correct?
       # if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth

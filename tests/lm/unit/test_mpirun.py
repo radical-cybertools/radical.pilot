@@ -30,6 +30,7 @@ def tearDown():
 
     pass
 
+
 # ------------------------------------------------------------------------------
 # Test Summit Scheduler construct_command method
 @mock.patch.object(MPIRun, '__init__', return_value=None)

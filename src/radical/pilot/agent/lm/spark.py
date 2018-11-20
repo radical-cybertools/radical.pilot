@@ -22,7 +22,7 @@ class Spark(LaunchMethod):
 
         LaunchMethod.__init__(self, name, cfg, session)
 
-    #pylint: disable= unused-argument
+    # pylint: disable= unused-argument
     # --------------------------------------------------------------------------
     #
     @classmethod
@@ -153,7 +153,7 @@ class Spark(LaunchMethod):
                 logger.info("Spark stopped successfully")
 
         os.remove('spark-2.0.2-bin-hadoop2.7.tgz')
-    #pylint: enable= unused-argument
+    # pylint: enable= unused-argument
     # --------------------------------------------------------------------------
     #
     def _configure(self):

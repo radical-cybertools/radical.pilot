@@ -5,7 +5,6 @@ __license__   = "MIT"
 
 import os
 import time
-import threading
 import subprocess    as mp
 import radical.utils as ru
 
@@ -135,7 +134,6 @@ class ORTELib(LaunchMethod):
                     raise Exception("ORTE DVM process disappeared")
                     profiler.prof(event='orte_dvm_fail', uid=cfg['pilot_id'])
 
-
         # ----------------------------------------------------------------------
         def _watch_dvm():
 
@@ -238,11 +236,12 @@ class ORTELib(LaunchMethod):
             raise RuntimeError('lm_info missing for %s: %s'
                                % (self.name, slots))
 
-        if 'dvm_uri' not in slots['lm_info']:
-            raise RuntimeError('dvm_uri not in lm_info for %s: %s'
-                               % (self.name, slots))
+        # FIXME: Is this really needed? dvm_uri is never used
+        # if 'dvm_uri' not in slots['lm_info']:
+        #    raise RuntimeError('dvm_uri not in lm_info for %s: %s'
+        #                       % (self.name, slots))
 
-        dvm_uri = slots['lm_info']['dvm_uri']
+        # dvm_uri = slots['lm_info']['dvm_uri']
 
         if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
         else          : task_command = task_exec
@@ -265,7 +264,7 @@ class ORTELib(LaunchMethod):
             #       hostnames with underscores in it, or other hostname 
             #       mangling, we need to turn this into a system specific 
             #       regexp or so.
-            
+
             node_id = node[1].rsplit('_', 1)[-1] 
 
             # add all cpu and gpu process slots to the node list.
@@ -274,7 +273,7 @@ class ORTELib(LaunchMethod):
             for cpu_slot in node[2]: depths.add(len(cpu_slot))
 
         assert(len(depths) == 1), depths
-        depth = list(depths)[0]
+        # depth = list(depths)[0]
 
         # FIXME: is this binding correct?
       # if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
