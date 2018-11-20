@@ -3,106 +3,111 @@
         {
             "slots": {
                 "nodes": [
-                    [
-                        "test",
-                        "test",
-                        [[0]],
-                        []
-                    ]
-                ],
+                    {
+                        "name": "test",
+                        "uid": "test",
+                        "core_map": [[0]],
+                        "gpu_map": [],
+                        "lfs": {
+                            "size": 0,
+                            "path": null}
+                    }],
                 "cores_per_node": 16,
                 "gpus_per_node": 1,
-                "lm_info": {}
+                "lm_info": {},
+                "lfs_per_node": 0
             },
             "description": {
                 "executable": "/bin/sleep",
-                "arguments": [
-                    "10"
-                ]
+                "arguments": ["10"]
             }
         },
         {
             "slots": {
                 "nodes": [
-                    [
-                        "test",
-                        "test",
-                        [[0,1,2,3]],
-                        []
-                    ]
-                ],
+                    {
+                        "name": "test",
+                        "uid": "test",
+                        "core_map": [[0,1,2,3]],
+                        "gpu_map": [],
+                        "lfs": {
+                            "size": 0,
+                            "path": null}
+                    }],
                 "cores_per_node": 16,
                 "gpus_per_node": 1,
-                "lm_info": {}
+                "lm_info": {},
+                "lfs_per_node": 0
             },
             "description": {
                 "executable": "/bin/sleep",
-                "arguments": [
-                    "10"
-                ]
+                "arguments": ["10"]
             }
         },
         {
             "slots": {
                 "nodes": [
-                    [
-                        "test",
-                        "test",
-                        [],
-                        [[0]]
-                    ]
-                ],
+                    {
+                        "name": "test",
+                        "uid": "test",
+                        "core_map": [],
+                        "gpu_map": [[0]],
+                        "lfs": {
+                            "size": 0,
+                            "path": null}
+                    }],
                 "cores_per_node": 16,
                 "gpus_per_node": 1,
-                "lm_info": {}
+                "lm_info": {},
+                "lfs_per_node": 0
             },
             "description": {
                 "executable": "/bin/sleep",
-                "arguments": [
-                    "10"
-                ]
+                "arguments": ["10"]
             }
         },
         {
             "slots": {
                 "nodes": [
-                    [
-                        "test",
-                        "test",
-                        [[0]],
-                        [[0]]
-                    ]
-                ],
+                    {
+                        "name": "test",
+                        "uid": "test",
+                        "core_map": [[0]],
+                        "gpu_map": [[0]],
+                        "lfs": {
+                            "size": 0,
+                            "path": null}
+                    }],
                 "cores_per_node": 16,
                 "gpus_per_node": 1,
-                "lm_info": {}
+                "lm_info": {},
+                "lfs_per_node": 0
             },
             "description": {
                 "executable": "/bin/sleep",
-                "arguments": [
-                    "10"
-                ]
+                "arguments": ["10"]
             }
         },
         {
             "slots": {
                 "nodes": [
-                    [
-                        "test",
-                        "test",
-                        [[0,1],[2,3]],
-                        []
-                    ]
-                ],
+                    {
+                        "name": "test",
+                        "uid": "test",
+                        "core_map": [[0,1],[2,3]],
+                        "gpu_map": [],
+                        "lfs": {
+                            "size": 0,
+                            "path": null}
+                    }],
                 "cores_per_node": 16,
                 "gpus_per_node": 1,
-                "lm_info": {}
+                "lm_info": {},
+                "lfs_per_node": 0
             },
             "description": {
                 "executable": "/bin/sleep",
-                "arguments": [
-                    "10"
-                ]
+                "arguments": ["10"]
             }
         }
     ],
