@@ -277,6 +277,18 @@ prof(){
             # FIXME: this should be set by an LM filter or something (GPU)
             env_string += 'export OMP_NUM_THREADS="%s"\n' % descr['cpu_threads']
 
+            # The actual command line, constructed per launch-method
+            try:
+                launch_command, hop_cmd = launcher.construct_command(cu, launch_script_name)
+
+                if hop_cmd : cmdline = hop_cmd
+                else       : cmdline = launch_script_name
+
+            except Exception as e:
+                msg = "Error in spawner (%s)" % e
+                self._log.exception(msg)
+                raise RuntimeError(msg)
+
             # also add any env vars requested for export by the resource config
             for k,v in self._env_cu_export.iteritems():
                 env_string += "export %s=%s\n" % (k,v)
@@ -306,18 +318,6 @@ prof(){
                 launch_script.write('prof cu_pre_start\n')
                 launch_script.write(pre)
                 launch_script.write('prof cu_pre_stop\n')
-
-            # The actual command line, constructed per launch-method
-            try:
-                launch_command, hop_cmd = launcher.construct_command(cu, launch_script_name)
-
-                if hop_cmd : cmdline = hop_cmd
-                else       : cmdline = launch_script_name
-
-            except Exception as e:
-                msg = "Error in spawner (%s)" % e
-                self._log.exception(msg)
-                raise RuntimeError(msg)
 
             launch_script.write("\n# The command to run\n")
             launch_script.write('prof cu_exec_start\n')
