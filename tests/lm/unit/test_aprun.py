@@ -40,7 +40,7 @@ def test_construct_command(mocked_init, mocked_configure,
 
     test_cases = setUp()
 
-    component = APRun(cfg=None, session=None)
+    component = APRun(name=None, cfg=None, session=None)
     component._log = ru.get_logger('dummy')
     component.launch_command = 'aprun'
     for i in range(len(test_cases['trigger'])):
