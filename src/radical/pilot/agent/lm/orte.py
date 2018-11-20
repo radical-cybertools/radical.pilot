@@ -131,8 +131,8 @@ class ORTE(LaunchMethod):
                     logger.debug("ORTE: %s", line)
                 else:
                     # Process is gone: fatal!
-                    raise Exception("ORTE DVM process disappeared")
                     profiler.prof(event='orte_dvm_fail', uid=cfg['pilot_id'])
+                    raise Exception("ORTE DVM process disappeared")
 
         # ----------------------------------------------------------------------
         def _watch_dvm():
