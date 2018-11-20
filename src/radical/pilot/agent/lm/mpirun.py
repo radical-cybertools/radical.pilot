@@ -103,10 +103,10 @@ class MPIRun(LaunchMethod):
         core_list = list()
         save_list = list()
         for node in slots['nodes']:
-            for cpu_proc in node[2]:
+            for cpu_proc in node['core_map']:
                 host_list.append(node['name'])
                 core_list.append(cpu_proc[0])
-            for gpu_proc in node[3]:
+            for gpu_proc in node['gpu_map']:
                 host_list.append(node['name'])
                 core_list.append(gpu_proc[0])
 

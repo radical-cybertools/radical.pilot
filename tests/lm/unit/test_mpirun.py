@@ -39,9 +39,12 @@ def test_construct_command(mocked_init, mocked_configure,
                            mocked_raise_on):
     test_cases = setUp()
 
-    component = MPIRun(cfg=None, session=None)
+    component = MPIRun(name='MPIRun', cfg=None, session=None)
+    component.name = 'MPIRun'
     component._log = ru.get_logger('dummy')
     component.launch_command = 'mpirun'
+    component.ccmrun_command = ''
+    component.dplace_command = ''
     component.mpi_flavor = None
 
     for i in range(len(test_cases['trigger'])):
