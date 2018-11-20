@@ -1,6 +1,6 @@
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__license__ = "MIT"
 
 
 import logging
@@ -9,8 +9,8 @@ import threading
 
 import radical.utils as ru
 
-from ... import utils     as rpu
-from ... import states    as rps
+from ... import utils as rpu
+from ... import states as rps
 from ... import constants as rpc
 
 
@@ -18,13 +18,13 @@ from ... import constants as rpc
 #
 # 'enum' for RPs's pilot scheduler types
 #
-SCHEDULER_NAME_CONTINUOUS      = "CONTINUOUS"
+SCHEDULER_NAME_CONTINUOUS = "CONTINUOUS"
 SCHEDULER_NAME_CONTINUOUS_FIFO = "CONTINUOUS_FIFO"
-SCHEDULER_NAME_SCATTERED       = "SCATTERED"
-SCHEDULER_NAME_HOMBRE          = "HOMBRE"
-SCHEDULER_NAME_TORUS           = "TORUS"
-SCHEDULER_NAME_YARN            = "YARN"
-SCHEDULER_NAME_SPARK           = "SPARK"
+SCHEDULER_NAME_HOMBRE = "HOMBRE"
+SCHEDULER_NAME_SCATTERED = "SCATTERED"
+SCHEDULER_NAME_SPARK = "SPARK"
+SCHEDULER_NAME_TORUS = "TORUS"
+SCHEDULER_NAME_YARN = "YARN"
 
 
 # ------------------------------------------------------------------------------
@@ -38,7 +38,7 @@ SCHEDULER_NAME_SPARK           = "SPARK"
 # The base class provides the following functionality to the implementations:
 #
 #   - obtain configuration settings from config files and environments
-#   - create aself._nodes list to represent available resources; 
+#   - create aself._nodes list to represent available resources;
 #   - general control and data flow:
 #
 #       # main loop
@@ -190,7 +190,7 @@ class AgentSchedulingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     # the deriving schedulers should in general have the following structure in
-    # self.odes:
+    # self.nodes:
     #
     #   self.nodes = [
     #     { 'name'  : 'name-of-node',
@@ -204,17 +204,17 @@ class AgentSchedulingComponent(rpu.Component):
     # respectively.  Some schedulers may need a more elaborate structures - but
     # where the above is suitable, it should be used for code consistency.
     #
+
     def __init__(self, cfg, session):
 
         self.nodes = None
         self._lrms = None
-        self._uid  = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
-                                    ru.ID_CUSTOM)
+        self._uid = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
+                                   ru.ID_CUSTOM)
 
         self._uniform_waitpool = True   # TODO: move to cfg
 
         rpu.Component.__init__(self, cfg, session)
-
 
     # --------------------------------------------------------------------------
     #
@@ -244,7 +244,7 @@ class AgentSchedulingComponent(rpu.Component):
         # NOTE: we could use a local queue here.  Using a zmq bridge goes toward
         #       an distributed scheduler, and is also easier to implement right
         #       now, since `Component` provides the right mechanisms...
-        self.register_publisher (rpc.AGENT_SCHEDULE_PUBSUB)
+        self.register_publisher(rpc.AGENT_SCHEDULE_PUBSUB)
         self.register_subscriber(rpc.AGENT_SCHEDULE_PUBSUB, self.schedule_cb)
 
         # The scheduler needs the LRMS information which have been collected
@@ -252,11 +252,13 @@ class AgentSchedulingComponent(rpu.Component):
         #
         # NOTE: this information is insufficient for the torus scheduler!
         self._pilot_id = self._cfg['pilot_id']
-        self._lrms_info           = self._cfg['lrms_info']
-        self._lrms_lm_info        = self._cfg['lrms_info']['lm_info']
-        self._lrms_node_list      = self._cfg['lrms_info']['node_list']
+        self._lrms_info = self._cfg['lrms_info']
+        self._lrms_lm_info = self._cfg['lrms_info']['lm_info']
+        self._lrms_node_list = self._cfg['lrms_info']['node_list']
         self._lrms_cores_per_node = self._cfg['lrms_info']['cores_per_node']
-        self._lrms_gpus_per_node  = self._cfg['lrms_info']['gpus_per_node']
+        self._lrms_gpus_per_node = self._cfg['lrms_info']['gpus_per_node']
+        # Dict containing the size and path
+        self._lrms_lfs_per_node = self._cfg['lrms_info']['lfs_per_node']   
 
         if not self._lrms_node_list:
             raise RuntimeError("LRMS %s didn't _configure node_list."
@@ -277,20 +279,21 @@ class AgentSchedulingComponent(rpu.Component):
 
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
+
         self.nodes = []
         for node, node_uid in self._lrms_node_list:
             self.nodes.append({
-                'name' : node,
-                'uid'  : node_uid,
+                'name': node,
+                'uid': node_uid,
                 'cores': [rpc.FREE] * self._lrms_cores_per_node,
-                'gpus' : [rpc.FREE] * self._lrms_gpus_per_node
+                'gpus': [rpc.FREE] * self._lrms_gpus_per_node,
+                'lfs': self._lrms_lfs_per_node
             })
 
         # configure the scheduler instance
         self._configure()
-        self._log.debug("slot status after  init      : %s", 
+        self._log.debug("slot status after  init      : %s",
                         self.slot_status())
-
 
     # --------------------------------------------------------------------------
     #
@@ -306,22 +309,22 @@ class AgentSchedulingComponent(rpu.Component):
         name = cfg['scheduler']
 
         from .continuous_fifo import ContinuousFifo
-        from .continuous      import Continuous
-        from .scattered       import Scattered
-        from .hombre          import Hombre
-        from .torus           import Torus
-        from .yarn            import Yarn
-        from .spark           import Spark
+        from .continuous import Continuous
+        from .scattered import Scattered
+        from .hombre import Hombre
+        from .torus import Torus
+        from .yarn import Yarn
+        from .spark import Spark
 
         try:
             impl = {
-                SCHEDULER_NAME_CONTINUOUS_FIFO : ContinuousFifo,
-                SCHEDULER_NAME_CONTINUOUS      : Continuous,
-                SCHEDULER_NAME_SCATTERED       : Scattered,
-                SCHEDULER_NAME_HOMBRE          : Hombre,
-                SCHEDULER_NAME_TORUS           : Torus,
-                SCHEDULER_NAME_YARN            : Yarn,
-                SCHEDULER_NAME_SPARK           : Spark
+                SCHEDULER_NAME_CONTINUOUS_FIFO: ContinuousFifo,
+                SCHEDULER_NAME_CONTINUOUS: Continuous,
+                SCHEDULER_NAME_SCATTERED: Scattered,
+                SCHEDULER_NAME_HOMBRE: Hombre,
+                SCHEDULER_NAME_TORUS: Torus,
+                SCHEDULER_NAME_YARN: Yarn,
+                SCHEDULER_NAME_SPARK: Spark
             }[name]
 
             impl = impl(cfg, session)
@@ -329,7 +332,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         except KeyError:
             raise ValueError("Scheduler '%s' unknown or defunct" % name)
-
 
     # --------------------------------------------------------------------------
     #
@@ -344,8 +346,10 @@ class AgentSchedulingComponent(rpu.Component):
         have been allocated or deallocated.  For details on the data structure,
         see top of `base.py`.
         '''
+        # This method needs to change if the DS changes.
 
-        for node_name, node_uid, cores, gpus in slots['nodes']:
+        # for node_name, node_uid, cores, gpus in slots['nodes']:
+        for nodes in slots['nodes']:
 
             # Find the entry in the the slots list
 
@@ -356,18 +360,25 @@ class AgentSchedulingComponent(rpu.Component):
             #       that we would read, and keep a dictionary that maps the uid
             #       of the node to the location on the list?
 
-            node = (n for n in self.nodes if n['uid'] == node_uid).next()
+            node = (n for n in self.nodes if n['uid'] == nodes['uid']).next()
             assert(node)
 
             # iterate over cores/gpus in the slot, and update state
+            cores = nodes['core_map']
             for cslot in cores:
                 for core in cslot:
                     node['cores'][core] = new_state
 
+            gpus = nodes['gpu_map']
             for gslot in gpus:
                 for gpu in gslot:
                     node['gpus'][gpu] = new_state
 
+            if node['lfs']['path'] is not None:
+                if new_state == rpc.BUSY:
+                    node['lfs']['size'] -= nodes['lfs']['size']
+                else:
+                    node['lfs']['size'] += nodes['lfs']['size']
 
     # --------------------------------------------------------------------------
     #
@@ -381,34 +392,34 @@ class AgentSchedulingComponent(rpu.Component):
         ret = "|"
         for node in self.nodes:
             for core in node['cores']:
-                if core == rpc.FREE  : ret += '-'
-                else                 : ret += '#'
+                if core == rpc.FREE:
+                    ret += '-'
+                else:
+                    ret += '#'
             ret += ':'
-            for gpu in node['gpus']  :
-                if gpu == rpc.FREE   : ret += '-'
-                else                 : ret += '#'
+            for gpu in node['gpus']:
+                if gpu == rpc.FREE:
+                    ret += '-'
+                else:
+                    ret += '#'
             ret += '|'
 
         return ret
-
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
         raise NotImplementedError("_configure() missing for '%s'" % self.uid)
 
-
     # --------------------------------------------------------------------------
     #
     def _allocate_slot(self, cud):
         raise NotImplementedError("_allocate_slot() missing for '%s'" % self.uid)
 
-
     # --------------------------------------------------------------------------
     #
     def _release_slot(self, slots):
         raise NotImplementedError("_release_slot() missing for '%s'" % self.uid)
-
 
     # --------------------------------------------------------------------------
     #
@@ -438,13 +449,12 @@ class AgentSchedulingComponent(rpu.Component):
                 # we could schedule the unit - advance its state, notify worls
                 # about the state change, and push the unit out toward the next
                 # component.
-                self.advance(unit, rps.AGENT_EXECUTING_PENDING, 
+                self.advance(unit, rps.AGENT_EXECUTING_PENDING,
                              publish=True, push=True)
             else:
                 # no resources available, put in wait queue
-                with self._wait_lock :
+                with self._wait_lock:
                     self._wait_pool.append(unit)
-
 
     # --------------------------------------------------------------------------
     #
@@ -455,7 +465,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # needs to be locked as we try to acquire slots here, but slots are
         # freed in a different thread.  But we keep the lock duration short...
-        with self._slot_lock :
+        with self._slot_lock:
 
             self._prof.prof('schedule_try', uid=unit['uid'])
             unit['slots'] = self._allocate_slot(unit['description'])
@@ -466,7 +476,6 @@ class AgentSchedulingComponent(rpu.Component):
             # signal the unit remains unhandled (Fales signals that failure)
             self._prof.prof('schedule_fail', uid=unit['uid'])
             return False
-
 
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=unit['uid'])
@@ -481,7 +490,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         # True signals success
         return True
-
 
     # --------------------------------------------------------------------------
     #
@@ -543,12 +551,12 @@ class AgentSchedulingComponent(rpu.Component):
             return True
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before unschedule %s: %s", unit['uid'], 
+            self._log.debug("before unschedule %s: %s", unit['uid'],
                             self.slot_status())
 
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
-        with self._slot_lock :
+        with self._slot_lock:
             self._prof.prof('unschedule_start', uid=unit['uid'])
             self._release_slot(unit['slots'])
             self._prof.prof('unschedule_stop',  uid=unit['uid'])
@@ -558,12 +566,11 @@ class AgentSchedulingComponent(rpu.Component):
         self.publish(rpc.AGENT_SCHEDULE_PUBSUB, unit)
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  unschedule %s: %s", unit['uid'], 
+            self._log.debug("after  unschedule %s: %s", unit['uid'],
                             self.slot_status())
 
         # return True to keep the cb registered
         return True
-
 
     # --------------------------------------------------------------------------
     #
@@ -596,7 +603,7 @@ class AgentSchedulingComponent(rpu.Component):
                 self.advance(unit, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
 
                 # remove it from the wait queue
-                with self._wait_lock :
+                with self._wait_lock:
                     self._wait_pool.remove(unit)
 
             else:
@@ -613,4 +620,3 @@ class AgentSchedulingComponent(rpu.Component):
 
 
 # ------------------------------------------------------------------------------
-

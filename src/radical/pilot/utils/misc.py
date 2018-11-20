@@ -157,4 +157,40 @@ def hostip(req=None, black_list=None, pref_list=None, logger=None):
 
 
 # ----------------------------------------------------------------------------------
+#
+def create_tar(tgt, dnames):
+    '''
+    Create a tarball on the file system which contains all given directories
+    '''
+
+    uid   = os.getuid()
+    gid   = os.getgid()
+    mode  = 16893
+    mtime = time.time()
+
+    fout  = open(tgt, 'wb')
+
+    def rpad(s, size):
+        return s + (size - len(s)) * '\0'
+    
+    def write_dir(path):
+        data  = rpad(path, 100) \
+              + rpad('%o' % mode,   8) \
+              + rpad('%o' % uid,    8) \
+              + rpad('%o' % gid,    8) \
+              + rpad('%o' % 0,     12) \
+              + rpad('%o' % mtime, 12) \
+              + 8 * '\0' + '5'
+        cksum = 256 + sum(ord(h) for h in data)
+        data  = rpad(data  , 512)
+        data  = data  [:-364] + '%06o\0' % cksum + data[-357:]
+        fout.write(data)
+
+    for dname in dnames:
+        write_dir(dname)
+
+    fout.close()
+
+
+# ----------------------------------------------------------------------------------
 
