@@ -255,7 +255,6 @@ class Default(AgentStagingOutputComponent):
             # and we assume the file to be copied is the base filename of the source
             elif os.path.exists(tgt.strip()) and os.path.isdir(tgt.strip()):
                 tgt = os.path.join(tgt, os.path.basename(src))
-                
 
             src = complete_url(src, src_context, self._log)
             tgt = complete_url(tgt, tgt_context, self._log)
@@ -288,10 +287,12 @@ class Default(AgentStagingOutputComponent):
                 # should support POSIX standard where link is created
                 # with the same name as the source
                 if os.path.isfile(src.path) and os.path.isdir(tgt.path):
-                    os.symlink     (src.path, os.path.join(tgt.path, os.path.basename(src.path)))
-                else: # default behavior
-                    os.symlink     (src.path, tgt.path)
-            elif action == rpc.MOVE: shutil.move    (src.path, tgt.path)
+                    os.symlink(src.path, 
+                               os.path.join(tgt.path, 
+                                            os.path.basename(src.path)))
+                else:  # default behavior
+                    os.symlink(src.path, tgt.path)
+            elif action == rpc.MOVE: shutil.move(src.path, tgt.path)
             elif action == rpc.TRANSFER: pass
                 # This is currently never executed. Commenting it out.
                 # Uncomment and implement when uploads directly to remote URLs

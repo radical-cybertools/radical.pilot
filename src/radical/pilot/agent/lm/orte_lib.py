@@ -265,6 +265,7 @@ class ORTELib(LaunchMethod):
             #       hostnames with underscores in it, or other hostname 
             #       mangling, we need to turn this into a system specific 
             #       regexp or so.
+            
             node_id = node[1].rsplit('_', 1)[-1] 
 
             # add all cpu and gpu process slots to the node list.
