@@ -485,6 +485,8 @@ class UnitManager(rpu.Component):
                 unit_dict['state'] = s
                 self._units[uid]._update(unit_dict)
 
+                # we don't usually advance state at this point, but just keep up
+                # with state changes reported from elsewhere
                 if advance:
                     self.advance(unit_dict, s, publish=publish, push=False,
                                  prof=False)
@@ -722,7 +724,7 @@ class UnitManager(rpu.Component):
             if not ud.executable:
                 raise ValueError('compute unit executable must be defined')
 
-            unit = ComputeUnit.create(umgr=self, descr=ud)
+            unit = ComputeUnit(umgr=self, descr=ud)
             units.append(unit)
 
             # keep units around

@@ -258,19 +258,21 @@ class ORTE(LaunchMethod):
             #       hostnames with underscores in it, or other hostname 
             #       mangling, we need to turn this into a system specific 
             #       regexp or so.
-            node_id = node[1].rsplit('_', 1)[-1] 
+            self._log.debug('node: %s', node)
+            node_id = node['uid'].rsplit('_', 1)[-1] 
 
             # add all cpu and gpu process slots to the node list.
-            for cpu_slot in node[2]: hosts_string += '%s,' % node_id
-            for gpu_slot in node[3]: hosts_string += '%s,' % node_id
-            for cpu_slot in node[2]: depths.add(len(cpu_slot))
+            for cpu_slot in node['core_map']: hosts_string += '%s,' % node_id
+            for gpu_slot in node['gpu_map' ]: hosts_string += '%s,' % node_id
+            for cpu_slot in node['core_map']: depths.add(len(cpu_slot))
 
         assert(len(depths) == 1), depths
         depth = list(depths)[0]
 
         # FIXME: is this binding correct?
-        if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
-        else        : map_flag = '--bind-to none'
+      # if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
+      # else        : map_flag = '--bind-to none'
+        map_flag = '--bind-to none'
 
         # remove trailing ','
         hosts_string = hosts_string.rstrip(',')

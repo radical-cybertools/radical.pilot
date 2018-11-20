@@ -75,6 +75,9 @@ class Slurm(LRMS):
         # in case of a single partial node allocation.
         self.cores_per_node = self._cfg.get('cores_per_node', 0)
         self.gpus_per_node  = self._cfg.get('gpus_per_node',  0)  # FIXME GPU
+        self.lfs_per_node   = {'path' : self._cfg.get('lfs_path_per_node', None),
+                               'size' : self._cfg.get('lfs_size_per_node', 0)
+                              }
 
         if not self.cores_per_node:
             self.cores_per_node = min(slurm_cpus_on_node, slurm_nprocs)

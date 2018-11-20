@@ -1,14 +1,14 @@
 
 import os
-import sys
 import glob
-import saga
+import saga as rs
 import tarfile
 
 import radical.utils as ru
 from   radical.pilot.states  import *
+from   db_utils              import *
 
-from db_utils import *
+rs.fs = rs.filesystem
 
 
 # ------------------------------------------------------------------------------
@@ -50,7 +50,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
         tgt = "%s/%s" % (os.getcwd(), tgt)
 
     # we always create a session dir as real target
-    tgt_url = saga.Url("%s/%s/" % (tgt, sid))
+    tgt_url = rs.Url("%s/%s/" % (tgt, sid))
 
     # Turn URLs without schema://host into file://localhost,
     # so that they dont become interpreted as relative.
@@ -67,15 +67,15 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
         for client_profile in client_profiles:
 
-            ftgt = saga.Url('%s/%s' % (tgt_url, os.path.basename(client_profile)))
+            ftgt = rs.Url('%s/%s' % (tgt_url, os.path.basename(client_profile)))
             ret.append("%s" % ftgt.path)
 
             if skip_existing and os.path.isfile(ftgt.path) \
                     and os.stat(ftgt.path).st_size > 0:
                 pass
             else:
-                prof_file = saga.filesystem.File(client_profile, session=session)
-                prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
+                prof_file = rs.fs.File(client_profile, session=session)
+                prof_file.copy(ftgt, flags=rs.fs.CREATE_PARENTS)
                 prof_file.close()
 
             if not os.path.isfile(client_profile):
@@ -95,19 +95,19 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
         try:
             log.debug("processing pilot '%s'", pilot['uid'])
 
-            sandbox_url = saga.Url(pilot['pilot_sandbox'])
+            sandbox_url = rs.Url(pilot['pilot_sandbox'])
 
             if access:
                 # Allow to use a different access schema than used for the the run.
                 # Useful if you ran from the headnode, but would like to retrieve
                 # the profiles to your desktop (Hello Titan).
-                access_url = saga.Url(access)
+                access_url = rs.Url(access)
                 sandbox_url.schema = access_url.schema
                 sandbox_url.host   = access_url.host
 
               # print "Overriding remote sandbox: %s" % sandbox_url
 
-            sandbox = saga.filesystem.Directory (sandbox_url, session=session)
+            sandbox = rs.fs.Directory (sandbox_url, session=session)
 
             # Try to fetch a tarball of profiles, so that we can get them all in one (SAGA) go!
             PROFILES_TARBALL = '%s.prof.tgz' % pilot['uid']
@@ -117,7 +117,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
                     sandbox.get_size(PROFILES_TARBALL):
 
                     log.info("profiles tarball exists")
-                    ftgt = saga.Url('%s/%s' % (tgt_url, PROFILES_TARBALL))
+                    ftgt = rs.Url('%s/%s' % (tgt_url, PROFILES_TARBALL))
 
                     if skip_existing and os.path.isfile(ftgt.path) \
                             and os.stat(ftgt.path).st_size > 0:
@@ -130,15 +130,16 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
                         log.info("fetch '%s%s' to '%s'.", sandbox_url, 
                                  PROFILES_TARBALL, tgt_url)
 
-                        prof_file = saga.filesystem.File("%s%s" % (sandbox_url, PROFILES_TARBALL), session=session)
-                        prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
+                        prof_file = rs.fs.File("%s%s" % (sandbox_url,
+                                            PROFILES_TARBALL), session=session)
+                        prof_file.copy(ftgt, flags=rs.fs.CREATE_PARENTS)
                         prof_file.close()
 
                         tarball_available = True
                 else:
                     log.warn("profiles tarball doesnt exists!")
 
-            except saga.DoesNotExist:
+            except rs.DoesNotExist:
                 log.exception("exception(TODO): profiles tarball doesnt exists!")
 
             try:
@@ -157,26 +158,26 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
                     ret.extend(profiles)
                     os.unlink(ftgt.path)
 
+                    # If extract succeeded, no need to fetch individual profiles
+                    rep.ok("+ %s (profiles)\n" % pilot['uid'])
+                    continue
+
                 except Exception as e:
                     log.warn('could not extract tarball %s [%s]', ftgt.path, e)
-
-                # If extract succeeded, no need to fetch individual profiles
-                rep.ok("+ %s (profiles)\n" % pilot['uid'])
-                continue
 
             # If we dont have a tarball (for whichever reason), fetch individual profiles
             profiles = sandbox.list('*.prof')
             for prof in profiles:
 
-                ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], prof))
+                ftgt = rs.Url('%s/%s/%s' % (tgt_url, pilot['uid'], prof))
                 ret.append("%s" % ftgt.path)
 
                 if skip_existing and os.path.isfile(ftgt.path) \
                                  and os.stat(ftgt.path).st_size > 0:
                     pass
                 else:
-                    prof_file = saga.filesystem.File("%s%s" % (sandbox_url, prof), session=session)
-                    prof_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
+                    prof_file = rs.fs.File("%s%s" % (sandbox_url, prof), session=session)
+                    prof_file.copy(ftgt, flags=rs.fs.CREATE_PARENTS)
                     prof_file.close()
 
             rep.ok("+ %s (profiles)\n" % pilot['uid'])
@@ -225,7 +226,7 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
         tgt = "%s/%s" % (os.getcwd(), tgt)
 
     # we always create a session dir as real target
-    tgt_url = saga.Url("%s/%s/" % (tgt, sid))
+    tgt_url = rs.Url("%s/%s/" % (tgt, sid))
 
     # Turn URLs without schema://host into file://localhost,
     # so that they dont become interpreted as relative.
@@ -238,15 +239,15 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
         # first fetch session logfile
         client_logfile = "%s/%s.log" % (src, sid)
 
-        ftgt = saga.Url('%s/%s' % (tgt_url, os.path.basename(client_logfile)))
+        ftgt = rs.Url('%s/%s' % (tgt_url, os.path.basename(client_logfile)))
         ret.append("%s" % ftgt.path)
 
         if skip_existing and os.path.isfile(ftgt.path) \
                 and os.stat(ftgt.path).st_size > 0:
             pass
         else:
-            log_file = saga.filesystem.File(client_logfile, session=session)
-            log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
+            log_file = rs.fs.File(client_logfile, session=session)
+            log_file.copy(ftgt, flags=rs.fs.CREATE_PARENTS)
             log_file.close()
 
     _, db, _, _, _ = ru.mongodb_connect (dburl)
@@ -262,17 +263,17 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
     for pilot in pilots:
 
         try:
-            sandbox_url = saga.Url(pilot['pilot_sandbox'])
+            sandbox_url = rs.Url(pilot['pilot_sandbox'])
 
             if access:
                 # Allow to use a different access schema than used for the the run.
                 # Useful if you ran from the headnode, but would like to retrieve
                 # the logfiles to your desktop (Hello Titan).
-                access_url = saga.Url(access)
+                access_url = rs.Url(access)
                 sandbox_url.schema = access_url.schema
                 sandbox_url.host   = access_url.host
 
-            sandbox  = saga.filesystem.Directory (sandbox_url, session=session)
+            sandbox  = rs.fs.Directory (sandbox_url, session=session)
 
             # Try to fetch a tarball of logfiles, so that we can get them all in one (SAGA) go!
             LOGFILES_TARBALL  = '%s.log.tgz' % pilot['uid']
@@ -282,7 +283,7 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
                     sandbox.get_size(LOGFILES_TARBALL):
 
                     log.info("logfiles tarball exists")
-                    ftgt = saga.Url('%s/%s' % (tgt_url, LOGFILES_TARBALL))
+                    ftgt = rs.Url('%s/%s' % (tgt_url, LOGFILES_TARBALL))
 
                     if skip_existing and os.path.isfile(ftgt.path) \
                             and os.stat(ftgt.path).st_size > 0:
@@ -294,15 +295,15 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
                         log.info("Fetching '%s%s' to '%s'.", 
                                 sandbox_url, LOGFILES_TARBALL, tgt_url)
-                        log_file = saga.filesystem.File("%s%s" % (sandbox_url, LOGFILES_TARBALL), session=session)
-                        log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
+                        log_file = rs.fs.File("%s%s" % (sandbox_url, LOGFILES_TARBALL), session=session)
+                        log_file.copy(ftgt, flags=rs.fs.CREATE_PARENTS)
                         log_file.close()
 
                         tarball_available = True
                 else:
                     log.warn("logiles tarball doesnt exists")
 
-            except saga.DoesNotExist:
+            except rs.DoesNotExist:
                 log.warn("logfiles tarball doesnt exists")
 
             try:
@@ -336,7 +337,7 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
             for logfile in logfiles:
 
-                ftgt = saga.Url('%s/%s/%s' % (tgt_url, pilot['uid'], logfile))
+                ftgt = rs.Url('%s/%s/%s' % (tgt_url, pilot['uid'], logfile))
                 ret.append("%s" % ftgt.path)
 
                 if skip_existing and os.path.isfile(ftgt.path) \
@@ -344,8 +345,8 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
                     continue
 
-                log_file = saga.filesystem.File("%s%s" % (sandbox_url, logfile), session=session)
-                log_file.copy(ftgt, flags=saga.filesystem.CREATE_PARENTS)
+                log_file = rs.fs.File("%s%s" % (sandbox_url, logfile), session=session)
+                log_file.copy(ftgt, flags=rs.fs.CREATE_PARENTS)
                 log_file.close()
 
             rep.ok("+ %s (logfiles)\n" % pilot['uid'])
