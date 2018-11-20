@@ -39,8 +39,12 @@ class Fork(LRMS):
         self.cores_per_node = self._cfg.get('cores_per_node', self.requested_cores)
         self.gpus_per_node  = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
 
-        self._log.debug('=== req: %d', self.requested_cores)
-        self._log.debug('=== cpn: %d', self.cores_per_node)
+        self.lfs_per_node   = {'path' : self._cfg.get('lfs_path_per_node', None),
+                               'size' : self._cfg.get('lfs_size_per_node', 0)
+                              }
+
+        if not self.cores_per_node:
+            self.cores_per_node = 1
 
         self.node_list  = list()
         requested_nodes = int(math.ceil(float(self.requested_cores) /
@@ -49,8 +53,9 @@ class Fork(LRMS):
             # enumerate the node list entries for a unique uis
             self.node_list.append(["localhost", 'localhost_%d' % i])
 
-        self._log.debug('configure localhost as %s nodes (%s cores, %s gpus).',
-                len(self.node_list), self.cores_per_node, self.gpus_per_node)
+        self._log.debug('configure localhost as %s nodes (%s cores, %s gpus, %s lfs).',
+                len(self.node_list), self.cores_per_node, self.gpus_per_node, self.lfs_per_node)
+
 
 # ------------------------------------------------------------------------------
 

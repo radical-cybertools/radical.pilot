@@ -124,17 +124,22 @@ int main ()
     return (0);
 }
 EOT
+    echo
+    module list
+    echo
+
     if ! test -e "./gtod"
     then
-        echo -n "build gtod with cc... "
-        cc -o gtod gtod.c
+        echo -n "build gtod with gcc... $(which gcc)"
+        echo
+        gcc -o gtod gtod.c
     fi
 
     if ! test -e "./gtod"
     then
         echo "failed"
-        echo -n "build gtod with gcc... "
-        gcc -o gtod gtod.c
+        echo -n "build gtod with cc... $(which cc) "
+        cc -o gtod gtod.c
     fi
 
     if ! test -e "./gtod"
