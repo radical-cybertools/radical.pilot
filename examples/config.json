@@ -4,7 +4,7 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 32,
+        "cores"    : 1,
         "gpus"     : 2
     },
 
@@ -24,6 +24,13 @@
     },
 
     "local.localhost_orte" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 64
+    },
+
+    "local.localhost_ortelib" : {
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
@@ -49,27 +56,6 @@
         "queue"    : null,
         "schema"   : null,
         "cores"    : 2
-    },
-
-    "local.localhost_orte" : {
-        "project"  : null,
-        "queue"    : null,
-        "schema"   : null,
-        "cores"    : 2
-    },
-
-    "local.localhost_ortelib" : {
-        "project"  : null,
-        "queue"    : null,
-        "schema"   : null,
-        "cores"    : 2
-    },
-
-    "ncar.cheyenne_mpirun" : {
-        "project"  : "urtg0014",
-        "queue"    : "regular",
-        "schema"   : "fork",
-        "cores"    : 64
     },
 
     "ncsa.bw_orte" : {
@@ -261,7 +247,21 @@
         "cores"    : 64
     },
 
+    "ncar.cheyenne": {
+	"project"      : "URTG0014",
+	"queue"        : "regular",
+	"schema"       : "local",
+	"cores"        : 72
+    },
+
     "ornl.titan" : {
+        "project"  : "BIP149",
+        "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    : 160
+    },
+
+    "ornl.titan_aprun" : {
         "project"  : "BIP149",
         "queue"    : "debug",
         "schema"   : "local",
@@ -279,7 +279,7 @@
         "project"  : "BIP149",
         "queue"    : "debug",
         "schema"   : "local",
-        "cores"    : 64
+        "cores"    : 160
     },
 
     "ornl.titan_aprun"   : {
