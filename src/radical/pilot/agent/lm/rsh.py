@@ -15,9 +15,9 @@ class RSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, logger)
+        LaunchMethod.__init__(self, name, cfg, session)
 
         # Instruct the ExecWorkers to unset this environment variable.
         # Otherwise this will break nested RSH with SHELL spawner, i.e. when

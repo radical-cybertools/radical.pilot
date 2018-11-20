@@ -8,17 +8,19 @@ import radical.utils as ru
 from .base import LaunchMethod
 
 
+
 # ==============================================================================
 #
-# ccmrun: Cluster Compatibility Mode job launcher for Cray systems
+# dplace: job launcher for SGI systems (e.g. on Blacklight)
+# https://www.nas.nasa.gov/hecc/support/kb/Using-SGIs-dplace-Tool-for-Pinning_284.html
 #
-class MPIRunCCMRun(LaunchMethod):
+class MPIRunDPlace(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, session)
+        LaunchMethod.__init__(self, name, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -32,12 +34,12 @@ class MPIRunCCMRun(LaunchMethod):
             'mpirun-openmpi-mp'  # Mac OSX MacPorts
         ])
 
-        self.ccmrun_command = ru.which([
-            'ccmrun',            # General case
+        self.dplace_command = ru.which([
+            'dplace',            # General case
         ])
 
-        if not self.ccmrun_command:
-            raise RuntimeError("ccmrun not found!")
+        if not self.dplace_command:
+            raise RuntimeError("mpirun not found!")
 
         self.mpi_version, self.mpi_flavor = self._get_mpi_info(self.launch_command)
 
@@ -49,11 +51,15 @@ class MPIRunCCMRun(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
+        task_threads = cud['cpu_thread']
         task_env     = cud.get('environment') or dict()
         task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
-        # Construct the executable and arguments
+        if task_threads > 1:
+            # dplace pinning would disallow threads to map to other cores
+            raise ValueError('dplace can not place threads [%d]' % task_threads)
+
         if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
         else          : task_command = task_exec
 
@@ -72,19 +78,32 @@ class MPIRunCCMRun(LaunchMethod):
             raise RuntimeError('insufficient information to launch via %s: %s'
                               % (self.name, slots))
 
-        # Extract all the hosts from the slots
-        # TODO: is there any use in using $HOME/.crayccm/ccm_nodelist.$JOBID?
-        hostlist = list()
+        host_list = list()
+        core_list = list()
         for node in slots['nodes']:
+            tmp_list = list()
             for cpu_proc in node['core_map']:
-                hostlist.append(node['name'])
+                tmp_list.append(cpu_proc[0])
+                host_list.append(node['name'])
             for gpu_proc in node['gpu_map']:
-                hostlist.append(node['name'])
-        hosts_string = ",".join(hostlist)
+                tmp_list.append(gpu_proc[0])
+                host_list.append(node['name'])
 
-        command = "%s %s -np %d -host %s %s %s" % \
-                  (self.ccmrun_command, self.launch_command, len(hostlist), 
-                   hosts_string, env_string, task_command)
+            if core_list:
+                if sorted(core_list) != sorted(tmp_list):
+                    raise ValueError('dplace expects heterogeneous layouts')
+            else:
+                core_list = tmp_list
+
+        np          = len(host_list) + len(core_list)
+        host_string = ",".join(host_list)  # FIXME: differs for mpich/hydra
+        core_string = ','.join(core_list)
+
+
+        command = "%s -h %s -np %d %s -c %s %s %s" % \
+                  (self.launch_command, host_string, np,
+                   self.dplace_command, core_string,
+                   env_string, task_command)
 
         return command, None
 

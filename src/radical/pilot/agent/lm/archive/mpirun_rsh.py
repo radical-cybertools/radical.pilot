@@ -16,9 +16,9 @@ class MPIRunRSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, session)
+        LaunchMethod.__init__(self, name, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -47,7 +47,7 @@ class MPIRunRSH(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        opaque_slots = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cores']
@@ -69,19 +69,6 @@ class MPIRunRSH(LaunchMethod):
 
         # Extract all the hosts from the slots
         hosts = [slot.split(':')[0] for slot in task_slots]
-
-        # If we have a CU with many cores, we will create a hostfile and pass
-        # that as an argument instead of the individual hosts
-        if len(hosts) > 42:
-
-            # Create a hostfile from the list of hosts
-            hostfile = self._create_hostfile(hosts, impaired=True)
-            hosts_string = "-hostfile %s" % hostfile
-
-        else:
-
-            # Construct the hosts_string ('h1 h2 .. hN')
-            hosts_string = " ".join(hosts)
 
 
         env_string = ''
