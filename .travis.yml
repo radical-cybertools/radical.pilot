@@ -1,0 +1,38 @@
+language: python
+sudo: disabled
+
+python:
+  - "2.7"
+
+branches:
+  - feature/lm_tests
+
+os:
+  - linux
+  
+git:
+  depth: 1
+
+#env variables
+
+# command to install dependencies
+install:
+  - pip install .
+  - pip install coverage
+  - pip install flake8
+  - pip install pylint
+  - pip install codecov
+
+before_script:
+  - LOC=/home/travis/virtualenv/python2.7  # Location where VE is created on travis
+
+script:
+ - coverage run --source $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/ -m pytest -vvv tests/
+ - flake8 tests/
+ - pylint tests/
+ - flake8 src/radical/pilot/agent/lm/
+ - pylint src/radical/pilot/agent/lm/ 
+ 
+after_success:
+  - coverage combine
+  - coverage xml
