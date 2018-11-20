@@ -47,7 +47,7 @@ class ORTE(LaunchMethod):
             raise Exception("Couldn't find orte-dvm")
 
         # Now that we found the orte-dvm, get ORTE version
-        out, err, ret = ru.sh_callout('orte-info | grep "Open RTE"', shell=True)
+        out, _, _ = ru.sh_callout('orte-info | grep "Open RTE"', shell=True)
         orte_info = dict()
         for line in out.split('\n'):
 
@@ -89,7 +89,7 @@ class ORTE(LaunchMethod):
             debug_strings = []
 
         # Split up the debug strings into args and add them to the dvm_args
-        [dvm_args.extend(ds.split()) for ds in debug_strings]
+        for ds in debug_strings: dvm_args.extend(ds.split())
 
         vm_size = len(lrms.node_list)
         logger.info("Start DVM on %d nodes ['%s']", vm_size, ' '.join(dvm_args))
@@ -260,9 +260,11 @@ class ORTE(LaunchMethod):
             node_id = node['uid'].rsplit('_', 1)[-1] 
 
             # add all cpu and gpu process slots to the node list.
+            # pylint: disable=unused-variable
             for cpu_slot in node['core_map']: hosts_string += '%s,' % node_id
             for gpu_slot in node['gpu_map' ]: hosts_string += '%s,' % node_id
             for cpu_slot in node['core_map']: depths.add(len(cpu_slot))
+            # pylint: enable=unused-variable
 
         assert(len(depths) == 1), depths
         # depth = list(depths)[0]

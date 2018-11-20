@@ -33,7 +33,7 @@ LM_NAME_SPARK         = 'SPARK'
 # LM_NAME_DPLACE        = 'DPLACE'
 # LM_NAME_RUNJOB        = 'RUNJOB'
 
-
+# pylint: disable=protected-access
 # ==============================================================================
 #
 class LaunchMethod(object):
@@ -265,8 +265,9 @@ class LaunchMethod(object):
 
         # Recreate a list of hosts based on the normalized dict
         hosts = []
-        [hosts.extend([host] * count)
-                for (host, count) in count_dict.iteritems()]
+        for (host, count) in count_dict.iteritems():
+            hosts.extend([host] * count)
+
         # sort the list for readbility
         hosts.sort()
 
@@ -314,13 +315,13 @@ class LaunchMethod(object):
         version = None
         flavor  = self.MPI_FLAVOR_UNKNOWN
 
-        out, err, ret = ru.sh_callout('%s -v' % exe)
+        out, _, ret = ru.sh_callout('%s -v' % exe)
 
         if ret:
-            out, err, ret = ru.sh_callout('%s --version' % exe)
+            out, _, ret = ru.sh_callout('%s --version' % exe)
 
         if ret:
-            out, err, ret = ru.sh_callout('%s -info' % exe)
+            out, _, ret = ru.sh_callout('%s -info' % exe)
 
         if not ret:
             for line in out.splitlines():
@@ -353,4 +354,4 @@ class LaunchMethod(object):
 
 
 # ------------------------------------------------------------------------------
-
+# pylint: enable=protected-access
