@@ -19,7 +19,6 @@ env:
     - CMD1="coverage run --source $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/ -m pytest -vvv tests/;flake8 tests/;pylint tests/"
     - CMD2="flake8 --config=.flake8 $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/"
     - CMD3="pylint $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/"
-    - MAIN_CMD=$CMD1
     - COVERAGE=false
   matrix:
     - MAIN_CMD=$CMD1 COVERAGE=true
@@ -45,8 +44,9 @@ script:
   - eval $MAIN_CMD
   
 after_success:
-   - if [[ $COVERAGE == 'true' ]]; then \
-       coverage combine; \
-       coverage xml; \
-       coverage report;\
-     fi
+  - echo $COVERAGE
+  - if [[ $COVERAGE == 'true' ]]; then \
+      coverage combine; \
+      coverage xml; \
+      coverage report; \
+    fi
