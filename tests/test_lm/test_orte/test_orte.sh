@@ -19,7 +19,7 @@ dvm_start(){
     
     echo -n 'dmv start '
     rm -f dvm.uri dvm.log
-    orte-server --no-daemonize --report-uri dvm.uri 2>&1 > dvm.log 2>&1 &
+    orte-server --debug --no-daemonize --report-uri dvm.uri 2>&1 > dvm.log 2>&1 &
     dvm_pid=$!
     
     t0=$(tstamp)

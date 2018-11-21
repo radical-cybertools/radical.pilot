@@ -127,7 +127,7 @@ class ShellFS(AgentExecutingComponent):
         self.gtod = "%s/gtod" % self._pwd
 
         # create line buffered fifo's to communicate with the shell executor
-        self._fifo_cmd_name = "%s/%s.cmd.pipe" % (self._tmp, self._uid)
+        self._fifo_cmd_name = "%s/%s.cmd.pipe" % (self._pwd, self._uid)
         self._fifo_inf_name = "%s/%s.inf.pipe" % (self._tmp, self._uid)
 
         os.mkfifo(self._fifo_cmd_name)
@@ -162,10 +162,11 @@ class ShellFS(AgentExecutingComponent):
             pass
 
         try:
-            os.unlink(self._fifo_cmd_name)
-            os.unlink(self._fifo_inf_name)
             self._fifo_cmd.close()
             self._fifo_inf.close()
+
+            os.unlink(self._fifo_cmd_name)
+            os.unlink(self._fifo_inf_name)
         except:
             pass
 

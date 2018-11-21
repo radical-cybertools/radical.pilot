@@ -1,0 +1,25 @@
+ 1077  cp $PBS_NODEFILE nodes.pbs
+ 1078  cp nodes.pbs nodes.dvm
+ 1079  vim nodes.dvm
+ 1080  /usr/bin/stdbuf -oL /projects/sciteam/gk4/openmpi/installed/2018_07_13_539f71d/bin/orte-dvm --hostfile nodes.dvm 2>&1 > dvm.log &
+ 1081  cat dvm.log
+ 1082  export URI="224264192.0;tcp://10.128.99.116:57052"
+ 1083  /projects/sciteam/gk4/openmpi/installed/2018_07_13_539f71d/bin/orterun  --hnp "$URI" hostname
+ 1084  echo /projects/sciteam/gk4/openmpi/installed/2018_07_13_539f71d/bin/orterun  --hnp "$URI" hostname
+ 1085  /projects/sciteam/gk4/openmpi/installed/2018_07_13_539f71d/bin/orterun -n 1 --hnp "$URI" hostname
+ 1086  aprun -n 1 hostname
+ 1087  aprun -n 1 /projects/sciteam/gk4/openmpi/installed/2018_07_13_539f71d/bin/orterun -n 1 --hnp "$URI" hostname
+
+13400  7878  00:00:00 /projects/sciteam/gk4/openmpi/installed/2018_07_13_539f71d/bin/orte-dvm --hostfile nodes.dvm
+13415 13400  00:00:00 /bin/bash /opt/xalt/0.7.6/sles11.3/bin/aprun -n 9 -N 1 -cc none -e PMI_NO_PREINITIALIZE=1 -e PMI_NO_FORK=1 -e OMPI_NO_USE_CRAY_PMI=1 -L 838,839,26808,26809,26182,26183,24504,24505,1464 orted -mca ess_base_jobid "224264192" -mca ess_base_vpid "1" -mca ess_base_num_procs "10" -mca orte_node_regex "nid[5:25261],[3:838-839],[5:26808-26809,26182-26183,24504-24505],[4:1464-1465]@0(10),4294967295" -mca orte_hnp_uri "224264192.0;tcp://10.128.99.116:57052"
+13439 13415  00:00:00 /opt/cray/alps/5.2.4-2.0502.9774.31.12.gem/bin/aprun -n 9 -N 1 -cc none -e PMI_NO_PREINITIALIZE=1 -e PMI_NO_FORK=1 -e OMPI_NO_USE_CRAY_PMI=1 -L 838,839,26808,26809,26182,26183,24504,24505,1464 orted -mca ess_base_jobid "224264192" -mca ess_base_vpid "1" -mca ess_base_num_procs "10" -mca orte_node_regex "nid[5:25261],[3:838-839],[5:26808-26809,26182-26183,24504-24505],[4:1464-1465]@0(10),4294967295" -mca orte_hnp_uri "224264192.0;tcp://10.128.99.116:57052"
+
+merzky@nid25261:/mnt/b/projects/sciteam/bamm/merzky/openmpi> /projects/sciteam/gk4/openmpi/installed/2018_07_13_539f71d/bin/orterun -n 1 --hnp "$URI" hostname
+nid00838
+
+merzky@nid25261:/mnt/b/projects/sciteam/bamm/merzky/openmpi> aprun -n 1 hostname
+nid01465
+
+merzky@nid25261:/mnt/b/projects/sciteam/bamm/merzky/openmpi> aprun -n 1 /projects/sciteam/gk4/openmpi/installed/2018_07_13_539f71d/bin/orterun -n 1 --hnp "$URI" hostname
+nid00838
+
