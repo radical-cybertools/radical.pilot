@@ -48,4 +48,5 @@ after_success:
    - if [[ $CODECOV == 'true' ]]; then \
        coverage combine; \
        coverage xml; \
+       coverage report;\
      fi
