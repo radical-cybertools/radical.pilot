@@ -30,7 +30,7 @@ def tearDown():
 # -----------------------------------------------------------------------------
 
 
-# Test Summit Scheduler construct_command method
+# Test aprun construct_command method
 # -----------------------------------------------------------------------------
 @mock.patch.object(APRun, '__init__', return_value=None)
 @mock.patch.object(APRun, '_configure', return_value=None)
