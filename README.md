@@ -1,4 +1,6 @@
-#radical.pilot
+# RADICAL-Pilot
+
+[![Build Status](https://travis-ci.org/radical-cybertools/radical.pilot.svg?branch=feature%2Flm_tests)](https://travis-ci.org/radical-cybertools/radical.pilot)
 
 **Documentation:** http://radicalpilot.readthedocs.org/en/latest/
 
