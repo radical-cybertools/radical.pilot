@@ -45,7 +45,7 @@ script:
   - eval $MAIN_CMD
   
 after_success:
-   - if [[ $CODECOV == 'true' ]]; then \
+   - if [[ $COVERAGE == 'true' ]]; then \
        coverage combine; \
        coverage xml; \
        coverage report;\
