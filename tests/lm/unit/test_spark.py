@@ -35,7 +35,7 @@ def test_construct_command(mocked_init, mocked_configure,
 
     test_cases = setUp()
 
-    component = Spark(cfg=None, logger=ru.get_logger('dummy'))
+    component = Spark(cfg=None, name=None, session=None)
     component._log  = ru.get_logger('dummy')
     component.launch_command = ''
     for i in range(len(test_cases['trigger'])):
