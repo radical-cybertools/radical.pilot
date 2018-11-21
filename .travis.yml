@@ -26,16 +26,19 @@ install:
 before_script:
   - LOC=/home/travis/virtualenv/python2.7  # Location where VE is created on travis
 
-matrix:
-  include:
-    - MAIN_CMD="coverage run --source $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/ -m pytest -vvv tests/;flake8 tests/;pylint tests/
-    - MAIN_CMD="flake8 --config=.flake8 $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/"
-    - MAIN_CMD="pylint $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/ "
+#matrix:
+#  include:
+#    - MAIN_CMD="coverage run --source $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/ -m pytest -vvv tests/;flake8 tests/;pylint tests/
+#    - MAIN_CMD="flake8 --config=.flake8 $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/"
+#    - MAIN_CMD="pylint $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/ "
     
 script:
-  - echo $MAIN_CMD
-  - eval $MAIN_CMD
- 
+  - coverage run --source $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/ -m pytest -vvv tests/;
+  - flake8 tests/;
+  - pylint tests/
+  - flake8 --config=.flake8 $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/
+  - pylint $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/
+  
 after_success:
   - coverage combine
   - coverage xml
