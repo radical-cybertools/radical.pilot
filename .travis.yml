@@ -26,7 +26,7 @@ install:
 before_script:
   - LOC=/home/travis/virtualenv/python2.7  # Location where VE is created on travis
 
-script:
+matrix:
  - coverage run --source $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/ -m pytest -vvv tests/
  - flake8 tests/
  - pylint tests/
