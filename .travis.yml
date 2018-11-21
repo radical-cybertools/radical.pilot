@@ -45,7 +45,8 @@ script:
   
 after_success:
   - echo $COVERAGE
-  - if [[ $COVERAGE == 'true' ]]; then \
+  - |
+    if [[ $COVERAGE == 'true' ]]; then \
       coverage combine; \
       coverage xml; \
       coverage report; \
