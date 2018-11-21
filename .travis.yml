@@ -15,12 +15,14 @@ git:
 
 env:
   global:
+    - LOC=/home/travis/virtualenv/python2.7  # Location where VE is created on travis
     - CMD1="coverage run --source $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/ -m pytest -vvv tests/;flake8 tests/;pylint tests/"
     - CMD2="flake8 --config=.flake8 $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/"
     - CMD3="pylint $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/"
     - MAIN_CMD=$CMD1
+    - COVERAGE=false
   matrix:
-    - MAIN_CMD=$CMD1
+    - MAIN_CMD=$CMD1 COVERAGE=true
     - MAIN_CMD=$CMD2
     - MAIN_CMD=$CMD3
   
@@ -31,9 +33,6 @@ install:
   - pip install flake8
   - pip install pylint
   - pip install codecov
-
-before_script:
-  - LOC=/home/travis/virtualenv/python2.7  # Location where VE is created on travis
 
    
 script:
@@ -46,5 +45,7 @@ script:
   - eval $MAIN_CMD
   
 after_success:
-  - coverage combine
-  - coverage xml
+   - if [[ $CODECOV == 'true' ]]; then \
+       coverage combine; \
+       coverage xml; \
+     fi
