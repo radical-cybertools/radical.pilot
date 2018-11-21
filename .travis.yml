@@ -19,6 +19,10 @@ env:
     - CMD2="flake8 --config=.flake8 $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/"
     - CMD3="pylint $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/"
     - MAIN_CMD=$CMD1
+  matrix:
+    - MAIN_CMD=$CMD1
+    - MAIN_CMD=$CMD2
+    - MAIN_CMD=$CMD3
   
 # command to install dependencies
 install:
@@ -31,11 +35,7 @@ install:
 before_script:
   - LOC=/home/travis/virtualenv/python2.7  # Location where VE is created on travis
 
-matrix:
-  - MAIN_CMD=$CMD1
-  - MAIN_CMD=$CMD2
-  - MAIN_CMD=$CMD3
-    
+   
 script:
   #- coverage run --source $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/ -m pytest -vvv tests/;
   #- flake8 tests/;
