@@ -157,6 +157,7 @@ class Spark(LaunchMethod):
             else:
                 logger.info("Spark stopped successfully")
 
+        os.remove('spark-2.0.2-bin-hadoop2.7.tgz')
     # --------------------------------------------------------------------------
     #
     def _configure(self):

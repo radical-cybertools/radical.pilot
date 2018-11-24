@@ -24,7 +24,7 @@ export HISTIGNORE
 #      EXIT
 #  - if a new ID is incoming (EXEC), it will run the respective script in the
 #    background.  A pid-to-unit id map is stored on the file system, under
-#    ($BASE/pids/[pid].uid and $BASE/pids/[uid].pid)
+#    ($WORK/pids/[pid].uid and $WORK/pids/[uid].pid)
 #  - on a KILL request, kill the respective process (if it was started).  
 #    No guarantees are made on the kill - we just send SIGKILL and hope 
 #    for the best
@@ -46,7 +46,7 @@ usage(){
         printf "\n\t%s" "$msg"
     fi
 
-    printf "\n\tusage: $0 <BASE> <SID>\n\n"
+    printf "\n\tusage: $0 <BASE> <WORK> <SID>\n\n"
 
     exit $ret
 }
@@ -71,10 +71,11 @@ log(){
 # ------------------------------------------------------------------------------
 #
 prof(){
-    test -z "$RP_GTOD" && return
+  # test -z "$RP_GTOD" && return
     uid=$1
     evt=$2
-    now=$($RP_GTOD)
+  # now=$($RP_GTOD)
+    now=$($BASE/gtod)
     \printf "$now,$evt,'shell_spawner,MainThread,$uid,AGENT_EXECUTING,\n" \
         >> "$BASE/$uid/$uid.prof"
 }
@@ -83,9 +84,10 @@ prof(){
 #
 # set up
 #
-#   $1 - BASE: where to keep state for all tasks (defaults to pwd)
+#   $1 - BASE: where the task sandboxes are kept
+#   $2 - WORK: where to keep state for all tasks and fifo's
 #              should be on a fast FS (eg. `/tmp/`)
-#   $2 - SID : UID for this shell instance  (in case multiple instances coexist)
+#   $3 - SID : SID for this shell instance  (in case multiple instances coexist)
 #
 # setup() will respawn this script in irder to redirect all stdout and stderr 
 # to $LOG - we ensure here that the respawn happened.
@@ -97,13 +99,16 @@ setup(){
     then
         # setup before respawn (only env settings, please)
         BASE="$1"
-        SID="$2"
-        LOG="$BASE/sh.$SID.log"
+        WORK="$2"
+        SID="$3"
+        LOG="$WORK/sh.$SID.log"
         
-        test -z "$BASE" && usage 1 'missing base' 
-        test -z "$SID"  && usage 1 'missing uid'
+        test -z "$BASE" && usage 1 'missing base dir' 
+        test -z "$WORK" && usage 1 'missing work dir'
+        test -z "$SID"  && usage 1 'missing sid'
     
         export BASE
+        export WORK
         export SID
         export LOG
     
@@ -120,9 +125,10 @@ setup(){
 
     log 'startup'
 
-    PIPE_CMD="$BASE/$SID.cmd.pipe"
-    PIPE_INF="$BASE/$SID.inf.pipe"
-    MAP="$BASE/sh.$SID.pids"
+    PIPE_CMD="$WORK/$SID.cmd.pipe"
+    PIPE_INF="$WORK/$SID.inf.pipe"
+    MAP="$WORK/sh.$SID.pids"
+    export MAP
 
     test -e "$PIPE_CMD" || error "missing input  pipe $PIP_IN"
     test -e "$PIPE_INF" || error "missing output pipe $PIP_OUT"
@@ -185,7 +191,7 @@ do_kill(){
     log INFO "kill $uid"
 
     prof "$uid" 'pre_kill'
-    \kill -9 $(cat $BASE/pids/$uid.pid) || \true  # ignore failures
+    \kill -9 $(cat $MAP/$uid.pid) || \true  # ignore failures
     prof "$uid" 'post_kill'
 }
 

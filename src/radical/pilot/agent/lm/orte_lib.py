@@ -262,8 +262,19 @@ class ORTELib(LaunchMethod):
         depths = set()
         hosts  = list()
         for node in slots['nodes']:
-            for cpu_slot in node[2]: hosts.append(node[0])
-            for gpu_slot in node[3]: hosts.append(node[0])
+
+            # On some Crays, like on ARCHER, the hostname is "archer_N".  In
+            # that case we strip off the part upto and including the underscore.
+            #
+            # TODO: If this ever becomes a problem, i.e. we encounter "real"
+            #       hostnames with underscores in it, or other hostname 
+            #       mangling, we need to turn this into a system specific 
+            #       regexp or so.
+            node_id = node[1].rsplit('_', 1)[-1] 
+
+            # add all cpu and gpu process slots to the node list.
+            for cpu_slot in node[2]: hosts.append(node_id)
+            for gpu_slot in node[3]: hosts.append(node_id)
             for cpu_slot in node[2]: depths.add(len(cpu_slot))
 
         hosts_string = ','.join(hosts)
