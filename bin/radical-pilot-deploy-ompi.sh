@@ -96,6 +96,7 @@ else
     echo 'configure for localhost'
     export OMPI_DIR=$HOME/radical/ompi/
     export OMPI_COMMIT=HEAD
+    export OMPI_COMMIT=7cdda24206  # triaging ompi master, Sep. 2018
   # export OMPI_COMMIT=a3ac67be0d
   # export OMPI_COMMIT=539f71d     # last working on titan
   # export OMPI_COMMIT=master
