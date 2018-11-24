@@ -44,34 +44,34 @@ class ShellFS(AgentExecutingComponent):
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
         # Mimic what virtualenv's "deactivate" would do
-        self._deactivate = "\n# deactivate pilot virtualenv\n"
+        self._deactivate = "\n"  # "# deactivate pilot virtualenv\n"
 
-        old_path  = os.environ.get('_OLD_VIRTUAL_PATH',       None)
-        old_ppath = os.environ.get('_OLD_VIRTUAL_PYTHONPATH', None)
-        old_home  = os.environ.get('_OLD_VIRTUAL_PYTHONHOME', None)
-        old_ps1   = os.environ.get('_OLD_VIRTUAL_PS1',        None)
-
-        if old_path:
-            # hi titan nodes
-            old_path += ":/usr/bin:/bin:/usr/local/bin:/sbin:/usr/sbin"
-
-        if old_ppath: self._deactivate += 'export PATH="%s"\n'        % old_ppath
-        if old_path : self._deactivate += 'export PYTHONPATH="%s"\n'  % old_path
-        if old_home : self._deactivate += 'export PYTHON_HOME="%s"\n' % old_home
-        if old_ps1  : self._deactivate += 'export PS1="%s"\n'         % old_ps1
-
-        self._deactivate += 'unset VIRTUAL_ENV\n\n'
-
-        # FIXME: we should not alter the environment of the running agent, but
-        #        only make sure that the CU finds a pristine env.  That also
-        #        holds for the unsetting below -- AM
-        if old_path : os.environ['PATH']        = old_path
-        if old_ppath: os.environ['PYTHONPATH']  = old_ppath
-        if old_home : os.environ['PYTHON_HOME'] = old_home
-        if old_ps1  : os.environ['PS1']         = old_ps1
-
-        if 'VIRTUAL_ENV' in os.environ :
-            del(os.environ['VIRTUAL_ENV'])
+   #    old_path  = os.environ.get('_OLD_VIRTUAL_PATH',       None)
+   #    old_ppath = os.environ.get('_OLD_VIRTUAL_PYTHONPATH', None)
+   #    old_home  = os.environ.get('_OLD_VIRTUAL_PYTHONHOME', None)
+   #    old_ps1   = os.environ.get('_OLD_VIRTUAL_PS1',        None)
+   #
+   #    if old_path:
+   #        # hi titan nodes
+   #        old_path += ":/usr/bin:/bin:/usr/local/bin:/sbin:/usr/sbin"
+   #
+   #    if old_ppath: self._deactivate += 'export PATH="%s"\n'        % old_ppath
+   #    if old_path : self._deactivate += 'export PYTHONPATH="%s"\n'  % old_path
+   #    if old_home : self._deactivate += 'export PYTHON_HOME="%s"\n' % old_home
+   #    if old_ps1  : self._deactivate += 'export PS1="%s"\n'         % old_ps1
+   #
+   #    self._deactivate += 'unset VIRTUAL_ENV\n\n'
+   #
+   #    # FIXME: we should not alter the environment of the running agent, but
+   #    #        only make sure that the CU finds a pristine env.  That also
+   #    #        holds for the unsetting below -- AM
+   #    if old_path : os.environ['PATH']        = old_path
+   #    if old_ppath: os.environ['PYTHONPATH']  = old_ppath
+   #    if old_home : os.environ['PYTHON_HOME'] = old_home
+   #    if old_ps1  : os.environ['PS1']         = old_ps1
+   #
+   #    if 'VIRTUAL_ENV' in os.environ :
+   #        del(os.environ['VIRTUAL_ENV'])
 
         self._task_launcher = None
         self._mpi_launcher  = None
@@ -390,21 +390,23 @@ test -z "$RP_TIMEOUT" || watcher=$!
         cwd  += "\n"
 
         if  descr['pre_exec'] :
-            fail  = ' (/bin/echo "pre_exec failed"; false) || exit'
-            pre  += "\n# CU pre-exec\n"
+            pre  += '\n# CU pre-exec\n'
             pre  += 'prof cu_pre_start\n'
+            pre  += '(\n'
             for elem in descr['pre_exec']:
-                pre += "%s || %s\n" % (elem, fail)
-            pre  += "\n"
+                pre += '  %s\n' % elem
+            pre  += ') > pre.log 2>&1 || (/bin/echo "pre_exec failed"; false) || exit\n'
             pre  += 'prof cu_pre_stop\n'
-            pre  += "\n"
+            pre  += '\n'
 
         if  descr['post_exec'] :
             fail  = ' (/bin/echo "post_exec failed"; false) || exit'
             post += "\n# CU post-exec\n"
             post += 'prof cu_post_start\n'
+            post += '(\n'
             for elem in descr['post_exec']:
-                post += "%s || %s\n" % (elem, fail)
+                post += '  %s\n' % elem
+            post += ') > post.log 2>&1 || (/bin/echo "post_exec failed"; false) || exit\n'
             post += 'prof cu_post_stop\n'
             post += "\n"
 

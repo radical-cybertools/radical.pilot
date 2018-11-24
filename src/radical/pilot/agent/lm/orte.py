@@ -280,8 +280,8 @@ class ORTE(LaunchMethod):
 
         # Additional (debug) arguments to orterun
         if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
-            debug_strings = ['-display-devel-map', 
-                             '-display-allocation', 
+            debug_strings = ['--display-devel-map', 
+                             '--display-allocation', 
                              '--debug-devel',
                              '--mca oob_base_verbose 100',
                              '--mca rml_base_verbose 100', 
@@ -289,7 +289,6 @@ class ORTE(LaunchMethod):
                             ]
         else:
             debug_strings = [
-                             '--report-bindings', 
                             ]
         debug_string = ' '.join(debug_strings)
 

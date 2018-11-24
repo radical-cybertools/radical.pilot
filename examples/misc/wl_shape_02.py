@@ -28,10 +28,10 @@ if __name__ == '__main__':
         pd_init = {'resource'      : resource,
                    'runtime'       : 60,
                    'exit_on_error' : True,
-                 # 'project'       : 'BIP149',
-                 # 'queue'         : 'batch',
+                   'project'       : 'BIP149',
+                   'queue'         : 'debug',
                    'access_schema' : 'local',
-                   'cores'         : 16 + 16
+                   'cores'         : 16 + 64
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
         pmgr  = rp.PilotManager(session=session)
@@ -61,7 +61,8 @@ if __name__ == '__main__':
         cudis = list()
         for f in ['dynamic2_new.mdp', 'FF.itp', 'FNF.itp',
                   'Martini.top', 'WF.itp', 'em_results.gro',
-                  'eq_results.gro', 'eq_results.log', 'martini_v2.2.itp']:
+                  'eq_results.gro', 'martini_v2.2.itp',
+                  'mdout.mdp', 'equilibrium.tpr']:
             cudis.append({'source': 'pilot:///rawdata/%s' % f, 
                           'target': 'unit:///%s' % f,
                           'action': rp.LINK})
@@ -71,14 +72,14 @@ if __name__ == '__main__':
         gmx   = '%s/gmx_mpi' % path
 
 
-        pre_1 = '/usr/bin/sed -e "s/###ITER###/$iter/g" dynamic2_new.mdp ' \
-                    + '> dynamic2.mdp'
-        pre_2 = gmx + ' grompp $GROMPP_OPTS $NDXFILE_OPTS' \
-                    + ' -f dynamic2.mdp' \
-                    + ' -c em_results.gro' \
-                    + ' -o equilibrium.tpr' \
-                    + ' -p Martini.top'
-        args  = 'mdrun $MDRUN_OPTS -s equilibrium.tpr -v -deffnm eq_results'
+      # pre_1 = '/usr/bin/sed -e "s/###ITER###/1000/g" dynamic2_new.mdp ' \
+      #             + '> dynamic2.mdp'
+      # pre_2 = gmx + ' grompp' \
+      #             + ' -f dynamic2.mdp' \
+      #             + ' -c em_results.gro' \
+      #             + ' -o equilibrium.tpr' \
+      #             + ' -p Martini.top'
+        args  = 'mdrun -s equilibrium.tpr -v -deffnm eq_results'
 
         report.info('create %d unit description(s)\n\t' % n)
         cuds = list()
@@ -86,22 +87,22 @@ if __name__ == '__main__':
 
             cud = rp.ComputeUnitDescription()
           # cud.executable       = '%s/wl_shape_02.sh' %  pwd
-          # cud.executable       = '/usr/bin/time -f $fmt %s %s' % gmx
-            cud.executable       = gmx
+            cud.executable       = '/usr/bin/time -f $fmt %s' % gmx
+          # cud.executable       = gmx
             cud.arguments        = args.split()
             cud.tags             = tags
             cud.gpu_processes    = 0
-          # cud.cpu_processes    = '1,2,4,8,16,32'
-          # cud.cpu_threads      = '1-8'
-            cud.cpu_processes    = '1,2,4'
-            cud.cpu_threads      = '1-4'
+            cud.cpu_processes    = '1,2,4,8,16'
+            cud.cpu_threads      = '1,2,4,8,16'
             cud.cpu_process_type = rp.MPI  
             cud.cpu_thread_type  = rp.OpenMP
             cud.input_staging    = cudis
-            cud.timeout          = 300
-            cud.pre_exec         = [pre_1,
-                                    pre_2,
-                                    'export fmt="CPU:%P "']
+            cud.timeout          = 350
+            cud.environment      = {'fmt' : "CPU:%P "}
+            cud.pre_exec         = [
+                                   # pre_1,
+                                   # pre_2,
+                                   ]
             cud.post_exec        = ['xargs=/usr/bin/xargs', 
                                     'grep=/usr/bin/grep',
                                     'cut=/usr/bin/cut', 
@@ -111,7 +112,7 @@ if __name__ == '__main__':
                                     'cat=/bin/cat', 
                                     'u=$RP_UNIT_ID', 
 
-                                    # runtime per RP profiles
+                                  # # runtime per RP profiles
                                   # 'start=$($grep cu_exec_start $u.prof | $cut -f 1 -d ",")',
                                   # 'stop=$( $grep cu_exec_stop  $u.prof | $cut -f 1 -d ",")',
                                   # 'val=$($echo "($stop - $start)" | $bc)',
@@ -125,9 +126,9 @@ if __name__ == '__main__':
                                     'avg=$($echo  "($sum)/$n/$RP_THREADS" | $bc)',
                                     '$echo "avg:  $avg"',
                                     '$echo "$avg" > app_stats.dat',
-
-                                    # gromacs performance (ns/day)
-                                  # "val=$($grep Performance mdlog.log | $xargs $echo | $cut -f 2 -d " ")",
+                                   
+                                  # # gromacs performance (ns/day)
+                                  # "val=$($grep Performance eq*.log | $xargs $echo | $cut -f 2 -d ' ')",
                                   # '$echo $val > app_stats.dat',
 
                                    ]

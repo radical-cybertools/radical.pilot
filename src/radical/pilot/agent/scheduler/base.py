@@ -465,6 +465,7 @@ class AgentSchedulingComponent(rpu.Component):
                         tested['%d %d' % (p, t)] = v
                         fout.write('%6d   %4d   %4d   %10.2f\n' % (i, p, t, v))
                         i += 1
+                self._log.debug('=== old stats: %d records', len(tested))
             except:
                 self._log.debug('=== no old stats')
             finally:
@@ -472,17 +473,24 @@ class AgentSchedulingComponent(rpu.Component):
                     fout.close()
 
 
-            # yes = prepare record. search for parameters to change
+            # prepare record. search for parameters to change
             combinations = list()
+            ns = 0
             for p in prange:
                 for t in trange:
                     key = '%d %d' % (p, t)
                     if key not in tested:
                         if constr and eval(constr):
                             combinations.append([p, t])
+                            ns += 1
+            self._log.debug('=== new stats: %d records', ns)
+
+            optimum = None
+            if not combinations:
+                # nothing to test anymore, we can optimize
+                optimum = self.app_optimize(tested=tested, optim=optim)
 
             with self._app_lock:
-
                 self._app_stats[stid] = {'to_test'  : combinations,
                                          'n_tests'  : len(combinations)
                                          + len(tested),
@@ -490,7 +498,7 @@ class AgentSchedulingComponent(rpu.Component):
                                          'prange'   : prange,
                                          'trange'   : trange,
                                          'optimizer': optim,
-                                         'optimal'  : None}
+                                         'optimal'  : optimum}
             self._log.info('=== init: \n%s', pprint.pformat(self._app_stats))
 
         p = unit.get('p_stat')
@@ -676,6 +684,45 @@ class AgentSchedulingComponent(rpu.Component):
 
         return core_map, gpu_map
 
+
+    # --------------------------------------------------------------------------
+    #
+    def app_optimize(self, stid=None, tested=None, optim=None):
+
+        # all tests are done - store and define optimum
+        c_opt = None
+        v_opt = None
+        mapf  = './app_map.dat'
+        self._log.debug('=== map: %s' % mapf)
+
+        if stid:
+            optim  = self._app_stats[stid]['optimizer']
+            tested = self._app_stats[stid]['tested']
+        else:
+            assert(optim)
+            assert(tested)
+
+        with open(mapf, 'w') as fout:
+            for c,v in tested.iteritems():
+                if v is not None:
+                    p, t = [int(x) for x in c.split()]
+                    fout.write('%4d   %4d   %10.2f\n' % (p, t, v))
+                    if not v_opt or \
+                       (optim == 'max' and v > v_opt) or \
+                       (optim == 'min' and v < v_opt) :
+                        v_opt = v
+                        c_opt = [p, t]
+
+
+        if stid:
+            self._app_stats[stid]['optimal'] = c_opt
+
+        self._log.info('=== stat opti: %s [%s]', c_opt, v_opt)
+        self._log.info('stat fini: \n%s', pprint.pformat(self._app_stats))
+
+        return c_opt
+
+
     # --------------------------------------------------------------------------
     #
     def app_stats_eval(self, unit):
@@ -708,30 +755,9 @@ class AgentSchedulingComponent(rpu.Component):
                 n_tested = len(self._app_stats[stid]['tested'])
                 n_tests  = self._app_stats[stid]['n_tests']
                 self._log.debug('==== tested %s == %s?', n_tested, n_tests)
+
                 if n_tested == n_tests:
-
-                    # all tests are done - store and define optimum
-                    c_opt = None
-                    v_opt = None
-                    mapf  = './app_map.dat'
-                    self._log.debug('=== map: %s' % mapf)
-                    optimizer = self._app_stats[stid]['optimizer']
-                    with open(mapf, 'w') as fout:
-                        for c,v in self._app_stats[stid]['tested'].iteritems():
-                            if v is not None:
-                                p, t = [int(x) for x in c.split()]
-                                fout.write('%4d   %4d   %10.2f\n' % (p, t, v))
-                                if not v_opt or \
-                                   (optimizer == 'max' and v > v_opt) or \
-                                   (optimizer == 'min' and v < v_opt) :
-                                    v_opt = v
-                                    c_opt = [p, t]
-
-
-                    self._app_stats[stid]['optimal'] = c_opt
-
-                    self._log.info('=== stat opti: %s [%s]', c_opt, v_opt)
-                    self._log.info('stat fini: \n%s', pprint.pformat(self._app_stats))
+                    self.app_optimize(stid=stid)
 
 
         if v is not None:
