@@ -13,7 +13,8 @@ try:
 except ImportError:
     from unittest import mock
 
-test_name = 'lm.orte'
+test_type = 'lm'
+test_name = 'orte'
 
 
 # ------------------------------------------------------------------------------
@@ -26,7 +27,7 @@ def setUp():
 
         tc     = ru.read_json(fin)
         unit   = tc['unit']
-        result = tc['results'].get(test_name)
+        result = tc['results'].get('test_type', {}).get(test_name)
 
         if result:
             ret.append([unit, result])
