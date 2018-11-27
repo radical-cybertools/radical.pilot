@@ -27,10 +27,12 @@ def setUp():
 
         tc     = ru.read_json(fin)
         unit   = tc['unit']
+        setup  = tc['setup'].get('test_type', {})
         result = tc['results'].get('test_type', {}).get(test_name)
+        test   = ru.dict_merge(unit, setup, ru.PRESERVE)
 
         if result:
-            ret.append([unit, result])
+            ret.append([test, result])
 
     return ret
 
