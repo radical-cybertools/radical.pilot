@@ -13,6 +13,8 @@ try:
 except ImportError:
     from unittest import mock
 
+test_name = 'lm.orte'
+
 
 # ------------------------------------------------------------------------------
 # 
@@ -21,8 +23,13 @@ def setUp():
     pwd = os.path.dirname(__file__)
     ret = list()
     for fin in glob.glob('%s/test_cases/unit.*.json' % pwd):
-        tc = ru.read_json(fin)
-        ret.append([tc['unit'],  tc['results']])
+
+        tc     = ru.read_json(fin)
+        unit   = tc['unit']
+        result = tc.get('results')
+
+        if result:
+            ret.append([unit, result])
 
     return ret
 
