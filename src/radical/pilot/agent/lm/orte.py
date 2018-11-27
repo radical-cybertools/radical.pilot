@@ -266,7 +266,7 @@ class ORTE(LaunchMethod):
             for cpu_slot in node['core_map']: depths.add(len(cpu_slot))
             # pylint: enable=unused-variable
 
-        assert(len(depths) == 1), depths
+        # assert(len(depths) == 1), depths
         # depth = list(depths)[0]
 
         # FIXME: is this binding correct?
