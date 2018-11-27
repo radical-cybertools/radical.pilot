@@ -69,10 +69,10 @@ Queue Scenario:
 
     cd  queue
     ./queue.py  execution
-    ./pub.py    execution
-    ./pub.py    execution
-    ./sub.py    execution
-    ./sub.py    execution
-    ./sub.py    execution
+    ./put.py    execution
+    ./put.py    execution
+    ./get.py    execution
+    ./get.py    execution
+    ./get.py    execution
 
 
