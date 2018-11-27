@@ -1,8 +1,10 @@
 
 {
     "trigger": [{
-        "description": {"executable": "/bin/sleep",
-                        "arguments" : ["10"]
+        "description": {"executable"    : "/bin/sleep",
+                        "arguments"     : ["10"], 
+                        "cpu_processes" : 1,
+                        "gpu_processes" : 0
         },
         "slots": {
             "cores_per_node": 16,
@@ -20,8 +22,10 @@
     },
    
     {
-        "description": {"executable": "/bin/sleep",
-                        "arguments" : ["10"]
+        "description": {"executable"    : "/bin/sleep",
+                        "arguments"     : ["10"], 
+                        "cpu_processes" : 1,
+                        "gpu_processes" : 0
         },
         "slots": {
             "cores_per_node": 16,
@@ -39,8 +43,10 @@
     },
    
     {
-        "description": {"executable": "/bin/sleep",
-                        "arguments" : ["10"]
+        "description": {"executable"    : "/bin/sleep",
+                        "arguments"     : ["10"], 
+                        "cpu_processes" : 0,
+                        "gpu_processes" : 1
         },
         "slots": {
             "cores_per_node": 16,
@@ -58,8 +64,11 @@
     },
    
     {
-        "description": {"executable": "/bin/sleep",
-                        "arguments" : ["10"]
+        "description": {"executable"    : "/bin/sleep",
+                        "arguments"     : ["10"], 
+                        "cpu_processes" : 1, 
+                        "gpu_processes" : 1
+
         },
         "slots": {
             "cores_per_node": 16,
@@ -77,8 +86,10 @@
     },
    
     {
-        "description": {"executable": "/bin/sleep",
-                        "arguments" : ["10"]
+        "description": {"executable"    : "/bin/sleep",
+                        "arguments"     : ["10"], 
+                        "cpu_processes" : 2, 
+                        "gpu_processes" : 0
         },
         "slots": {
             "cores_per_node": 16,
