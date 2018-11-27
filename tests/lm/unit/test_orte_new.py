@@ -57,10 +57,9 @@ def test_construct_command(mocked_init,
     component._log = ru.get_logger('dummy')
     component.launch_command = 'orterun'
 
-    for unit, results in test_cases:
+    for unit, result in test_cases:
 
         command, _ = component.construct_command(unit, None)
-        result     = results['lm.orte']
         print command
         print result
 

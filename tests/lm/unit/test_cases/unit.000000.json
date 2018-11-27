@@ -35,8 +35,8 @@
     }, 
 
     "results": {
-        "lm.fork": "/bin/sleep \"10\" ",
-        "lm.orte": "orterun  --hnp \"dvm_uri\" -np 1 --bind-to none -host test -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" "
+        "lm.fork": "/bin/sleep \"10\" "
+      # "lm.orte": "orterun  --hnp \"dvm_uri\" -np 1 --bind-to none -host test -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" "
     }
 }
 
