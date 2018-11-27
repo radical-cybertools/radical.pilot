@@ -64,10 +64,11 @@
     },
    
     {
-        "description": {"executable"    : "/bin/sleep",
-                        "arguments"     : ["10"], 
-                        "cpu_processes" : 1, 
-                        "gpu_processes" : 1
+        "description": {"executable"       : "/bin/sleep",
+                        "arguments"        : ["10"], 
+                        "cpu_process_type" : "MPI",
+                        "cpu_processes"    : 1, 
+                        "gpu_processes"    : 1
 
         },
         "slots": {
@@ -86,10 +87,11 @@
     },
    
     {
-        "description": {"executable"    : "/bin/sleep",
-                        "arguments"     : ["10"], 
-                        "cpu_processes" : 2, 
-                        "gpu_processes" : 0
+        "description": {"executable"       : "/bin/sleep",
+                        "arguments"        : ["10"], 
+                        "cpu_process_type" : "MPI",
+                        "cpu_processes"    : 2, 
+                        "gpu_processes"    : 0
         },
         "slots": {
             "cores_per_node": 16,
@@ -107,11 +109,11 @@
     }],
 
     "result": [
-        "orte  --hnp \"dvm_uri\" -np 1 --bind-to none -host test -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" ",
-        "orte  --hnp \"dvm_uri\" -np 1 --bind-to none -host test -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" ",
-        "orte  --hnp \"dvm_uri\" -np 1 --bind-to none -host test -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" ",
-        "orte  --hnp \"dvm_uri\" -np 1 --bind-to none -host test,test -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" ",
-        "orte  --hnp \"dvm_uri\" -np 1 --bind-to none -host test,test -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" "
+        "orterun  --hnp \"dvm_uri\" -np 1 --bind-to none -host test -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" ",
+        "orterun  --hnp \"dvm_uri\" -np 1 --bind-to none -host test -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" ",
+        "orterun  --hnp \"dvm_uri\" -np 1 --bind-to none -host test -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" ",
+        "orterun  --hnp \"dvm_uri\" -np 2 --bind-to none -host test,test -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" ",
+        "orterun  --hnp \"dvm_uri\" -np 2 --bind-to none -host test,test -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" "
     ]
 }
 

@@ -1,11 +1,9 @@
 
 # pylint: disable=protected-access, unused-argument
 
-import json
 import os
 
 import radical.utils as ru
-
 from   radical.pilot.agent.lm.orte import ORTE
 
 
@@ -46,7 +44,7 @@ def test_construct_command(mocked_init,
     component = ORTE(name=None, cfg=None, session=None)
     component.name = 'orte'
     component._log = ru.get_logger('dummy')
-    component.launch_command = 'orte'
+    component.launch_command = 'orterun'
 
     i = 0
     for i in range(len(test_cases['trigger'])):
