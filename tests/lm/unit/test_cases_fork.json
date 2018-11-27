@@ -1,0 +1,105 @@
+{
+    "trigger": [{
+        "description": {"executable": "/bin/sleep",
+                        "arguments" : ["10"]
+        },
+        "slots": {
+            "cores_per_node": 16,
+            "gpus_per_node" : 1,
+            "lm_info"       : {},
+            "lfs_per_node"  : 0,
+            "nodes"         : [{"name"    : "test",
+                                "uid"     : "test",
+                                "core_map": [[0]],
+                                "gpu_map" : [],
+                                "lfs"     : {"size": 0,
+                                             "path": null}
+            }]
+        }
+    },
+
+    {
+        "description": {"executable": "/bin/sleep",
+                        "arguments" : ["10"]
+        },
+        "slots": {
+            "cores_per_node": 16,
+            "gpus_per_node" : 1,
+            "lm_info"       : {},
+            "lfs_per_node"  : 0,
+            "nodes"         : [{"name"    : "test",
+                                "uid"     : "test",
+                                "core_map": [[0,1,2,3]],
+                                "gpu_map" : [],
+                                "lfs"     : {"size": 0,
+                                             "path": null}
+            }]
+        }
+    },
+
+    {
+        "description": {"executable": "/bin/sleep",
+                        "arguments" : ["10"]
+        },
+        "slots": {
+            "cores_per_node": 16,
+            "gpus_per_node" : 1,
+            "lm_info"       : {},
+            "lfs_per_node"  : 0,
+            "nodes"         : [{"name"     : "test",
+                                 "uid"     : "test",
+                                 "core_map": [],
+                                 "gpu_map" : [[0]],
+                                 "lfs"     : {"size": 0,
+                                              "path": null}
+                               }]
+        }
+    },
+
+    {
+        "description": {"executable": "/bin/sleep",
+                        "arguments" : ["10"]
+        },
+        "slots": {
+            "cores_per_node": 16,
+            "gpus_per_node" : 1,
+            "lm_info"       : {},
+            "lfs_per_node"  : 0,
+            "nodes"         : [{"name"     : "test",
+                                 "uid"     : "test",
+                                 "core_map": [[0]],
+                                 "gpu_map" : [[0]],
+                                 "lfs"     : {"size": 0,
+                                              "path": null}
+                               }]
+        }
+    },
+
+    {
+        "description": {"executable": "/bin/sleep",
+                        "arguments" : ["10"]
+        },
+        "slots": {
+            "cores_per_node": 16,
+            "gpus_per_node" : 1,
+            "lm_info"       : {},
+            "lfs_per_node"  : 0,
+            "nodes"         : [{"name"     : "test",
+                                 "uid"     : "test",
+                                 "core_map": [[0, 1], [2, 3]],
+                                 "gpu_map" : [],
+                                 "lfs"     : {"size": 0,
+                                              "path": null}
+                               }]
+        }
+    }],
+
+    "result": [
+        "/bin/sleep \"10\" ",
+        "/bin/sleep \"10\" ",
+        "/bin/sleep \"10\" ",
+        "/bin/sleep \"10\" ",
+        "/bin/sleep \"10\" "
+    ]
+}
+
