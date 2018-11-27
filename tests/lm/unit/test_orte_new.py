@@ -26,7 +26,7 @@ def setUp():
 
         tc     = ru.read_json(fin)
         unit   = tc['unit']
-        result = tc.get('results')
+        result = tc['results'].get(test_name)
 
         if result:
             ret.append([unit, result])
