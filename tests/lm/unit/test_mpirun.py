@@ -1,8 +1,11 @@
 
+# pylint: disable=protected-access, unused-argument
+
+
+from   test_common                   import setUp
+from   radical.pilot.agent.lm.mpirun import MPIRun
+
 import radical.utils as ru
-from radical.pilot.agent.lm.mpirun import MPIRun
-import json
-import os
 
 
 try:
@@ -11,51 +14,31 @@ except ImportError:
     from unittest import mock
 
 
-# pylint: disable=protected-access, unused-argument
-
-# Setup to be done for every test
 # ------------------------------------------------------------------------------
 #
-def setUp():
-
-    curdir = os.path.dirname(os.path.abspath(__file__))
-    test_cases = json.load(open('%s/test_cases_mpirun.json' % curdir))
-
-    return test_cases
-
-
-# ------------------------------------------------------------------------------
-#
-def tearDown():
-
-    pass
-
-
-# ------------------------------------------------------------------------------
-# Test Summit Scheduler construct_command method
-@mock.patch.object(MPIRun, '__init__', return_value=None)
+@mock.patch.object(MPIRun, '__init__',   return_value=None)
 @mock.patch.object(MPIRun, '_configure', return_value=None)
 @mock.patch('radical.utils.raise_on')
-def test_construct_command(mocked_init, mocked_configure,
+def test_construct_command(mocked_init, 
+                           mocked_configure,
                            mocked_raise_on):
-    test_cases = setUp()
 
-    component = MPIRun(name='MPIRun', cfg=None, session=None)
-    component.name = 'MPIRun'
-    component._log = ru.get_logger('dummy')
+    test_cases = setUp('lm', 'mpirun')
+    component  = MPIRun(name=None, cfg=None, session=None)
+
+    component._log           = ru.get_logger('dummy')
+    component.name           = 'MPIRun'
+    component.mpi_flavor     = None
     component.launch_command = 'mpirun'
     component.ccmrun_command = ''
     component.dplace_command = ''
-    component.mpi_flavor = None
 
-    for i in range(len(test_cases['trigger'])):
-        cu = test_cases['trigger'][i]
-        cu['uid']  = 'unit.%06d' % i
-        command, _ = component.construct_command(cu, None)
-        assert command == test_cases['result'][i]
-
-    tearDown()
+    for unit, result in test_cases:
+        command, hop = component.construct_command(unit, None)
+        assert([command, hop] == result)
 
 
 # ------------------------------------------------------------------------------
+
+
 

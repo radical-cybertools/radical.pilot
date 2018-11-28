@@ -1,33 +1,17 @@
 
 # pylint: disable=protected-access, unused-argument
 
-import os
+
+from   test_common                 import setUp
+from   radical.pilot.agent.lm.orte import ORTE
 
 import radical.utils as ru
-from   radical.pilot.agent.lm.orte import ORTE
 
 
 try:
     import mock
 except ImportError:
     from unittest import mock
-
-
-# ------------------------------------------------------------------------------
-# 
-def setUp():
-
-    curdir     = os.path.dirname(os.path.abspath(__file__))
-    test_cases = ru.read_json('%s/test_cases_orte.json' % curdir)
-
-    return test_cases
-
-
-# ------------------------------------------------------------------------------
-#
-def tearDown():
-
-    pass
 
 
 # ------------------------------------------------------------------------------
@@ -39,27 +23,16 @@ def test_construct_command(mocked_init,
                            mocked_configure,
                            mocked_raise_on):
 
-    test_cases = setUp()
+    test_cases = setUp('lm', 'orte')
+    component  = ORTE(name=None, cfg=None, session=None)
 
-    component = ORTE(name=None, cfg=None, session=None)
-    component.name = 'orte'
-    component._log = ru.get_logger('dummy')
     component.launch_command = 'orterun'
+    component.name           = 'orte'
+    component._log           = ru.get_logger('dummy')
 
-    i = 0
-    for i in range(len(test_cases['trigger'])):
-
-        cu         = test_cases['trigger'][i]
-        cu['uid']  = 'unit.%06d' % i
-        command, _ = component.construct_command(cu, None)
-        print command
-        print test_cases['result'][i]
-
-        assert command == test_cases['result'][i]
-
-        i += 1
-
-    tearDown()
+    for unit, result in test_cases:
+        command, hop = component.construct_command(unit, None)
+        assert([command, hop] == result)
 
 
 # ------------------------------------------------------------------------------

@@ -67,7 +67,7 @@ class MPIRun(LaunchMethod):
         uid          = cu['uid']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_threads = cud['cpu_threads']
+        task_threads = cud.get('cpu_threads', 1)
         task_env     = cud.get('environment') or dict()
         task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
