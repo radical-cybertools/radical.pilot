@@ -1,0 +1,7 @@
+{
+    "unit.000000": ["mpirun -np 1  -host node1  /bin/sleep \"10\"", null],
+    "unit.000003": ["mpirun -np 1  -host node1  /bin/sleep \"10\"", null],
+    "unit.000004": ["mpirun -np 1  -host node1  /bin/sleep \"10\"", null],
+    "unit.000005": ["mpirun -np 2  -host node1,node1  /bin/sleep \"10\"", null],
+    "unit.000006": ["mpirun -np 2  -host node1,node1  /bin/sleep \"10\"", null]
+}

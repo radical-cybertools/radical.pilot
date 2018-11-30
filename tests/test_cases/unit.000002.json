@@ -20,12 +20,6 @@
                  }
              }
         }
-    }, 
-
-    "results": {
-        "lm": {
-            "spark"  : ["/spark-submit    test.py", null]
-        }
     }
 }
 

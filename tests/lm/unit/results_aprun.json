@@ -1,0 +1,7 @@
+{
+    "unit.000000": ["aprun -n 1 -N 1 -L node1 -d 1 -cc 0 /bin/sleep \"10\"  ", null],
+    "unit.000003": ["aprun -n 1 -N 1 -L node1 -d 4 -cc 0,1,2,3 /bin/sleep \"10\"  ", null],
+    "unit.000004": ["aprun -n 1 -N 1 -L node1 -d 1 -cc 0 /bin/sleep \"10\"  ", null],
+    "unit.000005": ["aprun -n 2 -N 2 -L node1 -d 1 -cc 0:0 /bin/sleep \"10\"  ", null],
+    "unit.000006": ["aprun -n 2 -N 2 -L node1 -d 2 -cc 0,1:2,3 /bin/sleep \"10\"  ", null]
+}
