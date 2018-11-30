@@ -39,6 +39,8 @@ CONTROL_PUBSUB                 = 'control_pubsub'
 STATE_PUBSUB                   = 'state_pubsub'
 LOG_PUBSUB                     = 'log_pubsub'
 
+CLIENT_QUEUE                   = 'client_queue'
+AGENT_QUEUE                    = 'agent_queue'
 
 # ------------------------------------------------------------------------------
 #

@@ -58,11 +58,12 @@ class Default(UMGRStagingInputComponent):
         self._pilots      = dict()
         self._pilots_lock = mt.RLock()
 
+        # FIXME: move to base class
         self.register_input(rps.UMGR_STAGING_INPUT_PENDING,
                             rpc.UMGR_STAGING_INPUT_QUEUE, self.work)
 
-        # FIXME: this queue is inaccessible, needs routing via mongodb
-        self.register_output(rps.AGENT_STAGING_INPUT_PENDING, None)
+        self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
+                             rpc.AGENT_QUEUE)
 
         # we subscribe to the command channel to learn about pilots being added
         # to this unit manager.

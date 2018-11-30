@@ -105,7 +105,7 @@
     "components" : {
         # the update worker must live in agent_0, since only that agent is 
         # sure to have connectivity toward the DB.
-        "UpdateWorker"                : {"count" : 1},
+      # "UpdateWorker"                : {"count" : 1},
         "AgentStagingInputComponent"  : {"count" : 1},
         "AgentSchedulingComponent"    : {"count" : 1},
         "AgentExecutingComponent"     : {"count" : 1},

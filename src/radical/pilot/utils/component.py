@@ -15,7 +15,7 @@ from .pubsub import Publisher  as rpu_Publisher
 from .pubsub import Subscriber as rpu_Subscriber
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Component(object):
     """
@@ -34,12 +34,12 @@ class Component(object):
     ownership over it, and that no other component will change the 'thing's
     state during that time.
 
-    The main event loop of the component -- work_cb() -- is executed as a separate
-    process.  Components inheriting this class should be fully self sufficient,
-    and should specifically attempt not to use shared resources.  That will
-    ensure that multiple instances of the component can coexist for higher
-    overall system throughput.  Should access to shared resources be necessary,
-    it will require some locking mechanism across process boundaries.
+    The main event loop of the component -- work_cb() -- is executed as
+    a separate process.  Components inheriting this class should be fully self
+    sufficient, and should specifically attempt not to use shared resources.
+    That will ensure that multiple instances of the component can coexist for
+    higher overall system throughput.  Should access to shared resources be
+    necessary, it will require some locking mechanism across process boundaries.
 
     This approach should ensure that
 
@@ -140,7 +140,7 @@ class Component(object):
             raise ValueError('unknown component type (%s)' % kind)
 
         ctype = _ctypemap[kind]
-        comp = ctype.create(cfg, session)
+        comp  = ctype.create(cfg, session)
 
         return comp
 
@@ -624,11 +624,17 @@ class Component(object):
             input  = self._inputs[name]['queue']
             states = self._inputs[name]['states']
 
+            self._log.debug('=== check input %s [%s]', name, input)
+
             # FIXME: a simple, 1-thing caching mechanism would likely
             #        remove the req/res overhead completely (for any
             #        non-trivial worker).
             things = input.get_nowait(1000)  # timeout in microseconds
 
+            if things is None:
+                things = list()
+
+            self._log.debug('=== check input %s: %s', name, len(things))
             if not things:
                 return True
 
@@ -722,7 +728,7 @@ class Component(object):
         if not isinstance(things, list):
             things = [things]
 
-        self._log.debug('=== advance bulk size: %s [%s, %s]', len(things), push, publish)
+        self._log.debug('advance bulk size: %s [%s, %s]', len(things), push, publish)
 
         # assign state, sort things by state
         buckets = dict()
@@ -738,8 +744,6 @@ class Component(object):
                 # state advance done here
                 thing['state'] = state
             _state = thing['state']
-
-            self._log.debug('=== adv 1 %s [%s]', uid, state)
 
             if prof:
                 self._prof.prof('advance', uid=uid, state=_state,
@@ -794,8 +798,6 @@ class Component(object):
             # now we can push the buckets as bulks
             for _state,_things in buckets.iteritems():
 
-                self._log.debug('=== adv 2 %s [%s]', _state, len(things))
-
                 ts = time.time()
                 if _state in rps.FINAL:
                     # things in final state are dropped
@@ -824,10 +826,9 @@ class Component(object):
                 output = self._outputs[_state]
 
                 # push the thing down the drain
-                self._log.debug('=== put bulk %s: %s', _state, len(_things))
-                self._log.debug('===              %s', output)
+                self._log.debug('put bulk %s: %s', _state, len(_things))
                 output.put(_things)
-                self._log.debug('===              %s ok', output)
+                self._log.debug('=== push output %s [%s]', output, len(_things))
 
                 ts = time.time()
                 for thing in _things:
@@ -850,11 +851,10 @@ class Component(object):
             return
 
         self._log.debug('pub %s', msg)
-        self._log.debug('====== x4 %s', [pubsub, msg])
         self._publishers[pubsub].put(pubsub, msg)
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Worker(Component):
     """

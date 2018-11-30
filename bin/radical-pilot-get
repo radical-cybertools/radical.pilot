@@ -3,6 +3,7 @@
 __copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+
 import sys
 import time
 import msgpack
@@ -43,8 +44,11 @@ if __name__ == "__main__":
     while work:
 
         msgs = getter.get()
+        sys.stdout.write('.')
+        sys.stdout.flush()
         for msg in msgs:
             if msg.get('cmd') == 'QUIT':
+                print '#'
                 work = False
 
         n += 1

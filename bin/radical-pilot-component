@@ -22,7 +22,7 @@ def out(msg):
 
 
 def term():
-    out('=== TERMINATE')
+    out('TERMINATE')
 
 
 import atexit
@@ -33,15 +33,15 @@ atexit.register(term)
 #
 def ppid_watcher(ppid):
 
-    out(" === ppid_watcher starts: %s watches %s" % (os.getpid(), ppid))
+    out("ppid_watcher starts: %s watches %s" % (os.getpid(), ppid))
 
     try:
         while True:
             time.sleep(1)
             os.kill(ppid, 0)
-            out(" === ppid_watcher: parent %s is alive" % ppid)
+            out("ppid_watcher: parent %s is alive" % ppid)
     except:
-        out(" === ppid_watcher: parent %s is gone - bye" % ppid)
+        out("ppid_watcher: parent %s is gone - bye" % ppid)
         os.kill(os.getpid(), signal.SIGTERM)
         os.kill(os.getpid(), signal.SIGKILL)
 
@@ -50,15 +50,16 @@ def ppid_watcher(ppid):
 #
 if __name__ == "__main__":
 
+    if len(sys.argv) != 2:
+        sys.stderr.write('error: argument error\n'
+                         'usage: %s <cfg_file>\n\n')
+        raise RuntimeError('argument error: %s' % sys.argv)
+
+    # ensure we have a config file
+    cfgf = sys.argv[1]
+
     try:
-        if len(sys.argv) != 2:
-            sys.stderr.write('error: argument error\n'
-                             'usage: %s <cfg_file>\n\n')
-            raise RuntimeError('argument error: %s' % sys.argv)
-
-        # ensure we have a config file
-        cfg = ru.read_json(sys.argv[1])
-
+        cfg = ru.read_json(cfgf)
         pwd = cfg['pwd']
         uid = cfg['uid']
 
@@ -69,23 +70,23 @@ if __name__ == "__main__":
             fout.flush
 
         if 'ppid' in cfg:
-            out(" === ppid_watcher: run")
+            out("ppid_watcher: run")
             watcher = mt.Thread(target=ppid_watcher, args=[int(cfg['ppid'])])
             watcher.daemon = True
             watcher.start()
         else:
-            out(" === ppid_watcher: nope")
+            out("ppid_watcher: nope")
 
         # create the component
         comp = rpu.Component.create(cfg)
         comp.start()
         comp.wait()
 
-    except:
+    except Exception as e:
+        sys.stderr.write('ERROR: %s failed: %s\n' % (cfgf, e))
         sys.exit(1)
 
     sys.exit(0)
-
 
 
 # ------------------------------------------------------------------------------

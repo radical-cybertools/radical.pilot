@@ -51,8 +51,9 @@ class Default(AgentStagingOutputComponent):
         self.register_input(rps.AGENT_STAGING_OUTPUT_PENDING, 
                             rpc.AGENT_STAGING_OUTPUT_QUEUE, self.work)
 
-        # we don't need an output queue -- units are picked up via mongodb
-        self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING, None)
+        # push units back to the client side
+        self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING, 
+                             rpc.CLIENT_QUEUE)
 
 
     # --------------------------------------------------------------------------
@@ -304,7 +305,7 @@ class Default(AgentStagingOutputComponent):
                 #        machine.
                 # if tgt.schema == 'srm':
                 #     # FIXME: cache saga handles
-                #     srm_dir = rs.filesystem.Directory('srm://proxy/?SFN=bogus')
+                #     srm_dir = rs.fs.Directory('srm://proxy/?SFN=bogus')
                 #     srm_dir.copy(src, tgt)
                 #     srm_dir.close()
                 # else:
@@ -315,7 +316,8 @@ class Default(AgentStagingOutputComponent):
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
         # all agent staging is done -- pass on to umgr output staging
-        self.advance(unit, rps.UMGR_STAGING_OUTPUT_PENDING, publish=True, push=False)
+        self.advance(unit, rps.UMGR_STAGING_OUTPUT_PENDING, publish=True,
+                     push=True)
 
 
 # ------------------------------------------------------------------------------

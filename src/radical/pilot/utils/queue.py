@@ -1,6 +1,6 @@
 
+import os
 import zmq
-import copy
 import math
 import time
 import errno
@@ -18,6 +18,15 @@ from .misc   import hostip as rpu_hostip
 #
 _LINGER_TIMEOUT  =   250  # ms to linger after close
 _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
+
+
+def log_bulk(log, bulk, token):
+
+    if isinstance(bulk, list) and bulk and 'uid' in bulk[0]:
+        for e in bulk:
+            log.debug("%s: %s [%s]", token, e['uid'], e['state'])
+    else:
+        log.debug("%s: %s", token, str(bulk)[0:32])
 
 
 # --------------------------------------------------------------------------
@@ -188,7 +197,9 @@ class Queue(Bridge):
 
         # inform clients about the bridge, no that the sockets are connected and
         # work is about to start.
-        with open('%s/%s.url' % (self._pwd, self.channel), 'w') as fout:
+        faddr = '%s/%s.url' % (self._pwd, self._channel)
+        self._log.debug('put addr into %s', faddr)
+        with open(faddr, 'w') as fout:
             fout.write('PUT %s\n' % self._addr_in)
             fout.write('GET %s\n' % self._addr_out)
 
@@ -257,8 +268,8 @@ class Queue(Bridge):
                         req  = _uninterruptible(self._out.recv)
                         data = msgpack.packb(bulk) 
                         _uninterruptible(self._out.send, data)
-                        if self._debug:
-                            self._log.debug("<> %s", pprint.pformat(bulk))
+                        log_bulk(self._log, bulk, 
+                                 '<> %s [%s]' % (self._channel, req))
 
         except  Exception:
             self._log.exception('bridge failed')
@@ -280,7 +291,8 @@ class Putter(object):
 
         self._uid = ru.generate_id('%s.put.%s' % (self._channel, '%(counter)04d'),
                                     ru.ID_CUSTOM)
-        self._log = ru.Logger(name=self._uid)
+        self._log = ru.Logger(name=self._uid, level='DEBUG')
+        self._log.debug('create putter for %s', self.channel)
 
         # avoid superfluous logging calls in critical code sections
         if self._log.getEffectiveLevel() == 10:  # logging.DEBUG:
@@ -289,7 +301,13 @@ class Putter(object):
             self._debug  = False
 
         # get addr from bridge.url
-        with open('%s/%s.url' % (self._pwd, self._channel), 'r') as fin:
+        if self._channel in ['client_queue', 'agent_queue']:
+            urlp  = os.environ.get('RP_BRIDGE', self._pwd)
+        else:
+            urlp  = self._pwd
+
+        faddr = '%s/%s.url' % (urlp, self._channel)
+        with open(faddr, 'r') as fin:
             for line in fin.readlines():
                 elems = line.split()
                 if elems and elems[0] == 'PUT':
@@ -307,6 +325,9 @@ class Putter(object):
 
     # --------------------------------------------------------------------------
     #
+    def __str__(self):
+        return 'Putter(%s @ %s)'  % (self.channel, self._addr)
+
     @property
     def name(self):
         return self._uid
@@ -324,16 +345,18 @@ class Putter(object):
     #
     def put(self, msg):
 
-        if self._debug:
-            self._log.debug("-> %s", pprint.pformat(msg))
+        log_bulk(self._log, msg, '-> %s' % self._channel)
         data = msgpack.packb(msg) 
         _uninterruptible(self._q.send, data)
 
 
 # ------------------------------------------------------------------------------
-
+#
 class Getter(object):
 
+
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, channel, session=None):
 
         self._channel = channel
@@ -346,7 +369,8 @@ class Getter(object):
 
         self._uid = ru.generate_id('%s.get.%s' % (self._channel, '%(counter)04d'),
                                     ru.ID_CUSTOM)
-        self._log = ru.Logger(name=self._uid)
+        self._log = ru.Logger(name=self._uid, level='DEBUG')
+        self._log.debug('create getter %s', self._uid)
 
         # avoid superfluous logging calls in critical code sections
         if self._log.getEffectiveLevel() == 10:  # logging.DEBUG:
@@ -355,7 +379,13 @@ class Getter(object):
             self._debug  = False
 
         # get addr from bridge.url
-        with open('%s/%s.url' % (self._pwd, self._channel), 'r') as fin:
+        if self._channel in ['client_queue', 'agent_queue']:
+            urlp  = os.environ.get('RP_BRIDGE', self._pwd)
+        else:
+            urlp  = self._pwd
+
+        faddr = '%s/%s.url' % (urlp, self._channel)
+        with open(faddr, 'r') as fin:
             for line in fin.readlines():
                 elems = line.split()
                 if elems and elems[0] == 'GET':
@@ -376,6 +406,9 @@ class Getter(object):
 
     # --------------------------------------------------------------------------
     #
+    def __str__(self):
+        return 'Getter(%s @ %s)'  % (self.channel, self._addr)
+
     @property
     def name(self):
         return self._uid
@@ -393,13 +426,16 @@ class Getter(object):
     #
     def get(self):
 
-        _uninterruptible(self._q.send, 'request %s' % self._uid)
+        if not self._requested:
+            req = 'Request %s' % os.getpid()
+            log_bulk(self._log, req, '>> %s' % self._channel)
+            _uninterruptible(self._q.send, req)
+            self._requested = True
 
         data = _uninterruptible(self._q.recv)
         msg  = msgpack.unpackb(data) 
-
-        if self._debug:
-            self._log.debug("<- %s", pprint.pformat(msg))
+        self._requested = False
+        log_bulk(self._log, msg, '<- %s' % self._channel)
 
         return msg
 
@@ -412,14 +448,15 @@ class Getter(object):
 
             if not self._requested:
                 # we can only send the request once per recieval
-                _uninterruptible(self._q.send, 'request')
+                req = 'request %s' % os.getpid()
+                log_bulk(self._log, req, '-> %s' % self._channel)
+                _uninterruptible(self._q.send, req)
                 self._requested = True
 
           # try:
           #     msg = self._q.recv_json(flags=zmq.NOBLOCK)
           #     self._requested = False
-          #     if self._debug:
-          #         self._log.debug("<< %s", pprint.pformat(msg))
+          #     log_bulk(self._log, msg, '<< %s' % self._channel)
           #     return msg
           #
           # except zmq.Again:
@@ -429,11 +466,11 @@ class Getter(object):
                 data = _uninterruptible(self._q.recv)
                 msg  = msgpack.unpackb(data) 
                 self._requested = False
-              # if self._debug:
-              #     self._log.debug("<< %s", pprint.pformat(msg))
+                log_bulk(self._log, msg, '<- %s' % self._channel)
                 return msg
 
             else:
+                log_bulk(self._log, None, '<- %s' % self._channel)
                 return None
 
 

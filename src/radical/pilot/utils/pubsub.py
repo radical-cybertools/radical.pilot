@@ -18,6 +18,18 @@ _LINGER_TIMEOUT  =   250  # ms to linger after close
 _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 
 
+def log_bulk(log, bulk, token):
+
+    if not isinstance(bulk, list):
+        bulk = [bulk]
+
+    if bulk and 'uid' in bulk[0]:
+        for e in bulk:
+            log.debug("%s: %s [%s]", token, e['uid'], e['state'])
+    else:
+        log.debug("%s: %s", token, str(bulk)[0:32])
+
+
 # --------------------------------------------------------------------------
 #
 # zmq will (rightly) barf at interrupted system calls.  We are able to rerun
@@ -182,9 +194,7 @@ class Pubsub(Bridge):
                     # to the publishing channel, no questions asked.
                     msg = _uninterruptible(self._in.recv_multipart, flags=zmq.NOBLOCK)
                     _uninterruptible(self._out.send_multipart, msg)
-
-                  # if self._debug:
-                  #     self._log.debug('>> %s %s', self.channel, msg)
+                    log_bulk(self._log, msg, '>> %s' % self.channel)
 
                 if self._out in _socks:
                     # if any outgoing socket signals a message, it's
@@ -193,9 +203,7 @@ class Pubsub(Bridge):
                     # respective messages.
                     msg = _uninterruptible(self._out.recv_multipart)
                     _uninterruptible(self._in.send_multipart, msg)
-
-                  # if self._debug:
-                  #     self._log.debug('<< %s %s', self.channel, msg)
+                    log_bulk(self._log, msg, '<< %s' % self.channel)
 
         except Exception:
             self._log.exception('bridge failed')
@@ -272,8 +280,7 @@ class Publisher(object):
         topic = topic.replace(' ', '_')
         data  = msgpack.packb(msg) 
 
-        if self._debug:
-            self._log.debug('-> %s %s', self.channel, msg)
+        log_bulk(self._log, msg, '-> %s' % self.channel)
 
         msg = [topic, data]
         _uninterruptible(self._q.send_multipart, msg)
@@ -342,7 +349,7 @@ class Subscriber(object):
 
         topic = topic.replace(' ', '_')
 
-        self._log.debug("~~ %s", topic)
+        log_bulk(self._log, topic, '~~ %s' % self.channel)
         _uninterruptible(self._q.setsockopt, zmq.SUBSCRIBE, topic)
 
 
@@ -355,8 +362,7 @@ class Subscriber(object):
         topic, data = _uninterruptible(self._q.recv_multipart)
         msg         = msgpack.unpackb(data) 
 
-      # if self._debug:
-      #     self._log.debug('<- %s %s', self.channel, msg)
+        log_bulk(self._log, msg, '<- %s' % self.channel)
 
         return [topic, msg]
 
@@ -378,7 +384,6 @@ class Subscriber(object):
                 if len(data) == 2:
                     topic, data = data[0], data[1]
                 elif len(data) == 3 and data[0] == data[1]:
-                    self._log.error('====== XXX 1 %s', pprint.pformat(data))
                     topic, data = data[1], data[2]
 
             if not topic or not data:
@@ -386,8 +391,7 @@ class Subscriber(object):
 
             msg = msgpack.unpackb(data)
 
-          # if self._debug:
-          #     self._log.debug('<- %s %s', self.channel, msg)
+            log_bulk(self._log, msg, '<- %s' % self.channel)
 
             return [topic, msg]
 

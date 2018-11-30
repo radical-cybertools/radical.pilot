@@ -158,7 +158,6 @@ class ComponentManager(object):
                 ccfg['pwd']   = sbox
                 ccfg['fpid']  = fpid
                 ccfg['fchk']  = fchk
-                ccfg['dburl'] = self._session.dburl
                 ccfg['owner'] = self._owner
                 ccfg['ppid']  = os.getpid()
 

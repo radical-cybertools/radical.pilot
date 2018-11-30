@@ -77,7 +77,6 @@ class Agent_0(rpu.Worker):
         # sanity check on config settings
         if 'cores'               not in cfg: raise ValueError('Missing number of cores')
         if 'lrms'                not in cfg: raise ValueError('Missing LRMS')
-        if 'dburl'               not in cfg: raise ValueError('Missing DBURL')
         if 'pilot_id'            not in cfg: raise ValueError('Missing pilot id')
         if 'runtime'             not in cfg: raise ValueError('Missing or zero agent runtime')
         if 'scheduler'           not in cfg: raise ValueError('Missing agent scheduler')
@@ -88,11 +87,10 @@ class Agent_0(rpu.Worker):
         # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold
         # the address of the tunnelized DB endpoint. If it exists, we
         # overrule the agent config with it.
+        # FIXME: tunnel to client and agent queues
         hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
         if hostport:
-            dburl = ru.Url(cfg['dburl'])
-            dburl.host, dburl.port = hostport.split(':')
-            cfg['dburl'] = str(dburl)
+            pass
 
         # Create a session.
         #
@@ -101,8 +99,7 @@ class Agent_0(rpu.Worker):
         # config -- we merge that information into our own config.
         # We don't want the session to start components though, so remove them
         # from the config copy.
-        scfg = {'dburl'           : cfg['dburl'],
-                'logdir'          : cfg['logdir'],
+        scfg = {'logdir'          : cfg['logdir'],
                 'session_sandbox' : cfg['session_sandbox']}
         self._session = rp_Session(uid=self._sid, _cfg=scfg)
 
@@ -116,8 +113,7 @@ class Agent_0(rpu.Worker):
 
         # only now, after the lrms is created, we can instantiate components, as
         # those need the LRMS info.
-        self._db      = db.DB(self._session, cfg=cfg)
-        self._cmgr    = rpu.ComponentManager(self._session, cfg, self._uid)
+        self._cmgr = rpu.ComponentManager(self._session, cfg, self._uid)
 
         # at this point the session is up and connected, and we should have
         # brought up all communication bridges and the UpdateWorker.  We are
@@ -161,12 +157,6 @@ class Agent_0(rpu.Worker):
                      'lm_detail'    : self._lrms.lm_info.get('lm_detail')},
                  '$set'             : ['resource_details']}
         self.advance(pilot, publish=True, push=False)
-
-        # register idle callback to pull for units -- which is the only action
-        # we have to perform, really
-        self.register_timed_cb(self._check_units_cb,
-                               timer=self._cfg['db_poll_sleeptime'])
-
 
         # record hostname in profile to enable mapping of profile entries
         self._prof.prof(event='hostname', uid=self._pid, msg=ru.get_hostname())
@@ -230,13 +220,14 @@ class Agent_0(rpu.Worker):
         try    : log = open('./agent_0.log', 'r').read(1024)
         except Exception: pass
 
-        ret = self._db._c.update({'type'   : 'pilot',
-                                  'uid'    : self._pid},
-                                 {'$set'   : {'stdout'        : rpu.tail(out),
-                                              'stderr'        : rpu.tail(err),
-                                              'logfile'       : rpu.tail(log)}
-                                 })
-        self._log.debug('update ret: %s', ret)
+        # FIXME
+        ## ret = self._db._c.update({'type'   : 'pilot',
+        ##                           'uid'    : self._pid},
+        ##                          {'$set'   : {'stdout'        : rpu.tail(out),
+        ##                                       'stderr'        : rpu.tail(err),
+        ##                                       'logfile'       : rpu.tail(log)}
+        ##                          })
+        ## self._log.debug('update ret: %s', ret)
 
 
     # --------------------------------------------------------------------------
@@ -424,48 +415,49 @@ class Agent_0(rpu.Worker):
         #        should then be communicated over the command pubsub
         # FIXME: commands go to pmgr, umgr, session docs
         # FIXME: this is disabled right now
-        retdoc = self._db._c.find_and_modify(query ={'uid'  : self._pid},
-                                             update={'$set' : {'cmd': []}},
-                                             fields=['cmd'])
-        if not retdoc:
-            return True  # this is not an error
+        # FIXME
+        ## retdoc = self._db._c.find_and_modify(query ={'uid'  : self._pid},
+        ##                                      update={'$set' : {'cmd': []}},
+        ##                                      fields=['cmd'])
+        ## if not retdoc:
+        ##     return True  # this is not an error
 
-        for spec in retdoc.get('cmd', []):
+        ## for spec in retdoc.get('cmd', []):
 
-            self._log.info('=== cmd %s', spec)
-            cmd = spec['cmd']
-            arg = spec['arg']
+        ##     self._log.info('=== cmd %s', spec)
+        ##     cmd = spec['cmd']
+        ##     arg = spec['arg']
 
-            self._prof.prof('cmd', msg="%s : %s" % (cmd, arg), uid=self._pid)
+        ##     self._prof.prof('cmd', msg="%s : %s" % (cmd, arg), uid=self._pid)
 
-            if cmd == 'heartbeat':
-                self._log.info('=== heartbeat refresh')
-                self._hb_last = time.time()
+        ##     if cmd == 'heartbeat':
+        ##         self._log.info('=== heartbeat refresh')
+        ##         self._hb_last = time.time()
 
 
-            elif cmd == 'cancel_pilot':
-                self._log.info('cancel pilot cmd')
-                self._log.info('publish "terminate" cmd')
-                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
-                                                  'arg' : None})
+        ##     elif cmd == 'cancel_pilot':
+        ##         self._log.info('cancel pilot cmd')
+        ##         self._log.info('publish "terminate" cmd')
+        ##         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
+        ##                                           'arg' : None})
 
-              # self.stop()
-                self._ru_term.set()
+        ##       # self.stop()
+        ##         self._ru_term.set()
 
-                with open('./killme.signal', 'w+') as f:
-                    f.write(rps.CANCELED)
-                    f.flush()
+        ##         with open('./killme.signal', 'w+') as f:
+        ##             f.write(rps.CANCELED)
+        ##             f.flush()
 
-                self._final_cause = 'cancel'
-                return False  # we are done
+        ##         self._final_cause = 'cancel'
+        ##         return False  # we are done
 
-            elif cmd == 'cancel_units':
+        ##     elif cmd == 'cancel_units':
 
-                self._log.info('cancel_units cmd')
-                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units',
-                                                  'arg' : arg})
-            else:
-                self._log.error('could not interpret cmd "%s" - ignore', cmd)
+        ##         self._log.info('cancel_units cmd')
+        ##         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units',
+        ##                                           'arg' : arg})
+        ##     else:
+        ##         self._log.error('could not interpret cmd "%s" - ignore', cmd)
 
         return True
 
@@ -487,72 +479,6 @@ class Agent_0(rpu.Worker):
         if time.time() - self._hb_last > self._hb_timeout:
             self._log.info('=== heartbeat timeout - terminate')
             os.kill(os.getpid(), signal.SIGTERM)
-
-        return True
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _check_units_cb(self):
-
-        self.is_valid()
-
-        # FIXME: this should probably go into a custom `is_valid()`
-        if not self._db._c:
-            self._log.warn('db connection gone - abort')
-            return False
-
-        # Check if there are compute units waiting for input staging
-        # and log that we pulled it.
-        #
-        # FIXME: Unfortunately, 'find_and_modify' is not bulkable, so we have
-        #        to use 'find'.  To avoid finding the same units over and over
-        #        again, we update the 'control' field *before* running the next
-        #        find -- so we do it right here.
-        #        This also blocks us from using multiple ingest threads, or from
-        #        doing late binding by unit pull :/
-        unit_cursor = self._db._c.find({'type'    : 'unit',
-                                        'pilot'   : self._pid,
-                                        'control' : 'agent_pending'})
-        if not unit_cursor.count():
-            # no units whatsoever...
-            self._log.info('units pulled:    0')
-            return True  # this is not an error
-
-        # update the units to avoid pulling them again next time.
-        unit_list = list(unit_cursor)
-        unit_uids = [unit['uid'] for unit in unit_list]
-
-        self._log.info('units PULLED: %4d', len(unit_list))
-
-        self._db._c.update({'type'  : 'unit',
-                            'uid'   : {'$in'     : unit_uids}},
-                           {'$set'  : {'control' : 'agent'}},
-                           multi=True)
-
-        self._log.info("units pulled: %4d", len(unit_list))
-        self._prof.prof('get', msg='bulk size: %d' % len(unit_list),
-                        uid=self._pid)
-
-        for unit in unit_list:
-
-            # we need to make sure to have the correct state:
-            unit['state'] = rps._unit_state_collapse(unit['states'])
-            self._prof.prof('get', uid=unit['uid'])
-
-            # FIXME: raise or fail unit!
-            if unit['control'] != 'agent_pending':
-                self._log.error('invalid control: %s', (pprint.pformat(unit)))
-
-            if unit['state'] != rps.AGENT_STAGING_INPUT_PENDING:
-                self._log.error('invalid state: %s', (pprint.pformat(unit)))
-
-            unit['control'] = 'agent'
-
-        # now we really own the CUs, and can start working on them (ie. push
-        # them into the pipeline).  We don't publish nor profile as advance,
-        # since that happened already on the module side when the state was set.
-        self.advance(unit_list, publish=False, push=True)
 
         return True
 

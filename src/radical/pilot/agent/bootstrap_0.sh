@@ -469,11 +469,11 @@ verify_install()
     fi
     echo ' ok'
 
-    if ! test -z "$RADICAL_DEBUG"
-    then
-        echo 'debug mode: install pudb'
-        pip install pudb || true
-    fi
+    ## if ! test -z "$RADICAL_DEBUG"
+    ## then
+    ##     echo 'debug mode: install pudb'
+    ##     pip install pudb || true
+    ## fi
 
     # FIXME: attempt to load all required modules
     modules='saga radical.utils pymongo hostlist netifaces setproctitle ntplib msgpack zmq'
@@ -1778,10 +1778,6 @@ export SAGA_VERBOSE=DEBUG
 export RADICAL_VERBOSE=DEBUG
 export RADICAL_UTIL_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG
-
-# the agent will *always* use the dburl from the config file, not from the env
-# FIXME: can we better define preference in the session ctor?
-unset RADICAL_PILOT_DBURL
 
 # avoid ntphost lookups on compute nodes
 export RADICAL_PILOT_NTPHOST=$RADICAL_PILOT_NTPHOST

@@ -14,7 +14,6 @@ import saga                 as rs
 import saga.utils.pty_shell as rsup
 
 from .                import utils   as rpu
-from .                import db
 from .client          import Client
 from .resource_config import ResourceConfig
 
@@ -38,7 +37,7 @@ class Session(rs.Session):
     #
     # --------------------------------------------------------------------------
     #
-    def __init__(self, uid=None, dburl=None, _cfg=None):
+    def __init__(self, uid=None, _cfg=None):
         '''
         Creates a new session.  A new Session instance is created and 
         stored in the database.
@@ -46,9 +45,6 @@ class Session(rs.Session):
         **Arguments:**
 
             * **uid**   (`string`): Create a session with this UID.  
-            * **dburl** (`string`): connect to the DB on this URL.  If not
-                                    specified, use the `dburl` entry in the
-                                    session config, or `$RADICA_PILOT_DBURL`.
         **Returns:**
             * A new Session instance.
         '''
@@ -91,14 +87,6 @@ class Session(rs.Session):
         if self._cfg.get('bridges') or self._cfg.get('components'):
             create_cmgr = True
 
-
-        # we always need a dburl, even if this session does not itself
-        # connect to the DB (we connect opportunistically)
-        if not dburl: dburl = self._cfg.get('dburl')
-        if not dburl: dburl = os.environ.get("RADICAL_PILOT_DBURL") 
-        if not dburl: raise ValueError("no db URL (set RADICAL_PILOT_DBURL)")  
-
-        self._cfg['dburl'] = dburl
 
         # fall back to config data where possible
         # sanity check on parameters
@@ -154,10 +142,6 @@ class Session(rs.Session):
             self._rep.info ('<<new session: ')
             self._rep.plain('[%s]' % self._uid)
             self._rep.info ('<<database   : ')
-            self._rep.plain('[%s]' % self.dburl)
-
-            # only the client session connects to the DB
-            self._db = db.DB(self, cfg=self._cfg)
 
             self._rec = os.environ.get('RADICAL_PILOT_RECORD_SESSION')
             if self._rec:
@@ -260,11 +244,8 @@ class Session(rs.Session):
         self._prof.prof("session_stop", uid=self._uid)
         self._prof.close()
 
-        if self._db:
-            self._db.close(delete=cleanup)
-
         self._closed = True
-        self._valid = False
+        self._valid  = False
 
         # after all is said and done, we attempt to download the pilot log- and
         # profiles, if so wanted
@@ -305,19 +286,11 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     @property
-    def dburl(self):
-        return self._cfg['dburl']
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
     def created(self):
         '''
         Returns the UTC date and time the session was created.
         '''
-        if self._client:
-            return self._client._db.created
+        # FIXME
         return None
 
 
@@ -328,8 +301,7 @@ class Session(rs.Session):
         '''
         Returns the time of closing
         '''
-        if self._client:
-            return self._client._db.closed
+        # FIXME
         return None
 
 
@@ -375,33 +347,29 @@ class Session(rs.Session):
     #
     def fetch_profiles(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_profiles(self._uid, dburl=self._cfg['dburl'], tgt=tgt, 
-                                  session=self)
+        return rpu.fetch_profiles(self._uid, tgt=tgt, session=self)
 
 
     # -------------------------------------------------------------------------
     #
     def fetch_logfiles(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_logfiles(self._uid, dburl=self._cfg['dburl'], tgt=tgt, 
-                                  session=self)
+        return rpu.fetch_logfiles(self._uid, tgt=tgt, session=self)
 
 
     # -------------------------------------------------------------------------
     #
     def fetch_json(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_json(self._uid, dburl=self._cfg['dburl'], tgt=tgt,
-                              session=self)
+        return rpu.fetch_json(self._uid, tgt=tgt, session=self)
 
 
     # --------------------------------------------------------------------------
     #
     def insert_metadata(self, metadata):
 
+        # FIXME
         self.is_valid()
-        assert(self._db)
-        return self._db.insert_metadata(metadata)
 
 
     # --------------------------------------------------------------------------

@@ -22,7 +22,7 @@ def out(msg):
 
 
 def term():
-    out('=== TERMINATE')
+    out('TERMINATE')
 
 
 import atexit
@@ -33,15 +33,15 @@ atexit.register(term)
 #
 def ppid_watcher(ppid):
 
-    print " === ppid_watcher starts: %s watches %s" % (os.getpid(), ppid)
+    print "ppid_watcher starts: %s watches %s" % (os.getpid(), ppid)
 
     try:
         while True:
             time.sleep(1)
             os.kill(ppid, 0)
-            print " === ppid_watcher: parent %s is alive" % ppid
+            print "ppid_watcher: parent %s is alive" % ppid
     except:
-        print " === ppid_watcher: parent %s is gone - bye" % ppid
+        print "ppid_watcher: parent %s is gone - bye" % ppid
         os.kill(os.getpid(), signal.SIGTERM)
         os.kill(os.getpid(), signal.SIGKILL)
 
@@ -99,29 +99,37 @@ if __name__ == "__main__":
         raise RuntimeError('argument error: %s' % sys.argv)
 
     # ensure we have a config file
-    cfg = ru.read_json(sys.argv[1])
+    cfgf = sys.argv[1]
 
-    pwd = cfg['pwd']
-    uid = cfg['uid']
+    try:
+        cfg = ru.read_json(cfgf)
+        pwd = cfg['pwd']
+        uid = cfg['uid']
 
-    # first things first: inform the caller about our pit
-    spt.setproctitle('rp.%s' % uid)
-    with open('%s/%s.pid'  % (pwd, uid), 'w') as fout:
-        fout.write('%d\n' % os.getpid())
-        fout.flush
+        # first things first: inform the caller about our pit
+        spt.setproctitle('rp.%s' % uid)
+        with open('%s/%s.pid'  % (pwd, uid), 'w') as fout:
+            fout.write('%d\n' % os.getpid())
+            fout.flush
 
-    if 'ppid' in cfg:
-        print " === ppid_watcher: run"
-        watcher = mt.Thread(target=ppid_watcher, args=[int(cfg['ppid'])])
-        watcher.daemon = True
-        watcher.start()
-    else:
-        print " === ppid_watcher: nope"
+        if 'ppid' in cfg:
+            print "ppid_watcher: run"
+            watcher = mt.Thread(target=ppid_watcher, args=[int(cfg['ppid'])])
+            watcher.daemon = True
+            watcher.start()
+        else:
+            print "ppid_watcher: nope"
 
-    # create the bridge
-    bridge = rpu.Bridge.create(cfg)
-    bridge.start()
-    bridge.wait()
+        # create the bridge
+        bridge = rpu.Bridge.create(cfg)
+        bridge.start()
+        bridge.wait()
+
+    except Exception as e:
+        sys.stderr.write('ERROR: %s failed: %s\n' % (cfgf, e))
+        sys.exit(1)
+
+    sys.exit(0)
 
 
 # ------------------------------------------------------------------------------

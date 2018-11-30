@@ -786,8 +786,7 @@ class Default(PMGRLaunchingComponent):
 
         # ----------------------------------------------------------------------
         # Database connection parameters
-        sid           = self._session.uid
-        database_url  = self._session.dburl
+        sid = self._session.uid
 
         # some default values are determined at runtime
         default_virtenv = '%%(resource_sandbox)s/ve.%s.%s' % \
@@ -807,7 +806,6 @@ class Default(PMGRLaunchingComponent):
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
         agent_launch_method     = rcfg.get('agent_launch_method')
-        agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
         agent_spawner           = rcfg.get('agent_spawner',       DEFAULT_AGENT_SPAWNER)
         rc_agent_config         = rcfg.get('agent_config',        DEFAULT_AGENT_CONFIG)
         agent_scheduler         = rcfg.get('agent_scheduler')
@@ -907,13 +905,6 @@ class Default(PMGRLaunchingComponent):
         # Check for deprecated global_virtenv
         if 'global_virtenv' in rcfg:
             raise RuntimeError("'global_virtenv' is deprecated (%s)" % resource)
-
-        # Create a host:port string for use by the bootstrap_0.
-        db_url = rs.Url(agent_dburl)
-        if db_url.port:
-            db_hostport = "%s:%d" % (db_url.host, db_url.port)
-        else:
-            db_hostport = "%s:%d" % (db_url.host, 27017)  # mongodb default
 
         # ----------------------------------------------------------------------
         # the version of the agent is derived from
@@ -1072,7 +1063,6 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['spawner']            = agent_spawner
         agent_cfg['scheduler']          = agent_scheduler
         agent_cfg['runtime']            = runtime
-        agent_cfg['dburl']              = str(database_url)
         agent_cfg['session_id']         = sid
         agent_cfg['pilot_id']           = pid
         agent_cfg['logdir']             = '.'

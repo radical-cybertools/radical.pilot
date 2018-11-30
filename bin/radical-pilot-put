@@ -10,8 +10,8 @@ import time
 import setproctitle        as spt
 import radical.pilot.utils as rpu
 
-DELAY = 1.0
-N     = 100
+DELAY = 0.1
+N     = 60
 
 
 # ------------------------------------------------------------------------------
@@ -39,9 +39,12 @@ if __name__ == "__main__":
     start = time.time()
     for i in range(N):
 
+        sys.stdout.write('.')
         putter.put({'data': i})
+        sys.stdout.flush()
         time.sleep(DELAY)
 
+    print '#'
     putter.put({'cmd': 'QUIT'})
 
     stop = time.time()
