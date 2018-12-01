@@ -1,0 +1,21 @@
+{
+    "sample_resource_1" : {
+        "description"       : "cooler than comet",
+        "cores_per_node"    : 9001,
+        "gpus_per_node"     : 99,
+        "lfs_path_per_node" : "not_comet/",
+        "lfs_size_per_node" : 1000
+    },
+    "sample_resource_2" : {
+        "description"       : "much cooler than comet",
+        "gpus_per_node"     : 100,
+        "lfs_path_per_node" : "not_comet",
+        "lfs_size_per_node" : 1001
+    },
+    "sample_resource_3" : {
+        "description"       : "wayyyy cooler than comet",
+        "cores_per_node"    : 9003,
+        "lfs_path_per_node" : "/not_comet",
+        "lfs_size_per_node" : 1002
+    }
+}
