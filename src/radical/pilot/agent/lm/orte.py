@@ -251,6 +251,8 @@ class ORTE(LaunchMethod):
         # Construct the hosts_string, env vars
         hosts_string = ''
         depths       = set()
+        old_node     = None
+        n_procs      = 0
         for node in slots['nodes']:
 
             # On some Crays, like on ARCHER, the hostname is "archer_N".  In
@@ -262,13 +264,19 @@ class ORTE(LaunchMethod):
             #       regexp or so.
             node_id = node[0].rsplit('_', 1)[-1] 
 
+            if old_node and old_node != node_id:
+                break  ### FIXME EXPERIMENT
+            else:
+                old_node = node_id
+            n_procs += 1
+
             # add all cpu and gpu process slots to the node list.
             for cpu_slot in node[2]: hosts_string += '%s,' % node_id
             for gpu_slot in node[3]: hosts_string += '%s,' % node_id
             for cpu_slot in node[2]: depths.add(len(cpu_slot))
 
-        assert(len(depths) == 1), depths
-        depth = list(depths)[0]
+      # assert(len(depths) == 1), depths
+      # depth = list(depths)[0]
 
         # FIXME: is this binding correct?
       # if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
@@ -292,7 +300,7 @@ class ORTE(LaunchMethod):
                             ]
         debug_string = ' '.join(debug_strings)
 
-        if task_mpi: np_flag = '-np %s' % task_cores
+        if task_mpi: np_flag = '-np %s' % n_procs
         else       : np_flag = '-np 1'
 
         command = '%s %s -oversubscribe --hnp "%s" %s %s -host %s %s %s' % (

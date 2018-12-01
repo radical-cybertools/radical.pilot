@@ -171,7 +171,7 @@ class ORTE(AgentExecutingComponent):
         if not isinstance(units, list):
             units = [units]
 
-        self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
+        self.advance(units, rps.AGENT_EXECUTING, publish=False, push=False)
 
         for unit in units:
             self._handle_unit(unit)
@@ -241,12 +241,12 @@ class ORTE(AgentExecutingComponent):
 
             cu['target_state'] = rps.FAILED
             self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, 
-                         publish=True, push=True)
+                         publish=False, push=True)
 
         else:
             cu['started'] = time.time()
             self._log.debug("unit %s startup ok", uid)
-            self.advance(cu, rps.AGENT_EXECUTING, publish=True, push=False)
+            self.advance(cu, rps.AGENT_EXECUTING, publish=False, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -278,7 +278,7 @@ class ORTE(AgentExecutingComponent):
             cu['target_state'] = rps.DONE
 
         self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, 
-                     publish=True, push=True)
+                     publish=False, push=True)
 
 
     # --------------------------------------------------------------------------

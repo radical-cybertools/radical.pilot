@@ -1,4 +1,3 @@
-
 # this is the default unit manager config which is used if no other config is
 # specified.  It contains the minimal set of settings required for
 # a functional unit manager.
@@ -7,13 +6,13 @@
     "scheduler" : "round_robin",
 
     # max number of updates to put into a db bulk
-    "bulk_collection_size" : 100,
+    "bulk_collection_size" : 1024,
 
     # max time period to collect db notifications into bulks (seconds)
-    "bulk_collection_time" : 1.0,
+    "bulk_collection_time" : 10.0,
 
     # time to sleep between database polls (seconds)
-    "db_poll_sleeptime" : 1.0,
+    "db_poll_sleeptime" : 60.0,
 
     "bridges" : {
         "umgr_staging_input_queue"  : {"log_level" : "error",

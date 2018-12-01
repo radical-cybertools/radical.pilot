@@ -580,7 +580,7 @@ class AgentSchedulingComponent(rpu.Component):
             units = [units]
 
         # advance state, publish state change, do not push unit out.
-        self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
+        self.advance(units, rps.AGENT_SCHEDULING, publish=False, push=False)
 
         for unit in units:
 
@@ -595,7 +595,7 @@ class AgentSchedulingComponent(rpu.Component):
                 # about the state change, and push the unit out toward the next
                 # component.
                 self.advance(unit, rps.AGENT_EXECUTING_PENDING, 
-                             publish=True, push=True)
+                             publish=False, push=True)
             else:
                 # no resources available, put in wait queue
                 self.app_stats_unapply(unit)
@@ -727,6 +727,7 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def app_stats_eval(self, unit):
 
+        return unit
         self._log.debug('=== app_stat eval %s',  unit['uid'])
 
         if 'app_stats' not in unit: 
@@ -836,7 +837,7 @@ class AgentSchedulingComponent(rpu.Component):
             if self._try_allocation(unit):
 
                 # allocated unit -- advance it
-                self.advance(unit, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
+                self.advance(unit, rps.AGENT_EXECUTING_PENDING, publish=False, push=True)
 
                 # remove it from the wait queue
                 with self._wait_lock :

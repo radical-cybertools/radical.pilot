@@ -62,7 +62,7 @@ class Default(AgentStagingOutputComponent):
         if not isinstance(units, list):
             units = [units]
 
-        self.advance(units, rps.AGENT_STAGING_OUTPUT, publish=True, push=False)
+        self.advance(units, rps.AGENT_STAGING_OUTPUT, publish=False, push=False)
 
         ru.raise_on('work bulk')
 
