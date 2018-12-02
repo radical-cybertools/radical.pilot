@@ -1,0 +1,71 @@
+
+{
+    "titan_orte": {
+        "description"                 : "Titan, ORTE, 4 executors, CUs: 2 nodes",
+        "notes"                       : "",
+        "schemas"                     : ["local"],
+        "local"                       : {
+            "job_manager_hop"         : "fork://localhost/",
+            "job_manager_endpoint"    : "torque://localhost",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_queue"               : "batch",
+        "lrms"                        : "TORQUE",
+        "agent_type"                  : "multicore",
+        "agent_config"                : "rp_paper",
+        "agent_scheduler"             : "RP_PAPER",
+        "agent_spawner"               : "SHELLFS",
+        "agent_launch_method"         : "ORTE",
+        "task_launch_method"          : "ORTE",
+        "mpi_launch_method"           : "ORTE",
+        "cores_per_node"              : "16",
+        "gpus_per_node"               : 1,
+        "pre_bootstrap_0"             : [
+            "module swap PrgEnv-pgi PrgEnv-gnu",
+            "module load python",
+            "module use --append /lustre/atlas/world-shared/csc230/openmpi/modules/",
+            "module load openmpi/2018_10_24_539f71d",
+            # Workaround for ZMQ runtime failure
+            "export LD_PRELOAD=/lib64/librt.so.1"
+        ],
+        "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
+        "valid_roots"                 : ["/lustre/atlas/scratch"],
+        "rp_version"                  : "installed",
+        "virtenv_mode"                : "use",
+        "virtenv"                     : "/lustre/atlas1/bip149/scratch/merzky1/radical.pilot.wl_shape/ve/", 
+     #  "virtenv"                     : "/lustre/atlas2/csc230/world-shared/ve.rp.titan.20017.10.06",
+        "stage_cacerts"               : true,
+        "python_dist"                 : "default",
+        "virtenv_dist"                : "system"
+    }, 
+
+    "local": {
+        "description"                 : "",
+        "notes"                       : "",
+        "schemas"                     : ["local", "ssh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "ssh://localhost/",
+            "filesystem_endpoint"     : "sftp://localhost/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_remote_workdir"      : "$HOME",
+        "lrms"                        : "FORK",
+        "agent_scheduler"             : "RP_PAPER",
+        "agent_spawner"               : "SHELLFS",
+        "agent_launch_method"         : "FORK",
+        "task_launch_method"          : "FORK",
+        "mpi_launch_method"           : "MPIRUN",
+        "rp_version"                  : "installed",
+        "virtenv_mode"                : "use",
+        "virtenv"                     : "/home/merzky/radical/radical.pilot.merge/ve",
+        "python_dist"                 : "default",
+        "cores_per_node"              : 1,
+        "gpus_per_node"               : 1
+    }
+
+}

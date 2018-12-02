@@ -10,13 +10,14 @@ import time
 import radical.pilot as rp
 import radical.utils as ru
 
-t_gen     = 2
-t_num     = 1024 * 8
+t_num     = 1024 * 16
+t_gen     = 4
 t_procs   = 2
-t_threads = 16
+t_threads = 1
 t_cores   = t_procs * t_threads
-t_time    = 60
-p_cores   = t_num * t_cores / t_gen + 16  # * 4
+t_time    = 1
+a_cores   = 0  # 16 * 4
+p_cores   = t_num * t_cores / t_gen  + a_cores
 p_queue   = 'debug'
 
 # p_queue   = 'batch'
@@ -34,11 +35,13 @@ if __name__ == '__main__':
     try:
 
         report.header('submit pilots')
-        pd_init = {'resource'      : 'ornl.titan_orte',
+        pd_init = {
+                #  'resource'      : 'exp.titan_orte',
+                   'resource'      : 'exp.local',
                    'runtime'       : 60,
                    'exit_on_error' : True,
-                   'project'       : 'BIP149',
-                   'queue'         : p_queue,
+                 # 'project'       : 'BIP149',
+                 # 'queue'         : p_queue,
                    'access_schema' : 'local',
                    'cores'         : p_cores
                   }

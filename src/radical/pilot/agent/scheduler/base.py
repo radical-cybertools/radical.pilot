@@ -23,6 +23,7 @@ SCHEDULER_NAME_CONTINUOUS      = "CONTINUOUS"
 SCHEDULER_NAME_CONTINUOUS_FIFO = "CONTINUOUS_FIFO"
 SCHEDULER_NAME_SCATTERED       = "SCATTERED"
 SCHEDULER_NAME_HOMBRE          = "HOMBRE"
+SCHEDULER_NAME_RP_PAPER        = "RP_PAPER"
 SCHEDULER_NAME_TORUS           = "TORUS"
 SCHEDULER_NAME_YARN            = "YARN"
 SCHEDULER_NAME_SPARK           = "SPARK"
@@ -289,8 +290,8 @@ class AgentSchedulingComponent(rpu.Component):
 
         # configure the scheduler instance
         self._configure()
-        self._log.debug("slot status after  init      : %s", 
-                        self.slot_status())
+      # self._log.debug("slot status after  init      : %s", 
+      #                 self.slot_status())
 
         self._app_stats = dict()      # gather app metrics
         self._app_lock  = mt.RLock()  # lock slot allocation/deallocation
@@ -313,6 +314,7 @@ class AgentSchedulingComponent(rpu.Component):
         from .continuous      import Continuous
         from .scattered       import Scattered
         from .hombre          import Hombre
+        from .rp_paper        import RPPaper
         from .torus           import Torus
         from .yarn            import Yarn
         from .spark           import Spark
@@ -323,6 +325,7 @@ class AgentSchedulingComponent(rpu.Component):
                 SCHEDULER_NAME_CONTINUOUS      : Continuous,
                 SCHEDULER_NAME_SCATTERED       : Scattered,
                 SCHEDULER_NAME_HOMBRE          : Hombre,
+                SCHEDULER_NAME_RP_PAPER        : RPPaper,
                 SCHEDULER_NAME_TORUS           : Torus,
                 SCHEDULER_NAME_YARN            : Yarn,
                 SCHEDULER_NAME_SPARK           : Spark
@@ -418,6 +421,7 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def app_stats_apply(self, unit):
 
+        return
 
         # check if stats are requested
         uid    = unit['uid']
@@ -554,6 +558,8 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def app_stats_unapply(self, unit):
 
+        return
+
         if 'p_orig' not in unit:
             return
 
@@ -628,13 +634,13 @@ class AgentSchedulingComponent(rpu.Component):
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=unit['uid'])
 
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  allocate   %s: %s", unit['uid'],
-                            self.slot_status())
-            self._log.debug("%s [%s/%s] : %s", unit['uid'],
-                            unit['description']['cpu_processes'],
-                            unit['description']['gpu_processes'],
-                            pprint.pformat(unit['slots']))
+      # if self._log.isEnabledFor(logging.DEBUG):
+      #     self._log.debug("after  allocate   %s: %s", unit['uid'],
+      #                     self.slot_status())
+      #     self._log.debug("%s [%s/%s] : %s", unit['uid'],
+      #                     unit['description']['cpu_processes'],
+      #                     unit['description']['gpu_processes'],
+      #                     pprint.pformat(unit['slots']))
 
         # True signals success
         return True
@@ -673,9 +679,9 @@ class AgentSchedulingComponent(rpu.Component):
                 idx += 1
             core_map.append(p_map)
 
-        if idx != len(cores):
-            self._log.debug('%s -- %s -- %s -- %s',
-                            idx, len(cores), cores, n_procs)
+      # if idx != len(cores):
+      #     self._log.debug('%s -- %s -- %s -- %s',
+      #                     idx, len(cores), cores, n_procs)
         assert(idx == len(cores))
 
         # gpu procs are considered single threaded right now (FIXME)
@@ -693,7 +699,7 @@ class AgentSchedulingComponent(rpu.Component):
         c_opt = None
         v_opt = None
         mapf  = './app_map.dat'
-        self._log.debug('=== map: %s' % mapf)
+      # self._log.debug('=== map: %s' % mapf)
 
         if stid:
             optim  = self._app_stats[stid]['optimizer']
@@ -782,9 +788,9 @@ class AgentSchedulingComponent(rpu.Component):
             self._log.error("cannot unschedule: %s (no slots)" % unit)
             return True
 
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before unschedule %s: %s", unit['uid'], 
-                            self.slot_status())
+      # if self._log.isEnabledFor(logging.DEBUG):
+      #     self._log.debug("before unschedule %s: %s", unit['uid'], 
+      #                     self.slot_status())
 
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
@@ -799,9 +805,9 @@ class AgentSchedulingComponent(rpu.Component):
         # slots for units waiting in the wait pool.
         self.publish(rpc.AGENT_SCHEDULE_PUBSUB, unit)
 
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  unschedule %s: %s", unit['uid'], 
-                            self.slot_status())
+      # if self._log.isEnabledFor(logging.DEBUG):
+      #     self._log.debug("after  unschedule %s: %s", unit['uid'], 
+      #                     self.slot_status())
 
         # return True to keep the cb registered
         return True
@@ -815,17 +821,17 @@ class AgentSchedulingComponent(rpu.Component):
         we can attempt to schedule units from the wait pool.
         '''
 
-        # we ignore any passed unit.  In principle the unit info could be used to
-        # determine which slots have been freed.  No need for that optimization
-        # right now.  This will become interesting once schedule becomes too
-        # expensive.
+        # we ignore any passed unit.  In principle the unit info could be used
+        # to determine which slots have been freed.  No need for that
+        # optimization right now.  This will become interesting once schedule
+        # becomes too expensive.
         # FIXME: optimization
 
         unit = msg
 
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before schedule   %s: %s", unit['uid'],
-                            self.slot_status())
+      # if self._log.isEnabledFor(logging.DEBUG):
+      #     self._log.debug("before schedule   %s: %s", unit['uid'],
+      #                     self.slot_status())
 
         # cycle through wait queue, and see if we get anything placed now.  We
         # cycle over a copy of the list, so that we can modify the list on the
@@ -837,7 +843,8 @@ class AgentSchedulingComponent(rpu.Component):
             if self._try_allocation(unit):
 
                 # allocated unit -- advance it
-                self.advance(unit, rps.AGENT_EXECUTING_PENDING, publish=False, push=True)
+                self.advance(unit, rps.AGENT_EXECUTING_PENDING, 
+                             publish=False, push=True)
 
                 # remove it from the wait queue
                 with self._wait_lock :
