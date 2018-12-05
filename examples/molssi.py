@@ -19,27 +19,40 @@ address = "https://localhost:7777/"
 
 # ------------------------------------------------------------------------------
 #
-def get_task(n):
+def fetch_tasks(bulk_size):
+    '''
+    Fetch a bulk of tasks from the QCArchive service endpoint, convert them from
+    json, and return them as a list.
+    '''
 
-    # Pull data
     payload = {
         "meta": {
-            "name" : "testing_manager",
-            "tag"  : None,
-            "limit": n
+            "name" : "testing_manager",   # TODO: what is this used for?
+            "tag"  : None,                # TODO: what is this used for?
+            "limit": bulk_size
         },
         "data": {}
     }
-    r    = requests.get(address + "queue_manager", json=payload, verify=False)
-    task = r.json()
+
+    # TODO: auth
+    data  = requests.get(address + "queue_manager", json=payload, verify=False)
+    tasks = data.json()
     
-  # pprint.pprint(tasks)
-    return task
+    return tasks
 
 
 # ------------------------------------------------------------------------------
 #
-def push_tasks(bulk_id, unit, sandbox):
+def push_tasks(bulk_id, unit):
+    '''
+    Once a bulk of tasks has been executed, push the resulting jsons back to the
+    QCArchive service endpoint.  The results are read from 
+    the unit's `stdout` file, which the executor needs to fetch back to
+    localhost.
+
+    Units which failed are marked and returned in a separate bulk, using the
+    `shutdown` operation.
+    '''
 
     data_ok  = dict()
     data_nok = list()
@@ -47,7 +60,7 @@ def push_tasks(bulk_id, unit, sandbox):
     for unit in units:
 
         if unit.state == rp.DONE:
-            fout   = unit.metadata['fout']
+            fout   = unit.metadata['fout']   # FIXME: implies data staging
             result = ru.read_json(fout)
             data_ok[unit.name] = (result, u'single', [])
 
@@ -72,9 +85,15 @@ def push_tasks(bulk_id, unit, sandbox):
 
 # ------------------------------------------------------------------------------
 #
-report = ru.Reporter(name='radical.pilot')
+# create an RP session, start a pilot, and then pull bulks of tasks for
+# execution.  Tasks are pushed back once a bulk has been completed.
+#
+# In this simple example, we use a sandbox dir for storing stdin and stdout
+# files - in production we would need to use proper data staging.
+#
+report   = ru.Reporter(name='radical.pilot')
 resource = 'local.localhost'
-session = rp.Session()
+session  = rp.Session()
 try:
 
     sandbox = '%s/data' % os.getcwd()
@@ -90,14 +109,8 @@ try:
     pdesc = rp.ComputePilotDescription(pd_init)
     pilot = pmgr.submit_pilots(pdesc)
 
-    report.header('submit units')
-
-    # Register the ComputePilot in a UnitManager object.
     umgr = rp.UnitManager(session=session)
     umgr.add_pilots(pilot)
-
-    # Create a workload of ComputeUnits.
-    # Each compute unit runs '/bin/date'.
 
     for bulk in range(5):
 
@@ -106,10 +119,8 @@ try:
 
         report.info('handle bulk %s (%d)\n\t' % (bulk_id, bulk_size))
         cuds  = list()
-        tasks = get_task(bulk_size)
+        tasks = fetch_tasks(bulk_size=bulk_size)
         for task in tasks['data']:
-
-          # pprint.pprint(task)
 
             args  = task['spec']['args'][0]
             prog  = args['program']
@@ -140,11 +151,9 @@ try:
         report.ok('>>ok\n')
         units = umgr.submit_units(cuds)
         report.header('gather results')
-      # umgr.wait_units(uids=[u.uid for u in units])
-        umgr.wait_units()
+        umgr.wait_units()  # FIXME: this will glow slow over time.
 
-        push_tasks(bulk_id, units, sandbox)
-
+        push_tasks(bulk_id, units)
 
 
 except Exception as e:
