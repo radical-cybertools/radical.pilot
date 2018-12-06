@@ -54,9 +54,9 @@ class Torque(LRMS):
             self._log.warning(msg)
 
         torque_gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
-        lfs_path = self._cfg.get('lfs_path_per_node', None)
-        if '$' in path:
-            lfs_path = os.path.expandvars(path)
+
+        lfs_path = self._cfg.get('lfs_path_per_node', '')
+        lfs_path = os.path.expandvars(lfs_path)
 
         torque_lfs_per_node   = {'path' : lfs_path,
                                  'size' : self._cfg.get('lfs_size_per_node', 0)
