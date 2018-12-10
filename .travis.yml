@@ -16,7 +16,7 @@ git:
 env:
   global:
     - LOC=/home/travis/virtualenv/python2.7  # Location where VE is created on travis
-    - CMD1="coverage run --source $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/ -m pytest -vvv tests/;flake8 tests/;pylint tests/"
+    - CMD1="coverage run -m pytest -vvv tests/;flake8 tests/;pylint tests/"
     - CMD2="flake8 --config=.flake8 $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/"
     - CMD3="pylint $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/"
     - COVERAGE=false
@@ -36,11 +36,6 @@ install:
 
    
 script:
-  #- coverage run --source $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/ -m pytest -vvv tests/;
-  #- flake8 tests/;
-  #- pylint tests/
-  #- flake8 --config=.flake8 $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/
-  #- pylint $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/
   - echo $MAIN_CMD
   - eval $MAIN_CMD
   

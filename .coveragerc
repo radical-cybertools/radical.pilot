@@ -1,0 +1,9 @@
+[run]
+include =
+ $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/aprun.py
+ $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/fork.py
+ $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/mpirun.py
+ $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/yarn.py
+ $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/spark.py
+ $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/orte.py
+ $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/base.py
