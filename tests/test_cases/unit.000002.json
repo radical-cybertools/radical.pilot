@@ -1,0 +1,32 @@
+
+{
+    "unit": {
+        "description": {"executable" : "spark-submit",
+                        "arguments"  : ["test.py"]}
+    },
+
+    "setup" : {
+        "lm" : {
+             "slots" :{
+                 "nodes"         : [["test", "test", [], []]],
+                 "cores_per_node": 24, 
+                 "gpus_per_node" : 0, 
+                 "lm_info"       : {"spark_home"     : "/", 
+                                    "master_ip"      : "test_ip", 
+                                    "lm_detail"      : "spark://test_ip:7077", 
+                                    "name"           : "spark", 
+                                    "launch_command" : "", 
+                                    "nodename"       : "test"
+                 }
+             }
+        }
+    }, 
+
+    "results": {
+        "lm": {
+            "spark"  : ["/spark-submit    test.py", null]
+        }
+    }
+}
+
+

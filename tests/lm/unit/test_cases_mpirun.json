@@ -1,6 +1,0 @@
-{"trigger" : [{"slots" : {"nodes" : [{"name" : "test1","uid" : "test1","core_map" : [[0]],"gpu_map" : [],"lfs" : {"size" : 0,"path" : null}}]},"description": {"executable" : "/bin/sleep","arguments" : ["10"],"cpu_threads" : 1,"cpu_processes" :1}},
-             {"slots": {"nodes" : [{"name" : "test1","uid" : "test1","core_map": [[0]],"gpu_map" : [],"lfs" : {"size": 0,"path": null}},{"name" : "test2","uid" : "test2","core_map": [[0]],"gpu_map" : [],"lfs" : {"size": 0,"path": null}}]},"description": {"executable": "/bin/sleep","arguments": ["10"],"cpu_threads" : 1,"cpu_processes":2}}
-             ],
- "result" : ["mpirun -np 1  -host test1  /bin/sleep \"10\"",
-             "mpirun -np 2  -host test1,test2  /bin/sleep \"10\""]
-}
