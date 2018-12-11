@@ -8,3 +8,4 @@ include =
  $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/orte.py
  $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/base.py
  $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/ibrun.py
+ $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/ssh.py

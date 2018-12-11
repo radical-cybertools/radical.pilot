@@ -1,13 +1,13 @@
 
 # pylint: disable=protected-access, unused-argument
 
+import os
 
-from   test_common                   import setUp
-from   radical.pilot.agent.lm.ibrun import IBRun
-
-import radical.utils as ru
+from   test_common                 import setUp
+from   radical.pilot.agent.lm.ssh import SSH
 import pytest
 
+import radical.utils as ru
 
 try:
     import mock
@@ -17,35 +17,35 @@ except ImportError:
 
 # ------------------------------------------------------------------------------
 #
-@mock.patch.object(IBRun, '__init__',   return_value=None)
-@mock.patch.object(IBRun, '_configure', return_value=None)
+@mock.patch.object(SSH, '__init__',   return_value=None)
+@mock.patch.object(SSH, '_configure', return_value=None)
+@mock.patch.dict(os.environ,{'PATH':'test_path'})
 @mock.patch('radical.utils.raise_on')
 def test_construct_command(mocked_init, 
                            mocked_configure,
                            mocked_raise_on):
 
-    test_cases = setUp('lm', 'ibrun')
-    component  = IBRun(name=None, cfg=None, session=None)
+    test_cases = setUp('lm', 'ssh')
+    component  = SSH(name=None, cfg=None, session=None)
 
     component._log           = ru.get_logger('dummy')
-    component.name           = 'IBRun'
+    component.name           = 'SSH'
     component.mpi_flavor     = None
-    component.launch_command = 'ibrun'
+    component.launch_command = 'ssh'
     component.ccmrun_command = ''
     component.dplace_command = ''
 
     for unit, result in test_cases:
-        if result == "RutimeError":
-            with pytest.raises(RuntimeError):
+        if result == "ValueError":
+            with pytest.raises(ValueError):
                 command, hop = component.construct_command(unit, None)
+        elif result == "RuntimeError":
+            with pytest.raises(RuntimeError):
+                command, hop = component.construct_command(unit, 1)
         else:
-            command, hop = component.construct_command(unit, None)
-            print command, hop
+            command, hop = component.construct_command(unit, 1)
             assert([command, hop] == result)
-            
 
 
 # ------------------------------------------------------------------------------
-
-
 

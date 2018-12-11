@@ -26,7 +26,7 @@
     "results": {
         "lm": {
             "spark"  : ["/spark-submit    test.py", null],
-            "ibrun"  : "Error"
+            "ibrun"  : "RutimeError"
         }
     }
 }

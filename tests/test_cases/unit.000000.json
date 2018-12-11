@@ -36,7 +36,8 @@
             "orte"  : ["orterun  --hnp \"dvm_uri\" -np 1 --bind-to none -host node1 -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep", null],
             "aprun" : ["aprun -n 1 -N 1 -L node1 -d 1 -cc 0 /bin/sleep ", null], 
             "mpirun": ["mpirun -np 1  -host node1  /bin/sleep", null], 
-            "ibrun" : ["ibrun -n 1 -o 1 /bin/sleep", null]
+            "ibrun" : ["ibrun -n 1 -o 1 /bin/sleep", null],
+            "ssh"   : "ValueError"
         }
     }
 }
