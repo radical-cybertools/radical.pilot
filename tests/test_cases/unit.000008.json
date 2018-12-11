@@ -1,0 +1,39 @@
+
+{
+    "unit": {
+        "uid":         "unit.000008",
+        "description": {"executable"    : "/bin/sleep",
+                        "arguments"     : null,
+                        "cpu_processes" : 1,
+                        "environment"   : {"test_env":"test_val"}
+                       }
+    },
+
+    "setup" : {
+        "lm" : {
+            "slots": {  
+                "cores_per_node": 16,
+                "gpus_per_node" : 1,
+                "task_offsets"  : [1],
+                "lm_info"       : {
+                                   # for LM ORTE
+                                   "spark_home"     : "/", 
+                                   "master_ip"      : "test_ip", 
+                                   "lm_detail"      : "spark://test_ip:7077", 
+                                   "name"           : "spark", 
+                                   "launch_command" : "", 
+                                   "nodename"       : "test"
+                                  },
+                "lfs_per_node"  : 0
+            }
+        }
+    }, 
+
+    "results": {
+        "lm": {
+            "spark" : ["//bin/sleep     ",null],
+            "ssh"   : "RuntimeError"
+        }
+    }
+}
+

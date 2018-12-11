@@ -1,6 +1,7 @@
 
 {
     "unit": {
+        "uid":         "unit.000002",
         "description": {"executable" : "spark-submit",
                         "arguments"  : ["test.py"],
                         "cpu_processes" : 1}
@@ -26,7 +27,8 @@
     "results": {
         "lm": {
             "spark"  : ["/spark-submit    test.py", null],
-            "ibrun"  : "RutimeError"
+            "ibrun"  : "RuntimeError",
+            "orte"   : "RuntimeError"
         }
     }
 }

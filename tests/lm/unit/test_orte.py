@@ -7,7 +7,7 @@ from   radical.pilot.agent.lm.orte import ORTE
 
 import radical.utils as ru
 
-
+import pytest
 try:
     import mock
 except ImportError:
@@ -31,8 +31,12 @@ def test_construct_command(mocked_init,
     component._log           = ru.get_logger('dummy')
 
     for unit, result in test_cases:
-        command, hop = component.construct_command(unit, None)
-        assert([command, hop] == result)
+        if result == "RuntimeError":
+            with pytest.raises(RuntimeError):
+                command, hop = component.construct_command(unit, None)
+        else:
+            command, hop = component.construct_command(unit, None)
+            assert([command, hop] == result)
 
 
 # ------------------------------------------------------------------------------

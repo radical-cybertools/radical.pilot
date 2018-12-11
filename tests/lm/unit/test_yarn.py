@@ -6,6 +6,7 @@ from   radical.pilot.agent.lm.yarn import Yarn
 
 import radical.utils as ru
 
+import pytest
 
 try:
     import mock
@@ -27,11 +28,16 @@ def test_construct_command(mocked_init,
 
     component._log           = ru.get_logger('dummy')
     component.launch_command = 'yarn'
+    component.name           = "YARN"
 
     for unit, result in test_cases:
-        command, hop = component.construct_command(unit, None)
-        assert([command, hop] == result)
-
+        if result == "RuntimeError":
+            with pytest.raises(RuntimeError):
+                command, hop = component.construct_command(unit, None)
+        else:
+            command, hop = component.construct_command(unit, None)
+            assert([command, hop] == result)
+        
 
 # ------------------------------------------------------------------------------
 

@@ -16,10 +16,6 @@
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
                 "task_offsets"  : [16],
-                "lm_info"       : {
-                                   # for LM ORTE
-                                   "dvm_uri" : "dvm_uri"
-                                  },
                 "lfs_per_node"  : 0,
                 "nodes"         : [{"name"    : "node1",
                                     "uid"     : "node1",
@@ -41,7 +37,9 @@
 
     "results": {
         "lm": { "ibrun" : ["ibrun -n 2 -o 16 /bin/sleep \"10\" ",null],
-                "ssh"   : "RuntimeError"
+                "ssh"   : "RuntimeError",
+                "spark" : "RuntimeError",
+                "orte"  : "RuntimeError"
         }
     }
 }

@@ -35,7 +35,7 @@ def test_construct_command(mocked_init,
     component.dplace_command = ''
 
     for unit, result in test_cases:
-        if result == "RutimeError":
+        if result == "RuntimeError":
             with pytest.raises(RuntimeError):
                 command, hop = component.construct_command(unit, None)
         else:
