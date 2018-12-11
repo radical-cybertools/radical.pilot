@@ -2,9 +2,10 @@
 {
     "unit": {
         "uid":         "unit.000003",
-        "description": {"executable"  : "/bin/sleep",
-                        "arguments"   : ["10"],
-                        "cpu_threads" : 4
+        "description": {"executable"    : "/bin/sleep",
+                        "arguments"     : ["10"],
+                        "cpu_processes" : 1,
+                        "cpu_threads"   : 4
                        }
     },
 
@@ -13,6 +14,7 @@
             "slots": {  
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
+                "task_offsets"   : [4],
                 "lm_info"       : {
                                    # for LM ORTE
                                    "dvm_uri" : "dvm_uri"
@@ -34,7 +36,8 @@
             "fork"  : ["/bin/sleep \"10\" ", null],
             "orte"  : ["orterun  --hnp \"dvm_uri\" -np 1 --bind-to none -host node1 -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" ", null],
             "aprun" : ["aprun -n 1 -N 1 -L node1 -d 4 -cc 0,1,2,3 /bin/sleep \"10\"  ", null], 
-            "mpirun": ["mpirun -np 1  -host node1  /bin/sleep \"10\"", null]
+            "mpirun": ["mpirun -np 1  -host node1  /bin/sleep \"10\"", null],
+            "ibrun" : ["ibrun -n 1 -o 4 /bin/sleep \"10\" ", null]
         }
     }
 }
