@@ -13,6 +13,19 @@ try:
 except ImportError:
     from unittest import mock
 
+# ------------------------------------------------------------------------------
+#
+@mock.patch.object(CCMRun, '__init__',   return_value=None)
+@mock.patch('radical.utils.raise_on')
+@mock.patch('radical.utils.which', return_value='/usr/bin/ccmrun')
+def test_configure(mocked_init, mocked_raise_on, mocked_which):
+
+    component = CCMRun(name=None, cfg=None, session=None)
+    component._configure()
+    assert('/usr/bin/ccmrun' == component.launch_command)
+
+# ------------------------------------------------------------------------------
+
 
 # ------------------------------------------------------------------------------
 #

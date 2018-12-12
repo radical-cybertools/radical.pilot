@@ -18,6 +18,34 @@ except ImportError:
 # ------------------------------------------------------------------------------
 #
 @mock.patch.object(SSH, '__init__',   return_value=None)
+@mock.patch('radical.utils.raise_on')
+@mock.patch('radical.utils.which', return_value='/usr/bin/ssh')
+def test_configure(mocked_init, mocked_raise_on, mocked_which):
+ 
+    cmd_str = '/usr/bin/ssh -o StrictHostKeyChecking=no -o ControlMaster=auto'
+    component = SSH(name=None, cfg=None, session=None)
+    component._configure()
+    assert(cmd_str == component.launch_command)
+
+# ------------------------------------------------------------------------------
+
+
+# ------------------------------------------------------------------------------
+#
+@mock.patch.object(SSH, '__init__',   return_value=None)
+@mock.patch('radical.utils.raise_on')
+@mock.patch('radical.utils.which', return_value=None)
+def test_configure_fail(mocked_init, mocked_raise_on, mocked_which):
+
+    component = SSH(name=None, cfg=None, session=None)
+    with pytest.raises(RuntimeError):
+        component._configure()
+
+# ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+#
+@mock.patch.object(SSH, '__init__',   return_value=None)
 @mock.patch.object(SSH, '_configure', return_value=None)
 @mock.patch.dict(os.environ,{'PATH':'test_path'})
 @mock.patch('radical.utils.raise_on')

@@ -13,6 +13,20 @@ try:
 except ImportError:
     from unittest import mock
 
+# ------------------------------------------------------------------------------
+#
+@mock.patch.object(Yarn, '__init__',   return_value=None)
+@mock.patch('radical.utils.raise_on')
+def test_configure(mocked_init, mocked_raise_on):
+
+    component = Yarn(name=None, cfg=None, session=None)
+    component._log = ru.get_logger('dummy')
+    component._cfg = {'lrms_info':{'lm_info':{'launch_command':'yarn'}}}
+    component._configure()
+    assert('yarn' == component.launch_command)
+
+# ------------------------------------------------------------------------------
+
 
 # ------------------------------------------------------------------------------
 #

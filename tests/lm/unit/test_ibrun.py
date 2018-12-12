@@ -14,6 +14,19 @@ try:
 except ImportError:
     from unittest import mock
 
+# ------------------------------------------------------------------------------
+#
+@mock.patch.object(IBRun, '__init__',   return_value=None)
+@mock.patch('radical.utils.raise_on')
+@mock.patch('radical.utils.which', return_value='/usr/bin/ibrun')
+def test_configure(mocked_init, mocked_raise_on, mocked_which):
+ 
+    component = IBRun(name=None, cfg=None, session=None)
+    component._configure()
+    assert('/usr/bin/ibrun' == component.launch_command)
+
+# ------------------------------------------------------------------------------
+
 
 # ------------------------------------------------------------------------------
 #
