@@ -32,7 +32,8 @@
     "results": {
         "lm": {
             "spark" : ["//bin/sleep     ",null],
-            "ssh"   : "RuntimeError"
+            "ssh"   : "RuntimeError",
+            "rsh"   : "RuntimeError"
         }
     }
 }

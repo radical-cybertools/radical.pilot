@@ -44,7 +44,8 @@
             "mpirun": ["mpirun -np 1  -host node1  /bin/sleep", null], 
             "ibrun" : ["ibrun -n 1 -o 1 /bin/sleep", null],
             "ssh"   : "ValueError",
-            "spark" : ["//bin/sleep     ",null]
+            "spark" : ["//bin/sleep     ",null],
+            "rsh"   : "ValueError"
         }
     }
 }

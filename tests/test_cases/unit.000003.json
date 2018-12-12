@@ -39,6 +39,7 @@
             "mpirun": ["mpirun -np 1  -host node1  /bin/sleep \"10\"", null],
             "ibrun" : ["ibrun -n 1 -o 4 /bin/sleep \"10\" ", null],
             "ssh"   : ["/bin/sleep \"10\" ","ssh node1 PATH=test_path 1"],
+            "rsh"   : ["/bin/sleep \"10\" ","rsh node1 PATH=test_path 1"],
             "spark" : "RuntimeError"
         }
     }
