@@ -99,7 +99,7 @@ class Default(AgentStagingInputComponent):
     #
     def _handle_unit(self, unit, actionables):
 
-        ru.raise_on('work unit')
+      # ru.raise_on('work unit')
 
         uid = unit['uid']
 

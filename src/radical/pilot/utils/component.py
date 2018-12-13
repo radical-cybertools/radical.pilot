@@ -624,7 +624,7 @@ class Component(object):
             input  = self._inputs[name]['queue']
             states = self._inputs[name]['states']
 
-            self._log.debug('=== check input %s [%s]', name, input)
+          # self._log.debug('=== check input %s [%s]', name, input)
 
             # FIXME: a simple, 1-thing caching mechanism would likely
             #        remove the req/res overhead completely (for any
@@ -634,7 +634,7 @@ class Component(object):
             if things is None:
                 things = list()
 
-            self._log.debug('=== check input %s: %s', name, len(things))
+          # self._log.debug('=== check input %s: %s', name, len(things))
             if not things:
                 return True
 

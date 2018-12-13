@@ -475,10 +475,10 @@ class Agent_0(rpu.Worker):
                 self.stop()
                 return False  # we are done
 
-        # make sure we did not lose connection to client
-        if time.time() - self._hb_last > self._hb_timeout:
-            self._log.info('=== heartbeat timeout - terminate')
-            os.kill(os.getpid(), signal.SIGTERM)
+     ## # make sure we did not lose connection to client
+     ## if time.time() - self._hb_last > self._hb_timeout:
+     ##     self._log.error('=== heartbeat timeout - terminate')
+     ##     os.kill(os.getpid(), signal.SIGTERM)
 
         return True
 

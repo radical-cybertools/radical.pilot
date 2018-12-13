@@ -22,6 +22,8 @@ _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 
 def log_bulk(log, bulk, token):
 
+    return
+
     if isinstance(bulk, list) and bulk and 'uid' in bulk[0]:
         for e in bulk:
             log.debug("%s: %s [%s]", token, e['uid'], e['state'])

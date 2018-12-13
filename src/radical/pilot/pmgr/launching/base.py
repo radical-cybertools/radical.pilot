@@ -3,16 +3,13 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import radical.utils as ru
-
 from ... import utils     as rpu
-from ... import states    as rps
-from ... import constants as rpc
 
 
 # ------------------------------------------------------------------------------
 # 'enum' for RP's pmgr launching types
-RP_UL_NAME_DEFAULT = "DEFAULT"
+RP_PL_NAME_SINGLE = "single"
+RP_PL_NAME_BULK   = "bulk"
 
 
 # ==============================================================================
@@ -33,24 +30,26 @@ class PMGRLaunchingComponent(rpu.Component):
     @classmethod
     def create(cls, cfg, session):
 
-        name = cfg.get('pmgr_launching_component', RP_UL_NAME_DEFAULT)
+        name = cfg.get('launcher')
 
         # Make sure that we are the base-class!
         if cls != PMGRLaunchingComponent:
             raise TypeError("Factory only available to base class!")
 
-        from .default import Default
+        from .bulk   import Bulk
+        from .single import Single
 
         try:
             impl = {
-                RP_UL_NAME_DEFAULT: Default
+                RP_PL_NAME_BULK  : Bulk,
+                RP_PL_NAME_SINGLE: Single
             }[name]
 
             impl = impl(cfg, session)
             return impl
 
         except KeyError:
-            raise ValueError("PMGRLaunchingComponent '%s' unknown or defunct" % name)
+            raise ValueError("PMGR Launcher '%s' unknown" % name)
 
 
 # ------------------------------------------------------------------------------
