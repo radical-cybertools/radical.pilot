@@ -50,7 +50,6 @@ if __name__ == '__main__':
         config = ru.read_json('%s/config.json' % pwd)
         report.ok('>>ok\n')
 
-        report.header('submit pilots')
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = rp.PilotManager(session=session)
@@ -68,6 +67,7 @@ if __name__ == '__main__':
         pdesc = rp.ComputePilotDescription(pd_init)
 
         # Launch the pilot.
+        report.header('submit pilots')
         pilot = pmgr.submit_pilots(pdesc)
 
         report.header('submit units')
@@ -76,7 +76,7 @@ if __name__ == '__main__':
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-        n = 1024 * 1  # 28  # number of units to run
+        n = 2  # 28  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()

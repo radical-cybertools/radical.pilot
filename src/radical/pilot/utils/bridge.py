@@ -17,6 +17,7 @@ class Bridge(object):
         self._pwd     = self._cfg['pwd']
         self._log     = session.get_logger(name=self._uid, level='DEBUG')
                                       ##   level=self._cfg.get('log_level'))
+        self._log.debug('test 1')
 
         # avoid superfluous logging calls in critical code sections
         if self._log.getEffectiveLevel() == 10:  # logging.DEBUG:

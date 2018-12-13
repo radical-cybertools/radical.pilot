@@ -22,8 +22,6 @@ _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 
 def log_bulk(log, bulk, token):
 
-    return
-
     if isinstance(bulk, list) and bulk and 'uid' in bulk[0]:
         for e in bulk:
             log.debug("%s: %s [%s]", token, e['uid'], e['state'])
@@ -204,6 +202,9 @@ class Queue(Bridge):
         with open(faddr, 'w') as fout:
             fout.write('PUT %s\n' % self._addr_in)
             fout.write('GET %s\n' % self._addr_out)
+
+        self._log.debug('addr: %s', self._addr_in)
+        self._log.debug('      %s', self._addr_out)
 
 
     # --------------------------------------------------------------------------

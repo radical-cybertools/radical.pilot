@@ -20,8 +20,6 @@ _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 
 def log_bulk(log, bulk, token):
 
-    return
-
     if not isinstance(bulk, list):
         bulk = [bulk]
 
