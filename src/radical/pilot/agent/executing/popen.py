@@ -471,10 +471,6 @@ prof(){
                 cu['exit_code'] = exit_code
 
                 sandbox  = '%s/%s' % (self._pwd, cu['uid'])
-                statfile = '%s/app_stats.dat' % sandbox
-                if os.path.isfile(statfile):
-                    with open ('%s/app_stats.dat' % sandbox, 'r') as fin:
-                        cu['app_stats'] = float(fin.read().strip())
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._cus_to_watch.remove(cu)
