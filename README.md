@@ -1,5 +1,7 @@
 #radical.pilot
 
+**This branch MUST NOT be merged back to any other branch! [AM]**
+
 **Documentation:** http://radicalpilot.readthedocs.org/en/latest/
 
 **Mailinglists:** 
