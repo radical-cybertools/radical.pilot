@@ -408,6 +408,17 @@ class ComputeUnit(object):
 
     # --------------------------------------------------------------------------
     #
+    @property
+    def metadata(self):
+        """
+        Returns the metadata field of the unit's description
+        """
+
+        return copy.deepcopy(self._descr.get('metadata'))
+
+
+    # --------------------------------------------------------------------------
+    #
     def register_callback(self, cb, cb_data=None):
         """
         Registers a callback function that is triggered every time the
