@@ -33,7 +33,7 @@ class Default(UMGRStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         # we keep a cache of SAGA dir handles
         self._cache = dict()
@@ -46,7 +46,7 @@ class Default(UMGRStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
+    def finalize(self):
 
         try:
             for key in self._cache:

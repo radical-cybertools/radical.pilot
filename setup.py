@@ -158,6 +158,7 @@ def read(*rnames):
         return ''
 
 
+<<<<<<< HEAD
 # ------------------------------------------------------------------------------
 #
 # borrowed from the MoinMoin-wiki installer
@@ -234,6 +235,19 @@ def isgood(name):
         if name.endswith('.py') or name.endswith('.json'):
             return True
     return False
+=======
+df = list()
+df.append(('share/%s'                       % name, ['docs/source/events.md']))
+df.append(('share/%s/examples'              % name, glob.glob('examples/[01]*.py')))
+df.append(('share/%s/examples'              % name, glob.glob('examples/hello*')))
+df.append(('share/%s/examples'              % name, glob.glob('examples/*.json')))
+df.append(('share/%s/examples/docs'         % name, glob.glob('examples/docs/*')))
+df.append(('share/%s/examples/misc'         % name, glob.glob('examples/misc/*')))
+df.append(('share/%s/examples/misc/gromacs' % name, glob.glob('examples/misc/gromacs/*')))
+df.append(('share/%s/examples/kmeans'       % name, glob.glob('examples/kmeans/*')))
+df.append(('share/%s/examples/mandelbrot'   % name, glob.glob('examples/mandelbrot/*')))
+df.append(('share/%s/examples/data_staging' % name, glob.glob('examples/data_staging/*')))
+>>>>>>> version/2
 
 
 # -------------------------------------------------------------------------------
@@ -285,6 +299,8 @@ setup_args = {
                             'bin/radical-pilot-stats.plot',
                             'bin/radical-pilot-version',
                             'bin/radical-pilot-agent',
+                            'bin/radical-pilot-bridge',
+                            'bin/radical-pilot-component',
                             'bin/radical-pilot-agent-statepush'
                            ],
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', 'VERSION', 'SDIST', sdist_name]},

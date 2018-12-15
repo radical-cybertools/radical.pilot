@@ -43,11 +43,15 @@ def bootstrap_3(agent_name):
         else                      : agent = rpa.Agent_n(agent_name)
 
         print 'start   %s' % agent_name
-        agent.start(spawn=False)
+        agent.start()
         print 'started %s' % agent_name
 
         # wait until the agent finishes or fails.
         agent.wait_final()
+
+    except:
+        print 'failed %s' % agent_name
+        ru.print_stacktrace()
 
     finally:
         # in all cases, make sure we perform an orderly shutdown.  I hope python
@@ -57,8 +61,6 @@ def bootstrap_3(agent_name):
         if agent:
             agent.stop()
             print 'stopped  %s' % agent_name
-            agent.join()
-            print 'joined   %s' % agent_name
 
 
 # ------------------------------------------------------------------------------

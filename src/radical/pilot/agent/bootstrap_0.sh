@@ -1873,6 +1873,50 @@ profile_event 'sync_rel' 'agent_0 start'
 # ./packer.sh 2>&1 >> bootstrap_0.out &
 # PACKER_ID=$!
 
+# ------------------------------------------------------------------------------
+# FIXME PARTITIONING
+#
+# Here we jump from bootstrap_0.sh straight to bootstrap_2.sh, to start agent_0.
+# Once partitions get introduced, we'll insert a `bootstrap_1.py` right here,
+# which will do something like this:
+#
+#   part_cfg   = ru.read_json(sys.argv[1])
+#   partitions = rp.LRMS.partition(part_cfg['lrms'])
+#   for partition in partitions:
+#       ru.sh_callout('./bootstrap_2.sh agent_0 partition.cfg_file &', 
+#                     stdout='./%s.agent_0.bootstrap_2.out' % partition.uid, 
+#                     stderr='./%s.agent_0.bootstrap_2.err' % partition.uid)
+#   pids = dict()
+#   while True:
+#       alive = False
+#       for partition in partitions:
+#           uid = partition.uid
+#           pid = pids.get(uid)
+#           if not pid:
+#               if not os.path.is_file('%s.pid' % uid):
+#                   continue
+#               else:
+#                   with open('%s.pid' % uid, 'r') as fin:
+#                       pid = int(fin.read().strip())
+#                       pids[uid] = pid
+#           if os.kill(pid, 0):
+#               # process is alive - that's enough checking for now
+#               alive = True
+#               break
+#       if not alive:
+#           sys.exit()
+#       time.sleep(1)
+# 
+# The static `LRMS.partition` method is responsible for splitting up the
+# allocation into smaller ones according to the partitioning scheme, in a way
+# that the same LRMS can then pick thos up during `agent_0` startup, resulting
+# in a functional agent on that partition.  Note that all agents live on the
+# same (*this*) node, so this will only be doable for a finite (aka 'small') set
+# of partitions.
+#
+# FIXME: do we need to use bootstrap_2.sh to start bootstrap_1.py? 
+#       
+#
 if test -z "$CCM"; then
     ./bootstrap_2.sh 'agent_0'    \
                    1> agent_0.bootstrap_2.out \
@@ -1886,7 +1930,7 @@ AGENT_PID=$!
 
 while true
 do
-    sleep 3
+    sleep 1
     if kill -0 $AGENT_PID 2>/dev/null
     then 
         if test -e "./killme.signal"

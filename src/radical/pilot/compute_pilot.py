@@ -92,17 +92,13 @@ class ComputePilot(object):
         self._pilot_sandbox    = ru.Url()
         self._client_sandbox   = ru.Url()
 
-        self._log.debug(' ===== 1: %s [%s]', self._pilot_sandbox, type(self._pilot_sandbox))
-
         pilot = self.as_dict()
-        self._log.debug(' ===== 2: %s [%s]', pilot['pilot_sandbox'], type(pilot['pilot_sandbox']))
 
         self._pilot_jsurl, self._pilot_jshop \
-                               = self._session._get_jsurl           (pilot)
-        self._resource_sandbox = self._session._get_resource_sandbox(pilot)
-        self._pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
-        self._client_sandbox   = self._session._get_client_sandbox()
-        self._log.debug(' ===== 3: %s [%s]', self._pilot_sandbox, type(self._pilot_sandbox))
+                               = self._session.get_jsurl           (pilot)
+        self._resource_sandbox = self._session.get_resource_sandbox(pilot)
+        self._pilot_sandbox    = self._session.get_pilot_sandbox   (pilot)
+        self._client_sandbox   = self._session.get_client_sandbox()
 
 
     # --------------------------------------------------------------------------

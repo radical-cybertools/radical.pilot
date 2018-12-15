@@ -13,8 +13,6 @@ import threading
 import traceback
 import subprocess
 
-import radical.utils as ru
-
 from ... import utils     as rpu
 from ... import states    as rps
 from ... import constants as rpc
@@ -38,7 +36,7 @@ class ABDS(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         from .... import pilot as rp
 
@@ -99,7 +97,7 @@ class ABDS(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
+    def finalize(self):
 
         # terminate watcher thread
         self._terminate.set()
@@ -195,7 +193,7 @@ class ABDS(AgentExecutingComponent):
 
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
-            assert(cu['slots']) # FIXME: no assert, but check
+            assert(cu['slots'])  # FIXME: no assert, but check
             self._prof.prof('exec', msg='unit launch', uid=cu['uid'])
 
             # Start a new subprocess to launch the unit
@@ -437,15 +435,15 @@ prof(){
         action = 0
 
         for cu in self._cus_to_watch:
-            
+
             sandbox = '%s/%s' % (self._pwd, cu['uid'])
 
-            #-------------------------------------------------------------------
+            # ------------------------------------------------------------------
             # This code snippet reads the YARN application report file and if
             # the application is RUNNING it update the state of the CU with the
             # right time stamp. In any other case it works as it was.
             logfile = '%s/%s' % (sandbox, '/YarnApplicationReport.log')
-            if cu['state']==rps.AGENT_EXECUTING_PENDING \
+            if cu['state'] == rps.AGENT_EXECUTING_PENDING \
                     and os.path.isfile(logfile):
 
                 yarnreport = open(logfile,'r')
@@ -456,7 +454,7 @@ prof(){
                     if report_line.find('RUNNING') != -1:
                         self._log.debug(report_contents)
                         line = report_line.split(',')
-                        timestamp = (int(line[3].split('=')[1])/1000)
+                        timestamp = (int(line[3].split('=')[1]) / 1000)
                         action += 1
                         proc = cu['proc']
                         self._log.debug('Proc Print {0}'.format(proc))
@@ -469,12 +467,11 @@ prof(){
                         # I wanted to update the state of the cu but keep it in the watching
                         # queue. I am not sure it is needed anymore.
                         index = self._cus_to_watch.index(cu)
-                        self._cus_to_watch[index]=cu
+                        self._cus_to_watch[index] = cu
 
             else :
                 # poll subprocess object
                 exit_code = cu['proc'].poll()
-                now       = time.time()
 
                 if exit_code is None:
                     # Process is still running
@@ -488,7 +485,7 @@ prof(){
                         # We got a request to cancel this cu
                         action += 1
                         cu['proc'].kill()
-                        cu['proc'].wait() # make sure proc is collected
+                        cu['proc'].wait()  # make sure proc is collected
 
                         with self._cancel_lock:
                             self._cus_to_cancel.remove(cu['uid'])
@@ -535,4 +532,6 @@ prof(){
 
         return action
 
+
+# ------------------------------------------------------------------------------
 

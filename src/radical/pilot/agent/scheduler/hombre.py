@@ -73,7 +73,7 @@ class Hombre(AgentSchedulingComponent):
     #
     # FIXME: this should not be overloaded here, but in the base class
     #
-    def finalize_child(self):
+    def finalize(self):
 
         cprof_env = os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "")
         if "HOMBRE" in cprof_env.split():
@@ -81,7 +81,7 @@ class Hombre(AgentSchedulingComponent):
             cprof.dump_stats("python-%s.profile" % self_thread.name)
 
         # make sure that parent finalizers are called
-        super(Hombre, self).finalize_child()
+        super(Hombre, self).finalize()
 
 
     # --------------------------------------------------------------------------
