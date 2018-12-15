@@ -55,7 +55,9 @@ class ShellFS(AgentExecutingComponent):
         old_home  = os.environ.get('_OLD_VIRTUAL_PYTHONHOME', None)
         old_ps1   = os.environ.get('_OLD_VIRTUAL_PS1',        None)
 
-        old_path += ":/usr/bin:/bin:/usr/local/bin:/sbin:/usr/sbin"  # hi titan nodes
+        if olf_path:
+            # hi titan nodes
+            old_path += ":/usr/bin:/bin:/usr/local/bin:/sbin:/usr/sbin"
 
         if old_ppath: self._deactivate += 'export PATH="%s"\n'        % old_ppath
         if old_path : self._deactivate += 'export PYTHONPATH="%s"\n'  % old_path
@@ -330,7 +332,7 @@ prof(){
     test -z "$RP_PROF" && return
     event=$1
     now=$($RP_GTOD)
-    echo "$now,$event,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING," >> $RP_PROF
+    echo "$now,$event,unit_script,,$RP_UNIT_ID,AGENT_EXECUTING," >> $RP_PROF
 }
 
 '''
