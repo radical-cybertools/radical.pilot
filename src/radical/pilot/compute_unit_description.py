@@ -329,13 +329,13 @@ class ComputeUnitDescription(attributes.Attributes):
         self._attributes_register(OUTPUT_STAGING,   None, attributes.ANY,    attributes.VECTOR, attributes.WRITEABLE)
 
         # resource requirements
-        self._attributes_register(CPU_PROCESSES,    None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(CPU_PROCESSES,    None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(CPU_PROCESS_TYPE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(CPU_THREADS,      None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(CPU_THREADS,      None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(CPU_THREAD_TYPE,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(GPU_PROCESSES,    None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(GPU_PROCESSES,    None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(GPU_PROCESS_TYPE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(GPU_THREADS,      None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(GPU_THREADS,      None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(GPU_THREAD_TYPE,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(LFS_PER_PROCESS,  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
 
@@ -363,14 +363,13 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (INPUT_STAGING,  list())
         self.set_attribute (OUTPUT_STAGING, list())
 
-        self.set_attribute (CPU_PROCESSES,     '1')
+        self.set_attribute (CPU_PROCESSES,       1)
         self.set_attribute (CPU_PROCESS_TYPE,   '')
-        self.set_attribute (CPU_THREADS,       '1')
+        self.set_attribute (CPU_THREADS,         1)
         self.set_attribute (CPU_THREAD_TYPE,    '')
-        self.set_attribute (GPU_PROCESSES,     '0')
+        self.set_attribute (GPU_PROCESSES,       0)
         self.set_attribute (GPU_PROCESS_TYPE,   '')
-        self.set_attribute (GPU_THREADS,       '0')
-        self.set_attribute (GPU_THREAD_TYPE,    '')
+        self.set_attribute (GPU_THREADS,         0)
         self.set_attribute (GPU_THREAD_TYPE,    '')
         self.set_attribute (LFS_PER_PROCESS,     0)
 

@@ -296,10 +296,6 @@ class AgentSchedulingComponent(rpu.Component):
         self._log.debug("slot status after  init      : %s",
                         self.slot_status())
 
-        self._app_stats = dict()      # gather app metrics
-        self._app_lock  = mt.RLock()  # lock slot allocation/deallocation
-
-
     # --------------------------------------------------------------------------
     #
     # This class-method creates the appropriate instance for the scheduler.
@@ -426,114 +422,6 @@ class AgentSchedulingComponent(rpu.Component):
     def _release_slot(self, slots):
         raise NotImplementedError("_release_slot() missing for '%s'" % self.uid)
 
-    # --------------------------------------------------------------------------
-    #
-    def app_stats_apply(self, unit):
-
-
-        # check if stats are requested
-        uid    = unit['uid']
-        descr  = unit['description']
-        p_spec = descr.get('cpu_processes', '')
-        t_spec = descr.get('cpu_threads',   '')
-        tags   = descr.get('tags')
-        stid   = tags.get('app-stats')
-        constr = tags.get('constraint')
-
-        if not stid:
-            # just convert the specs to in, and return
-            descr['cpu_processes'] = int(descr.get('cpu_processes', 0))
-            descr['cpu_threads'  ] = int(descr.get('cpu_threads'  , 1))
-            descr['gpu_processes'] = int(descr.get('gpu_processes', 0))
-            descr['gpu_threads'  ] = int(descr.get('gpu_threads'  , 1))
-            return
-
-        # yes - record stats.  Is this the first one?
-        if stid not in self._app_stats:
-
-            if '-' in p_spec: pmin, pmax = [int(n) for n in p_spec.split('-')]
-            else            : pmin, pmax = [int(p_spec), int(p_spec)]
-
-            if '-' in t_spec: tmin, tmax = [int(n) for n in t_spec.split('-')]
-            else            : tmin, tmax = [int(t_spec), int(t_spec)]
-
-            # yes = prepare record. search for parameters to change
-            combinations = list()
-            for p in range(pmin, pmax + 1):
-                for t in range(tmin, tmax + 1):
-                    if constr and eval(constr):
-                        combinations.append([p, t])
-
-            with self._app_lock:
-
-                self._app_stats[stid] = {'to_test' : combinations,
-                                         'n_tests' : len(combinations),
-                                         'tested'  : dict(),
-                                         'prange'  : [pmin, pmax],
-                                         'trange'  : [tmin, tmax],
-                                         'optimal' : None}
-            self._log.info('=== init: \n%s', pprint.pformat(self._app_stats))
-
-        p = unit.get('p_stat')
-        t = unit.get('t_stat')
-
-        # or do we have an optimum already?
-        if self._app_stats[stid]['optimal'] is not None:
-            p, t = self._app_stats[stid]['optimal']
-            self._log.debug('==== optimize %s: %d %d', uid, p, t)
-
-        # do we have an earlier decision to re-apply?
-        elif p and t:
-            self._log.debug('==== re-apply %s: %d %d', uid, p, t)
-            pass
-
-        # still anything to test?
-        elif self._app_stats[stid]['to_test']:
-            p, t = self._app_stats[stid]['to_test'].pop(0)
-            self._log.debug('==== test     %s: %d %d', uid, p, t)
-
-        # or is nothing to decide right now>
-        else:
-            prange = self._app_stats[stid]['prange']
-            trange = self._app_stats[stid]['trange']
-            while True:
-                p = random.choice(range(prange[0], prange[1] + 1))
-                t = random.choice(range(trange[0], trange[1] + 1))
-                if constr:
-                    if eval(constr):
-                        break
-                else:
-                    break
-            self._log.debug('==== random   %s: %d %d', uid, p, t)
-
-        unit['t_orig'] = t_spec
-        unit['p_orig'] = p_spec
-
-        unit['t_stat'] = p
-        unit['p_stat'] = t
-
-        descr['cpu_processes'] = p
-        descr['cpu_threads']   = t
-
-        # ensure we end up with integers
-        descr['cpu_processes'] = int(descr.get('cpu_processes', 0))
-        descr['cpu_threads'  ] = int(descr.get('cpu_threads'  , 1))
-        descr['gpu_processes'] = int(descr.get('gpu_processes', 0))
-        descr['gpu_threads'  ] = int(descr.get('gpu_threads'  , 1))
-
-
-    # --------------------------------------------------------------------------
-    #
-    def app_stats_unapply(self, unit):
-
-        if 'p_orig' not in unit:
-            return
-
-        self._log.debug('==== un-apply %s: %d %d',
-                        unit['uid'], unit['p_orig'], unit['t_orig'])
-        unit['description']['cpu_processes'] = unit['p_orig']
-        unit['description']['cpu_threads'  ] = unit['t_orig'] 
-
 
     # --------------------------------------------------------------------------
     #
@@ -556,8 +444,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         for unit in units:
 
-            self.app_stats_apply(unit)
-
             # we got a new unit to schedule.  Either we can place it
             # straight away and move it to execution, or we have to
             # put it in the wait pool.
@@ -570,7 +456,6 @@ class AgentSchedulingComponent(rpu.Component):
                              publish=True, push=True)
             else:
                 # no resources available, put in wait queue
-                self.app_stats_unapply(unit)
                 with self._wait_lock:
                     self._wait_pool.append(unit)
 
@@ -654,59 +539,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         return core_map, gpu_map
 
-    # --------------------------------------------------------------------------
-    #
-    def app_stats_eval(self, unit):
-
-        self._log.debug('=== app_stat eval %s',  unit['uid'])
-
-        if 'app_stats' not in unit: 
-            return unit
-
-        uid   = unit['uid']
-        descr = unit['description']
-        tags  = descr.get('tags')
-        stid  = tags.get('app-stats')
-        p     = descr['cpu_processes']
-        t     = descr['cpu_threads']
-        v     = float(unit['app_stats'])
-
-        self._log.debug('=== app_stat eval %s [%s]',  unit['uid'],
-                        self._app_stats[stid]['optimal'])
-
-        if self._app_stats[stid]['optimal'] is None:
-
-            with self._app_lock:
-                self._app_stats[stid]['tested']['%d %d' % (p, t)] = v
-                self._log.info('=== stat find: %s: %s [%d / %d]', [p, t], v,
-                        len(self._app_stats[stid]['tested']),
-                        self._app_stats[stid]['n_tests'])
-
-                if len(self._app_stats[stid]['tested']) == self._app_stats[stid]['n_tests']:
-
-                    # all tests are done - store and define optimum
-                    c_opt = None
-                    v_opt = None
-                    mapf  = './app_map.dat'
-                    self._log.debug('=== map: %s' % mapf)
-                    with open(mapf, 'w') as fout:
-                        for c,v in self._app_stats[stid]['tested'].iteritems():
-                            p, t = [int(x) for x in c.split()]
-                            fout.write('%4d   %4d   %10.2f\n' % (p, t, v))
-                            if not v_opt or v_opt > v:
-                                v_opt = v
-                                c_opt = [p, t]
-
-                    self._app_stats[stid]['optimal'] = c_opt
-
-                    self._log.info('=== stat opti: %s [%s]', c_opt, v_opt)
-                    self._log.info('stat fini: \n%s', pprint.pformat(self._app_stats))
-
-
-        with open('./app_stats.dat', 'a') as fout:
-            n = int(uid.split('.')[1])
-            fout.write('%6d   %4d   %4d   %10.2f\n' % (n, p, t, v))
-
 
     # --------------------------------------------------------------------------
     #
@@ -732,8 +564,6 @@ class AgentSchedulingComponent(rpu.Component):
             self._prof.prof('unschedule_start', uid=unit['uid'])
             self._release_slot(unit['slots'])
             self._prof.prof('unschedule_stop',  uid=unit['uid'])
-
-        self.app_stats_eval(unit)
 
         # notify the scheduling thread, ie. trigger an attempt to use the freed
         # slots for units waiting in the wait pool.
@@ -771,8 +601,6 @@ class AgentSchedulingComponent(rpu.Component):
         # fly,without locking the whole loop.  However, this is costly, too.
         for unit in self._wait_pool[:]:
 
-            self.app_stats_apply(unit)
-
             if self._try_allocation(unit):
 
                 # allocated unit -- advance it
@@ -788,7 +616,6 @@ class AgentSchedulingComponent(rpu.Component):
                 #        CUs come after this one - which is naive, ie. wrong.
                 # NOTE:  This assumption does indeed break for the fifo
                 #        scheduler, so we disable this now for non-uniform cases
-                self.app_stats_unapply(unit)
                 if self._uniform_waitpool:
                     break
 
