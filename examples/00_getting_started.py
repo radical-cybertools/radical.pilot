@@ -69,6 +69,7 @@ if __name__ == '__main__':
         # Launch the pilot.
         report.header('submit pilots')
         pilot = pmgr.submit_pilots(pdesc)
+        time.sleep(10)
 
         report.header('submit units')
 
@@ -76,7 +77,7 @@ if __name__ == '__main__':
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-        n = 2  # 28  # number of units to run
+        n = 1024  # 1024  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()

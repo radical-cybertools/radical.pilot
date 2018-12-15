@@ -22,11 +22,21 @@ _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 
 def log_bulk(log, bulk, token):
 
-    if isinstance(bulk, list) and bulk and 'uid' in bulk[0]:
+    if not isinstance(bulk, list):
+        bulk = [bulk]
+
+    if not bulk:
+        return
+
+    if 'arg' in bulk[0]:
+        bulk = [e['arg'] for e in bulk]
+
+    if 'uid' in bulk[0]:
         for e in bulk:
-            log.debug("%s: %s [%s]", token, e['uid'], e['state'])
+            log.debug("%s: %s [%s]", token, e['uid'], e.get('state'))
     else:
-        log.debug("%s: %s", token, str(bulk)[0:32])
+        for e in bulk:
+            log.debug("%s: %s", token, str(e)[0:32])
 
 
 # --------------------------------------------------------------------------
@@ -125,8 +135,8 @@ class Queue(Bridge):
         super(Queue, self).__init__(cfg, session)
 
         self._channel    = self._cfg['name']
-        self._stall_hwm  = self._cfg.get('stall_hwm', 1)
-        self._bulk_size  = self._cfg.get('bulk_size', 1)
+        self._stall_hwm  = self._cfg.get('stall_hwm', 1)  # FIXME: use
+        self._bulk_size  = self._cfg.get('bulk_size', 10)
 
         self._initialize_bridge()
 
@@ -177,15 +187,16 @@ class Queue(Bridge):
         self._addr_in.host  = rpu_hostip()
         self._addr_out.host = rpu_hostip()
 
-        self._log.info('bound bridge %s to %s : %s', 
-                       self._uid, _addr_in, _addr_out)
+        self._log.info('bridge in  %s: %s'  % (self._uid, self._addr_in ))
+        self._log.info('       out %s: %s'  % (self._uid, self._addr_out))
 
-        self._log.info('bridge in  on  %s: %s'  % (self._uid, self._addr_in ))
-        self._log.info('       out on  %s: %s'  % (self._uid, self._addr_out))
+        # start polling senders
+        self._poll_in = zmq.Poller()
+        self._poll_in.register(self._in, zmq.POLLIN)
 
-        # start polling for messages
-        self._poll = zmq.Poller()
-        self._poll.register(self._out, zmq.POLLIN)
+        # start polling receivers
+        self._poll_out = zmq.Poller()
+        self._poll_out.register(self._out, zmq.POLLIN)
 
         # the bridge runs in a daemon thread, so that the main process will not
         # wait for it.  But, give Python's thread performance (or lack thereof),
@@ -197,6 +208,7 @@ class Queue(Bridge):
 
         # inform clients about the bridge, no that the sockets are connected and
         # work is about to start.
+        # FIXME: move to bridge starter tool
         faddr = '%s/%s.url' % (self._pwd, self._channel)
         self._log.debug('put addr into %s', faddr)
         with open(faddr, 'w') as fout:
@@ -211,9 +223,9 @@ class Queue(Bridge):
     # 
     def wait(self, timeout=None):
         '''
-        join negates the daemon thread settings, in that it stops us from
+        join would negate the daemon thread settings, in that it stops us from
         killing the parent process w/o hanging it.  So we do a slow pull on the
-        thread state.
+        thread state instead.
         '''
 
         start = time.time()
@@ -234,45 +246,56 @@ class Queue(Bridge):
     # 
     def _bridge_work(self):
 
+        # TODO: *always* pull for messages and buffer them.  Serve requests from
+        #       that buffer.
+
         try:
+
+            buf = list()
 
             while True:
 
-                # We wait for an incoming message.  When one is received,
-                # we'll poll all outgoing sockets for requests, and the
-                # forward the message to whoever requested it.
-                bulk = self._bulk_size
-                while not _uninterruptible(self._in.poll, flags=zmq.POLLIN, 
-                                           timeout=1000):
-                    pass
+                # we avoid busy pulling during inactivity
+                active = False
 
-                data = _uninterruptible(self._in.recv)
-                msgs = msgpack.unpackb(data) 
+                # check for incoming messages, and buffer them
+                ev_in = dict(_uninterruptible(self._poll_in.poll, timeout=0))
 
-                if not isinstance(msgs, list):
-                    msgs = [msgs]
+                if self._in in ev_in:
 
-                # if 'bulk' is '0', we send all messages as
-                # a single bulk.  Otherwise, we chop them up
-                # into bulks of the given size
-                if bulk <= 0:
-                    nbulks = 1
-                    bulks  = [msgs]
-                else:
-                    nbulks = int(math.ceil(len(msgs) / float(bulk)))
-                    bulks  = ru.partition(msgs, nbulks)
+                    active = True
+                    data   = _uninterruptible(self._in.recv)
+                    msgs   = msgpack.unpackb(data) 
 
-                for bulk in bulks:
-                    # timeout in ms
-                    events = dict(_uninterruptible(self._poll.poll, 1000))
+                    if isinstance(msgs, list): buf += msgs
+                    else                     : buf.append(msgs)
 
-                    if self._out in events:
+                # if we don't have any data in the buffer, there is no point in
+                # checking for receivers
+                if buf:
+                    # check if somebody wants our messages
+                    ev_out = dict(_uninterruptible(self._poll_out.poll,
+                                                   timeout=0))
 
-                        req  = _uninterruptible(self._out.recv)
-                        data = msgpack.packb(bulk) 
+                    if self._out in ev_out:
+
+                        # send up to `bulk_size` messages from the buffer
+                        # NOTE: this sends partial bulks on buffer underrun
+                        active = True
+                        req    = _uninterruptible(self._out.recv)
+                        bulk   = buf[:self._bulk_size]
+                        data   = msgpack.packb(bulk) 
                         _uninterruptible(self._out.send, data)
+
+                        # remove sent messages from buffer
+                        del(buf[:self._bulk_size])
+
                         log_bulk(self._log, bulk, 
                                  '<> %s [%s]' % (self._channel, req))
+
+                # let CPU sleep a bit when there is nothing to do
+                if not active:
+                    time.sleep(0.01)
 
         except  Exception:
             self._log.exception('bridge failed')

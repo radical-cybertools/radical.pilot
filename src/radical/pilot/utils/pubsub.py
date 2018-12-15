@@ -23,11 +23,15 @@ def log_bulk(log, bulk, token):
     if not isinstance(bulk, list):
         bulk = [bulk]
 
-    if bulk and 'uid' in bulk[0]:
+    if 'arg' in bulk[0]:
+        bulk = [e['arg'] for e in bulk]
+
+    if 'uid' in bulk[0]:
         for e in bulk:
-            log.debug("%s: %s [%s]", token, e['uid'], e['state'])
+            log.debug("%s: %s [%s]", token, e['uid'], e.get('state'))
     else:
-        log.debug("%s: %s", token, str(bulk)[0:32])
+        for e in bulk:
+            log.debug("%s: %s", token, str(e)[0:32])
 
 
 # --------------------------------------------------------------------------
