@@ -349,7 +349,7 @@ class AgentSchedulingComponent(rpu.Component):
         # This method needs to change if the DS changes.
 
         # for node_name, node_uid, cores, gpus in slots['nodes']:
-        for nodes in slots['nodes']:
+        for slot_node in slots['nodes']:
 
             # Find the entry in the the slots list
 
@@ -360,25 +360,30 @@ class AgentSchedulingComponent(rpu.Component):
             #       that we would read, and keep a dictionary that maps the uid
             #       of the node to the location on the list?
 
-            node = (n for n in self.nodes if n['uid'] == nodes['uid']).next()
-            assert(node)
+            for node in self.nodes:
+                if node['uid'] == slot_node['uid']:
+                    break
+
+            if not node:
+                raise RuntimeError('inconsistent node information')
 
             # iterate over cores/gpus in the slot, and update state
-            cores = nodes['core_map']
+            cores = slot_node['core_map']
             for cslot in cores:
                 for core in cslot:
                     node['cores'][core] = new_state
 
-            gpus = nodes['gpu_map']
+            gpus = slot_node['gpu_map']
             for gslot in gpus:
                 for gpu in gslot:
                     node['gpus'][gpu] = new_state
 
-            if node['lfs']['path'] is not None:
+            if slot_node['lfs']['path']:
                 if new_state == rpc.BUSY:
-                    node['lfs']['size'] -= nodes['lfs']['size']
+                    node['lfs']['size'] -= slot_node['lfs']['size']
                 else:
-                    node['lfs']['size'] += nodes['lfs']['size']
+                    node['lfs']['size'] += slot_node['lfs']['size']
+
 
     # --------------------------------------------------------------------------
     #
