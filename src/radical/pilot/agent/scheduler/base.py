@@ -258,7 +258,8 @@ class AgentSchedulingComponent(rpu.Component):
         self._lrms_cores_per_node = self._cfg['lrms_info']['cores_per_node']
         self._lrms_gpus_per_node = self._cfg['lrms_info']['gpus_per_node']
         # Dict containing the size and path
-        self._lrms_lfs_per_node = self._cfg['lrms_info']['lfs_per_node']   
+        self._lrms_lfs_per_node = self._cfg['lrms_info']['lfs_per_node']
+        self._lrms_mem_per_node = self._cfg['lrms_info']['mem_per_node'] 
 
         if not self._lrms_node_list:
             raise RuntimeError("LRMS %s didn't _configure node_list."
@@ -287,7 +288,8 @@ class AgentSchedulingComponent(rpu.Component):
                 'uid': node_uid,
                 'cores': [rpc.FREE] * self._lrms_cores_per_node,
                 'gpus': [rpc.FREE] * self._lrms_gpus_per_node,
-                'lfs': self._lrms_lfs_per_node
+                'lfs': self._lrms_lfs_per_node,
+                'mem': self._lrms_mem_per_node
             })
 
         # configure the scheduler instance
@@ -383,6 +385,12 @@ class AgentSchedulingComponent(rpu.Component):
                     node['lfs']['size'] -= slot_node['lfs']['size']
                 else:
                     node['lfs']['size'] += slot_node['lfs']['size']
+
+            if slot_node['mem']:
+                if new_state == rpc.BUSY:
+                    node['mem'] -= slot_node['mem']
+                else:
+                    node['mem'] += slot_node['mem']
 
 
     # --------------------------------------------------------------------------
