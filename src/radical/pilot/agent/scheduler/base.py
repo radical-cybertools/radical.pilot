@@ -360,6 +360,7 @@ class AgentSchedulingComponent(rpu.Component):
             #       that we would read, and keep a dictionary that maps the uid
             #       of the node to the location on the list?
 
+            node = None
             for node in self.nodes:
                 if node['uid'] == slot_node['uid']:
                     break
@@ -522,9 +523,9 @@ class AgentSchedulingComponent(rpu.Component):
         n_procs =  len(cores) / threads_per_proc
 
         idx = 0
-        for p in range(n_procs):
+        for _ in range(n_procs):
             p_map = list()
-            for t in range(threads_per_proc):
+            for _ in range(threads_per_proc):
                 p_map.append(cores[idx])
                 idx += 1
             core_map.append(p_map)
