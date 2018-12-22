@@ -130,9 +130,9 @@ class LRMS(object):
                     break
 
         if self.agent_nodes:
-            self._log.info('Reserved agent node(s): %s' % self.agent_nodes.values())
-            self._log.info('Agent(s) running on node(s): %s' % self.agent_nodes.keys())
-            self._log.info('Remaining work node(s): %s' % self.node_list)
+            self._log.info('Reserved nodes: %s' % self.agent_nodes.values())
+            self._log.info('Agent    nodes: %s' % self.agent_nodes.keys())
+            self._log.info('Worker   nodes: %s' % self.node_list)
 
         # Check if we can do any work
         if not self.node_list:
@@ -140,25 +140,25 @@ class LRMS(object):
 
         # After LRMS configuration, we call any existing config hooks on the
         # launch methods.  Those hooks may need to adjust the LRMS settings
-        # (hello ORTE).  We only call LM hooks *once*
-        launch_methods = set() # set keeps entries unique
-        if 'mpi_launch_method' in self._cfg:
-            launch_methods.add(self._cfg['mpi_launch_method'])
-        launch_methods.add(self._cfg['task_launch_method'])
-        launch_methods.add(self._cfg['agent_launch_method'])
+        # (hello ORTE).  We only call LM hooks *once* (thus the set)
+        launch_methods = set()
+        launch_methods.add(self._cfg.get('mpi_launch_method'))
+        launch_methods.add(self._cfg.get('task_launch_method'))
+        launch_methods.add(self._cfg.get('agent_launch_method'))
+
+        launch_methods.discard(None)
 
         for lm in launch_methods:
-            if lm:
-                try:
-                    from .... import pilot as rp
-                    ru.dict_merge(self.lm_info,
-                            rp.agent.LM.lrms_config_hook(lm, self._cfg, self,
-                                self._log, self._prof))
-                except Exception as e:
-                    self._log.exception("lrms config hook failed")
-                    raise
+            try:
+                from .... import pilot as rp
+                ru.dict_merge(self.lm_info,
+                        rp.agent.LM.lrms_config_hook(lm, self._cfg, self,
+                            self._log, self._prof))
+            except Exception as e:
+                self._log.exception("lrms config hook failed: %s" % e)
+                raise
 
-                self._log.info("lrms config hook succeeded (%s)" % lm)
+            self._log.info("lrms config hook succeeded (%s)" % lm)
 
         # For now assume that all nodes have equal amount of cores and gpus
         cores_avail = (len(self.node_list) + len(self.agent_nodes)) * self.cores_per_node
