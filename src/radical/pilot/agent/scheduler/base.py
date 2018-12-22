@@ -9,8 +9,8 @@ import threading
 
 import radical.utils as ru
 
-from ... import utils as rpu
-from ... import states as rps
+from ... import utils     as rpu
+from ... import states    as rps
 from ... import constants as rpc
 
 
@@ -18,13 +18,13 @@ from ... import constants as rpc
 #
 # 'enum' for RPs's pilot scheduler types
 #
-SCHEDULER_NAME_CONTINUOUS = "CONTINUOUS"
+SCHEDULER_NAME_CONTINUOUS      = "CONTINUOUS"
 SCHEDULER_NAME_CONTINUOUS_FIFO = "CONTINUOUS_FIFO"
-SCHEDULER_NAME_HOMBRE = "HOMBRE"
-SCHEDULER_NAME_SCATTERED = "SCATTERED"
-SCHEDULER_NAME_SPARK = "SPARK"
-SCHEDULER_NAME_TORUS = "TORUS"
-SCHEDULER_NAME_YARN = "YARN"
+SCHEDULER_NAME_HOMBRE          = "HOMBRE"
+SCHEDULER_NAME_SCATTERED       = "SCATTERED"
+SCHEDULER_NAME_SPARK           = "SPARK"
+SCHEDULER_NAME_TORUS           = "TORUS"
+SCHEDULER_NAME_YARN            = "YARN"
 
 
 # ------------------------------------------------------------------------------
@@ -43,11 +43,11 @@ SCHEDULER_NAME_YARN = "YARN"
 #
 #       # main loop
 #       self._handle_unit(unit):  # unit arrives
-#         try_allocation(unit)   # placement is attempted
+#         try_allocation(unit)    # placement is attempted
 #         if success:
-#            advance(unit)       # pass unit to executor
+#            advance(unit)        # pass unit to executor
 #         else:
-#            wait.append(unit)   # place unit in a wait list
+#            wait.append(unit)    # place unit in a wait list
 #
 #   - notification management:
 #     - the scheduler receives notifications about units which completed
@@ -209,12 +209,13 @@ class AgentSchedulingComponent(rpu.Component):
 
         self.nodes = None
         self._lrms = None
-        self._uid = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
-                                   ru.ID_CUSTOM)
+        self._uid  = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
+                                    ru.ID_CUSTOM)
 
-        self._uniform_waitpool = True   # TODO: move to cfg
+        self._uniform_waitpool = True   # TODO: move to cfg, reconsider use
 
         rpu.Component.__init__(self, cfg, session)
+
 
     # --------------------------------------------------------------------------
     #
@@ -244,21 +245,20 @@ class AgentSchedulingComponent(rpu.Component):
         # NOTE: we could use a local queue here.  Using a zmq bridge goes toward
         #       an distributed scheduler, and is also easier to implement right
         #       now, since `Component` provides the right mechanisms...
-        self.register_publisher(rpc.AGENT_SCHEDULE_PUBSUB)
+        self.register_publisher (rpc.AGENT_SCHEDULE_PUBSUB)
         self.register_subscriber(rpc.AGENT_SCHEDULE_PUBSUB, self.schedule_cb)
 
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
         #
         # NOTE: this information is insufficient for the torus scheduler!
-        self._pilot_id = self._cfg['pilot_id']
-        self._lrms_info = self._cfg['lrms_info']
-        self._lrms_lm_info = self._cfg['lrms_info']['lm_info']
-        self._lrms_node_list = self._cfg['lrms_info']['node_list']
+        self._pilot_id            = self._cfg['pilot_id']
+        self._lrms_info           = self._cfg['lrms_info']
+        self._lrms_lm_info        = self._cfg['lrms_info']['lm_info']
+        self._lrms_node_list      = self._cfg['lrms_info']['node_list']
         self._lrms_cores_per_node = self._cfg['lrms_info']['cores_per_node']
-        self._lrms_gpus_per_node = self._cfg['lrms_info']['gpus_per_node']
-        # Dict containing the size and path
-        self._lrms_lfs_per_node = self._cfg['lrms_info']['lfs_per_node']   
+        self._lrms_gpus_per_node  = self._cfg['lrms_info']['gpus_per_node']
+        self._lrms_lfs_per_node   = self._cfg['lrms_info']['lfs_per_node']   
 
         if not self._lrms_node_list:
             raise RuntimeError("LRMS %s didn't _configure node_list."
@@ -282,18 +282,17 @@ class AgentSchedulingComponent(rpu.Component):
 
         self.nodes = []
         for node, node_uid in self._lrms_node_list:
-            self.nodes.append({
-                'name': node,
-                'uid': node_uid,
-                'cores': [rpc.FREE] * self._lrms_cores_per_node,
-                'gpus': [rpc.FREE] * self._lrms_gpus_per_node,
-                'lfs': self._lrms_lfs_per_node
-            })
+            self.nodes.append({'uid'  : node_uid,
+                               'name' : node,
+                               'cores': [rpc.FREE] * self._lrms_cores_per_node,
+                               'gpus' : [rpc.FREE] * self._lrms_gpus_per_node,
+                               'lfs'  : self._lrms_lfs_per_node})
 
         # configure the scheduler instance
         self._configure()
         self._log.debug("slot status after  init      : %s",
                         self.slot_status())
+
 
     # --------------------------------------------------------------------------
     #
@@ -309,22 +308,22 @@ class AgentSchedulingComponent(rpu.Component):
         name = cfg['scheduler']
 
         from .continuous_fifo import ContinuousFifo
-        from .continuous import Continuous
-        from .scattered import Scattered
-        from .hombre import Hombre
-        from .torus import Torus
-        from .yarn import Yarn
-        from .spark import Spark
+        from .continuous      import Continuous
+        from .scattered       import Scattered
+        from .hombre          import Hombre
+        from .torus           import Torus
+        from .yarn            import Yarn
+        from .spark           import Spark
 
         try:
             impl = {
                 SCHEDULER_NAME_CONTINUOUS_FIFO: ContinuousFifo,
-                SCHEDULER_NAME_CONTINUOUS: Continuous,
-                SCHEDULER_NAME_SCATTERED: Scattered,
-                SCHEDULER_NAME_HOMBRE: Hombre,
-                SCHEDULER_NAME_TORUS: Torus,
-                SCHEDULER_NAME_YARN: Yarn,
-                SCHEDULER_NAME_SPARK: Spark
+                SCHEDULER_NAME_CONTINUOUS     : Continuous,
+                SCHEDULER_NAME_SCATTERED      : Scattered,
+                SCHEDULER_NAME_HOMBRE         : Hombre,
+                SCHEDULER_NAME_TORUS          : Torus,
+                SCHEDULER_NAME_YARN           : Yarn,
+                SCHEDULER_NAME_SPARK          : Spark
             }[name]
 
             impl = impl(cfg, session)
@@ -332,6 +331,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         except KeyError:
             raise ValueError("Scheduler '%s' unknown or defunct" % name)
+
 
     # --------------------------------------------------------------------------
     #
@@ -422,10 +422,12 @@ class AgentSchedulingComponent(rpu.Component):
     def _allocate_slot(self, cud):
         raise NotImplementedError("_allocate_slot() missing for '%s'" % self.uid)
 
+
     # --------------------------------------------------------------------------
     #
     def _release_slot(self, slots):
         raise NotImplementedError("_release_slot() missing for '%s'" % self.uid)
+
 
     # --------------------------------------------------------------------------
     #
@@ -462,6 +464,7 @@ class AgentSchedulingComponent(rpu.Component):
                 with self._wait_lock:
                     self._wait_pool.append(unit)
 
+
     # --------------------------------------------------------------------------
     #
     def _try_allocation(self, unit):
@@ -496,6 +499,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # True signals success
         return True
+
 
     # --------------------------------------------------------------------------
     #
@@ -578,6 +582,7 @@ class AgentSchedulingComponent(rpu.Component):
         # return True to keep the cb registered
         return True
 
+
     # --------------------------------------------------------------------------
     #
     def schedule_cb(self, topic, msg):
@@ -626,3 +631,4 @@ class AgentSchedulingComponent(rpu.Component):
 
 
 # ------------------------------------------------------------------------------
+
