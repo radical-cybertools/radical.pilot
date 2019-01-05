@@ -105,6 +105,9 @@ class Session(rs.Session):
             self._uid = ru.generate_id('rp.session',  mode=ru.ID_PRIVATE)
             ru.reset_id_counters(prefix='rp.session', reset_all_others=True)
 
+        ru_def = ru.DefaultConfig()
+        ru_def['log_dir'] = './%s' % self._uid
+
         # The session's sandbox is either configured (agent side),
         # or falls back to `./$SID` (client).
         if 'session_sandbox' in self._cfg:

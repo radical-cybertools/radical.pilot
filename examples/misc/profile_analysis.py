@@ -6,7 +6,7 @@ __license__   = 'MIT'
 import os
 import sys
 
-os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
+os.environ['RADICAL_PILOT_LOG_LVL'] = 'REPORT'
 os.environ['RADICAL_PILOT_PROFILE'] = 'TRUE'
 
 import radical.pilot as rp

@@ -8,7 +8,7 @@ import sys
 import time
 import signal
 
-os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
+os.environ['RADICAL_PILOT_LOG_LVL'] = 'REPORT'
 
 import radical.pilot as rp
 import radical.utils as ru

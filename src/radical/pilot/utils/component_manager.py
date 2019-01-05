@@ -148,6 +148,9 @@ class ComponentManager(object):
             assert(pid and addr_in and addr_out), \
                    'bridge %s not alive (%s)' % (bcfg['uid'], fpid)
 
+            # watch the pid
+            ru.pid_watcher(pid=pid, uid=self.uid)
+
             if kind == 'pubsub': 
                 bcfg['PUB'] = addr_in
                 bcfg['SUB'] = addr_out
@@ -251,6 +254,9 @@ class ComponentManager(object):
                     break
 
             assert(pid), 'component %s not alive (%s)' % (ccfg['uid'], fpid)
+
+            # watch the pid
+            ru.pid_watcher(pid=pid, uid=self.uid)
 
             self._components[cuid] = int(pid)
 

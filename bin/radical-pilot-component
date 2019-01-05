@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
     spt.setproctitle('rp.%s' % uid)
 
-    ru.pid_watcher(pid=cfg['ppid'], tgt_pid=os.getpid(), uid=uid)
+    ru.pid_watcher(pid=cfg.get('ppid'), uid=uid)
 
     # create the component
     comp = rpu.Component.create(cfg)

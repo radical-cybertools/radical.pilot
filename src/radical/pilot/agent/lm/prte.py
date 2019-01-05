@@ -67,7 +67,7 @@ class PRTE(LaunchMethod):
         cmdline   = '%s %s %s %s ' % (stdbuf_cmd, stdbuf_arg, prte, prte_args)
 
         # Additional (debug) arguments to prte
-        if os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'):
+        if os.environ.get('RADICAL_PILOT_PRUN_DEBUG'):
             debug_strings = [
                              '--debug-devel',
                              '--mca odls_base_verbose 100',
@@ -255,7 +255,7 @@ class PRTE(LaunchMethod):
         hosts_string = hosts_string.rstrip(',')
 
         # Additional (debug) arguments to prun
-        if os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'):
+        if os.environ.get('RADICAL_PILOT_PRUN_DEBUG'):
             debug_strings = ['-display-devel-map', 
                              '-display-allocation', 
                              '--debug-devel',

@@ -81,7 +81,7 @@ class ORTE(LaunchMethod):
         cmdline  = '%s %s %s %s ' % (stdbuf_cmd, stdbuf_arg, dvm_command, dvm_args)
 
         # Additional (debug) arguments to orte-dvm
-        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+        if os.environ.get('RADICAL_PILOT_ORTE_DEBUG'):
             debug_strings = [
                              '--debug-devel',
                              '--mca odls_base_verbose 100',
@@ -279,7 +279,7 @@ class ORTE(LaunchMethod):
         hosts_string = hosts_string.rstrip(',')
 
         # Additional (debug) arguments to orterun
-        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+        if os.environ.get('RADICAL_PILOT_ORTE_DEBUG'):
             debug_strings = ['-display-devel-map', 
                              '-display-allocation', 
                              '--debug-devel',

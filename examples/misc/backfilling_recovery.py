@@ -11,7 +11,7 @@ import radical.pilot as rp
 # READ: The RADICAL-Pilot documentation: 
 #   http://radicalpilot.readthedocs.org/en/latest
 #
-# Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
+# Try running this example with RADICAL_PILOT_LOG_LVL=debug set if 
 # you want to see what happens behind the scences!
 
 
