@@ -9,7 +9,7 @@ import time
 import pymongo
 
 import radical.utils  as ru
-import saga           as rs
+import radical.saga   as rs
 
 from .. import states as rps
 from .. import utils  as rpu

@@ -14,8 +14,7 @@ import threading as mt
 
 import subprocess           as sp
 
-import saga                 as rs
-import saga.filesystem      as rsfs
+import radical.saga         as rs
 import radical.utils        as ru
 
 from .... import pilot      as rp
@@ -26,6 +25,8 @@ from .base import PMGRLaunchingComponent
 
 from ...staging_directives import complete_url
 from ...staging_directives import TRANSFER, COPY, LINK, MOVE
+
+rsfs = rs.filesystem
 
 
 # ------------------------------------------------------------------------------

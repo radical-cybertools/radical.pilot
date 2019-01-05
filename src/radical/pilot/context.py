@@ -11,18 +11,18 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import saga
+import radical.saga as rs
 
 # ------------------------------------------------------------------------------
 #
-class Context (saga.Context):
+class Context (rs.Context):
 
     # --------------------------------------------------------------------------
     #
     def __init__ (self, ctype, thedict=None) :
 
-        # init the saga.Context
-        self._apitype  = 'saga.Context'
+        # init the rs.Context
+        self._apitype  = 'rs.Context'
         super (Context, self).__init__ (ctype, )
 
         # set given defaults

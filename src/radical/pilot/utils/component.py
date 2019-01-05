@@ -8,12 +8,6 @@ import radical.utils   as ru
 from ..      import constants  as rpc
 from ..      import states     as rps
 
-from .queue  import Putter     as rpu_Putter
-from .queue  import Getter     as rpu_Getter
-
-from .pubsub import Publisher  as rpu_Publisher
-from .pubsub import Subscriber as rpu_Subscriber
-
 
 # ------------------------------------------------------------------------------
 #
@@ -127,7 +121,7 @@ class Component(object):
                     }
         # ----------------------------------------------------------------------
 
-        sid  = cfg['sid']
+        sid  = cfg['session_id']
         uid  = cfg['uid']
         kind = cfg['kind']
 
@@ -198,12 +192,6 @@ class Component(object):
 
         # call component level initialize
         self.initialize()
-
-        # signal completion of startup
-        if 'fchk' in self._cfg:
-            with open(self._cfg['fchk'], 'w') as fout:
-                fout.write('ok\n')
-
 
 
     # --------------------------------------------------------------------------
@@ -321,8 +309,9 @@ class Component(object):
         if name in self._inputs:
             raise ValueError('input %s already registered' % name)
 
-        q = rpu_Getter(input, self._session)
-        self._inputs[name] = {'queue'  : q,
+        addr = self._session.get_address(input)['GET']
+        ep   = ru.zmq.Getter(input, addr)
+        self._inputs[name] = {'queue'  : ep,
                               'states' : states}
 
         self._log.debug('registered input %s', name)
@@ -377,11 +366,12 @@ class Component(object):
                 self._outputs[state] = None
             else:
                 # non-final state, ie. we want a queue to push to
-                q = rpu_Putter(output, self._session)
-                self._outputs[state] = q
+                addr = self._session.get_address(output)['PUT']
+                ep   = ru.zmq.Putter(output, addr)
+                self._outputs[state] = ep
 
                 self._log.debug('registered output    : %s : %s : %s'
-                     % (state, output, q.name))
+                     % (state, output, ep.name))
 
 
     # --------------------------------------------------------------------------
@@ -466,10 +456,11 @@ class Component(object):
 
         self._log.debug('%s register publisher %s', self.uid, pubsub)
 
-        q = rpu_Publisher(pubsub, self._session)
-        self._publishers[pubsub] = q
+        addr = self._session.get_address(pubsub)['PUB']
+        ep   = ru.zmq.Publisher(pubsub, addr)
+        self._publishers[pubsub] = ep
 
-        self._log.debug('registered publisher : %s : %s', pubsub, q.name)
+        self._log.debug('registered publisher : %s : %s', pubsub, ep.name)
 
 
     # --------------------------------------------------------------------------
@@ -511,10 +502,10 @@ class Component(object):
         class Subscriber(ru.Thread):
 
             # ------------------------------------------------------------------
-            def __init__(self, name, l, q, cb, cb_data, cb_lock):
+            def __init__(self, name, l, ep, cb, cb_data, cb_lock):
                 self._name     = name
                 self._log      = l
-                self._q        = q
+                self._q        = ep
                 self._cb       = cb
                 self._cb_data  = cb_data
                 self._cb_lock  = cb_lock
@@ -558,10 +549,11 @@ class Component(object):
         # ----------------------------------------------------------------------
         # create a pubsub subscriber (the pubsub name doubles as topic)
         # FIXME: this should be moved into the thread child_init
-        q = rpu_Subscriber(pubsub, self._session)
-        q.subscribe(pubsub)
+        addr = self._session.get_address(pubsub)['SUB']
+        ep   = ru.zmq.Subscriber(pubsub, addr)
+        ep.subscribe(pubsub)
 
-        subscriber = Subscriber(name=name, l=self._log, q=q, 
+        subscriber = Subscriber(name=name, l=self._log, ep=ep,
                                 cb=cb, cb_data=cb_data, cb_lock=self._cb_lock)
         # daemonize and start the thread upon construction
         subscriber.daemon = True

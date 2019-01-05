@@ -3,9 +3,6 @@
 # specified.  It contains the minimal set of settings required for
 # a functional pilot manager.
 {
-    # default launcher
-    "launcher" : "bulk",
-
     # time to sleep between database polls (seconds)
     "db_poll_sleeptime" : 1.0,
 
@@ -17,7 +14,8 @@
 
     "components" : {
         # how many instances of the respective components should be started
-        "PMGRLaunchingComponent" : {"count" : 1}
+        "PMGRLaunchingComponent" : {"count" : 1, 
+                                    "type"  : "bulk"}
     }
 }
 

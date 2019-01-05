@@ -4,7 +4,7 @@ __license__   = "MIT"
 
 
 import os
-import saga as rs
+import radical.saga as rs
 
 from ...   import states             as rps
 from ...   import constants          as rpc

@@ -6,44 +6,19 @@ __license__   = "MIT"
 
 import os
 import sys
-import time
+import atexit
 import signal
 
-import threading           as mt
 import setproctitle        as spt
 
 import radical.utils       as ru
 import radical.pilot.utils as rpu
 
 
-def out(msg):
-    sys.stdout.write('%s\n' % msg)
-    sys.stdout.flush()
-
-
+@atexit.register
 def term():
-    out('TERMINATE')
-
-
-import atexit
-atexit.register(term)
-
-
-# ------------------------------------------------------------------------------
-#
-def ppid_watcher(ppid):
-
-    out("ppid_watcher starts: %s watches %s" % (os.getpid(), ppid))
-
-    try:
-        while True:
-            time.sleep(1)
-            os.kill(ppid, 0)
-            out("ppid_watcher: parent %s is alive" % ppid)
-    except:
-        out("ppid_watcher: parent %s is gone - bye" % ppid)
-        os.kill(os.getpid(), signal.SIGTERM)
-        os.kill(os.getpid(), signal.SIGKILL)
+    sys.stderr.write('bridge terminated\n')
+    sys.stderr.flush()
 
 
 # ------------------------------------------------------------------------------
@@ -52,41 +27,28 @@ if __name__ == "__main__":
 
     if len(sys.argv) != 2:
         sys.stderr.write('error: argument error\n'
-                         'usage: %s <cfg_file>\n\n')
+                         'usage: %s <cfg_file>\n\n' % sys.argv[0])
         raise RuntimeError('argument error: %s' % sys.argv)
 
-    # ensure we have a config file
-    cfgf = sys.argv[1]
+    cfg = ru.read_json(sys.argv[1])
+    uid = cfg['uid']
 
-    try:
-        cfg = ru.read_json(cfgf)
-        pwd = cfg['pwd']
-        uid = cfg['uid']
+    if  os.path.exists(cfg['fpid']):
+        raise RuntimeError('component already running: %s' % (uid))
 
-        # first things first: inform the caller about our pit
-        spt.setproctitle('rp.%s' % uid)
-        with open('%s/%s.pid'  % (pwd, uid), 'w') as fout:
-            fout.write('%d\n' % os.getpid())
-            fout.flush
+    spt.setproctitle('rp.%s' % uid)
 
-        if 'ppid' in cfg:
-            out("ppid_watcher: run")
-            watcher = mt.Thread(target=ppid_watcher, args=[int(cfg['ppid'])])
-            watcher.daemon = True
-            watcher.start()
-        else:
-            out("ppid_watcher: nope")
+    ru.pid_watcher(pid=cfg['ppid'], tgt_pid=os.getpid(), uid=uid)
 
-        # create the component
-        comp = rpu.Component.create(cfg)
-        comp.start()
-        comp.wait()
+    # create the component
+    comp = rpu.Component.create(cfg)
+    comp.start()
 
-    except Exception as e:
-        sys.stderr.write('ERROR: %s failed: %s\n' % (cfgf, e))
-        sys.exit(1)
+    # report pid
+    with open(cfg['fpid'], 'w') as fout:
+        fout.write('%-3s %s\n' % ('PID', os.getpid()))
 
-    sys.exit(0)
+    comp.wait()
 
 
 # ------------------------------------------------------------------------------

@@ -10,8 +10,9 @@ import time
 import threading as mt
 
 import radical.utils        as ru
-import saga                 as rs
-import saga.utils.pty_shell as rsup
+import radical.saga         as rs
+
+rsup = rs.utils.pty_shell
 
 from .                import utils   as rpu
 from .client          import Client
@@ -87,6 +88,10 @@ class Session(rs.Session):
         if self._cfg.get('bridges') or self._cfg.get('components'):
             create_cmgr = True
 
+        # cache for bridge addresses
+        # FIXME: this should be a simple, distributed key/val store with locking
+        #        and transactions.
+        self._addresses = dict()
 
         # fall back to config data where possible
         # sanity check on parameters
@@ -154,7 +159,7 @@ class Session(rs.Session):
 
 
         if create_cmgr:
-            self._cmgr = rpu.ComponentManager(self, self._cfg)
+            self._cmgr = rpu.ComponentManager(self, self._cfg, self.uid)
 
         # done!
         if create_client:
@@ -794,6 +799,41 @@ class Session(rs.Session):
         else                               : js_hop.schema = 'fork'
 
         return js_url, js_hop
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_address(self, name):
+        '''
+        return in and out address for the named bridge, if known - None
+        otherwise
+        '''
+        if name in self._addresses:
+            return self._addresses[name]
+
+        addr = self._addresses.get(name, dict())
+
+        fnames = ['%s/%s.url' % (self._sandbox, name), 
+                  '%s/%s.url' % (os.getcwd(),   name)]
+        for fname in fnames:
+
+            if addr:
+                # we are done already
+                self._addresses[name] = addr
+                break
+
+            if os.path.isfile(fname):
+                with open(fname, 'r') as fin:
+                    for line in fin.readlines():
+                        key, val = line.split()
+                        if key in ['PUB', 'PUT']: addr[key] = val
+                        if key in ['SUB', 'GET']: addr[key] = val
+                    assert(len(addr) in [0,2]), 'malformed %s' % fname
+
+        if not addr:
+            raise RuntimeError('no address for %s found %s' % (name, fnames))
+
+        return addr
 
 
     # --------------------------------------------------------------------------

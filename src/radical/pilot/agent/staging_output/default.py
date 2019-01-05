@@ -7,7 +7,7 @@ import os
 import errno
 import shutil
 
-import saga          as rs
+import radical.saga  as rs
 import radical.utils as ru
 
 from .... import pilot     as rp

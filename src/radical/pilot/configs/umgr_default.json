@@ -3,9 +3,6 @@
 # specified.  It contains the minimal set of settings required for
 # a functional unit manager.
 {
-    # default scheduler
-    "scheduler" : "round_robin",
-
     # max number of updates to put into a db bulk
     "bulk_collection_size" : 100,
 
@@ -36,7 +33,8 @@
 
     "components" : {
         # how many instances of the respective components should be started
-        "UMGRStagingInputComponent"  : { "count" : 1},
+        "UMGRStagingInputComponent"  : { "count" : 1, 
+                                         "type"  : "round_robin"},
         "UMGRSchedulingComponent"    : { "count" : 1},
         "UMGRStagingOutputComponent" : { "count" : 1}
     }

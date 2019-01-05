@@ -8,11 +8,12 @@ from ... import utils     as rpu
 
 # ------------------------------------------------------------------------------
 # 'enum' for RP's pmgr launching types
-RP_PL_NAME_SINGLE = "single"
-RP_PL_NAME_BULK   = "bulk"
+RP_PL_NAME_SINGLE  = "single"
+RP_PL_NAME_BULK    = "bulk"
+RP_PL_NAME_DEFAULT = RP_PL_NAME_SINGLE
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class PMGRLaunchingComponent(rpu.Component):
 
@@ -30,7 +31,7 @@ class PMGRLaunchingComponent(rpu.Component):
     @classmethod
     def create(cls, cfg, session):
 
-        name = cfg.get('launcher')
+        name = cfg.get('type', RP_PL_NAME_DEFAULT)
 
         # Make sure that we are the base-class!
         if cls != PMGRLaunchingComponent:
@@ -39,17 +40,17 @@ class PMGRLaunchingComponent(rpu.Component):
         from .bulk   import Bulk
         from .single import Single
 
-        try:
-            impl = {
-                RP_PL_NAME_BULK  : Bulk,
-                RP_PL_NAME_SINGLE: Single
-            }[name]
+        impls = {RP_PL_NAME_BULK  : Bulk,
+                 RP_PL_NAME_SINGLE: Single
+        }
 
-            impl = impl(cfg, session)
-            return impl
-
-        except KeyError:
+        if name not in impls:
             raise ValueError("PMGR Launcher '%s' unknown" % name)
+
+        impl = impls[name]
+
+        return impl(cfg, session)
+
 
 
 # ------------------------------------------------------------------------------

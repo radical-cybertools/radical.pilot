@@ -8,8 +8,8 @@ import sys
 import time
 import msgpack
 
-import setproctitle        as spt
-import radical.pilot.utils as rpu
+import setproctitle  as spt
+import radical.utils as ru
 
 DELAY = 0.0
 
@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     # setup getter
     name   = sys.argv[1]
-    getter  = rpu.Getter(name)
+    getter  = ru.Getter(name)
 
     # mark this process
     spt.setproctitle('rp.%s' % getter.uid)

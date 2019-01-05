@@ -6,8 +6,8 @@ __license__   = "MIT"
 import sys
 import time
 
-import setproctitle        as spt
-import radical.pilot.utils as rpu
+import setproctitle  as spt
+import radical.utils as ru
 
 DELAY = 0.0
 
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     # setup channel
     name   = sys.argv[1]
     topics = sys.argv[2:]
-    sub    = rpu.Subscriber(name)
+    sub    = ru.Subscriber(name)
 
     for topic in topics:
         sub.subscribe(topic)

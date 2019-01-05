@@ -69,7 +69,6 @@ if __name__ == '__main__':
         # Launch the pilot.
         report.header('submit pilots')
         pilot = pmgr.submit_pilots(pdesc)
-        time.sleep(10)
 
         report.header('submit units')
 
