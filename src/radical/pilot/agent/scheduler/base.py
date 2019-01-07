@@ -539,6 +539,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         return core_map, gpu_map
 
+
     # --------------------------------------------------------------------------
     #
     def unschedule_cb(self, topic, msg):

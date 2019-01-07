@@ -6,44 +6,17 @@ __license__   = "MIT"
 
 import os
 import sys
-import time
+import atexit
 import signal
 
-import threading           as mt
-import setproctitle        as spt
+import setproctitle  as spt
 
-import radical.utils       as ru
-import radical.pilot.utils as rpu
+import radical.utils as ru
 
 
-def out(msg):
-    sys.stdout.write('%s\n' % msg)
-    sys.stdout.flush()
-
-
-def term():
-    out('=== TERMINATE')
-
-
-import atexit
-atexit.register(term)
-
-
-# ------------------------------------------------------------------------------
-#
-def ppid_watcher(ppid):
-
-    print " === ppid_watcher starts: %s watches %s" % (os.getpid(), ppid)
-
-    try:
-        while True:
-            time.sleep(1)
-            os.kill(ppid, 0)
-            print " === ppid_watcher: parent %s is alive" % ppid
-    except:
-        print " === ppid_watcher: parent %s is gone - bye" % ppid
-        os.kill(os.getpid(), signal.SIGTERM)
-        os.kill(os.getpid(), signal.SIGKILL)
+def term(uid):
+    sys.stderr.write('bridge %s terminated\n' % uid)
+    sys.stderr.flush()
 
 
 # ------------------------------------------------------------------------------
@@ -78,49 +51,68 @@ if __name__ == "__main__":
 
     A typical pubsub test scenario would be:
 
-        > radical-pilot-bridge command pubsub             [1]
+        > radical-pilot-bridge command.cfg                [1]
         > radical-pilot-sub    command foo bar            [2]
         > radical-pilot-pub    command foo_1 foo_2 bar_1  [3]
         > radical-pilot-sub    command bar baz pop        [4]
         > radical-pilot-pub    command bar_2 baz_1 buz_1  [5]
 
     [1] establishes the pubsub channel 'command'
-    [2] and [4] connect to the command channel, and subscribe for certain topics
-    [3] and [5] connect to the command channel, and send messages for some topics
+    [2] and [4] connect to the command channel, subscribe for certain topics
+    [3] and [5] connect to the command channel, send messages for some topics
 
     Note that the `buz_1` messages will never be received [5], and that the
     `pop` subscriber [4] will get no messages for that topic.
-
     '''
 
     if len(sys.argv) != 2:
         sys.stderr.write('error: argument error\n'
-                         'usage: %s <cfg_file>\n\n')
+                         'usage: %s <cfg_file>\n\n' % sys.argv[0])
         raise RuntimeError('argument error: %s' % sys.argv)
 
-    # ensure we have a config file
     cfg = ru.read_json(sys.argv[1])
-
-    pwd = cfg['pwd']
     uid = cfg['uid']
 
-    # first things first: inform the caller about our pit
+    ru_def = ru.DefaultConfig()
+    for key, val in cfg['ru_def'].iteritems():
+        ru_def[key] = val
+
+  # atexit.register(term, uid=uid)
+
+    sys.stdout = open(cfg['fout'], 'w')
+    sys.stderr = open(cfg['ferr'], 'w')
+
+  # sys.stdout = open('o.log', 'a', 0)
+  # sys.stderr = open('e.log', 'a', 0)
+
+    print 'xxx 1 %s' % cfg['fout']
+    print 'xxx 1 %s' % cfg['ferr']
+
+    if  os.path.exists(cfg['fpid']) or \
+        os.path.exists(cfg['furl']) :
+        raise RuntimeError('bridge already running: %s' % (uid))
+
     spt.setproctitle('rp.%s' % uid)
-    with open('%s/%s.pid'  % (pwd, uid), 'w') as fout:
-        fout.write('%d\n' % os.getpid())
-        fout.flush
 
-    if 'ppid' in cfg:
-        print " === ppid_watcher: run"
-        watcher = mt.Thread(target=ppid_watcher, args=[int(cfg['ppid'])])
-        watcher.daemon = True
-        watcher.start()
-    else:
-        print " === ppid_watcher: nope"
+    ru.pid_watcher(pid=cfg.get('ppid'), uid=uid)
 
+    print 'xxx 2'
     # create the bridge
-    bridge = rpu.Bridge.create(cfg)
+    bridge = ru.zmq.Bridge.create(cfg)
     bridge.start()
+
+    print 'xxx 3'
+
+    # report pid
+    with open(cfg['fpid'], 'w') as fout:
+        fout.write('%-3s %s\n' % ('PID', os.getpid()))
+
+    # report addresses
+    with open(cfg['furl'], 'w') as fout:
+        fout.write('%-3s %s\n' % (bridge.type_in,  bridge.addr_in ))
+        fout.write('%-3s %s\n' % (bridge.type_out, bridge.addr_out))
+        fout.flush()
+
     bridge.wait()
 
 

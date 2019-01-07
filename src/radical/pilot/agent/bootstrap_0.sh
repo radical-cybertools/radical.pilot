@@ -469,14 +469,14 @@ verify_install()
     fi
     echo ' ok'
 
-    if ! test -z "$RADICAL_DEBUG"
-    then
-        echo 'debug mode: install pudb'
-        pip install pudb || true
-    fi
+    ## if ! test -z "$RADICAL_DEBUG"
+    ## then
+    ##     echo 'debug mode: install pudb'
+    ##     pip install pudb || true
+    ## fi
 
     # FIXME: attempt to load all required modules
-    modules='saga radical.utils pymongo hostlist netifaces setproctitle ntplib msgpack zmq'
+    modules='radical.saga radical.utils pymongo hostlist netifaces setproctitle ntplib msgpack zmq'
     for m in $modules
     do
         printf 'verify module viability: %-15s ...' $m
@@ -1326,13 +1326,13 @@ rp_install()
 #
 verify_rp_install()
 {
-    OLD_SAGA_VERBOSE=$SAGA_VERBOSE
-    OLD_RADICAL_VERBOSE=$RADICAL_VERBOSE
-    OLD_RADICAL_PILOT_VERBOSE=$RADICAL_PILOT_VERBOSE
+    OLD_SAGA_LOG_LVL=$SAGA_LOG_LVL
+    OLD_RADICAL_LOG_LVL=$RADICAL_LOG_LVL
+    OLD_RADICAL_PILOT_LOG_LVL=$RADICAL_PILOT_LOG_LVL
 
-    SAGA_VERBOSE=WARNING
-    RADICAL_VERBOSE=WARNING
-    RADICAL_PILOT_VERBOSE=WARNING
+    SAGA_LOG_LVL=WARNING
+    RADICAL_LOG_LVL=WARNING
+    RADICAL_PILOT_LOG_LVL=WARNING
 
     # print the ve information and stack versions for verification
     echo
@@ -1341,7 +1341,7 @@ verify_rp_install()
     echo "`$PYTHON --version` ($PYTHON)"
     echo "PYTHONPATH: $PYTHONPATH"
  (  $PYTHON -c 'print "utils : ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__' \
- && $PYTHON -c 'print "saga  : ",; import saga          as rs; print rs.version_detail,; print rs.__file__' \
+ && $PYTHON -c 'print "saga  : ",; import radical.saga  as rs; print rs.version_detail,; print rs.__file__' \
  && $PYTHON -c 'print "pilot : ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__' \
  && (echo 'install ok!'; true) \
  ) \
@@ -1351,9 +1351,9 @@ verify_rp_install()
     echo "---------------------------------------------------------------------"
     echo
 
-    SAGA_VERBOSE=$OLD_SAGA_VERBOSE
-    RADICAL_VERBOSE=$OLD_RADICAL_VERBOSE
-    RADICAL_PILOT_VERBOSE=$OLD_RADICAL_PILOT_VERBOSE
+    SAGA_LOG_LVL=$OLD_SAGA_LOG_LVL
+    RADICAL_LOG_LVL=$OLD_RADICAL_LOG_LVL
+    RADICAL_PILOT_LOG_LVL=$OLD_RADICAL_PILOT_LOG_LVL
 }
 
 
@@ -1774,14 +1774,10 @@ export PYTHONPATH=$PYTHONPATH
 
 # run agent in debug mode
 # FIXME: make option again?
-export SAGA_VERBOSE=DEBUG
-export RADICAL_VERBOSE=DEBUG
-export RADICAL_UTIL_VERBOSE=DEBUG
-export RADICAL_PILOT_VERBOSE=DEBUG
-
-# the agent will *always* use the dburl from the config file, not from the env
-# FIXME: can we better define preference in the session ctor?
-unset RADICAL_PILOT_DBURL
+export SAGA_LOG_LVL=DEBUG
+export RADICAL_LOG_LVL=DEBUG
+export RADICAL_UTIL_LOG_LVL=DEBUG
+export RADICAL_PILOT_LOG_LVL=DEBUG
 
 # avoid ntphost lookups on compute nodes
 export RADICAL_PILOT_NTPHOST=$RADICAL_PILOT_NTPHOST

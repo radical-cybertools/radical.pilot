@@ -7,8 +7,8 @@ import sys
 import os
 import radical.pilot as rp
 
-verbose  = os.environ.get('RADICAL_PILOT_VERBOSE', 'REPORT')
-os.environ['RADICAL_PILOT_VERBOSE'] = verbose
+verbose  = os.environ.get('RADICAL_PILOT_LOG_LVL', 'REPORT')
+os.environ['RADICAL_PILOT_LOG_LVL'] = verbose
 
 """ DESCRIPTION: Tutorial 3: Coupled Tasks
 For every task A1 and B1 a C1 is started.
@@ -17,7 +17,7 @@ For every task A1 and B1 a C1 is started.
 # READ: The RADICAL-Pilot documentation:
 #   http://radicalpilot.readthedocs.org/en/latest
 #
-# Try running this example with RADICAL_PILOT_VERBOSE=debug set if
+# Try running this example with RADICAL_PILOT_LOG_LVL=debug set if
 # you want to see what happens behind the scences!
 
 

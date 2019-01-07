@@ -50,7 +50,6 @@ if __name__ == '__main__':
         config = ru.read_json('%s/config.json' % pwd)
         report.ok('>>ok\n')
 
-        report.header('submit pilots')
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = rp.PilotManager(session=session)
@@ -63,13 +62,13 @@ if __name__ == '__main__':
                    'project'       : config[resource]['project'],
                    'queue'         : config[resource]['queue'],
                    'access_schema' : config[resource]['schema'],
-                   'cores'         : config[resource]['cores'],
+                   'cores'         : 1024
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
         # Launch the pilot.
+        report.header('submit pilots')
         pilot = pmgr.submit_pilots(pdesc)
-
 
         report.header('submit units')
 
@@ -77,10 +76,7 @@ if __name__ == '__main__':
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-        # Create a workload of ComputeUnits.
-        # Each compute unit runs '/bin/date'.
-
-        n = 2 * 1  # number of units to run
+        n = 1024  # 1024  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -89,7 +85,7 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = '/bin/date'
+            cud.executable       = '/bin/true'
             cud.gpu_processes    = 0
             cud.cpu_processes    = 1
             cud.cpu_threads      = 1
@@ -127,7 +123,7 @@ if __name__ == '__main__':
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close(download=True)
+        session.close(download=False)
 
     report.header()
 

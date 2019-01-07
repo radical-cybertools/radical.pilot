@@ -4,7 +4,7 @@ __license__   = "MIT"
 
 
 import os
-import saga as rs
+import radical.saga as rs
 
 from ...   import states             as rps
 from ...   import constants          as rpc
@@ -38,8 +38,9 @@ class Default(UMGRStagingOutputComponent):
         # we keep a cache of SAGA dir handles
         self._cache = dict()
 
+        # FIXME: move to base class
         self.register_input(rps.UMGR_STAGING_OUTPUT_PENDING, 
-                            rpc.UMGR_STAGING_OUTPUT_QUEUE, self.work)
+                            rpc.CLIENT_QUEUE, self.work)
 
         # we don't need an output queue -- units will be final
 
@@ -55,6 +56,32 @@ class Default(UMGRStagingOutputComponent):
             pass
 
 
+  # # --------------------------------------------------------------------------
+  # #
+  # def _state_pull_cb(self, units):
+  #
+  #     if self._terminate.is_set():
+  #         return False
+  #
+  #     for unit in units:
+  #         if not self._update_unit(unit, publish=True, advance=False):
+  #             return False
+  #
+  #     self._log.info("units pulled: %4d", len(units))
+  #     self._prof.prof('get', msg="bulk size: %d" % len(units), uid=self.uid)
+  #
+  #     for unit in units:
+  #         self._prof.prof('get', uid=unit['uid'])
+  #
+  #
+  #     # now we really own the CUs, and can start working on them (ie. push
+  #     # them into the pipeline).  We don't record state transition profile
+  #     # events though - the transition has already happened.
+  #     self.advance(units, publish=True, push=True, prof=False)
+  #
+  #     return True
+  #
+  #
     # --------------------------------------------------------------------------
     #
     def work(self, units):

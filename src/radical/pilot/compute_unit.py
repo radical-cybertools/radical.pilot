@@ -65,6 +65,7 @@ class ComputeUnit(object):
         descr.verify()
 
         # 'static' members
+        self._dict  = None
         self._descr = descr.as_dict()
         self._umgr  = umgr
 
@@ -76,7 +77,7 @@ class ComputeUnit(object):
         self._exit_code        = None
         self._stdout           = None
         self._stderr           = None
-        self._pilot            = descr.get('pilot')
+        self._pilot            = self._descr.get('pilot')
         self._resource_sandbox = None
         self._pilot_sandbox    = None
         self._unit_sandbox     = None
@@ -111,7 +112,7 @@ class ComputeUnit(object):
     #
     def __str__(self):
 
-        return [self.uid, self.pilot, self.state]
+        return [self.uid, self.state]
 
 
     # --------------------------------------------------------------------------
@@ -157,7 +158,7 @@ class ComputeUnit(object):
                     'client_sandbox']:
 
             val = unit_dict.get(key, None)
-            if val != None:
+            if val is not None:
                 setattr(self, "_%s" % key, val)
 
         # invoke unit specific callbacks
@@ -182,24 +183,26 @@ class ComputeUnit(object):
         Returns a Python dictionary representation of the object.
         """
 
-        ret = {
-            'type':             'unit',
-            'umgr':             self.umgr.uid,
-            'uid':              self.uid,
-            'name':             self.name,
-            'state':            self.state,
-            'exit_code':        self.exit_code,
-            'stdout':           self.stdout,
-            'stderr':           self.stderr,
-            'pilot':            self.pilot,
-            'resource_sandbox': self.resource_sandbox,
-            'pilot_sandbox':    self.pilot_sandbox,
-            'unit_sandbox':     self.unit_sandbox,
-            'client_sandbox':   self.client_sandbox,
-            'description':      self.description   # this is a deep copy
-        }
+        if not self._dict:
 
-        return ret
+            self._dict = {
+                'type':             'unit',
+                'umgr':             self.umgr.uid,
+                'uid':              self.uid,
+                'name':             self.name,
+                'state':            self.state,
+                'exit_code':        self.exit_code,
+                'stdout':           self.stdout,
+                'stderr':           self.stderr,
+                'pilot':            self.pilot,
+                'resource_sandbox': self.resource_sandbox,
+                'pilot_sandbox':    self.pilot_sandbox,
+                'unit_sandbox':     self.unit_sandbox,
+                'client_sandbox':   self.client_sandbox,
+                'description':      copy.deepcopy(self.description)
+            }
+
+        return self._dict
 
 
     # --------------------------------------------------------------------------
@@ -400,7 +403,18 @@ class ComputeUnit(object):
             * description (dict)
         """
 
-        return copy.deepcopy(self._descr)
+        return self._descr
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def metadata(self):
+        """
+        Returns the metadata field of the unit's description
+        """
+
+        return copy.deepcopy(self._descr.get('metadata'))
 
 
     # --------------------------------------------------------------------------

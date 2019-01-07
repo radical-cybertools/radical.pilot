@@ -216,7 +216,6 @@ class Update(rpu.Worker):
                 things = [things]
 
             for thing in things:
-                self._log.debug('=== state cb thing: %s', thing)
 
                 # got a new request.  Add to bulk (create as needed),
                 # and push bulk if time is up.
@@ -229,7 +228,6 @@ class Update(rpu.Worker):
                     # we don't push clone states to DB
                     return True
 
-                self._log.debug('=== state cb update: %s %s', uid, state)
                 self._prof.prof('update_request', msg=state, uid=uid)
 
                 # create an update document
@@ -238,18 +236,11 @@ class Update(rpu.Worker):
                 update_dict['$push'] = dict()
 
                 for key,val in thing.iteritems():
-                    # never set _id, states (avoid index clash, duplicated ops)
-                    if key not in ['_id', 'states']:
+                    # never set _id (avoid index clash)
+                    if key not in ['_id']:
                         update_dict['$set'][key] = val
 
-                # we set state, put (more importantly) we push the state onto
-                # the 'states' list, so that we can later get state progression
-                # in sync with the state model, even if they have been pushed
-                # here out-of-order
-                update_dict['$push']['states'] = state
-
                 with self._lock:
-
                     # push the update request onto the bulk
                     self._uids.append([uid, ttype, state])
                     self._bulk.find  ({'uid'  : uid, 

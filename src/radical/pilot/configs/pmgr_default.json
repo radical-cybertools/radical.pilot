@@ -14,7 +14,8 @@
 
     "components" : {
         # how many instances of the respective components should be started
-        "PMGRLaunchingComponent" : {"count" : 1}
+        "PMGRLaunchingComponent" : {"count" : 1, 
+                                    "type"  : "bulk"}
     }
 }
 
