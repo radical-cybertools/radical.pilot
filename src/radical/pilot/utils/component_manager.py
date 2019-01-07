@@ -9,6 +9,8 @@ import time
 
 import radical.utils as ru
 
+_USE_SHELL = False
+
 
 # ------------------------------------------------------------------------------
 #
@@ -29,8 +31,8 @@ class ComponentManager(object):
 
         self._uid  = ru.generate_id('%s.cmgr' % self._owner, ru.ID_CUSTOM)
 
-        self._prof = self._session.get_profiler(name=self._uid)
-        self._log  = self._session.get_logger  (name=self._uid, level='DEBUG')
+        self._prof = ru.Profiler(name=self._uid)
+        self._log  = ru.Logger  (name=self._uid)
 
         self._bridges    = dict()  # map uids to pids
         self._components = dict()  # map uids to pids
@@ -53,6 +55,8 @@ class ComponentManager(object):
         if 'bridges' not in self._cfg:
             self._cfg['bridges'] = dict()
 
+        ru_def = ru.DefaultConfig()
+
         # all file system interactions should happen in the session sandbox
         sbox = self._session.get_session_sandbox()
 
@@ -68,10 +72,9 @@ class ComponentManager(object):
             fpid = '%s/%s.pid' % (sbox, buid)
             furl = '%s/%s.url' % (sbox, buid)
 
+            bcfg['ru_def']          = copy.deepcopy(ru_def.as_dict())
             bcfg['session_id']      = self._session.uid
             bcfg['session_sandbox'] = sbox
-            bcfg['logdir']          = self._cfg.get('logdir', sbox)
-            bcfg['pwd']             = self._cfg.get('pwd',    sbox)
 
             bcfg['owner']           = self.uid
             bcfg['name']            = bname
@@ -89,7 +92,7 @@ class ComponentManager(object):
             ru.write_json(bcfg, fcfg)
 
             cmd = 'radical-pilot-bridge %s' % fcfg
-            ru.sh_callout_bg(cmd, shell=True)
+            ru.sh_callout_bg(cmd, shell=_USE_SHELL)
 
             self._log.debug('started bridge %s: %s' % (buid, cmd))
 
@@ -183,6 +186,8 @@ class ComponentManager(object):
             # nothing to do
             return
 
+        ru_def   = ru.DefaultConfig()
+
         sbox     = self._session.get_session_sandbox()
         to_check = list()
 
@@ -201,10 +206,9 @@ class ComponentManager(object):
                 fcfg = '%s/%s.cfg' % (sbox, cuid)
                 fpid = '%s/%s.pid' % (sbox, cuid)
 
+                ccfg['ru_def']          = copy.deepcopy(ru_def.as_dict())
                 ccfg['session_id']      = self._session.uid
                 ccfg['session_sandbox'] = sbox
-                ccfg['logdir']          = self._cfg.get('logdir', sbox)
-                ccfg['pwd']             = self._cfg.get('pwd',    sbox)
 
                 ccfg['owner']           = self.uid
                 ccfg['name']            = cname
@@ -218,7 +222,7 @@ class ComponentManager(object):
                 ru.write_json(ccfg, fcfg)
 
                 cmd  = 'radical-pilot-component %s' % fcfg
-                ru.sh_callout_bg(cmd, shell=True)
+                ru.sh_callout_bg(cmd, shell=_USE_SHELL)
 
                 self._log.debug('started component %s: %s' % (cuid, cmd))
                 to_check.append(ccfg)

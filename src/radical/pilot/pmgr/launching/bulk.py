@@ -1071,7 +1071,8 @@ class Bulk(PMGRLaunchingComponent):
         agent_cfg['runtime']             = runtime
         agent_cfg['session_id']          = sid
         agent_cfg['pilot_id']            = pid
-        agent_cfg['logdir']              = '.'
+        agent_cfg['log_dir']             = '.'
+        agent_cfg['profile_dir']         = '.'
         agent_cfg['pilot_sandbox']       = pilot_sbox
         agent_cfg['session_sandbox']     = session_sbox
         agent_cfg['resource_sandbox']    = resource_sbox

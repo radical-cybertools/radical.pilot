@@ -33,6 +33,10 @@ if __name__ == "__main__":
     cfg = ru.read_json(sys.argv[1])
     uid = cfg['uid']
 
+    ru_def = ru.DefaultConfig()
+    for key, val in cfg['ru_def'].iteritems():
+        ru_def[key] = val
+
     if  os.path.exists(cfg['fpid']):
         raise RuntimeError('component already running: %s' % (uid))
 

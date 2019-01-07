@@ -127,7 +127,7 @@ class Component(object):
 
         from .. import session as rp_session
         session = rp_session.Session(uid=sid, _cfg=cfg)
-        log     = session.get_logger(uid)
+        log     = ru.Logger(uid)
         log.debug('start component %s [%s]', uid, kind)
 
         if kind not in _ctypemap:
@@ -168,10 +168,10 @@ class Component(object):
         self._cancel_list = list()       # list of units to cancel
         self._cancel_lock = mt.RLock()   # lock for above list
 
-        self._prof = self._session.get_profiler(name=self.uid)
-        self._rep  = self._session.get_reporter(name=self.uid)
-        self._log  = self._session.get_logger  (name=self.uid,
-                                                level=self._debug)
+        self._prof = ru.Profiler(name=self.uid)
+        self._rep  = ru.Reporter(name=self.uid)
+        self._log  = ru.Logger  (name=self.uid)
+
       # self._prof.register_timing(name='component_lifetime',
       #                            scope='uid=%s' % self.uid,
       #                            start='component_start',
@@ -607,10 +607,7 @@ class Component(object):
 
         self.is_valid()
 
-        # if no action occurs in this iteration, idle
-        if not self._inputs:
-            time.sleep(0.1)
-            return True
+        active = False
 
         for name in self._inputs:
             input  = self._inputs[name]['queue']
@@ -621,14 +618,14 @@ class Component(object):
             # FIXME: a simple, 1-thing caching mechanism would likely
             #        remove the req/res overhead completely (for any
             #        non-trivial worker).
-            things = input.get_nowait(1000)  # timeout in microseconds
-
-            if things is None:
-                things = list()
+            #  FIXME: make timoeout configurable
+            things = input.get_nowait(100)  # timeout in microseconds
 
           # self._log.debug('=== check input %s: %s', name, len(things))
             if not things:
                 return True
+
+            active = True
 
             if not isinstance(things, list):
                 things = [things]
@@ -681,6 +678,10 @@ class Component(object):
                     # the component
                     self._log.exception("worker %s failed", self._workers[state])
                     self.advance(things, rps.FAILED, publish=True, push=False)
+
+        # if no action occured in this iteration, idle
+        if not active:
+            time.sleep(0.1)
 
         # keep work_cb registered
         return True

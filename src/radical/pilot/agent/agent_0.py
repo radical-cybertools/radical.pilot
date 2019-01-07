@@ -71,7 +71,8 @@ class Agent_0(rpu.Worker):
         cfg['uid']             = self._uid
         cfg['owner']           = self._sid
         cfg['workdir']         = os.getcwd()
-        cfg['logdir']          = cfg['pilot_sandbox']
+        cfg['log_dir']         = cfg['pilot_sandbox']
+        cfg['profile_dir']     = cfg['pilot_sandbox']
         cfg['session_sandbox'] = cfg['pilot_sandbox']
 
         # sanity check on config settings
@@ -99,7 +100,8 @@ class Agent_0(rpu.Worker):
         # config -- we merge that information into our own config.
         # We don't want the session to start components though, so remove them
         # from the config copy.
-        scfg = {'logdir'          : cfg['logdir'],
+        scfg = {'log_dir'         : cfg['log_dir'],
+                'profile_dir'     : cfg['profile_dir'],
                 'session_sandbox' : cfg['session_sandbox']}
         self._session = rp_Session(uid=self._sid, _cfg=scfg)
 

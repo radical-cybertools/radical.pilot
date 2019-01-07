@@ -69,9 +69,9 @@ class Session(rs.Session):
         # a client module, which manages client side communication bridges and
         # components.
         #
-        # FIXME: this is a sign of an inverted hierarchy: it looks like a client
-        #        should have a session, not the way around.  We leave this for
-        #        now for API stability...
+        # FIXME: this is a sign of an inverted hierarchy: the *module* should
+        #        have a *session*, not the way around.  We leave this for now, 
+        #        to keep the API stabie.
         create_client = False
 
         if not self._cfg:
@@ -105,9 +105,6 @@ class Session(rs.Session):
             self._uid = ru.generate_id('rp.session',  mode=ru.ID_PRIVATE)
             ru.reset_id_counters(prefix='rp.session', reset_all_others=True)
 
-        ru_def = ru.DefaultConfig()
-        ru_def['log_dir'] = './%s' % self._uid
-
         # The session's sandbox is either configured (agent side),
         # or falls back to `./$SID` (client).
         if 'session_sandbox' in self._cfg:
@@ -117,15 +114,18 @@ class Session(rs.Session):
             self._sandbox = './%s/' % self.uid
             self._cfg['session_sandbox'] = self._sandbox
 
-        if not self._cfg.get('session_id'): self._cfg['session_id'] = self._uid 
-        if not self._cfg.get('owner')     : self._cfg['owner']      = self._uid 
-        if not self._cfg.get('logdir')    : self._cfg['logdir']     = self._sandbox
+        if 'session_id' not in self._cfg: self._cfg['session_id'] = self._uid 
+        if 'owner'      not in self._cfg: self._cfg['owner']      = self._uid 
 
-        self._logdir = self._cfg['logdir']
-        self._prof   = self.get_profiler(name=self._cfg['owner'])
-        self._rep    = self.get_reporter(name=self._cfg['owner'])
-        self._log    = self.get_logger  (name=self._cfg['owner'],
-                                         level=self._cfg.get('debug'))
+        # FIXME: this is wrong for the pilot
+        ru_def = ru.DefaultConfig()
+        ru_def['ns']          = 'radical.pilot'
+        ru_def['log_dir']     = './%s' % self._uid
+        ru_def['profile_dir'] = './%s' % self._uid
+
+        self._prof = ru.Profiler(name=self._cfg['owner'])
+        self._rep  = ru.Reporter(name=self._cfg['owner'])
+        self._log  = ru.Logger  (name=self._cfg['owner'])
 
         # now we have config and uid - initialize base class (saga session)
         rs.Session.__init__(self, uid=self._uid)
@@ -287,13 +287,6 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     @property
-    def logdir(self):
-        return self._logdir
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
     def created(self):
         '''
         Returns the UTC date and time the session was created.
@@ -311,44 +304,6 @@ class Session(rs.Session):
         '''
         # FIXME
         return None
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_logger(self, name, level=None):
-        """
-        This is a thin wrapper around `ru.Logger()` which makes sure that
-        log files end up in a separate directory with the name of `session.uid`.
-        """
-        return ru.Logger(name=name, ns='radical.pilot', targets=['.'], 
-                         path=self._logdir, level=level)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_reporter(self, name):
-        """
-        This is a thin wrapper around `ru.Reporter()` which makes sure that
-        log files end up in a separate directory with the name of `session.uid`.
-        """
-
-        if not self._reporter:
-            self._reporter = ru.Reporter(name=name, ns='radical.pilot',
-                                         targets=['stdout'], path=self._logdir)
-        return self._reporter
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_profiler(self, name):
-        """
-        This is a thin wrapper around `ru.Profiler()` which makes sure that
-        log files end up in a separate directory with the name of `session.uid`.
-        """
-
-        prof = ru.Profiler(name=name, ns='radical.pilot', path=self._logdir)
-
-        return prof
 
 
     # -------------------------------------------------------------------------

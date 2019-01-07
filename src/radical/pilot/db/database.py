@@ -37,7 +37,7 @@ class DB(object):
 
         self._session    = session
         self._sid        = self._session.uid
-        self._log        = self._session.get_logger(name=self._sid)
+        self._log        = ru.Logger(name=self._sid)
 
         self._cfg        = cfg
         self._created    = time.time()

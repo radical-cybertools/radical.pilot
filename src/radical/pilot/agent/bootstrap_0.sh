@@ -476,7 +476,7 @@ verify_install()
     ## fi
 
     # FIXME: attempt to load all required modules
-    modules='saga radical.utils pymongo hostlist netifaces setproctitle ntplib msgpack zmq'
+    modules='radical.saga radical.utils pymongo hostlist netifaces setproctitle ntplib msgpack zmq'
     for m in $modules
     do
         printf 'verify module viability: %-15s ...' $m

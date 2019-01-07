@@ -27,7 +27,7 @@
         "mpi_launch_method"           : "MPIRUN",
         "rp_version"                  : "installed",
         "virtenv_mode"                : "use",
-        "virtenv"                     : "/home/merzky/radical/radical.pilot.devel/ve",
+        "virtenv"                     : "/home/merzky/radical/radical.pilot.zmq/ve",
         "python_dist"                 : "default",
         "cores_per_node"              : 8,
         "gpus_per_node"               : 1,
