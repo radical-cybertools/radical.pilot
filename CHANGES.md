@@ -5,6 +5,20 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.21 Release                                                       2018-12-19
+--------------------------------------------------------------------------------
+
+  - fix LSF var expansion
+
+
+0.50.20 Release                                                       2018-11-25
+--------------------------------------------------------------------------------
+
+  - fix Titan OMPI installation
+  - support metdata for units
+  - fix git error detection during setup
+
+
 0.50.19 Release                                                       2018-11-15
 --------------------------------------------------------------------------------
 
