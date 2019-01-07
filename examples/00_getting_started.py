@@ -29,13 +29,14 @@ if __name__ == '__main__':
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
-    if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
+    if   len(sys.argv)  > 2: report.exit('Usage: %s [resource]\n' % sys.argv[0])
     elif len(sys.argv) == 2: resource = sys.argv[1]
     else                   : resource = 'local.localhost'
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
     session = rp.Session()
+
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
@@ -45,7 +46,8 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
+        pwd    = os.path.dirname(os.path.abspath(__file__))
+        config = ru.read_json('%s/config.json' % pwd)
         report.ok('>>ok\n')
 
         report.header('submit pilots')
@@ -68,6 +70,7 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
+
         report.header('submit units')
 
         # Register the ComputePilot in a UnitManager object.
@@ -77,7 +80,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 128
+        n = 2 * 1  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -86,8 +89,7 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = '/bin/sleep'
-            cud.arguments        = ['1']
+            cud.executable       = '/bin/date'
             cud.gpu_processes    = 0
             cud.cpu_processes    = 1
             cud.cpu_threads      = 1
@@ -102,7 +104,7 @@ if __name__ == '__main__':
         # assigning ComputeUnits to the ComputePilots.
         umgr.submit_units(cuds)
 
-        # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+        # Wait for units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
 

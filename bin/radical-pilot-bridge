@@ -1,0 +1,128 @@
+#!/usr/bin/env python
+
+__copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+
+import os
+import sys
+import time
+import signal
+
+import threading           as mt
+import setproctitle        as spt
+
+import radical.utils       as ru
+import radical.pilot.utils as rpu
+
+
+def out(msg):
+    sys.stdout.write('%s\n' % msg)
+    sys.stdout.flush()
+
+
+def term():
+    out('=== TERMINATE')
+
+
+import atexit
+atexit.register(term)
+
+
+# ------------------------------------------------------------------------------
+#
+def ppid_watcher(ppid):
+
+    print " === ppid_watcher starts: %s watches %s" % (os.getpid(), ppid)
+
+    try:
+        while True:
+            time.sleep(1)
+            os.kill(ppid, 0)
+            print " === ppid_watcher: parent %s is alive" % ppid
+    except:
+        print " === ppid_watcher: parent %s is gone - bye" % ppid
+        os.kill(os.getpid(), signal.SIGTERM)
+        os.kill(os.getpid(), signal.SIGKILL)
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+    '''
+    This thin wrapper starts a ZMQ communication bridge as stand-alone process.
+    It expects two arguments:
+
+      - name: name of the communication bridge to start
+      - cfgf: path to a config file to use
+
+    It is the responsibility of the caller to ensure that `$name` is unique.
+
+    The given  config file in `$cfgf` is read, and searched for a subsection
+    `bridges.$name`.  That config will be extracted and written to `$name.cfgf`,
+    which is then used by the bridge.  If `$name` is not found in the `bridges`
+    subsection, an error will be raised.  If no `bridges` subsection is found,
+    the config is considered to be self-sufficient, and will be used as is.
+
+    The bridge's stdout and stderr will be written to `$name.out` and
+    `$name.err`, respectively, log messages will appear in `$name.log`.
+    After startup, it will write the bridge's communication endpoint URLs
+    to the file `$name.url`, in the form:
+
+        SUB: $addr_in
+        PUB: $addr_out
+
+    The `SUB` address is to be used for subscribers, the `PUB` address for
+    publishers -- but the respective RP classes will dig the correct addresses
+    from that file.
+
+    A typical pubsub test scenario would be:
+
+        > radical-pilot-bridge command pubsub             [1]
+        > radical-pilot-sub    command foo bar            [2]
+        > radical-pilot-pub    command foo_1 foo_2 bar_1  [3]
+        > radical-pilot-sub    command bar baz pop        [4]
+        > radical-pilot-pub    command bar_2 baz_1 buz_1  [5]
+
+    [1] establishes the pubsub channel 'command'
+    [2] and [4] connect to the command channel, and subscribe for certain topics
+    [3] and [5] connect to the command channel, and send messages for some topics
+
+    Note that the `buz_1` messages will never be received [5], and that the
+    `pop` subscriber [4] will get no messages for that topic.
+
+    '''
+
+    if len(sys.argv) != 2:
+        sys.stderr.write('error: argument error\n'
+                         'usage: %s <cfg_file>\n\n')
+        raise RuntimeError('argument error: %s' % sys.argv)
+
+    # ensure we have a config file
+    cfg = ru.read_json(sys.argv[1])
+
+    pwd = cfg['pwd']
+    uid = cfg['uid']
+
+    # first things first: inform the caller about our pit
+    spt.setproctitle('rp.%s' % uid)
+    with open('%s/%s.pid'  % (pwd, uid), 'w') as fout:
+        fout.write('%d\n' % os.getpid())
+        fout.flush
+
+    if 'ppid' in cfg:
+        print " === ppid_watcher: run"
+        watcher = mt.Thread(target=ppid_watcher, args=[int(cfg['ppid'])])
+        watcher.daemon = True
+        watcher.start()
+    else:
+        print " === ppid_watcher: nope"
+
+    # create the bridge
+    bridge = rpu.Bridge.create(cfg)
+    bridge.start()
+    bridge.wait()
+
+
+# ------------------------------------------------------------------------------
+

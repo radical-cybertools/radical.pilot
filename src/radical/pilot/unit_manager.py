@@ -5,14 +5,14 @@ __license__   = "MIT"
 
 import os
 import time
-import threading
+import threading as mt
 
 import radical.utils as ru
 
+from . import db
 from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
-from . import types     as rpt
 
 from . import compute_unit_description as rpcud
 
@@ -40,8 +40,8 @@ class UnitManager(rpu.Component):
         pd.resource = "futuregrid.alamo"
         pd.cores = 16
 
-        p1 = pm.submit_pilots(pd) # create first pilot with 16 cores
-        p2 = pm.submit_pilots(pd) # create second pilot with 16 cores
+        p1 = pm.submit_pilots(pd)  # create first  pilot with 16 cores
+        p2 = pm.submit_pilots(pd)  # create second pilot with 16 cores
 
         # Create a workload of 128 '/bin/sleep' compute units
         compute_units = []
@@ -62,7 +62,7 @@ class UnitManager(rpu.Component):
     The unit manager can issue notification on unit state changes.  Whenever
     state notification arrives, any callback registered for that notification is
     fired.  
-    
+
     NOTE: State notifications can arrive out of order wrt the unit state model!
     """
 
@@ -82,41 +82,45 @@ class UnitManager(rpu.Component):
             * A new `UnitManager` object [:class:`radical.pilot.UnitManager`].
         """
 
-        self._bridges     = dict()
-        self._components  = dict()
+        self._session     = session
         self._pilots      = dict()
-        self._pilots_lock = threading.RLock()
+        self._pilots_lock = mt.RLock()
         self._units       = dict()
-        self._units_lock  = threading.RLock()
+        self._units_lock  = mt.RLock()
         self._callbacks   = dict()
-        self._cb_lock     = threading.RLock()
-        self._terminate   = threading.Event()
+        self._cb_lock     = mt.RLock()
+        self._terminate   = mt.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
 
-        for m in rpt.UMGR_METRICS:
+        for m in rpc.UMGR_METRICS:
             self._callbacks[m] = dict()
 
-        cfg = ru.read_json("%s/configs/umgr_%s.json" \
-                % (os.path.dirname(__file__),
-                   os.environ.get('RADICAL_PILOT_UMGR_CFG', 'default')))
+        self._cfg = ru.read_json("%s/configs/umgr_%s.json"
+                       % (os.path.dirname(__file__),
+                          os.environ.get('RADICAL_PILOT_UMGR_CFG', 'default')))
 
         if scheduler:
             # overwrite the scheduler from the config file
-            cfg['scheduler'] = scheduler
+            self._cfg['scheduler'] = scheduler
 
-        if not cfg.get('scheduler'):
+        if not self._cfg.get('scheduler'):
             # set default scheduler if needed
-            cfg['scheduler'] = rpus.SCHEDULER_DEFAULT
+            self._cfg['scheduler'] = rpus.SCHEDULER_DEFAULT
 
-        assert(cfg['db_poll_sleeptime']), 'db_poll_sleeptime not configured'
+        assert(self._cfg['db_poll_sleeptime']), 'db_poll_sleeptime not configured'
 
         # initialize the base class (with no intent to fork)
-        self._uid    = ru.generate_id('umgr')
-        cfg['owner'] = self.uid
-        rpu.Component.__init__(self, cfg, session)
-        self.start(spawn=False)
-        self._log.info('started umgr %s', self._uid)
+        self._uid          = ru.generate_id('umgr')
+        self._cfg['uid']   = self._uid
+        self._cfg['owner'] = self._session.uid
+        self._cfg['dburl'] = self._session.dburl
+
+        self._db   = db.DB(self._session, cfg=self._cfg)
+        self._cmgr = rpu.ComponentManager(self._session, self._cfg, owner=self._uid)
+
+        super(UnitManager, self).__init__(self._cfg, self._session)
+        self.start()
 
         # only now we have a logger... :/
         self._rep.info('<<create unit manager')
@@ -152,38 +156,6 @@ class UnitManager(rpu.Component):
 
 
     # --------------------------------------------------------------------------
-    # 
-    def initialize_common(self):
-
-        # the manager must not carry bridge and component handles across forks
-        ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _atfork_prepare(self): pass
-    def _atfork_parent(self) : pass
-    def _atfork_child(self)  : 
-        self._bridges    = dict()
-        self._components = dict()
-
-
-    # --------------------------------------------------------------------------
-    # 
-    def finalize_parent(self):
-
-        # terminate umgr components
-        for c in self._components:
-            c.stop()
-            c.join()
-
-        # terminate umgr bridges
-        for b in self._bridges:
-            b.stop()
-            b.join()
-
-
-    # --------------------------------------------------------------------------
     #
     def close(self):
         """
@@ -206,7 +178,7 @@ class UnitManager(rpu.Component):
         # FIXME: really?
         with self._cb_lock:
             self._callbacks = dict()
-            for m in rpt.UMGR_METRICS:
+            for m in rpc.UMGR_METRICS:
                 self._callbacks[m] = dict()
 
         self._log.info("Closed UnitManager %s." % self._uid)
@@ -234,8 +206,8 @@ class UnitManager(rpu.Component):
         """
 
         ret = {
-            'uid': self.uid,
-            'cfg': self.cfg
+            'uid': self._uid,
+            'cfg': self._cfg
         }
 
         return ret
@@ -288,7 +260,7 @@ class UnitManager(rpu.Component):
 
             self._log.debug('pilot %s is final - pull units', pilot.uid)
 
-            unit_cursor = self.session._dbs._c.find({
+            unit_cursor = self._db._c.find({
                 'type'    : 'unit',
                 'pilot'   : pilot.uid,
                 'umgr'    : self.uid,
@@ -310,7 +282,7 @@ class UnitManager(rpu.Component):
             #        units.
             uids = [unit['uid'] for unit in units]
 
-            self._session._dbs._c.update({'type'  : 'unit',
+            self._db._c.update({'type'  : 'unit',
                                           'uid'   : {'$in'     : uids}},
                                          {'$set'  : {'control' : 'umgr'}},
                                          multi=True)
@@ -354,7 +326,7 @@ class UnitManager(rpu.Component):
         # FIXME: we also pull for dead units.  That is not efficient...
         # FIXME: this needs to be converted into a tailed cursor in the update
         #        worker
-        units  = self._session._dbs.get_units(umgr_uid=self.uid)
+        units  = self._db.get_units(umgr_uid=self.uid)
 
         for unit in units:
             if not self._update_unit(unit, publish=True, advance=False):
@@ -377,9 +349,9 @@ class UnitManager(rpu.Component):
         #        to use 'find'.  To avoid finding the same units over and over 
         #        again, we update the 'control' field *before* running the next
         #        find -- so we do it right here.
-        unit_cursor = self.session._dbs._c.find({'type'    : 'unit',
-                                                 'umgr'    : self.uid,
-                                                 'control' : 'umgr_pending'})
+        unit_cursor = self._db._c.find({'type'    : 'unit',
+                                        'umgr'    : self.uid,
+                                        'control' : 'umgr_pending'})
 
         if not unit_cursor.count():
             # no units whatsoever...
@@ -390,10 +362,10 @@ class UnitManager(rpu.Component):
         units = list(unit_cursor)
         uids  = [unit['uid'] for unit in units]
 
-        self._session._dbs._c.update({'type'  : 'unit',
-                                      'uid'   : {'$in'     : uids}},
-                                     {'$set'  : {'control' : 'umgr'}},
-                                     multi=True)
+        self._db._c.update({'type'  : 'unit',
+                            'uid'   : {'$in'     : uids}},
+                           {'$set'  : {'control' : 'umgr'}},
+                           multi=True)
 
         self._log.info("units pulled: %4d", len(units))
         self._prof.prof('get', msg="bulk size: %d" % len(units), uid=self.uid)
@@ -499,7 +471,7 @@ class UnitManager(rpu.Component):
     def _call_unit_callbacks(self, unit_obj, state):
 
         with self._cb_lock:
-            for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
+            for cb_name, cb_val in self._callbacks[rpc.UNIT_STATE].iteritems():
 
                 self._log.debug('%s calls state cb %s for %s', 
                                 self.uid, cb_name, unit_obj.uid)
@@ -742,7 +714,7 @@ class UnitManager(rpu.Component):
 
         # insert units into the database, as a bulk.
         unit_docs = [u.as_dict() for u in units]
-        self._session._dbs.insert_units(unit_docs)
+        self._db.insert_units(unit_docs)
 
         # Only after the insert can we hand the units over to the next
         # components (ie. advance state).
@@ -980,7 +952,7 @@ class UnitManager(rpu.Component):
                                                    'umgr' : self.uid}})
 
         # we also inform all pilots about the cancelation request
-        self._session._dbs.pilot_command(cmd='cancel_units', arg={'uids':uids})
+        self._db.pilot_command(cmd='cancel_units', arg={'uids':uids})
 
         # In the default case of calling 'advance' above, we just set the state,
         # so we *know* units are canceled.  But we nevertheless wait until that
@@ -991,7 +963,7 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def register_callback(self, cb, metric=rpt.UNIT_STATE, cb_data=None):
+    def register_callback(self, cb, metric=rpc.UNIT_STATE, cb_data=None):
         """
         Registers a new callback function with the UnitManager.  Manager-level
         callbacks get called if the specified metric changes.  The default
@@ -1021,7 +993,7 @@ class UnitManager(rpu.Component):
 
         # FIXME: the signature should be (self, metrics, cb, cb_data)
 
-        if  metric not in rpt.UMGR_METRICS :
+        if  metric not in rpc.UMGR_METRICS :
             raise ValueError ("Metric '%s' not available on the umgr" % metric)
 
         with self._cb_lock:
@@ -1035,11 +1007,11 @@ class UnitManager(rpu.Component):
     def unregister_callback(self, cb=None, metric=None):
 
 
-        if metric and metric not in rpt.UMGR_METRICS :
+        if metric and metric not in rpc.UMGR_METRICS :
             raise ValueError ("Metric '%s' not available on the umgr" % metric)
 
         if not metric:
-            metrics = rpt.UMGR_METRICS
+            metrics = rpc.UMGR_METRICS
         elif isinstance(metric, list):
             metrics = metric
         else:

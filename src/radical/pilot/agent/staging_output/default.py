@@ -44,7 +44,7 @@ class Default(AgentStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         self._pwd = os.getcwd()
 
@@ -52,7 +52,7 @@ class Default(AgentStagingOutputComponent):
                             rpc.AGENT_STAGING_OUTPUT_QUEUE, self.work)
 
         # we don't need an output queue -- units are picked up via mongodb
-        self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING, None) # drop units
+        self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING, None)
 
 
     # --------------------------------------------------------------------------
@@ -69,7 +69,7 @@ class Default(AgentStagingOutputComponent):
         # we first filter out any units which don't need any input staging, and
         # advance them again as a bulk.  We work over the others one by one, and
         # advance them individually, to avoid stalling from slow staging ops.
-        
+
         no_staging_units = list()
         staging_units    = list()
 

@@ -11,6 +11,7 @@ NAME                   = 'name'
 EXECUTABLE             = 'executable'
 ARGUMENTS              = 'arguments'
 ENVIRONMENT            = 'environment'
+TAGS                   = 'tags'
 
 CORES                  = 'cores'  # deprecated
 
@@ -312,6 +313,7 @@ class ComputeUnitDescription(attributes.Attributes):
         self._attributes_register(EXECUTABLE,       None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(ARGUMENTS,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(ENVIRONMENT,      None, attributes.STRING, attributes.DICT,   attributes.WRITEABLE)
+        self._attributes_register(TAGS,             None, attributes.ANY,    attributes.DICT,   attributes.WRITEABLE)
         self._attributes_register(PRE_EXEC,         None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(POST_EXEC,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(RESTARTABLE,      None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
@@ -353,6 +355,7 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (EXECUTABLE,       None)
         self.set_attribute (ARGUMENTS,      list())
         self.set_attribute (ENVIRONMENT,    dict())
+        self.set_attribute (TAGS,           dict())
         self.set_attribute (PRE_EXEC,       list())
         self.set_attribute (POST_EXEC,      list())
         self.set_attribute (STDOUT,           None)
@@ -366,8 +369,7 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (CPU_THREAD_TYPE,    '')
         self.set_attribute (GPU_PROCESSES,       0)
         self.set_attribute (GPU_PROCESS_TYPE,   '')
-        self.set_attribute (GPU_THREADS,         1)
-        self.set_attribute (GPU_THREAD_TYPE,    '')
+        self.set_attribute (GPU_THREADS,         0)
         self.set_attribute (GPU_THREAD_TYPE,    '')
         self.set_attribute (LFS_PER_PROCESS,     0)
 

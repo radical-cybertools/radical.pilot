@@ -3,9 +3,10 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 
-import logging
 import pprint
-import threading
+import random
+import logging
+import threading as mt
 
 import radical.utils as ru
 
@@ -218,10 +219,10 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    # Once the component process is spawned, `initialize_child()` will be called
+    # Once the component process is spawned, `initialize()` will be called
     # before control is given to the component's main loop.
     #
-    def initialize_child(self):
+    def initialize(self):
 
         # register unit input channels
         self.register_input(rps.AGENT_SCHEDULING_PENDING,
@@ -273,9 +274,9 @@ class AgentSchedulingComponent(rpu.Component):
                               % self._lrms_info['name'])
 
         # create and initialize the wait pool
-        self._wait_pool = list()             # pool of waiting units
-        self._wait_lock = threading.RLock()  # look on the above pool
-        self._slot_lock = threading.RLock()  # lock slot allocation/deallocation
+        self._wait_pool = list()      # pool of waiting units
+        self._wait_lock = mt.RLock()  # look on the above pool
+        self._slot_lock = mt.RLock()  # lock slot allocation/deallocation
 
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
@@ -327,11 +328,11 @@ class AgentSchedulingComponent(rpu.Component):
                 SCHEDULER_NAME_SPARK: Spark
             }[name]
 
-            impl = impl(cfg, session)
-            return impl
-
         except KeyError:
             raise ValueError("Scheduler '%s' unknown or defunct" % name)
+
+        return impl(cfg, session)
+
 
     # --------------------------------------------------------------------------
     #
@@ -421,6 +422,7 @@ class AgentSchedulingComponent(rpu.Component):
     def _release_slot(self, slots):
         raise NotImplementedError("_release_slot() missing for '%s'" % self.uid)
 
+
     # --------------------------------------------------------------------------
     #
     def _schedule_units(self, units):
@@ -446,6 +448,7 @@ class AgentSchedulingComponent(rpu.Component):
             # straight away and move it to execution, or we have to
             # put it in the wait pool.
             if self._try_allocation(unit):
+
                 # we could schedule the unit - advance its state, notify worls
                 # about the state change, and push the unit out toward the next
                 # component.
@@ -455,6 +458,7 @@ class AgentSchedulingComponent(rpu.Component):
                 # no resources available, put in wait queue
                 with self._wait_lock:
                     self._wait_pool.append(unit)
+
 
     # --------------------------------------------------------------------------
     #
@@ -534,7 +538,6 @@ class AgentSchedulingComponent(rpu.Component):
             gpu_map.append([g])
 
         return core_map, gpu_map
-
 
     # --------------------------------------------------------------------------
     #

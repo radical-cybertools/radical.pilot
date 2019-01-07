@@ -76,8 +76,9 @@ class ORTE(LaunchMethod):
             raise Exception("Couldn't find (g)stdbuf")
         stdbuf_arg = "-oL"
 
-        # Base command = (g)stdbuf <args> + orte-dvm + debug_args
-        dvm_args = [stdbuf_cmd, stdbuf_arg, dvm_command]
+        # Base command = (g)stdbuf <args> + orte-dvm + dvm-args + debug_args
+        dvm_args = '--report-uri -'
+        cmdline  = '%s %s %s %s ' % (stdbuf_cmd, stdbuf_arg, dvm_command, dvm_args)
 
         # Additional (debug) arguments to orte-dvm
         if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
@@ -89,15 +90,15 @@ class ORTE(LaunchMethod):
         else:
             debug_strings = []
 
-        # Split up the debug strings into args and add them to the dvm_args
-        [dvm_args.extend(ds.split()) for ds in debug_strings]
+        # Split up the debug strings into args and add them to the cmdline
+        cmdline += ' '.join(debug_strings)
 
         vm_size = len(lrms.node_list)
-        logger.info("Start DVM on %d nodes ['%s']", vm_size, ' '.join(dvm_args))
-        profiler.prof(event='orte_dvm_start', uid=cfg['pilot_id'])
+        logger.info("Start DVM on %d nodes ['%s']", vm_size, ' '.join(cmdline))
+        profiler.prof(event='dvm_start', uid=cfg['pilot_id'])
 
         dvm_uri     = None
-        dvm_process = mp.Popen(dvm_args, stdout=mp.PIPE, stderr=mp.STDOUT)
+        dvm_process = mp.Popen(cmdline.split(), stdout=mp.PIPE, stderr=mp.STDOUT)
 
         while True:
 
@@ -121,7 +122,7 @@ class ORTE(LaunchMethod):
                     raise Exception("VMURI not found!")
 
                 logger.info("ORTE DVM startup successful!")
-                profiler.prof(event='orte_dvm_ok', uid=cfg['pilot_id'])
+                profiler.prof(event='dvm_ok', uid=cfg['pilot_id'])
                 break
 
             else:
@@ -133,7 +134,7 @@ class ORTE(LaunchMethod):
                 else:
                     # Process is gone: fatal!
                     raise Exception("ORTE DVM process disappeared")
-                    profiler.prof(event='orte_dvm_fail', uid=cfg['pilot_id'])
+                    profiler.prof(event='dvm_fail', uid=cfg['pilot_id'])
 
 
         # ----------------------------------------------------------------------
@@ -147,7 +148,7 @@ class ORTE(LaunchMethod):
                 if line:
                     logger.debug('dvm output: %s', line)
                 else:
-                    time.sleep(1.0)
+                    time.sleep(0.1)
 
             if retval != 0:
                 # send a kill signal to the main thread.
@@ -190,12 +191,12 @@ class ORTE(LaunchMethod):
                     raise Exception("Couldn't find orterun")
                 ru.sh_callout('%s --hnp %s --terminate' 
                              % (orterun, lm_info['dvm_uri']))
-                profiler.prof(event='orte_dvm_stop', uid=cfg['pilot_id'])
+                profiler.prof(event='dvm_stop', uid=cfg['pilot_id'])
 
             except Exception as e:
                 # use the same event name as for runtime failures - those are
                 # not distinguishable at the moment from termination failures
-                profiler.prof(event='orte_dvm_fail', uid=cfg['pilot_id'], msg=e)
+                profiler.prof(event='dvm_fail', uid=cfg['pilot_id'], msg=e)
                 logger.exception('dvm termination failed')
 
 
@@ -219,8 +220,8 @@ class ORTE(LaunchMethod):
         task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
-     #  import pprint
-     #  self._log.debug('prep %s', pprint.pformat(cu))
+      # import pprint
+      # self._log.debug('=== prep %s', pprint.pformat(cu))
         self._log.debug('prep %s', cu['uid'])
 
         if 'lm_info' not in slots:
@@ -259,7 +260,7 @@ class ORTE(LaunchMethod):
             #       mangling, we need to turn this into a system specific 
             #       regexp or so.
             self._log.debug('node: %s', node)
-            node_id = node['uid'].rsplit('_', 1)[-1] 
+            node_id = node[0].rsplit('_', 1)[-1] 
 
             # add all cpu and gpu process slots to the node list.
             for cpu_slot in node['core_map']: hosts_string += '%s,' % node_id

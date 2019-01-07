@@ -10,7 +10,7 @@ import time
 import pprint
 import shutil
 import tempfile
-import threading
+import threading as mt
 
 import subprocess           as sp
 
@@ -58,29 +58,33 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         # we don't really have an output queue, as we pass control over the
         # pilot jobs to the resource management system (RM).
 
-        self._pilots        = dict()             # dict for all known pilots
-        self._pilots_lock   = threading.RLock()  # lock on maipulating the above
-        self._checking      = list()             # pilots to check state on
-        self._check_lock    = threading.RLock()  # lock on maipulating the above
-        self._saga_fs_cache = dict()             # cache of saga directories
-        self._saga_js_cache = dict()             # cache of saga job services
-        self._sandboxes     = dict()             # cache of resource sandbox URLs
-        self._cache_lock    = threading.RLock()  # lock for cache
+        self._pilots        = dict()      # dict for all known pilots
+        self._pilots_lock   = mt.RLock()  # lock on maipulating the above
+        self._checking      = list()      # pilots to check state on
+        self._check_lock    = mt.RLock()  # lock on maipulating the above
+        self._saga_fs_cache = dict()      # cache of saga directories
+        self._saga_js_cache = dict()      # cache of saga job services
+        self._sandboxes     = dict()      # cache of resource sandbox URLs
+        self._cache_lock    = mt.RLock()  # lock for cache
 
         self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
         self._root_dir      = "%s/../../"   % self._mod_dir  
         self._conf_dir      = "%s/configs/" % self._root_dir 
 
+        self._pmgr          = self._cfg['owner']
+
         self.register_input(rps.PMGR_LAUNCHING_PENDING, 
                             rpc.PMGR_LAUNCHING_QUEUE, self.work)
 
         # FIXME: make interval configurable
-        self.register_timed_cb(self._pilot_watcher_cb, timer=10.0)
+        self._pilot_watcher_period = 3.0
+        self.register_timed_cb(self._pilot_watcher_cb, 
+                               timer=self._pilot_watcher_period)
 
         # we listen for pilot cancel and input staging commands
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
@@ -92,12 +96,9 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
+    def finalize(self):
 
         # avoid shutdown races:
-
-        self.unregister_timed_cb(self._pilot_watcher_cb)
-        self.unregister_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
 
         # FIXME: always kill all saga jobs for non-final pilots at termination,
         #        and set the pilot states to CANCELED.  This will confluct with
@@ -150,9 +151,7 @@ class Default(PMGRLaunchingComponent):
                 pids = [pids]
 
             self._log.info('received pilot_cancel command (%s)', pids)
-
             self._cancel_pilots(pids)
-
 
         return True
 
@@ -274,24 +273,26 @@ class Default(PMGRLaunchingComponent):
         # querying the pilots individually
 
         final_pilots = list()
+        live_pilots  = list()
+
         with self._pilots_lock, self._check_lock:
 
             for pid in self._checking:
 
                 state = self._pilots[pid]['job'].state
+                pilot = self._pilots[pid]['pilot']
                 self._log.debug('saga job state: %s %s', pid, state)
 
-                if state in [rs.job.DONE, rs.job.FAILED, rs.job.CANCELED]:
-                    pilot = self._pilots[pid]['pilot']
+                if state not in [rs.job.DONE, rs.job.FAILED, rs.job.CANCELED]:
+                    live_pilots.append(pilot)
+                else:
                     if state == rs.job.DONE    : pilot['state'] = rps.DONE
                     if state == rs.job.FAILED  : pilot['state'] = rps.FAILED
                     if state == rs.job.CANCELED: pilot['state'] = rps.CANCELED
                     final_pilots.append(pilot)
 
         if final_pilots:
-
             for pilot in final_pilots:
-
                 with self._check_lock:
                     # stop monitoring this pilot
                     self._checking.remove(pilot['uid'])
@@ -299,6 +300,27 @@ class Default(PMGRLaunchingComponent):
                 self._log.debug('final pilot %s %s', pilot['uid'], pilot['state'])
 
             self.advance(final_pilots, push=False, publish=True)
+
+
+        if live_pilots:
+
+            # send a heartbeat
+            pids = [pilot['uid'] for pilot in live_pilots]
+            arg  = {'period' : self._pilot_watcher_period, 
+                    'tstamp' : time.time()}
+
+            self._log.debug('live pilots: %s', pids)
+
+            for pid in pids:
+
+                # FIXME: use control pubsub?  But then updater needs to listen
+                #        on that...
+                self.publish(rpc.STATE_PUBSUB, {'cmd' :  'cmd', 
+                                                'arg' : {'type': 'pilot', 
+                                                         'uid' :  pid, 
+                                                         'cmd' : 'heartbeat', 
+                                                         'arg' :  arg}})
+
 
         # all checks are done, final pilots are weeded out.  Now check if any
         # pilot is scheduled for cancellation and is overdue, and kill it
@@ -340,10 +362,13 @@ class Default(PMGRLaunchingComponent):
             # nothing to do
             return
 
-        # send the cancelation request to the pilots
-        # FIXME: the cancellation request should not go directly to the DB, but
-        #        through the DB abstraction layer...
-        self._session._dbs.pilot_command('cancel_pilot', [], pids)
+        # send the cancelation request to the pilots (via the update worker)
+        for pid in pids:
+            self.publish(rpc.STATE_PUBSUB, {'cmd' : 'cmd', 
+                                            'arg' : {'type': 'pilot', 
+                                                     'uid' :  pid,
+                                                     'cmd' : 'cancel_pilot', 
+                                                     'arg' :  None}})
         self._log.debug('pilot(s).need(s) cancellation %s', pids)
 
         # recod time of request, so that forceful termination can happen
@@ -408,7 +433,7 @@ class Default(PMGRLaunchingComponent):
                 return
 
             # avoid busy poll)
-            time.sleep(1)
+            time.sleep(0.1)
 
         to_advance = list()
 
@@ -561,7 +586,7 @@ class Default(PMGRLaunchingComponent):
             assert(schema == pilot['description'].get('access_schema')), \
                     'inconsistent scheme on launch / staging'
 
-        session_sandbox = self._session._get_session_sandbox(pilots[0]).path
+        session_sandbox = self._session.get_session_sandbox(pilots[0]).path
 
 
         # we will create the session sandbox before we untar, so we can use that
@@ -580,7 +605,6 @@ class Default(PMGRLaunchingComponent):
         for ft in ft_list:
             src     = os.path.abspath(ft['src'])
             tgt     = os.path.relpath(os.path.normpath(ft['tgt']), session_sandbox)
-          # src_dir = os.path.dirname(src)
             tgt_dir = os.path.dirname(tgt)
 
             if tgt_dir.startswith('..'):
@@ -826,13 +850,13 @@ class Default(PMGRLaunchingComponent):
                                  % (ma, resource))
 
         # get pilot and global sandbox
-        resource_sandbox = self._session._get_resource_sandbox (pilot).path
-        session_sandbox  = self._session._get_session_sandbox(pilot).path
-        pilot_sandbox    = self._session._get_pilot_sandbox  (pilot).path
+        resource_sandbox = self._session.get_resource_sandbox(pilot).path
+        session_sandbox  = self._session.get_session_sandbox (pilot).path
+        pilot_sandbox    = self._session.get_pilot_sandbox   (pilot).path
 
-        pilot['resource_sandbox'] = str(self._session._get_resource_sandbox(pilot))
-        pilot['pilot_sandbox']    = str(self._session._get_pilot_sandbox(pilot))
-        pilot['client_sandbox']   = str(self._session._get_client_sandbox())
+        pilot['resource_sandbox'] = str(self._session.get_resource_sandbox(pilot))
+        pilot['pilot_sandbox']    = str(self._session.get_pilot_sandbox(pilot))
+        pilot['client_sandbox']   = str(self._session.get_client_sandbox())
 
         # Agent configuration that is not part of the public API.
         # The agent config can either be a config dict, or
