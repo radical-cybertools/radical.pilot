@@ -77,15 +77,15 @@ class JSRUN(LaunchMethod):
         rs_str = ''
         if len(gpu_maps):
             for node_id,core_ids,gpu_ids in zip(node_ids, core_maps, gpu_maps):
-                rs_str += 'RS %d : {' % rs_id
-                rs_str += 'host: %d ' % node_id
-                rs_str += 'cpu: %s ' % ' '.join(map(str,core_ids))
+                rs_str += 'RS %d : { ' % rs_id
+                rs_str += 'host: %d, ' % node_id
+                rs_str += 'cpu: %s, ' % ' '.join(map(str,core_ids))
                 rs_str += 'gpu: %s}\n' % ' '.join(map(str,gpu_ids))
                 rs_id += 1
         else:
             for node_id,core_ids in zip(node_ids, core_maps):
-                rs_str += 'RS %d : {' % rs_id
-                rs_str += 'host: %d ' % node_id
+                rs_str += 'RS %d : { ' % rs_id
+                rs_str += 'host: %d, ' % node_id
                 rs_str += 'cpu: %s ' % ' '.join(map(str,core_ids))
                 rs_str += '}\n'
                 rs_id += 1
@@ -122,12 +122,12 @@ class JSRUN(LaunchMethod):
             for var in env_list:
                 env_string += '-E "%s" ' % var
 
-        #self._create_resource_set_file(slots = slots, cuid = cu['uid'],
-        #                               sandbox = task_sandbox)
+        self._create_resource_set_file(slots = slots, cuid = cu['uid'],
+                                       sandbox = task_sandbox)
 
-        #flags = '-U %s -n%d -a%d ' % ('rs_layout_cu_%s' % cu['uid'], 
-        #                               task_procs, task_procs)
-        flags = '-n%d -a1 ' % (task_procs)
+        flags = '-U %s -n%d -a%d ' % ('%s/rs_layout_cu_%s' % (task_sandbox,cu['uid']), 
+                                       task_procs, task_procs)
+        #flags = '-n%d -a1 ' % (task_procs)
         command = '%s %s %s %s' % (self.launch_command, flags,
                                             env_string, 
                                             task_command)
