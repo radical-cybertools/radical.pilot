@@ -100,7 +100,7 @@
         "agent_type"                  : "multicore",
         "agent_config"                : "cray",
         "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
+        "agent_spawner"               : "SHELLFS",
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",

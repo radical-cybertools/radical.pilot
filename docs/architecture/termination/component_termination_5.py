@@ -79,7 +79,7 @@
 #   - cpython's delayed signal handling can lead to signals being ignored when
 #     they are translated into exceptions.
 #     Assume this pseudo-code loop in a low-level 3rd party module:
-# 
+#
 #     data = None
 #     while not data:
 #         try:
@@ -127,7 +127,7 @@
 #     Well, they just can't.  We could to use daemons though to avoid hanging
 #     processes if, for some reason, communication of termination conditions
 #     fails.
-#     
+#
 #     Patchy McPatchface to the rescue (no, I am not kidding): we can
 #     monkey-patch the core multiprocessing module and remove that useless 
 #     assert (of all things!) on the fly.  This approach is documented below,
@@ -138,7 +138,7 @@
 #     avoid, and which can become expensive wrt. to resource and allocation 
 #     usage on clusters.  So, we consider this a last resort, and do not use
 #     this approach at this point.
-#     
+#
 #     ```
 #         # --------------------------------------------------------------------
 #
@@ -179,7 +179,7 @@
 #
 #         # --------------------------------------------------------------------
 #     ```
-# 
+#
 #
 # NOTE: For some GIL details, see http://www.dabeaz.com/python/GIL.pdf
 #       This focuses on performance, but contains some details relevant to
@@ -202,7 +202,7 @@
 # Chosen Approach
 # ---------------
 #
-# We distinguish two termination 'directions' for each component: 
+# We distinguish two termination 'directions' for each component:
 #
 # i)  external, where a component's termination gets triggered by calling
 #     `component.stop()` on the original component object instance.
@@ -215,7 +215,7 @@
 # Internal termination conditions need to be communicated to the component's
 # MainThread.  This happens in one of two ways:
 #
-# sub-threads and child processes will terminate themself if they meet a 
+# sub-threads and child processes will terminate themself if they meet a
 # termination condition, and the MainThread will be notified by a thread
 # and process watchers (which itself is a sub-thread of the MainThread).
 # Upon such a notification, the component's MainThread will raise an
@@ -225,7 +225,7 @@
 #       thread, to include that information in the exception.
 #
 # Before the MainThread raises its exception, it communicates a termination
-# command to (a) its remaining sub-threads, and (b) its remaining child 
+# command to (a) its remaining sub-threads, and (b) its remaining child
 # processes.
 #
 # a) a `mt.Event()` (`self._thread_term`) is set, and all threads are
@@ -234,7 +234,7 @@
 #    the sub-thread, and it is `join()`ed again.
 #
 # b) a `mp.Event()` (`self._proc_term`) is set, and all child processes are
-#    `join()`ed.  
+#    `join()`ed.
 #    On timeout (default: 60s), a `SIGTERM` is sent to the child process,
 #    and it is `join()`ed again.
 #
@@ -254,14 +254,14 @@
 #       termination request, which can be an arbitrary amount of time (consider
 #       the child thread is transferring a large file).  It will be up to the
 #       individual component implementations to try to mitigate this effect, and
-#       to check for termination signals as frequently as possible.  
+#       to check for termination signals as frequently as possible.
 #
 # NOTE: The timeout approach has a hierarchy problem: a child of a child of
 #       a process is waited on for 60 seconds -- but at that point the
 #       original process' `join()` will already have timed out, triggering
 #       a hard termination of the intermediate child, thus skipping the
 #       intermediate `join()`.  The timeout should thus take the hierarchy
-#       depth into account.  
+#       depth into account.
 #       This is ignored for now, mainly because the depth of the hierarchy
 #       is not communicated / known in all places.  The above mechanism will
 #       thus only be able to handle at most one hierarchy layer of unclean
@@ -280,9 +280,9 @@
 #       A watcher will thus always look towards the leaves of the process tree,
 #       not towards the root.
 #       Options to resolve this would be any of the following
-#         - don't use the multiprocessing module
-#         - heartbeat monitoring
-#         - process-alive check different from process-exists
+#        - don't use the multiprocessing module
+#        - heartbeat monitoring
+#        - process-alive check different from process-exists
 #
 # NOTE: We will use at_fork handlers and monkeypatches to clean out the process
 #       hierarchies from logging locks and from child process handles, as far
@@ -290,7 +290,7 @@
 #       *first*, specifically before `os` and `logging`.
 #
 ################################################################################
-# 
+#
 #
 # This code demonstrates our approach to termination, and serves as a test for
 # the general problem space.
@@ -341,8 +341,6 @@
 #
 # Running this test 10k times results in the following data:
 #
-#   - 
-#
 # ==============================================================================
 
 
@@ -354,7 +352,6 @@ import signal
 import setproctitle
 
 import threading       as mt
-
 import radical.utils   as ru
 
 
@@ -371,13 +368,13 @@ JOIN_TIMEOUT =  3
 # we use `ru.raise_on()` to  trigger artificial error conditions throughout the
 # test code.  `ru.raise_on(tag)` will raise a runtime error when
 #
-#   os.environ['RU_RAISE_ON_%s' % tag.upper()'] 
+#   os.environ['RU_RAISE_ON_%s' % tag.upper()']
 #
 # meets some condition.   If set to an integer 'n', it will raise on te n'th
 # invokation (counter is process local).  If set to `RANDOM_%d`, the integer
 # part is expected a number between 0 and 100, and the method will raise an
 # error in the given percentage of cases (normal distribution).
-# 
+#
 # Since raises on `init`, `work` and `watch` will prenmaturely finish many runs,
 # wecuse a higher percentage at `stop`.
 #
@@ -395,30 +392,30 @@ os.environ['RU_RAISE_ON_STOP']  = 'RANDOM_15'
 #
 config = {
         'child    1' : {
-            'worker   3' : None, 
-            'worker   4' : None, 
+            'worker   3' : None,
+            'worker   4' : None,
             'child    5' : {
-                'worker   7' : None, 
-                'worker   8' : None, 
+                'worker   7' : None,
+                'worker   8' : None,
                 'child    9' : {
-                    'worker  11' : None, 
-                    'worker  12' : None, 
+                    'worker  11' : None,
+                    'worker  12' : None,
                 },
                 'child  13' : {
-                    'worker  15' : None, 
-                    'worker  16' : None, 
+                    'worker  15' : None,
+                    'worker  16' : None,
                 }
             },
             'child   17' : {
-                'worker  19' : None, 
-                'worker  20' : None, 
+                'worker  19' : None,
+                'worker  20' : None,
                 'child   21' : {
-                    'worker  23' : None, 
-                    'worker  24' : None, 
+                    'worker  23' : None,
+                    'worker  24' : None,
                 },
                 'child   25' : {
-                    'worker  27' : None, 
-                    'worker  28' : None, 
+                    'worker  27' : None,
+                    'worker  28' : None,
                 }
             }
         }
