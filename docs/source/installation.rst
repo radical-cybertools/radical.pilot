@@ -58,8 +58,8 @@ properly, run:
 
 .. code-block:: bash
 
-    $ radicalpilot-version
-    0.50.8
+    $ radical-pilot-version
+    0.50.21
 
 The exact output will obviously depend on the exact version of RP which got
 installed.
@@ -151,7 +151,8 @@ follows:
 Now you can login to the machine by using ``ssh mach1``.  Please make also sure
 that your ssh keys are registered on the target resources -- while RP can in
 principle handle password based login, the repeated prompts for passwords makes
-RP applications very difficult to use.
+RP applications very difficult to use. To learn more about accessing remote machine 
+using RP, see the chapter `Using Local and Remote HPC Resources <./machconf.rst>`.
 
 Source: http://nerderati.com/2011/03/17/simplify-your-life-with-an-ssh-config-file/
 
