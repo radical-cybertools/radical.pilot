@@ -254,6 +254,14 @@
 	"cores"        : 72
     },
 
+    "local.summit" : {
+        "project"  : "BIP178",
+        "queue"    : "batch",
+        "schema"   : "loccal",
+        "cores"    : 84,
+        "gpus"     : 12
+    },
+
     "ornl.titan" : {
         "project"  : "BIP149",
         "queue"    : "debug",
