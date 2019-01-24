@@ -18,18 +18,21 @@
             "export RP_APP_TUNNEL_ADDR=144.76.72.175:27017",
             "echo  $RP_APP_TUNNEL_ADDR"
         ],
-        "default_remote_workdir"      : "$HOME",
+        "default_sandbox_base"        : "$HOME",
         "lrms"                        : "FORK",
         "agent_scheduler"             : "HOMBRE",
         "agent_spawner"               : "SHELLFS",
         "agent_launch_method"         : "FORK",
         "task_launch_method"          : "FORK",
         "mpi_launch_method"           : "MPIRUN",
-        "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
+        "rp_version"                  : "installed",
+        "virtenv_mode"                : "use",
+        "virtenv"                     : "/home/merzky/radical/radical.pilot.zmq/ve",
         "python_dist"                 : "default",
-        "cores_per_node"              : 128,
-        "gpus_per_node"               : 1
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1,
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 1024
     },
 
     "localhost_aprun": {
@@ -46,7 +49,7 @@
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
-        "default_remote_workdir"      : "$HOME",
+        "default_sandbox_base"        : "$HOME",
         "lrms"                        : "FORK",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
@@ -74,7 +77,7 @@
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
-        "default_remote_workdir"      : "$HOME",
+        "default_sandbox_base"        : "$HOME",
         "lrms"                        : "YARN",
         "agent_scheduler"             : "YARN",
         "agent_spawner"               : "ABDS",
@@ -100,7 +103,7 @@
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
-        "default_remote_workdir"      : "$HOME",
+        "default_sandbox_base"        : "$HOME",
         "lrms"                        : "FORK",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
@@ -110,6 +113,8 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda",
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 1024,
         "cores_per_node"              : 8,
         "gpus_per_node"               : 1
     },
@@ -128,7 +133,7 @@
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
-        "default_remote_workdir"      : "$HOME",
+        "default_sandbox_base"        : "$HOME",
         "lrms"                        : "FORK",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
@@ -155,7 +160,7 @@
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
-        "default_remote_workdir"      : "$HOME",
+        "default_sandbox_base"        : "$HOME",
         "lrms"                        : "FORK",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
@@ -182,7 +187,7 @@
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
-        "default_remote_workdir"      : "$HOME",
+        "default_sandbox_base"        : "$HOME",
         "cores_per_node"              : 8,
         "gpus_per_node"               : 1,
         "lrms"                        : "FORK",
@@ -254,7 +259,7 @@
            "job_manager_endpoint"    : "fork://localhost/",
            "filesystem_endpoint"     : "file://localhost/"
         },
-        "default_remote_workdir"      : "$HOME",
+        "default_sandbox_base"        : "$HOME",
         "cores_per_node"              : 8,
         "gpus_per_node"               : 1,
         "lrms"                        : "FORK",

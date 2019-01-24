@@ -7,8 +7,8 @@ __license__   = "MIT"
 import sys
 import time
 
-import setproctitle        as spt
-import radical.pilot.utils as rpu
+import setproctitle  as spt
+import radical.utils as ru
 
 DELAY = 0.0
 N     = 100000
@@ -28,13 +28,13 @@ if __name__ == "__main__":
 
     if len(sys.argv) < 3:
         sys.stderr.write('error: missing argument\n'
-                         'usage: %s <channel> <topic_1> [...]\n\n' % sys.argv[0])
+                         'usage: %s <channel> <topic1> [...]\n\n' % sys.argv[0])
         raise RuntimeError('missing argument')
 
     # setup channel
     name   = sys.argv[1]
     topics = sys.argv[2:]
-    pub    = rpu.Publisher(name)
+    pub    = ru.Publisher(name)
 
     # mark this process
     spt.setproctitle('rp.%s' % pub.uid)

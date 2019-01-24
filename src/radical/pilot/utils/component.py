@@ -8,14 +8,8 @@ import radical.utils   as ru
 from ..      import constants  as rpc
 from ..      import states     as rps
 
-from .queue  import Putter     as rpu_Putter
-from .queue  import Getter     as rpu_Getter
 
-from .pubsub import Publisher  as rpu_Publisher
-from .pubsub import Subscriber as rpu_Subscriber
-
-
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Component(object):
     """
@@ -34,12 +28,12 @@ class Component(object):
     ownership over it, and that no other component will change the 'thing's
     state during that time.
 
-    The main event loop of the component -- work_cb() -- is executed as a separate
-    process.  Components inheriting this class should be fully self sufficient,
-    and should specifically attempt not to use shared resources.  That will
-    ensure that multiple instances of the component can coexist for higher
-    overall system throughput.  Should access to shared resources be necessary,
-    it will require some locking mechanism across process boundaries.
+    The main event loop of the component -- work_cb() -- is executed as
+    a separate process.  Components inheriting this class should be fully self
+    sufficient, and should specifically attempt not to use shared resources.
+    That will ensure that multiple instances of the component can coexist for
+    higher overall system throughput.  Should access to shared resources be
+    necessary, it will require some locking mechanism across process boundaries.
 
     This approach should ensure that
 
@@ -127,20 +121,20 @@ class Component(object):
                     }
         # ----------------------------------------------------------------------
 
-        sid  = cfg['sid']
+        sid  = cfg['session_id']
         uid  = cfg['uid']
         kind = cfg['kind']
 
         from .. import session as rp_session
         session = rp_session.Session(uid=sid, _cfg=cfg)
-        log     = session.get_logger(uid)
+        log     = ru.Logger(uid)
         log.debug('start component %s [%s]', uid, kind)
 
         if kind not in _ctypemap:
             raise ValueError('unknown component type (%s)' % kind)
 
         ctype = _ctypemap[kind]
-        comp = ctype.create(cfg, session)
+        comp  = ctype.create(cfg, session)
 
         return comp
 
@@ -174,10 +168,10 @@ class Component(object):
         self._cancel_list = list()       # list of units to cancel
         self._cancel_lock = mt.RLock()   # lock for above list
 
-        self._prof = self._session.get_profiler(name=self.uid)
-        self._rep  = self._session.get_reporter(name=self.uid)
-        self._log  = self._session.get_logger  (name=self.uid,
-                                                level=self._debug)
+        self._prof = ru.Profiler(name=self.uid)
+        self._rep  = ru.Reporter(name=self.uid)
+        self._log  = ru.Logger  (name=self.uid)
+
       # self._prof.register_timing(name='component_lifetime',
       #                            scope='uid=%s' % self.uid,
       #                            start='component_start',
@@ -198,12 +192,6 @@ class Component(object):
 
         # call component level initialize
         self.initialize()
-
-        # signal completion of startup
-        if 'fchk' in self._cfg:
-            with open(self._cfg['fchk'], 'w') as fout:
-                fout.write('ok\n')
-
 
 
     # --------------------------------------------------------------------------
@@ -321,8 +309,9 @@ class Component(object):
         if name in self._inputs:
             raise ValueError('input %s already registered' % name)
 
-        q = rpu_Getter(input, self._session)
-        self._inputs[name] = {'queue'  : q,
+        addr = self._session.get_address(input)['GET']
+        ep   = ru.zmq.Getter(input, addr)
+        self._inputs[name] = {'queue'  : ep,
                               'states' : states}
 
         self._log.debug('registered input %s', name)
@@ -377,11 +366,12 @@ class Component(object):
                 self._outputs[state] = None
             else:
                 # non-final state, ie. we want a queue to push to
-                q = rpu_Putter(output, self._session)
-                self._outputs[state] = q
+                addr = self._session.get_address(output)['PUT']
+                ep   = ru.zmq.Putter(output, addr)
+                self._outputs[state] = ep
 
                 self._log.debug('registered output    : %s : %s : %s'
-                     % (state, output, q.name))
+                     % (state, output, ep.name))
 
 
     # --------------------------------------------------------------------------
@@ -466,10 +456,11 @@ class Component(object):
 
         self._log.debug('%s register publisher %s', self.uid, pubsub)
 
-        q = rpu_Publisher(pubsub, self._session)
-        self._publishers[pubsub] = q
+        addr = self._session.get_address(pubsub)['PUB']
+        ep   = ru.zmq.Publisher(pubsub, addr)
+        self._publishers[pubsub] = ep
 
-        self._log.debug('registered publisher : %s : %s', pubsub, q.name)
+        self._log.debug('registered publisher : %s : %s', pubsub, ep.name)
 
 
     # --------------------------------------------------------------------------
@@ -511,10 +502,10 @@ class Component(object):
         class Subscriber(ru.Thread):
 
             # ------------------------------------------------------------------
-            def __init__(self, name, l, q, cb, cb_data, cb_lock):
+            def __init__(self, name, l, ep, cb, cb_data, cb_lock):
                 self._name     = name
                 self._log      = l
-                self._q        = q
+                self._q        = ep
                 self._cb       = cb
                 self._cb_data  = cb_data
                 self._cb_lock  = cb_lock
@@ -558,10 +549,11 @@ class Component(object):
         # ----------------------------------------------------------------------
         # create a pubsub subscriber (the pubsub name doubles as topic)
         # FIXME: this should be moved into the thread child_init
-        q = rpu_Subscriber(pubsub, self._session)
-        q.subscribe(pubsub)
+        addr = self._session.get_address(pubsub)['SUB']
+        ep   = ru.zmq.Subscriber(pubsub, addr)
+        ep.subscribe(pubsub)
 
-        subscriber = Subscriber(name=name, l=self._log, q=q, 
+        subscriber = Subscriber(name=name, l=self._log, ep=ep,
                                 cb=cb, cb_data=cb_data, cb_lock=self._cb_lock)
         # daemonize and start the thread upon construction
         subscriber.daemon = True
@@ -615,22 +607,25 @@ class Component(object):
 
         self.is_valid()
 
-        # if no action occurs in this iteration, idle
-        if not self._inputs:
-            time.sleep(0.1)
-            return True
+        active = False
 
         for name in self._inputs:
             input  = self._inputs[name]['queue']
             states = self._inputs[name]['states']
 
+          # self._log.debug('=== check input %s [%s]', name, input)
+
             # FIXME: a simple, 1-thing caching mechanism would likely
             #        remove the req/res overhead completely (for any
             #        non-trivial worker).
-            things = input.get_nowait(1000)  # timeout in microseconds
+            #  FIXME: make timoeout configurable
+            things = input.get_nowait(100)  # timeout in microseconds
 
+          # self._log.debug('=== check input %s: %s', name, len(things))
             if not things:
                 return True
+
+            active = True
 
             if not isinstance(things, list):
                 things = [things]
@@ -684,6 +679,10 @@ class Component(object):
                     self._log.exception("worker %s failed", self._workers[state])
                     self.advance(things, rps.FAILED, publish=True, push=False)
 
+        # if no action occured in this iteration, idle
+        if not active:
+            time.sleep(0.1)
+
         # keep work_cb registered
         return True
 
@@ -722,7 +721,7 @@ class Component(object):
         if not isinstance(things, list):
             things = [things]
 
-        self._log.debug('=== advance bulk size: %s [%s, %s]', len(things), push, publish)
+        self._log.debug('advance bulk size: %s [%s, %s]', len(things), push, publish)
 
         # assign state, sort things by state
         buckets = dict()
@@ -738,8 +737,6 @@ class Component(object):
                 # state advance done here
                 thing['state'] = state
             _state = thing['state']
-
-            self._log.debug('=== adv 1 %s [%s]', uid, state)
 
             if prof:
                 self._prof.prof('advance', uid=uid, state=_state,
@@ -794,8 +791,6 @@ class Component(object):
             # now we can push the buckets as bulks
             for _state,_things in buckets.iteritems():
 
-                self._log.debug('=== adv 2 %s [%s]', _state, len(things))
-
                 ts = time.time()
                 if _state in rps.FINAL:
                     # things in final state are dropped
@@ -824,10 +819,9 @@ class Component(object):
                 output = self._outputs[_state]
 
                 # push the thing down the drain
-                self._log.debug('=== put bulk %s: %s', _state, len(_things))
-                self._log.debug('===              %s', output)
+                self._log.debug('put bulk %s: %s', _state, len(_things))
                 output.put(_things)
-                self._log.debug('===              %s ok', output)
+                self._log.debug('=== push output %s [%s]', output, len(_things))
 
                 ts = time.time()
                 for thing in _things:
@@ -850,11 +844,10 @@ class Component(object):
             return
 
         self._log.debug('pub %s', msg)
-        self._log.debug('====== x4 %s', [pubsub, msg])
         self._publishers[pubsub].put(pubsub, msg)
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Worker(Component):
     """

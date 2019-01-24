@@ -1,6 +1,8 @@
 
 import copy
 
+import radical.utils as ru
+
 
 # ------------------------------------------------------------------------------
 #
@@ -21,9 +23,9 @@ class Bridge(object):
         if self._owner:
             self._uid = '%s.%s' % (self._owner, self._uid)
 
-        self._log     = session.get_logger(name=self._uid,
-                                           path=self._logdir, 
-                                           level=self._cfg.get('log_level'))
+        self._log     = ru.Logger(name=self._uid,
+                                  path=self._logdir, 
+                                  level=self._cfg.get('log_level'))
         self._log.debug('=== debug')
 
         # avoid superfluous logging calls in critical code sections
@@ -62,7 +64,7 @@ class Bridge(object):
 
         from .. import session as rp_session
         session = rp_session.Session(uid=sid, _cfg=cfg)
-        log     = session.get_logger(uid, level='DEBUG')  # FIXME level
+        log     = ru.Logger(uid, level='DEBUG')  # FIXME level
         log.debug('start bridge %s [%s]', uid, kind)
 
         if kind not in _btypemap:

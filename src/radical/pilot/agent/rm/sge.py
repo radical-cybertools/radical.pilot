@@ -57,6 +57,13 @@ class SGE(LRMS):
         sge_core_counts      = list(set(sge_cores_count_list))
         sge_gpus_per_node    = self._cfg.get('gpus_per_node', 0) # FIXME GPU
 
+        lfs_path = self._cfg.get('lfs_path_per_node', '')
+        lfs_path = os.path.expandvars(lfs_path)
+
+        sge_lfs_per_node     = {'path' : lfs_path,
+                                'size' : self._cfg.get('lfs_size_per_node', 0)
+                               }
+
         # Check if nodes have the same core count
         if len(sge_core_counts) == 1:
             sge_cores_per_node = min(sge_core_counts)
@@ -66,6 +73,7 @@ class SGE(LRMS):
             self.node_list      = [[node, node] for node in sge_node_list]
             self.cores_per_node = sge_cores_per_node
             self.gpus_per_node  = sge_gpus_per_node
+            self.lfs_per_node   = sge_lfs_per_node
 
         else:
             # In case of non-homogeneous counts, consider all slots be single core
@@ -73,6 +81,7 @@ class SGE(LRMS):
             self._log.info("Found unique core counts: %s Using: %d", sge_core_counts, sge_cores_per_node)
             self.cores_per_node = sge_cores_per_node
             self.gpus_per_node  = sge_gpus_per_node
+            self.lfs_per_node   = sge_lfs_per_node
 
             # Expand node list, create unique IDs for each core
             self.node_list = []

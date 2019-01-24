@@ -29,6 +29,8 @@ if __name__ == '__main__':
     cfg   = None
     dburl = None
 
+    sys.exit(0)
+
     if len(sys.argv) == 3:
         json  = sys.argv[1]
         state = sys.argv[2]

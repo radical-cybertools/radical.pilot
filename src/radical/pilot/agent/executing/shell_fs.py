@@ -55,6 +55,10 @@ class ShellFS(AgentExecutingComponent):
         old_home  = os.environ.get('_OLD_VIRTUAL_PYTHONHOME', None)
         old_ps1   = os.environ.get('_OLD_VIRTUAL_PS1',        None)
 
+        if olf_path:
+            # hi titan nodes
+            old_path += ":/usr/bin:/bin:/usr/local/bin:/sbin:/usr/sbin"
+
         if old_ppath: self._deactivate += 'export PATH="%s"\n'        % old_ppath
         if old_path : self._deactivate += 'export PYTHONPATH="%s"\n'  % old_path
         if old_home : self._deactivate += 'export PYTHON_HOME="%s"\n' % old_home
@@ -228,12 +232,14 @@ class ShellFS(AgentExecutingComponent):
 
         # launch the new unit
         try:
-            mpi = cu['description'].get('mpi', False) 
-            if mpi: launcher = self._mpi_launcher
-            else  : launcher = self._task_launcher
+            cpt = cu['description']['cpu_process_type']
+            gpt = cu['description']['gpu_process_type']
+
+            if rpc.MPI in [cpt, gpt]: launcher = self._mpi_launcher
+            else                    : launcher = self._task_launcher
 
             if not launcher:
-                raise RuntimeError("no launcher (mpi=%s)" % mpi)
+                raise RuntimeError("no launcher (mpi=%s)" % [cpt, gpt])
 
             self._log.debug("Launching with %s (%s).", launcher.name,
                             launcher.launch_command)
@@ -300,34 +306,43 @@ class ShellFS(AgentExecutingComponent):
 
         sandbox  = '%s/%s' % (self._pwd, cu['uid'])
 
-        env  += "# CU environment\n"
-        env  += "export RP_SESSION_ID=%s\n"     % self._cfg['session_id']
-        env  += "export RP_PILOT_ID=%s\n"       % self._cfg['pilot_id']
-        env  += "export RP_AGENT_ID=%s\n"       % self._cfg['agent_name']
-        env  += "export RP_SPAWNER_ID=%s\n"     % self.uid
-        env  += "export RP_UNIT_ID=%s\n"        % cu['uid']
-        env  += 'export RP_GTOD="%s"\n'         % self.gtod
+        cu_env = cu['description']['environment']
+
+        cu_env['RP_SESSION_ID'] = str(self._cfg['session_id'])
+        cu_env['RP_PILOT_ID'  ] = str(self._cfg['pilot_id'])
+        cu_env['RP_AGENT_ID'  ] = str(self._cfg['agent_name'])
+        cu_env['RP_SPAWNER_ID'] = str(self.uid)
+        cu_env['RP_UNIT_ID'   ] = str(cu['uid'])
+        cu_env['RP_GTOD'      ] = str(self.gtod)
+        cu_env['RP_PROF'      ] = '%s/%s.prof' % (sandbox, cu['uid'])
+        cu_env['RP_TMP'       ] = str(self._cu_tmp)
+        cu_env['RP_PROCESSES' ] = str(descr['cpu_processes'])
+        cu_env['RP_THREADS'   ] = str(descr['cpu_threads'])
+
+        # FIXME: this should be set by an LM filter or something (GPU)
+        if descr['cpu_thread_type'] == rpc.OpenMP:
+            cu_env['OMP_NUM_THREADS'] = str(descr['cpu_threads'])
+
         if 'RADICAL_PILOT_PROFILE' in os.environ or \
            'RADICAL_PROFILE'       in os.environ :
-            env += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
+            cu_env['RP_PROF'] = '%s/%s.prof' % (sandbox, cu['uid']
+
         env  += '''
 prof(){
     test -z "$RP_PROF" && return
     event=$1
     now=$($RP_GTOD)
-    echo "$now,$event,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING," >> $RP_PROF
+    echo "$now,$event,unit_script,,$RP_UNIT_ID,AGENT_EXECUTING," >> $RP_PROF
 }
+
 '''
+
+        for k,v in cu_env:
+            env += 'export %s="%s"\n' % (k,v)
 
         # also add any env vars requested for export by the resource config
         for k,v in self._env_cu_export.iteritems():
             env += "export %s=%s\n" % (k,v)
-
-        # also add any env vars requested in hte unit description
-        if descr['environment']:
-            for e in descr['environment'] :
-                env += "export %s=%s\n"  %  (e, descr['environment'][e])
-        env  += "\n"
 
         cwd  += "# CU sandbox\n"
         cwd  += "mkdir -p %s\n" % sandbox

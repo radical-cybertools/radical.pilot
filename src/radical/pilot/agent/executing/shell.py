@@ -124,9 +124,9 @@ class Shell(AgentExecutingComponent):
                                       # are not yet known
 
         # get some threads going -- those will do all the work.
-        import saga.utils.pty_shell as sups
-        self.launcher_shell = sups.PTYShell("fork://localhost/")
-        self.monitor_shell  = sups.PTYShell("fork://localhost/")
+        import radical.saga.utils.pty_shell as rsups
+        self.launcher_shell = rsups.PTYShell("fork://localhost/")
+        self.monitor_shell  = rsups.PTYShell("fork://localhost/")
 
         # run the spawner on the shells
         # tmp = tempfile.gettempdir()

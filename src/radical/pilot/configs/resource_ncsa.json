@@ -14,6 +14,8 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 32768,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "APRUN",
@@ -24,10 +26,10 @@
             "module switch PrgEnv-cray PrgEnv-gnu",
             "module load bwpy"
         ],
+        "default_sandbox_base"        : "/scratch/sciteam/$USER",
         "pre_bootstrap_1"             : [
             "ulimit -s 8192"
         ],
-        "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
@@ -47,6 +49,8 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 32768,
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_config"                : "cray",
@@ -63,11 +67,12 @@
             "module use --append /projects/sciteam/gk4/openmpi/modules",
             "module load openmpi"
         ],
+        "pre_bootstrap_1"             : ["export HOME=$HOME"],
+        "default_sandbox_base"        : "/scratch/sciteam/$USER",
         "pre_bootstrap_1"             : [
             "ulimit -s 8192",
             "export HOME=$HOME"
         ],
-        "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
@@ -91,6 +96,8 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "TORQUE",
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 32768,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_config"                : "cray",
@@ -106,11 +113,11 @@
             "module use --append /projects/sciteam/gk4/openmpi/modules",
             "module load openmpi"
         ],
+        "default_sandbox_base"        : "/scratch/sciteam/$USER",
         "pre_bootstrap_1"             : [
             "ulimit -s 8192",
             "export HOME=$HOME"
         ],
-        "default_remote_workdir"      : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
@@ -130,6 +137,8 @@
         },
         "default_queue"               : "normal",
         "lrms"                        : "CCM",
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 32768, 
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -145,7 +154,7 @@
             "ulimit -s 8192",
             "export HOME=$HOME"
         ],
-        "default_remote_workdir"      : "/scratch/sciteam/$USER",
+        "default_sandbox_base"        : "/scratch/sciteam/$USER",
         "valid_roots"                 : ["/scratch/sciteam"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",

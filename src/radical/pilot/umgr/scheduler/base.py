@@ -17,6 +17,7 @@ from ... import constants as rpc
 # 'enum' for RPs's umgr scheduler types
 SCHEDULER_ROUND_ROBIN  = "round_robin"
 SCHEDULER_BACKFILLING  = "backfilling"
+SCHEDULER_DEFAULT      = SCHEDULER_ROUND_ROBIN
 
 # default:
 SCHEDULER_DEFAULT      = SCHEDULER_ROUND_ROBIN
@@ -88,22 +89,19 @@ class UMGRSchedulingComponent(rpu.Component):
         if cls != UMGRSchedulingComponent:
             raise TypeError("Scheduler Factory only available to base class!")
 
-        name = cfg['scheduler']
+        name = cfg.get('type', SCHEDULER_DEFAULT)
 
         from .round_robin  import RoundRobin
         from .backfilling  import Backfilling
 
-        try:
-            impl = {
-                SCHEDULER_ROUND_ROBIN : RoundRobin,
-                SCHEDULER_BACKFILLING : Backfilling
-            }[name]
+        impls = {SCHEDULER_ROUND_ROBIN : RoundRobin,
+                 SCHEDULER_BACKFILLING : Backfilling} 
 
-            impl = impl(cfg, session)
-            return impl
+        if name not in impls:
+            raise ValueError("Scheduler '%s' unknown" % name)
 
-        except KeyError:
-            raise ValueError("Scheduler '%s' unknown or defunct" % name)
+        impl = impls[name]
+        return impl(cfg, session)
 
 
     # --------------------------------------------------------------------------

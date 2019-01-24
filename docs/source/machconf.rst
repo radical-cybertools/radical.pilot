@@ -180,33 +180,3 @@ Several configuration files are part of the RADICAL-Pilot installation, and live
 under ``radical/pilot/configs/``.
 
 
-Customizing Resource Configurations Programatically
-===================================================
-
-The set of resource configurations available to the RADICAL-Pilot session is
-accessible programmatically. The example below changes the ``default_queue`` for
-the ``epsrc.archer`` resource.
-
-.. code-block:: python
-
-
-    import radical.pilot as rp
-    import pprint
-
-    RESOURCE = 'epsrc.archer'
-
-    # get a pre-installed resource configuration
-    session = rp.Session()
-    cfg = session.get_resource_config(RESOURCE)
-    pprint.pprint (cfg)
-
-    # create a new config based on the old one, and set a different launch method
-    new_cfg = rp.ResourceConfig(RESOURCE, cfg)
-    new_cfg.default_queue = 'royal_treatment'
-
-    # now add the entry back.  As we did not change the config name, this will
-    # replace the original configuration.  A completely new configuration would
-    # need a unique label.
-    session.add_resource_config(new_cfg)
-    pprint.pprint (session.get_resource_config(RESOURCE))
-

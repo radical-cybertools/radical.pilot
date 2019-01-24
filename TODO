@@ -247,3 +247,9 @@ term iv
   - remove exceptions.py
   - we don't have clones anymore - clean out
 
+
+configuration
+-------------
+
+  - default_sandbox_base -> default_remote_workdir
+

@@ -52,16 +52,14 @@ class Agent_n(rpu.Worker):
         # config -- we merge that information into our own config.
         # We don't want the session to start components though, so remove them
         # from the config copy.
-        session_cfg = copy.deepcopy(cfg)
+        session_cfg = copy.deepcopy(self._cfg)
         session_cfg['components'] = dict()
         session = rp_Session(uid=self._sid, _cfg=session_cfg)
 
         # connect to the DB, start bridges and components
         self._cfg['uid']   = self._uid
-        self._cfg['owner'] = self._uid
-        self._cfg['dburl'] = self._session._cfg['dburl']
+        self._cfg['owner'] = self._session.uid
 
-        self._db   = db.DB(self._session, cfg=self._cfg)
         self._cmgr = rpu.ComponentManager(self._session, self._cfg, self._uid)
 
 

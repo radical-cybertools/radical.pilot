@@ -94,7 +94,7 @@ entities.
 
 Callbacks can be registered for notifications on unit and pilot state changes.
 
-Setting ``RADICAL_PILOT_VERBOSE=INFO`` will turn on logging, which provides
+Setting ``RADICAL_PILOT_LOG_LVL=INFO`` will turn on logging, which provides
 very detailed information about RP's inner functionality.  Pilots running on
 target resources also create log files (those should only be useful for
 debugging purposes).
@@ -106,7 +106,7 @@ What about logging and profiling?
 RP supports logging to the terminal and to files.  Also, profiles can be written
 during runtime. You can set the following variables:
 
-    RADICAL_PILOT_VERBOSE=DEBUG
+    RADICAL_PILOT_LOG_LVL=DEBUG
     RADICAL_PILOT_LOG_TGT=/tmp/rp.log
     RADICAL_PILOT_PROFILE=True
 

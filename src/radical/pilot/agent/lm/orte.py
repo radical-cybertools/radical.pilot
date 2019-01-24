@@ -81,7 +81,7 @@ class ORTE(LaunchMethod):
         cmdline  = '%s %s %s %s ' % (stdbuf_cmd, stdbuf_arg, dvm_command, dvm_args)
 
         # Additional (debug) arguments to orte-dvm
-        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+        if os.environ.get('RADICAL_PILOT_ORTE_DEBUG'):
             debug_strings = [
                              '--debug-devel',
                              '--mca odls_base_verbose 100',
@@ -259,12 +259,13 @@ class ORTE(LaunchMethod):
             #       hostnames with underscores in it, or other hostname 
             #       mangling, we need to turn this into a system specific 
             #       regexp or so.
+            self._log.debug('node: %s', node)
             node_id = node[0].rsplit('_', 1)[-1] 
 
             # add all cpu and gpu process slots to the node list.
-            for cpu_slot in node[2]: hosts_string += '%s,' % node_id
-            for gpu_slot in node[3]: hosts_string += '%s,' % node_id
-            for cpu_slot in node[2]: depths.add(len(cpu_slot))
+            for cpu_slot in node['core_map']: hosts_string += '%s,' % node_id
+            for gpu_slot in node['gpu_map' ]: hosts_string += '%s,' % node_id
+            for cpu_slot in node['core_map']: depths.add(len(cpu_slot))
 
         assert(len(depths) == 1), depths
         depth = list(depths)[0]
@@ -278,7 +279,7 @@ class ORTE(LaunchMethod):
         hosts_string = hosts_string.rstrip(',')
 
         # Additional (debug) arguments to orterun
-        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+        if os.environ.get('RADICAL_PILOT_ORTE_DEBUG'):
             debug_strings = ['-display-devel-map', 
                              '-display-allocation', 
                              '--debug-devel',

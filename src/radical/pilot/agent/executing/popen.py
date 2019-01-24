@@ -164,7 +164,7 @@ class Popen(AgentExecutingComponent) :
 
         self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        ru.raise_on('work bulk')
+      # ru.raise_on('work bulk')
 
         for unit in units:
             self._handle_unit(unit)
@@ -174,7 +174,7 @@ class Popen(AgentExecutingComponent) :
     #
     def _handle_unit(self, cu):
 
-        ru.raise_on('work unit')
+      # ru.raise_on('work unit')
       # import pprint
       # self._log.info('handle cu: %s', pprint.pformat(cu))
 
@@ -471,10 +471,6 @@ prof(){
                 cu['exit_code'] = exit_code
 
                 sandbox  = '%s/%s' % (self._pwd, cu['uid'])
-                statfile = '%s/app_stats.dat' % sandbox
-                if os.path.isfile(statfile):
-                    with open ('%s/app_stats.dat' % sandbox, 'r') as fin:
-                        cu['app_stats'] = float(fin.read().strip())
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._cus_to_watch.remove(cu)

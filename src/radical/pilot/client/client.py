@@ -5,6 +5,8 @@ __license__   = "MIT"
 
 import copy
 
+import radical.utils as ru
+
 
 # ------------------------------------------------------------------------------
 #
@@ -19,9 +21,9 @@ class Client(object):
         self._session = session
 
         self._uid     = '%s.client' % self._session.uid
-        self._prof    = self._session.get_profiler(name=self._uid)
-        self._rep     = self._session.get_reporter(name=self._uid)
-        self._log     = self._session.get_logger  (name=self._uid)
+        self._prof    = ru.Profiler(name=self._uid)
+        self._rep     = ru.Reporter(name=self._uid)
+        self._log     = ru.Logger  (name=self._uid)
         self._cfg     = copy.deepcopy(self._session._cfg)
 
         self._pmgrs   = dict()

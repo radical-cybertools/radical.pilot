@@ -30,7 +30,7 @@ class PilotManager(rpu.Component):
 
     **Example**::
 
-        s = rp.Session(database_url=DBURL)
+        s = rp.Session()
 
         pm = rp.PilotManager(session=s)
 
@@ -93,15 +93,11 @@ class PilotManager(rpu.Component):
                 % (os.path.dirname(__file__),
                    os.environ.get('RADICAL_PILOT_PMGR_CFG', 'default')))
 
-        assert(self._cfg['db_poll_sleeptime']), 'db_poll_sleeptime not configured'
-
         # initialize the base class (with no intent to fork)
         self._uid          = ru.generate_id('pmgr')
         self._cfg['uid']   = self._uid
-        self._cfg['owner'] = self._uid
-        self._cfg['dburl'] = self._session.dburl
+        self._cfg['owner'] = self._session.uid
 
-        self._db   = db.DB(self._session, cfg=self._cfg)
         self._cmgr = rpu.ComponentManager(self._session, self._cfg, self._uid)
 
         super(PilotManager, self).__init__(self._cfg, self._session)
@@ -124,8 +120,9 @@ class PilotManager(rpu.Component):
         # register the state notification pull cb
         # FIXME: we may want to have the frequency configurable
         # FIXME: this should be a tailing cursor in the update worker
-        self.register_timed_cb(self._state_pull_cb, 
-                               timer=self._cfg['db_poll_sleeptime'])
+        # FIXME:
+        ## self.register_timed_cb(self._state_pull_cb, 
+        ##                        timer=self._cfg['db_poll_sleeptime'])
 
         # also listen to the state pubsub for pilot state changes
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_sub_cb)
@@ -175,13 +172,11 @@ class PilotManager(rpu.Component):
                     self.advance(pilot.as_dict(), rps.FAILED,
                                  publish=True, push=False)
 
-        self._db.close()
         self._cmgr.close()
 
         # terminate component base
         super(PilotManager, self).stop()
 
-        self._prof.prof('close', uid=self._uid)
         self._log.info("Closed PilotManager %s." % self._uid)
 
         self._closed = True
@@ -237,12 +232,13 @@ class PilotManager(rpu.Component):
         # FIXME: this needs to be converted into a tailed cursor in the update
         #        worker
         # FIXME: this is a big and frequently invoked lock
-        pilot_dicts = self._db.get_pilots(pmgr_uid=self.uid)
+        # FIXME
+        ## pilot_dicts = self._db.get_pilots(pmgr_uid=self.uid)
 
-        if pilot_dicts:
-            for pilot_dict in pilot_dicts:
-                if not self._update_pilot(pilot_dict, publish=True):
-                    return False
+        ## if pilot_dicts:
+        ##     for pilot_dict in pilot_dicts:
+        ##         if not self._update_pilot(pilot_dict, publish=True):
+        ##             return False
 
         return True
 
@@ -504,9 +500,6 @@ class PilotManager(rpu.Component):
 
         if self._session._rec:
             self._rec_id += 1
-
-        # insert pilots into the database, as a bulk.
-        self._db.insert_pilots(pilot_docs)
 
         # Only after the insert can we hand the pilots over to the next
         # components (ie. advance state).

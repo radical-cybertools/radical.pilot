@@ -20,7 +20,7 @@
             ". /etc/profile.d/modules.sh",
             "module load openmpi/gcc/64"
         ],
-        "default_remote_workdir"      : "/var/scratch/$USER",
+        "default_sandbox_base"        : "/var/scratch/$USER",
         "valid_roots"                 : ["/home", "/var/scratch"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "update",

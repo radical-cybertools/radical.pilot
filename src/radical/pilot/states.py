@@ -49,6 +49,7 @@ for s,v in _pilot_state_values.iteritems():
     else:
         _pilot_state_inv_full[v] = s
 
+
 def _pilot_state_value(s):
     return _pilot_state_values[s] 
 
@@ -71,7 +72,8 @@ def _pilot_state_progress(pid, current, target):
 
     if current in FINAL and target != current:
         if target in FINAL:
-            raise ValueError('invalid transition for %s: %s -> %s' % (pid, current, target))
+            raise ValueError('invalid transition for %s: %s -> %s'
+                    % (pid, current, target))
 
     cur = _pilot_state_values[current]
     tgt = _pilot_state_values[target]
@@ -82,7 +84,7 @@ def _pilot_state_progress(pid, current, target):
 
     # dig out all intermediate states, skip current
     passed = list()
-    for i in range(cur+1,tgt):
+    for i in range(cur +  1,tgt):
         passed.append(_pilot_state_inv[i])
 
     # append target state to trigger notification of transition
@@ -93,8 +95,8 @@ def _pilot_state_progress(pid, current, target):
 
 def _pilot_state_collapse(states):
     """
-    This method takes a list of pilot states and selects the one with the highest
-    state value.
+    This method takes a list of pilot states and selects the one with the
+    highest state value.
     """
     # we first check the final states, as we want to express a preference there.
     # Then we start comparing actual values.
@@ -159,6 +161,7 @@ for s,v in _unit_state_values.iteritems():
     else:
         _unit_state_inv_full[v] = s
 
+
 def _unit_state_value(s):
     return _unit_state_values[s] 
 
@@ -186,13 +189,13 @@ def _unit_state_progress(uid, current, target):
 
     unit_state_progress(UMGR_SCHEDULING, NEW)
     --> [UMGR_SCHEDULING, []]
-    
+
     unit_state_progress(NEW, NEW)
     --> [NEW, []]
-    
+
     unit_state_progress(NEW, UMGR_SCHEDULING_PENDING)
     --> [UMGR_SCHEDULING_PENDING, [UMGR_SCHEDULING_PENDING]]
-    
+
     unit_state_progress(NEW, UMGR_SCHEDULING)
     --> [UMGR_SCHEDULING, [UMGR_SCHEDULING_PENDING, UMGR_SCHEDULING]]
 
@@ -208,7 +211,8 @@ def _unit_state_progress(uid, current, target):
 
     if current in FINAL:
         if target in FINAL:
-            raise ValueError('invalid transition for %s: %s -> %s' % (uid, current, target))
+            raise ValueError('invalid transition for %s: %s -> %s'
+                            % (uid, current, target))
 
     cur = _unit_state_values[current]
     tgt = _unit_state_values[target]
@@ -219,7 +223,7 @@ def _unit_state_progress(uid, current, target):
 
     # dig out all intermediate states, skip current
     passed = list()
-    for i in range(cur+1,tgt):
+    for i in range(cur + 1,tgt):
         passed.append(_unit_state_inv[i])
 
     # append target state to trigger notification of transition
@@ -257,7 +261,7 @@ if 'RP_ENABLE_OLD_DEFINES' in os.environ:
     PENDING_ACTIVE         = PMGR_ACTIVE_PENDING
     ACTIVE_PENDING         = PMGR_ACTIVE_PENDING
     ACTIVE                 = PMGR_ACTIVE
-    
+
     # compute unit states
     UNSCHEDULED            = UMGR_SCHEDULING_PENDING
     SCHEDULING             = UMGR_SCHEDULING

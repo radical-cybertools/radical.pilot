@@ -34,13 +34,13 @@ be changed to rather verbose debugging output via the `os.environment` setting
 at the beginning of the example, by changing
 
 ```
-os.environ['RADICAL_VERBOSE'] = 'DEMO'
+os.environ['RADICAL_LOG_LVL'] = 'REPORT'
 ```
 
 to
 
 ```
-os.environ['RADICAL_VERBOSE'] = 'DEBUG'
+os.environ['RADICAL_LOG_LVL'] = 'DEBUG'
 ```
 
 All `getting_started_[n].py` examples accept resource targets.  To simplify the

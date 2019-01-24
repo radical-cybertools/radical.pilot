@@ -10,11 +10,24 @@ import time
 import threading as mt
 
 import radical.utils        as ru
-import saga                 as rs
-import saga.utils.pty_shell as rsup
+import radical.saga         as rs
+
+rsup = rs.utils.pty_shell
+
+from . import utils         as rpu
+from . import states        as rps
+from . import constants     as rpc
+from . import types         as rpt
+
+from .unit_manager    import UnitManager
+from .pilot_manager   import PilotManager
+from .db              import DBSession
+
+from .utils import version_detail as rp_version_detail
+
+# ----------
 
 from .                import utils   as rpu
-from .                import db
 from .client          import Client
 from .resource_config import ResourceConfig
 
@@ -38,7 +51,7 @@ class Session(rs.Session):
     #
     # --------------------------------------------------------------------------
     #
-    def __init__(self, uid=None, dburl=None, _cfg=None):
+    def __init__(self, uid=None, _cfg=None):
         '''
         Creates a new session.  A new Session instance is created and 
         stored in the database.
@@ -46,9 +59,6 @@ class Session(rs.Session):
         **Arguments:**
 
             * **uid**   (`string`): Create a session with this UID.  
-            * **dburl** (`string`): connect to the DB on this URL.  If not
-                                    specified, use the `dburl` entry in the
-                                    session config, or `$RADICA_PILOT_DBURL`.
         **Returns:**
             * A new Session instance.
         '''
@@ -72,9 +82,9 @@ class Session(rs.Session):
         # a client module, which manages client side communication bridges and
         # components.
         #
-        # FIXME: this is a sign of an inverted hierarchy: it looks like a client
-        #        should have a session, not the way around.  We leave this for
-        #        now for API stability...
+        # FIXME: this is a sign of an inverted hierarchy: the *module* should
+        #        have a *session*, not the way around.  We leave this for now, 
+        #        to keep the API stabie.
         create_client = False
 
         if not self._cfg:
@@ -91,14 +101,10 @@ class Session(rs.Session):
         if self._cfg.get('bridges') or self._cfg.get('components'):
             create_cmgr = True
 
-
-        # we always need a dburl, even if this session does not itself
-        # connect to the DB (we connect opportunistically)
-        if not dburl: dburl = self._cfg.get('dburl')
-        if not dburl: dburl = os.environ.get("RADICAL_PILOT_DBURL") 
-        if not dburl: raise ValueError("no db URL (set RADICAL_PILOT_DBURL)")  
-
-        self._cfg['dburl'] = dburl
+        # cache for bridge addresses
+        # FIXME: this should be a simple, distributed key/val store with locking
+        #        and transactions.
+        self._addresses = dict()
 
         # fall back to config data where possible
         # sanity check on parameters
@@ -121,15 +127,18 @@ class Session(rs.Session):
             self._sandbox = './%s/' % self.uid
             self._cfg['session_sandbox'] = self._sandbox
 
-        if not self._cfg.get('session_id'): self._cfg['session_id'] = self._uid 
-        if not self._cfg.get('owner')     : self._cfg['owner']      = self._uid 
-        if not self._cfg.get('logdir')    : self._cfg['logdir']     = self._sandbox
+        if 'session_id' not in self._cfg: self._cfg['session_id'] = self._uid 
+        if 'owner'      not in self._cfg: self._cfg['owner']      = self._uid 
 
-        self._logdir = self._cfg['logdir']
-        self._prof   = self.get_profiler(name=self._cfg['owner'])
-        self._rep    = self.get_reporter(name=self._cfg['owner'])
-        self._log    = self.get_logger  (name=self._cfg['owner'],
-                                         level=self._cfg.get('debug'))
+        # FIXME: this is wrong for the pilot
+        ru_def = ru.DefaultConfig()
+        ru_def['ns']          = 'radical.pilot'
+        ru_def['log_dir']     = './%s' % self._uid
+        ru_def['profile_dir'] = './%s' % self._uid
+
+        self._prof = ru.Profiler(name=self._cfg['owner'])
+        self._rep  = ru.Reporter(name=self._cfg['owner'])
+        self._log  = ru.Logger  (name=self._cfg['owner'])
 
         # now we have config and uid - initialize base class (saga session)
         rs.Session.__init__(self, uid=self._uid)
@@ -154,10 +163,6 @@ class Session(rs.Session):
             self._rep.info ('<<new session: ')
             self._rep.plain('[%s]' % self._uid)
             self._rep.info ('<<database   : ')
-            self._rep.plain('[%s]' % self.dburl)
-
-            # only the client session connects to the DB
-            self._db = db.DB(self, cfg=self._cfg)
 
             self._rec = os.environ.get('RADICAL_PILOT_RECORD_SESSION')
             if self._rec:
@@ -170,7 +175,7 @@ class Session(rs.Session):
 
 
         if create_cmgr:
-            self._cmgr = rpu.ComponentManager(self, self._cfg)
+            self._cmgr = rpu.ComponentManager(self, self._cfg, self.uid)
 
         # done!
         if create_client:
@@ -260,11 +265,8 @@ class Session(rs.Session):
         self._prof.prof("session_stop", uid=self._uid)
         self._prof.close()
 
-        if self._db:
-            self._db.close(delete=cleanup)
-
         self._closed = True
-        self._valid = False
+        self._valid  = False
 
         # after all is said and done, we attempt to download the pilot log- and
         # profiles, if so wanted
@@ -298,26 +300,11 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     @property
-    def logdir(self):
-        return self._logdir
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def dburl(self):
-        return self._cfg['dburl']
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
     def created(self):
         '''
         Returns the UTC date and time the session was created.
         '''
-        if self._client:
-            return self._client._db.created
+        # FIXME
         return None
 
 
@@ -328,83 +315,37 @@ class Session(rs.Session):
         '''
         Returns the time of closing
         '''
-        if self._client:
-            return self._client._db.closed
+        # FIXME
         return None
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_logger(self, name, level=None, path=None):
-        """
-        This is a thin wrapper around `ru.Logger()` which makes sure that
-        log files end up in a separate directory with the name of `session.uid`.
-        """
-        if not path:
-            path = self._logdir
-
-        return ru.Logger(name=name, ns='radical.pilot', targets=['.'], 
-                         path=path, level=level)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_reporter(self, name):
-        """
-        This is a thin wrapper around `ru.Reporter()` which makes sure that
-        log files end up in a separate directory with the name of `session.uid`.
-        """
-
-        if not self._reporter:
-            self._reporter = ru.Reporter(name=name, ns='radical.pilot',
-                                         targets=['stdout'], path=self._logdir)
-        return self._reporter
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_profiler(self, name):
-        """
-        This is a thin wrapper around `ru.Profiler()` which makes sure that
-        log files end up in a separate directory with the name of `session.uid`.
-        """
-
-        prof = ru.Profiler(name=name, ns='radical.pilot', path=self._logdir)
-
-        return prof
 
 
     # -------------------------------------------------------------------------
     #
     def fetch_profiles(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_profiles(self._uid, dburl=self._cfg['dburl'], tgt=tgt, 
-                                  session=self)
+        return rpu.fetch_profiles(self._uid, tgt=tgt, session=self)
 
 
     # -------------------------------------------------------------------------
     #
     def fetch_logfiles(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_logfiles(self._uid, dburl=self._cfg['dburl'], tgt=tgt, 
-                                  session=self)
+        return rpu.fetch_logfiles(self._uid, tgt=tgt, session=self)
 
 
     # -------------------------------------------------------------------------
     #
     def fetch_json(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_json(self._uid, dburl=self._cfg['dburl'], tgt=tgt,
-                              session=self)
+        return rpu.fetch_json(self._uid, tgt=tgt, session=self)
 
 
     # --------------------------------------------------------------------------
     #
     def insert_metadata(self, metadata):
 
+        # FIXME
         self.is_valid()
-        assert(self._db)
-        return self._db.insert_metadata(metadata)
 
 
     # --------------------------------------------------------------------------
@@ -548,51 +489,6 @@ class Session(rs.Session):
 
     # -------------------------------------------------------------------------
     #
-    def add_resource_config(self, resource_config):
-        """Adds a new :class:`radical.pilot.ResourceConfig` to the PilotManager's 
-           dictionary of known resources, or accept a string which points to
-           a configuration file.
-
-           For example::
-
-                  rc = radical.pilot.ResourceConfig(label="mycluster")
-                  rc.job_manager_endpoint = "ssh+pbs://mycluster
-                  rc.filesystem_endpoint  = "sftp://mycluster
-                  rc.default_queue        = "private"
-                  rc.bootstrapper         = "default_bootstrapper.sh"
-
-                  pm = radical.pilot.PilotManager(session=s)
-                  pm.add_resource_config(rc)
-
-                  pd = radical.pilot.ComputePilotDescription()
-                  pd.resource = "mycluster"
-                  pd.cores    = 16
-                  pd.runtime  = 5 # minutes
-
-                  pilot = pm.submit_pilots(pd)
-        """
-
-        self.is_valid()
-
-        if isinstance(resource_config, basestring):
-
-            # let exceptions fall through
-            rcs = ResourceConfig.from_file(resource_config)
-
-            for rc in rcs:
-                self._log.info("Loaded resource configurations for %s" % rc)
-                self._rcfgs[rc] = rcs[rc].as_dict() 
-                self._log.debug('add  rcfg for %s (%s)', 
-                        rc, self._rcfgs[rc].get('cores_per_node'))
-
-        else:
-            self._rcfgs[resource_config.label] = resource_config.as_dict()
-            self._log.debug('Add  rcfg for %s (%s)', 
-                    resource_config.label, 
-                    self._rcfgs[resource_config.label].get('cores_per_node'))
-
-    # -------------------------------------------------------------------------
-    #
     def get_resource_config(self, resource, schema=None):
         """
         Returns a dictionary of the requested resource config
@@ -682,6 +578,7 @@ class Session(rs.Session):
                 # Get the sandbox from either the pilot_desc or resource conf
                 sandbox_raw = pilot['description'].get('sandbox')
                 if not sandbox_raw:
+                    sandbox_raw = rcfg.get('default_sandbox_base', "$PWD")
                     sandbox_raw = rcfg.get('default_remote_workdir', "$PWD")
 
                 # If the sandbox contains expandables, we need to resolve those remotely.
@@ -829,6 +726,41 @@ class Session(rs.Session):
         else                               : js_hop.schema = 'fork'
 
         return js_url, js_hop
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_address(self, name):
+        '''
+        return in and out address for the named bridge, if known - None
+        otherwise
+        '''
+        if name in self._addresses:
+            return self._addresses[name]
+
+        addr = self._addresses.get(name, dict())
+
+        fnames = ['%s/%s.url' % (self._sandbox, name), 
+                  '%s/%s.url' % (os.getcwd(),   name)]
+        for fname in fnames:
+
+            if addr:
+                # we are done already
+                self._addresses[name] = addr
+                break
+
+            if os.path.isfile(fname):
+                with open(fname, 'r') as fin:
+                    for line in fin.readlines():
+                        key, val = line.split()
+                        if key in ['PUB', 'PUT']: addr[key] = val
+                        if key in ['SUB', 'GET']: addr[key] = val
+                    assert(len(addr) in [0,2]), 'malformed %s' % fname
+
+        if not addr:
+            raise RuntimeError('no address for %s found %s' % (name, fnames))
+
+        return addr
 
 
     # --------------------------------------------------------------------------

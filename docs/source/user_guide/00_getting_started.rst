@@ -40,14 +40,14 @@ in your Python script or application:
 
 All example scripts used in this user guide use the ``LogReporter``
 facility (of RADICAL-Utils) to print runtime and progress information.  You can
-control that output with the ``RADICAL_PILOT_VERBOSE`` variable, which can be set
+control that output with the ``RADICAL_PILOT_LOG_LVL`` variable, which can be set
 to the normal Python logging levels, and to the value ``REPORT`` to obtain well
 formatted output.  We assume the ``REPORT`` setting to be used when referencing
 any output in this chapter.
 
 .. code-block:: python
 
-    os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
+    os.environ['RADICAL_PILOT_LOG_LVL'] = 'REPORT'
 
     import radical.pilot as rp
     import radical.utils as ru

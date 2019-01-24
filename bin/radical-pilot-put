@@ -7,11 +7,11 @@ __license__   = "MIT"
 import sys
 import time
 
-import setproctitle        as spt
-import radical.pilot.utils as rpu
+import setproctitle  as spt
+import radical.utils as ru
 
-DELAY = 1.0
-N     = 100
+DELAY = 0.1
+N     = 60
 
 
 # ------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ if __name__ == "__main__":
                          'usage: %s <queue>\n' % sys.argv[0])
         raise RuntimeError('missing argument')
 
-    putter = rpu.Putter(sys.argv[1])
+    putter = ru.Putter(sys.argv[1])
 
     # mark this process
     spt.setproctitle('rp.%s' % putter.uid)
@@ -39,9 +39,12 @@ if __name__ == "__main__":
     start = time.time()
     for i in range(N):
 
+        sys.stdout.write('.')
         putter.put({'data': i})
+        sys.stdout.flush()
         time.sleep(DELAY)
 
+    print '#'
     putter.put({'cmd': 'QUIT'})
 
     stop = time.time()
