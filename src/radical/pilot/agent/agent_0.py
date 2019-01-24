@@ -113,6 +113,7 @@ class Agent_0(rpu.Worker):
 
         # add the resource manager information to our own config
         cfg['lrms_info'] = self._lrms.lrms_info
+        cfg['owner']     = self._uid
 
         # only now, after the lrms is created, we can instantiate components, as
         # those need the LRMS info.

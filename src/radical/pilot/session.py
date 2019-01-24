@@ -335,13 +335,16 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def get_logger(self, name, level=None):
+    def get_logger(self, name, level=None, path=None):
         """
         This is a thin wrapper around `ru.Logger()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
         """
+        if not path:
+            path = self._logdir
+
         return ru.Logger(name=name, ns='radical.pilot', targets=['.'], 
-                         path=self._logdir, level=level)
+                         path=path, level=level)
 
 
     # --------------------------------------------------------------------------

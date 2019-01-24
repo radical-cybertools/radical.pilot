@@ -219,9 +219,10 @@ class Publisher(object):
         else:
             self._pwd = '.'
 
-        self._uid = ru.generate_id('%s.pub.%s' % (self._channel, '%(counter)04d'),
-                                   ru.ID_CUSTOM)
+        self._uid = ru.generate_id('%s.pub.%s' % (self._channel,
+                                   '%(counter)04d'), ru.ID_CUSTOM)
         self._log = ru.Logger(name=self._uid, level='DEBUG')  ## FIXME
+        self._log.info('=========== %s [%s]', self._uid, )
 
         # avoid superfluous logging calls in critical code sections
         if self._log.getEffectiveLevel() == 10:  # logging.DEBUG:

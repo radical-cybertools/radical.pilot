@@ -58,7 +58,7 @@ class Agent_n(rpu.Worker):
 
         # connect to the DB, start bridges and components
         self._cfg['uid']   = self._uid
-        self._cfg['owner'] = self._session.uid
+        self._cfg['owner'] = self._uid
         self._cfg['dburl'] = self._session._cfg['dburl']
 
         self._db   = db.DB(self._session, cfg=self._cfg)

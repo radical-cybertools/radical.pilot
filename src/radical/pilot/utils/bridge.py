@@ -13,10 +13,17 @@ class Bridge(object):
         self._cfg     = copy.deepcopy(cfg)
 
         self._channel = self._cfg['name']
-        self._uid     = self._cfg['uid']   ## FIXME: generate?
+        self._owner   = self._cfg['owner']
+        self._logdir  = self._cfg['logdir']
+        self._uid     = self._cfg['uid']
         self._pwd     = self._cfg['pwd']
-        self._log     = session.get_logger(name=self._uid, level='DEBUG')
-                                      ##   level=self._cfg.get('log_level'))
+
+        if self._owner:
+            self._uid = '%s.%s' % (self._owner, self._uid)
+
+        self._log     = session.get_logger(name=self._uid,
+                                           path=self._logdir, 
+                                           level=self._cfg.get('log_level'))
         self._log.debug('=== debug')
 
         # avoid superfluous logging calls in critical code sections

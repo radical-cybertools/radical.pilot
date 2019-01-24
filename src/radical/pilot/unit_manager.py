@@ -113,7 +113,7 @@ class UnitManager(rpu.Component):
         # initialize the base class (with no intent to fork)
         self._uid          = ru.generate_id('umgr')
         self._cfg['uid']   = self._uid
-        self._cfg['owner'] = self._session.uid
+        self._cfg['owner'] = self._uid
         self._cfg['dburl'] = self._session.dburl
 
         self._db   = db.DB(self._session, cfg=self._cfg)
