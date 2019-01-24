@@ -9,9 +9,6 @@
     # max time period to collect db notifications into bulks (seconds)
     "bulk_collection_time" : 1.0,
 
-    # time to sleep between database polls (seconds)
-    "db_poll_sleeptime" : 1.0,
-
     "bridges" : {
         "umgr_staging_input_queue"  : {"log_level" : "error",
                                        "stall_hwm" : 1,

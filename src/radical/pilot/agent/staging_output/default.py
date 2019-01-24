@@ -53,7 +53,7 @@ class Default(AgentStagingOutputComponent):
 
         # push units back to the client side
         self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING, 
-                             rpc.CLIENT_QUEUE)
+                             rpc.AGENT_QUEUE_OUT)
 
 
     # --------------------------------------------------------------------------

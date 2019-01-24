@@ -63,7 +63,7 @@ class Default(UMGRStagingInputComponent):
                             rpc.UMGR_STAGING_INPUT_QUEUE, self.work)
 
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
-                             rpc.AGENT_QUEUE)
+                             rpc.AGENT_QUEUE_IN)
 
         # we subscribe to the command channel to learn about pilots being added
         # to this unit manager.

@@ -151,7 +151,6 @@ class Shell(AgentExecutingComponent):
         # run watcher thread
         self._terminate = threading.Event()
         self._watcher   = threading.Thread(target=self._watch, name="Watcher")
-        self._watcher.daemon = True
         self._watcher.start ()
 
         self.gtod = "%s/gtod" % self._pwd
@@ -197,7 +196,9 @@ class Shell(AgentExecutingComponent):
             with self._cancel_lock:
                 self._cus_to_cancel.remove(cu['uid'])
 
-            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                         {'cmd': 'unschedule',
+                          'arg': [cu]})
             self.advance(cu, rps.CANCELED, publish=True, push=False)
             return True
 
@@ -259,7 +260,9 @@ class Shell(AgentExecutingComponent):
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             if cu.get('slots'):
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                             {'cmd': 'unschedule',
+                              'arg': [cu]})
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
 
@@ -480,12 +483,18 @@ prof(){
 
         MONITOR_READ_TIMEOUT = 1.0   # check for stop signal now and then
         static_cnt           = 0
+        main_thread          = ru.main_thread()
 
         try:
 
             self.monitor_shell.run_async ("MONITOR")
 
             while not self._terminate.is_set () :
+
+                main_thread(0)
+                if not main_thread():
+                    # parent thread is gone - finish also
+                    return
 
                 _, out = self.monitor_shell.find (['\n'], timeout=MONITOR_READ_TIMEOUT)
 
@@ -596,7 +605,9 @@ prof(){
         self._prof.prof('exec_stop', uid=cu['uid'])
 
         # for final states, we can free the slots.
-        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                     {'cmd': 'unschedule',
+                      'arg': [cu]})
 
         if data : cu['exit_code'] = int(data)
         else    : cu['exit_code'] = None

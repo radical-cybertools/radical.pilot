@@ -9,7 +9,7 @@ import time
 
 import radical.utils as ru
 
-_USE_SHELL = False
+USE_SHELL = False
 
 
 # ------------------------------------------------------------------------------
@@ -37,8 +37,13 @@ class ComponentManager(object):
         self._bridges    = dict()  # map uids to pids
         self._components = dict()  # map uids to pids
 
+        with open('cmgr.cfg', 'w') as fout:
+            import pprint
+            fout.write('\n%s\n\n' % pprint.pformat(self._cfg))
+
         self._start_bridges()
         self._start_components()
+      # self._start_agents()
 
 
     # --------------------------------------------------------------------------
@@ -54,6 +59,12 @@ class ComponentManager(object):
 
         if 'bridges' not in self._cfg:
             self._cfg['bridges'] = dict()
+
+        # merge configs into bridge specs
+        ccfg = self._cfg.get('config', dict()).get('bridges')
+        if ccfg:
+            ru.dict_merge(self._cfg['bridges'], ccfg, ru.OVERWRITE)
+
 
         ru_def = ru.DefaultConfig()
 
@@ -72,18 +83,18 @@ class ComponentManager(object):
             fpid = '%s/%s.pid' % (sbox, buid)
             furl = '%s/%s.url' % (sbox, buid)
 
-            bcfg['ru_def']          = copy.deepcopy(ru_def.as_dict())
-            bcfg['session_id']      = self._session.uid
-            bcfg['session_sandbox'] = sbox
+            bcfg['ru_def']     = copy.deepcopy(ru_def.as_dict())
+            bcfg['session_id'] = self._session.uid
+            bcfg['sandbox']    = sbox
 
-            bcfg['owner']           = self.uid
-            bcfg['name']            = bname
-            bcfg['uid']             = buid
-            bcfg['fpid']            = fpid
-            bcfg['furl']            = furl
-            bcfg['fout']            = fout
-            bcfg['ferr']            = ferr
-            bcfg['ppid']            = os.getpid()
+            bcfg['owner']      = self.uid
+            bcfg['name']       = bname
+            bcfg['uid']        = buid
+            bcfg['fpid']       = fpid
+            bcfg['furl']       = furl
+            bcfg['fout']       = fout
+            bcfg['ferr']       = ferr
+            bcfg['ppid']       = os.getpid()
 
             if   'pubsub' in bname: bcfg['kind'] = 'pubsub'
             elif 'queue'  in bname: bcfg['kind'] = 'queue'
@@ -91,8 +102,12 @@ class ComponentManager(object):
 
             ru.write_json(bcfg, fcfg)
 
-            cmd = 'radical-pilot-bridge %s' % fcfg
-            ru.sh_callout_bg(cmd, shell=_USE_SHELL)
+            os.environ['RU_WATCH_PID1'] = str(os.getpid())
+            stdout = '%s/%s.out' % (sbox, bname)
+            stderr = '%s/%s.err' % (sbox, bname)
+            pw     = 'radical-utils-pwatch'
+            cmd    = '%s radical-pilot-bridge %s'  % (pw, fcfg)
+            ru.sh_callout_bg(cmd, stdout=stdout, stderr=stderr, shell=USE_SHELL)
 
             self._log.debug('started bridge %s: %s' % (buid, cmd))
 
@@ -186,18 +201,30 @@ class ComponentManager(object):
             # nothing to do
             return
 
-        ru_def   = ru.DefaultConfig()
+        # merge specific configs into component specs
+        ccfg = self._cfg.get('config', dict()).get('components')
+        if ccfg:
+            ru.dict_merge(self._cfg['components'], ccfg, ru.OVERWRITE)
 
+        ru_def   = ru.DefaultConfig()
         sbox     = self._session.get_session_sandbox()
         to_check = list()
 
         for cname in self._cfg['components']:
 
             cfg = self._cfg['components'][cname]
+            cfg['rcfg'] = self._cfg.get('rcfg', dict())
+            cfg['acfg'] = self._cfg.get('acfg', dict())
 
             for num in range(cfg.get('count', 1)):
 
                 ccfg = copy.deepcopy(cfg)
+
+                # merge global config settings
+                dcfg = self._cfg.get('default')
+                if dcfg:
+                    ru.dict_merge(ccfg, dcfg, ru.OVERWRITE)
+
                 cuid = ru.generate_id(cname + '.%(counter)04d', ru.ID_CUSTOM)
                 cuid = self._owner + '.' + cuid
 
@@ -206,23 +233,142 @@ class ComponentManager(object):
                 fcfg = '%s/%s.cfg' % (sbox, cuid)
                 fpid = '%s/%s.pid' % (sbox, cuid)
 
-                ccfg['ru_def']          = copy.deepcopy(ru_def.as_dict())
-                ccfg['session_id']      = self._session.uid
-                ccfg['session_sandbox'] = sbox
+                ccfg['ru_def']     = copy.deepcopy(ru_def.as_dict())
+                ccfg['session_id'] = self._session.uid
+                ccfg['sandbox']    = sbox
 
-                ccfg['owner']           = self.uid
-                ccfg['name']            = cname
-                ccfg['kind']            = cname
-                ccfg['uid']             = cuid
-                ccfg['fpid']            = fpid
-                ccfg['fout']            = fout
-                ccfg['ferr']            = ferr
-                ccfg['ppid']            = os.getpid()
+                ccfg['owner']      = self.uid
+                ccfg['name']       = cname
+                ccfg['kind']       = cname
+                ccfg['uid']        = cuid
+                ccfg['fpid']       = fpid
+                ccfg['fout']       = fout
+                ccfg['ferr']       = ferr
+                ccfg['ppid']       = os.getpid()
+
+                ru.write_json(ccfg, fcfg)
+
+                os.environ['RU_WATCH_PID1'] = str(os.getpid())
+                stdout = '%s/%s.pw.out' % (sbox, cname)
+                stderr = '%s/%s.pw.err' % (sbox, cname)
+                pw     = 'radical-utils-pwatch'
+                cmd    = '%s radical-pilot-component %s'  % (pw, fcfg)
+                ru.sh_callout_bg(cmd, shell=USE_SHELL,
+                                 stdout=stdout, stderr=stderr)
+
+                self._log.debug('started component %s: %s' % (cuid, cmd))
+                to_check.append(ccfg)
+
+        # wait until all components are up
+        for ccfg in to_check:
+
+            cuid  = ccfg['uid']
+            fpid  = ccfg['fpid']
+
+            start = time.time()
+
+            fin      = None
+            pid      = None
+
+            while True:
+
+                if not pid:
+
+                    try   : fin = open(fpid, 'r')
+                    except: pass
+
+                    if fin:
+                        pid = int(fin.read().split()[1])
+                        fin.close()
+                        fin = None
+
+                if pid:
+                    break
+
+                time.sleep(0.1)
+                if time.time() - start > 5.0:  # FIXME: configurable
+                    break
+
+            assert(pid), 'component %s not alive (%s)' % (ccfg['uid'], fpid)
+
+            # watch the pid
+            ru.pid_watcher(pid=pid, uid=self.uid)
+
+            self._components[cuid] = int(pid)
+
+            self._log.debug('component %s [%s] started', cuid, pid)
+
+            # component is usable - replace the original config
+            self._cfg['components'][cuid] = ccfg
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _start_agents(self):
+        '''
+        `start_components()` is very similar to `start_bridges()`, in that it
+        interprets a given configuration and creates all listed component
+        instances.  Components are, however,  *always* created, independent of
+        any existing instances.
+
+        This method will return a list of created component instances.  It is up
+        to the callee to watch those components for health and to terminate them
+        as needed.  
+        '''
+
+        if 'components' not in self._cfg:
+            # nothing to do
+            return
+
+        # merge specific configs into component specs
+        ccfg = self._cfg.get('config', dict()).get('components')
+        if ccfg:
+            ru.dict_merge(self._cfg['components'], ccfg, ru.OVERWRITE)
+
+        ru_def   = ru.DefaultConfig()
+        sbox     = self._session.get_session_sandbox()
+        to_check = list()
+
+        for cname in self._cfg['components']:
+
+            cfg = self._cfg['components'][cname]
+            cfg['rcfg'] = self._cfg.get('rcfg', dict())
+            cfg['acfg'] = self._cfg.get('acfg', dict())
+
+            for num in range(cfg.get('count', 1)):
+
+                ccfg = copy.deepcopy(cfg)
+
+                # merge global config settings
+                dcfg = self._cfg.get('default')
+                if dcfg:
+                    ru.dict_merge(ccfg, dcfg, ru.OVERWRITE)
+
+                cuid = ru.generate_id(cname + '.%(counter)04d', ru.ID_CUSTOM)
+                cuid = self._owner + '.' + cuid
+
+                fout = '%s/%s.out' % (sbox, cuid)
+                ferr = '%s/%s.err' % (sbox, cuid)
+                fcfg = '%s/%s.cfg' % (sbox, cuid)
+                fpid = '%s/%s.pid' % (sbox, cuid)
+
+                ccfg['ru_def']     = copy.deepcopy(ru_def.as_dict())
+                ccfg['session_id'] = self._session.uid
+                ccfg['sandbox']    = sbox
+
+                ccfg['owner']      = self.uid
+                ccfg['name']       = cname
+                ccfg['kind']       = cname
+                ccfg['uid']        = cuid
+                ccfg['fpid']       = fpid
+                ccfg['fout']       = fout
+                ccfg['ferr']       = ferr
+                ccfg['ppid']       = os.getpid()
 
                 ru.write_json(ccfg, fcfg)
 
                 cmd  = 'radical-pilot-component %s' % fcfg
-                ru.sh_callout_bg(cmd, shell=_USE_SHELL)
+                ru.sh_callout_bg(cmd, shell=USE_SHELL)
 
                 self._log.debug('started component %s: %s' % (cuid, cmd))
                 to_check.append(ccfg)

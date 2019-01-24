@@ -1211,10 +1211,10 @@ rp_install()
             ;;
 
         SANDBOX)
-            RP_INSTALL="$PILOT_SANDBOX/rp_install"
+            RP_INSTALL="$SESSION_SANDBOX/rp_install"
 
             # make sure the lib path into the prefix conforms to the python conventions
-            RP_LOC_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$PILOT_SANDBOX/rp_install|"`
+            RP_LOC_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$SESSION_SANDBOX/rp_install|"`
 
             echo "VE_MOD_PREFIX: $VE_MOD_PREFIX"
             echo "VIRTENV      : $VIRTENV"
@@ -1229,10 +1229,14 @@ rp_install()
             PYTHONPATH="$RP_LOC_PREFIX:$VE_MOD_REFIX:$VE_PYTHONPATH"
             export PYTHONPATH
 
-            PATH="$PILOT_SANDBOX/rp_install/bin:$PATH"
+            PATH="$SESSION_SANDBOX/rp_install/bin:$PATH"
             export PATH
 
             RADICAL_MOD_PREFIX="$RP_LOC_PREFIX/radical/"
+
+            # multiple pilots canuse the same rp_install (which lives in the
+            # *session* sandbox - skip purging.
+            SKIP_PURGE='TRUE'
 
             echo "using local install tree"
             echo "PYTHONPATH: $PYTHONPATH"
@@ -1247,12 +1251,15 @@ rp_install()
 
     esac
 
-    # NOTE: we need to purge the whole install tree (not only the module dir),
-    #       as pip will otherwise find the eggs and interpret them as satisfied
-    #       dependencies, even if the modules are gone.  Of course, there should
-    #       not be any eggs in the first place, but...
-    rm    -rf  "$RP_INSTALL/"
-    mkdir -p   "$RP_INSTALL/"
+    if ! test -z "$SKIP_PURGE"
+    then
+        # NOTE: we need to purge the whole install tree (not only the module dir),
+        #       as pip will otherwise find the eggs and interpret them as satisfied
+        #       dependencies, even if the modules are gone.  Of course, there should
+        #       not be any eggs in the first place, but...
+        rm    -rf  "$RP_INSTALL/"
+        mkdir -p   "$RP_INSTALL/"
+    fi
 
     # NOTE: we need to add the radical name __init__.py manually here --
     #       distutil is broken and will not install it.
@@ -1290,8 +1297,8 @@ rp_install()
   #     fi
   # fi
 
-    pip_flags="$pip_flags --src '$PILOT_SANDBOX/rp_install/src'"
-    pip_flags="$pip_flags --build '$PILOT_SANDBOX/rp_install/build'"
+    pip_flags="$pip_flags --src '$SESSION_SANDBOX/rp_install/src'"
+    pip_flags="$pip_flags --build '$SESSION_SANDBOX/rp_install/build'"
     pip_flags="$pip_flags --install-option='--prefix=$RP_INSTALL'"
     pip_flags="$pip_flags --no-deps"
 
@@ -1306,7 +1313,7 @@ rp_install()
         fi
 
         # NOTE: why? fuck pip, that's why!
-        rm -rf "$PILOT_SANDBOX/rp_install/build"
+        rm -rf "$SESSION_SANDBOX/rp_install/build"
 
         # clean out the install source if it is a local dir
         if test -d "$src"
@@ -1326,13 +1333,9 @@ rp_install()
 #
 verify_rp_install()
 {
-    OLD_SAGA_LOG_LVL=$SAGA_LOG_LVL
     OLD_RADICAL_LOG_LVL=$RADICAL_LOG_LVL
-    OLD_RADICAL_PILOT_LOG_LVL=$RADICAL_PILOT_LOG_LVL
 
-    SAGA_LOG_LVL=WARNING
     RADICAL_LOG_LVL=WARNING
-    RADICAL_PILOT_LOG_LVL=WARNING
 
     # print the ve information and stack versions for verification
     echo
@@ -1351,9 +1354,7 @@ verify_rp_install()
     echo "---------------------------------------------------------------------"
     echo
 
-    SAGA_LOG_LVL=$OLD_SAGA_LOG_LVL
     RADICAL_LOG_LVL=$OLD_RADICAL_LOG_LVL
-    RADICAL_PILOT_LOG_LVL=$OLD_RADICAL_PILOT_LOG_LVL
 }
 
 
@@ -1402,8 +1403,8 @@ find_available_port()
 #
 # run a pre_bootstrap_0 command -- and exit if it happens to fail
 #
-# pre_bootstrap_0 commands are executed right in arg parser loop because -e can be
-# passed multiple times
+# pre_bootstrap_0 commands are executed right in arg parser loop
+# ( -e can be passed multiple times)
 #
 pre_bootstrap_0()
 {
@@ -1421,7 +1422,7 @@ pre_bootstrap_0()
 #
 # Build the PREBOOTSTRAP2 variable to pass down to sub-agents
 #
-pre_bootstrap_2()
+pre_bootstrap_1()
 {
     cmd="$@"
 
@@ -1485,7 +1486,7 @@ while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
         s)  SESSION_ID="$OPTARG"  ;;
         t)  TUNNEL_BIND_DEVICE="$OPTARG" ;;
         v)  VIRTENV=$(eval echo "$OPTARG")  ;;
-        w)  pre_bootstrap_2 "$OPTARG"  ;;
+        w)  pre_bootstrap_1 "$OPTARG"  ;;
         x)  CLEANUP="$OPTARG"  ;;
         y)  RUNTIME="$OPTARG"  ;;
         *)  echo "Unknown option: '$OPTION'='$OPTARG'"
@@ -1682,7 +1683,7 @@ virtenv_activate "$VIRTENV" "$PYTHON_DIST"
 PILOT_SCRIPT=`which radical-pilot-agent`
 # if test "$RP_INSTALL_TARGET" = 'PILOT_SANDBOX'
 # then
-#     PILOT_SCRIPT="$PILOT_SANDBOX/rp_install/bin/radical-pilot-agent"
+#     PILOT_SCRIPT="$SESSION_SANDBOX/rp_install/bin/radical-pilot-agent"
 # else
 #     PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent"
 # fi
@@ -1748,9 +1749,6 @@ fi
 cat > bootstrap_2.sh <<EOT
 #!$BS_SHELL
 
-# some inspection for logging
-hostname
-
 # disable user site packages as those can conflict with our virtualenv
 export PYTHONNOUSERSITE=True
 
@@ -1774,10 +1772,7 @@ export PYTHONPATH=$PYTHONPATH
 
 # run agent in debug mode
 # FIXME: make option again?
-export SAGA_LOG_LVL=DEBUG
 export RADICAL_LOG_LVL=DEBUG
-export RADICAL_UTIL_LOG_LVL=DEBUG
-export RADICAL_PILOT_LOG_LVL=DEBUG
 
 # avoid ntphost lookups on compute nodes
 export RADICAL_PILOT_NTPHOST=$RADICAL_PILOT_NTPHOST
@@ -1926,6 +1921,8 @@ AGENT_PID=$!
 
 while true
 do
+    test -z "$AGENT_PID" && break
+
     sleep 1
     if kill -0 $AGENT_PID 2>/dev/null
     then 
@@ -1981,8 +1978,10 @@ profile_event 'cleanup_stop'
 echo "#"
 echo "# -------------------------------------------------------------------"
 
-if ! test -z "`ls *.prof 2>/dev/null`"
+if test -z "`ls *.prof 2>/dev/null`"
 then
+    touch $PROFILES_TARBALL
+else
     echo
     echo "# -------------------------------------------------------------------"
     echo "#"
@@ -2029,8 +2028,10 @@ then
     echo "# -------------------------------------------------------------------"
 fi
 
-if ! test -z "`ls *{log,out,err,cfg} 2>/dev/null`"
+if test -z "`ls *{log,out,err,cfg} 2>/dev/null`"
 then
+    touch $LOGILES_TARBALL
+else
     # TODO: This might not include all logs, as some systems only write
     #       the output from the bootstrapper once the jobs completes.
     echo

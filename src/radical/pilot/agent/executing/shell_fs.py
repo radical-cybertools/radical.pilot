@@ -145,7 +145,6 @@ class ShellFS(AgentExecutingComponent):
         # run thread to watch then info fifo
         self._terminate = threading.Event()
         self._watcher   = threading.Thread(target=self._watch, name="Watcher")
-        self._watcher.daemon = True
         self._watcher.start ()
 
         # start the shell executor
@@ -226,7 +225,9 @@ class ShellFS(AgentExecutingComponent):
             with self._cancel_lock:
                 self._to_cancel.remove(cu['uid'])
 
-            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                         {'cmd': 'unschedule',
+                          'arg': [cu]})
             self.advance(cu, rps.CANCELED, publish=True, push=False)
             return True
 
@@ -258,7 +259,9 @@ class ShellFS(AgentExecutingComponent):
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             if cu.get('slots'):
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                             {'cmd': 'unschedule',
+                              'arg': [cu]})
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
 
@@ -325,7 +328,7 @@ class ShellFS(AgentExecutingComponent):
 
         if 'RADICAL_PILOT_PROFILE' in os.environ or \
            'RADICAL_PROFILE'       in os.environ :
-            cu_env['RP_PROF'] = '%s/%s.prof' % (sandbox, cu['uid']
+            cu_env['RP_PROF'] = '%s/%s.prof' % (sandbox, cu['uid'])
 
         env  += '''
 prof(){
@@ -471,7 +474,13 @@ prof(){
 
         TIMEOUT = 1.0   # check for stop signal now and then
 
+        main_thread = ru.main_thread()
         while not self._terminate.is_set():
+
+            main_thread.join(0)
+            if not self.main_thread():
+                # parent thread is gone - finish also
+                return
 
             try:
                 line     = self._readline(TIMEOUT)
@@ -511,7 +520,9 @@ prof(){
             del(self._registry[uid])
 
         # free unit slots.
-        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                     {'cmd': 'unschedule',
+                      'arg': [cu]})
 
         if ret is None:
             cu['exit_code'] = None

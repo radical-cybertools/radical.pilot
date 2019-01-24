@@ -40,7 +40,7 @@ class Default(UMGRStagingOutputComponent):
 
         # FIXME: move to base class
         self.register_input(rps.UMGR_STAGING_OUTPUT_PENDING, 
-                            rpc.CLIENT_QUEUE, self.work)
+                            rpc.AGENT_QUEUE_OUT, self.work)
 
         # we don't need an output queue -- units will be final
 

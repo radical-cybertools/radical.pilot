@@ -23,22 +23,11 @@ def term(uid):
 #
 if __name__ == "__main__":
     '''
-    This thin wrapper starts a ZMQ communication bridge as stand-alone process.
+    This thin wrapper starts a ZMQ communication bridge.
     It expects two arguments:
 
-      - name: name of the communication bridge to start
-      - cfgf: path to a config file to use
+      - fcgf: path to a config file to use
 
-    It is the responsibility of the caller to ensure that `$name` is unique.
-
-    The given  config file in `$cfgf` is read, and searched for a subsection
-    `bridges.$name`.  That config will be extracted and written to `$name.cfgf`,
-    which is then used by the bridge.  If `$name` is not found in the `bridges`
-    subsection, an error will be raised.  If no `bridges` subsection is found,
-    the config is considered to be self-sufficient, and will be used as is.
-
-    The bridge's stdout and stderr will be written to `$name.out` and
-    `$name.err`, respectively, log messages will appear in `$name.log`.
     After startup, it will write the bridge's communication endpoint URLs
     to the file `$name.url`, in the form:
 
@@ -48,8 +37,6 @@ if __name__ == "__main__":
     The `SUB` address is to be used for subscribers, the `PUB` address for
     publishers -- but the respective RP classes will dig the correct addresses
     from that file.
-
-    A typical pubsub test scenario would be:
 
         > radical-pilot-bridge command.cfg                [1]
         > radical-pilot-sub    command foo bar            [2]
@@ -73,20 +60,13 @@ if __name__ == "__main__":
     cfg = ru.read_json(sys.argv[1])
     uid = cfg['uid']
 
+    with open('/tmp/t', 'a') as fout:
+        fout.write('my pid: %-30s  %s\n' % (uid, os.getpid()))
+        print 'my pid: %s' % os.getpid()
+
     ru_def = ru.DefaultConfig()
-    for key, val in cfg['ru_def'].iteritems():
+    for key, val in cfg.get('ru_def', dict()).iteritems():
         ru_def[key] = val
-
-  # atexit.register(term, uid=uid)
-
-    sys.stdout = open(cfg['fout'], 'w')
-    sys.stderr = open(cfg['ferr'], 'w')
-
-  # sys.stdout = open('o.log', 'a', 0)
-  # sys.stderr = open('e.log', 'a', 0)
-
-    print 'xxx 1 %s' % cfg['fout']
-    print 'xxx 1 %s' % cfg['ferr']
 
     if  os.path.exists(cfg['fpid']) or \
         os.path.exists(cfg['furl']) :
@@ -94,14 +74,12 @@ if __name__ == "__main__":
 
     spt.setproctitle('rp.%s' % uid)
 
-    ru.pid_watcher(pid=cfg.get('ppid'), uid=uid)
+  # ru.pid_watcher(pid=cfg.get('ppid'), uid=uid)
+    atexit.register(term)
 
-    print 'xxx 2'
     # create the bridge
     bridge = ru.zmq.Bridge.create(cfg)
     bridge.start()
-
-    print 'xxx 3'
 
     # report pid
     with open(cfg['fpid'], 'w') as fout:

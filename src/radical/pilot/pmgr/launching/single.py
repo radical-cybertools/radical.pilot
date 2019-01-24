@@ -4,7 +4,6 @@ __license__   = "MIT"
 
 
 import os
-import copy
 import math
 import time
 import pprint
@@ -24,7 +23,6 @@ from ...  import constants  as rpc
 from .base import PMGRLaunchingComponent
 
 from ...staging_directives import complete_url
-from ...staging_directives import TRANSFER, COPY, LINK, MOVE
 
 rsfs = rs.filesystem
 
@@ -46,7 +44,7 @@ LOCAL_SCHEME = 'file'
 BOOTSTRAP_0  = "bootstrap_0.sh"
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Single(PMGRLaunchingComponent):
 
@@ -93,6 +91,15 @@ class Single(PMGRLaunchingComponent):
         self._log.info(ru.get_version([self._mod_dir, self._root_dir]))
         self._rp_version, _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
                 ru.get_version([self._mod_dir, self._root_dir])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def client_notify(self, msg, cb_data):
+
+        self._log.info('got notification: %s from %s', msg, cb_data['pid'])
+
+        self.publish(rpc.STATE_PUBSUB, msg)
 
 
     # --------------------------------------------------------------------------
@@ -182,14 +189,14 @@ class Single(PMGRLaunchingComponent):
             src    = sd['source']
             tgt    = sd['target']
 
-            assert(action in [COPY, LINK, MOVE, TRANSFER])
+            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
 
             self._prof.prof('staging_in_start', uid=pid, msg=did)
 
             src = complete_url(src, src_context, self._log)
             tgt = complete_url(tgt, tgt_context, self._log)
 
-            if action in [COPY, LINK, MOVE]:
+            if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 self._prof.prof('staging_in_fail', uid=pid, msg=did)
                 raise ValueError("invalid action '%s' on pilot level" % action)
 
@@ -238,6 +245,21 @@ class Single(PMGRLaunchingComponent):
 
         # TODO: use SAGA job state notifications
         # TODO: use pilot heartbeats
+
+        # send heartbeats to all pilots
+        # FIXME: this needs to go to *all* pilots
+        self.publish(rpc.AGENT_PUBSUB, {'cmd': 'heartbeat',
+                                        'arg': {'uid' : self._uid,
+                                                'time': time.time()}})
+
+        # check heartbeats from pilots
+        # FIXME: this goes into the pilot's agent pubsub subscriber
+        # pilot.heartbeat.beat()
+
+        # FIXME: check bridge health
+        #        bridges should havea  configured timeout after which they die
+        #        if no traffic has been seen from either end.  This should be
+        #        twice the heartbeat timeout or something.
 
         return True
 
@@ -386,6 +408,7 @@ class Single(PMGRLaunchingComponent):
                 if pilot['state'] not in rp.FINAL:
                     self._log.debug('killing pilots: alive %s', pid)
                     alive_pids.append(pid)
+
                 else:
                     self._log.debug('killing pilots: dead  %s', pid)
 
@@ -425,7 +448,7 @@ class Single(PMGRLaunchingComponent):
         For the given pilot, determining what files need to be staged, and what
         job description needs to be submitted.
 
-        We expect `_prepare_pilot(resource, pilot)` to return a dict with:
+        We expect `_prepare_pilot(rcfg, acfg, pilot)` to return a dict with:
 
             { 
               'js' : saga.job.Description,
@@ -441,10 +464,8 @@ class Single(PMGRLaunchingComponent):
         that on the target side.
         '''
 
-        resource = pilot['description']['resource']
-        schema   = pilot['description']['access_schema']
-
-        rcfg = self._session.get_resource_config(resource, schema)
+        rcfg = self._session.get_resource_config(pilot['description'])
+        acfg = self._session.get_agent_config   (pilot['description'], rcfg)
         sid  = self._session.uid
         pid  = pilot['uid']
 
@@ -466,7 +487,7 @@ class Single(PMGRLaunchingComponent):
         # implies that we have to recheck that all URLs in fact do point into
         # the session sandbox.
 
-        info     = self._prepare_pilot(resource, rcfg, pilot)
+        info     = self._prepare_pilot(rcfg, acfg, pilot)
         ft_list  = info['ft']
         jd       = info['jdp']
         self._prof.prof('staging_in_start', uid=pid)
@@ -506,8 +527,7 @@ class Single(PMGRLaunchingComponent):
             if ft['rem']:
                 os.unlink(ft['src'])
 
-        fs_endpoint = rcfg['filesystem_endpoint']
-        fs_url      = rs.Url(fs_endpoint)
+        fs_url = rs.Url(rcfg['access']['filesystem'])
 
         self._log.debug ("rs.file.Directory ('%s')", fs_url)
 
@@ -560,7 +580,7 @@ class Single(PMGRLaunchingComponent):
 
         # look up or create JS for actual pilot submission.  This might result
         # in the same js url as above, or not.
-        js_ep  = rcfg['job_manager_endpoint']
+        js_ep  = rcfg['access']['job_manager']
         with self._cache_lock:
             if js_ep in self._saga_js_cache:
                 js = self._saga_js_cache[js_ep]
@@ -575,16 +595,23 @@ class Single(PMGRLaunchingComponent):
         job = js.create_job(jd)
         job.run()
 
-        # do a quick error check
+        # check for submission errors (startup e rrors won't be caught)
         if j.state == rs.FAILED:
             self._log.error('%s: %s : %s : %s', 
                             j.id, j.state, j.stderr, j.stdout)
             raise RuntimeError ("SAGA Job state is FAILED. (%s)" % jd.name)
 
+        # keep job around for emergency termination
+        _to_kill_rs.append(j)
+
+        # connect to the pilot's notification channel to obtain state
+        # notifications, which are then forwarded to the local state pubsub.
+        self.register_subscriber(rpc.AGENT_PUBSUB, cb=self._agent_pubsub,
+                                                   cb_data={'pid': pid})
+
+
         # Update the Pilot's state to 'PMGR_ACTIVE_PENDING' if SAGA job
-        # submission was successful.  Since the pilot leaves the scope of
-        # the PMGR for the time being, we update the complete DB document
-        pilot['$all'] = True
+        # submission was successful.
 
         # FIXME: update the right pilot
         with self._pilots_lock:
@@ -602,12 +629,13 @@ class Single(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _prepare_pilot(self, resource, rcfg, pilot): 
+    def _prepare_pilot(self, rcfg, acfg, pilot): 
         '''
         prepare job descriptions for bridge startup and pilot submission,  and
         file transfer directives for pilot startup.
         '''
 
+        sid = self._session.uid
         pid = pilot["uid"]
         ret = {'ft' : list(),
                'jdb': None,
@@ -618,6 +646,8 @@ class Single(PMGRLaunchingComponent):
       # # values from the pilot description need filling in.  A prominent
       # # example is `%(pd.project)s`, where the pilot description's `PROJECT`
       # # value needs to be filled in (here in lowercase).
+      # # 
+      # # FIXME: move into ru.config or ru.dict_mixin as `dict.expand(other)
       # expand = dict()
       # for k,v in pilot['description'].iteritems():
       #     if v is None:
@@ -638,13 +668,10 @@ class Single(PMGRLaunchingComponent):
       #         if orig != expanded:
       #             self._log.debug('RCFG:\n%s\n%s', orig, expanded)
 
-        # ----------------------------------------------------------------------
-        # Database connection parameters
-        sid = self._session.uid
-
         # some default values are determined at runtime
-        default_virtenv = '%%(resource_sandbox)s/ve.%s.%s' % \
-                          (resource, self._rp_version)
+        resource   = rcfg['resource']['label']
+        default_ve = '%%(resource_sandbox)s/ve.%s.%s' % (resource,
+                                                         self._rp_version)
 
         # ----------------------------------------------------------------------
         # pilot description and resource configuration
@@ -657,43 +684,26 @@ class Single(PMGRLaunchingComponent):
         memory          = pilot['description']['memory']
         candidate_hosts = pilot['description']['candidate_hosts']
 
-        # ----------------------------------------------------------------------
-        # get parameters from resource cfg, set defaults where needed
-        agent_launch_method     = rcfg.get('agent_launch_method')
-        agent_spawner           = rcfg.get('agent_spawner', DEFAULT_AGENT_SPAWNER)
-        rc_agent_config         = rcfg.get('agent_config',  DEFAULT_AGENT_CONFIG)
-        agent_scheduler         = rcfg.get('agent_scheduler')
-        tunnel_bind_device      = rcfg.get('tunnel_bind_device')
-        default_queue           = rcfg.get('default_queue')
-        forward_tunnel_endpoint = rcfg.get('forward_tunnel_endpoint')
-        lrms                    = rcfg.get('lrms')
-        mpi_launch_method       = rcfg.get('mpi_launch_method', '')
-        pre_bootstrap_0         = rcfg.get('pre_bootstrap_0', [])
-        pre_bootstrap_1         = rcfg.get('pre_bootstrap_1', [])
-        python_interpreter      = rcfg.get('python_interpreter')
-        task_launch_method      = rcfg.get('task_launch_method')
-        rp_version              = rcfg.get('rp_version',   DEFAULT_RP_VERSION)
-        virtenv_mode            = rcfg.get('virtenv_mode', DEFAULT_VIRTENV_MODE)
-        virtenv                 = rcfg.get('virtenv',      default_virtenv)
-        cores_per_node          = rcfg.get('cores_per_node', 0)
-        gpus_per_node           = rcfg.get('gpus_per_node',  0)
-        lfs_path_per_node       = rcfg.get('lfs_path_per_node', None)
-        lfs_size_per_node       = rcfg.get('lfs_size_per_node',  0)
-        python_dist             = rcfg.get('python_dist')
-        virtenv_dist            = rcfg.get('virtenv_dist', DEFAULT_VIRTENV_DIST)
-        cu_tmp                  = rcfg.get('cu_tmp')
-        spmd_variation          = rcfg.get('spmd_variation')
-        shared_filesystem       = rcfg.get('shared_filesystem', True)
-        stage_cacerts           = rcfg.get('stage_cacerts', False)
-        cu_pre_exec             = rcfg.get('cu_pre_exec')
-        cu_post_exec            = rcfg.get('cu_post_exec')
-        export_to_cu            = rcfg.get('export_to_cu')
-        mandatory_args          = rcfg.get('mandatory_args', [])
-        saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
-
-        import pprint
-        self._log.debug(cores_per_node)
-        self._log.debug(pprint.pformat(rcfg))
+      # # get parameters from resource cfg, set defaults where needed
+        default_queue      = rcfg['system'].get('default_queue')
+        tunnel_bind_device = rcfg['system'].get('tunnel_bind_device')
+        forward_tunnel     = rcfg['system'].get('forward_tunnel')
+        lrms               = rcfg['system'].get('lrms')
+        pre_bootstrap_0    = rcfg['system'].get('pre_bootstrap_0', [])
+        pre_bootstrap_1    = rcfg['system'].get('pre_bootstrap_1', [])
+        python_interpreter = rcfg['system'].get('python_interpreter')
+        rp_version         = rcfg['system'].get('rp_version',   DEFAULT_RP_VERSION)
+        virtenv_mode       = rcfg['system'].get('virtenv_mode', DEFAULT_VIRTENV_MODE)
+        virtenv            = rcfg['system'].get('virtenv',      default_ve)
+        cores_per_node     = rcfg['system'].get('cores_per_node', 0)
+        gpus_per_node      = rcfg['system'].get('gpus_per_node',  0)
+        python_dist        = rcfg['system'].get('python_dist')
+        virtenv_dist       = rcfg['system'].get('virtenv_dist', DEFAULT_VIRTENV_DIST)
+        spmd_variation     = rcfg['system'].get('spmd_variation')
+        shared_filesystem  = rcfg['system'].get('shared_filesystem', True)
+        stage_cacerts      = rcfg['system'].get('stage_cacerts', False)
+        mandatory_args     = rcfg['system'].get('mandatory_args', [])
+        saga_jd_supplement = rcfg['system'].get('saga_jd_supplement', {})
 
         # make sure that mandatory args are known
         for ma in mandatory_args:
@@ -702,63 +712,21 @@ class Single(PMGRLaunchingComponent):
                                  % (ma, resource))
 
         # get pilot and global sandbox
-        resource_sbox = self._session.get_resource_sandbox(pilot).path
-        session_sbox  = self._session.get_session_sandbox (pilot).path
-        pilot_sbox    = self._session.get_pilot_sandbox   (pilot).path
+        resource_sbox = self._session.get_resource_sandbox(pilot)
+        session_sbox  = self._session.get_session_sandbox (pilot)
+        pilot_sbox    = self._session.get_pilot_sandbox   (pilot)
 
-        pilot['resource_sandbox'] = str(self._session.get_resource_sandbox(pilot))
-        pilot['pilot_sandbox']    = str(self._session.get_pilot_sandbox(pilot))
-        pilot['client_sandbox']   = str(self._session.get_client_sandbox())
+        resource_sbox_p = resource_sbox.path
+        session_sbox_p  = session_sbox.path
+        pilot_sbox_p    = pilot_sbox.path
 
-        # Agent configuration that is not part of the public API.
-        # The agent config can either be a config dict, or
-        # a string pointing to a configuration name.  If neither
-        # is given, check if 'RADICAL_PILOT_AGENT_CONFIG' is
-        # set.  The last fallback is 'agent_default'
-        agent_config = pilot['description'].get('_config')
-        if not agent_config:
-            agent_config = os.environ.get('RADICAL_PILOT_AGENT_CONFIG')
-        if not agent_config:
-            agent_config = rc_agent_config
-
-        if isinstance(agent_config, dict):
-
-            # use dict as is
-            agent_cfg = agent_config
-
-        elif isinstance(agent_config, basestring):
-            try:
-                # interpret as a config name
-                agent_cfgf = "%s/agent_%s.json" % (self._conf_dir, agent_config)
-
-                self._log.info("Read agent config file: %s",  agent_cfgf)
-                agent_cfg = ru.read_json(agent_cfgf)
-
-                # allow for user level overload
-                user_cfg_file = '%s/.radical/pilot/config/%s' \
-                            % (os.environ['HOME'], os.path.basename(agent_cfgf))
-
-                if os.path.exists(user_cfg_file):
-                    self._log.info("merging user config: %s" % user_cfg_file)
-                    user_cfg = ru.read_json(user_cfg_file)
-                    ru.dict_merge (agent_cfg, user_cfg, policy='overwrite')
-
-            except Exception as e:
-                self._log.exception("Error reading agent config file: %s" % e)
-                raise
-
-        else:
-            # we can't handle this type
-            raise TypeError('agent config must be string (config name) or dict')
+        pilot['resource_sandbox'] = resource_sbox_p
+        pilot['pilot_sandbox']    = pilot_sbox_p
 
         # expand variables in virtenv string
-        virtenv = virtenv % {'pilot_sandbox'   : pilot_sbox,
-                             'session_sandbox' : session_sbox,
-                             'resource_sandbox': resource_sbox}
-
-        # Check for deprecated global_virtenv
-        if 'global_virtenv' in rcfg:
-            raise RuntimeError("'global_virtenv' is deprecated (%s)" % resource)
+        virtenv = virtenv % {'pilot_sandbox'   : pilot_sbox_p,
+                             'session_sandbox' : session_sbox_p,
+                             'resource_sandbox': resource_sbox_p}
 
         # ----------------------------------------------------------------------
         # the version of the agent is derived from
@@ -829,17 +797,6 @@ class Single(PMGRLaunchingComponent):
         if rp_version.startswith('@'):
             rp_version  = rp_version[1:]  # strip '@'
 
-
-        # ----------------------------------------------------------------------
-        # sanity checks
-        if not python_dist        : raise RuntimeError("no python distribution")
-        if not virtenv_dist       : raise RuntimeError("no virtualenv distribution")
-        if not agent_spawner      : raise RuntimeError("no agent spawner")
-        if not agent_scheduler    : raise RuntimeError("no agent scheduler")
-        if not lrms               : raise RuntimeError("no LRMS")
-        if not agent_launch_method: raise RuntimeError("no agentlaunch method")
-        if not task_launch_method : raise RuntimeError("no task launch method")
-
         # massage some values
         if not queue :
             queue = default_queue
@@ -883,7 +840,7 @@ class Single(PMGRLaunchingComponent):
         if gpus_per_node:
             gpus_per_node = int(gpus_per_node)
             number_gpus   = int(gpus_per_node
-                           * math.ceil(float(number_gpus) / gpus_per_node))
+                          * math.ceil(float(number_gpus) / gpus_per_node))
 
         # set mandatory args
         bootstrap_args  = ""
@@ -899,7 +856,7 @@ class Single(PMGRLaunchingComponent):
 
         # set optional args
         if lrms == "CCM":           bootstrap_args += " -c"
-        if forward_tunnel_endpoint: bootstrap_args += " -f '%s'" % forward_tunnel_endpoint
+        if forward_tunnel         : bootstrap_args += " -f '%s'" % forward_tunnel
         if python_interpreter:      bootstrap_args += " -i '%s'" % python_interpreter
         if tunnel_bind_device:      bootstrap_args += " -t '%s'" % tunnel_bind_device
         if cleanup:                 bootstrap_args += " -x '%s'" % cleanup
@@ -909,64 +866,25 @@ class Single(PMGRLaunchingComponent):
         for arg in pre_bootstrap_1:
             bootstrap_args += " -w '%s'" % arg
 
-        agent_cfg['owner']               = 'agent_0'
-        agent_cfg['cores']               = number_cores
-        agent_cfg['gpus']                = number_gpus
-        agent_cfg['lrms']                = lrms
-        agent_cfg['spawner']             = agent_spawner
-        agent_cfg['scheduler']           = agent_scheduler
-        agent_cfg['runtime']             = runtime
-        agent_cfg['session_id']          = sid
-        agent_cfg['pilot_id']            = pid
-        agent_cfg['log_dir']             = '.'
-        agent_cfg['profile_dir']         = '.'
-        agent_cfg['pilot_sandbox']       = pilot_sbox
-        agent_cfg['session_sandbox']     = session_sbox
-        agent_cfg['resource_sandbox']    = resource_sbox
-        agent_cfg['agent_launch_method'] = agent_launch_method
-        agent_cfg['task_launch_method']  = task_launch_method
-        agent_cfg['mpi_launch_method']   = mpi_launch_method
-        agent_cfg['cores_per_node']      = cores_per_node
-        agent_cfg['gpus_per_node']       = gpus_per_node
-        agent_cfg['lfs_path_per_node']   = lfs_path_per_node
-        agent_cfg['lfs_size_per_node']   = lfs_size_per_node
-        agent_cfg['cu_tmp']              = cu_tmp
-        agent_cfg['export_to_cu']        = export_to_cu
-        agent_cfg['cu_pre_exec']         = cu_pre_exec
-        agent_cfg['cu_post_exec']        = cu_post_exec
-        agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
-        agent_cfg['debug']               = self._log.getEffectiveLevel()
-
         # we'll also push the agent config into MongoDB
-        pilot['cfg'] = agent_cfg
+        pilot['acfg'] = acfg
+        pilot['rcfg'] = rcfg
 
-        # ----------------------------------------------------------------------
-        # Write agent config dict to a json file in pilot sandbox.
-
+        # Write agent config to a json file in pilot sandbox.
         agent_cfgf = 'agent_0.cfg'
         cfg_tmp_handle, cfg_tmp_file = tempfile.mkstemp(prefix='rp.agent_cfg.')
         os.close(cfg_tmp_handle)  # file exists now
 
         # Convert dict to json file
         self._log.debug("Write agent cfg to '%s'.", cfg_tmp_file)
-        self._log.debug(pprint.pformat(agent_cfg))
-        ru.write_json(agent_cfg, cfg_tmp_file)
+        ru.write_json(pilot, cfg_tmp_file)  # contains rcfg, acfg
+
+        # FIXME: add bootstrap flag or ru_def cfg
+        # 'debug': self._log.getEffectiveLevel(),
 
         ret['ft'].append({'src' : cfg_tmp_file, 
-                          'tgt' : '%s/%s' % (pilot_sbox, agent_cfgf),
+                          'tgt' : '%s/%s' % (pilot_sbox_p, agent_cfgf),
                           'rem' : True})  # purge the tmp file after packing
-
-        # ----------------------------------------------------------------------
-        # we also touch the log and profile tarballs in the target pilot sandbox
-        ret['ft'].append({'src' : '/dev/null',
-                          'tgt' : '%s/%s' % (pilot_sbox, '%s.log.tgz' % pid),
-                          'rem' : False})  # don't remove /dev/null
-        # only stage profiles if we profile
-        if self._prof.enabled:
-            ret['ft'].append({
-                          'src' : '/dev/null',
-                          'tgt' : '%s/%s' % (pilot_sbox, '%s.prof.tgz' % pid),
-                          'rem' : False})  # don't remove /dev/null
 
         # check if we have a sandbox cached for that resource.  If so, we have
         # nothing to do.  Otherwise we create the sandbox and stage the RP
@@ -976,54 +894,59 @@ class Single(PMGRLaunchingComponent):
 
             if resource not in self._sbox:
 
+                # stage RP stack
                 for sdist in sdist_paths:
-                    base = os.path.basename(sdist)
+                    fpath = os.path.basename(sdist)
                     ret['ft'].append({'src' : sdist, 
-                                      'tgt' : '%s/%s' % (session_sbox, base),
+                                      'tgt' : '%s/%s' % (session_sbox_p, fpath),
                                       'rem' : False})
 
-                # Copy the bootstrap shell script.
+                # stage the bootstrapper
                 bootstrapper_path = os.path.abspath("%s/agent/%s"
                                   % (self._root_dir, BOOTSTRAP_0))
                 self._log.debug("use bootstrapper %s", bootstrapper_path)
 
                 ret['ft'].append({'src' : bootstrapper_path, 
-                                  'tgt' : '%s/%s' % (session_sbox,
+                                  'tgt' : '%s/%s' % (session_sbox_p,
                                       BOOTSTRAP_0),
                                   'rem' : False})
 
+                # stage the agent and client bridge info
+                for name in rpc.AGENT_BRIDGES:
+                    fname = self._session.get_address_fname(name)
+                    fpath = os.path.basename(fname)
+                    ret['ft'].append({'src' : fname, 
+                                      'tgt' : '%s/%s' % (pilot_sbox_p, fpath),
+                                      'rem' : False})
+
                 # Some machines cannot run pip due to outdated CA certs.
                 # For those, we also stage an updated certificate bundle
-                # TODO: use booleans all the way?
                 if stage_cacerts:
 
-                    cc_name = 'cacert.pem.gz'
-                    cc_path = os.path.abspath("%s/agent/%s"
-                                             % (self._root_dir, cc_name))
-                    self._log.debug("use CAs %s", cc_path)
+                    fname = '%s/agent/cacert.pem.gz' % self._root_dir
+                    fpath = os.path.basename(fname)
+                    self._log.debug("use CAs %s", fpath)
 
-                    ret['ft'].append({'src' : cc_path, 
-                                      'tgt' : '%s/%s' % (session_sbox, cc_name),
+                    ret['ft'].append({'src' : fpath, 
+                                      'tgt' : '%s/%s' % (session_sbox_p, fname),
                                       'rem' : False})
 
                 self._sbox[resource] = True
 
 
-        # ----------------------------------------------------------------------
         # Create SAGA Job description and submit the pilot job
-
         jdp = rs.job.Description()  # pilot job
-        jdb = rs.job.Description()  # communication bridges  # TODO
+        jdb = rs.job.Description()  # communication bridges  ## TODO
 
         if shared_filesystem:
-            bootstrap_tgt = '%s/%s' % (session_sbox, BOOTSTRAP_0)
+            bootstrap_tgt = '%s/%s' % (session_sbox_p, BOOTSTRAP_0)
         else:
             bootstrap_tgt = '%s/%s' % ('.', BOOTSTRAP_0)
 
         jdp.name                  = pid
         jdp.executable            = "/bin/bash"
         jdp.arguments             = ['-l %s' % bootstrap_tgt, bootstrap_args]
-        jdp.working_directory     = pilot_sbox
+        jdp.working_directory     = pilot_sbox_p
         jdp.project               = project
         jdp.output                = "bootstrap_0.out"
         jdp.error                 = "bootstrap_0.err"
@@ -1053,26 +976,27 @@ class Single(PMGRLaunchingComponent):
         if not shared_filesystem:
 
             jdp.file_transfer.extend([
-                'site:%s/%s > %s' % (session_sbox, BOOTSTRAP_0, BOOTSTRAP_0),
-                'site:%s/%s > %s' % (pilot_sbox,   agent_cfgf, agent_cfgf),
-                'site:%s/%s.log.tgz > %s.log.tgz' % (pilot_sbox, pid, pid),
-                'site:%s/%s.log.tgz < %s.log.tgz' % (pilot_sbox, pid, pid)
+                'site:%s/%s > %s' % (session_sbox_p, BOOTSTRAP_0, BOOTSTRAP_0),
+                'site:%s/%s > %s' % (pilot_sbox_p,   agent_cfgf, agent_cfgf),
+                'site:%s/%s.log.tgz > %s.log.tgz' % (pilot_sbox_p, pid, pid),
+                'site:%s/%s.log.tgz < %s.log.tgz' % (pilot_sbox_p, pid, pid)
             ])
 
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 jdp.file_transfer.extend([
-                   'site:%s/%s.prof.tgz > %s.prof.tgz' % (pilot_sbox, pid, pid),
-                   'site:%s/%s.prof.tgz < %s.prof.tgz' % (pilot_sbox, pid, pid)
+                   'site:%s/%s.prof.tgz > %s.prof.tgz' % (pilot_sbox_p, pid, pid),
+                   'site:%s/%s.prof.tgz < %s.prof.tgz' % (pilot_sbox_p, pid, pid)
                 ])
 
             for sdist in sdist_names:
                 jdp.file_transfer.extend([
-                    'site:%s/%s > %s' % (session_sbox, sdist, sdist)
+                    'site:%s/%s > %s' % (session_sbox_p, sdist, sdist)
                 ])
 
             if stage_cacerts:
+                fname = 'cacert.pem.gz'
                 jdp.file_transfer.extend([
-                    'site:%s/%s > %s' % (session_sbox, cc_name, cc_name)
+                    'site:%s/%s > %s' % (session_sbox_p, fname, fname)
                 ])
 
         self._log.debug("Bootstrap cmd: %s %s", jdp.executable, jdp.arguments)

@@ -47,7 +47,7 @@ class Default(AgentStagingInputComponent):
 
         # first agent component gets units from the agent queue
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
-                            rpc.AGENT_QUEUE, self.work)
+                            rpc.AGENT_QUEUE_IN, self.work)
 
         self.register_output(rps.AGENT_SCHEDULING_PENDING, 
                              rpc.AGENT_SCHEDULING_QUEUE)

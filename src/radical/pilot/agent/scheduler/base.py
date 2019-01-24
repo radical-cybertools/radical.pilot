@@ -3,8 +3,9 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 
+import time
+import queue
 import pprint
-import random
 import logging
 import threading as mt
 
@@ -240,26 +241,32 @@ class AgentSchedulingComponent(rpu.Component):
         # we don't want the unschedule above to compete with actual
         # scheduling attempts, so we move the re-scheduling of units from the
         # wait pool into a separate thread (ie. register a separate callback).
-        # This is triggered by the unscheduled_cb.
-        #
-        # NOTE: we could use a local queue here.  Using a zmq bridge goes toward
-        #       an distributed scheduler, and is also easier to implement right
-        #       now, since `Component` provides the right mechanisms...
-        self.register_publisher(rpc.AGENT_SCHEDULE_PUBSUB)
-        self.register_subscriber(rpc.AGENT_SCHEDULE_PUBSUB, self.schedule_cb)
+        def _trigger():
+            while True:
+                try:
+                    msg = self._schedule_trigger.get_nowait()
+                    ret = self.schedule_cb(msg)
+                    if not ret:
+                        break
+                except queue.Empty:
+                    time.sleep(0.1)  # avoid busy poll
+        self._schedule_trigger = queue.Queue()
+        self._trigger_thread   = mt.Thread(target=_trigger)
+        self._trigger_thread.daemon = True
+        self._trigger_thread.start()
+
 
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
         #
         # NOTE: this information is insufficient for the torus scheduler!
-        self._pilot_id = self._cfg['pilot_id']
-        self._lrms_info = self._cfg['lrms_info']
-        self._lrms_lm_info = self._cfg['lrms_info']['lm_info']
-        self._lrms_node_list = self._cfg['lrms_info']['node_list']
-        self._lrms_cores_per_node = self._cfg['lrms_info']['cores_per_node']
-        self._lrms_gpus_per_node = self._cfg['lrms_info']['gpus_per_node']
-        # Dict containing the size and path
-        self._lrms_lfs_per_node = self._cfg['lrms_info']['lfs_per_node']   
+        rcfg = self._cfg['rcfg']['resource']
+        self._lrms_info           = rcfg['lrms_info']
+        self._lrms_lm_info        = rcfg['lrms_info']['lm_info']
+        self._lrms_node_list      = rcfg['lrms_info']['node_list']
+        self._lrms_cores_per_node = rcfg['lrms_info']['cores_per_node']
+        self._lrms_gpus_per_node  = rcfg['lrms_info']['gpus_per_node']
+        self._lrms_lfs_per_node   = rcfg['lrms_info']['lfs_per_node']   
 
         if not self._lrms_node_list:
             raise RuntimeError("LRMS %s didn't _configure node_list."
@@ -567,7 +574,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # notify the scheduling thread, ie. trigger an attempt to use the freed
         # slots for units waiting in the wait pool.
-        self.publish(rpc.AGENT_SCHEDULE_PUBSUB, unit)
+        self._schedule_trigger.push(unit)
 
         if self._log.isEnabledFor(logging.DEBUG):
             self._log.debug("after  unschedule %s: %s", unit['uid'],
@@ -578,7 +585,7 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def schedule_cb(self, topic, msg):
+    def schedule_cb(self, msg):
         '''
         This cb is triggered after a unit's resources became available again, so
         we can attempt to schedule units from the wait pool.

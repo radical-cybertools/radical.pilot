@@ -67,10 +67,12 @@ class LRMS(object):
 
         self.name            = type(self).__name__
         self._cfg            = cfg
+        self._rcfg           = cfg['rcfg']
+        self._acfg           = cfg['acfg']
         self._session        = session
         self._log            = self._session._log
         self._prof           = self._session._prof
-        self.requested_cores = self._cfg['cores']
+        self.requested_cores = self._cfg['description']['cores']
 
         self._log.info("Configuring LRMS %s.", self.name)
 
@@ -86,8 +88,8 @@ class LRMS(object):
         # The LRMS will possibly need to reserve nodes for the agent, according
         # to the agent layout.  We dig out the respective requirements from the
         # config right here.
-        self._agent_reqs = []
-        agents = self._cfg.get('agents', {})
+        to_start = list()
+        agents   = self._acfg['layout'].get('agents', {})
 
         # FIXME: this loop iterates over all agents *defined* in the layout, not
         #        over all agents which are to be actually executed, thus
@@ -95,15 +97,16 @@ class LRMS(object):
         # NOTE:  this code path is *within* the agent, so at least agent_0
         #        cannot possibly land on a different node.
         for agent in agents:
-            target = agents[agent].get('target')
+
+            target = agents[agent]['target']
+
             # make sure that the target either 'local', which we will ignore,
             # or 'node'.
-            if target == 'local':
-                pass # ignore that one
-            elif target == 'node':
-                self._agent_reqs.append(agent)
-            else :
-                raise ValueError("ill-formatted agent target '%s'" % target)
+            if target not in ['local', 'node']:
+                raise ValueError("invalid agent node '%s'" % target)
+
+            if target == 'node':
+                to_start.append(agent) 
 
         # We are good to get rolling, and to detect the runtime environment of
         # the local LRMS.
@@ -118,33 +121,34 @@ class LRMS(object):
 
         # Check if the LRMS implementation reserved agent nodes.  If not, pick
         # the first couple of nodes from the nodelist as a fallback.
-        if self._agent_reqs and not self.agent_nodes:
-            self._log.info('Determine list of agent nodes generically.')
-            for agent in self._agent_reqs:
-                # Get a node from the end of the node list
-                self.agent_nodes[agent] = self.node_list.pop()
-                # If all nodes are taken by workers now, we can safely stop,
-                # and let the raise below do its thing.
-                if not self.node_list:
-                    break
 
-        if self.agent_nodes:
-            self._log.info('Reserved agent node(s): %s' % self.agent_nodes.values())
-            self._log.info('Agent(s) running on node(s): %s' % self.agent_nodes.keys())
-            self._log.info('Remaining work node(s): %s' % self.node_list)
+        for agent in to_start:
 
-        # Check if we can do any work
+            self._log.info('find agent node for %s' % agent)
+
+            # Get a node from the end of the node list
+            self.agent_nodes[agent] = self.node_list.pop()
+
+            # if all nodes are taken by workers now, we can safely stop,
+            # and let the raise below do its thing.
+            if not self.node_list:
+                break
+
+        self._log.info('agent  nodes: %s' % self.agent_nodes.values())
+        self._log.info('worker nodes: %s' % self.node_list)
+
+        # check if we can do any work
         if not self.node_list:
             raise RuntimeError('LRMS has no nodes left to run units')
 
         # After LRMS configuration, we call any existing config hooks on the
         # launch methods.  Those hooks may need to adjust the LRMS settings
-        # (hello ORTE).  We only call LM hooks *once*
-        launch_methods = set() # set keeps entries unique
-        if 'mpi_launch_method' in self._cfg:
-            launch_methods.add(self._cfg['mpi_launch_method'])
-        launch_methods.add(self._cfg['task_launch_method'])
-        launch_methods.add(self._cfg['agent_launch_method'])
+        # (hello ORTE).  We only call LM hooks *once* (thus using a set)
+        lm_cfg = self._acfg['config']['components']['AgentExecutingComponent']
+        launch_methods = set()
+        launch_methods.add(lm_cfg['mpi_launch_method'])
+        launch_methods.add(lm_cfg['task_launch_method'])
+        launch_methods.add(lm_cfg['agent_launch_method'])
 
         for lm in launch_methods:
             if lm:
@@ -153,7 +157,7 @@ class LRMS(object):
                     ru.dict_merge(self.lm_info,
                             rp.agent.LM.lrms_config_hook(lm, self._cfg, self,
                                 self._log, self._prof))
-                except Exception as e:
+                except Exception:
                     self._log.exception("lrms config hook failed")
                     raise
 
@@ -213,24 +217,24 @@ class LRMS(object):
         if cls != LRMS:
             raise TypeError("LRMS Factory only available to base class!")
 
-        try:
-            impl = {
-                RM_NAME_FORK        : Fork,
-                RM_NAME_CCM         : CCM,
-                RM_NAME_LOADLEVELER : LoadLeveler,
-                RM_NAME_LSF         : LSF,
-                RM_NAME_PBSPRO      : PBSPro,
-                RM_NAME_SGE         : SGE,
-                RM_NAME_SLURM       : Slurm,
-                RM_NAME_TORQUE      : Torque,
-                RM_NAME_YARN        : Yarn,
-                RM_NAME_SPARK       : Spark
-            }[name]
-            return impl(cfg, session)
+        impls = {RM_NAME_FORK        : Fork,
+                 RM_NAME_CCM         : CCM,
+                 RM_NAME_LOADLEVELER : LoadLeveler,
+                 RM_NAME_LSF         : LSF,
+                 RM_NAME_PBSPRO      : PBSPro,
+                 RM_NAME_SGE         : SGE,
+                 RM_NAME_SLURM       : Slurm,
+                 RM_NAME_TORQUE      : Torque,
+                 RM_NAME_YARN        : Yarn,
+                 RM_NAME_SPARK       : Spark
+                }
 
-        except KeyError:
-            session._log.exception('lrms construction error')
-            raise RuntimeError("LRMS type '%s' unknown or defunct" % name)
+        if name not in impls:
+            raise RuntimeError("LRMS '%s' unknown" % name)
+
+        impl = impls[name]
+
+        return impl(cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -240,10 +244,9 @@ class LRMS(object):
         # During LRMS termination, we call any existing shutdown hooks on the
         # launch methods.  We only call LM shutdown hooks *once*
         launch_methods = set() # set keeps entries unique
-        if 'mpi_launch_method' in self._cfg:
-            launch_methods.add(self._cfg['mpi_launch_method'])
-        launch_methods.add(self._cfg['task_launch_method'])
-        launch_methods.add(self._cfg['agent_launch_method'])
+        launch_methods.add(self._acfg['config']['mpi_launch_method'])
+        launch_methods.add(self._acfg['config']['task_launch_method'])
+        launch_methods.add(self._acfg['config']['agent_launch_method'])
 
         for lm in launch_methods:
             if lm:
