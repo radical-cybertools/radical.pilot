@@ -51,7 +51,7 @@ class Agent_n(rpu.Worker):
         # config -- we merge that information into our own config.
         # We don't want the session to start components though, so remove them
         # from the config copy.
-        session_cfg = copy.deepcopy(cfg)
+        session_cfg = copy.deepcopy(self._cfg)
         session_cfg['components'] = dict()
         session = rp_Session(uid=self._sid, _cfg=session_cfg)
 
