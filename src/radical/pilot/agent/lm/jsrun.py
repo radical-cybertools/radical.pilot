@@ -69,33 +69,22 @@ class JSRUN(LaunchMethod):
 
         """
 
-        node_ids  = list()
-        core_maps = list()
-        gpu_maps  = list()
-
-        for node in slots['nodes']:
-            node_ids += [node['uid']] * len(node['core_map'])
-
-        core_maps = [core_map for core_map in node['core_map'] for node in slots['nodes']]
-        gpu_maps  = [gpu_map  for gpu_map  in node['gpu_map']  for node in slots['nodes']]
-
         rs_id  = 0
         rs_str = ''
 
-        if len(gpu_maps):
-            for node_id,core_ids,gpu_ids in zip(node_ids, core_maps, gpu_maps):
-                rs_str += 'RS %d : { ' % rs_id
-                rs_str += 'host: %d, ' % node_id
-                rs_str += 'cpu: %s, '  % ' '.join(map(str, core_ids))
-                rs_str += 'gpu: %s}\n' % ' '.join(map(str, gpu_ids))
-                rs_id  += 1
-        else:
-            for node_id,core_ids in zip(node_ids, core_maps):
-                rs_str += 'RS %d : { ' % rs_id
-                rs_str += 'host: %d, ' % node_id
-                rs_str += 'cpu: %s '   % ' '.join(map(str, core_ids))
-                rs_str += '}\n'
-                rs_id  += 1
+        for node in slots['nodes']:
+
+            cores = ' '.join([str(core_set[0]) for core_set
+                                               in  node['core_map']])
+            gpus  = ' '.join([str(gpu_set[0])  for gpu_set
+                                               in  node['gpu_map']])
+
+            rs_str           += 'RS %d: {'  % rs_id
+            rs_str           += ' host: %d' % node['uid']
+            if cores: rs_str += ' cpu: %s'  % cores
+            if gpus : rs_str += ' gpu: %s'  % gpus
+            rs_str           += ' }\n'
+            rs_id            += 1
 
         rs_name = '%s/%s.rs' % (sandbox, uid)
         with open(rs_name, 'w') as fout:
