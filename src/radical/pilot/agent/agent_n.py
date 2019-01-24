@@ -10,7 +10,6 @@ import pprint
 
 import radical.utils      as ru
 
-from ..  import db
 from ..  import utils     as rpu
 from ..  import constants as rpc
 from ..  import Session   as rp_Session
@@ -56,7 +55,7 @@ class Agent_n(rpu.Worker):
         session_cfg['components'] = dict()
         session = rp_Session(uid=self._sid, _cfg=session_cfg)
 
-        # connect to the DB, start bridges and components
+        # start bridges and components
         self._cfg['uid']   = self._uid
         self._cfg['owner'] = self._session.uid
 
@@ -75,9 +74,9 @@ class Agent_n(rpu.Worker):
 
         # once is done, we signal success to the parent agent
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
-                                          'arg' : {'sender' : self._uid, 
-                                                   'owner'  : self._owner, 
-                                                   'src'    : 'agent'}})
+                                          'arg' : {'uid'  : self._uid, 
+                                                   'owner': self._owner, 
+                                                   'src'  : 'agent'}})
 
 
     # --------------------------------------------------------------------------

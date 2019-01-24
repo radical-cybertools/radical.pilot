@@ -190,7 +190,7 @@ class ComputePilot(object):
         Returns a Python dictionary representation of the object.
         """
         ret = {
-            'session':          self.session.uid,
+            'session_id':       self.session.uid,
             'pmgr':             self.pmgr.uid,
             'uid':              self.uid,
             'type':             'pilot',
@@ -548,7 +548,7 @@ class ComputePilot(object):
         # interface to a dedicated data movement service though.
 
         # send the staging request to the pmg launcher
-        self._pmgr._pilot_staging_input(self.as_dict(), directives)
+        self._pmgr._pilot_staging_input(self.uid, directives)
 
 
 # ------------------------------------------------------------------------------

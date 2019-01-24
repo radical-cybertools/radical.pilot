@@ -1,281 +1,83 @@
 
 {
     "localhost": {
-        "description"                 : "Your local machine.",
-        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "pre_bootstrap_1"             : [
-            "export RP_APP_TUNNEL_ADDR=144.76.72.175:27017",
-            "echo  $RP_APP_TUNNEL_ADDR"
-        ],
-        "default_sandbox_base"        : "$HOME",
-        "lrms"                        : "FORK",
-        "agent_scheduler"             : "HOMBRE",
-        "agent_spawner"               : "SHELLFS",
-        "agent_launch_method"         : "FORK",
-        "task_launch_method"          : "FORK",
-        "mpi_launch_method"           : "MPIRUN",
-        "rp_version"                  : "installed",
-        "virtenv_mode"                : "use",
-        "virtenv"                     : "/home/merzky/radical/radical.pilot.zmq/ve",
-        "python_dist"                 : "default",
-        "cores_per_node"              : 8,
-        "gpus_per_node"               : 1,
-        "lfs_path_per_node"           : "/tmp",
-        "lfs_size_per_node"           : 1024
-    },
+        "resource" : {
+            "agent_layout"   : "default",
+          # "agent_config"   : "default",
+          # "agent_tuning"   : "default",
 
-    "localhost_aprun": {
-        "description"                 : "Your local machine.",
-        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
+            "description"    : "localhost",
+            "lrms"           : "FORK",
+            "cores_per_node" : 68,
+            "gpus_per_node"  : 1
         },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "default_sandbox_base"        : "$HOME",
-        "lrms"                        : "FORK",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "FORK",
-        "task_launch_method"          : "FORK",
-        "mpi_launch_method"           : "APRUN",
-        "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
-        "python_dist"                 : "default",
-        "cores_per_node"              : 8,
-        "gpus_per_node"               : 1
-    },
 
-    "localhost_yarn": {
-        "description"                 : "Your local machine.",
-        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
+        "access" : {
+            "default"                 : "fork",
+            "fork" : {
+                "job_manager": "fork://localhost/",
+                "filesystem" : "file://localhost/"
+            },
+            "ssh" : {
+                "job_manager": "ssh://localhost/",
+                "filesystem" : "sftp://localhost/"
+            }
         },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "default_sandbox_base"        : "$HOME",
-        "lrms"                        : "YARN",
-        "agent_scheduler"             : "YARN",
-        "agent_spawner"               : "ABDS",
-        "agent_launch_method"         : "FORK",
-        "task_launch_method"          : "YARN",
-        "mpi_launch_method"           : "MPIEXEC",
-        "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
-        "python_dist"                 : "default"
-    },
 
-    "localhost_anaconda": {
-        "description"                 : "Your local machine.",
-        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "default_sandbox_base"        : "$HOME",
-        "lrms"                        : "FORK",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "FORK",
-        "task_launch_method"          : "FORK",
-        "mpi_launch_method"           : "MPIEXEC",
-        "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
-        "python_dist"                 : "anaconda",
-        "lfs_path_per_node"           : "/tmp",
-        "lfs_size_per_node"           : 1024,
-        "cores_per_node"              : 8,
-        "gpus_per_node"               : 1
-    },
+        "system" : {
+            "default" : "python", 
+            "python"  : {
+                "valid_roots"             : ["/"],
+                "default_sandbox_base"    : "$HOME",
+                "python_dist"             : "default", 
+                "virtenv_mode"            : "create",
+                "rp_version"              : "local",
+                "pre_bootstrap_0"         : [],
+                "pre_bootstrap_0"         : ["export RP_APP_TUNNEL_ADDR=144.76.72.175:27017",
+                                             "echo  $RP_APP_TUNNEL_ADDR"],
+                "export_to_cu"            : [], 
+                "cu_pre_exec"             : [], 
+                "options" : {
+                    "prte" : {
+                        "pre_bootstrap_1" : ["export OMPI=/home/merzky/radical/prte/installed/2017_09_18_539f71d",
+                                             "export PATH=$OMPI/bin/:$PATH",
+                                             "export LD_LIBRARY_PATH=$OMPI/lib/:$LD_LIBRARY_PATH",
+                                             "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"]
+                    },
+                    "orte" : {
+                        "pre_bootstrap_1" : ["export OMPI=/home/merzky/radical/ompi/installed/2017_09_18_539f71d",
+                                             "export PATH=$OMPI/bin/:$PATH",
+                                             "export LD_LIBRARY_PATH=$OMPI/lib/:$LD_LIBRARY_PATH",
+                                             "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"]
+                    },
+                    "ortelib" : {
+                        "pre_bootstrap_1" : ["export OMPI=/home/merzky/radical/ompi/installed/2017_09_18_539f71d",
+                                             "export PATH=$OMPI/bin/:$PATH",
+                                             "export LD_LIBRARY_PATH=$OMPI/lib/:$LD_LIBRARY_PATH",
+                                             "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"]
+                    }
+                }
+            }, 
 
-    "localhost_spark": {
-        "description"                 : "Your local machine gets spark.",
-        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "default_sandbox_base"        : "$HOME",
-        "lrms"                        : "FORK",
-        "agent_type"                  : "multicore",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "FORK",
-        "task_launch_method"          : "SPARK",
-        "mpi_launch_method"           : "MPIEXEC",
-        "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
-        "python_dist"                 : "default"
-    },
-
-    "localhost_spark_anaconda": {
-        "description"                 : "Your local machine gets spark.",
-        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "default_sandbox_base"        : "$HOME",
-        "lrms"                        : "FORK",
-        "agent_type"                  : "multicore",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "FORK",
-        "task_launch_method"          : "SPARK",
-        "mpi_launch_method"           : "MPIEXEC",
-        "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
-        "python_dist"                 : "anaconda"
-    },
-
-    "localhost_orte": {
-        "description"                 : "Your local machine.",
-        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "default_sandbox_base"        : "$HOME",
-        "cores_per_node"              : 8,
-        "gpus_per_node"               : 1,
-        "lrms"                        : "FORK",
-        "agent_type"                  : "multicore",
-        "agent_scheduler"             : "HOMBRE",
-        "agent_spawner"               : "SHELLFS",
-        "agent_launch_method"         : "ORTE",
-        "task_launch_method"          : "ORTE",
-        "mpi_launch_method"           : "ORTE",
-        "rp_version"                  : "installed",
-        "virtenv_mode"                : "use",
-        "virtenv"                     : "$HOME/radical/radical.pilot.merge/ve/",
-        "python_dist"                 : "default",
-        "pre_bootstrap_0"             : [
-            "export OMPI_HOME=$HOME/radical/ompi/src/openmpi-3.0.2/install/",
-            "export PATH=$OMPI_HOME/bin/:$PATH",
-            "export LD_LIBRARY_PATH=$OMPI_HOME/lib/:$LD_LIBRARY_PATH",
-            "export PKG_CONFIG_PATH=$OMPI_HOME/share/pkgconfig/:$PKG_CONFIG_PATH"
-        ]
-    },
-
-    "localhost_prte": {
-        "description"                 : "Your local machine.",
-        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "default_remote_workdir"      : "$HOME",
-        "cores_per_node"              : 8,
-        "gpus_per_node"               : 1,
-        "lrms"                        : "FORK",
-        "agent_type"                  : "multicore",
-        "agent_scheduler"             : "HOMBRE",
-        "agent_spawner"               : "SHELLFS",
-        "agent_launch_method"         : "PRTE",
-        "task_launch_method"          : "PRTE",
-        "mpi_launch_method"           : "PRTE",
-        "rp_version"                  : "installed",
-        "virtenv_mode"                : "use",
-        "virtenv"                     : "$HOME/radical/radical.pilot.test/ve/",
-        "python_dist"                 : "default",
-        "pre_bootstrap_0"             : [
-            "export PRTE_HOME=$HOME/radical/ompi/src/prrte/install/",
-            "export PATH=$PRTE_HOME/bin/:$PATH",
-            "export LD_LIBRARY_PATH=$PRTE_HOME/lib/:$LD_LIBRARY_PATH",
-            "export PKG_CONFIG_PATH=$PRTE_HOME/share/pkgconfig/:$PKG_CONFIG_PATH"
-        ]
-    },
-
-    "localhost_ortelib": {
-        "description"                 : "Your local machine.",
-        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-           "job_manager_endpoint"    : "ssh://localhost/",
-           "filesystem_endpoint"     : "sftp://localhost/"
-        },
-        "local"                       :
-        {
-           "job_manager_endpoint"    : "fork://localhost/",
-           "filesystem_endpoint"     : "file://localhost/"
-        },
-        "default_sandbox_base"        : "$HOME",
-        "cores_per_node"              : 8,
-        "gpus_per_node"               : 1,
-        "lrms"                        : "FORK",
-        "agent_type"                  : "multicore",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "ORTE",
-        "agent_launch_method"         : "ORTE",
-        "task_launch_method"          : "ORTE_LIB",
-        "mpi_launch_method"           : "ORTE_LIB",
-        "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
-        "python_dist"                 : "default",
-        "pre_bootstrap_0"             : ["export OMPI=/home/merzky/radical/ompi/installed/2017_09_18_539f71d",
-                                         "export PATH=$OMPI/bin/:$PATH",
-                                         "export LD_LIBRARY_PATH=$OMPI/lib/:$LD_LIBRARY_PATH",
-                                         "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"]
-  }
+            "anaconda" : {
+                "valid_roots"             : ["/"],
+                "default_sandbox_base"    : "$HOME",
+                "python_dist"             : "anaconda", 
+                "virtenv_mode"            : "create",
+                "rp_version"              : "local",
+                "pre_bootstrap_0"         : [],
+                "export_to_cu"            : [], 
+                "cu_pre_exec"             : [], 
+                "options" : {
+                    "orte" : {
+                        "pre_bootstrap_1" : []
+                    },
+                    "ortelib" : {
+                        "pre_bootstrap_1" : []
+                    }
+                }
+            }
+        }
+    }
 }
 

@@ -3,21 +3,18 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os
 import copy
 import time
 import threading
 
 import radical.utils as ru
 
-from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
 
 from . import compute_unit_description as cud
 
 from .staging_directives import expand_description
-from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA
 
 
 # ------------------------------------------------------------------------------
@@ -28,7 +25,8 @@ class ComputeUnit(object):
     ComputeUnits allow to control and query the state of this task.
 
     .. note:: A unit cannot be created directly. The factory method
-              :meth:`radical.pilot.UnitManager.submit_units` has to be used instead.
+              :meth:`radical.pilot.UnitManager.submit_units` has to be
+              used instead.
 
                 **Example**::
 

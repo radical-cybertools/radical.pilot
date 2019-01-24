@@ -66,7 +66,7 @@ class Client(object):
 
     # --------------------------------------------------------------------------
     #
-    def list_pilot_managers(self):
+    def list_pmgrs(self):
         """
         Lists the unique identifiers of all :class:`radical.pilot.PilotManager` 
         instances associated with this session.
@@ -82,7 +82,7 @@ class Client(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_pilot_managers(self, pmgr_uids=None):
+    def get_pmgrs(self, pmgr_uids=None):
         """ 
         returns known PilotManager(s).
 
@@ -119,7 +119,7 @@ class Client(object):
 
     # --------------------------------------------------------------------------
     #
-    def list_unit_managers(self):
+    def list_umgrs(self):
         """
         Lists the unique identifiers of all :class:`radical.pilot.UnitManager` 
         instances associated with this session.
@@ -135,7 +135,7 @@ class Client(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_unit_managers(self, umgr_uids=None):
+    def get_umgrs(self, umgr_uids=None):
         """ 
         returns known UnitManager(s).
 

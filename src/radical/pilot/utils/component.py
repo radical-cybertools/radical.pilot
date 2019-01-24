@@ -101,14 +101,11 @@ class Component(object):
         #        python stumbles over circular imports at that point :/
         #        Another option though is to discover and dynamically load
         #        components.
-        from .. import worker as rpw
         from .. import pmgr   as rppm
         from .. import umgr   as rpum
         from .. import agent  as rpa
 
-        _ctypemap = {rpc.UPDATE_WORKER                  : rpw.Update,
-
-                     rpc.PMGR_LAUNCHING_COMPONENT       : rppm.Launching,
+        _ctypemap = {rpc.PMGR_LAUNCHING_COMPONENT       : rppm.Launching,
 
                      rpc.UMGR_STAGING_INPUT_COMPONENT   : rpum.Input,
                      rpc.UMGR_SCHEDULING_COMPONENT      : rpum.Scheduler,
@@ -160,6 +157,7 @@ class Component(object):
 
         self._inputs      = dict()       # queues to get things from
         self._outputs     = dict()       # queues to send things to
+        self._putters     = dict()       # queues to send things to
         self._workers     = dict()       # methods to work on things
         self._publishers  = dict()       # channels to send notifications to
         self._cb_lock     = mt.RLock()   # guard threaded callback invokations
@@ -332,8 +330,50 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
+    def register_putter(self, qname, channel):
+        '''
+        Using this method, the component can be connected to a queue to send
+        messages to it, via 
+
+          self.register_putter('my_putter', 'message_queue')
+          self.putter('my_putter', msg='hello world')
+
+        No check is performed on the messages whatsoever.
+        '''
+
+        self.is_valid()
+
+        name = '%s.%s' % (self.uid, qname)
+
+        if name in self._putters:
+            raise ValueError('putter %s exists' % name)
+
+        addr = self._session.get_address(qname)['PUT']
+        ep   = ru.zmq.Putter(name, addr)
+
+        self._putters[name] = ep
+
+        self._log.debug('registered putter %s', name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def putter(self, qname, msg):
+
+        name = '%s.%s' % (self.uid, qname)
+
+        if name not in self._putters:
+            raise ValueError('putter %s is not registered' % name)
+
+        self._log.error('--- putter 0')
+        self._putters[name].put(msg)
+        self._log.error('--- putter 1')
+
+
+    # --------------------------------------------------------------------------
+    #
     def register_output(self, states, output=None):
-        """
+        '''
         Using this method, the component can be connected to a queue to which
         things are sent after being worked upon.  The given set of states (which
         can be a single state or a list of states) will trigger an assert check
@@ -345,7 +385,7 @@ class Component(object):
         mark the drop in the log.  No other component should ever again work on
         such a final thing.  It is the responsibility of the component to make
         sure that the thing is in fact in a final state.
-        """
+        '''
 
         self.is_valid()
 
@@ -364,6 +404,7 @@ class Component(object):
             if not output:
                 # this indicates a final state
                 self._outputs[state] = None
+                self._log.debug('registered output    : %s : FINAL' % state)
             else:
                 # non-final state, ie. we want a queue to push to
                 addr = self._session.get_address(output)['PUT']
@@ -392,7 +433,7 @@ class Component(object):
         if timer is None: timer = 0.0  # NOTE: busy idle loop
         else            : timer = float(timer)
 
-        # create a separate daemon thread per idle cb
+        # create a separate thread per idle cb
         #
         # ----------------------------------------------------------------------
         # NOTE: idle timing is a tricky beast: if we sleep for too long, then we
@@ -432,10 +473,8 @@ class Component(object):
                 return ret
         # ----------------------------------------------------------------------
 
-        # daemonize and start the thread upon construction
         idler = Idler(name=name, timer=timer, log=self._log,
                       cb=cb, cb_data=cb_data, cb_lock=self._cb_lock)
-        idler.dameon = True
         idler.start()
 
         self._log.debug('%s registered idler %s', self.uid, name)
@@ -555,8 +594,6 @@ class Component(object):
 
         subscriber = Subscriber(name=name, l=self._log, ep=ep,
                                 cb=cb, cb_data=cb_data, cb_lock=self._cb_lock)
-        # daemonize and start the thread upon construction
-        subscriber.daemon = True
         subscriber.start()
 
         self._log.debug('%s registered %s subscriber %s', self.uid, pubsub, name)
@@ -571,8 +608,7 @@ class Component(object):
                 if not self.work_cb():
                     return
 
-        self._work_thread = mt.Thread(target=_work)
-        self._work_thread.daemon = True
+        self._work_thread = ru.Thread(target=_work, name=self._uid + '.work')
         self._work_thread.start()
 
 
@@ -588,7 +624,6 @@ class Component(object):
     #
     def wait(self):
 
-        # we don't use join, as that negates the daemon setting
         while self._work_thread.is_alive():
             time.sleep(0.1)
 

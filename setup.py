@@ -222,8 +222,7 @@ setup_args = {
                             'bin/radical-pilot-version',
                             'bin/radical-pilot-agent',
                             'bin/radical-pilot-bridge',
-                            'bin/radical-pilot-component',
-                            'bin/radical-pilot-agent-statepush'
+                            'bin/radical-pilot-component'
                            ],
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz',
                                  'VERSION', 'SDIST', sdist_name]},

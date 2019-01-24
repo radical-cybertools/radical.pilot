@@ -333,12 +333,15 @@ class LaunchMethod(object):
         flavor  = self.MPI_FLAVOR_UNKNOWN
 
         out, err, ret = ru.sh_callout('%s -v' % exe)
+        self._log.debug('=== 1 %s %s %s', ret, out, err)
 
         if ret:
             out, err, ret = ru.sh_callout('%s --version' % exe)
+            self._log.debug('=== 2 %s %s %s', ret, out, err)
 
         if ret:
             out, err, ret = ru.sh_callout('%s -info' % exe)
+            self._log.debug('=== 3 %s %s %s', ret, out, err)
 
         if not ret:
             for line in out.splitlines():

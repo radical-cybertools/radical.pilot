@@ -9,7 +9,6 @@ import threading as mt
 
 import radical.utils as ru
 
-from . import db
 from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
@@ -20,9 +19,10 @@ from .staging_directives import expand_staging_directives
 # ------------------------------------------------------------------------------
 #
 class PilotManager(rpu.Component):
-    """
-    A PilotManager manages :class:`radical.pilot.ComputePilot` instances that are
-    submitted via the :func:`radical.pilot.PilotManager.submit_pilots` method.
+    '''
+    A PilotManager manages :class:`radical.pilot.ComputePilot` instances that
+    are submitted via the :func:`radical.pilot.PilotManager.submit_pilots`
+    method.
 
     It is possible to attach one or more :ref:`chapter_machconf`
     to a PilotManager to outsource machine specific configuration
@@ -30,23 +30,21 @@ class PilotManager(rpu.Component):
 
     **Example**::
 
-        s = rp.Session()
-
+        s  = rp.Session()
         pm = rp.PilotManager(session=s)
-
         pd = rp.ComputePilotDescription()
         pd.resource = "futuregrid.alamo"
-        pd.cores = 16
+        pd.cores    = 16
 
-        p1 = pm.submit_pilots(pd)  # create first  pilot with 16 cores
-        p2 = pm.submit_pilots(pd)  # create second pilot with 16 cores
+        p1 = pm.submit_pilots(pd)  # create first  pilot
+        p2 = pm.submit_pilots(pd)  # create second pilot
 
         # Create a workload of 128 '/bin/sleep' compute units
         compute_units = []
         for unit_count in range(0, 128):
             cu = rp.ComputeUnitDescription()
             cu.executable = "/bin/sleep"
-            cu.arguments = ['60']
+            cu.arguments  = ['60']
             compute_units.append(cu)
 
         # Combine the two pilots, the workload and a scheduler via
@@ -58,11 +56,11 @@ class PilotManager(rpu.Component):
 
 
     The pilot manager can issue notification on pilot state changes.  Whenever
-    state notification arrives, any callback registered for that notification is
-    fired.  
+    state notification arrives, any callback registered for that notification
+    is fired.  
 
-    NOTE: State notifications can arrive out of order wrt the pilot state model!
-    """
+    NOTE: State notifications can arrive out of order.
+    '''
 
     # --------------------------------------------------------------------------
     #
@@ -203,7 +201,7 @@ class PilotManager(rpu.Component):
 
         ret = {
             'uid': self.uid,
-            'cfg': self.cfg
+            'cfg': self._cfg
         }
 
         return ret
@@ -339,7 +337,7 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _pilot_staging_input(self, pilot, directives):
+    def _pilot_staging_input(self, pid, directives):
         '''
         Run some staging directives for a pilot.  We pass this request on to
         the launcher, and wait until the launcher confirms completion on the
@@ -350,9 +348,9 @@ class PilotManager(rpu.Component):
         sds  = expand_staging_directives(directives)
         uids = [sd['uid'] for sd in sds]
 
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'pilot_staging_input_request', 
-                                          'arg' : {'pilot' : pilot,
-                                                   'sds'   : sds}})
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'staging_request', 
+                                          'arg' : {'uid' : pid,
+                                                   'sds' : sds}})
         # keep track of SDS we sent off
         for sd in sds:
             sd['pmgr_state'] = rps.NEW
@@ -684,9 +682,8 @@ class PilotManager(rpu.Component):
                 if uid not in self._pilots:
                     raise ValueError('pilot %s not known' % uid)
 
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots', 
-                                          'arg' : {'pmgr' : self.uid,
-                                                   'uids' : uids}})
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel', 
+                                          'arg' : {'uid' : uids}})
         self.wait_pilots(uids=uids, timeout=_timeout)
 
 

@@ -7,29 +7,17 @@ import os
 import copy
 import glob
 import time
-import threading as mt
+import threading      as mt
 
-import radical.utils        as ru
-import radical.saga         as rs
+import radical.utils  as ru
+import radical.saga   as rs
+
+from .utils           import ComponentManager
+from .utils           import fetch_profiles, fetch_logfiles, fetch_json 
+from .client          import Client
+
 
 rsup = rs.utils.pty_shell
-
-from . import utils         as rpu
-from . import states        as rps
-from . import constants     as rpc
-from . import types         as rpt
-
-from .unit_manager    import UnitManager
-from .pilot_manager   import PilotManager
-from .db              import DBSession
-
-from .utils import version_detail as rp_version_detail
-
-# ----------
-
-from .                import utils   as rpu
-from .client          import Client
-from .resource_config import ResourceConfig
 
 
 # ------------------------------------------------------------------------------
@@ -74,9 +62,6 @@ class Session(rs.Session):
         self._closed      = False
         self._valid_iter  = 0  # detect recursive calls of `is_valid()`
 
-        if not self._cfg:
-            self._cfg = dict()
-
         # Only one session gets created without a configuration: the one
         # instantiated by the application.  This is the only one which will hold
         # a client module, which manages client side communication bridges and
@@ -87,11 +72,21 @@ class Session(rs.Session):
         #        to keep the API stabie.
         create_client = False
 
-        if not self._cfg:
-            # read the default (or other) session config, and create a client
-            self._cfg = ru.read_json("%s/configs/session_%s.json"
-                      % (os.path.dirname(__file__),
-                         os.environ.get('RADICAL_PILOT_SESSION_CFG','default')))
+        self._resource_cfgs = ru.Config(module='radical.pilot', name='resource_*')
+        self._session_cfgs  = ru.Config(module='radical.pilot', name='session_*')
+        self._agent_cfgs    = ru.Config(module='radical.pilot', name='agent_*')
+        self._umgr_cfgs     = ru.Config(module='radical.pilot', name='umgr_*')
+        self._pmgr_cfgs     = ru.Config(module='radical.pilot', name='pmgr_*')
+
+        if isinstance(_cfg, dict):
+            # this is an agent session which already has a config
+            self._cfg = _cfg
+
+        else:
+            # this is a client session - create client instance
+            if not _cfg:
+                _cfg = 'default'
+            self._cfg = self._session_cfgs[_cfg]
             create_client = True
 
 
@@ -109,7 +104,7 @@ class Session(rs.Session):
         # fall back to config data where possible
         # sanity check on parameters
         if not self._uid: 
-            self._uid = self._cfg.get('session_id')
+            self._uid = self._cfg.get('uid')
 
         if not self._uid:
             # generate new uid, reset all other ID counters
@@ -120,21 +115,22 @@ class Session(rs.Session):
 
         # The session's sandbox is either configured (agent side),
         # or falls back to `./$SID` (client).
-        if 'session_sandbox' in self._cfg:
-            self._sandbox = self._cfg['session_sandbox']
+        if 'sandbox' in self._cfg:
+            # agent sets the sandbox
+            self._sandbox = self._cfg['sandbox']
 
         else:
             self._sandbox = './%s/' % self.uid
-            self._cfg['session_sandbox'] = self._sandbox
+            self._cfg['sandbox'] = self._sandbox
 
-        if 'session_id' not in self._cfg: self._cfg['session_id'] = self._uid 
-        if 'owner'      not in self._cfg: self._cfg['owner']      = self._uid 
+        if 'uid'   not in self._cfg: self._cfg['uid']   = self._uid 
+        if 'owner' not in self._cfg: self._cfg['owner'] = self._uid 
 
         # FIXME: this is wrong for the pilot
         ru_def = ru.DefaultConfig()
-        ru_def['ns']          = 'radical.pilot'
-        ru_def['log_dir']     = './%s' % self._uid
-        ru_def['profile_dir'] = './%s' % self._uid
+        ru_def['ns']          = 'radical'
+        ru_def['log_dir']     = self._sandbox
+        ru_def['profile_dir'] = self._sandbox
 
         self._prof = ru.Profiler(name=self._cfg['owner'])
         self._rep  = ru.Reporter(name=self._cfg['owner'])
@@ -144,7 +140,6 @@ class Session(rs.Session):
         rs.Session.__init__(self, uid=self._uid)
 
         # prepare to handle resource configs
-        self._rcfgs       = None
         self._cache       = dict()  # cache sandboxes etc.
         self._cache_lock  = mt.RLock()
 
@@ -175,7 +170,7 @@ class Session(rs.Session):
 
 
         if create_cmgr:
-            self._cmgr = rpu.ComponentManager(self, self._cfg, self.uid)
+            self._cmgr = ComponentManager(self, self._cfg, self.uid)
 
         # done!
         if create_client:
@@ -323,21 +318,21 @@ class Session(rs.Session):
     #
     def fetch_profiles(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_profiles(self._uid, tgt=tgt, session=self)
+        return fetch_profiles(self._uid, tgt=tgt, session=self)
 
 
     # -------------------------------------------------------------------------
     #
     def fetch_logfiles(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_logfiles(self._uid, tgt=tgt, session=self)
+        return fetch_logfiles(self._uid, tgt=tgt, session=self)
 
 
     # -------------------------------------------------------------------------
     #
     def fetch_json(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_json(self._uid, tgt=tgt, session=self)
+        return fetch_json(self._uid, tgt=tgt, session=self)
 
 
     # --------------------------------------------------------------------------
@@ -410,130 +405,116 @@ class Session(rs.Session):
         description.  Not that resource aliases won't be listed.
         '''
 
-        self.load_resource_configs()
+        ret = list()
 
-        return sorted(self._rcfgs.keys())
+        for site in self._resource_cfgs:
+            for host in self._resource_cfgs[site]:
+                ret.append('%s.%s' % (site, host))
 
-
-    # --------------------------------------------------------------------------
-    #
-    def load_resource_configs(self):
-
-        self.is_valid()
-
-        if self._rcfgs is not None:
-            return
-
-        self._prof.prof('config_parser_start', uid=self._uid)
-
-        # Loading all "default" resource configurations
-        self._rcfgs  = dict()
-        module_path  = os.path.dirname(os.path.abspath(__file__))
-        default_cfgs = "%s/configs/resource_*.json" % module_path
-        config_files = glob.glob(default_cfgs)
-
-        for config_file in config_files:
-
-            try:
-                self._log.info("Load resource configs from %s" % config_file)
-                rcs = ResourceConfig.from_file(config_file)
-            except Exception as e:
-                self._log.exception("skip config file %s: %s" % (config_file, e))
-                raise RuntimeError('config error (%s) - abort' % e)
-
-            for rc in rcs:
-                self._log.info("Load resource configurations for %s" % rc)
-                self._rcfgs[rc] = rcs[rc].as_dict() 
-                self._log.debug('read rcfg for %s (%s)', 
-                        rc, self._rcfgs[rc].get('cores_per_node'))
-
-        home         = os.environ.get('HOME', '')
-        user_cfgs    = "%s/.radical/pilot/configs/resource_*.json" % home
-        config_files = glob.glob(user_cfgs)
-
-        for config_file in config_files:
-
-            try:
-                rcs = ResourceConfig.from_file(config_file)
-            except Exception as e:
-                self._log.exception("skip config file %s: %s" % (config_file, e))
-                raise RuntimeError('config error (%s) - abort' % e)
-
-            for rc in rcs:
-                self._log.info("Load resource configurations for %s" % rc)
-
-                if rc in self._rcfgs:
-                    # config exists -- merge user config into it
-                    ru.dict_merge(self._rcfgs[rc],
-                                  rcs[rc].as_dict(),
-                                  policy='overwrite')
-                else:
-                    # new config -- add as is
-                    self._rcfgs[rc] = rcs[rc].as_dict() 
-
-                self._log.debug('fix  rcfg for %s (%s)', 
-                        rc, self._rcfgs[rc].get('cores_per_node'))
-
-        default_aliases = "%s/configs/resource_aliases.json" % module_path
-        self._resource_aliases = ru.read_json_str(default_aliases)['aliases']
-
-        # check if we have aliases to merge
-        usr_aliases = '%s/.radical/pilot/configs/resource_aliases.json' % home
-        if os.path.isfile(usr_aliases):
-            ru.dict_merge(self._resource_aliases,
-                          ru.read_json_str(usr_aliases).get('aliases', {}),
-                          policy='overwrite')
-
-        self._prof.prof('config_parser_stop', uid=self._uid)
+        return ret
 
 
     # -------------------------------------------------------------------------
     #
-    def get_resource_config(self, resource, schema=None):
-        """
-        Returns a dictionary of the requested resource config
-        """
+    def get_resource_config(self, descr):
+        '''
+        Returns a dictionary of the resource config matching the resource
+        defined in the given pilot description, specialized by the access and
+        system parameters of the description.
+
+        The returned dict will have three sections: resource, access and system.
+        '''
 
         self.is_valid()
-        self.load_resource_configs()
 
-        if  resource in self._resource_aliases:
-            self._log.warning("using alias '%s' for deprecated resource key '%s'" \
-                              % (self._resource_aliases[resource], resource))
-            resource = self._resource_aliases[resource]
+        ret = dict()
 
-        if  resource not in self._rcfgs:
-            raise RuntimeError("Resource '%s' is not known." % resource)
+        resource = descr['resource']
+        access   = descr.get('access')
+        system   = descr.get('system')
 
-        resource_cfg = copy.deepcopy(self._rcfgs[resource])
-        self._log.debug('get rcfg 1 for %s (%s)',  
-                        resource, resource_cfg.get('cores_per_node'))
+        aliases = self._resource_cfgs.get('aliases', dict())
+        if  resource in aliases:
+            self._log.warning("using alias '%s' for deprecated resource '%s'"
+                              % (aliases[resource], resource))
+            resource = aliases[resource]
 
-        if  not schema:
-            if 'schemas' in resource_cfg:
-                schema = resource_cfg['schemas'][0]
+        if '.' not in resource:
+            raise RuntimeError("malformed resource '%s' (site.host)" % resource)
 
-        if  schema:
-            if  schema not in resource_cfg:
-                raise RuntimeError("schema %s unknown for resource %s" \
-                                  % (schema, resource))
+        site, host = resource.split('.', 1)
 
-            for key in resource_cfg[schema]:
-                # merge schema specific resource keys into the
-                # resource config
-                resource_cfg[key] = resource_cfg[schema][key]
+        if site not in self._resource_cfgs:
+            raise RuntimeError("Site '%s' not configured." % site)
 
-        self._log.debug('get rcfg 2 for %s (%s)',
-                        resource, resource_cfg.get('cores_per_node'))
+        if host not in self._resource_cfgs[site]:
+            raise RuntimeError("Host '%s' not configured." % host)
 
-        return resource_cfg
+        cfg = self._resource_cfgs[site][host]
 
+        if not access: access = cfg['access'].get('default', 'default')
+        if not system: system = cfg['system'].get('default', 'default')
+
+        if access not in cfg['access']:
+            raise RuntimeError("Access '%s' not configured" % access)
+
+        if system not in cfg['system']:
+            raise RuntimeError("system '%s' not configured" % system)
+
+        ret['resource'] = copy.deepcopy(cfg['resource'])
+        ret['access'  ] = copy.deepcopy(cfg['access'][access])
+        ret['system'  ] = copy.deepcopy(cfg['system'][system])
+
+        ret['resource']['label'] = resource
+
+        return ret
+
+
+    # -------------------------------------------------------------------------
+    #
+    def get_agent_config(self, descr, rcfg):
+        '''
+        Returns a dictionary of the agent config matching the
+        given pilot description and resource config.
+
+        The returned dict will have three sections: layout, config and tuning.
+        '''
+
+        self.is_valid()
+
+        acfgs  = self._agent_cfgs
+
+        # configs defined by pilot description?
+        layout = descr.get('layout')
+        config = descr.get('config')
+        tuning = descr.get('tuning')
+
+        # cfgs preferred by resource config?
+        if not layout: rcfg['resource'].get('agent_layout')
+        if not config: rcfg['resource'].get('agent_config')
+        if not tuning: rcfg['resource'].get('agent_tuning')
+
+        # fallback to default cfgs
+        if not layout: layout = acfgs['layout']['default']
+        if not config: config = acfgs['config']['default']
+        if not tuning: tuning = acfgs['tuning']['default']
+
+        # resolve named cfgs (string) to actual dicts, if needed
+        if isinstance(layout, basestring): layout = acfgs['layout'][layout]
+        if isinstance(config, basestring): config = acfgs['config'][config]
+        if isinstance(tuning, basestring): tuning = acfgs['tuning'][tuning]
+
+        ret = copy.deepcopy({'layout': layout,
+                             'config': config,
+                             'tuning': tuning})
+
+        return ret
 
 
     # -------------------------------------------------------------------------
     #
     def get_client_sandbox(self):
-        """
+        '''
         For the session in the client application, this is os.getcwd().  For the
         session in any other component, specifically in pilot components, the
         client sandbox needs to be read from the session config (or pilot
@@ -541,7 +522,7 @@ class Session(rs.Session):
         interpret client sandboxes.  Since pilot-side stagting to and from the
         client sandbox is not yet supported anyway, this seems acceptable
         (FIXME).
-        """
+        '''
 
         return self._client_sandbox
 
@@ -555,12 +536,10 @@ class Session(rs.Session):
         """
 
         self.is_valid()
-        self.load_resource_configs()
 
         # FIXME: this should get 'resource, schema=None' as parameters
 
-        resource = pilot['description'].get('resource')
-        schema   = pilot['description'].get('access_schema')
+        resource = pilot['description']['resource']
 
         if not resource:
             raise ValueError('Cannot get pilot sandbox w/o resource target')
@@ -572,8 +551,8 @@ class Session(rs.Session):
             if resource not in self._cache['resource_sandbox']:
 
                 # cache miss -- determine sandbox and fill cache
-                rcfg   = self.get_resource_config(resource, schema)
-                fs_url = rs.Url(rcfg['filesystem_endpoint'])
+                rcfg   = self.get_resource_config(pilot['description'])
+                fs_url = rs.Url(rcfg['access']['filesystem'])
 
                 # Get the sandbox from either the pilot_desc or resource conf
                 sandbox_raw = pilot['description'].get('sandbox')
@@ -588,19 +567,14 @@ class Session(rs.Session):
                     sandbox_base = sandbox_raw
 
                 else:
-                    js_url = rs.Url(rcfg['job_manager_endpoint'])
+                    js_url  = rs.Url(rcfg['access']['job_manager'])
+                    schemas = js_url.schema.split('+')
 
-                    if 'ssh' in js_url.schema.split('+'):
-                        js_url.schema = 'ssh'
-                    elif 'gsissh' in js_url.schema.split('+'):
-                        js_url.schema = 'gsissh'
-                    elif 'fork' in js_url.schema.split('+'):
-                        js_url.schema = 'fork'
-                    elif '+' not in js_url.schema:
-                        # For local access to queueing systems use fork
-                        js_url.schema = 'fork'
-                    else:
-                        raise Exception("unsupported schema: %s" % js_url.schema)
+                    if   'ssh'    in schemas: js_url.schema = 'ssh'
+                    elif 'gsissh' in schemas: js_url.schema = 'gsissh'
+                    elif 'fork'   in schemas: js_url.schema = 'fork'
+                    elif len(schemas) == 1  : js_url.schema = 'fork'  # local
+                    else: raise Exception("unsupported schema: %s" % js_url)
 
                     self._log.debug("rsup.PTYShell('%s')", js_url)
                     shell = rsup.PTYShell(js_url, self)
@@ -634,8 +608,6 @@ class Session(rs.Session):
             return self._sandbox
 
 
-        self.load_resource_configs()
-
         # FIXME: this should get 'resource, schema=None' as parameters
         resource = pilot['description'].get('resource')
 
@@ -661,7 +633,6 @@ class Session(rs.Session):
     def get_pilot_sandbox(self, pilot):
 
         self.is_valid()
-        self.load_resource_configs()
 
         # FIXME: this should get 'pid, resource, schema=None' as parameters
 
@@ -692,7 +663,6 @@ class Session(rs.Session):
     def get_unit_sandbox(self, unit, pilot):
 
         self.is_valid()
-        self.load_resource_configs()
 
         # we don't cache unit sandboxes, they are just a string concat.
         pilot_sandbox = self.get_pilot_sandbox(pilot)
@@ -707,14 +677,11 @@ class Session(rs.Session):
         '''
 
         self.is_valid()
-        self.load_resource_configs()
 
-        resrc   = pilot['description']['resource']
-        schema  = pilot['description']['access_schema']
-        rcfg    = self.get_resource_config(resrc, schema)
+        rcfg   = self.get_resource_config(pilot['description'])
 
-        js_url  = rs.Url(rcfg.get('job_manager_endpoint'))
-        js_hop  = rs.Url(rcfg.get('job_manager_hop', js_url))
+        js_url = rs.Url(rcfg.get('job_manager'))
+        js_hop = rs.Url(rcfg.get('job_manager_hop', js_url))
 
         # make sure the js_hop url points to an interactive access
         # TODO: this is an unreliable heuristics - we should require the js_hop
@@ -730,6 +697,25 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
+    def get_address_fname(self, name):
+        '''
+        return name of the address file for the named queue or pubsub channel
+        otherwise
+        '''
+
+        fnames = ['%s/%s.url' % (self._sandbox, name), 
+                  '%s/%s.url' % (os.getcwd(),   name)]
+
+        for fname in fnames:
+
+            if os.path.isfile(fname):
+                return fname
+
+        return None
+
+
+    # --------------------------------------------------------------------------
+    #
     def get_address(self, name):
         '''
         return in and out address for the named bridge, if known - None
@@ -738,27 +724,19 @@ class Session(rs.Session):
         if name in self._addresses:
             return self._addresses[name]
 
-        addr = self._addresses.get(name, dict())
+        addr  = dict()
+        fname = self.get_address_fname(name)
 
-        fnames = ['%s/%s.url' % (self._sandbox, name), 
-                  '%s/%s.url' % (os.getcwd(),   name)]
-        for fname in fnames:
+        if not fname:
+            raise ValueError('no addresses found for %s' % name)
 
-            if addr:
-                # we are done already
-                self._addresses[name] = addr
-                break
+        with open(fname, 'r') as fin:
+            for line in fin.readlines():
+                key, val = line.split()
+                if key in ['PUB', 'PUT']: addr[key] = val
+                if key in ['SUB', 'GET']: addr[key] = val
 
-            if os.path.isfile(fname):
-                with open(fname, 'r') as fin:
-                    for line in fin.readlines():
-                        key, val = line.split()
-                        if key in ['PUB', 'PUT']: addr[key] = val
-                        if key in ['SUB', 'GET']: addr[key] = val
-                    assert(len(addr) in [0,2]), 'malformed %s' % fname
-
-        if not addr:
-            raise RuntimeError('no address for %s found %s' % (name, fnames))
+        assert(len(addr) == 2), 'malformed url file %s' % fname
 
         return addr
 

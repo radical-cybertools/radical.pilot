@@ -13,21 +13,22 @@
             "schemas" : {
                 "default"                 : "gsissh",
                 "gsissh" : {
-                    "job_manager_endpoint": "slurm+gsissh://stampede2.tacc.utexas.edu:2222/",
-                    "filesystem_endpoint" : "gsisftp://stampede2.tacc.utexas.edu:2222/"
+                    "job_manager": "slurm+gsissh://stampede2.tacc.utexas.edu:2222/",
+                    "filesystem" : "gsisftp://stampede2.tacc.utexas.edu:2222/"
                 },
                 "ssh" : {
                     # FIXME: TFA support?
-                    "job_manager_endpoint": "slurm+ssh://stampede2.tacc.utexas.edu/",
-                    "filesystem_endpoint" : "sftp://stampede2.tacc.utexas.edu/"
+                    "job_manager": "slurm+ssh://stampede2.tacc.utexas.edu/",
+                    "filesystem" : "sftp://stampede2.tacc.utexas.edu/"
                 },
                 "go": {
-                    "job_manager_endpoint": "slurm+ssh://stampede2.tacc.utexas.edu/",
-                    "filesystem_endpoint" : "go://xsede#stampede2/"
+                    "job_manager": "slurm+ssh://stampede2.tacc.utexas.edu/",
+                    "filesystem" : "go://xsede#stampede2/"
                 }
             }
         },
-        "bootstrap" : {
+
+        "system" : {
             "default" : "python", 
             "python" : {
                 "valid_roots"             : ["/scratch", "$SCRATCH", "/work", "$WORK"],
@@ -44,15 +45,15 @@
                 "cu_pre_exec"             : ["module restore"], 
                 "options" : {
                     "orte" : {
-                        "pre_bootstrap_2" : ["module use --append /home/amerzky/ompi/modules",
+                        "pre_bootstrap_1" : ["module use --append /home/amerzky/ompi/modules",
                                              "module load openmpi/2017_02_17_6da4dbb"]
                     },
                     "ortelib" : {
-                        "pre_bootstrap_2" : ["module use --append /home/amerzky/ompi/modules",
+                        "pre_bootstrap_1" : ["module use --append /home/amerzky/ompi/modules",
                                              "module load openmpi/2017_02_17_6da4dbb"]
                     },
                     "spark" : {
-                        "pre_bootstrap_2" : ["module load jdk64/1.8.0"]
+                        "pre_bootstrap_1" : ["module load jdk64/1.8.0"]
                     }
                 }
             }, 
@@ -71,15 +72,15 @@
                 "cu_pre_exec"             : ["module restore"], 
                 "options" : {
                     "orte" : {
-                        "pre_bootstrap_2" : ["module use --append /home/amerzky/ompi/modules",
+                        "pre_bootstrap_1" : ["module use --append /home/amerzky/ompi/modules",
                                              "module load openmpi/2017_02_17_6da4dbb"]
                     },
                     "ortelib" : {
-                        "pre_bootstrap_2" : ["module use --append /home/amerzky/ompi/modules",
+                        "pre_bootstrap_1" : ["module use --append /home/amerzky/ompi/modules",
                                              "module load openmpi/2017_02_17_6da4dbb"]
                     },
                     "spark" : {
-                        "pre_bootstrap_2" : ["module load jdk64/1.8.0"]
+                        "pre_bootstrap_1" : ["module load jdk64/1.8.0"]
                     }
                 }
             }
@@ -115,20 +116,21 @@
             "schemas" : {
                 "default"                 : "gsissh",
                 "gsissh": {
-                    "job_manager_endpoint": "slurm+gsissh://wrangler.tacc.utexas.edu:2222/",
-                    "filesystem_endpoint" : "gsisftp://wrangler.tacc.utexas.edu:2222/"
+                    "job_manager": "slurm+gsissh://wrangler.tacc.utexas.edu:2222/",
+                    "filesystem" : "gsisftp://wrangler.tacc.utexas.edu:2222/"
                 },
                 "ssh": {
-                    "job_manager_endpoint": "slurm+ssh://wrangler.tacc.utexas.edu/",
-                    "filesystem_endpoint" : "sftp://wrangler.tacc.utexas.edu/"
+                    "job_manager": "slurm+ssh://wrangler.tacc.utexas.edu/",
+                    "filesystem" : "sftp://wrangler.tacc.utexas.edu/"
                 },
                 "go": {
-                    "job_manager_endpoint": "slurm+ssh://wrangler.tacc.utexas.edu/",
-                    "filesystem_endpoint" : "go://xsede#wrangler/"
+                    "job_manager": "slurm+ssh://wrangler.tacc.utexas.edu/",
+                    "filesystem" : "go://xsede#wrangler/"
                 }
             }
         },
-        "bootstrap" : {
+
+        "system" : {
             "valid_roots"                 : ["/work", "$WORK", "/data", "$DATA"],
             "default_sandbox_base"        : "$WORK",
             "python_dist"                 : "default", 
@@ -160,17 +162,18 @@
                 "ssh"                     :
                 {
                     # FIXME: TFA support?
-                    "job_manager_endpoint": "slurm+ssh://comet.sdsc.xsede.org/",
-                    "filesystem_endpoint" : "sftp://comet.sdsc.xsede.org/"
+                    "job_manager": "slurm+ssh://comet.sdsc.xsede.org/",
+                    "filesystem" : "sftp://comet.sdsc.xsede.org/"
                 },
                 "gsissh"                  :
                 {
-                    "job_manager_endpoint": "slurm+gsissh://comet.sdsc.xsede.org/",
-                    "filesystem_endpoint" : "gsisftp://comet.sdsc.xsede.org/"
+                    "job_manager": "slurm+gsissh://comet.sdsc.xsede.org/",
+                    "filesystem" : "gsisftp://comet.sdsc.xsede.org/"
                 }
             }
         },
-        "bootstrap" : {
+
+        "system" : {
           # "default_sandbox_base"        : "/oasis/scratch/comet/$USER/temp_project",
           # "valid_roots"                 : ["/oasis/scratch/comet"],
             "valid_roots"                 : ["/home"],
@@ -182,7 +185,7 @@
             "pre_bootstrap_1"             : ["export PATH=$PATH",
                                              "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"],
           # # ORTE / ORTELIB
-          # "pre_bootstrap_2"             : ["module use --append /home/amerzky/ompi/modules",
+          # "pre_bootstrap_1"             : ["module use --append /home/amerzky/ompi/modules",
           #                                  "module load openmpi/2017_02_17_6da4dbb"],
             "export_to_cu"                : ["LMOD_CMD",
                                              "LMOD_SYSTEM_DEFAULT_MODULES",
@@ -205,17 +208,18 @@
             "schemas" : {
                 "default"                 : "gsissh",
                 "gsissh"                  : {
-                    "job_manager_endpoint": "torque+gsissh://supermic.cct-lsu.xsede.org:2222/",
-                    "filesystem_endpoint" : "gsisftp://supermic.cct-lsu.xsede.org:2222/"
+                    "job_manager": "torque+gsissh://supermic.cct-lsu.xsede.org:2222/",
+                    "filesystem" : "gsisftp://supermic.cct-lsu.xsede.org:2222/"
                 },
                 "ssh"                     : {
                     # FIXME: TFA support?
-                    "job_manager_endpoint": "torque+ssh://supermic.cct-lsu.xsede.org/",
-                    "filesystem_endpoint" : "sftp://supermic.cct-lsu.xsede.org/"
+                    "job_manager": "torque+ssh://supermic.cct-lsu.xsede.org/",
+                    "filesystem" : "sftp://supermic.cct-lsu.xsede.org/"
                 }
             }
         },
-        "bootstrap" : {
+
+        "system" : {
             "valid_roots"                 : ["/work"],
             "default_sandbox_base"        : "/work/$USER",
             "python_dist"                 : "default", 
@@ -223,9 +227,9 @@
             "rp_version"                  : "local",
             "pre_bootstrap_0"             : ["module load python/2.7.7-anaconda"]
           # # ORTE / ORTELIB
-          # "pre_bootstrap_1"             : ["export PATH=$PATH",
+          # "pre_bootstrap_0"             : ["export PATH=$PATH",
           #                                  "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"],
-          # "pre_bootstrap_2"             : ["module use -a /worka/work/amerzky/radical.pilot.sandbox/openmpi/modules/",
+          # "pre_bootstrap_1"             : ["module use -a /worka/work/amerzky/radical.pilot.sandbox/openmpi/modules/",
           #                                  "module load openmpi/2017_03_13_6da4dbb"]
         }
     },
@@ -234,8 +238,8 @@
         "resource" : {
             "description"                 : "https://www.xsede.org/psc-bridges/",
             "lrms"                        : "SLURM",
-            "cores_per_node"              : nil,
-            "gpus_per_node"               : nil
+            "cores_per_node"              : null,
+            "gpus_per_node"               : null
         },
         "access" : {
             "default_queue"               : "normal",
@@ -243,21 +247,22 @@
             "schemas" : {
                 "default"                 : "gsissh",
                 "gsissh" : {
-                    "job_manager_endpoint": "slurm+gsissh://bridges.psc.xsede.org:2222/",
-                    "filesystem_endpoint" : "gsisftp://bridges.psc.xsede.org:2222/"
+                    "job_manager": "slurm+gsissh://bridges.psc.xsede.org:2222/",
+                    "filesystem" : "gsisftp://bridges.psc.xsede.org:2222/"
                 },
                 "ssh" : {
                     # FIXME: TFA support?
-                    "job_manager_endpoint": "slurm+ssh://bridges.psc.xsede.org/",
-                    "filesystem_endpoint" : "sftp://bridges.psc.xsede.org/"
+                    "job_manager": "slurm+ssh://bridges.psc.xsede.org/",
+                    "filesystem" : "sftp://bridges.psc.xsede.org/"
                 },
                 "go" : {
-                    "job_manager_endpoint": "slurm+ssh://bridges.psc.xsede.org/",
-                    "filesystem_endpoint" : "go://xsede#bridges/"
+                    "job_manager": "slurm+ssh://bridges.psc.xsede.org/",
+                    "filesystem" : "go://xsede#bridges/"
                 }
             }
         },
-        "bootstrap" : {
+
+        "system" : {
             "valid_roots"                 : ["/home", "/pylon1", "/pylon2"],
             "default_sandbox_base"        : "$HOME",
             "python_dist"                 : "default", 

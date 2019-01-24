@@ -51,7 +51,7 @@ def bootstrap_3(agent_name):
 
     except:
         print 'failed %s' % agent_name
-        ru.print_stacktrace()
+        ru.print_exception_trace()
 
     finally:
         # in all cases, make sure we perform an orderly shutdown.  I hope python

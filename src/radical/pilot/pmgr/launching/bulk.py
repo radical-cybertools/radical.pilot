@@ -24,7 +24,6 @@ from ...  import constants  as rpc
 from .base import PMGRLaunchingComponent
 
 from ...staging_directives import complete_url
-from ...staging_directives import TRANSFER, COPY, LINK, MOVE
 
 rsfs = rs.filesystem
 
@@ -182,14 +181,14 @@ class Bulk(PMGRLaunchingComponent):
             src    = sd['source']
             tgt    = sd['target']
 
-            assert(action in [COPY, LINK, MOVE, TRANSFER])
+            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
 
             self._prof.prof('staging_in_start', uid=pid, msg=did)
 
             src = complete_url(src, src_context, self._log)
             tgt = complete_url(tgt, tgt_context, self._log)
 
-            if action in [COPY, LINK, MOVE]:
+            if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 self._prof.prof('staging_in_fail', uid=pid, msg=did)
                 raise ValueError("invalid action '%s' on pilot level" % action)
 
@@ -639,8 +638,7 @@ class Bulk(PMGRLaunchingComponent):
             if ft['rem']:
                 os.unlink(ft['src'])
 
-        fs_endpoint = rcfg['filesystem_endpoint']
-        fs_url      = rs.Url(fs_endpoint)
+        fs_url = rs.Url(rcfg['filesystem'])
 
         self._log.debug ("rs.file.Directory ('%s')", fs_url)
 
@@ -694,7 +692,7 @@ class Bulk(PMGRLaunchingComponent):
 
         # look up or create JS for actual pilot submission.  This might result
         # in the same js url as above, or not.
-        js_ep  = rcfg['job_manager_endpoint']
+        js_ep  = rcfg['job_manager']
         with self._cache_lock:
             if js_ep in self._saga_js_cache:
                 js = self._saga_js_cache[js_ep]
@@ -818,7 +816,7 @@ class Bulk(PMGRLaunchingComponent):
         agent_scheduler         = rcfg.get('agent_scheduler')
         tunnel_bind_device      = rcfg.get('tunnel_bind_device')
         default_queue           = rcfg.get('default_queue')
-        forward_tunnel_endpoint = rcfg.get('forward_tunnel_endpoint')
+        forward_tunnel          = rcfg.get('forward_tunnel')
         lrms                    = rcfg.get('lrms')
         mpi_launch_method       = rcfg.get('mpi_launch_method', '')
         pre_bootstrap_0         = rcfg.get('pre_bootstrap_0', [])
@@ -1052,7 +1050,7 @@ class Bulk(PMGRLaunchingComponent):
 
         # set optional args
         if lrms == "CCM":           bootstrap_args += " -c"
-        if forward_tunnel_endpoint: bootstrap_args += " -f '%s'" % forward_tunnel_endpoint
+        if forward_tunnel         : bootstrap_args += " -f '%s'" % forward_tunnel
         if python_interpreter:      bootstrap_args += " -i '%s'" % python_interpreter
         if tunnel_bind_device:      bootstrap_args += " -t '%s'" % tunnel_bind_device
         if cleanup:                 bootstrap_args += " -x '%s'" % cleanup

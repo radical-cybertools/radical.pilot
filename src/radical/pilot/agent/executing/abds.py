@@ -210,7 +210,9 @@ class ABDS(AgentExecutingComponent):
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             if cu['slots']:
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                             {'cmd': 'unschedule',
+                              'arg': [cu]})
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
 
@@ -415,9 +417,10 @@ prof(){
                 # check on the known cus.
                 action = self._check_running()
 
-                if not action and not cus :
-                    # nothing happened at all!  Zzz for a bit.
-                    time.sleep(self._cfg['db_poll_sleeptime'])
+                # FIXME
+              # if not action and not cus :
+              #     # nothing happened at all!  Zzz for a bit.
+              #     time.sleep(self._cfg['db_poll_sleeptime'])
 
         except Exception as e:
             self._log.exception("Error in ExecWorker watch loop (%s)" % e)
@@ -490,16 +493,20 @@ prof(){
                         with self._cancel_lock:
                             self._cus_to_cancel.remove(cu['uid'])
 
-                        self._prof.prof('final', msg="execution canceled", uid=cu['uid'])
+                        self._prof.prof('final', msg="execution canceled",
+                                                 uid=cu['uid'])
 
                         self._cus_to_watch.remove(cu)
 
                         del(cu['proc'])  # proc is not json serializable
-                        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+                        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                                     {'cmd': 'unschedule',
+                                      'arg': [cu]})
                         self.advance(cu, rps.CANCELED, publish=True, push=False)
 
                 else:
-                    self._prof.prof('exec', msg='execution complete', uid=cu['uid'])
+                    self._prof.prof('exec', msg='execution complete',
+                                            uid=cu['uid'])
 
 
                     # make sure proc is collected
@@ -514,7 +521,9 @@ prof(){
                     # Free the Slots, Flee the Flots, Ree the Frots!
                     self._cus_to_watch.remove(cu)
                     del(cu['proc'])  # proc is not json serializable
-                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                                 {'cmd': 'unschedule',
+                                  'arg': [cu]})
 
                     if exit_code != 0:
                         # The unit failed - fail after staging output
