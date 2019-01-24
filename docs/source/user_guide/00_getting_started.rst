@@ -105,11 +105,12 @@ of the ``ComputePilotDescription`` are
     * `runtime` : the numbers of minutes the pilot is expected to be active, ie.
       the runtime of the pilot.
 
-Depending on the specific target resource and use case, other properties need to
-be specified.  In our user guide examples, we use
-a separate `config.json` file to store a number of properties per resource
-label, to simplify the example code.  The examples themselves then accept one or
-more resource labels, and create the pilots on those resources:
+Depending on the specific target resource and use case, other properties need
+to be specified.  In our user guide examples, we use a separate
+`config.json<../../../examples/config.json>` file to store a number of
+properties per resource label, to simplify the example code.  The examples
+themselves then accept one or more resource labels, and create the pilots on
+those resources:
 
 
 .. code-block:: python
