@@ -61,7 +61,7 @@ def test_rm_create_on_localhost():
     # This dict is required by the scheduler and lm
     assert lrms.lrms_info == {'agent_nodes': {},
                               'cores_per_socket': 10,
-                              'gpus_per_socket': 6,
+                              'gpus_per_socket': 3,
                               'lfs_per_node': {'path': None, 'size': 0},
                               'lm_info': {},
                               'name': 'LSF_SUMMIT',

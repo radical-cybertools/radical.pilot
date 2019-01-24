@@ -51,7 +51,7 @@ def test_rm_create_on_summit():
     # This dict is required by the scheduler and lm
     assert lrms.lrms_info['agent_nodes'] == {}
     assert lrms.lrms_info['cores_per_socket'] == 10
-    assert lrms.lrms_info['gpus_per_socket'] == 6
+    assert lrms.lrms_info['gpus_per_socket'] == 3
     assert lrms.lrms_info['lfs_per_node'] == {'path': None, 'size': 0}
     assert lrms.lrms_info['lm_info'] == {}
     assert lrms.lrms_info['name'] == 'LSF_SUMMIT'
