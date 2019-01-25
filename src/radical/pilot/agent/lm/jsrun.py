@@ -27,7 +27,7 @@ class JSRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _create_resource_set_file(self, slots, cuid, sandbox):
+    def _create_resource_set_file(self, slots, uid, sandbox):
         """
         This method takes as input a CU slots and creates the necessary
         resource set file. This resource set file is then use by jsrun to 
@@ -35,77 +35,74 @@ class JSRUN(LaunchMethod):
 
         An example of a resource file is:
 
-        *Task 1: 2 MPI procs, 2 threads per process and 2 gpus per process*
-        RS 0 : {host: 1 cpu: 0 1 gpu: 0 1}
-        RS 1 : {host: 1 cpu: 22 23 gpu: 3 4}
+        * Task 1: 2 MPI procs, 2 threads per process and 2 gpus per process*
 
-        *Task 2: 2 MPI procs, 1 thread per process and 1 gpus per process*
-        RS 0 : {host: 2 cpu: 7 gpu: 2}
-        RS 1 : {host: 2 cpu: 30 gpu: 5}
+            RS 0 : {host: 1 cpu:  0  1 gpu: 0 1}
+            RS 1 : {host: 1 cpu: 22 23 gpu: 3 4}
+
+        * Task 2: 2 MPI procs, 1 thread per process and 1 gpus per process*
+
+            RS 0 : {host: 2 cpu:  7 gpu: 2}
+            RS 1 : {host: 2 cpu: 30 gpu: 5}
 
         Parameters
         ----------
         slots : List of dictionaries.
+
             The slots that the unit will be placed. A slot has the following
             format:
-            {"cores_per_node": 16,
-             "lfs_per_node": {"size": 0, "path": "/dev/null"},
-             "nodes": [{"lfs": {"path": "/dev/null", "size": 0},
-                        "core_map": [[0]],
-                        "name": "a",
-                        "gpu_map": [],
-                        "uid": 1}],
-             "lm_info": "INFO",
-             "gpus_per_node": 6
+
+            {"nodes"         : [{"name"    : "a",
+                                 "uid"     : 1,
+                                 "gpu_map" : [],
+                                 "core_map": [[0]],
+                                 "lfs"     : {"path": "/dev/null", "size": 0}
+                                }],
+             "cores_per_node": 16,
+             "gpus_per_node" : 6
+             "lfs_per_node"  : {"size": 0, "path": "/dev/null"},
+             "lm_info"       : "INFO",
             }
 
-        id : str
-            The ID of the unit.
-        
-        sandbox : str
-            The unit's sandbox path
+        uid     : unit ID (string)
+        sandbox : unit sandbox (string)
+
         """
 
-        node_ids = list()
-        core_maps = list()
-        gpu_maps = list()
-        for node in slots['nodes']:
-            node_ids += [node['uid']] * len(node['core_map'])
-        core_maps = [core_map for core_map in node['core_map'] for node in slots['nodes']]
-        gpu_maps = [gpu_map for gpu_map in node['gpu_map'] for node in slots['nodes']]
-        rs_id = 0
+        rs_id  = 0
         rs_str = ''
-        if len(gpu_maps):
-            for node_id,core_ids,gpu_ids in zip(node_ids, core_maps, gpu_maps):
-                rs_str += 'RS %d : { ' % rs_id
-                rs_str += 'host: %d, ' % node_id
-                rs_str += 'cpu: %s, ' % ' '.join(map(str,core_ids))
-                rs_str += 'gpu: %s}\n' % ' '.join(map(str,gpu_ids))
-                rs_id += 1
-        else:
-            for node_id,core_ids in zip(node_ids, core_maps):
-                rs_str += 'RS %d : { ' % rs_id
-                rs_str += 'host: %d, ' % node_id
-                rs_str += 'cpu: %s ' % ' '.join(map(str,core_ids))
-                rs_str += '}\n'
-                rs_id += 1
-        
-        rs_name = sandbox + '/rs_layout_cu_%s' % cuid
-        with open(rs_name, 'w') as rs_file:
-            rs_file.write(rs_str)      
+
+        for node in slots['nodes']:
+
+            cores = ' '.join([str(core_set[0]) for core_set
+                                               in  node['core_map']])
+            gpus  = ' '.join([str(gpu_set[0])  for gpu_set
+                                               in  node['gpu_map']])
+
+            rs_str           += 'RS %d: {'  % rs_id
+            rs_str           += ' host: %d' % node['uid']
+            if cores: rs_str += ' cpu: %s'  % cores
+            if gpus : rs_str += ' gpu: %s'  % gpus
+            rs_str           += ' }\n'
+            rs_id            += 1
+
+        rs_name = '%s/%s.rs' % (sandbox, uid)
+        with open(rs_name, 'w') as fout:
+            fout.write(rs_str)      
+
+        return rs_name
 
 
     # --------------------------------------------------------------------------
     #
     def construct_command(self, cu, launch_script_hop):
 
+        # FIXME: derive task_procs from slots (to include GPU)
+
         slots          = cu['slots']
         cud            = cu['description']
         task_exec      = cud['executable']
-        task_mpi       = bool('mpi' in cud.get('cpu_process_type', '').lower())
         task_procs     = cud.get('cpu_processes', 0)
-        task_threads   = cud.get('cpu_threads', 0)
-        task_gpu_procs = cud.get('gpu_processes', 0)
         task_env       = cud.get('environment') or dict()
         task_args      = cud.get('arguments')   or list()
         task_argstr    = self._create_arg_string(task_args)
@@ -116,21 +113,16 @@ class JSRUN(LaunchMethod):
         if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
         else          : task_command = task_exec
 
-        env_string = ''
         env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
-        if env_list:
-            for var in env_list:
-                env_string += '-E "%s" ' % var
+        env_string = ' '.join(['-E "%s"' % var for var in env_list])
 
-        self._create_resource_set_file(slots = slots, cuid = cu['uid'],
-                                       sandbox = task_sandbox)
+        rs_fname = self._create_resource_set_file(slots=slots, uid=cu['uid'],
+                                                  sandbox=task_sandbox)
 
-        flags = '-U %s -n%d -a%d ' % ('%s/rs_layout_cu_%s' % (task_sandbox,cu['uid']), 
-                                       task_procs, task_procs)
-        #flags = '-n%d -a1 ' % (task_procs)
-        command = '%s %s %s %s' % (self.launch_command, flags,
-                                            env_string, 
-                                            task_command)
+      # flags = '-n%d -a1 ' % (task_procs)
+        command = '%s -U %s -a %d  %s %s' % (self.launch_command, rs_fname, 
+                                             task_procs, env_string,
+                                             task_command)
         return command, None
 
 

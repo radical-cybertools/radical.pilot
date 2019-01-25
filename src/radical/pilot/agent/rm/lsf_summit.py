@@ -8,7 +8,7 @@ import os
 from base import LRMS
 import radical.utils as ru
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class LSF_SUMMIT(LRMS):
 
@@ -88,7 +88,9 @@ class LSF_SUMMIT(LRMS):
 
         # Make sure we got a valid nodelist and a valid setting for
         # cores_per_socket and sockets_per_node
-        if not self.node_list or self.sockets_per_node < 1 or self.cores_per_socket < 1:
+        if not self.node_list        or\
+           self.sockets_per_node < 1 or \
+           self.cores_per_socket < 1:
             raise RuntimeError('LRMS configuration invalid (%s)(%s)(%s)' % \
                     (self.node_list, self.sockets_per_node, self.cores_per_socket))
 
@@ -105,9 +107,9 @@ class LSF_SUMMIT(LRMS):
                     break
 
         if self.agent_nodes:
-            self._log.info('Reserved agent node(s): %s' % self.agent_nodes.values())
-            self._log.info('Agent(s) running on node(s): %s' % self.agent_nodes.keys())
-            self._log.info('Remaining work node(s): %s' % self.node_list)
+            self._log.info('agents      : %s' % self.agent_nodes.keys())
+            self._log.info('agent nodes : %s' % self.agent_nodes.values())
+            self._log.info('worker nodes: %s' % self.node_list)
 
         # Check if we can do any work
         if not self.node_list:
@@ -172,83 +174,77 @@ class LSF_SUMMIT(LRMS):
     def _configure(self):
 
         lsf_hostfile = os.environ.get('LSB_DJOB_HOSTFILE')
-        if lsf_hostfile is None:
-            msg = "$LSB_DJOB_HOSTFILE not set!"
-            self._log.error(msg)
-            raise RuntimeError(msg)
+        if not lsf_hostfile:
+            raise RuntimeError("$LSB_DJOB_HOSTFILE not set!")
+        self._log.info('LSB_DJOB_HOSTFILE: %s', lsf_hostfile)
 
-        lsb_mcpu_hosts = os.environ.get('LSB_MCPU_HOSTS')
-        if lsb_mcpu_hosts is None:
-            msg = "$LSB_MCPU_HOSTS not set!"
-            self._log.error(msg)
-            raise RuntimeError(msg)
 
-        # parse LSF hostfile
-        # format:
-        # <hostnameX>
-        # <hostnameX>
-        # <hostnameY>
-        # <hostnameY>
+        # LSF hostfile format:
         #
-        # There are in total "-n" entries (number of tasks)
-        # and "-R" entries per host (tasks per host).
-        # (That results in "-n" / "-R" unique hosts)
+        #     node_1
+        #     node_1
+        #     ...
+        #     node_2
+        #     node_2
+        #     ...
         #
+        # There are in total "-n" entries (number of tasks of the job)
+        # and "-R" entries per node (tasks per host).
+        #
+        # Count the cores while digging out the node names.
+        lsf_nodes = dict()
 
-        # Summitdev seems to be providing, in the hostfile, the login node (with
-        # 1 core) in addition to the set of compute nodes obtained via LSF
-        # We exclude nodes with 'login' in their name and keep only the compute
-        # nodes
-        lsf_nodes = [line.strip() for line in open(lsf_hostfile) if 'login' not in line]
-        self._log.info("Found LSB_DJOB_HOSTFILE %s. Expanded to: %s",
-                       lsf_hostfile, lsf_nodes)
-        
-        # Hostfile provides an entry with the node name for every core in the
-        # node. So for a node with 20 cores, there will 20 entries with the
-        # same node name. To get the node list, we create a set to find the 
-        # uniqueu node names.
-        lsf_node_list = list(set(lsf_nodes))
+        # LSF adds login and batch nodes to the hostfile (with 1 core) which
+        # needs filtering out.
+        with open(lsf_hostfile, 'r') as fin:
+            for line in fin.readlines():
+                if 'login' not in line and 'batch' not in line:
+                    node = line.strip()
+                    if node not in lsf_nodes: lsf_nodes[node]  = 1
+                    else                    : lsf_nodes[node] += 1
 
-        # Grab the core (slot) count from the environment
-        # Format: hostX N hostY N hostZ N
-        
-        # Remove login node details if it is in mcpu_hosts
-        # Summitdev seems to be providing, in the cpu_hosts list, the login node
-        # (with 1 core) in addition to the set of compute nodes obtained via LSF
-        # We exclude nodes with 'login' in their name and their corresponding
-        # core count, and keep only the compute nodes and their core counts
-        copy_lsb_mcpu_hosts =  lsb_mcpu_hosts.split()
-        for entry in lsb_mcpu_hosts.split():
-            if 'login' in entry:
-                del copy_lsb_mcpu_hosts[lsb_mcpu_hosts.index(entry)]
-                # Remove the following core count of the login node as well
-                del copy_lsb_mcpu_hosts[lsb_mcpu_hosts.index(entry)]
-        lsb_mcpu_hosts = ' '.join(copy_lsb_mcpu_hosts)
+        self._log.debug('found nodes: %s', lsf_nodes)
 
-        lsf_cores_count_list = map(int, lsb_mcpu_hosts.split()[1::2])
-        lsf_core_counts      = list(set(lsf_cores_count_list))
+        # RP currently requires uniform node configuration, so we expect the
+        # same core count for all nodes
+        assert(len(set(lsf_nodes.values())) == 1)
+        lsf_cores_per_node = lsf_nodes.values()[0]
+
+        # We cannot inspect gpu and socket numbers yet (TODO), so pull those
+        # from the configuration
         lsf_sockets_per_node = self._cfg.get('sockets_per_node', 1)
+        lsf_gpus_per_node    = self._cfg.get('gpus_per_node',    0)
 
-        # For now, assume all sockets have an equal number of cores and gpus
-        lsf_cores_per_socket = min(lsf_core_counts) / lsf_sockets_per_node
-        lsf_gpus_per_socket  = self._cfg.get('gpus_per_socket', 0)
+        # ensure we can derive the number of cores per socket
+        assert(not lsf_cores_per_node % lsf_sockets_per_node)
+        lsf_cores_per_socket = lsf_cores_per_node / lsf_sockets_per_node
 
+        # same for gpus
+        assert(not lsf_gpus_per_node % lsf_sockets_per_node)
+        lsf_gpus_per_socket = lsf_gpus_per_node / lsf_sockets_per_node
+
+        # get LSF info from configs, too
         lsf_lfs_per_node = {'path': self._cfg.get('lfs_path_per_node', None),
                             'size': self._cfg.get('lfs_size_per_node', 0)}
 
-        self._log.info("Found unique core counts: %s Using: %d",
-                       lsf_core_counts, lsf_cores_per_socket)
+        # structure of the node list is 
+        # 
+        #   [[node_name_1, node_uid_1],
+        #    [node_name_2, node_uid_2],
+        #    ...
+        #   ]
+        #
+        # While LSF node names are unique and could serve as node uids, we
+        # need an integer index later on for resource set specifications.
+        # (LSF starts node indexes at 1, not 0)
 
-        # node names are unique, so can serve as node uids
-        # The structure of the node list is 
-        # [[node1 name, node1 uid],[node2 name, node2 uid]]
-        # The node name and uid can be the same
-
-        self.node_list        = [[node, int(ind)+1] for ind, node in enumerate(lsf_node_list)]
+        self.node_list        = [[node, idx + 1] for idx,node
+                                                 in  enumerate(lsf_nodes.keys())]
         self.sockets_per_node = lsf_sockets_per_node
         self.cores_per_socket = lsf_cores_per_socket
         self.gpus_per_socket  = lsf_gpus_per_socket
         self.lfs_per_node     = lsf_lfs_per_node
+
 
 # ------------------------------------------------------------------------------
 
