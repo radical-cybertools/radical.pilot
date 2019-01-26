@@ -238,8 +238,9 @@ class LSF_SUMMIT(LRMS):
         # need an integer index later on for resource set specifications.
         # (LSF starts node indexes at 1, not 0)
 
-        self.node_list        = [[node, idx + 1] for idx,node
-                                                 in  enumerate(lsf_nodes.keys())]
+        self.node_list        = [[node, idx + 1] 
+                                        for idx,node
+                                        in  enumerate(sorted(lsf_nodes.keys()))]
         self.sockets_per_node = lsf_sockets_per_node
         self.cores_per_socket = lsf_cores_per_socket
         self.gpus_per_socket  = lsf_gpus_per_socket
