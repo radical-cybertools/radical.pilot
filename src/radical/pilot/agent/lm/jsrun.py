@@ -99,6 +99,7 @@ class JSRUN(LaunchMethod):
 
         # FIXME: derive task_procs from slots (to include GPU)
 
+        uid            = cu['uid']
         slots          = cu['slots']
         cud            = cu['description']
         task_exec      = cud['executable']
@@ -108,7 +109,7 @@ class JSRUN(LaunchMethod):
         task_argstr    = self._create_arg_string(task_args)
         task_sandbox   = ru.Url(cu['unit_sandbox']).path
 
-        self._log.debug('prep %s', cu['uid'])
+        assert(slots), 'missing slots for %s' % uid
 
         if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
         else          : task_command = task_exec
@@ -116,7 +117,7 @@ class JSRUN(LaunchMethod):
         env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
         env_string = ' '.join(['-E "%s"' % var for var in env_list])
 
-        rs_fname = self._create_resource_set_file(slots=slots, uid=cu['uid'],
+        rs_fname = self._create_resource_set_file(slots=slots, uid=uid,
                                                   sandbox=task_sandbox)
 
       # flags = '-n%d -a1 ' % (task_procs)
