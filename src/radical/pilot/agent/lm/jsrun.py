@@ -72,6 +72,9 @@ class JSRUN(LaunchMethod):
         rs_id  = 0
         rs_str = ''
 
+        import pprint
+        self._log.debug('slots: \n%s', pprint.pprint(slots))
+
         for node in slots['nodes']:
 
             cores = ' '.join([str(core_set[0]) for core_set
@@ -110,6 +113,8 @@ class JSRUN(LaunchMethod):
         task_sandbox   = ru.Url(cu['unit_sandbox']).path
 
         assert(slots), 'missing slots for %s' % uid
+
+        self._log.debug('prep %s', uid)
 
         if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
         else          : task_command = task_exec

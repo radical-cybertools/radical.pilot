@@ -436,6 +436,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         if slots:
             # the unit was placed, we need to reflect the allocation in the
             # nodelist state (BUSY)
+            self._log.debug('found slots for %s: %s', uid, pprint.pformat(slots))
             self._change_slot_states(slots, rpc.BUSY)
 
         return slots
@@ -479,6 +480,11 @@ class ContinuousSummit(AgentSchedulingComponent):
         a *partial* match, so to find less cores, gpus, and local_fs then
         requested (but the call will never return more than requested).
         '''
+        uid = '...'
+        self._log.debug('find res.    %s 0 %s', uid, pprint.pformat(node))
+        self._log.debug('find res.    %s 0 %s %s %s %s %s %s %s', uid, requested_cores,
+                requested_gpus, requested_lfs, core_chunk, partial, lfs_chunk,
+                gpu_chunk)
 
         # list of core and gpu ids available in this node.
         cores = list()
@@ -502,6 +508,9 @@ class ContinuousSummit(AgentSchedulingComponent):
         free_lfs  = node['lfs']['size']
         alloc_lfs = alloc_cores = alloc_gpus = 0
 
+        self._log.debug('req : %s %s %s', requested_cores, requested_gpus, requested_lfs)
+        self._log.debug('free: %s %s %s', free_cores, free_gpus, free_lfs)
+
         if partial:
             # For partial requests the check simplifies: we just check if we
             # have either, some cores *or* gpus *or* local_fs, to serve the
@@ -509,11 +518,13 @@ class ContinuousSummit(AgentSchedulingComponent):
             if (requested_cores and not free_cores) and \
                 (requested_gpus and not free_gpus)  and \
                 (requested_lfs  and not free_lfs):
+                self._log.debug('find res.    %s 2', uid)
                 return [], [], None
 
             if requested_lfs and \
                 ((requested_cores and not free_cores) and
                  (requested_gpus  and not free_gpus)):
+                self._log.debug('find res.    %s 3', uid)
                 return [], [], None
 
         else:
@@ -522,6 +533,7 @@ class ContinuousSummit(AgentSchedulingComponent):
             if  requested_cores > free_cores or \
                 requested_gpus  > free_gpus or \
                 requested_lfs   > free_lfs:
+                self._log.debug('find res.    %s 4', uid)
                 return [], [], None
 
         # We can serve the partial or full request - alloc the chunks we need
@@ -534,8 +546,12 @@ class ContinuousSummit(AgentSchedulingComponent):
         if requested_lfs:
             alloc_lfs = min(requested_lfs, free_lfs)
             num_procs.append(alloc_lfs / lfs_chunk)
+            self._log.debug('req lfs %s', num_procs)
 
         if requested_cores:
+            self._log.debug('req cores: %s of %s [%s]', requested_cores,
+                    free_cores, core_chunk)
+
             if self._cross_socket_threads:
                 alloc_cores = min(requested_cores, free_cores)
                 num_procs.append(alloc_cores / core_chunk)
@@ -545,6 +561,7 @@ class ContinuousSummit(AgentSchedulingComponent):
                 # number of cores is greater than the core_chunk. If not, we can't use the
                 # current node.
                 if sum(free_cores_per_socket) < core_chunk:
+                    self._log.debug('find res.    %s 5', uid)
                     return [], [], None
 
                 # If we can use this node, then we visit each socket of the node and
@@ -555,6 +572,7 @@ class ContinuousSummit(AgentSchedulingComponent):
 
                 # Determine maximum procs on each socket - required during assignment
                 max_procs_on_socket = [0 for _ in range(self._lrms_sockets_per_node)]
+                self._log.debug('mpos %s', max_procs_on_socket)
 
                 for socket_id, free_cores in enumerate(free_cores_per_socket):
                     tmp_num_cores = free_cores
@@ -578,6 +596,8 @@ class ContinuousSummit(AgentSchedulingComponent):
             alloc_gpus = min(requested_gpus, free_gpus)
             num_procs.append(alloc_gpus / gpu_chunk)
 
+        self._log.debug('num_procs %s', num_procs)
+
         # Find min number of procs determined across lfs, cores, gpus
         num_procs = min(num_procs)
 
@@ -585,6 +605,8 @@ class ContinuousSummit(AgentSchedulingComponent):
         if requested_cores: alloc_cores = num_procs * core_chunk
         if requested_gpus:  alloc_gpus  = num_procs * gpu_chunk
         if requested_lfs:   alloc_lfs   = num_procs * lfs_chunk
+        self._log.debug('num_procs %s', num_procs)
+        self._log.debug('alc : %s %s %s', alloc_cores, alloc_gpus, alloc_lfs)
 
         # Maximum number of processes allocatable on a socket
         if self._cross_socket_threads:
@@ -626,6 +648,7 @@ class ContinuousSummit(AgentSchedulingComponent):
             if alloc_gpus == len(gpus):
                 break
 
+        self._log.debug('find res.    %s 7', uid)
         return cores, gpus, alloc_lfs
 
 
@@ -681,12 +704,15 @@ class ContinuousSummit(AgentSchedulingComponent):
         uid = unit['uid']
         cud = unit['description']
 
+        self._log.debug('alloc nonmpi %s:\n%s', uid, pprint.pformat(cud))
+
         # dig out the allocation request details
         requested_procs  = cud['cpu_processes']
         threads_per_proc = cud['cpu_threads']
         requested_gpus   = cud['gpu_processes']
         requested_lfs    = cud['lfs_per_process']
         lfs_chunk        = requested_lfs if requested_lfs > 0 else 1
+        self._log.debug('alloc nonmpi %s 1', uid)
 
         # make sure that processes are at least single-threaded
         if not threads_per_proc:
@@ -695,14 +721,20 @@ class ContinuousSummit(AgentSchedulingComponent):
         # cores needed for all threads and processes
         requested_cores = requested_procs * threads_per_proc
 
+        self._log.debug('alloc nonmpi %s 2 %d', uid, requested_procs)
+        self._log.debug('alloc nonmpi %s 2 %d', uid, threads_per_proc)
+        self._log.debug('alloc nonmpi %s 2 %d', uid, requested_cores)
+
         if not self._cross_socket_threads:
             if threads_per_proc > self._lrms_cores_per_socket:
                 raise ValueError('cu does not fit on socket')
 
+        self._log.debug('alloc nonmpi %s 3', uid)
         cores_per_node = self._lrms_cores_per_socket * self._lrms_sockets_per_node
         gpus_per_node  = self._lrms_gpus_per_socket  * self._lrms_sockets_per_node
         lfs_per_node   = self._lrms_lfs_per_node['size']
 
+        self._log.debug('alloc nonmpi %s 4', uid)
         # make sure that the requested allocation fits within the resources
         if  requested_cores > cores_per_node or \
             requested_gpus  > gpus_per_node  or \
@@ -714,6 +746,7 @@ class ContinuousSummit(AgentSchedulingComponent):
             txt += '   lfs=%s   >? %s'    % (requested_lfs,   lfs_per_node)
             raise ValueError(txt)
 
+        self._log.debug('alloc nonmpi %s 5', uid)
         # ok, we can go ahead and try to find a matching node
         cores     = list()
         gpus      = list()
@@ -724,6 +757,7 @@ class ContinuousSummit(AgentSchedulingComponent):
 
         for node in self.nodes:  # FIXME optimization: iteration start
 
+            self._log.debug('alloc nonmpi %s 6 %s', uid, node)
             # If unit has a tag, check if the tag is in the tag_history dict,
             # else it is a invalid tag, continue as if the unit does not have
             # a tag
@@ -733,6 +767,7 @@ class ContinuousSummit(AgentSchedulingComponent):
                 if node['uid'] not in self._tag_history[tag]:
                     continue
 
+            self._log.debug('alloc nonmpi %s 7: %d', uid, requested_cores)
             # attempt to find the required number of cores and gpus on this
             # node - do not allow partial matches.
             cores, gpus, lfs = self._find_resources(node=node,
@@ -750,10 +785,13 @@ class ContinuousSummit(AgentSchedulingComponent):
                 node_uid  = node['uid']
                 node_name = node['name']
                 break
+            self._log.debug('alloc nonmpi %s 8', uid)
 
         # If we did not find any node to host this request, return `None`
+        self._log.debug('alloc nonmpi %s 9', uid)
         if not node_name:
             return None
+        self._log.debug('alloc nonmpi %s 10', uid)
 
         # We have to communicate to the launcher where exactly processes are to
         # be placed, and what cores are reserved for application threads.  See
@@ -767,6 +805,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         # Assumption enforced: The LFS path is the same across all nodes.
         cud['environment']['NODE_LFS_PATH'] = self._lrms_lfs_per_node['path']
 
+        self._log.debug('alloc nonmpi %s 11', uid)
         # all the information for placing the unit is acquired - return them
         slots = {'nodes': [{'name'    : node_name,
                             'uid'     : node_uid,
@@ -781,6 +820,7 @@ class ContinuousSummit(AgentSchedulingComponent):
                  'lfs_per_node'  : self._lrms_lfs_per_node,
                  'lm_info'       : self._lrms_lm_info
                  }
+        self._log.debug('alloc nonmpi %s 12', uid)
 
         return slots
 
@@ -806,6 +846,8 @@ class ContinuousSummit(AgentSchedulingComponent):
 
         uid = unit['uid']
         cud = unit['description']
+
+        self._log.debug('alloc mpi %s', uid)
 
         # dig out the allocation request details
         requested_procs  = cud['cpu_processes']
@@ -968,7 +1010,7 @@ class ContinuousSummit(AgentSchedulingComponent):
                                    'uid'     : node_uid,
                                    'core_map': core_map,
                                    'gpu_map' : gpu_map,
-                                   'lfs'     : {'size': lfs,
+                                   'lfs'     : {'size': lfs, 
                                                 'path': lfs_path}})
 
             alloced_cores += len(cores)
