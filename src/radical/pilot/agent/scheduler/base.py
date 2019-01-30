@@ -18,14 +18,15 @@ from ... import constants as rpc
 #
 # 'enum' for RPs's pilot scheduler types
 #
-SCHEDULER_NAME_CONTINUOUS = "CONTINUOUS"
+SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
 SCHEDULER_NAME_CONTINUOUS_ORDERED = "CONTINUOUS_ORDERED"
-SCHEDULER_NAME_CONTINUOUS_SUMMIT="CONTINUOUS_SUMMIT"
-SCHEDULER_NAME_HOMBRE = "HOMBRE"
-SCHEDULER_NAME_SCATTERED = "SCATTERED"
-SCHEDULER_NAME_SPARK = "SPARK"
-SCHEDULER_NAME_TORUS = "TORUS"
-SCHEDULER_NAME_YARN = "YARN"
+SCHEDULER_NAME_CONTINUOUS_SUMMIT  = "CONTINUOUS_SUMMIT"
+SCHEDULER_NAME_HOMBRE             = "HOMBRE"
+SCHEDULER_NAME_SPARK              = "SPARK"
+SCHEDULER_NAME_TORUS              = "TORUS"
+SCHEDULER_NAME_YARN               = "YARN"
+
+# SCHEDULER_NAME_SCATTERED          = "SCATTERED"
 
 
 # ------------------------------------------------------------------------------
@@ -310,24 +311,24 @@ class AgentSchedulingComponent(rpu.Component):
         name = cfg['scheduler']
 
         from .continuous_ordered import ContinuousOrdered
-        from .continuous_summit import ContinuousSummit
-        from .continuous import Continuous
-        from .scattered import Scattered
-        from .hombre import Hombre
-        from .torus import Torus
-        from .yarn import Yarn
-        from .spark import Spark
+        from .continuous_summit  import ContinuousSummit
+        from .continuous         import Continuous
+      # from .scattered          import Scattered
+        from .hombre             import Hombre
+        from .torus              import Torus
+        from .yarn               import Yarn
+        from .spark              import Spark
 
         try:
             impl = {
                 SCHEDULER_NAME_CONTINUOUS_ORDERED: ContinuousOrdered,
-                SCHEDULER_NAME_CONTINUOUS_SUMMIT: ContinuousSummit,
-                SCHEDULER_NAME_CONTINUOUS: Continuous,
-                SCHEDULER_NAME_SCATTERED: Scattered,
-                SCHEDULER_NAME_HOMBRE: Hombre,
-                SCHEDULER_NAME_TORUS: Torus,
-                SCHEDULER_NAME_YARN: Yarn,
-                SCHEDULER_NAME_SPARK: Spark
+                SCHEDULER_NAME_CONTINUOUS_SUMMIT : ContinuousSummit,
+                SCHEDULER_NAME_CONTINUOUS        : Continuous,
+              # SCHEDULER_NAME_SCATTERED         : Scattered,
+                SCHEDULER_NAME_HOMBRE            : Hombre,
+                SCHEDULER_NAME_TORUS             : Torus,
+                SCHEDULER_NAME_YARN              : Yarn,
+                SCHEDULER_NAME_SPARK             : Spark
             }[name]
 
             impl = impl(cfg, session)
@@ -383,6 +384,7 @@ class AgentSchedulingComponent(rpu.Component):
                 else:
                     node['lfs']['size'] += nodes['lfs']['size']
 
+
     # --------------------------------------------------------------------------
     #
     # NOTE: any scheduler implementation which uses a different nodelist
@@ -409,20 +411,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         return ret
 
-    # --------------------------------------------------------------------------
-    #
-    def _configure(self):
-        raise NotImplementedError("_configure() missing for '%s'" % self.uid)
-
-    # --------------------------------------------------------------------------
-    #
-    def _allocate_slot(self, cud):
-        raise NotImplementedError("_allocate_slot() missing for '%s'" % self.uid)
-
-    # --------------------------------------------------------------------------
-    #
-    def _release_slot(self, slots):
-        raise NotImplementedError("_release_slot() missing for '%s'" % self.uid)
 
     # --------------------------------------------------------------------------
     #
@@ -459,12 +447,13 @@ class AgentSchedulingComponent(rpu.Component):
                 with self._wait_lock:
                     self._wait_pool.append(unit)
 
+
     # --------------------------------------------------------------------------
     #
     def _try_allocation(self, unit):
-        """
+        '''
         attempt to allocate cores/gpus for a specific unit.
-        """
+        '''
 
         # needs to be locked as we try to acquire slots here, but slots are
         # freed in a different thread.  But we keep the lock duration short...
@@ -493,6 +482,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # True signals success
         return True
+
 
     # --------------------------------------------------------------------------
     #
@@ -542,9 +532,9 @@ class AgentSchedulingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def unschedule_cb(self, topic, msg):
-        """
+        '''
         release (for whatever reason) all slots allocated to this unit
-        """
+        '''
 
         unit = msg
 
@@ -575,6 +565,7 @@ class AgentSchedulingComponent(rpu.Component):
         # return True to keep the cb registered
         return True
 
+
     # --------------------------------------------------------------------------
     #
     def schedule_cb(self, topic, msg):
@@ -583,10 +574,11 @@ class AgentSchedulingComponent(rpu.Component):
         we can attempt to schedule units from the wait pool.
         '''
 
-        # we ignore any passed unit.  In principle the unit info could be used to
-        # determine which slots have been freed.  No need for that optimization
-        # right now.  This will become interesting once schedule becomes too
-        # expensive.
+        # we ignore any passed unit.  In principle the unit info could be used
+        # to determine which slots have been freed.  No need for that
+        # optimization right now.  This will become interesting once schedule
+        # becomes too expensive.
+        #
         # FIXME: optimization
 
         unit = msg
@@ -603,7 +595,8 @@ class AgentSchedulingComponent(rpu.Component):
             if self._try_allocation(unit):
 
                 # allocated unit -- advance it
-                self.advance(unit, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
+                self.advance(unit, rps.AGENT_EXECUTING_PENDING,
+                             publish=True, push=True)
 
                 # remove it from the wait queue
                 with self._wait_lock:

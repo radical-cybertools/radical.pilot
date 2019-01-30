@@ -8,6 +8,7 @@ import os
 from base import LRMS
 import radical.utils as ru
 
+
 # ------------------------------------------------------------------------------
 #
 class LSF_SUMMIT(LRMS):
@@ -75,7 +76,7 @@ class LSF_SUMMIT(LRMS):
             # make sure that the target either 'local', which we will ignore,
             # or 'node'.
             if target == 'local':
-                pass # ignore that one
+                pass  # ignore that one
             elif target == 'node':
                 self._agent_reqs.append(agent)
             else :
@@ -91,8 +92,9 @@ class LSF_SUMMIT(LRMS):
         if not self.node_list        or\
            self.sockets_per_node < 1 or \
            self.cores_per_socket < 1:
-            raise RuntimeError('LRMS configuration invalid (%s)(%s)(%s)' % \
-                    (self.node_list, self.sockets_per_node, self.cores_per_socket))
+            raise RuntimeError('LRMS configuration invalid (%s)(%s)(%s)' %
+                    (self.node_list, self.sockets_per_node,
+                     self.cores_per_socket))
 
         # Check if the LRMS implementation reserved agent nodes.  If not, pick
         # the first couple of nodes from the nodelist as a fallback.
@@ -118,7 +120,7 @@ class LSF_SUMMIT(LRMS):
         # After LRMS configuration, we call any existing config hooks on the
         # launch methods.  Those hooks may need to adjust the LRMS settings
         # (hello ORTE).  We only call LM hooks *once*
-        launch_methods = set() # set keeps entries unique
+        launch_methods = set()  # set keeps entries unique
         if 'mpi_launch_method' in self._cfg:
             launch_methods.add(self._cfg['mpi_launch_method'])
         launch_methods.add(self._cfg['task_launch_method'])
@@ -131,19 +133,19 @@ class LSF_SUMMIT(LRMS):
                     ru.dict_merge(self.lm_info,
                             rp.agent.LM.lrms_config_hook(lm, self._cfg, self,
                                 self._log, self._prof))
-                except Exception as e:
+
+                except:
                     self._log.exception("lrms config hook failed")
                     raise
 
                 self._log.info("lrms config hook succeeded (%s)" % lm)
 
         # For now assume that all nodes have equal amount of cores and gpus
-        cores_avail = (len(self.node_list) + len(self.agent_nodes)) * self.cores_per_socket * self.sockets_per_node
-        gpus_avail  = (len(self.node_list) + len(self.agent_nodes)) * self.gpus_per_socket * self.sockets_per_node
-        if 'RADICAL_PILOT_PROFILE' not in os.environ:
-            if cores_avail < int(self.requested_cores):
-                raise ValueError("Not enough cores available (%s) to satisfy allocation request (%s)." \
-                                % (str(cores_avail), str(self.requested_cores)))
+        cores_avail = (len(self.node_list) + len(self.agent_nodes)) \
+                    * self.cores_per_socket * self.sockets_per_node
+        gpus_avail  = (len(self.node_list) + len(self.agent_nodes)) \
+                    * self.gpus_per_socket * self.sockets_per_node
+
 
         # NOTE: self.lrms_info is what scheduler and launch method can
         # ultimately use, as it is included into the cfg passed to all
@@ -238,8 +240,8 @@ class LSF_SUMMIT(LRMS):
         # need an integer index later on for resource set specifications.
         # (LSF starts node indexes at 1, not 0)
 
-        self.node_list        = [[node, idx + 1] for idx,node
-                                                 in  enumerate(lsf_nodes.keys())]
+        self.node_list        = [[n, i + 1] for i, n
+                                            in  enumerate(lsf_nodes.keys())]
         self.sockets_per_node = lsf_sockets_per_node
         self.cores_per_socket = lsf_cores_per_socket
         self.gpus_per_socket  = lsf_gpus_per_socket

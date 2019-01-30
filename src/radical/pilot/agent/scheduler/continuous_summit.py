@@ -328,8 +328,6 @@ class ContinuousSummit(AgentSchedulingComponent):
                     core_id = core % self._lrms_cores_per_socket
                     entry['sockets'][socket]['cores'][core_id] = new_state
 
-            self._log.debug('slot: \n%s', pprint.pprint(node))
-            self._log.debug('node: \n%s', pprint.pprint(entry))
             for gslot in node['gpu_map']:
                 for gpu in gslot:
                     socket = gpu / self._lrms_gpus_per_socket
@@ -481,7 +479,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         requested (but the call will never return more than requested).
         '''
         uid = '...'
-        self._log.debug('find res.    %s 0 %s', uid, pprint.pformat(node))
+        self._log.debug('find res.    %s 0', uid)
         self._log.debug('find res.    %s 0 %s %s %s %s %s %s %s', uid, requested_cores,
                 requested_gpus, requested_lfs, core_chunk, partial, lfs_chunk,
                 gpu_chunk)
@@ -605,8 +603,9 @@ class ContinuousSummit(AgentSchedulingComponent):
 
         # Maximum number of processes allocatable on a socket
         if self._cross_socket_threads:
-            max_procs_on_socket = [num_procs['cores']
+            max_procs_on_socket = [num_procs['cores'] 
                                    for _ in range(self._lrms_sockets_per_node)]
+            self._log.debug('max_procs_on_socket %s', max_procs_on_socket)
 
         # now dig out the core IDs.
         for socket_idx, socket in enumerate(node['sockets']):
