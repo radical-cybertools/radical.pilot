@@ -541,12 +541,11 @@ class ContinuousSummit(AgentSchedulingComponent):
         # We need to land enough procs on a node such that the cores,
         # lfs and gpus requested per proc is available on the same node
 
-        num_procs = list()
+        num_procs = dict()
 
         if requested_lfs:
             alloc_lfs = min(requested_lfs, free_lfs)
-            num_procs.append(alloc_lfs / lfs_chunk)
-            self._log.debug('req lfs %s', num_procs)
+            num_procs['lfs'] = alloc_lfs / lfs_chunk
 
         if requested_cores:
             self._log.debug('req cores: %s of %s [%s]', requested_cores,
@@ -554,7 +553,7 @@ class ContinuousSummit(AgentSchedulingComponent):
 
             if self._cross_socket_threads:
                 alloc_cores = min(requested_cores, free_cores)
-                num_procs.append(alloc_cores / core_chunk)
+                num_procs['cores'] = alloc_cores / core_chunk
 
             else:
                 # If no cross socket threads are allowed, we first make sure that the total
@@ -590,27 +589,24 @@ class ContinuousSummit(AgentSchedulingComponent):
                 # We convert the number of usable cores into a number of procs so that
                 # we can find the minimum number of procs across lfs, cpus, gpus that can
                 # be allocated on this node
-                num_procs.append(usable_cores / core_chunk)
+                num_procs['cores'] = usable_cores / core_chunk
 
         if requested_gpus:
             alloc_gpus = min(requested_gpus, free_gpus)
-            num_procs.append(alloc_gpus / gpu_chunk)
+            num_procs['gpus'] = alloc_gpus / gpu_chunk
 
         self._log.debug('num_procs %s', num_procs)
-
-        # Find min number of procs determined across lfs, cores, gpus
-        num_procs = min(num_procs)
 
         # Find normalized lfs, cores and gpus
-        if requested_cores: alloc_cores = num_procs * core_chunk
-        if requested_gpus:  alloc_gpus  = num_procs * gpu_chunk
-        if requested_lfs:   alloc_lfs   = num_procs * lfs_chunk
-        self._log.debug('num_procs %s', num_procs)
+        if requested_cores: alloc_cores = num_procs['cores'] * core_chunk
+        if requested_gpus : alloc_gpus  = num_procs['gpus']  * gpu_chunk
+        if requested_lfs  : alloc_lfs   = num_procs['lfs']   * lfs_chunk
         self._log.debug('alc : %s %s %s', alloc_cores, alloc_gpus, alloc_lfs)
 
         # Maximum number of processes allocatable on a socket
         if self._cross_socket_threads:
-            max_procs_on_socket = [num_procs for _ in range(self._lrms_sockets_per_node)]
+            max_procs_on_socket = [num_procs['cores']
+                                   for _ in range(self._lrms_sockets_per_node)]
 
         # now dig out the core IDs.
         for socket_idx, socket in enumerate(node['sockets']):
@@ -621,7 +617,8 @@ class ContinuousSummit(AgentSchedulingComponent):
                 if alloc_cores == len(cores):
                     break
                 if state == rpc.FREE:
-                    cores.append(socket_idx*self._lrms_cores_per_socket + core_idx)
+                    cores.append(socket_idx * self._lrms_cores_per_socket
+                                            + core_idx)
 
                 # check if we have placed one complete process on current socket
                 if cores and (len(cores) % core_chunk == 0):
