@@ -72,9 +72,6 @@ class JSRUN(LaunchMethod):
         rs_id  = 0
         rs_str = ''
 
-        import pprint
-        self._log.debug('slots: \n%s', pprint.pprint(slots))
-
         for node in slots['nodes']:
 
             cores = ' '.join([str(core_set[0]) for core_set

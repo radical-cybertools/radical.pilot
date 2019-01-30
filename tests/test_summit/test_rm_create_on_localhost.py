@@ -1,52 +1,43 @@
-import radical.utils as ru
-import radical.pilot as rp
-from radical.pilot.agent import rm as rpa_rm
 import os
 import glob
 import shutil
 
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+import radical.pilot as rp
 
-# User Input for test
-# -----------------------------------------------------------------------------------------------------------------------
+from radical.pilot.agent import rm as rpa_rm
+
+# ------------------------------------------------------------------------------
+#
 resource_name = 'ornl.summit'
 access_schema = 'fork'
-# -----------------------------------------------------------------------------------------------------------------------
-
-# Sample data to be staged -- available in cwd
-cur_dir = os.path.dirname(os.path.abspath(__file__))
-# -----------------------------------------------------------------------------------------------------------------------
-
-# Setup to be done for every test
-# -----------------------------------------------------------------------------------------------------------------------
+cur_dir       = os.path.dirname(os.path.abspath(__file__))
 
 
+# ------------------------------------------------------------------------------
+#
 def setUp():
 
-    session = rp.Session()
-    cfg = session.get_resource_config(resource='ornl.summitdev')
+    session      = rp.Session()
+    cfg          = session.get_resource_config(resource='ornl.summitdev')
     cfg["cores"] = 40
 
-    # LSB_DJOB_HOSTFILE = ./sample_summitdev_hostfile
     os.environ['LSB_DJOB_HOSTFILE'] = './sample_summitdev_hostfile'
-    # LSB_MCPU_HOSTS = ./sample_summitdev_cpu_hosts.txt
-    mpcu_hosts = open('./sample_summitdev_cpu_hosts').readlines()[0]
-    os.environ['LSB_MCPU_HOSTS'] = mpcu_hosts
 
     return cfg, session
-# -----------------------------------------------------------------------------------------------------------------------
 
 
+# ------------------------------------------------------------------------------
+#
 def tearDown():
+
     rp = glob.glob('%s/rp.session.*' % cur_dir)
+
     for fold in rp:
         shutil.rmtree(fold)
-# -----------------------------------------------------------------------------------------------------------------------
 
 
+# ------------------------------------------------------------------------------
+#
 def test_rm_create_on_localhost():
 
     cfg, session = setUp()
@@ -59,16 +50,21 @@ def test_rm_create_on_localhost():
 
     # Check if the lrms object has the expected lrms_info dict
     # This dict is required by the scheduler and lm
-    assert lrms.lrms_info == {'agent_nodes': {},
+    import pprint
+    pprint.pprint(lrms.lrms_info)
+    assert lrms.lrms_info == {'agent_nodes'     : {},
                               'cores_per_socket': 10,
-                              'gpus_per_socket': 6,
-                              'lfs_per_node': {'path': None, 'size': 0},
-                              'lm_info': {},
-                              'name': 'LSF_SUMMIT',
-                              'node_list': [['summitdev-r0c0n18', 1],
-                                            ['summitdev-r0c0n11', 2],
-                                            ['summitdev-r0c1n16', 3],
-                                            ['summitdev-r0c1n15', 4]],
-                              'sockets_per_node': 2}
-
+                              'gpus_per_socket' : 3,
+                              'sockets_per_node': 2,
+                              'lfs_per_node'    : {'path': None, 'size': 0},
+                              'lm_info'         : {},
+                              'name'            : 'LSF_SUMMIT',
+                              'node_list'       : [['r0c0n11', 1],
+                                                   ['r0c0n18', 2],
+                                                   ['r0c1n15', 3],
+                                                   ['r0c1n16', 4]]}
     tearDown()
+
+
+# ------------------------------------------------------------------------------
+
