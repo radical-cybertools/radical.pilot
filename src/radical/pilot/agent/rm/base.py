@@ -76,7 +76,6 @@ class LRMS(object):
 
         self.lm_info         = dict()
         self.lrms_info       = dict()
-        self.slot_list       = list()
         self.node_list       = list()
         self.agent_nodes     = dict()
         self.cores_per_node  = None
