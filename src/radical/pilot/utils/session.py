@@ -1,10 +1,13 @@
 
 import os
 import glob
-import saga as rs
 import tarfile
 
+try:    import         saga as rs
+except: import radical.saga as rs
+
 import radical.utils as ru
+
 from   radical.pilot.states  import *
 from   db_utils              import *
 

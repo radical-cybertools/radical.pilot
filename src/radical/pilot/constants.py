@@ -52,16 +52,17 @@ BUSY = 1
 #
 # staging defines
 #
-COPY     = 'Copy'     # local cp
-LINK     = 'Link'     # local ln -s
-MOVE     = 'Move'     # local mv
-TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special case of copy
-TARBALL  = 'Tarball'  # remote staging will be executed using a tarball.
+COPY     = 'Copy'      # local cp
+LINK     = 'Link'      # local ln -s
+MOVE     = 'Move'      # local mv
+TRANSFER = 'Transfer'  # saga remote transfer  TODO: special case of copy?
+TARBALL  = 'Tarball'   # remote staging will be executed using a tarball.
 
 #
 # Flags - inherit from RS where possible, add custom ones
 #
-import saga.filesystem as rsf
+try:    import         saga.filesystem as rsf
+except: import radical.saga.filesystem as rsf
 
 CREATE_PARENTS = rsf.CREATE_PARENTS  # Create parent directories if needed
 SKIP_FAILED    = 4096                # Don't stage out files if tasks failed
