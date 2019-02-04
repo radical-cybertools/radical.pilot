@@ -24,11 +24,11 @@ import pprint
 import threading
 
 
-try:    import         saga                 as rs
-except: import radical.saga                 as rs
+try:    import radical.saga                 as rs
+except: import         saga                 as rs
 
-try:    import         saga.utils.pty_shell as rsup
-except: import radical.saga.utils.pty_shell as rsup
+try:    import radical.saga.utils.pty_shell as rsup
+except: import         saga.utils.pty_shell as rsup
 
 import radical.utils        as ru
 

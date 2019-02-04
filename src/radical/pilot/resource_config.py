@@ -4,8 +4,8 @@ __license__   = "MIT"
 import os
 import radical.utils
 
-try:    import         saga.attributes as attributes
-except: import radical.saga.attributes as attributes
+try:    import radical.saga.attributes as attributes
+except: import         saga.attributes as attributes
 
 from radical.pilot.exceptions import * 
 

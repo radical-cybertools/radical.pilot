@@ -8,8 +8,8 @@ import errno
 import shutil
 import tarfile
 
-try:    import         saga as rs
-except: import radical.saga as rs
+try:    import radical.saga as rs
+except: import         saga as rs
 
 import radical.utils as ru
 
