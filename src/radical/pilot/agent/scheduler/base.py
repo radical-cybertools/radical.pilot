@@ -606,15 +606,6 @@ class AgentSchedulingComponent(rpu.Component):
                 with self._wait_lock:
                     self._wait_pool.remove(unit)
 
-            else:
-                # Break out of this loop if we didn't manage to schedule a task
-                # FIXME: this assumes that no smaller or otherwise more suitable
-                #        CUs come after this one - which is naive, ie. wrong.
-                # NOTE:  This assumption does indeed break for the fifo
-                #        scheduler, so we disable this now for non-uniform cases
-                if self._uniform_waitpool:
-                    break
-
         # return True to keep the cb registered
         return True
 
