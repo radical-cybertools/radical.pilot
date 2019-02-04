@@ -15,7 +15,7 @@ from ... import constants as rpc
 from .base import AgentExecutingComponent
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class ShellFS(AgentExecutingComponent):
 
@@ -113,6 +113,15 @@ class ShellFS(AgentExecutingComponent):
                         val = v.strip()
                         if key in self._cfg['export_to_cu']:
                             self._env_cu_export[key] = val
+
+        # also export application comm channels, if those exist
+        bridges = self._cfg['bridges']
+        for bridge in bridges:
+            if bridge.startswith('app_'):
+                bname = bridge.upper()
+                self._env_cu_export['%s_IN'  % bname] = bridges[bridge]['addr_in']
+                self._env_cu_export['%s_OUT' % bname] = bridges[bridge]['addr_out']
+
 
         # the registry keeps track of units to watch
         self._registry      = dict()

@@ -26,7 +26,7 @@ PUBSUB_SUB    = 'sub'
 PUBSUB_BRIDGE = 'bridge'
 PUBSUB_ROLES  = [PUBSUB_PUB, PUBSUB_SUB, PUBSUB_BRIDGE]
 
-_USE_MULTIPART   = False  # send [topic, data] as multipart message
+_USE_MULTIPART   =  True  # send [topic, data] as multipart message
 _BRIDGE_TIMEOUT  =     5  # how long to wait for bridge startup
 _LINGER_TIMEOUT  =   250  # ms to linger after close
 _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
@@ -266,8 +266,8 @@ class Pubsub(ru.Process):
             else:
                 msg = _uninterruptible(self._in.recv, flags=zmq.NOBLOCK)
                 _uninterruptible(self._out.send, msg)
-          # if self._debug:
-          #     self._log.debug("-> %s", pprint.pformat(msg))
+            if self._debug:
+                self._log.debug("-> %s", pprint.pformat(msg))
 
 
         if self._out in _socks:
@@ -281,8 +281,8 @@ class Pubsub(ru.Process):
             else:
                 msg = _uninterruptible(self._out.recv)
                 _uninterruptible(self._in.send, msg)
-          # if self._debug:
-          #     self._log.debug("<- %s", pprint.pformat(msg))
+            if self._debug:
+                self._log.debug("<- %s", pprint.pformat(msg))
 
         return True
 
@@ -295,7 +295,7 @@ class Pubsub(ru.Process):
 
         topic = topic.replace(' ', '_')
 
-      # self._log.debug("~~ %s", topic)
+        self._log.debug("~~ %s", topic)
         _uninterruptible(self._q.setsockopt, zmq.SUBSCRIBE, topic)
 
 
@@ -312,13 +312,13 @@ class Pubsub(ru.Process):
         data  = msgpack.packb(msg) 
 
         if _USE_MULTIPART:
-          # if self._debug:
-          #     self._log.debug("-> %s", ([topic, pprint.pformat(msg)]))
+            if self._debug:
+                self._log.debug("-> %s", ([topic, pprint.pformat(msg)]))
             _uninterruptible(self._q.send_multipart, [topic, data])
 
         else:
-          # if self._debug:
-          #     self._log.debug("-> %s %s", topic, pprint.pformat(msg))
+            if self._debug:
+                self._log.debug("-> %s %s", topic, pprint.pformat(msg))
             _uninterruptible(self._q.send, "%s %s" % (topic, data))
 
 
@@ -338,8 +338,8 @@ class Pubsub(ru.Process):
             topic, data = raw.split(' ', 1)
 
         msg = msgpack.unpackb(data) 
-      # if self._debug:
-      #     self._log.debug("<- %s", ([topic, pprint.pformat(msg)]))
+        if self._debug:
+            self._log.debug("<- %s", ([topic, pprint.pformat(msg)]))
         return [topic, msg]
 
 
@@ -360,8 +360,8 @@ class Pubsub(ru.Process):
                 topic, data = raw.split(' ', 1)
 
             msg = msgpack.unpackb(data) 
-          # if self._debug:
-          #     self._log.debug("<< %s", ([topic, pprint.pformat(msg)]))
+            if self._debug:
+                self._log.debug("<< %s", ([topic, pprint.pformat(msg)]))
             return [topic, msg]
 
         else:
