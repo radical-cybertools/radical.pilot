@@ -24,7 +24,7 @@ class Context (rs.Context):
     def __init__ (self, ctype, thedict=None) :
 
         # init the saga.Context
-        self._apitype  = 'radical,saga.Context'
+        self._apitype  = 'radical.saga.Context'
         super (Context, self).__init__ (ctype, )
 
         # set given defaults
