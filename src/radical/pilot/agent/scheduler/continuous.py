@@ -8,8 +8,7 @@ import inspect
 import logging
 import pprint
 
-import threading as mt
-
+import threading     as mt
 
 import radical.utils as ru
 
@@ -511,10 +510,11 @@ class Continuous(AgentSchedulingComponent):
         """
 
         # dig out the allocation request details
-        requested_procs = cud['cpu_processes']
+        requested_procs  = cud['cpu_processes']
         threads_per_proc = cud['cpu_threads']
-        requested_gpus = cud['gpu_processes']
+        requested_gpus   = cud['gpu_processes']
         requested_lfs_per_process = cud['lfs_per_process']
+
         tag = cud.get('tag')
         uid = cud.get('uid')
 
@@ -552,7 +552,7 @@ class Continuous(AgentSchedulingComponent):
 
         cores_per_node = self._lrms_cores_per_node
         gpus_per_node  = self._lrms_gpus_per_node
-        lfs_per_node = self._lrms_lfs_per_node
+        lfs_per_node   = self._lrms_lfs_per_node
 
         if requested_cores > cores_per_node and \
                 cores_per_node % threads_per_proc and \
