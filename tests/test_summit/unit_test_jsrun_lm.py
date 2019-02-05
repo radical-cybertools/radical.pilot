@@ -57,9 +57,9 @@ def test_create_resource_set_file(mocked_init, mocked_method, mocked_raise_on):
         uid          = test_cases['trigger'][i]['uid']
         file_content = test_cases['results'][i]
 
-        component._create_resource_set_file(slots=slot, cuid=uid)
+        component._create_resource_set_file(slots=slot, uid=uid, sandbox='.')
 
-        with open('rs_layout_cu_%06d' % uid) as rs_layout:
+        with open('%s.rs' % uid) as rs_layout:
             assert rs_layout.readlines() ==  file_content
 
     tearDown()
@@ -84,7 +84,7 @@ def test_construct_command(mocked_init, mocked_configure,
     for i in range(len(test_cases['trigger'])):
 
         cu        = test_cases['trigger'][i]
-        command,_ = component.construct_command(cu,None)
+        command, _ = component.construct_command(cu,None)
 
         assert command == test_cases['result'][i]
 
