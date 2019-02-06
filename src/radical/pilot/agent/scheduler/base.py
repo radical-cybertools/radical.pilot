@@ -308,7 +308,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         from .continuous_ordered import ContinuousOrdered
         from .continuous_summit  import ContinuousSummit
-        from .continuous_fifo    import ContinuousFifo
+      # from .continuous_fifo    import ContinuousFifo
         from .continuous         import Continuous
       # from .scattered          import Scattered
         from .hombre             import Hombre
@@ -320,7 +320,7 @@ class AgentSchedulingComponent(rpu.Component):
             impl = {
                 SCHEDULER_NAME_CONTINUOUS_ORDERED: ContinuousOrdered,
                 SCHEDULER_NAME_CONTINUOUS_SUMMIT : ContinuousSummit,
-                SCHEDULER_NAME_CONTINUOUS_FIFO   : ContinuousFifo,
+              # SCHEDULER_NAME_CONTINUOUS_FIFO   : ContinuousFifo,
                 SCHEDULER_NAME_CONTINUOUS        : Continuous,
               # SCHEDULER_NAME_SCATTERED         : Scattered,
                 SCHEDULER_NAME_HOMBRE            : Hombre,
