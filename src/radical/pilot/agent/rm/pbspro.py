@@ -76,8 +76,9 @@ class PBSPro(LRMS):
         self.cores_per_node = pbspro_num_ppn
         self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
 
-        lfs_path = self._cfg.get('lfs_path_per_node', '')
-        lfs_path = os.path.expandvars(lfs_path)
+        lfs_path = self._cfg.get('lfs_path_per_node')   # key always exists in the cfg
+        if lfs_path:
+            lfs_path = os.path.expandvars(lfs_path)
 
         self.lfs_per_node   = {'path' : lfs_path,
                                'size' : self._cfg.get('lfs_size_per_node', 0)
