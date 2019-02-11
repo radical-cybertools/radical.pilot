@@ -18,13 +18,13 @@ from ... import constants as rpc
 #
 # 'enum' for RPs's pilot scheduler types
 #
-SCHEDULER_NAME_CONTINUOUS = "CONTINUOUS"
+SCHEDULER_NAME_CONTINUOUS      = "CONTINUOUS"
 SCHEDULER_NAME_CONTINUOUS_FIFO = "CONTINUOUS_FIFO"
-SCHEDULER_NAME_HOMBRE = "HOMBRE"
-SCHEDULER_NAME_SCATTERED = "SCATTERED"
-SCHEDULER_NAME_SPARK = "SPARK"
-SCHEDULER_NAME_TORUS = "TORUS"
-SCHEDULER_NAME_YARN = "YARN"
+SCHEDULER_NAME_HOMBRE          = "HOMBRE"
+SCHEDULER_NAME_SCATTERED       = "SCATTERED"
+SCHEDULER_NAME_SPARK           = "SPARK"
+SCHEDULER_NAME_TORUS           = "TORUS"
+SCHEDULER_NAME_YARN            = "YARN"
 
 
 # ------------------------------------------------------------------------------
@@ -183,7 +183,7 @@ SCHEDULER_NAME_YARN = "YARN"
 #                           events/docs/source/events.md \
 #                           #agentschedulingcomponent-component
 #
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class AgentSchedulingComponent(rpu.Component):
 
@@ -408,19 +408,19 @@ class AgentSchedulingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        raise NotImplementedError("_configure() missing for '%s'" % self.uid)
+        raise NotImplementedError("_configure() missing for %s" % self.uid)
 
 
     # --------------------------------------------------------------------------
     #
     def _allocate_slot(self, cud):
-        raise NotImplementedError("_allocate_slot() missing for '%s'" % self.uid)
+        raise NotImplementedError("_allocate_slot() missing for %s" % self.uid)
 
 
     # --------------------------------------------------------------------------
     #
     def _release_slot(self, slots):
-        raise NotImplementedError("_release_slot() missing for '%s'" % self.uid)
+        raise NotImplementedError("_release_slot() missing for %s" % self.uid)
 
 
     # --------------------------------------------------------------------------
@@ -597,10 +597,11 @@ class AgentSchedulingComponent(rpu.Component):
         we can attempt to schedule units from the wait pool.
         '''
 
-        # we ignore any passed unit.  In principle the unit info could be used to
-        # determine which slots have been freed.  No need for that optimization
-        # right now.  This will become interesting once schedule becomes too
-        # expensive.
+        # we ignore any passed unit.  In principle the unit info could be used
+        # to determine which slots have been freed.  No need for that
+        # optimization right now.  This will become interesting once schedule
+        # becomes too expensive.
+        #
         # FIXME: optimization
 
         unit = msg
@@ -630,3 +631,4 @@ class AgentSchedulingComponent(rpu.Component):
 
 
 # ------------------------------------------------------------------------------
+

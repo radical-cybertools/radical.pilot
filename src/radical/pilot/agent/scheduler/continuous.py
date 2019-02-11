@@ -166,14 +166,14 @@ class Continuous(AgentSchedulingComponent):
             unit['slots'] = self._allocate_slot(unit['description'])
 
         if unit['slots']:
-            
+
             unit_uid = unit['uid']
             node_uids = []
             for node in unit['slots']['nodes']:
                 node_uids.append(node['uid'])
 
             self._tag_history[unit_uid] = node_uids
-            
+
         # the lock is freed here
         if not unit['slots']:
 
