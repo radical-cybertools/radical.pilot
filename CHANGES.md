@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.22 Release                                                       2018-02-11
+--------------------------------------------------------------------------------
+
+  - another fix LSF var expansion
+
+
 0.50.21 Release                                                       2018-12-19
 --------------------------------------------------------------------------------
 
