@@ -43,7 +43,7 @@ class PBSPro(LRMS):
         val = os.environ.get('NUM_PPN')
         if not val:
             val = os.environ.get('SAGA_PPN')
-        
+
         if not val:
             raise RuntimeError("$NUM_PPN / $SAGA_PPN not set!")
 
@@ -74,9 +74,11 @@ class PBSPro(LRMS):
         # node names are unique, so can serve as node uids
         self.node_list      = [[node, node] for node in pbspro_vnodes]
         self.cores_per_node = pbspro_num_ppn
-        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
+        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
 
         lfs_path = self._cfg.get('lfs_path_per_node', '')
+        if lfs_path is None:
+            lfs_path = ''  # Empty string guard against None values
         lfs_path = os.path.expandvars(lfs_path)
 
         self.lfs_per_node   = {'path' : lfs_path,
@@ -124,7 +126,7 @@ class PBSPro(LRMS):
 
             node_str = rhs[1:idx]
             nodes_list.append(node_str)
-            rhs = rhs[idx+2:]
+            rhs = rhs[idx + 2:]
 
             if idx < 0:
                 break

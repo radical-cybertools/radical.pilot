@@ -56,9 +56,11 @@ class LSF(LRMS):
         lsf_cores_count_list = map(int, lsb_mcpu_hosts.split()[1::2])
         lsf_core_counts      = list(set(lsf_cores_count_list))
         lsf_cores_per_node   = min(lsf_core_counts)
-        lsf_gpus_per_node    = self._cfg.get('gpus_per_node', 0) # FIXME GPU
+        lsf_gpus_per_node    = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
 
         lfs_path = self._cfg.get('lfs_path_per_node', '')
+        if lfs_path is None:
+            lfs_path = ''  # Empty string guard against None values
         lfs_path = os.path.expandvars(lfs_path)
 
         lfs_lfs_per_node     = {'path' : lfs_path,
