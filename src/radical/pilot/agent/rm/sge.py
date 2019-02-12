@@ -55,7 +55,7 @@ class SGE(LRMS):
         # Parse SGE hostfile for cores
         sge_cores_count_list = [int(line.split()[1]) for line in open(sge_hostfile)]
         sge_core_counts      = list(set(sge_cores_count_list))
-        sge_gpus_per_node    = self._cfg.get('gpus_per_node', 0) # FIXME GPU
+        sge_gpus_per_node    = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
         sge_lfs_per_node     = {'path' : self._cfg.get('lfs_path_per_node', None),
                                 'size' : self._cfg.get('lfs_size_per_node', 0)
                                }

@@ -46,8 +46,7 @@ class Fork(LRMS):
             self.cores_per_node = 1
 
         self.node_list  = list()
-        requested_nodes = int(math.ceil(float(self.requested_cores) /
-                                        float(self.cores_per_node ) ) )
+        requested_nodes = int(math.ceil(float(self.requested_cores) / float(self.cores_per_node ) ) )
         for i in range(requested_nodes):
             # enumerate the node list entries for a unique uis
             self.node_list.append(["localhost", 'localhost_%d' % i])

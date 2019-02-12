@@ -53,7 +53,7 @@ class Torque(LRMS):
             torque_num_nodes = None
             self._log.warning(msg)
 
-        torque_gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
+        torque_gpus_per_node  = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
         torque_lfs_per_node   = {'path' : self._cfg.get('lfs_path_per_node', None),
                                  'size' : self._cfg.get('lfs_size_per_node', 0)
                                 }
@@ -82,7 +82,9 @@ class Torque(LRMS):
         # Number of entries in nodefile should be PBS_NUM_NODES * PBS_NUM_PPN
         torque_nodes_length = len(torque_nodes)
         torque_node_list = []
-        [torque_node_list.append(i) for i in torque_nodes if not torque_node_list.count(i)]
+        for i in torque_nodes:
+            if not torque_node_list.count(i):
+                torque_node_list.append(i)
 
       # if torque_num_nodes and torque_cores_per_node and \
       #     torque_nodes_length < torque_num_nodes * torque_cores_per_node:
