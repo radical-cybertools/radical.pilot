@@ -13,6 +13,7 @@ try:
 except ImportError:
     from unittest import mock
 
+
 # ------------------------------------------------------------------------------
 #
 @mock.patch.object(Spark, '__init__',   return_value=None)
@@ -54,4 +55,3 @@ def test_construct_command(mocked_init,
 
 
 # ------------------------------------------------------------------------------
-

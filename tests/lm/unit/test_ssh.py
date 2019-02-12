@@ -21,7 +21,7 @@ except ImportError:
 @mock.patch('radical.utils.raise_on')
 @mock.patch('radical.utils.which', return_value='/usr/bin/ssh')
 def test_configure(mocked_init, mocked_raise_on, mocked_which):
- 
+
     cmd_str = '/usr/bin/ssh -o StrictHostKeyChecking=no -o ControlMaster=auto'
     component = SSH(name=None, cfg=None, session=None)
     component._configure()
@@ -42,6 +42,7 @@ def test_configure_fail(mocked_init, mocked_raise_on, mocked_which):
         component._configure()
 
 # ------------------------------------------------------------------------------
+
 
 # ------------------------------------------------------------------------------
 #

@@ -1,7 +1,6 @@
 
 # pylint: disable=protected-access, unused-argument
 
-
 from   test_common                 import setUp
 from   radical.pilot.agent.lm.orte import ORTE
 
@@ -12,6 +11,7 @@ try:
     import mock
 except ImportError:
     from unittest import mock
+
 
 # ------------------------------------------------------------------------------
 #

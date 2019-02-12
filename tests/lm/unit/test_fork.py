@@ -11,12 +11,13 @@ try:
 except ImportError:
     from unittest import mock
 
+
 # ------------------------------------------------------------------------------
 #
 @mock.patch.object(Fork, '__init__',   return_value=None)
 @mock.patch('radical.utils.raise_on')
 def test_configure(mocked_init, mocked_raise_on):
- 
+
     component = Fork(name=None, cfg=None, session=None)
     component._configure()
     assert('' == component.launch_command)

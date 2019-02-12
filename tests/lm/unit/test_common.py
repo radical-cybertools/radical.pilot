@@ -1,5 +1,4 @@
 
-
 # pylint: disable=protected-access, unused-argument
 
 import os
@@ -34,6 +33,4 @@ def tearDown():
 
     pass
 
-
 # ------------------------------------------------------------------------------
-

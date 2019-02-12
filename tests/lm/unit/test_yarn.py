@@ -13,6 +13,7 @@ try:
 except ImportError:
     from unittest import mock
 
+
 # ------------------------------------------------------------------------------
 #
 @mock.patch.object(Yarn, '__init__',   return_value=None)
@@ -51,7 +52,5 @@ def test_construct_command(mocked_init,
         else:
             command, hop = component.construct_command(unit, None)
             assert([command, hop] == result)
-        
 
 # ------------------------------------------------------------------------------
-
