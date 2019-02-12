@@ -16,7 +16,6 @@ class Spark(LRMS):
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, logger):
-
         LRMS.__init__(self, cfg, logger)
 
 
