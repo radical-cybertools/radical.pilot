@@ -83,6 +83,7 @@ class LRMS(object):
         self.cores_per_node  = None
         self.gpus_per_node   = None
         self.lfs_per_node    = None
+        self.mem_per_node    = None
 
         # The LRMS will possibly need to reserve nodes for the agent, according
         # to the agent layout.  We dig out the respective requirements from the
@@ -197,6 +198,7 @@ class LRMS(object):
         self.lrms_info['gpus_per_node']  = self.gpus_per_node
         self.lrms_info['agent_nodes']    = self.agent_nodes
         self.lrms_info['lfs_per_node']   = self.lfs_per_node
+        self.lrms_info['mem_per_node']   = self.mem_per_node
 
 
     # --------------------------------------------------------------------------

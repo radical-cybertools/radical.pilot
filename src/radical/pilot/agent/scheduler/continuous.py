@@ -168,7 +168,8 @@ class Continuous(AgentSchedulingComponent):
                     'uid'  : node_uid,
                     'cores': [rpc.FREE] * self._lrms_cores_per_node,
                     'gpus' : [rpc.FREE] * self._lrms_gpus_per_node,
-                    'lfs'  :              self._lrms_lfs_per_node
+                    'lfs'  :              self._lrms_lfs_per_node,
+                    'mem'  :              self._lrms_mem_per_node
                 })
 
 
@@ -257,8 +258,8 @@ class Continuous(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     def _find_resources(self, node, requested_cores, requested_gpus,
-                        requested_lfs, core_chunk=0, partial=False,
-                        lfs_chunk=0, gpu_chunk=0):
+                        requested_lfs, requested_mem, core_chunk=0, 
+                        partial=False, lfs_chunk=0, gpu_chunk=0, mem_chunk=0):
         '''
         Find up to the requested number of free cores and gpus in the node.
         This call will return two lists, for each matched set.  If the core
@@ -285,12 +286,14 @@ class Continuous(AgentSchedulingComponent):
         cores = list()
         gpus  = list()
         lfs   = 0
+        mem   = 0
 
         # first count the number of free cores, gpus, and local file storage.
         # This is way quicker than actually finding the core IDs.
         free_cores = node['cores'].count(rpc.FREE)
         free_gpus  = node['gpus'].count(rpc.FREE)
         free_lfs   = node['lfs']['size']
+        free_mem   = node['mem']
 
         if partial:
             # For partial requests the check simplifies: we just check if we
@@ -298,21 +301,23 @@ class Continuous(AgentSchedulingComponent):
             # request
             if (requested_cores and not free_cores) and \
                (requested_gpus  and not free_gpus)  and \
-               (requested_lfs   and not free_lfs):
-                return [], [], None
+               (requested_lfs   and not free_lfs)   and \
+               (requested_mem   and not free_mem):
+                return [], [], None, None
 
-            if requested_lfs and \
+            if (requested_lfs or requested_mem) and \
                 ((requested_cores and not free_cores) and
                  (requested_gpus  and not free_gpus )):
-                return [], [], None
+                return [], [], None, None
 
         else:
             # For non-partial requests (ie. full requests): its a no-match if
             # either the cpu or gpu request cannot be served.
             if  requested_cores > free_cores or \
                 requested_gpus  > free_gpus  or \
-                requested_lfs   > free_lfs:
-                return [], [], None
+                requested_lfs   > free_lfs or \
+                requested_mem   > free_mem:
+                return [], [], None, None
 
         # We can serve the partial or full request - alloc the chunks we need
         # FIXME: chunk gpus, too?
@@ -324,6 +329,7 @@ class Continuous(AgentSchedulingComponent):
         if requested_cores: nprocs.append(min(requested_cores, free_cores) / core_chunk)
         if requested_gpus : nprocs.append(min(requested_gpus,  free_gpus)  / gpu_chunk)
         if requested_lfs  : nprocs.append(min(requested_lfs,   free_lfs)   / lfs_chunk)
+        if requested_mem  : nprocs.append(min(requested_mem,   free_mem)   / mem_chunk)
 
         # Find min number of procs determined across lfs, cores, gpus
         nprocs = min(nprocs)
@@ -332,6 +338,7 @@ class Continuous(AgentSchedulingComponent):
         if requested_cores: alloc_cores = nprocs * core_chunk
         if requested_gpus : alloc_gpus  = nprocs * gpu_chunk
         if requested_lfs  : lfs         = nprocs * lfs_chunk
+        if requested_mem  : mem         = nprocs * mem_chunk
 
         # now dig out the core and gpu IDs.
         if requested_cores:
@@ -348,7 +355,7 @@ class Continuous(AgentSchedulingComponent):
                 if alloc_gpus == len(gpus):  # break if enough
                     break
 
-        return cores, gpus, lfs
+        return cores, gpus, lfs, mem
 
 
     # --------------------------------------------------------------------------
@@ -403,15 +410,17 @@ class Continuous(AgentSchedulingComponent):
         # dig out the allocation request details
         lfs_chunk   = cud['lfs_per_process']
         core_chunk  = cud['cpu_threads']
-        total_procs = cud['cpu_processes']
+        mem_chunk   = cud['mem_per_process']
         total_cores = cud['cpu_processes'] * core_chunk
         total_gpus  = cud['gpu_processes']
         total_lfs   = cud['cpu_processes'] * lfs_chunk
+        total_mem   = cud['cpu_processes'] * mem_chunk
 
         # make sure that the requested allocation fits on a single node
         if total_cores > self._lrms_cores_per_node or \
            total_gpus  > self._lrms_gpus_per_node  or \
-           total_lfs   > self._lrms_lfs_per_node['size']:
+           total_lfs   > self._lrms_lfs_per_node['size'] or \
+           total_mem   > self._lrms_mem_per_node:
 
             txt  = 'Non-mpi unit does not fit onto single node. \n'
             txt += 'requested cores=%s; available cores=%s \n' % (
@@ -420,7 +429,8 @@ class Continuous(AgentSchedulingComponent):
                    total_gpus, self._lrms_gpus_per_node)
             txt += 'requested lfs=%s; available lfs=%s' % (
                    total_lfs, self._lrms_lfs_per_node['size'])
-
+            txt += 'requested mem=%s; available mem=%s' % (
+                   total_mem, self._lrms_mem_per_node)
             raise ValueError(txt)
 
         # ok, we can go ahead and try to find a matching node
@@ -446,13 +456,15 @@ class Continuous(AgentSchedulingComponent):
 
             # attempt to find the required number of cores and gpus on this
             # node - do not allow partial matches.
-            cores, gpus, lfs = self._find_resources(node=node,
+            cores, gpus, lfs, mem = self._find_resources(node=node,
                                                     requested_cores=total_cores,
                                                     requested_gpus=total_gpus,
                                                     requested_lfs=total_lfs,
+                                                    requested_mem=total_mem,
                                                     partial=False,
                                                     lfs_chunk=lfs_chunk,
-                                                    core_chunk=core_chunk)
+                                                    core_chunk=core_chunk,
+                                                    mem_chunk=mem_chunk)
             if len(cores) == total_cores and \
                len(gpus)  == total_gpus:
 
@@ -482,13 +494,15 @@ class Continuous(AgentSchedulingComponent):
         slots = {'cores_per_node' : self._lrms_cores_per_node,
                  'gpus_per_node'  : self._lrms_gpus_per_node,
                  'lfs_per_node'   : self._lrms_lfs_per_node,
+                 'mem_per_node'   : self._lrms_mem_per_node,
                  'lm_info'        : self._lrms_lm_info, 
                  'nodes'          : [{'name'    : node_name,
                                       'uid'     : node_uid,
                                       'core_map': core_map,
                                       'gpu_map' : gpu_map,
                                       'lfs'     : {'size': lfs, 
-                                                   'path': lfs_path}
+                                                   'path': lfs_path},
+                                      'mem'     : mem
                                       }]}
         return slots
 
@@ -517,6 +531,7 @@ class Continuous(AgentSchedulingComponent):
         threads_per_proc = cud['cpu_threads']
         requested_gpus   = cud['gpu_processes']
         lfs_per_process  = cud['lfs_per_process']
+        mem_per_process  = cud['mem_per_process']
 
         # make sure that processes are at least single-threaded
         if not threads_per_proc:
@@ -527,6 +542,9 @@ class Continuous(AgentSchedulingComponent):
 
         # We allocate the same lfs per process (agreement)
         requested_lfs = lfs_per_process * requested_procs
+
+        # We allocate the same mem per process
+        requested_mem = mem_per_process * requested_procs
 
         # First and last nodes can be a partial allocation - all other nodes
         # can only be partial when `scattered` is set.
@@ -540,6 +558,7 @@ class Continuous(AgentSchedulingComponent):
         cores_per_node = self._lrms_cores_per_node
         gpus_per_node  = self._lrms_gpus_per_node
         lfs_per_node   = self._lrms_lfs_per_node
+        mem_per_node   = self._lrms_mem_per_node
 
         # we always fail when too many threads are requested
         if threads_per_proc > cores_per_node:
@@ -548,6 +567,9 @@ class Continuous(AgentSchedulingComponent):
         if lfs_per_process > lfs_per_node['size']:
             raise ValueError('too much LFS requested')
 
+        if mem_per_process > mem_per_node:
+            raise ValueError('too much memory requested')
+
         # set conditions to find the first matching node
         tag           = cud.get('tag')
         is_first      = True
@@ -555,10 +577,12 @@ class Continuous(AgentSchedulingComponent):
         alloced_cores = 0
         alloced_gpus  = 0
         alloced_lfs   = 0
+        alloced_mem   = 0
 
         slots = {'cores_per_node': cores_per_node,
                  'gpus_per_node' : gpus_per_node,
                  'lfs_per_node'  : lfs_per_node,
+                 'mem_per_node'  : mem_per_node,
                  'lm_info'       : self._lrms_lm_info,
                  'nodes'         : list(),
                  }
@@ -585,7 +609,8 @@ class Continuous(AgentSchedulingComponent):
             # that this can also be the first node, for small units.
             if  requested_cores - alloced_cores <= cores_per_node and \
                 requested_gpus  - alloced_gpus  <= gpus_per_node  and \
-                requested_lfs   - alloced_lfs   <= lfs_per_node['size']:
+                requested_lfs   - alloced_lfs   <= lfs_per_node['size'] and \
+                requested_mem   - alloced_mem   <= mem_per_node:
                 is_last = True
 
             # we allow partial nodes on the first and last node, and on any
@@ -600,18 +625,21 @@ class Continuous(AgentSchedulingComponent):
             find_cores = min(requested_cores - alloced_cores, cores_per_node)
             find_gpus  = min(requested_gpus  - alloced_gpus,  gpus_per_node)
             find_lfs   = min(requested_lfs   - alloced_lfs,   lfs_per_node['size'])
+            find_mem   = min(requested_mem   - alloced_mem, mem_per_node)
 
             # under the constraints so derived, check what we find on this node
-            cores, gpus, lfs = self._find_resources(node=node,
+            cores, gpus, lfs, mem = self._find_resources(node=node,
                                                     requested_cores=find_cores,
                                                     requested_gpus=find_gpus,
                                                     requested_lfs=find_lfs,
+                                                    requested_mem=find_mem,
                                                     core_chunk=threads_per_proc,
                                                     partial=partial,
-                                                    lfs_chunk=lfs_per_process)
+                                                    lfs_chunk=lfs_per_process,
+                                                    mem_chunk=mem_per_process)
 
-            # Skip nodes that provide only lfs and no cores/gpus
-            if lfs and (not cores and not gpus):
+            # Skip nodes that provide only lfs or mem but no cores/gpus
+            if (lfs or mem) and (not cores and not gpus):
                 continue
 
             if not cores and not gpus:
@@ -624,6 +652,7 @@ class Continuous(AgentSchedulingComponent):
                     alloced_cores  = 0
                     alloced_gpus   = 0
                     alloced_lfs    = 0
+                    alloced_mem    = 0
                     is_first       = True
                     is_last        = False
 
@@ -632,8 +661,8 @@ class Continuous(AgentSchedulingComponent):
 
             # we found something - add to the existing allocation, switch gears
             # (not first anymore), and try to find more if needed
-            self._log.debug('found %s cores, %s gpus and %s lfs',
-                            cores, gpus, lfs)
+            self._log.debug('found %s cores, %s gpus, %s lfs and %s mem',
+                            cores, gpus, lfs, mem)
             core_map, gpu_map = self._get_node_maps(cores, gpus,
                                                     threads_per_proc)
 
@@ -650,23 +679,27 @@ class Continuous(AgentSchedulingComponent):
                                    'core_map': core_map,
                                    'gpu_map' : gpu_map,
                                    'lfs'     : {'size': lfs, 
-                                                'path': lfs_path}})
+                                                'path': lfs_path},
+                                   'mem'     : mem})
             alloced_cores += len(cores)
             alloced_gpus  += len(gpus)
             alloced_lfs   += lfs
+            alloced_mem   += mem
             is_first       = False
 
             # or maybe don't continue the search if we have in fact enough!
             if  alloced_cores == requested_cores and \
                 alloced_gpus  == requested_gpus  and \
-                alloced_lfs   == requested_lfs:
+                alloced_lfs   == requested_lfs   and \
+                alloced_mem   == requested_mem:
                 # we are done
                 break
 
         # if we did not find enough, there is not much we can do at this point
         if  alloced_cores < requested_cores or \
             alloced_gpus  < requested_gpus  or \
-            alloced_lfs   < requested_lfs:
+            alloced_lfs   < requested_lfs   or \
+            alloced_mem   < requested_mem:
             return None  # signal failure
 
         # this should be nicely filled out now - return
