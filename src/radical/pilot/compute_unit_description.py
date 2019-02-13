@@ -2,7 +2,9 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import saga.attributes as attributes
+
+try:    import radical.saga.attributes as attributes
+except: import         saga.attributes as attributes
 
 
 # ------------------------------------------------------------------------------

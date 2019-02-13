@@ -8,12 +8,15 @@ import inspect
 import logging
 import pprint
 
-import threading as mt
+
+import threading     as mt
 
 import radical.utils as ru
 
 from ...   import constants as rpc
 from .base import AgentSchedulingComponent
+
+import logging  # delayed import for atfork
 
 
 # ------------------------------------------------------------------------------
@@ -186,7 +189,6 @@ class Continuous(AgentSchedulingComponent):
 
             self._prof.prof('schedule_try', uid=unit['uid'])
             unit['slots'] = self._allocate_slot(unit['description'])
-
 
         # the lock is freed here
         if not unit['slots']:
@@ -532,6 +534,9 @@ class Continuous(AgentSchedulingComponent):
         requested_gpus   = cud['gpu_processes']
         lfs_per_process  = cud['lfs_per_process']
         mem_per_process  = cud['mem_per_process']
+
+        tag = cud.get('tag')
+        uid = cud.get('uid')
 
         # make sure that processes are at least single-threaded
         if not threads_per_proc:

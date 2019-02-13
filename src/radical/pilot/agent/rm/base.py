@@ -21,7 +21,6 @@ RM_NAME_YARN        = 'YARN'
 RM_NAME_SPARK       = 'SPARK'
 
 
-
 # ==============================================================================
 #
 # Base class for LRMS implementations.
@@ -77,7 +76,6 @@ class LRMS(object):
 
         self.lm_info         = dict()
         self.lrms_info       = dict()
-        self.slot_list       = list()
         self.node_list       = list()
         self.agent_nodes     = dict()
         self.cores_per_node  = None
@@ -101,7 +99,7 @@ class LRMS(object):
             # make sure that the target either 'local', which we will ignore,
             # or 'node'.
             if target == 'local':
-                pass # ignore that one
+                pass  # ignore that one
             elif target == 'node':
                 self._agent_reqs.append(agent)
             else :
@@ -115,7 +113,7 @@ class LRMS(object):
         # Make sure we got a valid nodelist and a valid setting for
         # cores_per_node
         if not self.node_list or self.cores_per_node < 1:
-            raise RuntimeError('LRMS configuration invalid (%s)(%s)' % \
+            raise RuntimeError('LRMS configuration invalid (%s)(%s)' %
                     (self.node_list, self.cores_per_node))
 
         # Check if the LRMS implementation reserved agent nodes.  If not, pick
@@ -249,7 +247,7 @@ class LRMS(object):
 
         # During LRMS termination, we call any existing shutdown hooks on the
         # launch methods.  We only call LM shutdown hooks *once*
-        launch_methods = set()  # set keeps entries unique
+        launch_methods = set()
         launch_methods.add(self._cfg.get('mpi_launch_method'))
         launch_methods.add(self._cfg.get('task_launch_method'))
         launch_methods.add(self._cfg.get('agent_launch_method'))

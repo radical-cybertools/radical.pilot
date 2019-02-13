@@ -182,7 +182,7 @@ SCHEDULER_NAME_YARN            = "YARN"
 #                           events/docs/source/events.md \
 #                           #agentschedulingcomponent-component
 #
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class AgentSchedulingComponent(rpu.Component):
 
@@ -210,8 +210,6 @@ class AgentSchedulingComponent(rpu.Component):
         self._lrms = None
         self._uid  = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
                                     ru.ID_CUSTOM)
-
-        self._uniform_waitpool = True   # TODO: move to cfg, reconsider use
 
         rpu.Component.__init__(self, cfg, session)
 
@@ -291,8 +289,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # configure the scheduler instance
         self._configure()
-        self._log.debug("slot status after  init      : %s",
-                        self.slot_status())
+        self._log.debug("slot status after  init      : %s", self.slot_status())
 
 
     # --------------------------------------------------------------------------
@@ -393,6 +390,7 @@ class AgentSchedulingComponent(rpu.Component):
                     node['mem'] += slot_node['mem']
 
 
+
     # --------------------------------------------------------------------------
     #
     # NOTE: any scheduler implementation which uses a different nodelist
@@ -419,10 +417,12 @@ class AgentSchedulingComponent(rpu.Component):
 
         return ret
 
+
     # --------------------------------------------------------------------------
     #
     def _configure(self):
         raise NotImplementedError("_configure() missing for %s" % self.uid)
+
 
     # --------------------------------------------------------------------------
     #
@@ -455,6 +455,15 @@ class AgentSchedulingComponent(rpu.Component):
         # advance state, publish state change, do not push unit out.
         self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
 
+      # # sort units by size
+      # def _sort(a,b):
+      #     da = a['description']
+      #     db = b['description']
+      #     va = da['cpu_processes'] * da['cpu_threads'] + da['gpu_processes']
+      #     vb = db['cpu_processes'] * db['cpu_threads'] + db['gpu_processes']
+      #     return cmp(vb, va)
+      # units.sort(_sort)
+
         for unit in units:
 
             # we got a new unit to schedule.  Either we can place it
@@ -470,6 +479,9 @@ class AgentSchedulingComponent(rpu.Component):
                 # no resources available, put in wait queue
                 with self._wait_lock:
                     self._wait_pool.append(unit)
+
+      # # also sort the wait pool
+      # self._wait_pool.sort(_sort)
 
 
     # --------------------------------------------------------------------------
@@ -626,14 +638,6 @@ class AgentSchedulingComponent(rpu.Component):
                 with self._wait_lock:
                     self._wait_pool.remove(unit)
 
-            else:
-                # Break out of this loop if we didn't manage to schedule a task
-                # FIXME: this assumes that no smaller or otherwise more suitable
-                #        CUs come after this one - which is naive, ie. wrong.
-                # NOTE:  This assumption does indeed break for the fifo
-                #        scheduler, so we disable this now for non-uniform cases
-                if self._uniform_waitpool:
-                    break
 
         # return True to keep the cb registered
         return True
