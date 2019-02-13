@@ -42,10 +42,11 @@ class Fork(LRMS):
         self.gpus_per_node  = self._cfg.get('gpus_per_node',   0)
         self.mem_per_node   = self._cfg.get('memory_per_node', 0)
 
-        lfs_path            = self._cfg.get('lfs_path_per_node')
-        self.lfs_per_node   = {'path' : ru.expandvars(lfs_path),
-                               'size' : self._cfg.get('lfs_size_per_node', 0)
+        self.lfs_per_node   = {'path' : ru.expandvars(
+                                           self._cfg.get('lfs_path_per_node')),
+                               'size' :    self._cfg.get('lfs_size_per_node', 0)
                               }
+
 
         if not self.cores_per_node:
             self.cores_per_node = 1
