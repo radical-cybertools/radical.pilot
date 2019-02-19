@@ -27,23 +27,27 @@ class JSRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _create_resource_set_file(self, slots, uid, sandbox):
+    def _create_resource_set_file(self, slots, uid, sandbox, mpi=False):
         """
         This method takes as input a CU slots and creates the necessary
-        resource set file. This resource set file is then use by jsrun to 
+        resource set file. This resource set file is then used by jsrun to 
         place and execute tasks on nodes.
 
         An example of a resource file is:
 
         * Task 1: 2 MPI procs, 2 threads per process and 2 gpus per process*
 
-            RS 0 : {host: 1 cpu:  0  1 gpu: 0 1}
-            RS 1 : {host: 1 cpu: 22 23 gpu: 3 4}
+            rank 0 : {host: 1; cpu:  {0, 1}; gpu: {0,1}}
+            rank 1 : {host: 1; cpu: {22,23}; gpu: {3,4}}
 
         * Task 2: 2 MPI procs, 1 thread per process and 1 gpus per process*
 
-            RS 0 : {host: 2 cpu:  7 gpu: 2}
-            RS 1 : {host: 2 cpu: 30 gpu: 5}
+            rank 0 : {host: 2; cpu:  7; gpu: 2}
+            rank 1 : {host: 2; cpu: 30; gpu: 5}
+
+        * Task 3: 1 proc, 1 thread per process*
+
+            1 : {host: 2; cpu:  7}
 
         Parameters
         ----------
@@ -66,25 +70,41 @@ class JSRUN(LaunchMethod):
 
         uid     : unit ID (string)
         sandbox : unit sandbox (string)
+        mpi     : MPI or not (bool, default: False)
 
         """
 
-        rs_id  = 0
         rs_str = ''
+        if mpi:
+            rank = 0
+            for node in slots['nodes']:
+                for cores_set in node['core_map']:
 
-        for node in slots['nodes']:
+                    cores = ','.join(str(core) for core
+                                                in  cores_set)
+                    gpus  = ''  # ,'.join([str(gpu_set[0])  for gpu_set
+                    #                            in  node['gpu_map']])
 
-            cores = ' '.join([str(core_set[0]) for core_set
-                                               in  node['core_map']])
-            gpus  = ' '.join([str(gpu_set[0])  for gpu_set
-                                               in  node['gpu_map']])
+                    rs_str           += 'rank %d: {' % rank
+                    rs_str           += ' host: %d;' % node['uid']
+                    if cores: rs_str += ' cpu: {%s}'  % cores
+                    if gpus : rs_str += ' ;gpu: {%s}'  % gpus
+                    rs_str           += ' }\n'
+                    rank            += 1
+        else:
+            for node in slots['nodes']:
 
-            rs_str           += 'RS %d: {'  % rs_id
-            rs_str           += ' host: %d' % node['uid']
-            if cores: rs_str += ' cpu: %s'  % cores
-            if gpus : rs_str += ' gpu: %s'  % gpus
-            rs_str           += ' }\n'
-            rs_id            += 1
+                cores = ','.join([str(core_set[0]) for core_set
+                                                in  node['core_map']])
+                gpus  = ','.join([str(gpu_set[0])  for gpu_set
+                                                in  node['gpu_map']])
+
+                rs_str           += '1: {'
+                rs_str           += ' host: %d;' % node['uid']
+                if cores: rs_str += ' cpu: {%s}'  % cores
+                if gpus : rs_str += ' ;gpu: {%s}'  % gpus
+                rs_str           += ' }\n'
+                rs_id            += 1
 
         rs_name = '%s/%s.rs' % (sandbox, uid)
         with open(rs_name, 'w') as fout:
