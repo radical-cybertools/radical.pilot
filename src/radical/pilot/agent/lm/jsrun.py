@@ -120,9 +120,8 @@ class JSRUN(LaunchMethod):
                                                   sandbox=task_sandbox)
 
       # flags = '-n%d -a1 ' % (task_procs)
-        command = '%s -U %s -a %d  %s %s' % (self.launch_command, rs_fname, 
-                                             task_procs, env_string,
-                                             task_command)
+        command = '%s --erf_input %s  %s %s' % (self.launch_command, rs_fname, 
+                                                env_string, task_command)
         return command, None
 
 

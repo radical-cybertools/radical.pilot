@@ -41,6 +41,6 @@
                             "unit_sandbox" : ".",
                             "description" : {"executable" : "test",
                                              "cpu_processes" : 1}}],
-               "result" : ["jsrun -U rs_layout_cu_000000 -a 1  -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" test"]
+               "result" : ["jsrun --erf_input rs_layout_cu_000000  -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" test"]
                 }
             }
