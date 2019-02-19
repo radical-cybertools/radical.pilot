@@ -88,7 +88,7 @@ class JSRUN(LaunchMethod):
                     rs_str           += 'rank %d: {' % rank
                     rs_str           += ' host: %d;' % node['uid']
                     if cores: rs_str += ' cpu: {%s}'  % cores
-                    if gpus : rs_str += ' ;gpu: {%s}'  % gpus
+                    if gpus : rs_str += '; gpu: {%s}'  % gpus
                     rs_str           += ' }\n'
                     rank            += 1
         else:
