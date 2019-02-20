@@ -5,96 +5,87 @@ __license__   = 'MIT'
 
 import os
 import sys
-import time
 
 import radical.pilot as rp
 import radical.utils as ru
-
-dh = ru.DebugHelper()
-
-
-# ------------------------------------------------------------------------------
-#
-# READ the RADICAL-Pilot documentation: http://radicalpilot.readthedocs.org/
-#
-# ------------------------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
-    # we use a reporter class for nicer output
     report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
-    if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
-    elif len(sys.argv) == 2: resource = sys.argv[1]
-    else                   : resource = 'local.localhost'
+    if   len(sys.argv) > 1: resource = sys.argv[1]
+    else                  : resource = 'local.localhost'
 
-    # Create a new session. No need to try/except this: if session creation
-    # fails, there is not much we can do anyways...
     session = rp.Session()
 
-    # all other pilot code is now tried/excepted.  If an exception is caught, we
-    # can rely on the session object to exist and be valid, and we can thus tear
-    # the whole RP stack down via a 'session.close()' call in the 'finally'
-    # clause...
     try:
-
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
+        config = ru.read_json('%s/../config.json' % os.path.dirname(__file__))
         report.ok('>>ok\n')
 
         report.header('submit pilots')
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = rp.PilotManager(session=session)
-
-        # Define an [n]-core local pilot that runs for [x] minutes
-        # Here we use a dict to initialize the description object
         pd_init = {'resource'      : resource,
                    'runtime'       : 60,  # pilot runtime (min)
                    'exit_on_error' : True,
                    'project'       : config[resource]['project'],
                    'queue'         : config[resource]['queue'],
                    'access_schema' : config[resource]['schema'],
-                   'cores'         : config[resource]['cores'],
+                   'cores'         : config[resource]['cores']
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
-
-        # Launch the pilot.
+        pmgr  = rp.PilotManager(session=session)
         pilot = pmgr.submit_pilots(pdesc)
 
-        report.header('submit units')
+        report.header('submit pipelines')
 
-        # Register the ComputePilot in a UnitManager object.
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-        # Create a workload of ComputeUnits.
-        # Each compute unit runs '/bin/date'.
+        if len(sys.argv) > 2: N = int(sys.argv[2])
+        else                : N = 8
 
-        n = 128
-        report.info('create %d unit description(s)\n\t' % n)
+        P = N
 
         cuds = list()
-        for i in range(0, n):
+        for p in range(P):
 
-            # create a new CU description, and fill it.
-            # Here we don't use dict initialization.
-            cud = rp.ComputeUnitDescription()
-            cud.executable       = '/bin/date'
-            cud.gpu_processes    = 0
-            cud.cpu_processes    = 1
-            cud.cpu_threads      = 1
-            cud.cpu_process_type = rp.POSIX
-            cud.cpu_thread_type  = rp.POSIX
-            cuds.append(cud)
-            report.progress()
-        report.ok('>>ok\n')
+            S = p + 1
+
+            for s in range(S):
+
+                U = S
+                T = 10.0 / float(p + 1)
+
+                report.info('create %d units for pipeline %s:%d\n\t' % (U, p, s))
+                for u in range(U):
+
+                    cud = rp.ComputeUnitDescription()
+                    cud.executable       = '/bin/sleep'
+                    cud.arguments        = [T]
+                    cud.gpu_processes    = 0
+                    cud.cpu_processes    = 1
+                    cud.cpu_threads      = 1
+                    cud.cpu_process_type = rp.POSIX
+                    cud.cpu_thread_type  = rp.POSIX
+                    cud.tags             = {'order' : '%s %d %d' % (p, s, U)}
+                    cud.name             =  '%s %d %d' % (p, s, u)
+                    cuds.append(cud)
+                    report.progress()
+                report.ok('>>ok %3.1f\n' % T)
+
+        # the agent scheduler can handle units independent of submission order
+        # sort by stage
+        cuds = sorted(cuds, key=lambda e: [int(x) for x in e.name.split()][1])
+
+        import random
+        random.shuffle(cuds)
 
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start

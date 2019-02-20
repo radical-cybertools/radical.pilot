@@ -19,7 +19,8 @@ from ... import constants as rpc
 # 'enum' for RPs's pilot scheduler types
 #
 SCHEDULER_NAME_CONTINUOUS = "CONTINUOUS"
-SCHEDULER_NAME_CONTINUOUS_FIFO = "CONTINUOUS_FIFO"
+SCHEDULER_NAME_CONTINUOUS_ORDERED = "CONTINUOUS_ORDERED"
+SCHEDULER_NAME_CONTINUOUS_SUMMIT="CONTINUOUS_SUMMIT"
 SCHEDULER_NAME_HOMBRE = "HOMBRE"
 SCHEDULER_NAME_SCATTERED = "SCATTERED"
 SCHEDULER_NAME_SPARK = "SPARK"
@@ -308,7 +309,8 @@ class AgentSchedulingComponent(rpu.Component):
 
         name = cfg['scheduler']
 
-        from .continuous_fifo import ContinuousFifo
+        from .continuous_ordered import ContinuousOrdered
+        from .continuous_summit import ContinuousSummit
         from .continuous import Continuous
         from .scattered import Scattered
         from .hombre import Hombre
@@ -318,7 +320,8 @@ class AgentSchedulingComponent(rpu.Component):
 
         try:
             impl = {
-                SCHEDULER_NAME_CONTINUOUS_FIFO: ContinuousFifo,
+                SCHEDULER_NAME_CONTINUOUS_ORDERED: ContinuousOrdered,
+                SCHEDULER_NAME_CONTINUOUS_SUMMIT: ContinuousSummit,
                 SCHEDULER_NAME_CONTINUOUS: Continuous,
                 SCHEDULER_NAME_SCATTERED: Scattered,
                 SCHEDULER_NAME_HOMBRE: Hombre,
@@ -483,10 +486,10 @@ class AgentSchedulingComponent(rpu.Component):
         if self._log.isEnabledFor(logging.DEBUG):
             self._log.debug("after  allocate   %s: %s", unit['uid'],
                             self.slot_status())
-            self._log.debug("%s [%s/%s] : %s", unit['uid'],
-                            unit['description']['cpu_processes'],
-                            unit['description']['gpu_processes'],
-                            pprint.pformat(unit['slots']))
+          # self._log.debug("%s [%s/%s] : %s", unit['uid'],
+          #                 unit['description']['cpu_processes'],
+          #                 unit['description']['gpu_processes'],
+          #                 pprint.pformat(unit['slots']))
 
         # True signals success
         return True
@@ -525,7 +528,7 @@ class AgentSchedulingComponent(rpu.Component):
             core_map.append(p_map)
 
         if idx != len(cores):
-            self._log.debug('%s -- %s -- %s -- %s',
+            self._log.error('%s -- %s -- %s -- %s',
                             idx, len(cores), cores, n_procs)
         assert(idx == len(cores))
 
@@ -588,9 +591,9 @@ class AgentSchedulingComponent(rpu.Component):
 
         unit = msg
 
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before schedule   %s: %s", unit['uid'],
-                            self.slot_status())
+      # if self._log.isEnabledFor(logging.DEBUG):
+      #     self._log.debug("before schedule   %s: %s", unit['uid'],
+      #                     self.slot_status())
 
         # cycle through wait queue, and see if we get anything placed now.  We
         # cycle over a copy of the list, so that we can modify the list on the
@@ -610,7 +613,7 @@ class AgentSchedulingComponent(rpu.Component):
                 # Break out of this loop if we didn't manage to schedule a task
                 # FIXME: this assumes that no smaller or otherwise more suitable
                 #        CUs come after this one - which is naive, ie. wrong.
-                # NOTE:  This assumption does indeed break for the fifo
+                # NOTE:  This assumption does indeed break for the ordered
                 #        scheduler, so we disable this now for non-uniform cases
                 if self._uniform_waitpool:
                     break

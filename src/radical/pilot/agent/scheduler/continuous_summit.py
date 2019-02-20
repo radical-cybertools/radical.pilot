@@ -7,13 +7,14 @@ import os
 import inspect
 import logging
 import pprint
-
 import threading as mt
 
 
 import radical.utils as ru
 
 from ...   import constants as rpc
+from ...   import states    as rps
+
 from .base import AgentSchedulingComponent
 
 
@@ -35,15 +36,15 @@ from .base import AgentSchedulingComponent
 # self.nodes = [{
 #                   'name'    : 'node_1',
 #                   'uid'     : xxxx,
-#                   'cores'   : 16,
-#                   'gpus'    : 2,
+#                   'sockets' : [  {'cores': [], 'gpus': []},
+#                                  {'cores': [], 'gpus': []}]
 #                   'lfs'     : 128
 #               },
 #               {
 #                   'name'    : 'node_2',
 #                   'uid'     : yyyy,
-#                   'cores'   : 16,
-#                   'gpus'    : 2,
+#                   'sockets' : [  {'cores': [], 'gpus': []},
+#                                  {'cores': [], 'gpus': []}]
 #                   'lfs'     : 256
 #                },
 #               ]
@@ -76,7 +77,7 @@ def dec_all_methods(dec):
 # ------------------------------------------------------------------------------
 #
 @dec_all_methods(cprof_it)
-class Continuous(AgentSchedulingComponent):
+class ContinuousSummit(AgentSchedulingComponent):
     '''
     The Continuous scheduler attempts to place threads and processes of
     a compute units onto consecutive cores, gpus and nodes in the cluster.
@@ -91,6 +92,78 @@ class Continuous(AgentSchedulingComponent):
 
         AgentSchedulingComponent.__init__(self, cfg, session)
 
+
+    # --------------------------------------------------------------------------
+    #
+    # Once the component process is spawned, `initialize_child()` will be called
+    # before control is given to the component's main loop.
+    #
+    def initialize_child(self):
+
+        # register unit input channels
+        self.register_input(rps.AGENT_SCHEDULING_PENDING,
+                            rpc.AGENT_SCHEDULING_QUEUE, self._schedule_units)
+
+        # register unit output channels
+        self.register_output(rps.AGENT_EXECUTING_PENDING,
+                             rpc.AGENT_EXECUTING_QUEUE)
+
+        # we need unschedule updates to learn about units for which to free the
+        # allocated cores.  Those updates MUST be issued after execution, ie.
+        # by the AgentExecutionComponent.
+        self.register_subscriber(rpc.AGENT_UNSCHEDULE_PUBSUB, self.unschedule_cb)
+
+        # we don't want the unschedule above to compete with actual
+        # scheduling attempts, so we move the re-scheduling of units from the
+        # wait pool into a separate thread (ie. register a separate callback).
+        # This is triggered by the unscheduled_cb.
+        #
+        # NOTE: we could use a local queue here.  Using a zmq bridge goes toward
+        #       an distributed scheduler, and is also easier to implement right
+        #       now, since `Component` provides the right mechanisms...
+        self.register_publisher(rpc.AGENT_SCHEDULE_PUBSUB)
+        self.register_subscriber(rpc.AGENT_SCHEDULE_PUBSUB, self.schedule_cb)
+
+        # The scheduler needs the LRMS information which have been collected
+        # during agent startup.  We dig them out of the config at this point.
+        #
+        # NOTE: this information is insufficient for the torus scheduler!
+        self._pilot_id = self._cfg['pilot_id']
+        self._lrms_info = self._cfg['lrms_info']
+        self._lrms_lm_info = self._cfg['lrms_info']['lm_info']
+        self._lrms_node_list = self._cfg['lrms_info']['node_list']
+        self._lrms_sockets_per_node = self._cfg['lrms_info']['sockets_per_node']
+        self._lrms_cores_per_socket = self._cfg['lrms_info']['cores_per_socket']
+        self._lrms_gpus_per_socket = self._cfg['lrms_info']['gpus_per_socket']
+        # Dict containing the size and path
+        self._lrms_lfs_per_node = self._cfg['lrms_info']['lfs_per_node']
+
+        if not self._lrms_node_list:
+            raise RuntimeError("LRMS %s didn't _configure node_list."
+                              % self._lrms_info['name'])
+
+        if self._lrms_cores_per_socket is None:
+            raise RuntimeError("LRMS %s didn't _configure cores_per_socket."
+                              % self._lrms_info['name'])
+
+        if self._lrms_sockets_per_node is None:
+            raise RuntimeError("LRMS %s didn't _configure sockets_per_node."
+                              % self._lrms_info['name'])
+
+        if self._lrms_gpus_per_socket is None:
+            raise RuntimeError("LRMS %s didn't _configure gpus_per_socket."
+                              % self._lrms_info['name'])
+
+        # create and initialize the wait pool
+        self._wait_pool = list()      # pool of waiting units
+        self._wait_lock = mt.RLock()  # look on the above pool
+        self._slot_lock = mt.RLock()  # lock slot allocation/deallocation
+
+        # configure the scheduler instance
+        self._configure()
+        self._log.debug("slot status after  init      : %s",
+                        self.slot_status())
+
     # --------------------------------------------------------------------------
     #
     # FIXME: this should not be overloaded here, but in the base class
@@ -103,7 +176,7 @@ class Continuous(AgentSchedulingComponent):
             cprof.dump_stats("python-%s.profile" % self_thread.name)
 
         # make sure that parent finalizers are called
-        super(Continuous, self).finalize_child()
+        super(ContinuousSummit, self).finalize_child()
 
 
     # --------------------------------------------------------------------------
@@ -128,31 +201,169 @@ class Continuous(AgentSchedulingComponent):
         #   this option is set.  This implementation is not optimized for the
         #   scattered mode!  The default is 'False'.
         #
-        self._scattered = self._cfg.get('scattered',     False)
+        self._scattered     = self._cfg.get('scattered',     False)
+
+
+        # * cross_socket_threads:
+        # We now capture the knowledge of sockets on nodes and the relationship
+        # of cores to sockets and gpus to sockets. We want to ensure that cpu
+        # threads belonging to a single process do not cross sockets if the
+        # system does not allow it. The default is True, based on discussions
+        # in the Summit meeting, and will be set to False for Summit in the
+        # resource config.
+        self._cross_socket_threads = self._cfg.get('cross_socket_threads', True)
 
         # NOTE:  for non-oversubscribing mode, we reserve a number of cores
         #        for the GPU processes - even if those GPUs are not used by
         #        a specific workload.  In this case we rewrite the node list and
-        #        substract the respective number of available cores per node.
+        #        substract the respective number of available cores per socket.
         if not self._oversubscribe:
 
-            if self._lrms_cores_per_node <= self._lrms_gpus_per_node:
+            if self._lrms_cores_per_socket <= self._lrms_gpus_per_socket:
                 raise RuntimeError('oversubscription mode requires more cores')
 
-            self._lrms_cores_per_node -= self._lrms_gpus_per_node
+            self._lrms_cores_per_socket -= self._lrms_gpus_per_socket
 
-            # since we just changed this fundamental setting, we need to
-            # recreate the nodelist.
-            self.nodes = []
-            for node, node_uid in self._lrms_node_list:
-                self.nodes.append({
-                    'name': node,
-                    'uid': node_uid,
-                    'cores': [rpc.FREE] * self._lrms_cores_per_node,
-                    'gpus': [rpc.FREE] * self._lrms_gpus_per_node,
-                    'lfs': self._lrms_lfs_per_node
+        # since we just changed this fundamental setting, we need to
+        # recreate the nodelist.
+        self.nodes = []
+        for node, node_uid in self._lrms_node_list:
+            node_entry = {
+                            'name': node,
+                            'uid': node_uid,
+                            'sockets': list(),
+                            'lfs': self._lrms_lfs_per_node
+                        }
+            for socket in range(self._lrms_sockets_per_node):
+                node_entry['sockets'].append({
+                    'cores': [rpc.FREE] * self._lrms_cores_per_socket,
+                    'gpus': [rpc.FREE] * self._lrms_gpus_per_socket
                 })
 
+            self.nodes.append(node_entry)
+
+
+    # --------------------------------------------------------------------------
+    #
+    # Change the reserved state of slots (rpc.FREE or rpc.BUSY)
+    #
+    # NOTE: any scheduler implementation which uses a different nodelist
+    #       structure MUST overload this method.
+    #
+    def _change_slot_states(self, slots, new_state):
+        '''
+        This function is used to update the state for a list of slots that
+        have been allocated or deallocated.  For details on the data structure,
+        see top of `base.py`.
+        '''
+        # This method needs to change if the DS changes.
+        # Current slot DS:
+        # slots = {'nodes': [{'name'    : node_name,
+        #                     'uid'     : node_uid,
+        #                     'core_map': core_map,
+        #                     'gpu_map' : gpu_map,
+        #                     'lfs'     : {'size': lfs, 
+        #                                  'path': self._lrms_lfs_per_node['path']
+        #                                 }
+        #                    }],
+        #          'cores_per_node' : cores_per_node,
+        #          'gpus_per_node'  : gpus_per_node,
+        #          'lfs_per_node'   : self._lrms_lfs_per_node,
+        #          'lm_info'        : self._lrms_lm_info
+        #          }
+        # 
+        # self.nodes = [{
+        #                   'name'    : 'node_1',
+        #                   'uid'     : xxxx,
+        #                   'sockets' : [   {'cores': [], 'gpus': []},
+        #                                   {'cores': [], 'gpus': []}]
+        #                   'lfs'     : 128}],
+
+
+        # for node_name, node_uid, cores, gpus in slots['nodes']:
+        for nodes in slots['nodes']:
+
+            # Find the entry in the the slots list
+
+            # TODO: [Optimization] Assuming 'uid' is the ID of the node, it
+            #       seems a bit wasteful to have to look at all of the nodes
+            #       available for use if at most one node can have that uid.
+            #       Maybe it would be worthwhile to simply keep a list of nodes
+            #       that we would read, and keep a dictionary that maps the uid
+            #       of the node to the location on the list?
+
+            node = (n for n in self.nodes if n['uid'] == nodes['uid']).next()
+            assert(node)
+
+            # iterate over cores/gpus in the slot, and update state
+            cores = nodes['core_map']
+
+            # STRONG ASSUMPTION!!!
+            # We assume that the core and gpu ids are continuous on a socket
+            # indexed with core_id=0 on socket_id=0 and gpu_id= on socket_id=0.
+            # For example, with the following node config for Summit:
+            # sockets_per_node=2, cores_per_socket=21, gpus_per_socket=3
+            # Our assumption leads to the following id relations:
+
+            # nodes['sockets'] = [
+            #     {   'uid': 0,     # not actually present in socket list
+            #         'core_ids': [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+            #                      10,11,12,13,14,15,16,17,18,19,
+            #                      20],
+            #         'gpu_ids':  [0,1,2]
+            #     }
+            #     {   'uid': 1,    # not actually present in socket list
+            #         'core_ids': [21,22,23,24,25,26,27,28,29,30,
+            #                      31,32,33,34,35,36,37,38,39,40,
+            #                      41],
+            #         'gpu_ids':  [3,4,5]
+            #     }
+            # ]
+
+            for cslot in cores:
+                for core in cslot:
+                    socket = core / self._lrms_cores_per_socket
+                    core_id = core % self._lrms_cores_per_socket
+                    node['sockets'][socket]['cores'][core_id] = new_state
+
+            gpus = nodes['gpu_map']
+            for gslot in gpus:
+                for gpu in gslot:
+                    socket = core / self._lrms_gpus_per_socket
+                    gpu_id = core % self._lrms_gpus_per_socket
+                    node['sockets'][socket]['gpus'][gpu_id] = new_state
+
+            if node['lfs']['path'] is not None:
+                if new_state == rpc.BUSY:
+                    node['lfs']['size'] -= nodes['lfs']['size']
+                else:
+                    node['lfs']['size'] += nodes['lfs']['size']
+
+    # --------------------------------------------------------------------------
+    #
+    # Overloaded from Base
+    def slot_status(self):
+        '''
+        Returns a multi-line string corresponding to the status of the node list
+        '''
+
+        ret = "|"
+        for node in self.nodes:
+            for socket in node['sockets']:
+                for core in socket['cores']:
+                    if core == rpc.FREE:
+                        ret += '-'
+                    else:
+                        ret += '#'
+                ret += ':'
+                for gpu in socket['gpus']:
+                    if gpu == rpc.FREE:
+                        ret += '-'
+                    else:
+                        ret += '#'
+                ret += '|'
+
+        return ret
 
     def _try_allocation(self, unit):
         """
@@ -208,7 +419,7 @@ class Continuous(AgentSchedulingComponent):
 
         # single_node allocation is enforced for non-message passing tasks
         if cud['cpu_process_type'] == 'MPI' or \
-                cud['gpu_process_type'] == 'MPI':
+           cud['gpu_process_type'] == 'MPI':
             slots = self._alloc_mpi(cud)
         else:
             slots = self._alloc_nompi(cud)
@@ -266,8 +477,18 @@ class Continuous(AgentSchedulingComponent):
 
         # first count the number of free cores, gpus, and local file storage.
         # This is way quicker than actually finding the core IDs.
-        free_cores = node['cores'].count(rpc.FREE)
-        free_gpus = node['gpus'].count(rpc.FREE)
+        free_cores = 0
+        free_gpus  = 0
+        free_cores_per_socket = list()
+        free_gpus_per_socket  = list()
+
+        for socket in node['sockets']:
+            free_cores += socket['cores'].count(rpc.FREE)
+            free_gpus  += socket['gpus'].count(rpc.FREE)
+
+            free_cores_per_socket.append(socket['cores'].count(rpc.FREE))
+            free_gpus_per_socket.append(socket['gpus'].count(rpc.FREE))
+
         free_lfs = node['lfs']['size']
 
         alloc_lfs = alloc_cores = alloc_gpus = 0
@@ -283,7 +504,7 @@ class Continuous(AgentSchedulingComponent):
 
             if requested_lfs and \
                 ((requested_cores and not free_cores) and
-                 (requested_gpus and not free_gpus)):
+                 (requested_gpus  and not free_gpus)):
                 return [], [], None
 
         else:
@@ -304,9 +525,43 @@ class Continuous(AgentSchedulingComponent):
         if requested_lfs:
             alloc_lfs = min(requested_lfs, free_lfs)
             num_procs.append(alloc_lfs / lfs_chunk)
+
         if requested_cores:
-            alloc_cores = min(requested_cores, free_cores)
-            num_procs.append(alloc_cores / core_chunk)
+            if not self._cross_socket_threads:
+                # If no cross socket threads are allowed, we first make sure that the total
+                # number of cores is greater than the core_chunk. If not, we can't use the
+                # current node.
+                if sum(free_cores_per_socket) < core_chunk:
+                    return [], [], None
+
+                # If we can use this node, then we visit each socket of the node and
+                # determine the number of continuous core_chunks that can be use on the 
+                # socket till we either run out of continuous cores or have acquired
+                # the requested number of cores.
+                usable_cores = 0
+
+                # Determine maximum procs on each socket - required during assignment
+                max_procs_on_socket = [0 for _ in range(self._lrms_sockets_per_node)]
+
+                for socket_id, free_cores in enumerate(free_cores_per_socket):
+                    tmp_num_cores = free_cores
+                    
+                    while (tmp_num_cores >= core_chunk) and (usable_cores<requested_cores):
+                        usable_cores += core_chunk
+                        tmp_num_cores -= core_chunk
+                        max_procs_on_socket[socket_id] += 1
+
+                    if usable_cores == requested_cores:
+                        break
+
+                # We convert the number of usable cores into a number of procs so that
+                # we can find the minimum number of procs across lfs, cpus, gpus that can
+                # be allocated on this node
+                num_procs.append(usable_cores/core_chunk)
+            else:
+                alloc_cores = min(requested_cores, free_cores)
+                num_procs.append(alloc_cores / core_chunk)
+
         if requested_gpus:
             alloc_gpus = min(requested_gpus, free_gpus)
             num_procs.append(alloc_gpus / gpu_chunk)
@@ -322,22 +577,45 @@ class Continuous(AgentSchedulingComponent):
         if requested_gpus:
             alloc_gpus = num_procs * gpu_chunk
 
-        # now dig out the core and gpu IDs.
-        for idx, state in enumerate(node['cores']):
+        # Maximum number of processes allocatable on a socket
+        if self._cross_socket_threads:
+            max_procs_on_socket = [num_procs for _ in range(self._lrms_sockets_per_node)]
+
+        # now dig out the core IDs.
+        for socket_idx, socket in enumerate(node['sockets']):
+            procs_on_socket = 0
+            for core_idx, state in enumerate(socket['cores']):
+
+                # break if we have enough cores, else continue to pick FREE ones
+                if alloc_cores == len(cores):
+                    break
+                if state == rpc.FREE:
+                    cores.append(socket_idx*self._lrms_cores_per_socket + core_idx)
+
+                # check if we have placed one complete process on current socket
+                if cores and (len(cores) % core_chunk == 0):
+                    procs_on_socket += 1
+
+                # if we have reached max procs on socket, move to next socket
+                if procs_on_socket == max_procs_on_socket[socket_idx]:
+                    break
 
             # break if we have enough cores, else continue to pick FREE ones
             if alloc_cores == len(cores):
                 break
-            if state == rpc.FREE:
-                cores.append(idx)
 
-        for idx, state in enumerate(node['gpus']):
+        # now dig out the GPU IDs.
+        for socket_idx, socket in enumerate(node['sockets']):
+            for gpu_idx, state in enumerate(socket['gpus']):
 
+                # break if we have enough gpus, else continue to pick FREE ones
+                if alloc_gpus == len(gpus):
+                    break
+                if state == rpc.FREE:
+                    gpus.append(socket_idx*self._lrms_gpus_per_socket+ gpu_idx)
             # break if we have enough gpus, else continue to pick FREE ones
             if alloc_gpus == len(gpus):
                 break
-            if state == rpc.FREE:
-                gpus.append(idx)
 
         return cores, gpus, alloc_lfs
 
@@ -407,18 +685,26 @@ class Continuous(AgentSchedulingComponent):
         # cores needed for all threads and processes
         requested_cores = requested_procs * threads_per_proc
 
-        # make sure that the requested allocation fits on a single node
-        if requested_cores > self._lrms_cores_per_node or \
-                requested_gpus > self._lrms_gpus_per_node or \
-                requested_lfs > self._lrms_lfs_per_node['size']:
+        if not self._cross_socket_threads:
+            if threads_per_proc > self._lrms_cores_per_socket:
+                raise ValueError('Number of threads greater than that possible on a socket -- no cross socket threading')
 
-            txt  = 'Non-mpi unit does not fit onto single node. \n'
+        cores_per_node = self._lrms_cores_per_socket * self._lrms_sockets_per_node
+        gpus_per_node = self._lrms_gpus_per_socket * self._lrms_sockets_per_node
+        lfs_per_node = self._lrms_lfs_per_node['size']
+
+        # make sure that the requested allocation fits within the resources
+        if requested_cores > cores_per_node or \
+            requested_gpus > gpus_per_node or \
+            requested_lfs > lfs_per_node:
+
+            txt  = 'Non-mpi unit does not fit onto available resources \n'
             txt += 'requested cores=%s; available cores=%s \n' \
-                 % (requested_cores, self._lrms_cores_per_node)
+                 % (requested_cores, cores_per_node)
             txt += 'requested gpus=%s; available gpus=%s \n' \
-                 % (requested_gpus, self._lrms_gpus_per_node)
+                 % (requested_gpus, gpus_per_node)
             txt += 'requested lfs=%s; available lfs=%s' \
-                 % (requested_lfs, self._lrms_lfs_per_node['size'])
+                 % (requested_lfs, lfs_per_node)
 
             raise ValueError(txt)
 
@@ -452,6 +738,7 @@ class Continuous(AgentSchedulingComponent):
                                                     )
             if len(cores) == requested_cores and \
                     len(gpus) == requested_gpus:
+
                 # we found the needed resources - break out of search loop
                 node_uid = node['uid']
                 node_name = node['name']
@@ -482,8 +769,8 @@ class Continuous(AgentSchedulingComponent):
                                          'path': self._lrms_lfs_per_node['path']
                                         }
                            }],
-                 'cores_per_node': self._lrms_cores_per_node,
-                 'gpus_per_node' : self._lrms_gpus_per_node,
+                 'cores_per_node': cores_per_node,
+                 'gpus_per_node' : gpus_per_node,
                  'lfs_per_node'  : self._lrms_lfs_per_node,
                  'lm_info'       : self._lrms_lm_info
                  }
@@ -550,14 +837,17 @@ class Continuous(AgentSchedulingComponent):
         # allocation are not favorable.  We thus raise an exception for
         # requested_cores > cores_per_node on impossible full-node-chunking
 
-        cores_per_node = self._lrms_cores_per_node
-        gpus_per_node  = self._lrms_gpus_per_node
-        lfs_per_node = self._lrms_lfs_per_node
+        # cores_per_node = self._lrms_cores_per_node
+        # gpus_per_node  = self._lrms_gpus_per_node
+        # lfs_per_node   = self._lrms_lfs_per_node
 
-        if requested_cores > cores_per_node and \
-                cores_per_node % threads_per_proc and \
-                self._scattered is False:
-            raise ValueError('cannot allocate under given constrains')
+        cores_per_node = self._lrms_cores_per_socket * self._lrms_sockets_per_node
+        gpus_per_node  = self._lrms_gpus_per_socket  * self._lrms_sockets_per_node
+        lfs_per_node   = self._lrms_lfs_per_node
+
+        if not self._cross_socket_threads:
+            if threads_per_proc > self._lrms_cores_per_socket:
+                raise ValueError('Number of threads greater than that available on a socket')
 
         # we always fail when too many threads are requested
         if threads_per_proc > cores_per_node:
@@ -565,6 +855,13 @@ class Continuous(AgentSchedulingComponent):
 
         if requested_lfs_per_process > lfs_per_node['size']:
             raise ValueError('Not enough LFS for the MPI-process')
+
+        if requested_cores > cores_per_node and \
+                cores_per_node % threads_per_proc and \
+                self._scattered is False:
+            raise ValueError('cannot allocate under given constrains')
+
+
 
         # set conditions to find the first matching node
         is_first = True
@@ -687,4 +984,3 @@ class Continuous(AgentSchedulingComponent):
 
 
 # ------------------------------------------------------------------------------
-
