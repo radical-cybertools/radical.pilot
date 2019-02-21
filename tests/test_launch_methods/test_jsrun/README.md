@@ -20,6 +20,7 @@ on Summit. See inline comments for details.
 
 ### Note
 
+* Base directory is '/ccs/home/vivekb/test_jsrun'
 * Results are located in a folder with the current date.
 * A summary is sent to the mailing list specified in jobs.sh. 
 
