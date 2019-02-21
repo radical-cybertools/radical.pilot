@@ -1,0 +1,3 @@
+# Task needs to be assigned node 1, physical core 1, HW thread 1
+export OMP_NUM_THREADS=1
+jsrun -a 1 -U resource-file /ccs/proj/csc190/Hello_jsrun/jsrun_layout
