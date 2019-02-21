@@ -1,0 +1,12 @@
+
+{
+    "pnodes"   : 2, 
+    "uprocs"   : [1,40],
+    "uthreads" : 1,
+    "ugpus"    : 0,
+    "uptype"   : "POSIX",
+    "uttype"   : "POSIX",
+    "utime"    : 60,
+    "nunits"   : 20
+}
+
