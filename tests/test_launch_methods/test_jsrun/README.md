@@ -2,27 +2,27 @@
 
 ## Requirements
 
-* Every individual test needs to be placed in test_* folder
-* Three files are required under the test_* folder:
-  * 'cmds'
-    * line 1: short description about test
-    * line 2: any pre_exec cmds
-    * line 3: jsrun cmd to execute
-  * 'res_set': Resource set file for the test
-  * 'exp_out': expected output
-    * Note: assertion will be exact (check for stray spaces, linebreaks)
+* Every individual test needs to be placed in ```test_*``` folder;
+* three files are required under the ```test_*``` folder:
+  * ```cmds```:
+    * line 1: short description about test;
+    * line 2: any pre_exec cmds;
+    * line 3: jsrun cmd to execute;
+  * ```res_set```: Resource set file for the test;
+  * ```exp_out```: expected output;
+* assertion are exact: check for stray spaces, linebreaks, etc.
 
 ## Execution
 
-To execute the all the tests, clone the test_jsrun folder on Summit
-and run ```bsub jobs.sh```. This automatically done by an ```at``` process
-on Summit. See inline comments for details.
+To manually execute all the tests, clone the ```test_jsrun``` folder on Summit
+and run ```bsub jobs.sh```. All the tests are performed daily via ```at``` on
+Summit. See inline comments for details.
 
 ### Note
 
-* Base directory is '/ccs/home/vivekb/test_jsrun'
-* Results are located in a folder with the current date.
-* A summary is sent to the mailing list specified in jobs.sh. 
+* Base directory is ```/ccs/home/vivekb/test_jsrun```;
+* results are located in a folder named with the current date;
+* a summary is sent to the email address specified in ```jobs.sh```.
 
 ## Misc
 
