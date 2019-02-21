@@ -36,7 +36,7 @@ def setUp():
 # ------------------------------------------------------------------------------
 #
 def tearDown():
-    rs = glob.glob('%s/rs_layout_cu_*' % os.getcwd())
+    rs = glob.glob('%s/*.rs' % os.getcwd())
     for fold in rs:
         os.remove(fold)
 
@@ -56,10 +56,11 @@ def test_create_resource_set_file(mocked_init, mocked_method, mocked_raise_on):
         slot         = test_cases['trigger'][i]['slots']
         uid          = test_cases['trigger'][i]['uid']
         mpi          = test_cases['trigger'][i]['mpi']
+        gpu          = test_cases['trigger'][i]['gpu']
         file_content = test_cases['results'][i]
 
         component._create_resource_set_file(slots=slot, uid=uid, sandbox='.',
-                                            mpi=mpi)
+                                            mpi=mpi, gpu=gpu)
 
         with open('%s.rs' % uid) as rs_layout:
             assert rs_layout.readlines() ==  file_content

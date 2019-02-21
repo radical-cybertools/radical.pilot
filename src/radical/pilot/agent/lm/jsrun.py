@@ -27,7 +27,8 @@ class JSRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _create_resource_set_file(self, slots, uid, sandbox, mpi=False):
+    def _create_resource_set_file(self, slots, uid, sandbox, mpi=False,
+                                  gpu=False):
         """
         This method takes as input a CU slots and creates the necessary
         resource set file. This resource set file is then used by jsrun to 
@@ -75,22 +76,33 @@ class JSRUN(LaunchMethod):
         """
 
         rs_str = ''
-        if mpi:
+        if mpi and gpu:
+            rank = 0
+            for node in slots['nodes']:
+                for cores_set, gpu_set in zip(node['core_map'],
+                                              node['gpu_map']):
+
+                    cores = ','.join(str(core) for core in cores_set)
+                    gpus  = ','.join(str(gpu) for gpu in gpu_set)
+
+                    rs_str += 'rank %d: {'  % rank
+                    rs_str += ' host: %d;'  % node['uid']
+                    rs_str += ' cpu: {%s}'  % cores
+                    rs_str += '; gpu: {%s}' % gpus
+                    rs_str += '}\n'
+                    rank   += 1
+        elif mpi and not gpu:
             rank = 0
             for node in slots['nodes']:
                 for cores_set in node['core_map']:
 
-                    cores = ','.join(str(core) for core
-                                                in  cores_set)
-                    gpus  = ''  # ,'.join([str(gpu_set[0])  for gpu_set
-                    #                            in  node['gpu_map']])
+                    cores = ','.join(str(core) for core in cores_set)
 
-                    rs_str           += 'rank %d: {' % rank
-                    rs_str           += ' host: %d;' % node['uid']
-                    if cores: rs_str += ' cpu: {%s}'  % cores
-                    if gpus : rs_str += '; gpu: {%s}'  % gpus
-                    rs_str           += '}\n'
-                    rank            += 1
+                    rs_str += 'rank %d: {'  % rank
+                    rs_str += ' host: %d;'  % node['uid']
+                    rs_str += ' cpu: {%s}'  % cores
+                    rs_str += '}\n'
+                    rank   += 1
         else:
             for node in slots['nodes']:
                 cores_str = list()
@@ -122,13 +134,15 @@ class JSRUN(LaunchMethod):
 
         # FIXME: derive task_procs from slots (to include GPU)
 
-        slots          = cu['slots']
-        cud            = cu['description']
-        task_exec      = cud['executable']
-        task_env       = cud.get('environment') or dict()
-        task_args      = cud.get('arguments')   or list()
-        task_argstr    = self._create_arg_string(task_args)
-        task_sandbox   = ru.Url(cu['unit_sandbox']).path
+        slots        = cu['slots']
+        cud          = cu['description']
+        task_exec    = cud['executable']
+        task_env     = cud.get('environment') or dict()
+        task_mpi     = bool('mpi' in cud.get('cpu_process_type', '').lower())
+        task_gpu     = bool(cud.get('gpu_processes') == 0)
+        task_args    = cud.get('arguments')   or list()
+        task_argstr  = self._create_arg_string(task_args)
+        task_sandbox = ru.Url(cu['unit_sandbox']).path
 
         self._log.debug('prep %s', cu['uid'])
 
@@ -139,7 +153,8 @@ class JSRUN(LaunchMethod):
         env_string = ' '.join(['-E "%s"' % var for var in env_list])
 
         rs_fname = self._create_resource_set_file(slots=slots, uid=cu['uid'],
-                                                  sandbox=task_sandbox)
+                                                  sandbox=task_sandbox,
+                                                  mpi=task_mpi, gpu=task_gpu)
 
       # flags = '-n%d -a1 ' % (task_procs)
         command = '%s --erf_input %s  %s %s' % (self.launch_command, rs_fname, 
