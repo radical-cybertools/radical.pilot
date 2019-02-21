@@ -89,22 +89,25 @@ class JSRUN(LaunchMethod):
                     rs_str           += ' host: %d;' % node['uid']
                     if cores: rs_str += ' cpu: {%s}'  % cores
                     if gpus : rs_str += '; gpu: {%s}'  % gpus
-                    rs_str           += ' }\n'
+                    rs_str           += '}\n'
                     rank            += 1
         else:
             for node in slots['nodes']:
-
-                cores = ','.join([str(core_set[0]) for core_set
-                                                in  node['core_map']])
-                gpus  = ','.join([str(gpu_set[0])  for gpu_set
-                                                in  node['gpu_map']])
-
+                cores_str = list()
+                gpus_str = list()
+                for core_set in node['core_map']:
+                    cores_str = ['{' + ','.join(str(core) for core
+                                      in core_set) + '}'] 
+                for gpu_set in node['gpu_map']:
+                    gpus_str += ['{' + ','.join(str(gpu) for gpu
+                                      in gpu_set) + '}']
+                cores = ','.join(str(core) for core in cores_str)
+                gpus = ','.join(str(gpu) for gpu in gpus_str)
                 rs_str           += '1: {'
                 rs_str           += ' host: %d;' % node['uid']
-                if cores: rs_str += ' cpu: {%s}'  % cores
-                if gpus : rs_str += ' ;gpu: {%s}'  % gpus
-                rs_str           += ' }\n'
-                rs_id            += 1
+                if cores: rs_str += ' cpu: %s' % cores
+                if gpus : rs_str += '; gpu: %s' % gpus
+                rs_str           += '}\n'
 
         rs_name = '%s/%s.rs' % (sandbox, uid)
         with open(rs_name, 'w') as fout:
@@ -122,7 +125,6 @@ class JSRUN(LaunchMethod):
         slots          = cu['slots']
         cud            = cu['description']
         task_exec      = cud['executable']
-        task_procs     = cud.get('cpu_processes', 0)
         task_env       = cud.get('environment') or dict()
         task_args      = cud.get('arguments')   or list()
         task_argstr    = self._create_arg_string(task_args)

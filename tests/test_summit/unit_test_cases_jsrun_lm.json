@@ -41,9 +41,9 @@
                                  "sandbox": "./",
                                  "mpi": true} 
                                  ],
-                    "results" : [["1: { host: 1; cpu: {0} }\n"],
-                                 ["1: { host: 5; cpu: {32,35}; gpu: 1}\n"],
-                                 ["rank 0: { host: 5; cpu: {32,35}}\nrank 1: { host: 5; cpu: {58,59}}\n"]]
+                    "results" : [["1: { host: 1; cpu: {0}}\n"],
+                                 ["1: { host: 5; cpu: {32,35}; gpu: {1}}\n"],
+                                 ["rank 0: { host: 5; cpu: {32,33}}\n","rank 1: { host: 5; cpu: {58,59}}\n"]]
                    },
  "command" : {"trigger" : [{"slots" :{"cores_per_node": 16,
                                       "lfs_per_node": {"size": 0, 

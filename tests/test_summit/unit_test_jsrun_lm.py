@@ -55,9 +55,11 @@ def test_create_resource_set_file(mocked_init, mocked_method, mocked_raise_on):
 
         slot         = test_cases['trigger'][i]['slots']
         uid          = test_cases['trigger'][i]['uid']
+        mpi          = test_cases['trigger'][i]['mpi']
         file_content = test_cases['results'][i]
 
-        component._create_resource_set_file(slots=slot, uid=uid, sandbox='.')
+        component._create_resource_set_file(slots=slot, uid=uid, sandbox='.',
+                                            mpi=mpi)
 
         with open('%s.rs' % uid) as rs_layout:
             assert rs_layout.readlines() ==  file_content
