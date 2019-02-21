@@ -75,7 +75,7 @@ class JSRUN(LaunchMethod):
 
         """
 
-        rs_str = ''
+        rs_str = 'cpu_index_using: physical\n'
         if mpi and gpu:
             rank = 0
             for node in slots['nodes']:
@@ -85,7 +85,7 @@ class JSRUN(LaunchMethod):
                     cores = ','.join(str(core) for core in cores_set)
                     gpus  = ','.join(str(gpu) for gpu in gpu_set)
 
-                    rs_str += 'rank %d: {'  % rank
+                    rs_str += 'rank: %d: {'  % rank
                     rs_str += ' host: %d;'  % node['uid']
                     rs_str += ' cpu: {%s}'  % cores
                     rs_str += '; gpu: {%s}' % gpus
@@ -98,7 +98,7 @@ class JSRUN(LaunchMethod):
 
                     cores = ','.join(str(core) for core in cores_set)
 
-                    rs_str += 'rank %d: {'  % rank
+                    rs_str += 'rank: %d: {'  % rank
                     rs_str += ' host: %d;'  % node['uid']
                     rs_str += ' cpu: {%s}'  % cores
                     rs_str += '}\n'
