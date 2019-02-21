@@ -13,6 +13,7 @@ import threading     as mt
 import radical.utils as ru
 
 from ...   import constants as rpc
+from ...   import states    as rps
 from .base import AgentSchedulingComponent
 
 
@@ -87,6 +88,77 @@ class ContinuousSummit(AgentSchedulingComponent):
         self._tag_history = dict()
 
         AgentSchedulingComponent.__init__(self, cfg, session)
+
+
+    # --------------------------------------------------------------------------
+    #
+    # Once the component process is spawned, `initialize_child()` will be called
+    # before control is given to the component's main loop.
+    #
+    def initialize_child(self):
+
+        # register unit input channels
+        self.register_input(rps.AGENT_SCHEDULING_PENDING,
+                            rpc.AGENT_SCHEDULING_QUEUE, self._schedule_units)
+
+        # register unit output channels
+        self.register_output(rps.AGENT_EXECUTING_PENDING,
+                             rpc.AGENT_EXECUTING_QUEUE)
+
+        # we need unschedule updates to learn about units for which to free the
+        # allocated cores.  Those updates MUST be issued after execution, ie.
+        # by the AgentExecutionComponent.
+        self.register_subscriber(rpc.AGENT_UNSCHEDULE_PUBSUB, self.unschedule_cb)
+
+        # we don't want the unschedule above to compete with actual
+        # scheduling attempts, so we move the re-scheduling of units from the
+        # wait pool into a separate thread (ie. register a separate callback).
+        # This is triggered by the unscheduled_cb.
+        #
+        # NOTE: we could use a local queue here.  Using a zmq bridge goes toward
+        #       an distributed scheduler, and is also easier to implement right
+        #       now, since `Component` provides the right mechanisms...
+        self.register_publisher(rpc.AGENT_SCHEDULE_PUBSUB)
+        self.register_subscriber(rpc.AGENT_SCHEDULE_PUBSUB, self.schedule_cb)
+
+        # The scheduler needs the LRMS information which have been collected
+        # during agent startup.  We dig them out of the config at this point.
+        #
+        # NOTE: this information is insufficient for the torus scheduler!
+        self._pilot_id              = self._cfg['pilot_id']
+        self._lrms_info             = self._cfg['lrms_info']
+        self._lrms_lm_info          = self._cfg['lrms_info']['lm_info']
+        self._lrms_node_list        = self._cfg['lrms_info']['node_list']
+        self._lrms_sockets_per_node = self._cfg['lrms_info']['sockets_per_node']
+        self._lrms_cores_per_socket = self._cfg['lrms_info']['cores_per_socket']
+        self._lrms_gpus_per_socket  = self._cfg['lrms_info']['gpus_per_socket']
+        self._lrms_lfs_per_node     = self._cfg['lrms_info']['lfs_per_node']
+
+        if not self._lrms_node_list:
+            raise RuntimeError("LRMS %s didn't _configure node_list."
+                              % self._lrms_info['name'])
+
+        if self._lrms_cores_per_socket is None:
+            raise RuntimeError("LRMS %s didn't _configure cores_per_socket."
+                              % self._lrms_info['name'])
+
+        if self._lrms_sockets_per_node is None:
+            raise RuntimeError("LRMS %s didn't _configure sockets_per_node."
+                              % self._lrms_info['name'])
+
+        if self._lrms_gpus_per_socket is None:
+            raise RuntimeError("LRMS %s didn't _configure gpus_per_socket."
+                              % self._lrms_info['name'])
+
+        # create and initialize the wait pool
+        self._wait_pool = list()      # pool of waiting units
+        self._wait_lock = mt.RLock()  # look on the above pool
+        self._slot_lock = mt.RLock()  # lock slot allocation/deallocation
+
+        # configure the scheduler instance
+        self._configure()
+        self._log.debug("slot status after  init      : %s",
+                        self.slot_status())
 
 
     # --------------------------------------------------------------------------
@@ -554,11 +626,11 @@ class ContinuousSummit(AgentSchedulingComponent):
                     break
                 if state == rpc.FREE:
                     gpus.append(socket_idx*self._lrms_gpus_per_socket+ gpu_idx)
+
             # break if we have enough gpus, else continue to pick FREE ones
             if alloc_gpus == len(gpus):
                 break
 
-        self._log.debug('find res.    %s 7', uid)
         return cores, gpus, alloc_lfs
 
 
@@ -792,9 +864,6 @@ class ContinuousSummit(AgentSchedulingComponent):
 
         if requested_lfs_per_process > lfs_per_node['size']:
             raise ValueError('Not enough LFS for the MPI-process')
-
-        if  requested_cores > cores_per_node:
-            raise ValueError('Number of threads greater than that available on a socket')
 
 
         # set conditions to find the first matching node

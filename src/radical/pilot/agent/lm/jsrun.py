@@ -74,17 +74,47 @@ class JSRUN(LaunchMethod):
 
         for node in slots['nodes']:
 
-            cores = ' '.join([str(core_set[0]) for core_set
-                                               in  node['core_map']])
-            gpus  = ' '.join([str(gpu_set[0])  for gpu_set
-                                               in  node['gpu_map']])
+            if node['gpu_map'] and node['core_map']:
 
-            rs_str           += 'RS %d: {'  % rs_id
-            rs_str           += ' host: %d' % node['uid']
-            if cores: rs_str += ' cpu: %s'  % cores
-            if gpus : rs_str += ' gpu: %s'  % gpus
-            rs_str           += ' }\n'
-            rs_id            += 1
+                # need same number of GPUs as processes (if we have both)
+                # FIXME: assert *globally*, across all nodes
+                assert len(node['core_map']) == len(node['gpu_map'])
+
+                for cmap,gmap in zip(node['core_map'], node['gpu_map']):
+
+                    rs_str += 'RS %d: {'  % rs_id
+                    rs_str += ' host: %d' % node['uid']
+                    rs_str += ' cpu: %s'  % ' '.join([str(c) for c in cmap])
+                    rs_str += ' gpu: %s'  % ' '.join([str(g) for g in gmap])
+                    rs_str += ' }\n'
+                    rs_id  += 1
+
+
+            elif node['core_map']:
+
+                for cmap in node['core_map']:
+
+                    rs_str += 'RS %d: {'  % rs_id
+                    rs_str += ' host: %d' % node['uid']
+                    rs_str += ' cpu: %s'  % ' '.join([str(c) for c in cmap])
+                    rs_str += ' }\n'
+                    rs_id  += 1
+
+
+            elif node['gpu_map']:
+
+                for cmap in node['gpu_map']:
+
+                    rs_str += 'RS %d: {'  % rs_id
+                    rs_str += ' host: %d' % node['uid']
+                    rs_str += ' gpu: %s'  % ' '.join([str(g) for g in gmap])
+                    rs_str += ' }\n'
+                    rs_id  += 1
+
+            else:
+
+                raise ValueError('cannot handle slots %s' % nodes)
+
 
         rs_name = '%s/%s.rs' % (sandbox, uid)
         with open(rs_name, 'w') as fout:
@@ -123,9 +153,8 @@ class JSRUN(LaunchMethod):
                                                   sandbox=task_sandbox)
 
       # flags = '-n%d -a1 ' % (task_procs)
-        command = '%s -U %s -a %d  %s %s' % (self.launch_command, rs_fname, 
-                                             task_procs, env_string,
-                                             task_command)
+        command = '%s -U %s -a 1 %s %s' % (self.launch_command, rs_fname, 
+                                           env_string, task_command)
         return command, None
 
 

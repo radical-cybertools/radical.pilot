@@ -262,6 +262,13 @@
         "gpus"     : 12
     },
 
+    "ornl.summit" : {
+        "project"  : "BIP178",
+        "queue"    : "batch",
+        "schema"   : "local",
+        "cores"    : 420
+    },
+
     "ornl.titan" : {
         "project"  : "BIP149",
         "queue"    : "debug",
