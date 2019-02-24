@@ -89,6 +89,7 @@ def hostip(req=None, black_list=None, pref_list=None, logger=None):
     if not pref_list:
         pref_list = [
             'ipogif0', # Cray's
+            'ib0',     # IBM (Summit)
             'br0'      # SuperMIC
         ]
 
