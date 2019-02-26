@@ -2,33 +2,47 @@
 
 import os
 import sys
-import zmq
 import time
 
+import threading
 
-def log(topic, msg):
-    sys.stdout.write('send %s: %s\n' % (topic, msg))
+import radical.utils as ru
+
+
+# ------------------------------------------------------------------------------
+#
+def log(uid, msg):
+
+    sys.stdout.write('send %s: %s\n' % (uid, str(msg)[:128]))
     sys.stdout.flush()
 
 
+# ------------------------------------------------------------------------------
+#
 if __name__ == '__main__':
 
-    addr = os.environ['APP_PUBSUB_IN'] 
-    print 'addr: %s' % addr
+    uid       = os.environ['RP_UNIT_ID']
+    addr_work = os.environ['APP_QUEUE_IN']
+    addr_res  = os.environ['APP_PUBSUB_OUT']
 
-    context = zmq.Context()
-    socket  = context.socket(zmq.PUB)
-    socket.connect(addr)
+    n_master  = int(sys.argv[1])
+    term      = threading.Event()
+    term_cnt  = 0
 
-    n     = 300
-    topic = 'topic'
-    for i in range(n):
-        msg = '%d' % i
-        socket.send_multipart([topic, msg])
-        log(topic, msg)
-        sys.stdout.flush()
-        time.sleep(0.01)
 
-    log(topic, 'STOP')
-    socket.send_multipart([topic, 'STOP'])
+    work_queue   = ru.Putter('WORK_QUEUE',   addr_work)
+    result_queue = ru.Getter('RESULT_QUEUE', addr_res)
+
+    for i in range(1000):
+        work_queue.put(str(i))
+
+    for _ in range(1000):
+        result = result_queue.get()
+        print result
+
+    log(uid, 'DONE')
+    sys.exit()
+
+
+# ------------------------------------------------------------------------------
 

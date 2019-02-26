@@ -19,6 +19,7 @@ ERROR             = 'error'
 RUNTIME           = 'runtime'
 CLEANUP           = 'cleanup'
 EXIT_ON_ERROR     = 'exit_on_error'
+APP_CHANNELS      = 'app_channels'
 _CONFIG           = '_config'
 
 CORES             = 'cores'
@@ -143,6 +144,7 @@ class ComputePilotDescription(attributes.Attributes):
         self._attributes_register    (PROJECT,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (CANDIDATE_HOSTS,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
+        self._attributes_register    (APP_CHANNELS,     None, attributes.ANY,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (EXIT_ON_ERROR,    None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
 
         # Attributes not part of the published API
@@ -160,6 +162,7 @@ class ComputePilotDescription(attributes.Attributes):
         self.set_attribute (PROJECT,          None)
         self.set_attribute (CLEANUP,          None)
         self.set_attribute (CANDIDATE_HOSTS,  None)
+        self.set_attribute (APP_CHANNELS,     None)
         self.set_attribute (EXIT_ON_ERROR,    False)
         self.set_attribute (_CONFIG,          None)
 
