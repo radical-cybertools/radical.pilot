@@ -4,8 +4,7 @@ __license__   = "MIT"
 
 
 import os
-import copy
-import threading
+import threading as mt
 
 import radical.utils as ru
 
@@ -18,6 +17,7 @@ from ... import constants as rpc
 # 'enum' for RPs's umgr scheduler types
 SCHEDULER_ROUND_ROBIN  = "round_robin"
 SCHEDULER_BACKFILLING  = "backfilling"
+SCHEDULER_DEFAULT      = SCHEDULER_ROUND_ROBIN
 
 # default:
 SCHEDULER_DEFAULT      = SCHEDULER_ROUND_ROBIN
@@ -27,7 +27,6 @@ ROLE    = '_scheduler_role'
 ADDED   = 'added'
 REMOVED = 'removed'
 FAILED  = 'failed'
-
 
 
 # ==============================================================================
@@ -45,18 +44,18 @@ class UMGRSchedulingComponent(rpu.Component):
 
         rpu.Component.__init__(self, cfg, session)
 
-        self._umgr = self._owner
+        self._umgr = cfg['owner']
 
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
-        self._early       = dict()            # early-bound units, sorted by pid
-        self._pilots      = dict()            # dict of pilots to schedule over
-        self._pilots_lock = threading.RLock() # lock on the above dict
-        self._units       = dict()            # dict of scheduled unit IDs
-        self._units_lock  = threading.RLock() # lock on the above dict
+        self._early       = dict()      # early-bound units, sorted by pid
+        self._pilots      = dict()      # dict of pilots to schedule over
+        self._pilots_lock = mt.RLock()  # lock on the above dict
+        self._units       = dict()      # dict of scheduled unit IDs
+        self._units_lock  = mt.RLock()  # lock on the above dict
 
         # configure the scheduler instance
         self._configure()
@@ -81,22 +80,6 @@ class UMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
-
-        self._log.info('finalize_child')
-
-        self.unregister_subscriber(rpc.CONTROL_PUBSUB, self._base_command_cb)
-        self.unregister_subscriber(rpc.STATE_PUBSUB,   self._base_state_cb)
-        self.unregister_output(rps.UMGR_STAGING_INPUT_PENDING)
-        self.unregister_input (rps.UMGR_SCHEDULING_PENDING,
-                               rpc.UMGR_SCHEDULING_QUEUE, self.work)
-
-
-        self._log.info('finalize_child done')
-
-
-    # --------------------------------------------------------------------------
-    #
     # This class-method creates the appropriate sub-class for the Scheduler.
     #
     @classmethod
@@ -106,22 +89,19 @@ class UMGRSchedulingComponent(rpu.Component):
         if cls != UMGRSchedulingComponent:
             raise TypeError("Scheduler Factory only available to base class!")
 
-        name = cfg['scheduler']
+        name = cfg.get('type', SCHEDULER_DEFAULT)
 
         from .round_robin  import RoundRobin
         from .backfilling  import Backfilling
 
-        try:
-            impl = {
-                SCHEDULER_ROUND_ROBIN : RoundRobin,
-                SCHEDULER_BACKFILLING : Backfilling
-            }[name]
+        impls = {SCHEDULER_ROUND_ROBIN : RoundRobin,
+                 SCHEDULER_BACKFILLING : Backfilling} 
 
-            impl = impl(cfg, session)
-            return impl
+        if name not in impls:
+            raise ValueError("Scheduler '%s' unknown" % name)
 
-        except KeyError:
-            raise ValueError("Scheduler '%s' unknown or defunct" % name)
+        impl = impls[name]
+        return impl(cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -132,23 +112,19 @@ class UMGRSchedulingComponent(rpu.Component):
         # self._pilots accordingly.  Unit state changes will be ignored -- if
         # a scheduler needs to keep track of those, it will need to add its own
         # callback.
-        
+
         cmd = msg.get('cmd')
         arg = msg.get('arg')
 
         self._log.info('scheduler state_cb: %s', cmd)
-      # self._log.debug('base state cb: %s', cmd)
 
         # FIXME: get cmd string consistent throughout the code
         if cmd not in ['update', 'state_update']:
-          # self._log.debug('base state cb: ignore %s', cmd)
             self._log.debug('ignore cmd %s', cmd)
             return True
 
         if not isinstance(arg, list): things = [arg]
         else                        : things =  arg
-
-      # self._log.debug('base state cb: things %s', things)
 
         pilots = [t for t in things if t['type'] == 'pilot']
         units  = [t for t in things if t['type'] == 'unit' ]
@@ -225,14 +201,16 @@ class UMGRSchedulingComponent(rpu.Component):
         cmd = msg['cmd']
 
         if cmd not in ['add_pilots', 'remove_pilots', 'cancel_units']:
+            self._log.debug('command ignored: %s', cmd)
             return True
 
-        arg   = msg['arg']
-        umgr  = arg['umgr']
+        arg  = msg['arg']
+        umgr = arg['umgr']
 
         self._log.info('scheduler command: %s: %s' % (cmd, arg))
 
         if umgr and umgr != self._umgr:
+            self._log.debug('command ignored: %s [%s] [%s]', cmd, umgr, self._umgr)
             # this is not the command we are looking for
             return True
 
@@ -240,7 +218,7 @@ class UMGRSchedulingComponent(rpu.Component):
         if cmd == 'add_pilots':
 
             pilots = arg['pilots']
-        
+
             with self._pilots_lock:
 
                 for pilot in pilots:
@@ -273,7 +251,7 @@ class UMGRSchedulingComponent(rpu.Component):
                     if early_units:
                         for unit in early_units:
                             if not unit.get('sandbox'):
-                                unit['sandbox'] = self._session._get_unit_sandbox(unit, pilot)
+                                unit['sandbox'] = self._session.get_unit_sandbox(unit, pilot)
 
                         self.advance(early_units, rps.UMGR_STAGING_INPUT_PENDING, 
                                      publish=True, push=True)
@@ -345,10 +323,10 @@ class UMGRSchedulingComponent(rpu.Component):
         uid = unit['uid']
 
         unit['pilot'           ] = pid
-        unit['client_sandbox'  ] = str(self._session._get_client_sandbox())
-        unit['resource_sandbox'] = str(self._session._get_resource_sandbox(pilot))
-        unit['pilot_sandbox'   ] = str(self._session._get_pilot_sandbox(pilot))
-        unit['unit_sandbox'    ] = str(self._session._get_unit_sandbox(unit, pilot))
+        unit['client_sandbox'  ] = str(self._session.get_client_sandbox())
+        unit['resource_sandbox'] = str(self._session.get_resource_sandbox(pilot))
+        unit['pilot_sandbox'   ] = str(self._session.get_pilot_sandbox(pilot))
+        unit['unit_sandbox'    ] = str(self._session.get_unit_sandbox(unit, pilot))
 
         with self._units_lock:
             if pid not in self._units:
@@ -422,7 +400,7 @@ class UMGRSchedulingComponent(rpu.Component):
                         # make sure we have a sandbox defined, too
                         if not unit.get('sandbox'):
                             pilot = self._pilots[pid]['pilot']
-                            unit['sandbox'] = self._session._get_unit_sandbox(unit, pilot)
+                            unit['sandbox'] = self._session.get_unit_sandbox(unit, pilot)
 
                         self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING, 
                                      publish=True, push=True)

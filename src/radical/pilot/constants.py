@@ -3,8 +3,6 @@
 #
 # global constants
 #
-UPDATE_WORKER                  = 'UpdateWorker'
-
 PMGR_LAUNCHING_QUEUE           = 'pmgr_launching_queue'
 PMGR_LAUNCHING_COMPONENT       = 'PMGRLaunchingComponent'
 
@@ -15,19 +13,16 @@ UMGR_STAGING_OUTPUT_QUEUE      = 'umgr_staging_output_queue'
 UMGR_SCHEDULING_COMPONENT      = 'UMGRSchedulingComponent'
 UMGR_STAGING_INPUT_COMPONENT   = 'UMGRStagingInputComponent'
 UMGR_STAGING_OUTPUT_COMPONENT  = 'UMGRStagingOutputComponent'
-UMGR_UPDATE_WORKER             = 'UMGRUpdateWorker'
 
 AGENT_STAGING_INPUT_QUEUE      = 'agent_staging_input_queue'
 AGENT_SCHEDULING_QUEUE         = 'agent_scheduling_queue'
 AGENT_EXECUTING_QUEUE          = 'agent_executing_queue'
 AGENT_STAGING_OUTPUT_QUEUE     = 'agent_staging_output_queue'
-# AGENT_UPDATE_QUEUE             = 'agent_update_queue'
 
 AGENT_STAGING_INPUT_COMPONENT  = 'AgentStagingInputComponent'
 AGENT_SCHEDULING_COMPONENT     = 'AgentSchedulingComponent'
 AGENT_EXECUTING_COMPONENT      = 'AgentExecutingComponent'
 AGENT_STAGING_OUTPUT_COMPONENT = 'AgentStagingOutputComponent'
-# AGENT_UPDATE_WORKER            = 'AgentUpdateWorker'
 
 UMGR_UNSCHEDULE_PUBSUB         = 'umgr_unschedule_pubsub'
 UMGR_RESCHEDULE_PUBSUB         = 'umgr_reschedule_pubsub'
@@ -39,6 +34,12 @@ CONTROL_PUBSUB                 = 'control_pubsub'
 STATE_PUBSUB                   = 'state_pubsub'
 LOG_PUBSUB                     = 'log_pubsub'
 
+AGENT_QUEUE_IN                 = 'agent_queue_in'
+AGENT_QUEUE_OUT                = 'agent_queue_out'
+AGENT_PUBSUB                   = 'agent_pubsub'
+
+AGENT_BRIDGES                  = [AGENT_QUEUE_IN, AGENT_QUEUE_OUT, AGENT_PUBSUB]
+
 
 # ------------------------------------------------------------------------------
 #
@@ -46,6 +47,19 @@ LOG_PUBSUB                     = 'log_pubsub'
 #
 FREE = 0
 BUSY = 1
+
+
+# -----------------------------------------------------------------------------
+#
+# definitions of metrics
+#
+UNIT_STATE           = 'UNIT_STATE'
+WAIT_QUEUE_SIZE      = 'WAIT_QUEUE_SIZE'
+UMGR_METRICS         = [UNIT_STATE, 
+                        WAIT_QUEUE_SIZE]
+
+PILOT_STATE          = 'PILOT_STATE'
+PMGR_METRICS         = [PILOT_STATE]
 
 
 # ------------------------------------------------------------------------------
@@ -61,7 +75,7 @@ TARBALL  = 'Tarball'  # remote staging will be executed using a tarball.
 #
 # Flags - inherit from RS where possible, add custom ones
 #
-import saga.filesystem as rsf
+import radical.saga.filesystem as rsf
 
 CREATE_PARENTS = rsf.CREATE_PARENTS  # Create parent directories if needed
 SKIP_FAILED    = 4096                # Don't stage out files if tasks failed

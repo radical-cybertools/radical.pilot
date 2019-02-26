@@ -33,7 +33,7 @@ class Shell(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         from .... import pilot as rp
 
@@ -120,13 +120,13 @@ class Shell(AgentExecutingComponent):
         self._cus_to_cancel  = list()
         self._cancel_lock    = threading.RLock()
 
-        self._cached_events = list() # keep monitoring events for pid's which
-                                     # are not yet known
+        self._cached_events = list()  # keep monitoring events for pid's which
+                                      # are not yet known
 
         # get some threads going -- those will do all the work.
-        import saga.utils.pty_shell as sups
-        self.launcher_shell = sups.PTYShell("fork://localhost/")
-        self.monitor_shell  = sups.PTYShell("fork://localhost/")
+        import radical.saga.utils.pty_shell as rsups
+        self.launcher_shell = rsups.PTYShell("fork://localhost/")
+        self.monitor_shell  = rsups.PTYShell("fork://localhost/")
 
         # run the spawner on the shells
         # tmp = tempfile.gettempdir()
@@ -137,13 +137,13 @@ class Shell(AgentExecutingComponent):
         self._spawner_tmp = "/%s/%s-%s" % (self._pwd, self._pilot_id, self.uid)
 
         ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/agent/executing/shell_spawner.sh %s" \
+                           ("/bin/sh %s/agent/executing/shell_spawner.sh %s"
                            % (os.path.dirname (rp.__file__), self._spawner_tmp))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
 
         ret, out, _  = self.monitor_shell.run_sync \
-                           ("/bin/sh %s/agent/executing/shell_spawner.sh %s" \
+                           ("/bin/sh %s/agent/executing/shell_spawner.sh %s"
                            % (os.path.dirname (rp.__file__), self._spawner_tmp))
         if  ret != 0 :
             raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
@@ -151,7 +151,6 @@ class Shell(AgentExecutingComponent):
         # run watcher thread
         self._terminate = threading.Event()
         self._watcher   = threading.Thread(target=self._watch, name="Watcher")
-        self._watcher.daemon = True
         self._watcher.start ()
 
         self.gtod = "%s/gtod" % self._pwd
@@ -197,7 +196,9 @@ class Shell(AgentExecutingComponent):
             with self._cancel_lock:
                 self._cus_to_cancel.remove(cu['uid'])
 
-            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                         {'cmd': 'unschedule',
+                          'arg': [cu]})
             self.advance(cu, rps.CANCELED, publish=True, push=False)
             return True
 
@@ -219,7 +220,7 @@ class Shell(AgentExecutingComponent):
                         # we own that cu, cancel it!
                         ret, out, _ = self.launcher_shell.run_sync ('CANCEL %s\n', pid)
                         if  ret != 0 :
-                            self._log.error("failed to cancel unit '%s': (%s)(%s)", \
+                            self._log.error("failed to cancel unit '%s': (%s)(%s)",
                                             cu_uid, ret, out)
                         # successful or not, we only try once
                         del(self._registry[pid])
@@ -259,7 +260,9 @@ class Shell(AgentExecutingComponent):
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             if cu.get('slots'):
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                             {'cmd': 'unschedule',
+                              'arg': [cu]})
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
 
@@ -364,7 +367,7 @@ prof(){
             post += "\n"
 
         if  descr['arguments']  :
-            args  = ' ' .join (quote_args (descr['arguments']))
+            args = ' ' .join (quote_args (descr['arguments']))
 
       # if  descr['stdin']  : io  += "<%s "  % descr['stdin']
       # else                : io  += "<%s "  % '/dev/null'
@@ -397,7 +400,7 @@ prof(){
         script += "%s"        %  pre
         script += "\n# CU execution\n"
         script += 'prof cu_exec_start\n'
-        script += "%s %s\n\n" % (cmd, io)
+        script += "%s %s %s\n\n" % (cmd, args, io)
         script += "RETVAL=$?\n"
         script += 'prof cu_exec_stop\n'
         script += "%s"        %  post
@@ -433,7 +436,7 @@ prof(){
         ret, out, _ = self.launcher_shell.run_sync (run_cmd)
 
         if  ret != 0 :
-            raise RuntimeError("failed to run unit '%s': (%s)(%s)" % \
+            raise RuntimeError("failed to run unit '%s': (%s)(%s)" %
                                (run_cmd, ret, out))
 
         lines = filter (None, out.split ("\n"))
@@ -480,12 +483,18 @@ prof(){
 
         MONITOR_READ_TIMEOUT = 1.0   # check for stop signal now and then
         static_cnt           = 0
+        main_thread          = ru.main_thread()
 
         try:
 
             self.monitor_shell.run_async ("MONITOR")
 
             while not self._terminate.is_set () :
+
+                main_thread(0)
+                if not main_thread():
+                    # parent thread is gone - finish also
+                    return
 
                 _, out = self.monitor_shell.find (['\n'], timeout=MONITOR_READ_TIMEOUT)
 
@@ -596,7 +605,9 @@ prof(){
         self._prof.prof('exec_stop', uid=cu['uid'])
 
         # for final states, we can free the slots.
-        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                     {'cmd': 'unschedule',
+                      'arg': [cu]})
 
         if data : cu['exit_code'] = int(data)
         else    : cu['exit_code'] = None

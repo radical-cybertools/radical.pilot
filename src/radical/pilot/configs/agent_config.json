@@ -1,0 +1,76 @@
+
+# `scheduler`          : algorithm to place units on the agent resources
+# `spawner`            : method to spawn compute unit processes
+# `agent_launch_method`: method to reach compute nodes (for sub-agents)
+# `task_launch_method` : method to reach compute nodes (for non-mpi tasks)
+# `mpi_launch_method`  : method to reach compute nodes (for mpi tasks)
+
+{
+    "default" : "ssh", 
+    "ssh"     : {
+        "components" : {
+            "AgentSchedulingComponent": {
+                "scheduler"             : "CONTINUOUS"
+            },
+            "AgentExecutingComponent": {
+                 "spawner"              : "POPEN",
+                 "agent_launch_method"  : "SSH",
+                 "task_launch_method"   : "SSH",
+                 "mpi_launch_method"    : "MPIRUN"
+            }
+        }
+    }, 
+    "aprun"   : {
+        "components" : {
+            "AgentSchedulingComponent": {
+                "scheduler"             : "CONTINUOUS"
+            },
+            "AgentExecutingComponent": {
+                 "spawner"              : "POPEN",
+                 "agent_launch_method"  : "APRUN",
+                 "task_launch_method"   : "APRUN",
+                 "mpi_launch_method"    : "APRUN"
+            }
+        }
+    }, 
+    "prte"    : {
+        "components" : {
+            "AgentSchedulingComponent": {
+                "scheduler"             : "CONTINUOUS"
+            },
+            "AgentExecutingComponent": {
+                 "spawner"              : "SHELLFS",
+                 "agent_launch_method"  : "PRTE",
+                 "task_launch_method"   : "PRTE",
+                 "mpi_launch_method"    : "PRTE"
+            }
+        }
+    },
+    "orte"    : {
+        "components" : {
+            "AgentSchedulingComponent": {
+                "scheduler"             : "CONTINUOUS"
+            },
+            "AgentExecutingComponent": {
+                 "spawner"              : "SHELLFS",
+                 "agent_launch_method"  : "ORTE",
+                 "task_launch_method"   : "ORTE",
+                 "mpi_launch_method"    : "ORTE"
+            }
+        }
+    }, 
+    "ortelib" : {
+        "components" : {
+            "AgentSchedulingComponent": {
+                "scheduler"             : "CONTINUOUS"
+            },
+            "AgentExecutingComponent": {
+                 "spawner"              : "ORTE",
+                 "agent_launch_method"  : "ORTELIB",
+                 "task_launch_method"   : "ORTELIB",
+                 "mpi_launch_method"    : "ORTELIB"
+            }
+        }
+    }
+}
+

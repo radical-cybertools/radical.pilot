@@ -53,7 +53,7 @@ class AgentStagingInputComponent(rpu.Component):
             return impl
 
         except KeyError:
-            raise ValueError("AgentStagingInputComponent '%s' unknown or defunct" % name)
+            raise ValueError("AgentStagingInputComponent '%s' unknown" % name)
 
 
 # ------------------------------------------------------------------------------

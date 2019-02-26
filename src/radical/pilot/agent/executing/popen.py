@@ -40,7 +40,7 @@ class Popen(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         self._pwd = os.getcwd()
 
@@ -164,7 +164,7 @@ class Popen(AgentExecutingComponent) :
 
         self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        ru.raise_on('work bulk')
+      # ru.raise_on('work bulk')
 
         for unit in units:
             self._handle_unit(unit)
@@ -174,7 +174,7 @@ class Popen(AgentExecutingComponent) :
     #
     def _handle_unit(self, cu):
 
-        ru.raise_on('work unit')
+      # ru.raise_on('work unit')
       # import pprint
       # self._log.info('handle cu: %s', pprint.pformat(cu))
 
@@ -214,7 +214,9 @@ class Popen(AgentExecutingComponent) :
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             if cu.get('slots'):
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                             {'cmd': 'unschedule',
+                              'arg': [cu]})
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
 
@@ -252,6 +254,8 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_UNIT_ID="%s"\n'      % cu['uid']
             env_string += 'export RP_GTOD="%s"\n'         % self.gtod
             env_string += 'export RP_TMP="%s"\n'          % self._cu_tmp
+            env_string += 'export RP_PROCESSES="%d"\n'    % descr['cpu_processes']
+            env_string += 'export RP_THREADS="%d"\n'      % descr['cpu_threads']
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
             else:
@@ -449,7 +453,9 @@ prof(){
                     self._prof.prof('exec_cancel_stop', uid=uid)
 
                     del(cu['proc'])  # proc is not json serializable
-                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                                 {'cmd': 'unschedule',
+                                  'arg': [cu]})
                     self.advance(cu, rps.CANCELED, publish=True, push=False)
 
                     # we don't need to watch canceled CUs
@@ -468,10 +474,14 @@ prof(){
 
                 cu['exit_code'] = exit_code
 
+                sandbox  = '%s/%s' % (self._pwd, cu['uid'])
+
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._cus_to_watch.remove(cu)
                 del(cu['proc'])  # proc is not json serializable
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                             {'cmd': 'unschedule',
+                              'arg': [cu]})
 
                 if exit_code != 0:
                     # The unit failed - fail after staging output

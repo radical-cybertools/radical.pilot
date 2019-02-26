@@ -8,7 +8,7 @@ import tempfile
 import threading     as mt
 import tarfile
 
-import saga          as rs
+import radical.saga  as rs
 import radical.utils as ru
 
 from ...   import states    as rps
@@ -50,7 +50,7 @@ class Default(UMGRStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         # we keep a cache of SAGA dir handles
         self._fs_cache    = dict()
@@ -58,11 +58,12 @@ class Default(UMGRStagingInputComponent):
         self._pilots      = dict()
         self._pilots_lock = mt.RLock()
 
+        # FIXME: move to base class
         self.register_input(rps.UMGR_STAGING_INPUT_PENDING,
                             rpc.UMGR_STAGING_INPUT_QUEUE, self.work)
 
-        # FIXME: this queue is inaccessible, needs routing via mongodb
-        self.register_output(rps.AGENT_STAGING_INPUT_PENDING, None)
+        self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
+                             rpc.AGENT_QUEUE_IN)
 
         # we subscribe to the command channel to learn about pilots being added
         # to this unit manager.
@@ -72,9 +73,7 @@ class Default(UMGRStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
-
-        self.unregister_subscriber(rpc.STATE_PUBSUB, self._base_command_cb)
+    def finalize(self):
 
         try:
             [fs.close() for fs in self._fs_cache.values()]
@@ -191,7 +190,7 @@ class Default(UMGRStagingInputComponent):
                 self._log.debug('pid unknown - skip optimizion', pid)
                 continue
 
-            session_sbox = self._session._get_session_sandbox(pilot)
+            session_sbox = self._session.get_session_sandbox(pilot)
             unit_sboxes  = unit_sboxes_by_pid[pid]
 
             if len(unit_sboxes) >= UNIT_BULK_MKDIR_THRESHOLD:

@@ -45,7 +45,7 @@ We generally follow PEP 8 (http://legacy.python.org/dev/peps/pep-0008/), with cu
 Debugging 
 =========
 
-The `RADICAL_PILOT_VERBOSE` environment variable controls the debug output of 
+The `RADICAL_PILOT_LOG_LVL` environment variable controls the debug output of 
 a RADICAL-Pilot application. Possible values are:
 
   * `debug`
@@ -53,9 +53,9 @@ a RADICAL-Pilot application. Possible values are:
   * `warning`
   * `error`
 
-The environment variable `RADICAL_PILOT_AGENT_VERBOSE` controls the debug log
+The environment variable `RADICAL_PILOT_AGENT_LOG_LVL` controls the debug log
 level of the agent process on the target resource.  If it is not set, the log
-level from `RADICAL_PILOT_VERBOSE` is used.
+level from `RADICAL_PILOT_LOG_LVL` is used.
 
 
 RADICAL-Pilot Architecture

@@ -15,7 +15,7 @@ to install RADICAL-Pilot first:
 
 .. code-block:: bash
 
-    export RADICAL_PILOT_VERBOSE=debug
+    export RADICAL_PILOT_LOG_LVL=debug
     export RADICAL_PILOT_TEST_DBNAME=rbtest_`date | md5sum | cut -c 1-32`
     python setup.py test
 
@@ -61,7 +61,7 @@ So if for example you want to run the unit tests on Futuregrid's _India_ cluster
 
 .. code-block:: bash
 
-    RADICAL_PILOT_VERBOSE=debug \
+    RADICAL_PILOT_LOG_LVL=debug \
     RADICAL_PILOT_TEST_REMOTE_SSH_USER_ID=oweidner # optional \
     RADICAL_PILOT_TEST_REMOTE_RESOURCE=futuregrid.INDIA \
     RADICAL_PILOT_TEST_REMOTE_WORKDIR=/N/u/oweidner/radical.pilot.sandbox \

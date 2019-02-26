@@ -6,8 +6,8 @@ __license__   = 'MIT'
 import os
 import sys
 
-verbose  = os.environ.get('RADICAL_PILOT_VERBOSE', 'REPORT')
-os.environ['RADICAL_PILOT_VERBOSE'] = verbose
+verbose  = os.environ.get('RADICAL_PILOT_LOG_LVL', 'REPORT')
+os.environ['RADICAL_PILOT_LOG_LVL'] = verbose
 
 import radical.pilot as rp
 import radical.utils as ru

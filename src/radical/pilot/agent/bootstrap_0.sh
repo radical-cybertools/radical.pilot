@@ -110,6 +110,7 @@ export PYTHONNOUSERSITE=True
 #
 create_gtod()
 {
+    echo "=== create gtod (`pwd`)"
     # we "should" be able to build this everywhere ...
 
     cat > gtod.c <<EOT
@@ -130,6 +131,24 @@ EOT
 
     if ! test -e "./gtod"
     then
+        echo "=== link?"
+        if test -e ../../gtod
+        then
+            echo "=== link!"
+            ln -s ../../gtod ./gtod
+        fi
+    fi
+
+    if ! test -e "./gtod"
+    then
+        echo "=== link failed, build with cc"
+        echo -n "build gtod with cc... $(which cc) "
+        cc -o gtod gtod.c
+    fi
+
+    if ! test -e "./gtod"
+    then
+        echo "=== cc failed, build with gcc"
         echo -n "build gtod with gcc... $(which gcc)"
         echo
         gcc -o gtod gtod.c
@@ -137,13 +156,7 @@ EOT
 
     if ! test -e "./gtod"
     then
-        echo "failed"
-        echo -n "build gtod with cc... $(which cc) "
-        cc -o gtod gtod.c
-    fi
-
-    if ! test -e "./gtod"
-    then
+        echo "=== gcc failed, use date"
         tmp=`date '+%s.%N'`
         if test "$?" = 0
         then
@@ -159,7 +172,7 @@ EOT
 
     if ! test -e "./gtod"
     then
-        echo "failed - giving up"
+        echo "=== failed - giving up"
         exit 1
     fi
 
@@ -176,7 +189,7 @@ profile_event()
 {
     PROFILE="bootstrap_0.prof"
 
-    if test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
+    if test -z "$RADICAL_PROFILE$RADICAL_PILOT_PROFILE"
     then
         return
     fi
@@ -456,14 +469,14 @@ verify_install()
     fi
     echo ' ok'
 
-    if ! test -z "$RADICAL_DEBUG"
-    then
-        echo 'debug mode: install pudb'
-        pip install pudb || true
-    fi
+    ## if ! test -z "$RADICAL_DEBUG"
+    ## then
+    ##     echo 'debug mode: install pudb'
+    ##     pip install pudb || true
+    ## fi
 
     # FIXME: attempt to load all required modules
-    modules='saga radical.utils pymongo hostlist netifaces setproctitle ntplib msgpack zmq'
+    modules='radical.saga radical.utils pymongo hostlist netifaces setproctitle ntplib msgpack zmq'
     for m in $modules
     do
         printf 'verify module viability: %-15s ...' $m
@@ -1198,10 +1211,10 @@ rp_install()
             ;;
 
         SANDBOX)
-            RP_INSTALL="$PILOT_SANDBOX/rp_install"
+            RP_INSTALL="$SESSION_SANDBOX/rp_install"
 
             # make sure the lib path into the prefix conforms to the python conventions
-            RP_LOC_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$PILOT_SANDBOX/rp_install|"`
+            RP_LOC_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$SESSION_SANDBOX/rp_install|"`
 
             echo "VE_MOD_PREFIX: $VE_MOD_PREFIX"
             echo "VIRTENV      : $VIRTENV"
@@ -1216,10 +1229,14 @@ rp_install()
             PYTHONPATH="$RP_LOC_PREFIX:$VE_MOD_REFIX:$VE_PYTHONPATH"
             export PYTHONPATH
 
-            PATH="$PILOT_SANDBOX/rp_install/bin:$PATH"
+            PATH="$SESSION_SANDBOX/rp_install/bin:$PATH"
             export PATH
 
             RADICAL_MOD_PREFIX="$RP_LOC_PREFIX/radical/"
+
+            # multiple pilots canuse the same rp_install (which lives in the
+            # *session* sandbox - skip purging.
+            SKIP_PURGE='TRUE'
 
             echo "using local install tree"
             echo "PYTHONPATH: $PYTHONPATH"
@@ -1234,12 +1251,15 @@ rp_install()
 
     esac
 
-    # NOTE: we need to purge the whole install tree (not only the module dir),
-    #       as pip will otherwise find the eggs and interpret them as satisfied
-    #       dependencies, even if the modules are gone.  Of course, there should
-    #       not be any eggs in the first place, but...
-    rm    -rf  "$RP_INSTALL/"
-    mkdir -p   "$RP_INSTALL/"
+    if ! test -z "$SKIP_PURGE"
+    then
+        # NOTE: we need to purge the whole install tree (not only the module dir),
+        #       as pip will otherwise find the eggs and interpret them as satisfied
+        #       dependencies, even if the modules are gone.  Of course, there should
+        #       not be any eggs in the first place, but...
+        rm    -rf  "$RP_INSTALL/"
+        mkdir -p   "$RP_INSTALL/"
+    fi
 
     # NOTE: we need to add the radical name __init__.py manually here --
     #       distutil is broken and will not install it.
@@ -1277,8 +1297,8 @@ rp_install()
   #     fi
   # fi
 
-    pip_flags="$pip_flags --src '$PILOT_SANDBOX/rp_install/src'"
-    pip_flags="$pip_flags --build '$PILOT_SANDBOX/rp_install/build'"
+    pip_flags="$pip_flags --src '$SESSION_SANDBOX/rp_install/src'"
+    pip_flags="$pip_flags --build '$SESSION_SANDBOX/rp_install/build'"
     pip_flags="$pip_flags --install-option='--prefix=$RP_INSTALL'"
     pip_flags="$pip_flags --no-deps"
 
@@ -1293,7 +1313,7 @@ rp_install()
         fi
 
         # NOTE: why? fuck pip, that's why!
-        rm -rf "$PILOT_SANDBOX/rp_install/build"
+        rm -rf "$SESSION_SANDBOX/rp_install/build"
 
         # clean out the install source if it is a local dir
         if test -d "$src"
@@ -1313,13 +1333,9 @@ rp_install()
 #
 verify_rp_install()
 {
-    OLD_SAGA_VERBOSE=$SAGA_VERBOSE
-    OLD_RADICAL_VERBOSE=$RADICAL_VERBOSE
-    OLD_RADICAL_PILOT_VERBOSE=$RADICAL_PILOT_VERBOSE
+    OLD_RADICAL_LOG_LVL=$RADICAL_LOG_LVL
 
-    SAGA_VERBOSE=WARNING
-    RADICAL_VERBOSE=WARNING
-    RADICAL_PILOT_VERBOSE=WARNING
+    RADICAL_LOG_LVL=WARNING
 
     # print the ve information and stack versions for verification
     echo
@@ -1328,7 +1344,7 @@ verify_rp_install()
     echo "`$PYTHON --version` ($PYTHON)"
     echo "PYTHONPATH: $PYTHONPATH"
  (  $PYTHON -c 'print "utils : ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__' \
- && $PYTHON -c 'print "saga  : ",; import saga          as rs; print rs.version_detail,; print rs.__file__' \
+ && $PYTHON -c 'print "saga  : ",; import radical.saga  as rs; print rs.version_detail,; print rs.__file__' \
  && $PYTHON -c 'print "pilot : ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__' \
  && (echo 'install ok!'; true) \
  ) \
@@ -1338,9 +1354,7 @@ verify_rp_install()
     echo "---------------------------------------------------------------------"
     echo
 
-    SAGA_VERBOSE=$OLD_SAGA_VERBOSE
-    RADICAL_VERBOSE=$OLD_RADICAL_VERBOSE
-    RADICAL_PILOT_VERBOSE=$OLD_RADICAL_PILOT_VERBOSE
+    RADICAL_LOG_LVL=$OLD_RADICAL_LOG_LVL
 }
 
 
@@ -1389,8 +1403,8 @@ find_available_port()
 #
 # run a pre_bootstrap_0 command -- and exit if it happens to fail
 #
-# pre_bootstrap_0 commands are executed right in arg parser loop because -e can be
-# passed multiple times
+# pre_bootstrap_0 commands are executed right in arg parser loop
+# ( -e can be passed multiple times)
 #
 pre_bootstrap_0()
 {
@@ -1408,7 +1422,7 @@ pre_bootstrap_0()
 #
 # Build the PREBOOTSTRAP2 variable to pass down to sub-agents
 #
-pre_bootstrap_2()
+pre_bootstrap_1()
 {
     cmd="$@"
 
@@ -1472,7 +1486,7 @@ while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
         s)  SESSION_ID="$OPTARG"  ;;
         t)  TUNNEL_BIND_DEVICE="$OPTARG" ;;
         v)  VIRTENV=$(eval echo "$OPTARG")  ;;
-        w)  pre_bootstrap_2 "$OPTARG"  ;;
+        w)  pre_bootstrap_1 "$OPTARG"  ;;
         x)  CLEANUP="$OPTARG"  ;;
         y)  RUNTIME="$OPTARG"  ;;
         *)  echo "Unknown option: '$OPTION'='$OPTARG'"
@@ -1527,7 +1541,7 @@ PB1_LDLB="$LD_LIBRARY_PATH"
 #        We should split the parsing and the execution of those.
 #        "bootstrap start" is here so that $PILOT_ID is known.
 # Create header for profile log
-if ! test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
+if ! test -z "$RADICAL_PROFILE$RADICAL_PILOT_PROFILE"
 then
     echo 'create gtod'
     create_gtod
@@ -1619,7 +1633,7 @@ get_tunnel(){
 
     # FIXME: check if tunnel stays up
     echo ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$addr -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST
-    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$addr -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
+         ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$addr -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
 
     # Kill ssh process when bootstrap_0 dies, to prevent lingering ssh's
     trap 'jobs -p | grep ssh | xargs kill' EXIT
@@ -1669,7 +1683,7 @@ virtenv_activate "$VIRTENV" "$PYTHON_DIST"
 PILOT_SCRIPT=`which radical-pilot-agent`
 # if test "$RP_INSTALL_TARGET" = 'PILOT_SANDBOX'
 # then
-#     PILOT_SCRIPT="$PILOT_SANDBOX/rp_install/bin/radical-pilot-agent"
+#     PILOT_SCRIPT="$SESSION_SANDBOX/rp_install/bin/radical-pilot-agent"
 # else
 #     PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent"
 # fi
@@ -1735,9 +1749,6 @@ fi
 cat > bootstrap_2.sh <<EOT
 #!$BS_SHELL
 
-# some inspection for logging
-hostname
-
 # disable user site packages as those can conflict with our virtualenv
 export PYTHONNOUSERSITE=True
 
@@ -1761,14 +1772,7 @@ export PYTHONPATH=$PYTHONPATH
 
 # run agent in debug mode
 # FIXME: make option again?
-export SAGA_VERBOSE=DEBUG
-export RADICAL_VERBOSE=DEBUG
-export RADICAL_UTIL_VERBOSE=DEBUG
-export RADICAL_PILOT_VERBOSE=DEBUG
-
-# the agent will *always* use the dburl from the config file, not from the env
-# FIXME: can we better define preference in the session ctor?
-unset RADICAL_PILOT_DBURL
+export RADICAL_LOG_LVL=DEBUG
 
 # avoid ntphost lookups on compute nodes
 export RADICAL_PILOT_NTPHOST=$RADICAL_PILOT_NTPHOST
@@ -1860,6 +1864,50 @@ profile_event 'sync_rel' 'agent_0 start'
 # ./packer.sh 2>&1 >> bootstrap_0.out &
 # PACKER_ID=$!
 
+# ------------------------------------------------------------------------------
+# FIXME PARTITIONING
+#
+# Here we jump from bootstrap_0.sh straight to bootstrap_2.sh, to start agent_0.
+# Once partitions get introduced, we'll insert a `bootstrap_1.py` right here,
+# which will do something like this:
+#
+#   part_cfg   = ru.read_json(sys.argv[1])
+#   partitions = rp.LRMS.partition(part_cfg['lrms'])
+#   for partition in partitions:
+#       ru.sh_callout('./bootstrap_2.sh agent_0 partition.cfg_file &', 
+#                     stdout='./%s.agent_0.bootstrap_2.out' % partition.uid, 
+#                     stderr='./%s.agent_0.bootstrap_2.err' % partition.uid)
+#   pids = dict()
+#   while True:
+#       alive = False
+#       for partition in partitions:
+#           uid = partition.uid
+#           pid = pids.get(uid)
+#           if not pid:
+#               if not os.path.is_file('%s.pid' % uid):
+#                   continue
+#               else:
+#                   with open('%s.pid' % uid, 'r') as fin:
+#                       pid = int(fin.read().strip())
+#                       pids[uid] = pid
+#           if os.kill(pid, 0):
+#               # process is alive - that's enough checking for now
+#               alive = True
+#               break
+#       if not alive:
+#           sys.exit()
+#       time.sleep(1)
+# 
+# The static `LRMS.partition` method is responsible for splitting up the
+# allocation into smaller ones according to the partitioning scheme, in a way
+# that the same LRMS can then pick thos up during `agent_0` startup, resulting
+# in a functional agent on that partition.  Note that all agents live on the
+# same (*this*) node, so this will only be doable for a finite (aka 'small') set
+# of partitions.
+#
+# FIXME: do we need to use bootstrap_2.sh to start bootstrap_1.py? 
+#       
+#
 if test -z "$CCM"; then
     ./bootstrap_2.sh 'agent_0'    \
                    1> agent_0.bootstrap_2.out \
@@ -1873,7 +1921,9 @@ AGENT_PID=$!
 
 while true
 do
-    sleep 3
+    test -z "$AGENT_PID" && break
+
+    sleep 1
     if kill -0 $AGENT_PID 2>/dev/null
     then 
         if test -e "./killme.signal"
@@ -1928,8 +1978,10 @@ profile_event 'cleanup_stop'
 echo "#"
 echo "# -------------------------------------------------------------------"
 
-if ! test -z "`ls *.prof 2>/dev/null`"
+if test -z "`ls *.prof 2>/dev/null`"
 then
+    touch $PROFILES_TARBALL
+else
     echo
     echo "# -------------------------------------------------------------------"
     echo "#"
@@ -1976,8 +2028,10 @@ then
     echo "# -------------------------------------------------------------------"
 fi
 
-if ! test -z "`ls *{log,out,err,cfg} 2>/dev/null`"
+if test -z "`ls *{log,out,err,cfg} 2>/dev/null`"
 then
+    touch $LOGILES_TARBALL
+else
     # TODO: This might not include all logs, as some systems only write
     #       the output from the bootstrapper once the jobs completes.
     echo

@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+
+__copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+
+import sys
+import time
+
+import setproctitle  as spt
+import radical.utils as ru
+
+DELAY = 0.0
+N     = 100000
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+    '''
+    This thin wrapper connects to a ZMQ communication bridge and sends whatever
+    messages it gets on stdin (line breaks separate messages).  The single
+    argument specifies the bridge to connect to.  We expect to find
+    a `$name.url` file in `$PWD`, from which we'll dig the bridge address to
+    use.  It is the responsibility of the caller to ensure that the respective
+    bridge exists.
+    '''
+
+    if len(sys.argv) < 3:
+        sys.stderr.write('error: missing argument\n'
+                         'usage: %s <channel> <topic1> [...]\n\n' % sys.argv[0])
+        raise RuntimeError('missing argument')
+
+    # setup channel
+    name   = sys.argv[1]
+    topics = sys.argv[2:]
+    pub    = ru.Publisher(name)
+
+    # mark this process
+    spt.setproctitle('rp.%s' % pub.uid)
+
+    start = time.time()
+    for i in range(N):
+
+        msg = {'data': i}
+        for topic in topics:
+            pub.put(topic, msg)
+
+        time.sleep(DELAY)
+
+    for topic in topics:
+        pub.put(topic, {'cmd': 'QUIT'})
+
+    stop = time.time()
+    print 'rate: %.2f msg/s' % ((N * len(topics)) / (stop - start))
+
+
+# ------------------------------------------------------------------------------
+

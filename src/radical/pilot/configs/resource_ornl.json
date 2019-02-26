@@ -34,7 +34,7 @@
           # "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH",
             "module load xalt"
         ],
-        "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
+        "default_sandbox_base"        : "$MEMBERWORK/`groups | cut -d' ' -f2`",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "use",
@@ -72,7 +72,7 @@
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],
-        "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
+        "default_sandbox_base"        : "$MEMBERWORK/`groups | cut -d' ' -f2`",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "use",
@@ -99,7 +99,8 @@
         "lfs_per_node"                : "/tmp", 
         "agent_type"                  : "multicore",
         "agent_config"                : "cray",
-        "agent_scheduler"             : "CONTINUOUS",
+        "agent_scheduler"             : "HOMBRE",
+      # "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "SHELLFS",
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE",
@@ -114,8 +115,8 @@
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],
-     #  "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
-        "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
+        "default_sandbox_base"        : "$MEMBERWORK/`groups | cut -d' ' -f2`",
+     #  "default_sandbox_base"        : "$MEMBERWORK/%(pd.project)s",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "use",
@@ -153,7 +154,7 @@
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],
-        "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
+        "default_sandbox_base"        : "$MEMBERWORK/`groups | cut -d' ' -f2`",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "use",
@@ -196,7 +197,7 @@
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],
-        "default_remote_workdir"      : "$MEMBERWORK/`groups | cut -d' ' -f2`",
+        "default_sandbox_base"        : "$MEMBERWORK/`groups | cut -d' ' -f2`",
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",

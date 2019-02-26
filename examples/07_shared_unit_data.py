@@ -6,8 +6,8 @@ __license__   = 'MIT'
 import os
 import sys
 
-verbose  = os.environ.get('RADICAL_PILOT_VERBOSE', 'REPORT')
-os.environ['RADICAL_PILOT_VERBOSE'] = verbose
+verbose  = os.environ.get('RADICAL_PILOT_LOG_LVL', 'REPORT')
+os.environ['RADICAL_PILOT_LOG_LVL'] = verbose
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -80,7 +80,6 @@ if __name__ == '__main__':
                         'target': 'pilot:///input.dat',
                         'action': rp.TRANSFER})
         report.ok('>>ok\n')
-
 
         report.header('submit units')
 

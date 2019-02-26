@@ -27,7 +27,7 @@
             # https://github.com/radical-cybertools/radical.pilot/issues/1199
             "ulimit -s 8192"
         ],
-        "default_remote_workdir"      : "$HOME",
+        "default_sandbox_base"        : "$HOME",
         "valid_roots"                 : [
             "/home"
         ],
@@ -60,7 +60,7 @@
             "export PATH=/home/marksant/miniconda2/bin:$PATH",
             "module load openmpi-1.10-x86_64"
         ],
-        "default_remote_workdir"      : "$HOME",
+        "default_sandbox_base"        : "$HOME",
         "valid_roots"                 : [
             "/home"
         ],

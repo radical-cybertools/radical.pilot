@@ -244,3 +244,12 @@ term iv
       - keep component and bridge handles in the component and clean out after
         fork
 
+  - remove exceptions.py
+  - we don't have clones anymore - clean out
+
+
+configuration
+-------------
+
+  - default_sandbox_base -> default_remote_workdir
+

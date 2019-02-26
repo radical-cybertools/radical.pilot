@@ -53,7 +53,7 @@ class Torque(LRMS):
             torque_num_nodes = None
             self._log.warning(msg)
 
-        torque_gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
+        torque_gpus_per_node  = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
 
         lfs_path = self._cfg.get('lfs_path_per_node', '')
         if lfs_path:

@@ -2,14 +2,15 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import saga.attributes as attributes
+import radical.saga.attributes as attributes
 
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
 #
 RESOURCE          = 'resource'
-ACCESS_SCHEMA     = 'access_schema'
+ACCESS            = 'access'
+SYSTEM            = 'system'
 QUEUE             = 'queue'
 PROJECT           = 'project'
 CANDIDATE_HOSTS   = 'candidate_hosts'
@@ -59,12 +60,16 @@ class ComputePilotDescription(attributes.Attributes):
        :meth:`radical.pilot.PilotManager.submit_pilots`. If the key doesn't exist,
        a :class:`radical.pilot.pilotException` is thrown.
 
-    .. data:: access_schema
+    .. data:: access
 
        [Type: `string`] [**`optional`**] The key of an access mechanism to use.
        The valid access mechanism are defined in the resource configurations,
        see :ref:`chapter_machconf`.  The first one defined there is used by
        default, if no other is specified.
+
+    .. data:: system
+
+       [Type: `string`] [**`optional`**] The system software stack to use.
 
     .. data:: runtime
 
@@ -134,7 +139,8 @@ class ComputePilotDescription(attributes.Attributes):
         self._attributes_camelcasing (True)
 
         self._attributes_register    (RESOURCE,         None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (ACCESS_SCHEMA,    None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (ACCESS,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (SYSTEM,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (RUNTIME,          None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (SANDBOX,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register    (CORES,            None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
@@ -152,7 +158,8 @@ class ComputePilotDescription(attributes.Attributes):
 
         # explicitly set attrib defaults so they get listed and included via as_dict()
         self.set_attribute (RESOURCE,         None)
-        self.set_attribute (ACCESS_SCHEMA,    None)
+        self.set_attribute (ACCESS,           None)
+        self.set_attribute (SYSTEM,           None)
         self.set_attribute (RUNTIME,          None)
         self.set_attribute (SANDBOX,          None)
         self.set_attribute (CORES,               0)

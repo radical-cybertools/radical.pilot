@@ -4,7 +4,8 @@ import sys
 
 import radical.utils as ru
 
-from .constants import *
+from .constants import DEFAULT_FLAGS, DEFAULT_ACTION, DEFAULT_PRIORITY
+from .constants import STAGING_AREA
 
 
 # ------------------------------------------------------------------------------
@@ -201,7 +202,7 @@ def complete_url(path, context, log=None):
 
         if schema in ['resource', 'pilot']:
             # use a dedicated staging area dir
-            ret.path += '/staging_area'
+            ret.path += '/%s' % STAGING_AREA
 
         ret.path += '/%s' % ppath
         purl      = ret

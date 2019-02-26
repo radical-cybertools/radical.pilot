@@ -14,7 +14,6 @@ import radical.utils as ru
 from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
-from . import types     as rpt
 
 
 # ------------------------------------------------------------------------------
@@ -76,11 +75,11 @@ class ComputePilot(object):
         self._exit_on_error = self._descr.get('exit_on_error')
 
 
-        for m in rpt.PMGR_METRICS:
+        for m in rpc.PMGR_METRICS:
             self._callbacks[m] = dict()
 
         # we always invoke the default state cb
-        self._callbacks[rpt.PILOT_STATE][self._default_state_cb.__name__] = {
+        self._callbacks[rpc.PILOT_STATE][self._default_state_cb.__name__] = {
                 'cb'      : self._default_state_cb, 
                 'cb_data' : None}
 
@@ -93,17 +92,13 @@ class ComputePilot(object):
         self._pilot_sandbox    = ru.Url()
         self._client_sandbox   = ru.Url()
 
-        self._log.debug(' ===== 1: %s [%s]', self._pilot_sandbox, type(self._pilot_sandbox))
-
         pilot = self.as_dict()
-        self._log.debug(' ===== 2: %s [%s]', pilot['pilot_sandbox'], type(pilot['pilot_sandbox']))
 
         self._pilot_jsurl, self._pilot_jshop \
-                               = self._session._get_jsurl           (pilot)
-        self._resource_sandbox = self._session._get_resource_sandbox(pilot)
-        self._pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
-        self._client_sandbox   = self._session._get_client_sandbox()
-        self._log.debug(' ===== 3: %s [%s]', self._pilot_sandbox, type(self._pilot_sandbox))
+                               = self._session.get_jsurl           (pilot)
+        self._resource_sandbox = self._session.get_resource_sandbox(pilot)
+        self._pilot_sandbox    = self._session.get_pilot_sandbox   (pilot)
+        self._client_sandbox   = self._session.get_client_sandbox()
 
 
     # --------------------------------------------------------------------------
@@ -173,7 +168,7 @@ class ComputePilot(object):
 
         # invoke pilot specific callbacks
         # FIXME: this iteration needs to be thread-locked!
-        for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
+        for cb_name, cb_val in self._callbacks[rpc.PILOT_STATE].iteritems():
 
             cb      = cb_val['cb']
             cb_data = cb_val['cb_data']
@@ -195,7 +190,7 @@ class ComputePilot(object):
         Returns a Python dictionary representation of the object.
         """
         ret = {
-            'session':          self.session.uid,
+            'session_id':       self.session.uid,
             'pmgr':             self.pmgr.uid,
             'uid':              self.uid,
             'type':             'pilot',
@@ -405,7 +400,7 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_callback(self, cb, metric=rpt.PILOT_STATE, cb_data=None):
+    def register_callback(self, cb, metric=rpc.PILOT_STATE, cb_data=None):
         """
         Registers a callback function that is triggered every time the
         pilot's state changes.
@@ -423,7 +418,7 @@ class ComputePilot(object):
         and 'cb_data' are passed along.
 
         """
-        if metric not in rpt.PMGR_METRICS :
+        if metric not in rpc.PMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
 
         with self._cb_lock:
@@ -434,13 +429,13 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def unregister_callback(self, cb, metric=rpt.PILOT_STATE):
+    def unregister_callback(self, cb, metric=rpc.PILOT_STATE):
 
-        if metric and metric not in rpt.UMGR_METRICS :
+        if metric and metric not in rpc.UMGR_METRICS :
             raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
 
         if not metric:
-            metrics = rpt.PMGR_METRICS
+            metrics = rpc.PMGR_METRICS
         elif isinstance(metric, list):
             metrics =  metric
         else:
@@ -553,7 +548,7 @@ class ComputePilot(object):
         # interface to a dedicated data movement service though.
 
         # send the staging request to the pmg launcher
-        self._pmgr._pilot_staging_input(self.as_dict(), directives)
+        self._pmgr._pilot_staging_input(self.uid, directives)
 
 
 # ------------------------------------------------------------------------------
