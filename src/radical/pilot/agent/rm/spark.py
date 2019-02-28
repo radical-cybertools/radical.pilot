@@ -4,20 +4,18 @@ __license__   = "MIT"
 
 
 import os
-import subprocess
 import multiprocessing
 
 from base import LRMS
 
 
-#===============================================================================
+# ===============================================================================
 
 class Spark(LRMS):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, logger):
-
         LRMS.__init__(self, cfg, logger)
 
 
@@ -53,7 +51,7 @@ class Spark(LRMS):
             self.node_list = [hostname, hostname]
 
         self.cores_per_node = selected_cpus
-        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
+        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
 
 
 # ------------------------------------------------------------------------------

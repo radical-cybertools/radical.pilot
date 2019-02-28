@@ -12,9 +12,9 @@ class Fork(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, session)
+        LaunchMethod.__init__(self, name, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -37,7 +37,6 @@ class Fork(LaunchMethod):
         # NOTE: ignore thread and process counts, and expect application to do
         #       the needful
 
-        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
         task_args    = cud.get('arguments') or []

@@ -8,7 +8,7 @@ import multiprocessing
 from .base import LRMS
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Fork(LRMS):
 
@@ -55,8 +55,9 @@ class Fork(LRMS):
             # enumerate the node list entries for a unique uis
             self.node_list.append(["localhost", 'localhost_%d' % i])
 
-        self._log.debug('configure localhost as %s nodes (%s cores, %s gpus, %s lfs).',
-                len(self.node_list), self.cores_per_node, self.gpus_per_node, self.lfs_per_node)
+        self._log.debug('use localhost as %s nodes (%s cores, %s gpus, %s lfs)',
+                        len(self.node_list), self.cores_per_node,
+                        self.Agpus_per_node, self.lfs_per_node)
 
 
 # ------------------------------------------------------------------------------

@@ -44,3 +44,4 @@
                "result" : ["jsrun -U rs_layout_cu_000000 -a 1  -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" test"]
                 }
             }
+

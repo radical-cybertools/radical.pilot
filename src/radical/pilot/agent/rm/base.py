@@ -20,7 +20,6 @@ RM_NAME_YARN        = 'YARN'
 RM_NAME_SPARK       = 'SPARK'
 
 
-
 # ==============================================================================
 #
 # Base class for LRMS implementations.
@@ -98,7 +97,7 @@ class LRMS(object):
             # make sure that the target either 'local', which we will ignore,
             # or 'node'.
             if target == 'local':
-                pass # ignore that one
+                pass  # ignore that one
             elif target == 'node':
                 self._agent_reqs.append(agent)
             else :
@@ -112,7 +111,7 @@ class LRMS(object):
         # Make sure we got a valid nodelist and a valid setting for
         # cores_per_node
         if not self.node_list or self.cores_per_node < 1:
-            raise RuntimeError('LRMS configuration invalid (%s)(%s)' % \
+            raise RuntimeError('LRMS configuration invalid (%s)(%s)' %
                     (self.node_list, self.cores_per_node))
 
         # Check if the LRMS implementation reserved agent nodes.  If not, pick
@@ -139,7 +138,7 @@ class LRMS(object):
         # After LRMS configuration, we call any existing config hooks on the
         # launch methods.  Those hooks may need to adjust the LRMS settings
         # (hello ORTE).  We only call LM hooks *once*
-        launch_methods = set() # set keeps entries unique
+        launch_methods = set()  # set keeps entries unique
         if 'mpi_launch_method' in self._cfg:
             launch_methods.add(self._cfg['mpi_launch_method'])
         launch_methods.add(self._cfg['task_launch_method'])
@@ -163,7 +162,7 @@ class LRMS(object):
         gpus_avail  = (len(self.node_list) + len(self.agent_nodes)) * self.gpus_per_node
         if 'RADICAL_PILOT_PROFILE' not in os.environ:
             if cores_avail < int(self.requested_cores):
-                raise ValueError("Not enough cores available (%s) to satisfy allocation request (%s)." \
+                raise ValueError("Not enough cores available (%s) to satisfy allocation request (%s)."
                                 % (str(cores_avail), str(self.requested_cores)))
 
         # NOTE: self.lrms_info is what scheduler and launch method can
@@ -240,7 +239,7 @@ class LRMS(object):
 
         # During LRMS termination, we call any existing shutdown hooks on the
         # launch methods.  We only call LM shutdown hooks *once*
-        launch_methods = set() # set keeps entries unique
+        launch_methods = set()  # set keeps entries unique
         if 'mpi_launch_method' in self._cfg:
             launch_methods.add(self._cfg['mpi_launch_method'])
         launch_methods.add(self._cfg['task_launch_method'])
