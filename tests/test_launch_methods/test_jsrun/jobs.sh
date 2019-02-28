@@ -13,7 +13,6 @@ path=`pwd`
 d=`date +%D | sed 's/\//_/g'`
 host=`/bin/hostname`
 dest=$RCT_TESTS_EMAIL       # To be set in bashrc
-"rct-tests@googlegroups.com"
 
 run_cmd() {
     res_set=$1
