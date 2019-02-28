@@ -1,0 +1,46 @@
+
+{
+    "unit": {
+        "uid":         "unit.000005",
+        "description": {"executable"       : "/bin/sleep",
+                        "arguments"        : ["10"],
+                        "gpu_processes"    : 1,
+                        "cpu_processes"    : 1,
+                        "cpu_process_type" : "MPI"
+                       }
+    },
+
+    "setup" : {
+        "lm" : {
+            "slots": {  
+                "cores_per_node": 16,
+                "gpus_per_node" : 1,
+                "task_offsets"  : [0],
+                "lm_info"       : {
+                                   # for LM ORTE
+                                   "dvm_uri" : "dvm_uri"
+                                  },
+                "lfs_per_node"  : 0,
+                "nodes"         : [{"name"    : "node1",
+                                    "uid"     : "node1",
+                                    "core_map": [[0]],
+                                    "gpu_map" : [[0]],
+                                    "lfs"     : {"size": 0,
+                                                 "path": null}
+                }]
+            }
+        }
+    }, 
+
+    "results": {
+        "lm": {
+            "fork"  : ["/bin/sleep \"10\" ", null],
+            "orte"  : ["orterun  --hnp \"dvm_uri\" -np 2 --bind-to none -host node1,node1 -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" ", null],
+            "aprun" : ["aprun -n 2 -N 2 -L node1 -d 1 -cc 0:0 /bin/sleep \"10\"  ", null], 
+            "mpirun": ["mpirun -np 2  -host node1,node1  /bin/sleep \"10\"", null],
+            "ibrun" : ["ibrun -n 1 -o 0 /bin/sleep \"10\" ", null],
+            "ssh"   : ["/bin/sleep \"10\" ","ssh node1 PATH=test_path 1"]
+        }
+    }
+}
+

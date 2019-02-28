@@ -8,8 +8,6 @@ import copy
 import time
 import subprocess
 
-from ... import utils     as rpu
-from ... import states    as rps
 from ... import constants as rpc
 
 from ..scheduler.torus import Torus
@@ -25,40 +23,39 @@ class LoadLeveler(LRMS):
     #
     # BG/Q Topology of Nodes within a Board
     #
-    BGQ_BOARD_TOPO = {
-        0: {'A': 29, 'B':  3, 'C':  1, 'D': 12, 'E':  7},
-        1: {'A': 28, 'B':  2, 'C':  0, 'D': 13, 'E':  6},
-        2: {'A': 31, 'B':  1, 'C':  3, 'D': 14, 'E':  5},
-        3: {'A': 30, 'B':  0, 'C':  2, 'D': 15, 'E':  4},
-        4: {'A': 25, 'B':  7, 'C':  5, 'D':  8, 'E':  3},
-        5: {'A': 24, 'B':  6, 'C':  4, 'D':  9, 'E':  2},
-        6: {'A': 27, 'B':  5, 'C':  7, 'D': 10, 'E':  1},
-        7: {'A': 26, 'B':  4, 'C':  6, 'D': 11, 'E':  0},
-        8: {'A': 21, 'B': 11, 'C':  9, 'D':  4, 'E': 15},
-        9: {'A': 20, 'B': 10, 'C':  8, 'D':  5, 'E': 14},
-        10: {'A': 23, 'B':  9, 'C': 11, 'D':  6, 'E': 13},
-        11: {'A': 22, 'B':  8, 'C': 10, 'D':  7, 'E': 12},
-        12: {'A': 17, 'B': 15, 'C': 13, 'D':  0, 'E': 11},
-        13: {'A': 16, 'B': 14, 'C': 12, 'D':  1, 'E': 10},
-        14: {'A': 19, 'B': 13, 'C': 15, 'D':  2, 'E':  9},
-        15: {'A': 18, 'B': 12, 'C': 14, 'D':  3, 'E':  8},
-        16: {'A': 13, 'B': 19, 'C': 17, 'D': 28, 'E': 23},
-        17: {'A': 12, 'B': 18, 'C': 16, 'D': 29, 'E': 22},
-        18: {'A': 15, 'B': 17, 'C': 19, 'D': 30, 'E': 21},
-        19: {'A': 14, 'B': 16, 'C': 18, 'D': 31, 'E': 20},
-        20: {'A':  9, 'B': 23, 'C': 21, 'D': 24, 'E': 19},
-        21: {'A':  8, 'B': 22, 'C': 20, 'D': 25, 'E': 18},
-        22: {'A': 11, 'B': 21, 'C': 23, 'D': 26, 'E': 17},
-        23: {'A': 10, 'B': 20, 'C': 22, 'D': 27, 'E': 16},
-        24: {'A':  5, 'B': 27, 'C': 25, 'D': 20, 'E': 31},
-        25: {'A':  4, 'B': 26, 'C': 24, 'D': 21, 'E': 30},
-        26: {'A':  7, 'B': 25, 'C': 27, 'D': 22, 'E': 29},
-        27: {'A':  6, 'B': 24, 'C': 26, 'D': 23, 'E': 28},
-        28: {'A':  1, 'B': 31, 'C': 29, 'D': 16, 'E': 27},
-        29: {'A':  0, 'B': 30, 'C': 28, 'D': 17, 'E': 26},
-        30: {'A':  3, 'B': 29, 'C': 31, 'D': 18, 'E': 25},
-        31: {'A':  2, 'B': 28, 'C': 30, 'D': 19, 'E': 24},
-        }
+    BGQ_BOARD_TOPO = { 0: {'A': 29, 'B':  3, 'C':  1, 'D': 12, 'E':  7},
+                       1: {'A': 28, 'B':  2, 'C':  0, 'D': 13, 'E':  6},
+                       2: {'A': 31, 'B':  1, 'C':  3, 'D': 14, 'E':  5},
+                       3: {'A': 30, 'B':  0, 'C':  2, 'D': 15, 'E':  4},
+                       4: {'A': 25, 'B':  7, 'C':  5, 'D':  8, 'E':  3},
+                       5: {'A': 24, 'B':  6, 'C':  4, 'D':  9, 'E':  2},
+                       6: {'A': 27, 'B':  5, 'C':  7, 'D': 10, 'E':  1},
+                       7: {'A': 26, 'B':  4, 'C':  6, 'D': 11, 'E':  0},
+                       8: {'A': 21, 'B': 11, 'C':  9, 'D':  4, 'E': 15},
+                       9: {'A': 20, 'B': 10, 'C':  8, 'D':  5, 'E': 14},
+                      10: {'A': 23, 'B':  9, 'C': 11, 'D':  6, 'E': 13},
+                      11: {'A': 22, 'B':  8, 'C': 10, 'D':  7, 'E': 12},
+                      12: {'A': 17, 'B': 15, 'C': 13, 'D':  0, 'E': 11},
+                      13: {'A': 16, 'B': 14, 'C': 12, 'D':  1, 'E': 10},
+                      14: {'A': 19, 'B': 13, 'C': 15, 'D':  2, 'E':  9},
+                      15: {'A': 18, 'B': 12, 'C': 14, 'D':  3, 'E':  8},
+                      16: {'A': 13, 'B': 19, 'C': 17, 'D': 28, 'E': 23},
+                      17: {'A': 12, 'B': 18, 'C': 16, 'D': 29, 'E': 22},
+                      18: {'A': 15, 'B': 17, 'C': 19, 'D': 30, 'E': 21},
+                      19: {'A': 14, 'B': 16, 'C': 18, 'D': 31, 'E': 20},
+                      20: {'A':  9, 'B': 23, 'C': 21, 'D': 24, 'E': 19},
+                      21: {'A':  8, 'B': 22, 'C': 20, 'D': 25, 'E': 18},
+                      22: {'A': 11, 'B': 21, 'C': 23, 'D': 26, 'E': 17},
+                      23: {'A': 10, 'B': 20, 'C': 22, 'D': 27, 'E': 16},
+                      24: {'A':  5, 'B': 27, 'C': 25, 'D': 20, 'E': 31},
+                      25: {'A':  4, 'B': 26, 'C': 24, 'D': 21, 'E': 30},
+                      26: {'A':  7, 'B': 25, 'C': 27, 'D': 22, 'E': 29},
+                      27: {'A':  6, 'B': 24, 'C': 26, 'D': 23, 'E': 28},
+                      28: {'A':  1, 'B': 31, 'C': 29, 'D': 16, 'E': 27},
+                      29: {'A':  0, 'B': 30, 'C': 28, 'D': 17, 'E': 26},
+                      30: {'A':  3, 'B': 29, 'C': 31, 'D': 18, 'E': 25},
+                      31: {'A':  2, 'B': 28, 'C': 30, 'D': 19, 'E': 24},
+                     }
 
     # --------------------------------------------------------------------------
     #
@@ -67,9 +64,9 @@ class LoadLeveler(LRMS):
     # FIXME: not used?
     #
     BGQ_CORES_PER_NODE      = 16
-    BGQ_GPUS_PER_NODE       =  0 # FIXME GPU
-    BGQ_NODES_PER_BOARD     = 32 # NODE       == Compute Card == Chip module
-    BGQ_BOARDS_PER_MIDPLANE = 16 # NODE BOARD == NODE CARD
+    BGQ_GPUS_PER_NODE       =  0  # FIXME GPU
+    BGQ_NODES_PER_BOARD     = 32  # NODE       == Compute Card == Chip module
+    BGQ_BOARDS_PER_MIDPLANE = 16  # NODE BOARD == NODE CARD
     BGQ_MIDPLANES_PER_RACK  =  2
 
 
@@ -117,42 +114,40 @@ class LoadLeveler(LRMS):
     #
     # TODO: Is this independent of the mapping?
     #
-    BGQ_BLOCK_STARTING_CORNERS = {
-        0:  0,
-        4: 29,
-        8:  4,
-        12: 25
-    }
+    BGQ_BLOCK_STARTING_CORNERS = { 0:  0,
+                                   4: 29,
+                                   8:  4,
+                                  12: 25
+                                 }
 
 
     # --------------------------------------------------------------------------
     #
     # BG/Q Topology of Boards within a Midplane
     #
-    BGQ_MIDPLANE_TOPO = {
-        0: {'A':  4, 'B':  8, 'C':  1, 'D':  2},
-        1: {'A':  5, 'B':  9, 'C':  0, 'D':  3},
-        2: {'A':  6, 'B': 10, 'C':  3, 'D':  0},
-        3: {'A':  7, 'B': 11, 'C':  2, 'D':  1},
-        4: {'A':  0, 'B': 12, 'C':  5, 'D':  6},
-        5: {'A':  1, 'B': 13, 'C':  4, 'D':  7},
-        6: {'A':  2, 'B': 14, 'C':  7, 'D':  4},
-        7: {'A':  3, 'B': 15, 'C':  6, 'D':  5},
-        8: {'A': 12, 'B':  0, 'C':  9, 'D': 10},
-        9: {'A': 13, 'B':  1, 'C':  8, 'D': 11},
-        10: {'A': 14, 'B':  2, 'C': 11, 'D':  8},
-        11: {'A': 15, 'B':  3, 'C': 10, 'D':  9},
-        12: {'A':  8, 'B':  4, 'C': 13, 'D': 14},
-        13: {'A':  9, 'B':  5, 'C': 12, 'D': 15},
-        14: {'A': 10, 'B':  6, 'C': 15, 'D': 12},
-        15: {'A': 11, 'B':  7, 'C': 14, 'D': 13},
-        }
+    BGQ_MIDPLANE_TOPO = { 0: {'A':  4, 'B':  8, 'C':  1, 'D':  2},
+                          1: {'A':  5, 'B':  9, 'C':  0, 'D':  3},
+                          2: {'A':  6, 'B': 10, 'C':  3, 'D':  0},
+                          3: {'A':  7, 'B': 11, 'C':  2, 'D':  1},
+                          4: {'A':  0, 'B': 12, 'C':  5, 'D':  6},
+                          5: {'A':  1, 'B': 13, 'C':  4, 'D':  7},
+                          6: {'A':  2, 'B': 14, 'C':  7, 'D':  4},
+                          7: {'A':  3, 'B': 15, 'C':  6, 'D':  5},
+                          8: {'A': 12, 'B':  0, 'C':  9, 'D': 10},
+                          9: {'A': 13, 'B':  1, 'C':  8, 'D': 11},
+                         10: {'A': 14, 'B':  2, 'C': 11, 'D':  8},
+                         11: {'A': 15, 'B':  3, 'C': 10, 'D':  9},
+                         12: {'A':  8, 'B':  4, 'C': 13, 'D': 14},
+                         13: {'A':  9, 'B':  5, 'C': 12, 'D': 15},
+                         14: {'A': 10, 'B':  6, 'C': 15, 'D': 12},
+                         15: {'A': 11, 'B':  7, 'C': 14, 'D': 13},
+                        }
 
     # --------------------------------------------------------------------------
     #
     # Shape of whole BG/Q Midplane
     #
-    BGQ_MIDPLANE_SHAPE = {'A': 4, 'B': 4, 'C': 4, 'D': 4, 'E': 2} # '4x4x4x4x2'
+    BGQ_MIDPLANE_SHAPE = {'A': 4, 'B': 4, 'C': 4, 'D': 4, 'E': 2}  # '4x4x4x4x2'
 
 
     # --------------------------------------------------------------------------
@@ -209,7 +204,7 @@ class LoadLeveler(LRMS):
             # Determine the number of cpus per node.  Assume:
             # cores_per_node = lenght(nodefile) / len(unique_nodes_in_nodefile)
             loadl_cpus_per_node = len(loadl_nodes) / len(loadl_node_list)
-            loadl_gpus_per_node = self._cfg.get('gpus_per_node', 0) # FIXME GPU
+            loadl_gpus_per_node = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
 
         elif self.loadl_bg_block:
             # Blue Gene specific.
@@ -265,21 +260,24 @@ class LoadLeveler(LRMS):
                      (e[0], [e[1][key] for key in sorted(e[1])], e[2], e[3]))
 
             try:
-                loadl_node_list = [entry[Torus.TORUS_BLOCK_NAME] \
+                loadl_node_list = [entry[Torus.TORUS_BLOCK_NAME]
                                    for entry in self.torus_block]
             except Exception as e:
                 raise RuntimeError("Couldn't construct node list")
 
             # Construct sub-block table
             try:
-                self.shape_table = self._bgq_create_sub_block_shape_table(loadl_bg_block_shape_str)
+                self.shape_table = self._bgq_create_sub_block_shape_table(
+                                                       loadl_bg_block_shape_str)
             except Exception as e:
                 raise RuntimeError("Couldn't construct shape table")
 
             self._log.debug("Node list constructed: %s" % loadl_node_list)
             self._log.debug("Shape table constructed: ")
-            for (size, dim) in [(key, self.shape_table[key]) for key in sorted(self.shape_table)]:
-                self._log.debug("%s %s", (size, [dim[key] for key in sorted(dim)]))
+            for (size, dim) in [(key, self.shape_table[key])
+                                      for key in sorted(self.shape_table)]:
+                self._log.debug("%s %s", (size, 
+                                            [dim[key] for key in sorted(dim)]))
 
             # Determine the number of cpus per node
             loadl_cpus_per_node = self.BGQ_CORES_PER_NODE
@@ -303,20 +301,23 @@ class LoadLeveler(LRMS):
     #
     def _bgq_nodename_by_loc(self, midplanes, board, location):
 
-        self._log.debug("Starting nodebyname - midplanes:%s, board:%d", midplanes, board)
+        self._log.debug("Starting nodebyname - midplanes:%s, board:%d",
+                        midplanes, board)
 
         node = self.BGQ_BLOCK_STARTING_CORNERS[board]
 
         # TODO: Does the order of walking matter?
         #       It might because of the starting blocks ...
-        for dim in self.BGQ_DIMENSION_LABELS: # [::-1]:
+        for dim in self.BGQ_DIMENSION_LABELS:  # [::-1]:
             max_length = location[dim]
-            self._log.debug("Within dim loop dim:%s, max_length: %d", dim, max_length)
+            self._log.debug("Within dim loop dim:%s, max_length: %d",
+                            dim, max_length)
 
             cur_length = 0
             # Loop while we are not at the final depth
             while cur_length < max_length:
-                self._log.debug("beginning of while loop, cur_length: %d", cur_length)
+                self._log.debug("beginning of while loop, cur_length: %d",
+                                cur_length)
 
                 if cur_length % 2 == 0:
                     # Stay within the board
@@ -324,7 +325,8 @@ class LoadLeveler(LRMS):
 
                 else:
                     # We jump to another board.
-                    self._log.debug("jumping to new board from board: %d, dim: %s)", board, dim)
+                    self._log.debug("jumping to new board from : %d, dim: %s)",
+                                    board, dim)
                     board = self.BGQ_MIDPLANE_TOPO[board][dim]
                     self._log.debug("board is now: %d", board)
 
@@ -346,7 +348,7 @@ class LoadLeveler(LRMS):
         midplane = midplanes[midplane_idx]['M']
 
         nodename = 'R%.2d-M%.1d-N%.2d-J%.2d' % (rack, midplane, board, node)
-        self._log.debug("from location %s constructed node name: %s, left at board: %d",
+        self._log.debug("from loc %s constructed node : %s, left at board: %d",
                         self.loc2str(location), nodename, board)
 
         return nodename
@@ -498,7 +500,8 @@ class LoadLeveler(LRMS):
                     for d in range(shape['D']):
                         for e in range(shape['E']):
                             location = {'A': a, 'B': b, 'C': c, 'D': d, 'E': e}
-                            nodename = self._bgq_nodename_by_loc(midplanes, board, location)
+                            nodename = self._bgq_nodename_by_loc(midplanes, 
+                                                                board, location)
                             nodes.append([index, location, nodename, rpc.FREE])
                             index += 1
 
@@ -509,10 +512,11 @@ class LoadLeveler(LRMS):
     #
     # Use block shape and board list to construct block structure
     #
-    # The 5 dimensions are denoted by the letters A, B, C, D, and E, T for the core (0-15).
-    # The latest dimension E is always 2, and is contained entirely within a midplane.
-    # For any compute block, compute nodes (as well midplanes for large blocks) are combined in 4 dimensions,
-    # only 4 dimensions need to be considered.
+    # The 5 dimensions are denoted by the letters A, B, C, D, and E, T for the
+    # core (0-15).  The latest dimension E is always 2, and is contained
+    # entirely within a midplane.  For any compute block, compute nodes (as well
+    # midplanes for large blocks) are combined in 4 dimensions, only
+    # 4 dimensions need to be considered.
     #
     #  128 nodes: BG Shape Allocated: 2x2x4x4x2
     #  256 nodes: BG Shape Allocated: 4x2x4x4x2
@@ -525,7 +529,7 @@ class LoadLeveler(LRMS):
         llq_shape = self._bgq_str2shape(block_shape_str)
 
         # TODO: Could check this, but currently _shape2num is part of the other class
-        #if self._shape2num_nodes(llq_shape) != block_size:
+        # if self._shape2num_nodes(llq_shape) != block_size:
         #    self._log.error("Block Size doesn't match Block Shape")
 
         # If the block is equal to or greater than a Midplane,
@@ -534,7 +538,9 @@ class LoadLeveler(LRMS):
         # we can construct it.
 
         if block_size >= 1024:
-            #raise NotImplementedError("Currently multiple midplanes are not yet supported.")
+
+            # raise NotImplementedError("Currently multiple midplanes are not
+            #                           yet supported.")
 
             # BG Size: 1024, BG Shape: 1x1x1x2, BG Midplane List: R04-M0,R04-M1
             midplanes = self._bgq_str2midplanes(midplane_list_str)
@@ -542,8 +548,8 @@ class LoadLeveler(LRMS):
             # Start of at the "lowest" available rack/midplane/board
             # TODO: No other explanation than that this seems to be the convention?
             # TODO: Can we safely assume that they are sorted?
-            #rack = midplane_dict_list[0]['R']
-            #midplane = midplane_dict_list[0]['M']
+            # rack = midplane_dict_list[0]['R']
+            # midplane = midplane_dict_list[0]['M']
             board = 0
 
             # block_shape = llq_shape * BGQ_MIDPLANE_SHAPE
@@ -557,9 +563,9 @@ class LoadLeveler(LRMS):
             midplanes = self._bgq_str2midplanes(midplane_list_str)
 
             # Start of at the "lowest" available rack/midplane/board
-            # TODO: No other explanation than that this seems to be the convention?
-            #rack = midplane_dict_list[0]['R'] # Assume they are all equal
-            #midplane = min([entry['M'] for entry in midplane_dict_list])
+            # TODO: this seems to be the convention?
+            # rack = midplane_dict_list[0]['R'] # Assume they are all equal
+            # midplane = min([entry['M'] for entry in midplane_dict_list])
             board = 0
 
             block_shape = self.BGQ_MIDPLANE_SHAPE
@@ -568,18 +574,20 @@ class LoadLeveler(LRMS):
             # Within single midplane, < 512 nodes
 
             board_dict_list = self._bgq_str2boards(boards_str)
-            self._log.debug("Board dict list:\n%s", '\n'.join([str(x) for x in board_dict_list]))
+            self._log.debug("Board dict list:\n%s", '\n'.join(
+                                             [str(x) for x in board_dict_list]))
 
             midplanes = [{'R': board_dict_list[0]['R'],
                           'M': board_dict_list[0]['M']}]
 
             # Start of at the "lowest" available board.
-            # TODO: No other explanation than that this seems to be the convention?
+            # TODO: this seems to be the convention?
             board = min([entry['N'] for entry in board_dict_list])
 
             block_shape = llq_shape
 
-        # From here its all equal (assuming our walker does the walk and not just the talk!)
+        # From here its all equal (assuming our walker does the walk and not
+        # just the talk!)
         block = self._bgq_get_block(midplanes, board, block_shape)
 
         # TODO: Check returned block:
@@ -625,12 +633,14 @@ class LoadLeveler(LRMS):
 
                 # Calculate the number of nodes for the current shape
                 from operator import mul
-                num_nodes = reduce(mul, filter(lambda length: length != 0, sub_block_shape.values()))
+                num_nodes = reduce(mul, [length for length 
+                                    in sub_block_shape.values() if length != 0])
 
                 if num_nodes in self.BGQ_SUPPORTED_SUB_BLOCK_SIZES:
                     table[num_nodes] = copy.copy(sub_block_shape)
                 else:
-                    self._log.warning("Non supported sub-block size: %d.", num_nodes)
+                    self._log.warning("Non supported sub-block size: %d.",
+                                      num_nodes)
 
                 # Done with iterating this dimension
                 if sub_block_shape[dim] >= block_shape[dim]:
@@ -645,4 +655,5 @@ class LoadLeveler(LRMS):
         return table
 
 
+# ------------------------------------------------------------------------------
 
