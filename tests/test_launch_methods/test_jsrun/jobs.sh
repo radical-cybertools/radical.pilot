@@ -32,10 +32,8 @@ run_cmd() {
 
     # Set omp env, create resource file and run cmd
     $omp_env
-    echo $res_set >> $path/resource-file
-    cmd=`echo $cmd | sed "s#resource-file#$path/resource-file#g"`
+    cmd=`echo $cmd | sed "s#resource-file#$path/$tid/res_set#g"`
     $cmd >> results_$d/$tid/jsrun_output.log
-    rm $path/resource-file
 
     # Jsrun output to full output log file
     echo "Output:" >> results_$d/$tid/full_output.log
