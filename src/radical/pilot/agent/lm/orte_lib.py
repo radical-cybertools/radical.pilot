@@ -268,11 +268,9 @@ class ORTELib(LaunchMethod):
             node_id = node[1].rsplit('_', 1)[-1] 
 
             # add all cpu and gpu process slots to the node list.
-            # pylint: disable=unused-variable
-            for cpu_slot in node[2]: hosts_string += '%s,' % node_id
-            for gpu_slot in node[3]: hosts_string += '%s,' % node_id
+            for _        in node[2]: hosts_string += '%s,' % node_id
+            for _        in node[3]: hosts_string += '%s,' % node_id
             for cpu_slot in node[2]: depths.add(len(cpu_slot))
-            # pylint: enable=unused-variable
 
         assert(len(depths) == 1), depths
         # depth = list(depths)[0]

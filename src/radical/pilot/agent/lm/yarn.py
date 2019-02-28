@@ -24,11 +24,10 @@ class Yarn(LaunchMethod):
         LaunchMethod.__init__(self, name, cfg, session)
 
 
-    # pylint disable=unused-arguments
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger, profiler):
+    def lrms_config_hook(cls, name, cfg, lrms, logger, profiler=None):
         """
         FIXME: this config hook will inspect the LRMS nodelist and, if needed,
                will start the YARN cluster on node[0].
@@ -287,7 +286,7 @@ class Yarn(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profiler):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profiler=None):
         if 'name' not in lm_info:
             raise RuntimeError('name not in lm_info for %s' % name)
 
@@ -304,7 +303,6 @@ class Yarn(LaunchMethod):
             os.system('rm -rf /tmp/hsperf*')
 
 
-    # pylint enable=unused-arguments
     # --------------------------------------------------------------------------
     #
     def _configure(self):

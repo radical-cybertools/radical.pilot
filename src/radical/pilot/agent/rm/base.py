@@ -63,7 +63,6 @@ class LRMS(object):
     #
     def __init__(self, cfg, session):        
 
-        # pylint: disable=protected-access
         self.name            = type(self).__name__
         self._cfg            = cfg
         self._session        = session
@@ -197,7 +196,6 @@ class LRMS(object):
     @classmethod
     def create(cls, name, cfg, session):
 
-        # pylint: disable=protected-access
         from .ccm         import CCM        
         from .fork        import Fork       
         from .loadleveler import LoadLeveler

@@ -35,7 +35,6 @@ LM_NAME_SPARK         = 'SPARK'
 # LM_NAME_RUNJOB        = 'RUNJOB'
 
 
-# pylint: disable=protected-access
 # ==============================================================================
 #
 class LaunchMethod(object):
@@ -358,4 +357,4 @@ class LaunchMethod(object):
 
 
 # ------------------------------------------------------------------------------
-# pylint: enable=protected-access
+
