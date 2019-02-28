@@ -1,0 +1,47 @@
+
+{
+    "unit": {
+        "uid":         "unit.000007",
+        "description": {"executable"       : "/bin/sleep",
+                        "arguments"        : ["10"],
+                        "cpu_processes"    : 2,
+                        "cpu_threads"      : 2,
+                        "cpu_process_type" : "MPI"
+                       }
+    },
+
+    "setup" : {
+        "lm" : {
+            "slots": {  
+                "cores_per_node": 16,
+                "gpus_per_node" : 1,
+                "task_offsets"  : [16],
+                "lfs_per_node"  : 0,
+                "nodes"         : [{"name"    : "node1",
+                                    "uid"     : "node1",
+                                    "core_map": [[0, 1]],
+                                    "gpu_map" : [],
+                                    "lfs"     : {"size": 0,
+                                                 "path": null}
+                                    },
+                                   {"name"    : "node2",
+                                    "uid"     : "node2",
+                                    "core_map": [[0, 1]],
+                                    "gpu_map" : [],
+                                    "lfs"     : {"size": 0,
+                                                 "path": null}
+                                   }]
+            }
+        }
+    }, 
+
+    "results": {
+        "lm": { "ibrun" : ["ibrun -n 2 -o 16 /bin/sleep \"10\" ",null],
+                "ssh"   : "RuntimeError",
+                "spark" : "RuntimeError",
+                "orte"  : "RuntimeError",
+                "rsh"   : "RuntimeError"
+        }
+    }
+}
+

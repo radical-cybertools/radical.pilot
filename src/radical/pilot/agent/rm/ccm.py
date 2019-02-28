@@ -26,8 +26,9 @@ class CCM(LRMS):
 
         CCM_NODEFILE_DIR = os.path.expanduser('~/.crayccm')
 
-        ccm_nodefile_list = filter(lambda x: x.startswith('ccm_nodelist'),
-                                   os.listdir(CCM_NODEFILE_DIR))
+        ccm_nodefile_list = [x for x in os.listdir(CCM_NODEFILE_DIR)
+                             if x.startswith('ccm_nodelist')]
+
         if not ccm_nodefile_list:
             raise Exception("No CCM nodefiles found in: %s." % CCM_NODEFILE_DIR)
 
@@ -36,7 +37,7 @@ class CCM(LRMS):
         ccm_nodefile = os.path.join(CCM_NODEFILE_DIR, ccm_nodefile_name)
 
         hostname = os.uname()[1]
-        if not hostname in open(ccm_nodefile).read():
+        if hostname not in open(ccm_nodefile).read():
             raise RuntimeError("Using the most recent CCM nodefile (%s),"
                                " but I (%s) am not in it!" % (ccm_nodefile, hostname))
 
@@ -53,7 +54,6 @@ class CCM(LRMS):
 
         # Some simple arithmetic
         self.cores_per_node = ccm_nodes_length / ccm_node_list_length
-        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
 
         lfs_path = self._cfg.get('lfs_path_per_node', '')
         lfs_path = os.path.expandvars(lfs_path)

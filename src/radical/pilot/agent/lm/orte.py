@@ -5,7 +5,6 @@ __license__   = "MIT"
 
 import os
 import time
-import threading
 import subprocess    as mp
 import radical.utils as ru
 
@@ -20,9 +19,9 @@ class ORTE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, session)
+        LaunchMethod.__init__(self, name, cfg, session)
 
         # We remove all ORTE related environment variables from the launcher
         # environment, so that we can use ORTE for both launch of the
@@ -48,7 +47,7 @@ class ORTE(LaunchMethod):
             raise Exception("Couldn't find orte-dvm")
 
         # Now that we found the orte-dvm, get ORTE version
-        out, err, ret = ru.sh_callout('orte-info | grep "Open RTE"', shell=True)
+        out, _, _ = ru.sh_callout('orte-info | grep "Open RTE"', shell=True)
         orte_info = dict()
         for line in out.split('\n'):
 
@@ -90,7 +89,7 @@ class ORTE(LaunchMethod):
             debug_strings = []
 
         # Split up the debug strings into args and add them to the dvm_args
-        [dvm_args.extend(ds.split()) for ds in debug_strings]
+        for ds in debug_strings: dvm_args.extend(ds.split())
 
         vm_size = len(lrms.node_list)
         logger.info("Start DVM on %d nodes ['%s']", vm_size, ' '.join(dvm_args))
@@ -132,9 +131,8 @@ class ORTE(LaunchMethod):
                     logger.debug("ORTE: %s", line)
                 else:
                     # Process is gone: fatal!
-                    raise Exception("ORTE DVM process disappeared")
                     profiler.prof(event='orte_dvm_fail', uid=cfg['pilot_id'])
-
+                    raise Exception("ORTE DVM process disappeared")
 
         # ----------------------------------------------------------------------
         def _watch_dvm():
@@ -262,12 +260,12 @@ class ORTE(LaunchMethod):
             node_id = node['uid'].rsplit('_', 1)[-1] 
 
             # add all cpu and gpu process slots to the node list.
-            for cpu_slot in node['core_map']: hosts_string += '%s,' % node_id
-            for gpu_slot in node['gpu_map' ]: hosts_string += '%s,' % node_id
+            for _        in node['core_map']: hosts_string += '%s,' % node_id
+            for _        in node['gpu_map' ]: hosts_string += '%s,' % node_id
             for cpu_slot in node['core_map']: depths.add(len(cpu_slot))
 
-        assert(len(depths) == 1), depths
-        depth = list(depths)[0]
+        # assert(len(depths) == 1), depths
+        # depth = list(depths)[0]
 
         # FIXME: is this binding correct?
       # if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
