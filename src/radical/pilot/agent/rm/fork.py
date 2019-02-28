@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 import math
 import multiprocessing
+import os
 
 from .base import LRMS
 
@@ -38,7 +39,13 @@ class Fork(LRMS):
         # to preserve the previous behavior (1 node).
         self.cores_per_node = self._cfg.get('cores_per_node', self.requested_cores)
         self.gpus_per_node  = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
-        self.lfs_per_node   = {'path' : self._cfg.get('lfs_path_per_node', None),
+
+        lfs_path = self._cfg.get('lfs_path_per_node', '')
+        if lfs_path is None:
+            lfs_path = ''  # Empty string guard against None values
+        lfs_path = os.path.expandvars(lfs_path)
+
+        self.lfs_per_node   = {'path' : lfs_path,
                                'size' : self._cfg.get('lfs_size_per_node', 0)
                               }
         self._log.debug('=== req: %d', self.requested_cores)
