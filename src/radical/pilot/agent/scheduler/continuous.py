@@ -4,9 +4,10 @@ __license__ = "MIT"
 
 
 import os
+
+import pprint
 import inspect
 import logging
-import pprint
 
 import threading     as mt
 

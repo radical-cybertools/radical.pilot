@@ -58,6 +58,8 @@ class SGE(LRMS):
         sge_gpus_per_node    = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
 
         lfs_path = self._cfg.get('lfs_path_per_node', '')
+        if lfs_path is None:
+            lfs_path = ''  # Empty string guard against None values
         lfs_path = os.path.expandvars(lfs_path)
 
         sge_lfs_per_node     = {'path' : lfs_path,
