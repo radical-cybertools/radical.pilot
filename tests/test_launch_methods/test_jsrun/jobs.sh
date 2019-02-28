@@ -7,14 +7,13 @@
 #BSUB -J jsrun_test
 #BSUB -o jsrun_test.%J
 #BSUB -e jsrun_test.%J
-#BSUB -N rct-tests@googlegroups.com
 
 # CONFIG
 path=`pwd`
 d=`date +%D | sed 's/\//_/g'`
 host=`/bin/hostname`
-#dest="rct-tests@googlegroups.com"
-dest="vivek.bala@rutgers.edu"
+dest=$RCT_TESTS_EMAIL       # To be set in bashrc
+"rct-tests@googlegroups.com"
 
 run_cmd() {
     res_set=$1
