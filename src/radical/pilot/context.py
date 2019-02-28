@@ -1,4 +1,3 @@
-#pylint: disable=C0301, C0103, W0212
 
 """
 .. module:: radical.pilot.context
@@ -12,6 +11,7 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import saga
+
 
 # ------------------------------------------------------------------------------
 #
@@ -31,7 +31,7 @@ class Context (saga.Context):
                 self.set_attribute (key, thedict[key])
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @classmethod
     def from_dict(cls, thedict):
@@ -41,4 +41,7 @@ class Context (saga.Context):
         """
 
         return cls(thedict)
+
+
+# ------------------------------------------------------------------------------
 
