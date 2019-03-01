@@ -14,9 +14,9 @@ class JSRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, session)
+        LaunchMethod.__init__(self, name, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -83,7 +83,7 @@ class JSRUN(LaunchMethod):
                 for cmap,gmap in zip(node['core_map'], node['gpu_map']):
 
                     rs_str += 'RS %d: {'  % rs_id
-                    rs_str += ' host: %d' % node['uid']
+                    rs_str += ' host: %s' % node['uid']
                     rs_str += ' cpu: %s'  % ' '.join([str(c) for c in cmap])
                     rs_str += ' gpu: %s'  % ' '.join([str(g) for g in gmap])
                     rs_str += ' }\n'
@@ -95,7 +95,7 @@ class JSRUN(LaunchMethod):
                 for cmap in node['core_map']:
 
                     rs_str += 'RS %d: {'  % rs_id
-                    rs_str += ' host: %d' % node['uid']
+                    rs_str += ' host: %s' % node['uid']
                     rs_str += ' cpu: %s'  % ' '.join([str(c) for c in cmap])
                     rs_str += ' }\n'
                     rs_id  += 1
@@ -106,7 +106,7 @@ class JSRUN(LaunchMethod):
                 for cmap in node['gpu_map']:
 
                     rs_str += 'RS %d: {'  % rs_id
-                    rs_str += ' host: %d' % node['uid']
+                    rs_str += ' host: %s' % node['uid']
                     rs_str += ' gpu: %s'  % ' '.join([str(g) for g in gmap])
                     rs_str += ' }\n'
                     rs_id  += 1
