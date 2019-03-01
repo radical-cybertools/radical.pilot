@@ -206,7 +206,7 @@ class LRMS(object):
         from .torque      import Torque     
         from .yarn        import Yarn      
         from .spark       import Spark       
-        from .debug       import Debug       
+        from .debug       import Debug
 
         # Make sure that we are the base-class!
         if cls != LRMS:

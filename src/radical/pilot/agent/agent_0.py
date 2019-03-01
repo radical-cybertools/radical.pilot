@@ -330,7 +330,7 @@ class Agent_0(rpu.Worker):
                 slots['cpu_threads'  ] = 1
                 slots['gpu_processes'] = 0
                 slots['gpu_threads'  ] = 0
-                slots['nodes'        ] = [{'name'    : node[0], 
+                slots['nodes'        ] = [{'name'    : node[0],
                                            'uid'     : node[1],
                                            'core_map': [[0]],
                                            'gpu_map' : [],

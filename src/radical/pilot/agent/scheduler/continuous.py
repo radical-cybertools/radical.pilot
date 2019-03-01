@@ -427,9 +427,9 @@ class Continuous(AgentSchedulingComponent):
             requested_lfs   > lfs_per_node   :
 
             txt  = 'Non-mpi unit %s does not fit onto node \n' % uid
-            txt += '   cores=%s >? %s \n' % (requested_cores, cores_per_node)
-            txt += '   gpus=%s  >? %s \n' % (requested_gpus,  gpus_per_node)
-            txt += '   lfs=%s   >? %s'    % (requested_lfs,   lfs_per_node)
+            txt += '   cores: %s >? %s \n' % (requested_cores, cores_per_node)
+            txt += '   gpus : %s >? %s \n' % (requested_gpus,  gpus_per_node)
+            txt += '   lfs  : %s >? %s'    % (requested_lfs,   lfs_per_node)
             raise ValueError(txt)
 
         # ok, we can go ahead and try to find a matching node

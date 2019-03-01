@@ -27,10 +27,10 @@ class Debug(LRMS):
     #
     def _configure(self):
 
-        cps      = self._cfg['cores_per_socket'] 
-        gps      = self._cfg['gpus_per_socket' ] 
-        spn      = self._cfg['sockets_per_node'] 
-        lpn      = self._cfg['lfs_per_node'    ] 
+        cps      = self._cfg['cores_per_socket']
+        gps      = self._cfg['gpus_per_socket' ]
+        spn      = self._cfg['sockets_per_node']
+        lpn      = self._cfg['lfs_per_node'    ]
 
         cpn      = (cps * spn)
         cores    = self._cfg['cores']
@@ -62,7 +62,6 @@ class Debug(LRMS):
 
         import pprint
         pprint.pprint(self.lrms_info)
-
 
 
 # ------------------------------------------------------------------------------
