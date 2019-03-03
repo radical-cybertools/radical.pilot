@@ -32,13 +32,12 @@ def test_create_resource_set_file(mocked_init, mocked_method, mocked_raise_on):
     component    = JSRUN(cfg=None, session=None)
 
     for unit, _, resource_file in test_cases:
-        pprint(unit)
 
         slot         = unit['slots']
         uid          = unit['uid']
 
         component._create_resource_set_file(slots=slot, uid=uid, sandbox='.')
-
+        print uid
         with open('%s.rs' % uid) as rs_layout:
             assert rs_layout.readlines() ==  resource_file
 

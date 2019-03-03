@@ -87,7 +87,7 @@ class JSRUN(LaunchMethod):
                 cores = ','.join(str(core * 4) for core in map_set[0])
 
                 rs_str += 'rank: %d: {'  % rank
-                rs_str += ' host: %d;'  % node['uid']
+                rs_str += ' host: %s;'  % str(node['uid'])
                 rs_str += ' cpu: {%s}'  % cores
                 try:
                     if map_set[1]:
