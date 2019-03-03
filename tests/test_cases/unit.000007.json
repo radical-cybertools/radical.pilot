@@ -31,7 +31,8 @@
                                     "lfs"     : {"size": 0,
                                                  "path": null}
                                    }]
-            }
+            },
+            "unit_sandbox": "./"
         }
     }, 
 
@@ -40,7 +41,11 @@
                 "ssh"   : "RuntimeError",
                 "spark" : "RuntimeError",
                 "orte"  : "RuntimeError",
-                "rsh"   : "RuntimeError"
+                "rsh"   : "RuntimeError",
+                "jsrun"  : ["jsrun --erf_input rs_layout_cu_000000  -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" /bin/sleep \"10\" ",null]
+        },
+        "resource_file": {
+            "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0}}\n"]
         }
     }
 }

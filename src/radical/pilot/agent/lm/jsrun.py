@@ -27,8 +27,7 @@ class JSRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _create_resource_set_file(self, slots, uid, sandbox, mpi=False,
-                                  gpu=False):
+    def _create_resource_set_file(self, slots, uid, sandbox):
         """
         This method takes as input a CU slots and creates the necessary
         resource set file. This resource set file is then used by jsrun to 
@@ -76,50 +75,29 @@ class JSRUN(LaunchMethod):
         """
 
         rs_str = 'cpu_index_using: physical\n'
-        if mpi and gpu:
-            rank = 0
-            for node in slots['nodes']:
-                for cores_set, gpu_set in zip(node['core_map'],
-                                              node['gpu_map']):
+        rank = 0
+        for node in slots['nodes']:
+            if node['gpu_map']: 
+                node_map = zip(node['core_map'], node['gpu_map'])
+            else:
+                node_map = zip(node['core_map'], *node['gpu_map'])
 
-                    cores = ','.join(str(core) for core in cores_set)
-                    gpus  = ','.join(str(gpu) for gpu in gpu_set)
+            for map_set in node_map:
 
-                    rs_str += 'rank: %d: {'  % rank
-                    rs_str += ' host: %d;'  % node['uid']
-                    rs_str += ' cpu: {%s}'  % cores
-                    rs_str += '; gpu: {%s}' % gpus
-                    rs_str += '}\n'
-                    rank   += 1
-        elif mpi and not gpu:
-            rank = 0
-            for node in slots['nodes']:
-                for cores_set in node['core_map']:
+                cores = ','.join(str(core * 4) for core in map_set[0])
 
-                    cores = ','.join(str(core) for core in cores_set)
-
-                    rs_str += 'rank: %d: {'  % rank
-                    rs_str += ' host: %d;'  % node['uid']
-                    rs_str += ' cpu: {%s}'  % cores
-                    rs_str += '}\n'
-                    rank   += 1
-        else:
-            for node in slots['nodes']:
-                cores_str = list()
-                gpus_str = list()
-                for core_set in node['core_map']:
-                    cores_str = ['{' + ','.join(str(core) for core
-                                      in core_set) + '}'] 
-                for gpu_set in node['gpu_map']:
-                    gpus_str += ['{' + ','.join(str(gpu) for gpu
-                                      in gpu_set) + '}']
-                cores = ','.join(str(core) for core in cores_str)
-                gpus = ','.join(str(gpu) for gpu in gpus_str)
-                rs_str           += '1: {'
-                rs_str           += ' host: %d;' % node['uid']
-                if cores: rs_str += ' cpu: %s' % cores
-                if gpus : rs_str += '; gpu: %s' % gpus
-                rs_str           += '}\n'
+                rs_str += 'rank: %d: {'  % rank
+                rs_str += ' host: %d;'  % node['uid']
+                rs_str += ' cpu: {%s}'  % cores
+                try:
+                    if map_set[1]:
+                        gpus  = ','.join(str(gpu) for gpu in map_set[1])
+                        print gpus
+                        rs_str += '; gpu: {%s}' % gpus
+                except:
+                    pass
+                rs_str += '}\n'
+                rank   += 1
 
         rs_name = '%s/%s.rs' % (sandbox, uid)
         with open(rs_name, 'w') as fout:
@@ -139,7 +117,6 @@ class JSRUN(LaunchMethod):
         task_exec    = cud['executable']
         task_env     = cud.get('environment') or dict()
         task_mpi     = bool('mpi' in cud.get('cpu_process_type', '').lower())
-        task_gpu     = bool(cud.get('gpu_processes') == 0)
         task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
         task_sandbox = ru.Url(cu['unit_sandbox']).path
@@ -153,8 +130,7 @@ class JSRUN(LaunchMethod):
         env_string = ' '.join(['-E "%s"' % var for var in env_list])
 
         rs_fname = self._create_resource_set_file(slots=slots, uid=cu['uid'],
-                                                  sandbox=task_sandbox,
-                                                  mpi=task_mpi, gpu=task_gpu)
+                                                  sandbox=task_sandbox)
 
       # flags = '-n%d -a1 ' % (task_procs)
         command = '%s --erf_input %s  %s %s' % (self.launch_command, rs_fname, 
