@@ -1,3 +1,0 @@
-# Task needs to be assigned node 1, physical cores 1 and 2, HW thread 1 of each physical core
-export OMP_NUM_THREADS=2
-jsrun --erf_input resource-file /ccs/proj/csc190/Hello_jsrun/jsrun_layout | sort
