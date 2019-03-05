@@ -77,24 +77,15 @@ class JSRUN(LaunchMethod):
         rs_str = 'cpu_index_using: physical\n'
         rank = 0
         for node in slots['nodes']:
-            if node['gpu_map']: 
-                node_map = zip(node['core_map'], node['gpu_map'])
-            else:
-                node_map = zip(node['core_map'], *node['gpu_map'])
-
-            for map_set in node_map:
-
-                cores = ','.join(str(core * 4) for core in map_set[0])
-
+            gpu_maps = list(node['gpu_map'])
+            for map_set in node['core_map']:
+                cores = ','.join(str(core * 4) for core in map_set)
                 rs_str += 'rank: %d: {'  % rank
                 rs_str += ' host: %s;'  % str(node['uid'])
                 rs_str += ' cpu: {%s}'  % cores
-                try:
-                    if map_set[1]:
-                        gpus  = ','.join(str(gpu) for gpu in map_set[1])
-                        rs_str += '; gpu: {%s}' % gpus
-                except:
-                    pass
+                if gpu_maps:
+                    gpus  = ','.join(str(gpu) for gpu in gpu_maps.pop(0))
+                    rs_str += '; gpu: {%s}' % gpus
                 rs_str += '}\n'
                 rank   += 1
 
