@@ -92,7 +92,6 @@ class JSRUN(LaunchMethod):
                 try:
                     if map_set[1]:
                         gpus  = ','.join(str(gpu) for gpu in map_set[1])
-                        print gpus
                         rs_str += '; gpu: {%s}' % gpus
                 except:
                     pass
@@ -116,7 +115,6 @@ class JSRUN(LaunchMethod):
         cud          = cu['description']
         task_exec    = cud['executable']
         task_env     = cud.get('environment') or dict()
-        task_mpi     = bool('mpi' in cud.get('cpu_process_type', '').lower())
         task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
         task_sandbox = ru.Url(cu['unit_sandbox']).path
