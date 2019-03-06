@@ -15,14 +15,18 @@ def setUp(test_type, test_name):
     ret = list()
     for fin in glob.glob('%s/../../test_cases/unit.*.json' % pwd):
 
-        tc     = ru.read_json(fin)
-        unit   = tc['unit'   ]
-        setup  = tc['setup'  ].get(test_type, {})
-        result = tc['results'].get(test_type, {}).get(test_name)
-        test   = ru.dict_merge(unit, setup, ru.PRESERVE)
+        tc            = ru.read_json(fin)
+        unit          = tc['unit'   ]
+        setup         = tc['setup'  ].get(test_type, {})
+        result        = tc['results'].get(test_type, {}).get(test_name)
+        resource_file = tc['results'].get('resource_file', {}).get(test_name)
+        test          = ru.dict_merge(unit, setup, ru.PRESERVE)
 
         if result:
-            ret.append([test, result])
+            if resource_file:
+                ret.append([test, result, resource_file])
+            else:
+                ret.append([test, result])
 
     return ret
 

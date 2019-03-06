@@ -32,7 +32,8 @@
                                     "lfs"     : {"size": 0,
                                                  "path": null}
                 }]
-            }
+            },
+            "unit_sandbox": "./"
         }
     }, 
 
@@ -46,7 +47,11 @@
             "ssh"    : "ValueError",
             "spark"  : ["//bin/sleep     ",null],
             "rsh"    : "ValueError",
-            "ccmrun" : ["ccmrun -n 1 /bin/sleep ",null]
+            "ccmrun" : ["ccmrun -n 1 /bin/sleep ",null],
+            "jsrun"  : ["jsrun --erf_input rs_layout_cu_000000  -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" /bin/sleep",null]
+        },
+        "resource_file": {
+            "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0}}\n"]
         }
     }
 }
