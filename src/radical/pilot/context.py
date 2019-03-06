@@ -1,4 +1,5 @@
 
+
 """
 .. module:: radical.pilot.context
    :platform: Unix
@@ -10,19 +11,20 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import saga
+try:    import radical.saga as rs
+except: import         saga as rs
 
 
 # ------------------------------------------------------------------------------
 #
-class Context (saga.Context):
+class Context (rs.Context):
 
     # --------------------------------------------------------------------------
     #
     def __init__ (self, ctype, thedict=None) :
 
         # init the saga.Context
-        self._apitype  = 'saga.Context'
+        self._apitype  = 'radical.saga.Context'
         super (Context, self).__init__ (ctype, )
 
         # set given defaults

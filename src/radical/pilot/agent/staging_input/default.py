@@ -8,7 +8,9 @@ import errno
 import shutil
 import tarfile
 
-import saga          as rs
+try:    import radical.saga as rs
+except: import         saga as rs
+
 import radical.utils as ru
 
 from .... import pilot     as rp
