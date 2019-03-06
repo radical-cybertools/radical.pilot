@@ -2,9 +2,9 @@
 import os
 import json
 import glob
-
+from pprint import pprint
 import radical.utils as ru
-
+from test_common                  import setUp
 from radical.pilot.agent.lm.jsrun import JSRUN
 
 
@@ -13,30 +13,10 @@ try:
 except ImportError:
     from unittest import mock
 
-
-# ------------------------------------------------------------------------------
-#
-resource_name = 'local.localhost'
-access_schema = 'ssh'
-session_id    = 'rp.session.testing.local.0000'
-
-# Sample data to be staged -- available in cwd
-cur_dir       = os.path.dirname(os.path.abspath(__file__))
-
-
-# ------------------------------------------------------------------------------
-# Setup for every test
-def setUp():
-
-    test_cases = json.load(open('unit_test_cases_jsrun_lm.json'))
-
-    return test_cases['resource_file'],test_cases['command']
-
-
 # ------------------------------------------------------------------------------
 #
 def tearDown():
-    rs = glob.glob('%s/rs_layout_cu_*' % os.getcwd())
+    rs = glob.glob('%s/*.rs' % os.getcwd())
     for fold in rs:
         os.remove(fold)
 
@@ -48,19 +28,18 @@ def tearDown():
 @mock.patch('radical.utils.raise_on')
 def test_create_resource_set_file(mocked_init, mocked_method, mocked_raise_on):
 
-    test_cases,_ = setUp()
+    test_cases = setUp('lm', 'jsrun')
     component    = JSRUN(cfg=None, session=None)
 
-    for i in range(len(test_cases['trigger'])):
+    for unit, _, resource_file in test_cases:
 
-        slot         = test_cases['trigger'][i]['slots']
-        uid          = test_cases['trigger'][i]['uid']
-        file_content = test_cases['results'][i]
+        slot         = unit['slots']
+        uid          = unit['uid']
 
         component._create_resource_set_file(slots=slot, uid=uid, sandbox='.')
-
+        print uid
         with open('%s.rs' % uid) as rs_layout:
-            assert rs_layout.readlines() ==  file_content
+            assert rs_layout.readlines() ==  resource_file
 
     tearDown()
 
@@ -75,20 +54,15 @@ def test_create_resource_set_file(mocked_init, mocked_method, mocked_raise_on):
 def test_construct_command(mocked_init, mocked_configure,
                            mocked_create_resource_set_file, mocked_raise_on):
 
-    _, test_cases = setUp()
-
+    test_cases = setUp('lm', 'jsrun')
+    
     component = JSRUN(cfg=None, session=None)
     component._log  = ru.get_logger('dummy')
     component.launch_command = 'jsrun'
+    for unit, result,_ in test_cases:
+        command, hop = component.construct_command(unit, None)
+        assert([command, hop] == result)
 
-    for i in range(len(test_cases['trigger'])):
-
-        cu        = test_cases['trigger'][i]
-        command, _ = component.construct_command(cu,None)
-
-        assert command == test_cases['result'][i]
-
-    tearDown()
 
 
 # ------------------------------------------------------------------------------
