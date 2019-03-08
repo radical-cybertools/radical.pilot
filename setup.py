@@ -81,6 +81,7 @@ def get_version(mod_root):
 
         if  p.returncode   !=  0  or \
             version_detail == '@' or \
+            'git-error' in version_detail or \
             'not-a-git-repo' in version_detail or \
             'not-found'      in version_detail or \
             'fatal'          in version_detail :
@@ -179,7 +180,7 @@ setup_args = {
     'author_email'       : 'radical@rutgers.edu',
     'maintainer'         : 'The RADICAL Group',
     'maintainer_email'   : 'radical@rutgers.edu',
-    'url'                : 'https://www.github.com/radical-cybertools/radical.utils/',
+    'url'                : 'https://www.github.com/radical-cybertools/radical.pilot/',
     'license'            : 'MIT',
     'keywords'           : 'radical pilot job saga',
     'classifiers'        : [
