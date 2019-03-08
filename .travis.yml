@@ -1,21 +1,12 @@
-# After changing this file, check it on:
-#   http://lint.travis-ci.org/
+
 language: python
-
-services:
-
-python:
-  - "2.7"
+python:   "2.7"
 
 before_install:
-  - pwd
-  - ls -a
   - uname -a
-  - free -m
-  - df -h
   - ulimit -a
   - python -V
-  - pip install pytest coverage codecov
+  - pip install pytest coverage codecov flake8
 
 install:
   - pip install .
@@ -25,8 +16,7 @@ script:
 
 notifications:
   email:
-    recipients:
-      - andre@merzky.net
+    recipients: andre@merzky.net
     on_success: change
     on_failure: always
 
