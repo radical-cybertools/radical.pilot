@@ -132,19 +132,19 @@ class ABDS(AgentExecutingComponent):
         #
         # Mimic what virtualenv's "deactivate" would do
         #
-        old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
+        old_path = new_env.pop('_OLD_PATH', None)
         if old_path:
             new_env['PATH'] = old_path
 
-        old_ppath = new_env.pop('_OLD_VIRTUAL_PYTHONPATH', None)
+        old_ppath = new_env.pop('_OLD_PYTHONPATH', None)
         if old_ppath:
             new_env['PYTHONPATH'] = old_ppath
 
-        old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
+        old_home = new_env.pop('_OLD_PYTHONHOME', None)
         if old_home:
             new_env['PYTHON_HOME'] = old_home
 
-        old_ps = new_env.pop('_OLD_VIRTUAL_PS1', None)
+        old_ps = new_env.pop('_OLD_PS1', None)
         if old_ps:
             new_env['PS1'] = old_ps
 

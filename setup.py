@@ -111,7 +111,7 @@ def get_version(mod_root):
           # tree, we won't be able to derive git version tags -- so we pack the
           # formerly derived version as ./VERSION
             shutil.move("VERSION", "VERSION.bak")            # backup version
-            shutil.copy("%s/VERSION" % path, "VERSION")      # use full version instead
+            shutil.copy("%s/VERSION" % path, "VERSION")      # use full version
             os.system  ("python setup.py sdist")             # build sdist
             shutil.copy('dist/%s' % sdist_name,
                         '%s/%s'   % (mod_root, sdist_name))  # copy into tree
@@ -222,7 +222,7 @@ setup_args = {
                             'bin/radical-pilot-version',
                             'bin/radical-pilot-agent',
                             'bin/radical-pilot-bridge',
-                            'bin/radical-pilot-component'
+                            'bin/radical-pilot-component',
                            ],
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz',
                                  'VERSION', 'SDIST', sdist_name]},
