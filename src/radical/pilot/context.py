@@ -11,8 +11,7 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-try:    import radical.saga as rs
-except: import         saga as rs
+import radical.saga as rs
 
 
 # ------------------------------------------------------------------------------
