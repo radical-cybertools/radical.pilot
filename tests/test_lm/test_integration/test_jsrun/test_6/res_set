@@ -1,5 +1,5 @@
 cpu_index_using: physical
-rank: 0: { host: 1; cpu: {0}}
+rank: 0: { host: 1; cpu: {0}; gpu: {0}}
 rank: 1: { host: 1; cpu: {4}}
 rank: 2: { host: 1; cpu: {8}}
 rank: 3: { host: 1; cpu: {12}}

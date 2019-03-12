@@ -1,4 +1,4 @@
-MPI Ranks = 1
-OpenMP Threads = 1
+MPI Ranks = 8
+OpenMP Threads = 4
 GPUs per Resource Set = 1
 Unique_Nodes = 1
