@@ -10,7 +10,27 @@
     * line 3: jsrun cmd to execute;
   * ```res_set```: Resource set file for the test;
   * ```exp_out```: expected output;
-* assertion are exact: check for stray spaces, linebreaks, etc.
+
+## Assertion
+
+The expected output has the following structure:
+
+```
+MPI Ranks = 1
+OpenMP Threads = 1
+GPUs per Resource Set = 0
+Unique_Nodes = 1
+<key> = <expected value>
+```
+
+The assert function in jobs.sh extracts a specific string for every 'key' in the
+expected output file. An 'actual value' is further extracted from this string. 
+The 'actual value' is compared with the 'expected value' in the expected output
+file.
+
+Currently, we have 4 keys. These can be extended to include more by adding the
+keys to the expected output file and adding the corresponding extraction/output
+parser code to the assert function in jobs.sh.
 
 ## Execution
 
