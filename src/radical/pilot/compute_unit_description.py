@@ -2,7 +2,7 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import radical.utils as ru
+# import radical.saga.attributes as rsa
 
 
 # ------------------------------------------------------------------------------
@@ -313,7 +313,7 @@ class ComputeUnitDescription(dict):
 
 
       # # initialize attributes
-      # attributes.Attributes.__init__(self)
+      # rsa.Attributes.__init__(self)
       #
       # # set attribute interface properties
       # self._attributes_extensible  (False)
@@ -321,46 +321,46 @@ class ComputeUnitDescription(dict):
       #
       # # register properties with the attribute interface
       # # action description
-      # self._attributes_register(KERNEL,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(NAME,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(EXECUTABLE,       None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(ARGUMENTS,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-      # self._attributes_register(ENVIRONMENT,      None, attributes.STRING, attributes.DICT,   attributes.WRITEABLE)
-      # self._attributes_register(TAGS,             None, attributes.ANY,    attributes.DICT,   attributes.WRITEABLE)
-      # self._attributes_register(PRE_EXEC,         None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-      # self._attributes_register(POST_EXEC,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-      # self._attributes_register(RESTARTABLE,      None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(METADATA,         None, attributes.ANY,    attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(PILOT,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+      # self._attributes_register(KERNEL,           None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+      # self._attributes_register(NAME,             None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+      # self._attributes_register(EXECUTABLE,       None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+      # self._attributes_register(ARGUMENTS,        None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
+      # self._attributes_register(ENVIRONMENT,      None, rsa.STRING, rsa.DICT,   rsa.WRITEABLE)
+      # self._attributes_register(TAGS,             None, rsa.ANY,    rsa.DICT,   rsa.WRITEABLE)
+      # self._attributes_register(PRE_EXEC,         None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
+      # self._attributes_register(POST_EXEC,        None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
+      # self._attributes_register(RESTARTABLE,      None, rsa.BOOL,   rsa.SCALAR, rsa.WRITEABLE)
+      # self._attributes_register(METADATA,         None, rsa.ANY,    rsa.SCALAR, rsa.WRITEABLE)
+      # self._attributes_register(CLEANUP,          None, rsa.BOOL,   rsa.SCALAR, rsa.WRITEABLE)
+      # self._attributes_register(PILOT,            None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
       #
       #
       # # I/O
-      # self._attributes_register(STDOUT,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(STDERR,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(INPUT_STAGING,    None, attributes.ANY,    attributes.VECTOR, attributes.WRITEABLE)
-      # self._attributes_register(OUTPUT_STAGING,   None, attributes.ANY,    attributes.VECTOR, attributes.WRITEABLE)
+      # self._attributes_register(STDOUT,           None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+      # self._attributes_register(STDERR,           None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+      # self._attributes_register(INPUT_STAGING,    None, rsa.ANY,    rsa.VECTOR, rsa.WRITEABLE)
+      # self._attributes_register(OUTPUT_STAGING,   None, rsa.ANY,    rsa.VECTOR, rsa.WRITEABLE)
       #
       # # resource requirements
-      # self._attributes_register(CPU_PROCESSES,    None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(CPU_PROCESS_TYPE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(CPU_THREADS,      None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(CPU_THREAD_TYPE,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(GPU_PROCESSES,    None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(GPU_PROCESS_TYPE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(GPU_THREADS,      None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(GPU_THREAD_TYPE,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(LFS_PER_PROCESS,  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+      # self._attributes_register(CPU_PROCESSES,    None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+      # self._attributes_register(CPU_PROCESS_TYPE, None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+      # self._attributes_register(CPU_THREADS,      None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+      # self._attributes_register(CPU_THREAD_TYPE,  None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+      # self._attributes_register(GPU_PROCESSES,    None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+      # self._attributes_register(GPU_PROCESS_TYPE, None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+      # self._attributes_register(GPU_THREADS,      None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+      # self._attributes_register(GPU_THREAD_TYPE,  None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+      # self._attributes_register(LFS_PER_PROCESS,  None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
       #
-      # # tag -- user level tag that can be used in scheduling
-      # self._attributes_register(TAG,              None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+      # # tag -- user level tag that can be used in schedling
+      # self._attributes_register(TAG,              None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
       #
       # # dependencies
-      # self._attributes_register(RUN_AFTER,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-      # self._attributes_register(START_AFTER,      None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-      # self._attributes_register(CONCURRENT_WITH,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-      # self._attributes_register(START_TIME,       None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(RUN_TIME,         None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
+      # self._attributes_register(RUN_AFTER,        None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
+      # self._attributes_register(START_AFTER,      None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
+      # self._attributes_register(CONCURRENT_WITH,  None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
+      # self._attributes_register(START_TIME,       None, rsa.TIME,   rsa.SCALAR, rsa.WRITEABLE)
+      # self._attributes_register(RUN_TIME,         None, rsa.TIME,   rsa.SCALAR, rsa.WRITEABLE)
       #
       # # explicitly set attrib defaults so they get listed and included via as_dict()
       # self.set_attribute (KERNEL,           None)

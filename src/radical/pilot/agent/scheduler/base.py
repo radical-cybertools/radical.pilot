@@ -214,9 +214,8 @@ class AgentSchedulingComponent(rpu.Component):
         self._uid = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
                                    ru.ID_CUSTOM)
 
-        self._uniform_waitpool = True   # TODO: move to cfg
-
         rpu.Component.__init__(self, cfg, session)
+
 
     # --------------------------------------------------------------------------
     #
@@ -290,18 +289,16 @@ class AgentSchedulingComponent(rpu.Component):
 
         self.nodes = []
         for node, node_uid in self._lrms_node_list:
-            self.nodes.append({
-                'name': node,
-                'uid': node_uid,
-                'cores': [rpc.FREE] * self._lrms_cores_per_node,
-                'gpus': [rpc.FREE] * self._lrms_gpus_per_node,
-                'lfs': self._lrms_lfs_per_node
-            })
+            self.nodes.append({'name' : node,
+                               'uid'  : node_uid,
+                               'cores': [rpc.FREE] * self._lrms_cores_per_node,
+                               'gpus' : [rpc.FREE] * self._lrms_gpus_per_node,
+                               'lfs'  : self._lrms_lfs_per_node
+                               })
 
         # configure the scheduler instance
         self._configure()
-        self._log.debug("slot status after  init      : %s",
-                        self.slot_status())
+        self._log.debug("slot status after  init      : %s", self.slot_status())
 
     # --------------------------------------------------------------------------
     #
@@ -317,22 +314,22 @@ class AgentSchedulingComponent(rpu.Component):
         name = cfg['scheduler']
 
         from .continuous_fifo import ContinuousFifo
-        from .continuous import Continuous
-        from .scattered import Scattered
-        from .hombre import Hombre
-        from .torus import Torus
-        from .yarn import Yarn
-        from .spark import Spark
+        from .continuous      import Continuous
+        from .scattered       import Scattered
+        from .hombre          import Hombre
+        from .torus           import Torus
+        from .yarn            import Yarn
+        from .spark           import Spark
 
         try:
             impl = {
                 SCHEDULER_NAME_CONTINUOUS_FIFO: ContinuousFifo,
-                SCHEDULER_NAME_CONTINUOUS: Continuous,
-                SCHEDULER_NAME_SCATTERED: Scattered,
-                SCHEDULER_NAME_HOMBRE: Hombre,
-                SCHEDULER_NAME_TORUS: Torus,
-                SCHEDULER_NAME_YARN: Yarn,
-                SCHEDULER_NAME_SPARK: Spark
+                SCHEDULER_NAME_CONTINUOUS:      Continuous,
+                SCHEDULER_NAME_SCATTERED:       Scattered,
+                SCHEDULER_NAME_HOMBRE:          Hombre,
+                SCHEDULER_NAME_TORUS:           Torus,
+                SCHEDULER_NAME_YARN:            Yarn,
+                SCHEDULER_NAME_SPARK:           Spark
             }[name]
 
         except KeyError:
@@ -388,6 +385,7 @@ class AgentSchedulingComponent(rpu.Component):
                 else:
                     node['lfs']['size'] += nodes['lfs']['size']
 
+
     # --------------------------------------------------------------------------
     #
     # NOTE: any scheduler implementation which uses a different nodelist
@@ -414,15 +412,18 @@ class AgentSchedulingComponent(rpu.Component):
 
         return ret
 
+
     # --------------------------------------------------------------------------
     #
     def _configure(self):
         raise NotImplementedError("_configure() missing for '%s'" % self.uid)
 
+
     # --------------------------------------------------------------------------
     #
     def _allocate_slot(self, cud):
         raise NotImplementedError("_allocate_slot() missing for '%s'" % self.uid)
+
 
     # --------------------------------------------------------------------------
     #
@@ -449,6 +450,15 @@ class AgentSchedulingComponent(rpu.Component):
         # advance state, publish state change, do not push unit out.
         self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
 
+      # # sort units by size
+      # def _sort(a,b):
+      #     da = a['description']
+      #     db = b['description']
+      #     va = da['cpu_processes'] * da['cpu_threads'] + da['gpu_processes']
+      #     vb = db['cpu_processes'] * db['cpu_threads'] + db['gpu_processes']
+      #     return cmp(vb, va)
+      # units.sort(_sort)
+
         for unit in units:
 
             # we got a new unit to schedule.  Either we can place it
@@ -465,6 +475,7 @@ class AgentSchedulingComponent(rpu.Component):
                 # no resources available, put in wait queue
                 with self._wait_lock:
                     self._wait_pool.append(unit)
+
 
 
     # --------------------------------------------------------------------------
@@ -501,6 +512,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # True signals success
         return True
+
 
     # --------------------------------------------------------------------------
     #
@@ -583,6 +595,7 @@ class AgentSchedulingComponent(rpu.Component):
         # return True to keep the cb registered
         return True
 
+
     # --------------------------------------------------------------------------
     #
     def schedule_cb(self, msg):
@@ -611,20 +624,13 @@ class AgentSchedulingComponent(rpu.Component):
             if self._try_allocation(unit):
 
                 # allocated unit -- advance it
-                self.advance(unit, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
+                self.advance(unit, rps.AGENT_EXECUTING_PENDING, 
+                             publish=True, push=True)
 
                 # remove it from the wait queue
                 with self._wait_lock:
                     self._wait_pool.remove(unit)
 
-            else:
-                # Break out of this loop if we didn't manage to schedule a task
-                # FIXME: this assumes that no smaller or otherwise more suitable
-                #        CUs come after this one - which is naive, ie. wrong.
-                # NOTE:  This assumption does indeed break for the fifo
-                #        scheduler, so we disable this now for non-uniform cases
-                if self._uniform_waitpool:
-                    break
 
         # return True to keep the cb registered
         return True

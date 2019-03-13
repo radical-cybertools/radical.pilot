@@ -12,20 +12,19 @@ import shutil
 import tempfile
 import threading as mt
 
-import subprocess           as sp
+import subprocess              as sp
 
-import radical.saga         as rs
-import radical.utils        as ru
+import radical.saga            as rs
+import radical.saga.filesystem as rsfs
+import radical.utils           as ru
 
-from .... import pilot      as rp
-from ...  import states     as rps
-from ...  import constants  as rpc
+from .... import pilot         as rp
+from ...  import states        as rps
+from ...  import constants     as rpc
 
 from .base import PMGRLaunchingComponent
 
 from ...staging_directives import complete_url
-
-rsfs = rs.filesystem
 
 
 # ------------------------------------------------------------------------------

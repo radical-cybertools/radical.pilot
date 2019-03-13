@@ -4,15 +4,18 @@ __license__ = "MIT"
 
 
 import os
+import math
+import pprint
+import inspect
 import logging
-import threading as mt
 
-from math import ceil
+import threading     as mt
 
 import radical.utils as ru
 
 from ...   import constants as rpc
 from .base import AgentSchedulingComponent
+
 
 # ------------------------------------------------------------------------------
 #
@@ -547,11 +550,6 @@ class Continuous(AgentSchedulingComponent):
         cores_per_node = self._lrms_cores_per_node
         gpus_per_node  = self._lrms_gpus_per_node
         lfs_per_node   = self._lrms_lfs_per_node
-
-        if not self._scattered                and \
-           requested_cores > cores_per_node   and \
-           cores_per_node  % threads_per_proc:
-            raise ValueError('cannot allocate under given constrains')
 
         # we always fail when too many threads are requested
         if threads_per_proc > cores_per_node:

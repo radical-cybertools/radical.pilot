@@ -11,13 +11,13 @@ import threading      as mt
 
 import radical.utils  as ru
 import radical.saga   as rs
+import radical.saga   as rs
+
+import radical.saga.utils.pty_shell as rsup
 
 from .utils           import ComponentManager
 from .utils           import fetch_profiles, fetch_logfiles, fetch_json 
 from .client          import Client
-
-
-rsup = rs.utils.pty_shell
 
 
 # ------------------------------------------------------------------------------
