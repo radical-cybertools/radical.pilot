@@ -30,7 +30,7 @@ class JSRUN(LaunchMethod):
     def _create_resource_set_file(self, slots, uid, sandbox):
         """
         This method takes as input a CU slots and creates the necessary
-        resource set file. This resource set file is then used by jsrun to 
+        resource set file. This resource set file is then used by jsrun to
         place and execute tasks on nodes.
 
         An example of a resource file is:
@@ -91,7 +91,7 @@ class JSRUN(LaunchMethod):
 
         rs_name = '%s/%s.rs' % (sandbox, uid)
         with open(rs_name, 'w') as fout:
-            fout.write(rs_str)      
+            fout.write(rs_str)
 
         return rs_name
 
@@ -120,13 +120,13 @@ class JSRUN(LaunchMethod):
 
 
         # from https://www.olcf.ornl.gov/ \
-        #             wp-content/uploads/2018/11/multi-gpu-workshop.pdf 
+        #             wp-content/uploads/2018/11/multi-gpu-workshop.pdf
         #
         # CUDA with    MPI, use jsrun --smpiargs="-gpu"
         # CUDA without MPI, use jsrun --smpiargs="off"
         #
         # We only set this for CUDA tasks
-        if 'cuda' in cud['gpu_thread_type' ].lower():
+        if 'cuda' in cud['gpu_thread_type'].lower():
             if 'mpi' in cud['gpu_process_type'].lower():
                 smpiargs = '--smpiargs="-gpu"'
             else:
