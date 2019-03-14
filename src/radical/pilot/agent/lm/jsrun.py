@@ -118,12 +118,29 @@ class JSRUN(LaunchMethod):
         env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
         env_string = ' '.join(['-E "%s"' % var for var in env_list])
 
+
+        # from https://www.olcf.ornl.gov/ \
+        #             wp-content/uploads/2018/11/multi-gpu-workshop.pdf 
+        #
+        # CUDA with    MPI, use jsrun --smpiargs="-gpu"
+        # CUDA without MPI, use jsrun --smpiargs="off"
+        #
+        # We only set this for CUDA tasks
+        if 'cuda' in cud['gpu_thread_type' ].lower():
+            if 'mpi' in cud['gpu_process_type'].lower():
+                smpiargs = '--smpiargs="-gpu"'
+            else:
+                smpiargs = 'off'
+        else:
+            smpiargs = ''
+
         rs_fname = self._create_resource_set_file(slots=slots, uid=cu['uid'],
                                                   sandbox=task_sandbox)
 
       # flags = '-n%d -a1 ' % (task_procs)
-        command = '%s --erf_input %s  %s %s' % (self.launch_command, rs_fname, 
-                                                env_string, task_command)
+        command = '%s --erf_input %s %s %s %s' % (self.launch_command, rs_fname,
+                                             smpiargs, env_string, task_command)
+
         return command, None
 
 
