@@ -64,7 +64,7 @@ class Fork(LRMS):
 
         self._log.debug('use localhost as %s nodes (%s cores, %s gpus, %s lfs)',
                         len(self.node_list), self.cores_per_node,
-                        self.Agpus_per_node, self.lfs_per_node)
+                        self.gpus_per_node, self.lfs_per_node)
 
 
 # ------------------------------------------------------------------------------
