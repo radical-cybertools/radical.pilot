@@ -258,7 +258,7 @@
         "lfs_per_node"                : "/tmp", 
         "agent_type"                  : "multicore",
         "agent_config"                : "summit",
-        "agent_scheduler"             : "CONTINUOUS_SUMMIT",
+        "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "JSRUN",
         "task_launch_method"          : "JSRUN",
