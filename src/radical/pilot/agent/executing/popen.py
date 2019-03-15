@@ -201,6 +201,8 @@ class Popen(AgentExecutingComponent) :
             # Start a new subprocess to launch the unit
             self.spawn(launcher=launcher, cu=cu)
 
+            time.sleep(1)
+
         except Exception as e:
             # append the startup error to the units stderr.  This is
             # not completely correct (as this text is not produced

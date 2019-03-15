@@ -165,6 +165,8 @@ class LSF_SUMMIT(LRMS):
         self.lrms_info['sockets_per_node']  = self.sockets_per_node
         self.lrms_info['cores_per_socket']  = self.cores_per_socket
         self.lrms_info['gpus_per_socket']   = self.gpus_per_socket
+        self.lrms_info['cores_per_node']    = self.sockets_per_node * self.cores_per_socket
+        self.lrms_info['gpus_per_node']     = self.sockets_per_node * self.gpus_per_socket
         self.lrms_info['agent_nodes']       = self.agent_nodes
         self.lrms_info['lfs_per_node']      = self.lfs_per_node
 

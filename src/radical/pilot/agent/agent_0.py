@@ -283,6 +283,7 @@ class Agent_0(rpu.Worker):
         # FIXME: we need a watcher cb to watch sub-agent state
 
         self._log.debug('start_sub_agents')
+        self._log.debug('%s' % pprint.pformat(self._cfg['lrms_info']))
 
         if not self._cfg.get('agents'):
             self._log.debug('start_sub_agents noop')
@@ -332,23 +333,26 @@ class Agent_0(rpu.Worker):
                   'gpu_threads'   : 0,
                 # 'nodes'         : [[node[0], node[1], [[0]], []]],
                   'nodes'         : [{'name'    : node[0], 
-                                     'uid'     : node[1],
-                                     'core_map': [[0]],
-                                     'gpu_map' : [],
-                                     'lfs'     : {'path': '/tmp', 'size': 0}
+                                      'uid'     : node[1],
+                                      'core_map': [[0]],
+                                      'gpu_map' : [],
+                                      'lfs'     : {'path': '/tmp', 'size': 0}
                                     }],
                   'cores_per_node': self._cfg['lrms_info']['cores_per_node'],
                   'gpus_per_node' : self._cfg['lrms_info']['gpus_per_node'],
-                  'lm_info'       : self._cfg['lrms_info']['lm_info']
+                  'lm_info'       : self._cfg['lrms_info']['lm_info'],
                 }
                 agent_cmd = {
                         'uid'          : sa,
                         'slots'        : slots,
+                        'unit_sandbox' : os.getcwd(),
                         'description'  : {
-                            'cpu_processes' : 1,
-                            'executable'    : "/bin/sh",
-                            'mpi'           : False,
-                            'arguments'     : ["%s/bootstrap_2.sh" % os.getcwd(), sa]
+                            'cpu_processes'    : 1,
+                            'gpu_process_type' : 'posix',
+                            'gpu_thread_type'  : 'posix',
+                            'executable'       : "/bin/sh",
+                            'mpi'              : False,
+                            'arguments'        : ["%s/bootstrap_2.sh" % os.getcwd(), sa]
                             }
                         }
                 cmd, hop = agent_lm.construct_command(agent_cmd,
