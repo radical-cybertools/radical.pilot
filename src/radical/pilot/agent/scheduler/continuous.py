@@ -4,7 +4,6 @@ __license__ = "MIT"
 
 
 import os
-
 import pprint
 import inspect
 import logging
@@ -318,15 +317,13 @@ class Continuous(AgentSchedulingComponent):
 
         if requested_gpus:
             alloc_gpus = min(requested_gpus, free_gpus)
-            num_procs.append(alloc_gpus / gpu_chunk)
-
-        # Find min number of procs determined across lfs, cores, gpus
-        num_procs = min(num_procs)
+            num_procs['gpus'] = alloc_gpus / gpu_chunk
 
         # Find normalized lfs, cores and gpus
-        if requested_cores: alloc_cores = num_procs * core_chunk
-        if requested_gpus:  alloc_gpus  = num_procs * gpu_chunk
-        if requested_lfs:   alloc_lfs   = num_procs * lfs_chunk
+        if requested_cores: alloc_cores = num_procs['cores'] * core_chunk
+        if requested_gpus : alloc_gpus  = num_procs['gpus']  * gpu_chunk
+        if requested_lfs  : alloc_lfs   = num_procs['lfs']   * lfs_chunk
+        self._log.debug('alc : %s %s %s', alloc_cores, alloc_gpus, alloc_lfs)
 
         # now dig out the core and gpu IDs.
         for idx, state in enumerate(node['cores']):

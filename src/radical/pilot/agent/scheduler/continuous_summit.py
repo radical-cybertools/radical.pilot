@@ -4,9 +4,9 @@ __license__ = "MIT"
 
 
 import os
+import pprint
 import inspect
 import logging
-import pprint
 
 import threading     as mt
 
@@ -546,7 +546,6 @@ class ContinuousSummit(AgentSchedulingComponent):
                 # number of cores is greater than the core_chunk. If not, we can't use the
                 # current node.
                 if sum(free_cores_per_socket) < core_chunk:
-                    self._log.debug('find res.    %s 5', uid)
                     return [], [], None
 
                 # If we can use this node, then we visit each socket of the node and
@@ -561,7 +560,7 @@ class ContinuousSummit(AgentSchedulingComponent):
 
                 for socket_id, free_cores in enumerate(free_cores_per_socket):
                     tmp_num_cores = free_cores
-                    
+
                     while tmp_num_cores >= core_chunk and \
                           usable_cores  <  requested_cores:
 
@@ -748,8 +747,8 @@ class ContinuousSummit(AgentSchedulingComponent):
                                                     lfs_chunk=lfs_chunk,
                                                     core_chunk = threads_per_proc
                                                     )
-            if len(cores) == requested_cores and \
-               len(gpus)  == requested_gpus:
+            if  len(cores) == requested_cores and \
+                len(gpus)  == requested_gpus:
 
                 # we found the needed resources - break out of search loop
                 node_uid  = node['uid']
@@ -878,7 +877,7 @@ class ContinuousSummit(AgentSchedulingComponent):
                  'gpus_per_node' : gpus_per_node,
                  'lfs_per_node'  : lfs_per_node,
                  'lm_info'       : self._lrms_lm_info,
-                 }
+                }
 
         tag = cud.get('tag')
 
