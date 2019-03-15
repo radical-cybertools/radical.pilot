@@ -130,7 +130,7 @@ class JSRUN(LaunchMethod):
             if 'mpi' in cud['gpu_process_type'].lower():
                 smpiargs = '--smpiargs="-gpu"'
             else:
-                smpiargs = 'off'
+                smpiargs = '--smpiargs="off"'
         else:
             smpiargs = ''
 
