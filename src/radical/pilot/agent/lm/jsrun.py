@@ -80,7 +80,7 @@ class JSRUN(LaunchMethod):
 
             gpu_maps = list(node['gpu_map'])
             for map_set in node['core_map']:
-                cores = ','.join(str(core * 4) for core in map_set)
+                cores = ','.join(str(core) for core in map_set)
                 rs_str += 'rank: %d: {'  % rank
                 rs_str += ' host: %s;'  % str(node['uid'])
                 rs_str += ' cpu: {%s}'  % cores
