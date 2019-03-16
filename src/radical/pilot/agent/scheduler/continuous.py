@@ -151,6 +151,27 @@ class Continuous(AgentSchedulingComponent):
                           'gpus'   : [rpc.FREE] * self._lrms_gpus_per_node,
                           'lfs'    :              self._lrms_lfs_per_node}
 
+            # summit
+            if self._lrms_cores_per_node > 40:
+
+                # Summit cannot address the first core of the second socket at
+                # the moment, so we simply mark it as DOWN, so that the
+                # scheduler skips it.  We need to check the SMT setting to make
+                # sure the right logical cores are marked.  The error we see on
+                # those cores is: "ERF error: 1+ cpus are not available"
+                #
+                # I assume this is related to the known issue listed on
+                # https://www.olcf.ornl.gov/for-users/system-user-guides/summit/summit-user-guide/
+                # "jsrun explicit resource file (ERF) allocates incorrect
+                # resources", although I would have expected the *last* core to
+                # be affected on that socket.  Well, our experiments say
+                # otherwise, go figure...
+                smt = self._lrms_info.get('smt', 1)
+                for s in [1]:
+                    for i in range(smt):
+                        idx = s * 21 * smt + i
+                        node_entry['cores'][idx] = rpc.DOWN
+
             self.nodes.append(node_entry)
 
 
@@ -417,8 +438,8 @@ class Continuous(AgentSchedulingComponent):
         # cores needed for all threads and processes
         requested_cores = requested_procs * threads_per_proc
 
-        cores_per_node = self._lrms_cores_per_socket * self._lrms_sockets_per_node
-        gpus_per_node  = self._lrms_gpus_per_socket  * self._lrms_sockets_per_node
+        cores_per_node = self._lrms_cores_per_node
+        gpus_per_node  = self._lrms_gpus_per_node
         lfs_per_node   = self._lrms_lfs_per_node['size']
 
         # make sure that the requested allocation fits within the resources
@@ -574,8 +595,8 @@ class Continuous(AgentSchedulingComponent):
         if requested_lfs_per_process > lfs_per_node['size']:
             raise ValueError('Not enough LFS for the MPI-process')
 
-        if  requested_cores > cores_per_node:
-            raise ValueError('Number of threads greater than that available on a socket')
+        if requested_cores > cores_per_node:
+            raise ValueError('Number of threads greater than that available on a node')
 
 
         # set conditions to find the first matching node

@@ -395,19 +395,16 @@ class AgentSchedulingComponent(rpu.Component):
         Returns a multi-line string corresponding to the status of the node list
         '''
 
+        glyphs = {rpc.FREE : '-',
+                  rpc.BUSY : '#',
+                  rpc.DOWN : '!'}
         ret = "|"
         for node in self.nodes:
             for core in node['cores']:
-                if core == rpc.FREE:
-                    ret += '-'
-                else:
-                    ret += '#'
+                ret += glyphs[core]
             ret += ':'
             for gpu in node['gpus']:
-                if gpu == rpc.FREE:
-                    ret += '-'
-                else:
-                    ret += '#'
+                ret += glyphs[gpu]
             ret += '|'
 
         return ret

@@ -59,6 +59,7 @@ class LSF_SUMMIT(LRMS):
         self.cores_per_socket   = None
         self.gpus_per_socket    = None
         self.lfs_per_node       = None
+        self.smt                = int(os.environ.get('RADICAL_SAGA_SMT', 1))
 
         # The LRMS will possibly need to reserve nodes for the agent, according
         # to the agent layout.  We dig out the respective requirements from the
@@ -148,10 +149,10 @@ class LSF_SUMMIT(LRMS):
 
 
         # NOTE: self.lrms_info is what scheduler and launch method can
-        # ultimately use, as it is included into the cfg passed to all
-        # components.
+        #       ultimately use, as it is included into the cfg passed to all
+        #       components.
         #
-        # seven elements are well defined:
+        # it defines
         #   lm_info:            dict received via the LM's lrms_config_hook
         #   node_list:          list of node names to be used for unit execution
         #   sockets_per_node:   integer number of sockets on a node
@@ -159,20 +160,26 @@ class LSF_SUMMIT(LRMS):
         #   gpus_per_socket:    integer number of gpus per socket
         #   agent_nodes:        list of node names reserved for agent execution
         #   lfs_per_node:       dict consisting the path and size of lfs on each node
+        #   smt:                threads per core (exposed as core in RP)
         #
 
-        self.lrms_info['name']              = self.name
-        self.lrms_info['lm_info']           = self.lm_info
-        self.lrms_info['node_list']         = self.node_list
-        self.lrms_info['sockets_per_node']  = self.sockets_per_node
-        self.lrms_info['cores_per_socket']  = self.cores_per_socket
-        self.lrms_info['gpus_per_socket']   = self.gpus_per_socket
-        self.lrms_info['agent_nodes']       = self.agent_nodes
-        self.lrms_info['lfs_per_node']      = self.lfs_per_node
+        self.lrms_info = {
+                'name'             : self.name,
+                'lm_info'          : self.lm_info,
+                'node_list'        : self.node_list,
+                'sockets_per_node' : self.sockets_per_node,
+                'cores_per_socket' : self.cores_per_socket * self.smt,
+                'gpus_per_socket'  : self.gpus_per_socket,
+                'cores_per_node'   : self.sockets_per_node * self.cores_per_socket * self.smt,
+                'gpus_per_node'    : self.sockets_per_node * self.gpus_per_socket,
+                'agent_nodes'      : self.agent_nodes,
+                'lfs_per_node'     : self.lfs_per_node,
+                'smt'              : self.smt
+                }
+
 
     # --------------------------------------------------------------------------
     #
-
     def _configure(self):
 
         lsf_hostfile = os.environ.get('LSB_DJOB_HOSTFILE')
