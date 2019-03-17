@@ -12,13 +12,13 @@ cross_sockets = False  # can threads   cross sockets?
 cross_nodes   = False  # can processes cross nodes?
 
 
-# In the general case, we search for a mix of GPUs and CPUs, with theh
+# In the general case, we search for a mix of GPUs and CPUs, with the
 # following constraints: 
 #
 #   - CPU cores for threads which belong to the same process need to be near
 #     each other  (on the same node or even the same core)
-#   - GPUs need to be near to the processes usinng them - on the same node or
-#     even the same socket.
+#   - GPUs need to be near to the processes usinng them  (on the same node or
+#     even the same socket).
 #
 # FIXME: do we need to introduce an additional hierarchy level: 
 #        node > socket > core > hw_thread ?
@@ -47,10 +47,9 @@ else            : p_gseq = '[^%s]' % (p_n)
 
 
 # When searching for matching nodes, we first do a look-ahead (?=) to see if
-# a node has at least one chunk of Cores (chunk: process + threads), or a GPU,
+# a node has at least one chunk of cores (chunk: process + threads), or a GPU,
 # or both.  In case of oversubscription, a GPU also needs a core in addition to
 # the chunk.
-
 p_t       =  '(?:%s%s*?){%d}'     % (p_c0, p_tseq, cpu_threads)
 p_c       =  '((?:%s%s*?){%d})'   % (p_t,  p_pseq, cpu_procs)
 p_g       =  '((?:%s%s*?){%d})'   % (p_g0, p_gseq, gpu_procs)
