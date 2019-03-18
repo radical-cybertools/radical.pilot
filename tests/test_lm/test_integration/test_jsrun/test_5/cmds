@@ -1,4 +1,4 @@
-# Task has 8 process, 1 OMP threads and is assigned to node 1, physical cores 0,
+# Task has 8 processes, 1 OMP thread and is assigned to node 1, physical cores 0,
 # 4,8,12,16,20,24,28
 
 export OMP_NUM_THREADS=1
