@@ -1,3 +1,5 @@
-# Task needs to be assigned node 1, physical core 1, HW thread 8
+# Task has 1 process, 8 OMP threads and is assigned to node 1, physical cores 0,
+# 4,8,12,16,20,24,28
+
 export OMP_NUM_THREADS=8
 jsrun --erf_input resource-file /ccs/proj/csc190/Hello_jsrun/jsrun_layout | sort
