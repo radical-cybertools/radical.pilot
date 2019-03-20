@@ -157,7 +157,7 @@ class ComputePilotDescription(rsa.Attributes):
         self._attributes_register    (EXIT_ON_ERROR,    None, rsa.BOOL,   rsa.SCALAR, rsa.WRITEABLE)
         self._attributes_register    (APP_CHANNELS,     None, rsa.ANY,    rsa.SCALAR, rsa.WRITEABLE)
 
-        # rsa not part of the published API
+        # not part of the published API
         self._attributes_register    (_CONFIG,          None, rsa.ANY,    rsa.SCALAR, rsa.WRITEABLE)
 
         # explicitly set attrib defaults so they get listed and included via as_dict()

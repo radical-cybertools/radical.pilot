@@ -16,7 +16,7 @@ context = zmq.Context()
 socket  = context.socket(zmq.PUB)
 socket.connect(addr)
 
-n     = 300000
+n     = 300
 start = time.time()
 topic = 'topic'
 for index in range(n):

@@ -596,7 +596,7 @@ class UnitManager(rpu.Component):
         units = list()
         for ud in descriptions:
 
-            if not ud.executable:
+            if not ud['executable']:
                 raise ValueError('compute unit executable must be defined')
 
             unit = ComputeUnit(umgr=self, descr=ud)

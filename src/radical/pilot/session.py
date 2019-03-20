@@ -6,11 +6,12 @@ __license__   = "MIT"
 import os
 import copy
 import time
-import threading as mt
+import threading      as mt
 
-import radical.utils                as ru
-import radical.saga                 as rs
-import radical.saga.utils.pty_shell as rsup
+import radical.utils  as ru
+import radical.saga   as rs
+
+rsup = rs.utils.pty_shell
 
 from .utils           import ComponentManager
 from .utils           import fetch_profiles, fetch_logfiles, fetch_json 
@@ -559,8 +560,11 @@ class Session(rs.Session):
                     sandbox_raw = rcfg.get('default_sandbox_base', "$PWD")
                     sandbox_raw = rcfg.get('default_remote_workdir', "$PWD")
 
-                # If the sandbox contains expandables, we need to resolve those remotely.
-                # NOTE: Note that this will only work for (gsi)ssh or shell based access mechanisms
+                # If the sandbox contains expandables, we need to resolve
+                # those remotely.
+                #
+                # NOTE: Note that this will only work for (gsi)ssh or
+                #       shell based access mechanisms.
                 if '$' not in sandbox_raw and '`' not in sandbox_raw:
                     # no need to expand further
                     sandbox_base = sandbox_raw

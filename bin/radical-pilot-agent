@@ -8,10 +8,7 @@ import sys
 import setproctitle
 
 import radical.utils as ru
-import radical.saga  as rs
 import radical.pilot as rp
-
-import radical.pilot.agent as rpa
 
 
 # ==============================================================================
@@ -39,8 +36,8 @@ def bootstrap_3(agent_name):
     try:
         setproctitle.setproctitle('rp.%s' % agent_name)
 
-        if agent_name == 'agent_0': agent = rpa.Agent_0(agent_name)
-        else                      : agent = rpa.Agent_n(agent_name)
+        if agent_name == 'agent_0': agent = rp.agent.Agent_0(agent_name)
+        else                      : agent = rp.agent.Agent_n(agent_name)
 
         print 'start   %s' % agent_name
         agent.start()

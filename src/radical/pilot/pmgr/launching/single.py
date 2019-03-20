@@ -27,6 +27,10 @@ from ...staging_directives import complete_url
 rsfs = rs.filesystem
 
 
+# TODO: perform all file staging as RS job input/output staging directivees.
+#       If needed, implement tar and cache support in RS.  Just don't specify
+#       same file staging op twice in same session.
+
 # ------------------------------------------------------------------------------
 # local constants
 DEFAULT_AGENT_SPAWNER = 'POPEN'
@@ -436,147 +440,70 @@ class Single(PMGRLaunchingComponent):
         for pilot in pilots:
 
             self._log.info("Launching pilot %s", pilot['uid'])
-            self._start_pilot(pilot)
+
+            rcfg = self._session.get_resource_config(pilot['description'])
+            acfg = self._session.get_agent_config   (pilot['description'], rcfg)
+            pid  = pilot['uid']
+
+            jdp, jdb = self._prepare_pilot(rcfg, acfg, pilot)
+            self._prof.prof('staging_in_start', uid=pid)
+
+            self._start_bridges(pilot, rcfg, jdb)
+            self._start_pilot  (pilot, rcfg, jdp)
 
         self.advance(pilots, rps.PMGR_ACTIVE_PENDING, push=False, publish=True)
 
 
     # --------------------------------------------------------------------------
     #
-    def _start_pilot(self, pilot):
+    def _start_bridges(self, pilot, rcfg, jdb):
         '''
-        For the given pilot, determining what files need to be staged, and what
-        job description needs to be submitted.
-
-        We expect `_prepare_pilot(rcfg, acfg, pilot)` to return a dict with:
-
-            { 
-              'js' : saga.job.Description,
-              'ft' : [ 
-                { 'src' : string  # absolute source file name
-                  'tgt' : string  # relative target file name
-                  'rem' : bool    # shall we remove src?
-                }, 
-                ... ]
-            }
-
-        When transfering data, we put all src files into a tarball and unpack
-        that on the target side.
+        start the bridges defined in the bridge job descriptions
         '''
 
-        rcfg = self._session.get_resource_config(pilot['description'])
-        acfg = self._session.get_agent_config   (pilot['description'], rcfg)
-        sid  = self._session.uid
-        pid  = pilot['uid']
+        pid = pilot['uid']
+        self._prof.prof('bridge_submission_start', uid=pid)
 
-        # we create a fake session_sandbox with all pilot_sandboxes in /tmp, and
-        # then tar it up.  Once we untar that tarball on the target machine, we
-        # should have all sandboxes and all files required to bootstrap the
-        # pilots
-        # FIXME: on untar, there is a race between multiple launcher components
-        #        within the same session toward the same target resource.
-        tmp_dir  = os.path.abspath(tempfile.mkdtemp(prefix='rp_agent_tar_dir'))
-        tar_name = '%s.%s.tgz' % (sid, self.uid)
-        tar_tgt  = '%s/%s'     % (tmp_dir, tar_name)
-        tar_url  = rs.Url('file://localhost/%s' % tar_tgt)
-
-        session_sbox = self._session.get_session_sandbox(pilot).path
-
-        # we will create the session sandbox before we untar, so we can use that
-        # as workdir, and pack all paths relative to that session sandbox.  That
-        # implies that we have to recheck that all URLs in fact do point into
-        # the session sandbox.
-
-        info     = self._prepare_pilot(rcfg, acfg, pilot)
-        ft_list  = info['ft']
-        jd       = info['jdp']
-        self._prof.prof('staging_in_start', uid=pid)
-
-        for ft in ft_list:
-            src     = os.path.abspath(ft['src'])
-            tgt     = os.path.relpath(os.path.normpath(ft['tgt']), session_sbox)
-            tgt_dir = os.path.dirname(tgt)
-
-            if tgt_dir.startswith('..'):
-                raise ValueError('staging target %s outside of pilot sandbox' 
-                                % ft['tgt'])
-
-            if not os.path.isdir('%s/%s' % (tmp_dir, tgt_dir)):
-                os.makedirs('%s/%s' % (tmp_dir, tgt_dir))
-
-            if src == '/dev/null' :
-                # we want an empty file -- touch it (tar will refuse to 
-                # handle a symlink to /dev/null)
-                open('%s/%s' % (tmp_dir, tgt), 'a').close()
-            else:
-                os.symlink(src, '%s/%s' % (tmp_dir, tgt))
-
-        # tar.  If any command fails, this will raise.
-        cmd = "cd %s && tar zchf %s *" % (tmp_dir, tar_tgt)
-        self._log.debug('cmd: %s', cmd)
-        try:
-            out = sp.check_output(["/bin/sh", "-c", cmd], stderr=sp.STDOUT)
-        except Exception:
-            self._log.exception('callout failed: %s', out)
-            raise
-        else:
-            self._log.debug('out: %s', out)
-
-        # remove all files marked for removal-after-pack
-        for ft in ft_list:
-            if ft['rem']:
-                os.unlink(ft['src'])
-
-        fs_url = rs.Url(rcfg['access']['filesystem'])
-
-        self._log.debug ("rs.file.Directory ('%s')", fs_url)
-
+        # look up or create JS for actual pilot submission.  This might result
+        # in the same js url as above, or not.
+        js_ep  = rcfg['access']['bridge_ep']
         with self._cache_lock:
-            if fs_url in self._saga_fs_cache:
-                fs = self._saga_fs_cache[fs_url]
+            if js_ep in self._saga_js_cache:
+                js = self._saga_js_cache[js_ep]
             else:
-                fs = rsfs.Directory(fs_url, session=self._session)
-                self._saga_fs_cache[fs_url] = fs
+                js = rs.job.Service(js_ep, session=self._session)
+                self._saga_js_cache[js_ep] = js
 
-        tar_rem      = rs.Url(fs_url)
-        tar_rem.path = "%s/%s" % (session_sbox, tar_name)
+        self._log.debug('jdp: %s', pprint.pformat(jdb.as_dict()))
+        job = js.create_job(jdb)
+        job.run()
 
-        fs.copy(tar_url, tar_rem, flags=rsfs.CREATE_PARENTS)
+        # check for submission errors (startup e rrors won't be caught)
+        if job.state == rs.FAILED:
+            self._log.error('%s: %s : %s : %s', 
+                            job.id, job.state, job.stderr, job.stdout)
+            raise RuntimeError ("SAGA Job state is FAILED. (%s)" % jdb.name)
 
-        shutil.rmtree(tmp_dir)
+        # connect to the pilot's notification channel to obtain state
+        # notifications, which are then forwarded to the local state pubsub.
+        self.register_subscriber(rpc.AGENT_PUBSUB, cb=self._agent_pubsub,
+                                                   cb_data={'pid': pid})
 
-        # we now need to untar on the target machine.
-        js_url = ru.Url(pilot['js_url'])
+        # FIXME: do we need to keep bridge jobs around?
+        self._prof.prof('bridge_submission_stop', uid=pid)
 
-        # well, we actually don't need to talk to the lrms, but only need
-        # a shell on the headnode.  That seems true for all LRMSs we use right
-        # now.  So, lets convert the URL:
-        if '+' in js_url.scheme:
-            parts = js_url.scheme.split('+')
-            if 'gsissh' in parts: js_url.scheme = 'gsissh'
-            elif  'ssh' in parts: js_url.scheme = 'ssh'
-        else:
-            # In the non-combined '+' case we need to distinguish between
-            # a url that was the result of a hop or a local lrms.
-            if js_url.scheme not in ['ssh', 'gsissh']:
-                js_url.scheme = 'fork'
 
-        with self._cache_lock:
-            if  js_url in self._saga_js_cache:
-                js_tmp  = self._saga_js_cache[js_url]
-            else:
-                js_tmp  = rs.job.Service(js_url, session=self._session)
-                self._saga_js_cache[js_url] = js_tmp
 
-        cmd = "tar zmxvf %s/%s -C %s" % (session_sbox, tar_name, session_sbox)
-        j = js_tmp.run_job(cmd)
-        j.wait()
+    # --------------------------------------------------------------------------
+    #
+    def _start_pilot(self, pilot, rcfg, jdp):
+        '''
+        For the given pilot, submit the job description.
+        '''
 
-        self._log.debug('tar cmd : %s', cmd)
-        self._log.debug('tar done: %s, %s, %s', j.state, j.stdout, j.stderr)
+        pid = pilot['uid']
 
-        self._prof.prof('staging_in_stop',  uid=pilot['uid'])
-        self._prof.prof('submission_start', uid=pilot['uid'])
+        self._prof.prof('submission_start', uid=pid)
 
         # look up or create JS for actual pilot submission.  This might result
         # in the same js url as above, or not.
@@ -588,37 +515,23 @@ class Single(PMGRLaunchingComponent):
                 js = rs.job.Service(js_ep, session=self._session)
                 self._saga_js_cache[js_ep] = js
 
-        # now that the scripts are in place and configured, 
-        # we can launch the agent
-
-        self._log.debug('jd: %s', pprint.pformat(jd.as_dict()))
-        job = js.create_job(jd)
+        self._log.debug('jdp: %s', pprint.pformat(jdp.as_dict()))
+        job = js.create_job(jdp)
         job.run()
 
         # check for submission errors (startup e rrors won't be caught)
-        if j.state == rs.FAILED:
+        if job.state == rs.FAILED:
             self._log.error('%s: %s : %s : %s', 
-                            j.id, j.state, j.stderr, j.stdout)
-            raise RuntimeError ("SAGA Job state is FAILED. (%s)" % jd.name)
+                            job.id, job.state, job.stderr, job.stdout)
+            raise RuntimeError ("SAGA Job state is FAILED. (%s)" % jdp.name)
 
-        # keep job around for emergency termination
-        _to_kill_rs.append(j)
-
-        # connect to the pilot's notification channel to obtain state
-        # notifications, which are then forwarded to the local state pubsub.
-        self.register_subscriber(rpc.AGENT_PUBSUB, cb=self._agent_pubsub,
-                                                   cb_data={'pid': pid})
-
-
-        # Update the Pilot's state to 'PMGR_ACTIVE_PENDING' if SAGA job
-        # submission was successful.
 
         # FIXME: update the right pilot
         with self._pilots_lock:
 
             self._pilots[pid] = dict()
             self._pilots[pid]['pilot'] = pilot
-            self._pilots[pid]['job']   = j
+            self._pilots[pid]['job']   = job
 
         # make sure we watch that pilot
         with self._check_lock:
@@ -637,9 +550,6 @@ class Single(PMGRLaunchingComponent):
 
         sid = self._session.uid
         pid = pilot["uid"]
-        ret = {'ft' : list(),
-               'jdb': None,
-               'jdp': None}
 
       # # ----------------------------------------------------------------------
       # # the rcfg can contain keys with string expansion placeholders where
@@ -870,26 +780,39 @@ class Single(PMGRLaunchingComponent):
         pilot['acfg'] = acfg
         pilot['rcfg'] = rcfg
 
+        jdp = rs.job.Description()  # pilot job
+        jdb = rs.job.Description()  # communication bridges
+
         # Write agent config to a json file in pilot sandbox.
         agent_cfgf = 'agent_0.cfg'
         cfg_tmp_handle, cfg_tmp_file = tempfile.mkstemp(prefix='rp.agent_cfg.')
         os.close(cfg_tmp_handle)  # file exists now
 
+        # FIXME: add bootstrap flag or ru_def cfg
+        # 'debug': self._log.getEffectiveLevel(),
+
         # Convert dict to json file
         self._log.debug("Write agent cfg to '%s'.", cfg_tmp_file)
         ru.write_json(pilot, cfg_tmp_file)  # contains rcfg, acfg
 
-        # FIXME: add bootstrap flag or ru_def cfg
-        # 'debug': self._log.getEffectiveLevel(),
+        # always stage the config file
+        jdp.file_transfer.append({'src' : cfg_tmp_file, 
+                                  'tgt' : '%s/%s' % (pilot_sbox_p, agent_cfgf),
+                                  'rem' : True})  # purge the tmp file
 
-        ret['ft'].append({'src' : cfg_tmp_file, 
-                          'tgt' : '%s/%s' % (pilot_sbox_p, agent_cfgf),
-                          'rem' : True})  # purge the tmp file after packing
+        # always stage the agent and client bridge info
+        for name in rpc.AGENT_BRIDGES:
+            fname = self._session.get_address_fname(name)
+            fpath = os.path.basename(fname)
+            jdp.file_transfer.append({'src' : fname, 
+                                      'tgt' : '%s/%s' % (pilot_sbox_p, fpath),
+                                      'rem' : False})
+
 
         # check if we have a sandbox cached for that resource.  If so, we have
         # nothing to do.  Otherwise we create the sandbox and stage the RP
         # stack etc.
-        # NOTE: this will race when multiple pilot launcher instances are used!
+        # NOTE: this will race when multiple pilot launcher instances are used
         with self._cache_lock:
 
             if resource not in self._sbox:
@@ -897,27 +820,18 @@ class Single(PMGRLaunchingComponent):
                 # stage RP stack
                 for sdist in sdist_paths:
                     fpath = os.path.basename(sdist)
-                    ret['ft'].append({'src' : sdist, 
-                                      'tgt' : '%s/%s' % (session_sbox_p, fpath),
-                                      'rem' : False})
+                    jdp.file_transfer.append({'src' : sdist, 
+                                              'tgt' : '%s/%s' % (session_sbox_p, fpath),
+                                              'rem' : False})
 
                 # stage the bootstrapper
                 bootstrapper_path = os.path.abspath("%s/agent/%s"
                                   % (self._root_dir, BOOTSTRAP_0))
                 self._log.debug("use bootstrapper %s", bootstrapper_path)
 
-                ret['ft'].append({'src' : bootstrapper_path, 
-                                  'tgt' : '%s/%s' % (session_sbox_p,
-                                      BOOTSTRAP_0),
-                                  'rem' : False})
-
-                # stage the agent and client bridge info
-                for name in rpc.AGENT_BRIDGES:
-                    fname = self._session.get_address_fname(name)
-                    fpath = os.path.basename(fname)
-                    ret['ft'].append({'src' : fname, 
-                                      'tgt' : '%s/%s' % (pilot_sbox_p, fpath),
-                                      'rem' : False})
+                jdp.file_transfer.append({'src' : bootstrapper_path, 
+                                          'tgt' : '%s/%s' % (session_sbox_p, BOOTSTRAP_0),
+                                          'rem' : False})
 
                 # Some machines cannot run pip due to outdated CA certs.
                 # For those, we also stage an updated certificate bundle
@@ -927,16 +841,13 @@ class Single(PMGRLaunchingComponent):
                     fpath = os.path.basename(fname)
                     self._log.debug("use CAs %s", fpath)
 
-                    ret['ft'].append({'src' : fpath, 
-                                      'tgt' : '%s/%s' % (session_sbox_p, fname),
-                                      'rem' : False})
+                    jdp.file_transfer.append({'src' : fpath, 
+                                              'tgt' : '%s/%s' % (session_sbox_p, fname),
+                                              'rem' : False})
 
+                # no need to stage everything again
                 self._sbox[resource] = True
 
-
-        # Create SAGA Job description and submit the pilot job
-        jdp = rs.job.Description()  # pilot job
-        jdb = rs.job.Description()  # communication bridges  ## TODO
 
         if shared_filesystem:
             bootstrap_tgt = '%s/%s' % (session_sbox_p, BOOTSTRAP_0)
@@ -969,41 +880,34 @@ class Single(PMGRLaunchingComponent):
         if 'RADICAL_PILOT_PROFILE' in os.environ :
             jdp.environment['RADICAL_PILOT_PROFILE'] = 'TRUE'
 
-        # for condor backends and the like which do not have shared FSs, we add
-        # additional staging directives so that the backend system binds the
-        # files from the session and pilot sandboxes to the pilot job.
-        jdp.file_transfer = list()
-        if not shared_filesystem:
 
+        jdp.file_transfer.extend([
+            'site:%s/%s > %s' % (session_sbox_p, BOOTSTRAP_0, BOOTSTRAP_0),
+            'site:%s/%s > %s' % (pilot_sbox_p,   agent_cfgf, agent_cfgf),
+            'site:%s/%s.log.tgz > %s.log.tgz' % (pilot_sbox_p, pid, pid),
+            'site:%s/%s.log.tgz < %s.log.tgz' % (pilot_sbox_p, pid, pid)
+        ])
+
+        if 'RADICAL_PILOT_PROFILE' in os.environ:
             jdp.file_transfer.extend([
-                'site:%s/%s > %s' % (session_sbox_p, BOOTSTRAP_0, BOOTSTRAP_0),
-                'site:%s/%s > %s' % (pilot_sbox_p,   agent_cfgf, agent_cfgf),
-                'site:%s/%s.log.tgz > %s.log.tgz' % (pilot_sbox_p, pid, pid),
-                'site:%s/%s.log.tgz < %s.log.tgz' % (pilot_sbox_p, pid, pid)
+                'site:%s/%s.prof.tgz > %s.prof.tgz' % (pilot_sbox_p, pid, pid),
+                'site:%s/%s.prof.tgz < %s.prof.tgz' % (pilot_sbox_p, pid, pid)
             ])
 
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
-                jdp.file_transfer.extend([
-                   'site:%s/%s.prof.tgz > %s.prof.tgz' % (pilot_sbox_p, pid, pid),
-                   'site:%s/%s.prof.tgz < %s.prof.tgz' % (pilot_sbox_p, pid, pid)
-                ])
+        for sdist in sdist_names:
+            jdp.file_transfer.extend([
+                'site:%s/%s > %s' % (session_sbox_p, sdist, sdist)
+            ])
 
-            for sdist in sdist_names:
-                jdp.file_transfer.extend([
-                    'site:%s/%s > %s' % (session_sbox_p, sdist, sdist)
-                ])
-
-            if stage_cacerts:
-                fname = 'cacert.pem.gz'
-                jdp.file_transfer.extend([
-                    'site:%s/%s > %s' % (session_sbox_p, fname, fname)
-                ])
+        if stage_cacerts:
+            fname = 'cacert.pem.gz'
+            jdp.file_transfer.extend([
+                'site:%s/%s > %s' % (session_sbox_p, fname, fname)
+            ])
 
         self._log.debug("Bootstrap cmd: %s %s", jdp.executable, jdp.arguments)
 
-        ret['jdp'] = jdp
-        ret['jdb'] = jdb
-        return ret
+        return jdp, jdb
 
 
 # ------------------------------------------------------------------------------

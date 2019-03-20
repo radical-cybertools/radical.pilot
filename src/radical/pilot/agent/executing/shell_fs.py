@@ -50,10 +50,10 @@ class ShellFS(AgentExecutingComponent):
         # Mimic what virtualenv's "deactivate" would do
         self._deactivate = "\n# deactivate pilot virtualenv\n"
 
-        old_path  = os.environ.get('_OLD_VIRTUAL_PATH',       None)
-        old_ppath = os.environ.get('_OLD_VIRTUAL_PYTHONPATH', None)
-        old_home  = os.environ.get('_OLD_VIRTUAL_PYTHONHOME', None)
-        old_ps1   = os.environ.get('_OLD_VIRTUAL_PS1',        None)
+        old_path  = os.environ.get('_OLD_PATH',       None)
+        old_ppath = os.environ.get('_OLD_PYTHONPATH', None)
+        old_home  = os.environ.get('_OLD_PYTHONHOME', None)
+        old_ps1   = os.environ.get('_OLD_PS1',        None)
 
         if olf_path:
             # hi titan nodes

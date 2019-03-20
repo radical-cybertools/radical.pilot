@@ -64,7 +64,7 @@ class ComputeUnit(object):
 
         # 'static' members
         self._dict  = None
-        self._descr = descr.as_dict()
+        self._descr = descr
         self._umgr  = umgr
 
         # initialize state
