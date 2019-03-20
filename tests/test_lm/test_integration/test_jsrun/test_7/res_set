@@ -4,6 +4,6 @@ rank: 1: { host: 1; cpu: {16, 20, 24, 28}}
 rank: 2: { host: 1; cpu: {32, 36, 40, 44}}
 rank: 3: { host: 1; cpu: {48, 52, 56, 60}}
 rank: 4: { host: 1; cpu: {64, 68, 72, 76}}
-rank: 5: { host: 1; cpu: {80, 84, 88, 92}}
-rank: 6: { host: 1; cpu: {96, 100, 104, 108}}
-rank: 7: { host: 1; cpu: {112, 116, 120, 124}}
+rank: 5: { host: 1; cpu: {80, 92, 96, 100}}
+rank: 6: { host: 1; cpu: {104, 108, 112, 116}}
+rank: 7: { host: 1; cpu: {120, 124, 128, 132}}

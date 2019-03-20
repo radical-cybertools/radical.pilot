@@ -1,3 +1,4 @@
 cpu_index_using: physical
 rank: 0: { host: 1; cpu: {0}}
 rank: 1: { host: 2; cpu: {0}}
+
