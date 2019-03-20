@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.50.23 Release                                                       2018-03-20
+--------------------------------------------------------------------------------
+
+  - hotfix: use popen spawner for localhost
+
+
 0.50.22 Release                                                       2018-02-11
 --------------------------------------------------------------------------------
 
