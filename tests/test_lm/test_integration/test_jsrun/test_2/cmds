@@ -1,4 +1,4 @@
-# Task has 1 process, 1 OMP thread, 1 GPU and is assigned to node 1, 
+# Task has 1 process, 1 OMP thread, uses 1 GPU and is assigned to node 1, 
 # physical core 0, and GPU 0
 
 export OMP_NUM_THREADS=1
