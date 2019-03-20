@@ -256,6 +256,8 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_TMP="%s"\n'          % self._cu_tmp
             env_string += 'export RP_PROCESSES="%d"\n'    % descr['cpu_processes']
             env_string += 'export RP_THREADS="%d"\n'      % descr['cpu_threads']
+            env_string += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
+                                                          % self._pwd
             if 'RADICAL_PILOT_PROFILE' in os.environ:
                 env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
             else:

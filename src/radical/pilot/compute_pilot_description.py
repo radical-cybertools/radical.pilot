@@ -2,7 +2,7 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import radical.saga.attributes as attributes
+import radical.saga.attributes as rsa
 
 
 # ------------------------------------------------------------------------------
@@ -27,10 +27,13 @@ CORES             = 'cores'
 GPUS              = 'gpus'
 MEMORY            = 'memory'
 
+# deprecated
+ACCESS_SCHEMA     = 'access_schema'
+
 
 # ------------------------------------------------------------------------------
 #
-class ComputePilotDescription(attributes.Attributes):
+class ComputePilotDescription(rsa.Attributes):
     """
     A ComputePilotDescription object describes the requirements and properties
     of a :class:`radical.pilot.Pilot` and is passed as a parameter to
@@ -132,29 +135,30 @@ class ComputePilotDescription(attributes.Attributes):
     def __init__(self, from_dict=None):
 
         # initialize attributes
-        attributes.Attributes.__init__(self)
+        rsa.Attributes.__init__(self)
 
         # set attribute interface properties
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
-        self._attributes_register    (RESOURCE,         None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (ACCESS,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (SYSTEM,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (RUNTIME,          None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (SANDBOX,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (CORES,            None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (GPUS,             None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (MEMORY,           None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (QUEUE,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (PROJECT,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (CANDIDATE_HOSTS,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        self._attributes_register    (APP_CHANNELS,     None, attributes.ANY,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (EXIT_ON_ERROR,    None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
 
-        # Attributes not part of the published API
-        self._attributes_register    (_CONFIG,          None, attributes.ANY,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (RESOURCE,         None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (ACCESS,           None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (SYSTEM,           None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (RUNTIME,          None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (SANDBOX,          None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (CORES,            None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (GPUS,             None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (MEMORY,           None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (QUEUE,            None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (PROJECT,          None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (CLEANUP,          None, rsa.BOOL,   rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (CANDIDATE_HOSTS,  None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
+        self._attributes_register    (EXIT_ON_ERROR,    None, rsa.BOOL,   rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (APP_CHANNELS,     None, rsa.ANY,    rsa.SCALAR, rsa.WRITEABLE)
+
+        # rsa not part of the published API
+        self._attributes_register    (_CONFIG,          None, rsa.ANY,    rsa.SCALAR, rsa.WRITEABLE)
 
         # explicitly set attrib defaults so they get listed and included via as_dict()
         self.set_attribute (RESOURCE,         None)
@@ -172,6 +176,8 @@ class ComputePilotDescription(attributes.Attributes):
         self.set_attribute (APP_CHANNELS,     None)
         self.set_attribute (EXIT_ON_ERROR,    False)
         self.set_attribute (_CONFIG,          None)
+
+        self._attributes_register_deprecated(ACCESS_SCHEMA, ACCESS)
 
         # apply initialization dict
         if from_dict:

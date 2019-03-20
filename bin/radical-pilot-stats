@@ -3,6 +3,7 @@
 import os
 import sys
 import pprint
+import radical.saga        as rs
 import radical.utils       as ru
 import radical.saga        as rs
 import radical.pilot       as rp

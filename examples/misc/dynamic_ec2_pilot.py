@@ -21,7 +21,7 @@ import sys
 import time
 import copy
 
-import saga          as rs
+import radical.saga  as rs
 import radical.utils as ru
 import radical.pilot as rp
 

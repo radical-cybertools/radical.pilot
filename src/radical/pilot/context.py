@@ -1,4 +1,4 @@
-#pylint: disable=C0301, C0103, W0212
+
 
 """
 .. module:: radical.pilot.context
@@ -13,6 +13,7 @@ __license__   = "MIT"
 
 import radical.saga as rs
 
+
 # ------------------------------------------------------------------------------
 #
 class Context (rs.Context):
@@ -21,8 +22,8 @@ class Context (rs.Context):
     #
     def __init__ (self, ctype, thedict=None) :
 
-        # init the rs.Context
-        self._apitype  = 'rs.Context'
+        # init the saga.Context
+        self._apitype  = 'radical.saga.Context'
         super (Context, self).__init__ (ctype, )
 
         # set given defaults
@@ -31,7 +32,7 @@ class Context (rs.Context):
                 self.set_attribute (key, thedict[key])
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @classmethod
     def from_dict(cls, thedict):
@@ -41,4 +42,7 @@ class Context (rs.Context):
         """
 
         return cls(thedict)
+
+
+# ------------------------------------------------------------------------------
 

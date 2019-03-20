@@ -396,10 +396,11 @@ class ORTE(AgentExecutingComponent):
         # Set RP environment variables
         rp_envs = [
             "RP_SESSION_ID=%s" % self._cfg['session_id'],
-            "RP_PILOT_ID=%s" % self._cfg['pilot_id'],
-            "RP_AGENT_ID=%s" % self._cfg['agent_name'],
+            "RP_PILOT_ID=%s"   % self._cfg['pilot_id'],
+            "RP_AGENT_ID=%s"   % self._cfg['agent_name'],
             "RP_SPAWNER_ID=%s" % self.uid,
-            "RP_UNIT_ID=%s" % cu['uid']
+            "RP_UNIT_ID=%s"    % cu['uid'],
+            "RP_PILOT_STAGING=%s/staging_area" % self._pwd
         ]
         for env in rp_envs:
             arg_list.append(ffi.new("char[]", "-x"))

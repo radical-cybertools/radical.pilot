@@ -65,6 +65,7 @@ if __name__ == '__main__':
                    'cores'         : 1024
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc._attributes_dump()
 
         # Launch the pilot.
         report.header('submit pilots')

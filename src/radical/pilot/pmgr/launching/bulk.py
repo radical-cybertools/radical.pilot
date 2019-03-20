@@ -12,20 +12,19 @@ import shutil
 import tempfile
 import threading as mt
 
-import subprocess           as sp
+import subprocess              as sp
 
-import radical.saga         as rs
-import radical.utils        as ru
+import radical.saga            as rs
+import radical.saga.filesystem as rsfs
+import radical.utils           as ru
 
-from .... import pilot      as rp
-from ...  import states     as rps
-from ...  import constants  as rpc
+from .... import pilot         as rp
+from ...  import states        as rps
+from ...  import constants     as rpc
 
 from .base import PMGRLaunchingComponent
 
 from ...staging_directives import complete_url
-
-rsfs = rs.filesystem
 
 
 # ------------------------------------------------------------------------------
@@ -493,7 +492,7 @@ class Bulk(PMGRLaunchingComponent):
         buckets = dict()
         for pilot in pilots:
             resource = pilot['description']['resource']
-            schema   = pilot['description']['access_schema']
+            schema   = pilot['description']['access']
             if resource not in buckets:
                 buckets[resource] = dict()
             if schema not in buckets[resource]:
@@ -582,9 +581,9 @@ class Bulk(PMGRLaunchingComponent):
         # that the bulk is consistent wrt. to the schema.
         # FIXME: if it is not, it needs to be splitted into schema-specific
         # sub-bulks
-        schema = pilots[0]['description'].get('access_schema')
+        schema = pilots[0]['description'].get('access')
         for pilot in pilots[1:]:
-            assert(schema == pilot['description'].get('access_schema')), \
+            assert(schema == pilot['description'].get('access')), \
                     'inconsistent scheme on launch / staging'
 
         session_sbox = self._session.get_session_sandbox(pilots[0]).path

@@ -5,19 +5,16 @@ __license__   = "MIT"
 
 import os
 import copy
-import glob
 import time
-import threading      as mt
+import threading as mt
 
-import radical.utils  as ru
-import radical.saga   as rs
+import radical.utils                as ru
+import radical.saga                 as rs
+import radical.saga.utils.pty_shell as rsup
 
 from .utils           import ComponentManager
 from .utils           import fetch_profiles, fetch_logfiles, fetch_json 
 from .client          import Client
-
-
-rsup = rs.utils.pty_shell
 
 
 # ------------------------------------------------------------------------------
@@ -72,20 +69,22 @@ class Session(rs.Session):
         #        to keep the API stabie.
         create_client = False
 
-        self._resource_cfgs = ru.Config(module='radical.pilot', name='resource_*')
-        self._session_cfgs  = ru.Config(module='radical.pilot', name='session_*')
-        self._agent_cfgs    = ru.Config(module='radical.pilot', name='agent_*')
-        self._umgr_cfgs     = ru.Config(module='radical.pilot', name='umgr_*')
-        self._pmgr_cfgs     = ru.Config(module='radical.pilot', name='pmgr_*')
+        self._resource_cfgs = ru.Config('radical.pilot', name='resource_*.json')
+        self._session_cfgs  = ru.Config('radical.pilot', name='session_*.json')
+        self._agent_cfgs    = ru.Config('radical.pilot', name='agent_*.json')
+        self._umgr_cfgs     = ru.Config('radical.pilot', name='umgr_*.json')
+        self._pmgr_cfgs     = ru.Config('radical.pilot', name='pmgr_*.json')
 
         if isinstance(_cfg, dict):
             # this is an agent session which already has a config
             self._cfg = _cfg
+            print 'get app cfg %s' % _cfg
 
         else:
             # this is a client session - create client instance
             if not _cfg:
                 _cfg = 'default'
+            print 'get session cfg %s [%s]' % (_cfg, self._session_cfgs.keys())
             self._cfg = self._session_cfgs[_cfg]
             create_client = True
 
