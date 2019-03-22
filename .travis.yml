@@ -15,9 +15,10 @@ git:
 
 env:
   global:
-    - BRANCH=$(git log --format="%H" -n 1)
+    - BRANCH=`git log --format="%H" -n 1`
+    - COMMIT=`git merge-base HEAD $BRANCH`
+    - DIFF=`git diff --name-only --diff-filter=b $COMMIT`
     - LOC=/home/travis/virtualenv/python2.7  # Location where VE is created on travis
-    - DIFF=$(git diff --name-only --diff-filter=b $(git merge-base HEAD $BRANCH) )
     - CMD1="coverage run -m pytest -vvv tests/;flake8 tests/;pylint tests/"
     - CMD2="flake8 --config=.flake8 $DIFF"
     - CMD3="pylint $DIFF"
