@@ -16,7 +16,9 @@ git:
 env:
   global:
     - LOG=`git log -n 1 | grep Merge`
-    - DIFF=`git diff --name-only --diff-filter=b ${LOG:7:8}...${LOG:16:8}`
+    - OLD=`echo $LOG | cut -d ' ' -f2`
+    - NEW=`echo $LOG | cut -d ' ' -f3`
+    - DIFF=`git diff --name-only --diff-filter=b $OLD...$NEW`
     - LOC=/home/travis/virtualenv/python2.7  # Location where VE is created on travis
     - CMD1="coverage run -m pytest -vvv tests/;flake8 tests/;pylint tests/"
     - CMD2="flake8 --config=.flake8 $DIFF"
