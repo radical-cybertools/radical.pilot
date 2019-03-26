@@ -387,6 +387,8 @@ class AgentSchedulingComponent(rpu.Component):
         Returns a multi-line string corresponding to the status of the node list
         '''
 
+        return ''
+
         ret = "|"
         for node in self.nodes:
             for core in node['cores']:

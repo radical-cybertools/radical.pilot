@@ -34,17 +34,17 @@
     "target" : "local",
     "mode"   : "shared",
 
-  # "agents"   : {
-  #     "agent_1" : {
-  #         "target"     : "local",
-  #         "components" : {
-  #             "AgentStagingInputComponent"  : {"count" : 1},
-  #             "AgentSchedulingComponent"    : {"count" : 1},
-  #             "AgentExecutingComponent"     : {"count" : 1},
-  #             "AgentStagingOutputComponent" : {"count" : 1}
-  #         }
-  #     }
-  # },
+    "agents"   : {
+        "agent_1" : {
+            "target"     : "local",
+            "components" : {
+                "AgentStagingInputComponent"  : {"count" : 1},
+                "AgentSchedulingComponent"    : {"count" : 1},
+                "AgentExecutingComponent"     : {"count" : 1},
+                "AgentStagingOutputComponent" : {"count" : 1}
+            }
+        }
+    },
 
 
     # Bridges they are started by the session.

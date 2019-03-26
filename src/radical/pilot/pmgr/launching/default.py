@@ -1041,6 +1041,20 @@ class Default(PMGRLaunchingComponent):
         for arg in pre_bootstrap_1:
             bootstrap_args += " -w '%s'" % arg
 
+        # PRELIM
+        # for our prelim experiments, create `$RP_PRELIM_SA_NUM` sub agents from
+        # the `agent_1` section. 
+        sa_num = os.environ.get('RP_PRELIM_SA_NUM')
+        self._log.debug('prelim sa num: %d', sa_num)
+        self._log.debug('prelim sa cfg: %s', pprint.pformat(agent_cfg))
+        if sa_num and 'agent_1' in agent_cfg.get('agents', {}):
+            tmpl = agent_cfg['agents']['agent_1']
+            for n in range(2, int(sa_num) + 1, 1):  # 2, 3, ... n
+                self._log.debug('prelim sa add %d' % n)
+                agent_cfg['agents']['agent_%s' % n] = copy.deepcopy(tmpl)
+        self._log.debug('prelim sa cfg: %s', pprint.pformat(agent_cfg))
+
+
         agent_cfg['owner']              = 'agent_0'
         agent_cfg['cores']              = number_cores
         agent_cfg['gpus']               = number_gpus

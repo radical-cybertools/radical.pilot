@@ -20,6 +20,10 @@ then
     ulimit -n 512
 fi
 
+# backward compatibility
+export RADICAL_PROFILE="$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
+export RADICAL_LOG_TGT="$RADICAL_VERBOSE"
+
 # trap 'echo TRAP QUIT' QUIT
 # trap 'echo TRAP EXIT' EXIT
 # trap 'echo TRAP KILL' KILL
@@ -176,7 +180,7 @@ profile_event()
 {
     PROFILE="bootstrap_0.prof"
 
-    if test -z "$RADICAL_PILOT_PROFILE"
+    if test -z "$RADICAL_PROFILE"
     then
         return
     fi
@@ -1526,7 +1530,7 @@ PB1_LDLB="$LD_LIBRARY_PATH"
 #        We should split the parsing and the execution of those.
 #        "bootstrap start" is here so that $PILOT_ID is known.
 # Create header for profile log
-if ! test -z "$RADICAL_PILOT_PROFILE"
+if ! test -z "$RADICAL_PROFILE"
 then
     echo 'create gtod'
     create_gtod
