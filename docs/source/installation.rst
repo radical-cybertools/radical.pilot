@@ -11,7 +11,7 @@ Requirements
 RADICAL-Pilot requires the following packages:
 
 * Python >= 2.7 (including development headers)
-* virtualenv >= 1.11
+* virtualenv >= 1.9
 * pip == 1.4.1
 
 or
@@ -20,7 +20,6 @@ or
 If you plan to use RADICAL-Pilot on remote machines, you would also require to
 setup a password-less ssh login to the particular machine. 
 (`help <http://www.debian-administration.org/article/152/Password-less_logins_with_OpenSSH>`_)
-
 
 All dependencies are installed automatically by the installer. Besides that,
 RADICAL-Pilot needs access to a MongoDB database that is reachable from the
@@ -168,17 +167,16 @@ If virtualenv **is not** installed on your system, you can try the following.
 
 .. code-block:: bash
 
-    wget --no-check-certificate https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz
-    tar xzf virtualenv-1.9.tar.gz
+    $ curl --location --output virtualenv-X.X.X.tar.gz https://github.com/pypa/virtualenv/tarball/X.X.X
+    $ tar xvfz virtualenv-X.X.X.tar.gz
 
-    python virtualenv-1.9/virtualenv.py $HOME/ve
+    python pypa-virtualenv-YYYYYY/virtualenv.py $HOME/ve
     source $HOME/ve/bin/activate
-
 
 **Installation Problems**
 
-Many installation problems boil down to one of two causes:  an Anaconda based Python
-distribution, or an incompatible version of pip/setuptools.
+Many installation problems boil down to one of two causes: (1) an Anaconda based Python
+distribution; or (2) an incompatible version of pip/setuptools.
 
 Many recent systems, specifically in the academic community, install Python in
 its incarnation as Anaconda Distribution.  RP is not yet able to function in
