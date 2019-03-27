@@ -3,9 +3,7 @@ import os
 import glob
 import tarfile
 
-try:    import radical.saga as rs
-except: import         saga as rs
-
+import radical.saga  as rs
 import radical.utils as ru
 
 from   radical.pilot.states  import *
