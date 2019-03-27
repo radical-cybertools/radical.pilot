@@ -32,15 +32,15 @@ from .base import AgentSchedulingComponent
 # self.nodes = [{
 #                   'name'    : 'node_1',
 #                   'uid'     : xxxx,
-#                   'sockets' : [  {'cores': [], 'gpus': []},
-#                                  {'cores': [], 'gpus': []}]
+#                   'cores'   : [],
+#                   'gpus'    : [],
 #                   'lfs'     : 128
 #               },
 #               {
 #                   'name'    : 'node_2',
 #                   'uid'     : yyyy,
-#                   'sockets' : [  {'cores': [], 'gpus': []},
-#                                  {'cores': [], 'gpus': []}]
+#                   'cores'   : [],
+#                   'gpus'    : [],
 #                   'lfs'     : 256
 #                },
 #               ]
