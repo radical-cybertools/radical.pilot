@@ -153,18 +153,19 @@ class Continuous(AgentSchedulingComponent):
             # summit
             if self._lrms_cores_per_node > 40:
 
-                # Summit cannot address the first core of the second socket at
-                # the moment, so we simply mark it as DOWN, so that the
-                # scheduler skips it.  We need to check the SMT setting to make
-                # sure the right logical cores are marked.  The error we see on
-                # those cores is: "ERF error: 1+ cpus are not available"
+                # Summit cannot address the last core of the second socket at
+                # the moment, so we mark it as `DOWN` and the scheduler skips
+                # it.  We need to check the SMT setting to make sure the right
+                # logical cores are marked.  The error we see on those cores is:
+                # "ERF error: 1+ cpus are not available"
                 #
-                # I assume this is related to the known issue listed on
-                # https://www.olcf.ornl.gov/for-users/system-user-guides/summit/summit-user-guide/
+                # This is related to the known issue listed on
+                # https://www.olcf.ornl.gov/for-users/system-user-guides \
+                #                          /summit/summit-user-guide/
+                #
                 # "jsrun explicit resource file (ERF) allocates incorrect
-                # resources", although I would have expected the *last* core to
-                # be affected on that socket.  Well, our experiments say
-                # otherwise, go figure...
+                # resources"
+                #
                 smt = self._lrms_info.get('smt', 1)
                 for s in [1]:
                     for i in range(smt):
