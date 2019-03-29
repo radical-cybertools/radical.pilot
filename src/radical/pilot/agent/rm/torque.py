@@ -5,6 +5,8 @@ __license__   = "MIT"
 
 import os
 
+import radical.utils as ru
+
 from base import LRMS
 
 
@@ -33,7 +35,7 @@ class Torque(LRMS):
 
         # Parse PBS the nodefile
         torque_nodes = [line.strip() for line in open(torque_nodefile)]
-        self._log.info("Found Torque PBS_NODEFILE %s: %s", torque_nodefile, torque_nodes)
+        self._log.info("PBS_NODEFILE %s: %s", torque_nodefile, torque_nodes)
 
         # Number of cpus involved in allocation
         val = os.environ.get('PBS_NCPUS')
@@ -53,9 +55,10 @@ class Torque(LRMS):
             torque_num_nodes = None
             self._log.warning(msg)
 
-        torque_gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
-        torque_lfs_per_node   = {'path' : self._cfg.get('lfs_path_per_node', None),
-                                 'size' : self._cfg.get('lfs_size_per_node', 0)
+        torque_gpus_per_node  = self._cfg.get('gpus_per_node', 0)
+        torque_lfs_per_node   = {'path' : ru.expandvars(
+                                             self._cfg.get('lfs_path_per_node')),
+                                 'size' :    self._cfg.get('lfs_size_per_node', 0)
                                 }
 
         # Number of cores (processors) per node

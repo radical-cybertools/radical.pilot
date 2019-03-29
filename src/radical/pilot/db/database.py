@@ -3,24 +3,20 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os 
 import copy
-import saga
 import time
-import gridfs
-import pprint
 import pymongo
+
 import radical.utils     as ru
 
-from .. import utils     as rpu
 from .. import states    as rps
 
 
-#-----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 class DBSession(object):
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def __init__(self, sid, dburl, cfg, logger, connect=True):
         """ 
