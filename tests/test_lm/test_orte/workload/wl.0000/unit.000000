@@ -1,0 +1,7 @@
+
+command : /bin/sleep 6
+cores   : 4
+slots   : localhost,localhost,localhost,localhost
+retval  : 0
+debug   : 4
+
