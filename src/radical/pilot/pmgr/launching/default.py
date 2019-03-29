@@ -14,8 +14,12 @@ import threading
 
 import subprocess           as sp
 
-import saga                 as rs
-import saga.filesystem      as rsfs
+try:    import radical.saga            as rs
+except: import         saga            as rs
+
+try:    import radical.saga.filesystem as rsfs
+except: import         saga.filesystem as rsfs
+
 import radical.utils        as ru
 
 from .... import pilot      as rp

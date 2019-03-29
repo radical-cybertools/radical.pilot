@@ -1328,7 +1328,8 @@ verify_rp_install()
     echo "`$PYTHON --version` ($PYTHON)"
     echo "PYTHONPATH: $PYTHONPATH"
  (  $PYTHON -c 'print "utils : ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__' \
- && $PYTHON -c 'print "saga  : ",; import saga          as rs; print rs.version_detail,; print rs.__file__' \
+ &&($PYTHON -c 'print "saga  : ",; import radical.saga  as rs; print rs.version_detail,; print rs.__file__' \
+ || $PYTHON -c 'print "saga  : ",; import         saga  as rs; print rs.version_detail,; print rs.__file__')\
  && $PYTHON -c 'print "pilot : ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__' \
  && (echo 'install ok!'; true) \
  ) \
