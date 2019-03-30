@@ -83,8 +83,8 @@ class MPIRun_MPT(LaunchMethod):
         # -np:  usually it is len(hostlist), as it means run N processes over
         # N hosts but for Cheyenne it is 1 since specification of the host means
         # land N processes on EACH host, where N is specified as arg to -np
-        command = "%s %s -np %d %s %s" % (self.launch_command, hosts_string, 1,
-                                          env_string, task_command)
+        command = "%s %s --bind-to none -np %d %s %s" % (self.launch_command,
+                                   hosts_string, 1, env_string, task_command)
 
         return command, None
 
