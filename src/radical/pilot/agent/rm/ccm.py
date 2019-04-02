@@ -5,6 +5,8 @@ __license__   = "MIT"
 
 import os
 
+import radical.utils as ru
+
 from base import LRMS
 
 
@@ -56,13 +58,9 @@ class CCM(LRMS):
         self.cores_per_node = ccm_nodes_length / ccm_node_list_length
         self.gpus_per_node  = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
 
-        lfs_path = self._cfg.get('lfs_path_per_node', '')
-        if lfs_path is None:
-            lfs_path = ''  # Empty string guard against None values
-        lfs_path = os.path.expandvars(lfs_path)
-
-        self.lfs_per_node   = {'path' : lfs_path,
-                               'size' : self._cfg.get('lfs_size_per_node', 0)
+        self.lfs_per_node   = {'path' : ru.expandvars(
+                                           self._cfg.get('lfs_path_per_node')),
+                               'size' :    self._cfg.get('lfs_size_per_node', 0)
                               }
 
         # node names are unique, so can serve as node uids
