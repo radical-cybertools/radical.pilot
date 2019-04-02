@@ -153,7 +153,7 @@ class Continuous(AgentSchedulingComponent):
             # summit
             if self._lrms_cores_per_node > 40:
 
-                # Summit cannot address the first core of the second socket at
+                # Summit cannot address the first and last core of the second socket at
                 # the moment, so we simply mark it as DOWN, so that the
                 # scheduler skips it.  We need to check the SMT setting to make
                 # sure the right logical cores are marked.  The error we see on
@@ -169,6 +169,8 @@ class Continuous(AgentSchedulingComponent):
                 for s in [1]:
                     for i in range(smt):
                         idx = s * 21 * smt + i
+                        node_entry['cores'][idx] = rpc.DOWN
+                        idx = s * 40 * smt + i
                         node_entry['cores'][idx] = rpc.DOWN
 
             self.nodes.append(node_entry)
@@ -592,10 +594,6 @@ class Continuous(AgentSchedulingComponent):
 
         if requested_lfs_per_process > lfs_per_node['size']:
             raise ValueError('Not enough LFS for the MPI-process')
-
-        if requested_cores > cores_per_node:
-            raise ValueError('Number of threads greater than that available on a node')
-
 
         # set conditions to find the first matching node
         is_first      = True
