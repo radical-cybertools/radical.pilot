@@ -5,6 +5,8 @@ __license__   = "MIT"
 
 import os
 
+import radical.utils as ru
+
 from base import LRMS
 
 
@@ -36,7 +38,7 @@ class CCM(LRMS):
         ccm_nodefile = os.path.join(CCM_NODEFILE_DIR, ccm_nodefile_name)
 
         hostname = os.uname()[1]
-        if not hostname in open(ccm_nodefile).read():
+        if hostname not in open(ccm_nodefile).read():
             raise RuntimeError("Using the most recent CCM nodefile (%s),"
                                " but I (%s) am not in it!" % (ccm_nodefile, hostname))
 
@@ -53,13 +55,11 @@ class CCM(LRMS):
 
         # Some simple arithmetic
         self.cores_per_node = ccm_nodes_length / ccm_node_list_length
-        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
+        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
 
-        lfs_path = self._cfg.get('lfs_path_per_node', '')
-        lfs_path = os.path.expandvars(lfs_path)
-
-        self.lfs_per_node   = {'path' : lfs_path,
-                               'size' : self._cfg.get('lfs_size_per_node', 0)
+        self.lfs_per_node   = {'path' : ru.expandvars(
+                                           self._cfg.get('lfs_path_per_node')),
+                               'size' :    self._cfg.get('lfs_size_per_node', 0)
                               }
 
         # node names are unique, so can serve as node uids
