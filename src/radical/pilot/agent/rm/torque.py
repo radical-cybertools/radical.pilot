@@ -56,7 +56,7 @@ class Torque(LRMS):
             self._log.warning(msg)
 
         torque_gpus_per_node  = self._cfg.get('gpus_per_node', 0)
-        torque_lfs_per_node   = {'path' : ru.expandvars(
+        torque_lfs_per_node   = {'path' : ru.expand_env(
                                              self._cfg.get('lfs_path_per_node')),
                                  'size' :    self._cfg.get('lfs_size_per_node', 0)
                                 }
