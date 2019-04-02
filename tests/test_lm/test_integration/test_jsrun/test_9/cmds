@@ -1,0 +1,5 @@
+# Task has 6 processes, 1 OMP thread, 6 GPUs and is assigned to node 1, physical
+# cores 0, 4, 8, 44, 48, 52, and GPU 0, 1, 2, 3, 4, 5
+
+export OMP_NUM_THREADS=1
+jsrun --erf_input resource-file /ccs/proj/csc190/Hello_jsrun/jsrun_layout | sort

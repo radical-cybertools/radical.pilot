@@ -3,8 +3,7 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-try:    import radical.saga.attributes as attributes
-except: import         saga.attributes as attributes
+import radical.saga.attributes as attributes
 
 
 # ------------------------------------------------------------------------------
@@ -28,6 +27,7 @@ GPU_THREAD_TYPE        = 'gpu_thread_type'
 
 LFS_PER_PROCESS        = 'lfs_per_process'
 TAG                    = 'tag'
+MEM_PER_PROCESS        = 'mem_per_process'
 
 INPUT_STAGING          = 'input_staging'
 OUTPUT_STAGING         = 'output_staging'
@@ -346,6 +346,7 @@ class ComputeUnitDescription(attributes.Attributes):
         self._attributes_register(GPU_THREADS,      None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(GPU_THREAD_TYPE,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(LFS_PER_PROCESS,  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(MEM_PER_PROCESS,  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
 
         # tag -- user level tag that can be used in scheduling
         self._attributes_register(TAG,              None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
@@ -380,6 +381,7 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (GPU_THREAD_TYPE,    '')
         self.set_attribute (GPU_THREAD_TYPE,    '')
         self.set_attribute (LFS_PER_PROCESS,     0)
+        self.set_attribute (MEM_PER_PROCESS,     0)
 
         self.set_attribute (TAG,              None)
 
@@ -445,6 +447,7 @@ class ComputeUnitDescription(attributes.Attributes):
         if self.get(CPU_THREADS     ) is None: self[CPU_THREADS     ] = 0
         if self.get(GPU_PROCESSES   ) is None: self[GPU_PROCESSES   ] = 0
         if self.get(GPU_THREADS     ) is None: self[GPU_THREADS     ] = 0
+        if self.get(MEM_PER_PROCESS)  is None: self[MEM_PER_PROCESS ] = 0
 
         if  not self.get('executable') and \
             not self.get('kernel')     :
