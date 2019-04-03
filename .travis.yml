@@ -5,7 +5,7 @@ python:
   - "2.7"
 
 branches:
-  - feature/lm_tests
+  - feature/rm_tests
 
 os:
   - linux
@@ -15,10 +15,14 @@ git:
 
 env:
   global:
+    - LOG=`git log -n 1 | grep Merge`
+    - OLD=`echo $LOG | cut -d ' ' -f2`
+    - NEW=`echo $LOG | cut -d ' ' -f3`
+    - DIFF=`git diff --name-only --diff-filter=b $OLD...$NEW`
     - LOC=/home/travis/virtualenv/python2.7  # Location where VE is created on travis
     - CMD1="coverage run -m pytest -vvv tests/;flake8 tests/;pylint tests/"
-    - CMD2="flake8 --config=.flake8 $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/"
-    - CMD3="pylint $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/"
+    - CMD2="flake8 --config=.flake8 $DIFF"
+    - CMD3="pylint $DIFF"
     - COVERAGE=false
     - CODECOV_TOKEN="c7e0d993-d31a-4d39-8ffa-07c30ea73e48"
   matrix:
