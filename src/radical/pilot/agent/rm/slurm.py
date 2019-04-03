@@ -6,6 +6,8 @@ __license__   = "MIT"
 import os
 import hostlist
 
+import radical.utils as ru
+
 from base import LRMS
 
 
@@ -76,11 +78,9 @@ class Slurm(LRMS):
         self.cores_per_node = self._cfg.get('cores_per_node', 0)
         self.gpus_per_node  = self._cfg.get('gpus_per_node',  0)  # FIXME GPU
 
-        lfs_path = self._cfg.get('lfs_path_per_node', '')
-        lfs_path = os.path.expandvars(lfs_path)
-
-        self.lfs_per_node   = {'path' : lfs_path,
-                               'size' : self._cfg.get('lfs_size_per_node', 0)
+        self.lfs_per_node   = {'path' : ru.expandvars(
+                                           self._cfg.get('lfs_path_per_node')),
+                               'size' :    self._cfg.get('lfs_size_per_node', 0)
                               }
 
         if not self.cores_per_node:
