@@ -149,6 +149,13 @@
         "cores"    : 80
     },
 
+    "princeton.tiger" : {
+        "project"  : "geo",
+        "queue"    : "cpu",
+        "schema"   : "local",
+        "cores"    : 1
+    },
+
     "xsede.stampede" : {
         "project"  : "TG-MCB090174",
         "queue"    : "development",

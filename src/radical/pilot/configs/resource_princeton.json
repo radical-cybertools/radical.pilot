@@ -1,0 +1,38 @@
+
+{
+    
+    "tiger": {
+        "description"                 : "",
+        "notes"                       : "",
+        "schemas"                     : ["local"],
+        "mandatory_args"              : [],
+        "local"                      :
+        {
+            "job_manager_endpoint"    : "slurm://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_queue"               : "normal",
+        "lrms"                        : "SLURM",
+        "cores_per_node"              : 40,
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN",
+        "pre_bootstrap_0"             : [],
+        "default_remote_workdir"      : "$HOME",
+        "valid_roots"                 : [],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default",
+        "export_to_cu"                : [],
+        "cu_pre_exec"                 : [],
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 0,
+        "mem_per_node"                : 0,
+      # "tunnel_bind_device"          : "ipogif0",
+        "forward_tunnel_endpoint"     : "tigercpu.princeton.edu"
+    }
+
+}
+

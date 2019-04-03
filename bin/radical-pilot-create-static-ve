@@ -12,7 +12,7 @@ echo
 
 reqs="pymongo==2.8 python-hostlist netifaces==0.10.4 setproctitle ntplib pyzmq"
 reqs="$reqs apache-libcloud colorama backports.ssl-match-hostname msgpack-python"
-reqs="$reqs future"
+reqs="$reqs future regex"
 
 # setuptools="setuptools==0.6c11"
 # pip="pip==1.4.1"
