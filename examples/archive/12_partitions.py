@@ -23,6 +23,9 @@ dh = ru.DebugHelper()
 #
 if __name__ == '__main__':
 
+    print "\n\tWARNING: this example fails with current versions of RP!!\n\n"
+    time.sleep(3)
+
     # we use a reporter class for nicer output
     report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
