@@ -1,4 +1,5 @@
-MPI Ranks = 1
-OpenMP Threads = 1
-GPUs per Resource Set = 1
-Unique_Nodes = 1
+########################################################################
+
+*** MPI Ranks: 1, OpenMP Threads: 1, GPUs per Resource Set: 1 ***
+========================================================================
+MPI Rank 000, OMP_thread 00 on HWThread 000 of Node  - RT_GPU_id 0 : GPU_id 0 
