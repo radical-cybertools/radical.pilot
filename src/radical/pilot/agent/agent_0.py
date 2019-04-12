@@ -47,8 +47,10 @@ class Agent_0(rpu.Worker):
         print 'startup agent %s' % agent_name
 
         # load config, create session
+        # immediately perform env expansion on the cfg, so that we don't need to
+        # do that in all cfg consuming components
         agent_cfg  = '%s/%s.cfg' % (os.getcwd(), agent_name)
-        cfg        = ru.read_json_str(agent_cfg)
+        cfg        = ru.expand_env(cfg(ru.read_json_str(agent_cfg))
         rcfg       = cfg['rcfg']
         acfg       = cfg['acfg']
         descr      = cfg['description']

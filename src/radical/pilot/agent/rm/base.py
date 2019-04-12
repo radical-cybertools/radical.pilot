@@ -21,7 +21,6 @@ RM_NAME_YARN        = 'YARN'
 RM_NAME_SPARK       = 'SPARK'
 
 
-
 # ==============================================================================
 #
 # Base class for LRMS implementations.
@@ -73,6 +72,7 @@ class LRMS(object):
         self._log            = self._session._log
         self._prof           = self._session._prof
         self.requested_cores = self._cfg['description']['cores']
+        self.requested_gpus  = self._cfg['description']['gpus']
 
         self._log.info("Configuring LRMS %s.", self.name)
 
@@ -83,29 +83,29 @@ class LRMS(object):
         self.cores_per_node  = None
         self.gpus_per_node   = None
         self.lfs_per_node    = None
+        self.mem_per_node    = None
 
         # The LRMS will possibly need to reserve nodes for the agent, according
         # to the agent layout.  We dig out the respective requirements from the
         # config right here.
-        to_start = list()
-        agents   = self._acfg['layout'].get('agents', {})
-
+        #
         # FIXME: this loop iterates over all agents *defined* in the layout, not
         #        over all agents which are to be actually executed, thus
-        #        potentially reserving too many nodes.a
+        #        potentially reserving too many nodes.
+        #
         # NOTE:  this code path is *within* the agent, so at least agent_0
         #        cannot possibly land on a different node.
+        #
+        agents = self._acfg['layout'].get('agents', {})
         for agent in agents:
 
             target = agents[agent]['target']
 
             # make sure that the target either 'local', which we will ignore,
             # or 'node'.
-            if target not in ['local', 'node']:
-                raise ValueError("invalid agent node '%s'" % target)
-
-            if target == 'node':
-                to_start.append(agent) 
+            if   target == 'local': pass
+            elif target == 'node' : self._agent_reqs.append(agent)
+            else: raise ValueError("ill-formatted agent target '%s'" % target)
 
         # We are good to get rolling, and to detect the runtime environment of
         # the local LRMS.
@@ -115,28 +115,27 @@ class LRMS(object):
         # Make sure we got a valid nodelist and a valid setting for
         # cores_per_node
         if not self.node_list or self.cores_per_node < 1:
-            raise RuntimeError('LRMS configuration invalid (%s)(%s)' % \
+            raise RuntimeError('LRMS configuration invalid (%s)(%s)' %
                     (self.node_list, self.cores_per_node))
 
         # Check if the LRMS implementation reserved agent nodes.  If not, pick
         # the first couple of nodes from the nodelist as a fallback.
+        if self._agent_reqs and not self.agent_nodes:
+            self._log.info('Determine list of agent nodes generically.')
+            for agent in self._agent_reqs:
+                # Get a node from the end of the node list
+                self.agent_nodes[agent] = self.node_list.pop()
+                # If all nodes are taken by workers now, we can safely stop,
+                # and let the raise below do its thing.
+                if not self.node_list:
+                    break
 
-        for agent in to_start:
+        if self.agent_nodes:
+            self._log.info('Reserved nodes: %s' % self.agent_nodes.values())
+            self._log.info('Agent    nodes: %s' % self.agent_nodes.keys())
+            self._log.info('Worker   nodes: %s' % self.node_list)
 
-            self._log.info('find agent node for %s' % agent)
-
-            # Get a node from the end of the node list
-            self.agent_nodes[agent] = self.node_list.pop()
-
-            # if all nodes are taken by workers now, we can safely stop,
-            # and let the raise below do its thing.
-            if not self.node_list:
-                break
-
-        self._log.info('agent  nodes: %s' % self.agent_nodes.values())
-        self._log.info('worker nodes: %s' % self.node_list)
-
-        # check if we can do any work
+        # Check if we can do any work
         if not self.node_list:
             raise RuntimeError('LRMS has no nodes left to run units')
 
@@ -149,26 +148,34 @@ class LRMS(object):
         launch_methods.add(lm_cfg['task_launch_method'])
         launch_methods.add(lm_cfg['agent_launch_method'])
 
-        for lm in launch_methods:
-            if lm:
-                try:
-                    from .... import pilot as rp
-                    ru.dict_merge(self.lm_info,
-                            rp.agent.LM.lrms_config_hook(lm, self._cfg, self,
-                                self._log, self._prof))
-                except Exception:
-                    self._log.exception("lrms config hook failed")
-                    raise
+        launch_methods.discard(None)
 
+        for lm in launch_methods:
+            try:
+                from .... import pilot as rp
+                ru.dict_merge(self.lm_info,
+                        rp.agent.LM.lrms_config_hook(lm, self._cfg, self,
+                            self._log, self._prof))
                 self._log.info("lrms config hook succeeded (%s)" % lm)
+            except Exception as e:
+                self._log.error("lrms config hook failed: %s" % e)
+                raise
+
 
         # For now assume that all nodes have equal amount of cores and gpus
         cores_avail = (len(self.node_list) + len(self.agent_nodes)) * self.cores_per_node
         gpus_avail  = (len(self.node_list) + len(self.agent_nodes)) * self.gpus_per_node
-        if 'RADICAL_PILOT_PROFILE' not in os.environ:
+
+        # on debug runs, we allow more cpus/gpus to appear than physically exist
+        if 'RADICAL_DEBUG' not in os.environ:
             if cores_avail < int(self.requested_cores):
-                raise ValueError("Not enough cores available (%s) to satisfy allocation request (%s)." \
+                raise ValueError("Not enough cores available (%s < %s)."
                                 % (str(cores_avail), str(self.requested_cores)))
+
+            if gpus_avail < int(self.requested_gpus):
+                raise ValueError("Not enough gpus available (%s < %s)."
+                                % (str(gpus_avail), str(self.requested_gpus)))
+
 
         # NOTE: self.lrms_info is what scheduler and launch method can
         # ultimately use, as it is included into the cfg passed to all
@@ -192,6 +199,7 @@ class LRMS(object):
         self.lrms_info['gpus_per_node']  = self.gpus_per_node
         self.lrms_info['agent_nodes']    = self.agent_nodes
         self.lrms_info['lfs_per_node']   = self.lfs_per_node
+        self.lrms_info['mem_per_node']   = self.mem_per_node
 
 
     # --------------------------------------------------------------------------
@@ -247,24 +255,27 @@ class LRMS(object):
         launch_methods.add(self._acfg['config']['task_launch_method'])
         launch_methods.add(self._acfg['config']['agent_launch_method'])
 
-        for lm in launch_methods:
-            if lm:
-                try:
-                    from .... import pilot as rp
-                    ru.dict_merge(self.lm_info,
-                    rp.agent.LM.lrms_shutdown_hook(lm, self._cfg, self,
-                                                    self.lm_info, self._log,
-                                                    self._prof))
-                except Exception as e:
-                    self._log.exception("lrms shutdown hook failed")
-                    raise
+        launch_methods.discard(None)
 
+        for lm in launch_methods:
+            try:
+                from .... import pilot as rp
+                ru.dict_merge(self.lm_info,
+                rp.agent.LM.lrms_shutdown_hook(lm, self._cfg, self,
+                                                self.lm_info, self._log,
+                                                self._prof))
                 self._log.info("lrms shutdown hook succeeded (%s)" % lm)
+
+            except Exception as e:
+                self._log.error("lrms shutdown hook failed: %s" % e)
+                raise
+
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
+
         raise NotImplementedError("_Configure missing for %s" % self.name)
 
 
