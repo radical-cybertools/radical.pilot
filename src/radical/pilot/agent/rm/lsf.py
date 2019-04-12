@@ -50,7 +50,7 @@ class LSF(LRMS):
         #
         lsf_nodes = [line.strip() for line in open(lsf_hostfile)]
         self._log.info("Found LSB_DJOB_HOSTFILE %s. Expanded to: %s",
-                      lsf_hostfile, lsf_nodes)
+                       lsf_hostfile, lsf_nodes)
         lsf_node_list = list(set(lsf_nodes))
 
         # Grab the core (slot) count from the environment
@@ -58,20 +58,17 @@ class LSF(LRMS):
         lsf_cores_count_list = map(int, lsb_mcpu_hosts.split()[1::2])
         lsf_core_counts      = list(set(lsf_cores_count_list))
         lsf_cores_per_node   = min(lsf_core_counts)
-        lsf_gpus_per_node    = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
-
-        self.lfs_per_node    = {'path' : ru.expand_env(
-                                            self._cfg.get('lfs_path_per_node')),
-                                'size' :    self._cfg.get('lfs_size_per_node', 0)
-                               }
+        lsf_gpus_per_node    = self._cfg.get('gpus_per_node', 0)
+        lsf_lfs_per_node     = {'path' : self._cfg.get('lfs_path_per_node', ''),
+                                'size' : self._cfg.get('lfs_size_per_node',  0)}
 
         self._log.info("Found unique core counts: %s Using: %d",
-                      lsf_core_counts, lsf_cores_per_node)
+                       lsf_core_counts, lsf_cores_per_node)
 
         # node names are unique, so can serve as node uids
         self.node_list      = [[node, node] for node in lsf_node_list]
         self.cores_per_node = lsf_cores_per_node
         self.gpus_per_node  = lsf_gpus_per_node
-        self.lfs_per_node   = lfs_lfs_per_node
+        self.lfs_per_node   = lsf_lfs_per_node
 
 

@@ -55,7 +55,7 @@ class ShellFS(AgentExecutingComponent):
         old_home  = os.environ.get('_OLD_PYTHONHOME', None)
         old_ps1   = os.environ.get('_OLD_PS1',        None)
 
-        if olf_path:
+        if old_path:
             # hi titan nodes
             old_path += ":/usr/bin:/bin:/usr/local/bin:/sbin:/usr/sbin"
 
@@ -478,7 +478,7 @@ prof(){
         while not self._terminate.is_set():
 
             main_thread.join(0)
-            if not self.main_thread():
+            if not ru.main_thread():
                 # parent thread is gone - finish also
                 return
 

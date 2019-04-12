@@ -96,6 +96,7 @@ class LRMS(object):
         # NOTE:  this code path is *within* the agent, so at least agent_0
         #        cannot possibly land on a different node.
         #
+        self._agent_reqs = list()
         agents = self._acfg['layout'].get('agents', {})
         for agent in agents:
 

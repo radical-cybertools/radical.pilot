@@ -600,7 +600,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # notify the scheduling thread, ie. trigger an attempt to use the freed
         # slots for units waiting in the wait pool.
-        self._schedule_trigger.push(unit)
+        self._schedule_trigger.put(unit)
 
         if self._log.isEnabledFor(logging.DEBUG):
             self._log.debug("after  unschedule %s: %s", unit['uid'],

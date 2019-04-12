@@ -106,10 +106,6 @@ class Scattered(AgentSchedulingComponent):
     #
     def _release_slot(self, slots):
 
-        if not 'task_offsets' in slots:
-            raise RuntimeError('insufficient information to release slots via %s: %s' \
-                    % (self.name, slots))
-
         self._change_slot_states(slots['task_offsets'], rpc.FREE)
 
 

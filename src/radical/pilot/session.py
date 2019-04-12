@@ -5,12 +5,10 @@ __license__   = "MIT"
 
 import os
 import copy
-import glob
 import time
 import threading      as mt
 
 import radical.utils  as ru
-import radical.saga   as rs
 import radical.saga   as rs
 
 import radical.saga.utils.pty_shell as rsup
