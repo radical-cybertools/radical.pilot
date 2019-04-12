@@ -19,6 +19,7 @@ from ...  import states    as rps
 from ...  import constants as rpc
 from .base import AgentExecutingComponent
 
+
 # ------------------------------------------------------------------------------
 #
 def rec_makedir(target):
@@ -36,21 +37,21 @@ def rec_makedir(target):
             raise
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 @ffi.def_extern()
 def launch_cb(task, jdata, status, cbdata):
     return ffi.from_handle(cbdata).unit_spawned_cb(task, status)
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 @ffi.def_extern()
 def finish_cb(task, jdata, status, cbdata):
     return ffi.from_handle(cbdata).unit_completed_cb(task, status)
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class ORTE(AgentExecutingComponent):
 
@@ -89,13 +90,12 @@ class ORTE(AgentExecutingComponent):
         self.task_map_lock = threading.Lock()
 
         # we needs the LaunchMethods to construct commands.
-        assert(self._cfg['task_launch_method'] == \
-               self._cfg['mpi_launch_method' ] == \
-               "ORTE_LIB"), "ORTE_LIB spawner only works with ORTE_LIB LM's."
+        assert(self._cfg['task_launch_method'] ==
+               self._cfg['mpi_launch_method' ] == "ORTE_LIB"), \
+               "ORTE_LIB spawner only works with ORTE_LIB LM's."
 
-        self._task_launcher = rp.agent.LM.create(name    = "ORTE_LIB",
-                                                 cfg     = self._cfg,
-                                                 session = self._session)
+        self._task_launcher = rp.agent.LM.create(name="ORTE_LIB", cfg=self._cfg,
+                                                 session=self._session)
         self._orte_initialized = False
         self._cu_environment   = self._populate_cu_environment()
 
@@ -164,6 +164,7 @@ class ORTE(AgentExecutingComponent):
 
         return new_env
 
+
     # --------------------------------------------------------------------------
     #
     def work(self, units):
@@ -197,7 +198,7 @@ class ORTE(AgentExecutingComponent):
             launcher = self._task_launcher
 
             if not launcher:
-                raise RuntimeError("no launcher (mpi=%s)" % cu['description']['mpi'])
+                raise RuntimeError("no launcher")
 
             self._log.debug("Launching unit with %s (%s).", 
                             launcher.name, launcher.launch_command)
@@ -290,15 +291,15 @@ class ORTE(AgentExecutingComponent):
         slots = cu['slots']
 
         if 'lm_info' not in slots:
-            raise RuntimeError('No lm_info to init via %s: %s' \
+            raise RuntimeError('No lm_info to init via %s: %s'
                                % (self.name, slots))
 
         if not slots['lm_info']:
-            raise RuntimeError('lm_info missing for %s: %s' \
+            raise RuntimeError('lm_info missing for %s: %s'
                                % (self.name, slots))
 
         if 'dvm_uri' not in slots['lm_info']:
-            raise RuntimeError('dvm_uri not in lm_info for %s: %s' \
+            raise RuntimeError('dvm_uri not in lm_info for %s: %s'
                                % (self.name, slots))
 
         dvm_uri = slots['lm_info']['dvm_uri']
@@ -307,9 +308,9 @@ class ORTE(AgentExecutingComponent):
         orte_lib.opal_set_using_threads(True)
 
         argv_keepalive = [
-            ffi.new("char[]", "RADICAL-Pilot"), # will be stripped off by lib
+            ffi.new("char[]", "RADICAL-Pilot"),  # will be stripped off by lib
             ffi.new("char[]", "--hnp"), ffi.new("char[]", str(dvm_uri)),
-            ffi.NULL, # required
+            ffi.NULL,  # required
         ]
         argv = ffi.new("char *[]", argv_keepalive)
         ret = orte_lib.orte_submit_init(3, argv, ffi.NULL)
@@ -318,6 +319,7 @@ class ORTE(AgentExecutingComponent):
         self._orte_initialized = True
 
         return ret
+
 
     # --------------------------------------------------------------------------
     #
@@ -360,11 +362,11 @@ class ORTE(AgentExecutingComponent):
         #         post += "%s || %s\n" % (elem, fail)
         #     launch_script.write("# Post-exec commands\n")
         #     if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #         launch_script.write("echo cu_post_start `%s` >> %s/%s.prof\n" \
+        #         launch_script.write("echo cu_post_start `%s` >> %s/%s.prof\n"
         #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
         #     launch_script.write('%s\n' % post)
         #     if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #         launch_script.write("echo cu_post_stop  `%s` >> %s/%s.prof\n" \
+        #         launch_script.write("echo cu_post_stop  `%s` >> %s/%s.prof\n"
         #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
 
 
@@ -394,7 +396,8 @@ class ORTE(AgentExecutingComponent):
             "RP_AGENT_ID=%s"   % self._cfg['agent_name'],
             "RP_SPAWNER_ID=%s" % self.uid,
             "RP_UNIT_ID=%s"    % cu['uid'],
-            "RP_UNIT_NAME=%s"  % cu['description'].get('name')
+            "RP_UNIT_NAME=%s"  % cu['description'].get('name'),
+            "RP_PILOT_STAGING=%s/staging_area" % self._pwd
         ]
         for env in rp_envs:
             arg_list.append(ffi.new("char[]", "-x"))
@@ -432,7 +435,7 @@ class ORTE(AgentExecutingComponent):
                          + task_command \
                          + "; echo script cu_exec_stop `%s` >> %s/%s.prof" \
                          % (self.gtod, cu_tmpdir, cu['uid'])
-        arg_list.append(ffi.new("char[]", str("%s; exit $RETVAL" \
+        arg_list.append(ffi.new("char[]", str("%s; exit $RETVAL"
                                             % str(task_command))))
 
         self._log.debug("Launching unit %s via %s %s", cu['uid'], 

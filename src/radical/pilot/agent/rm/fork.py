@@ -5,6 +5,8 @@ __license__   = "MIT"
 import math
 import multiprocessing
 
+import radical.utils as ru
+
 from .base import LRMS
 
 
@@ -36,12 +38,13 @@ class Fork(LRMS):
         # if cores_per_node is set in the agent config, we slice the number of
         # cores into that many virtual nodes.  cpn defaults to requested_cores,
         # to preserve the previous behavior (1 node).
-        self.cores_per_node = self._cfg.get('cores_per_node', self.requested_cores)
-        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
+        self.cores_per_node = self._cfg.get('cores_per_node',
+                                            self.requested_cores)
+        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0)
+        self.mem_per_node   = self._cfg.get('mem_per_node',  0)
 
-        self.lfs_per_node   = {'path' : self._cfg.get('lfs_path_per_node', None),
-                               'size' : self._cfg.get('lfs_size_per_node', 0)
-                              }
+        self.lfs_per_node   = {'path': self._cfg.get('lfs_path_per_node', ''),
+                               'size': self._cfg.get('lfs_size_per_node', 0)}
 
         if not self.cores_per_node:
             self.cores_per_node = 1
@@ -53,8 +56,11 @@ class Fork(LRMS):
             # enumerate the node list entries for a unique uis
             self.node_list.append(["localhost", 'localhost_%d' % i])
 
-        self._log.debug('configure localhost as %s nodes (%s cores, %s gpus, %s lfs).',
-                len(self.node_list), self.cores_per_node, self.gpus_per_node, self.lfs_per_node)
+        self._log.debug('configure localhost as %s nodes '
+                        '(%s cores, %s gpus, %s lfs, %s mem)',
+                        len(self.node_list), self.cores_per_node,
+                        self.gpus_per_node, self.lfs_per_node,
+                        self.mem_per_node)
 
 
 # ------------------------------------------------------------------------------

@@ -81,6 +81,7 @@ def get_version(mod_root):
 
         if  p.returncode   !=  0  or \
             version_detail == '@' or \
+            'git-error' in version_detail or \
             'not-a-git-repo' in version_detail or \
             'not-found'      in version_detail or \
             'fatal'          in version_detail :
@@ -181,7 +182,7 @@ setup_args = {
     'author_email'       : 'radical@rutgers.edu',
     'maintainer'         : 'The RADICAL Group',
     'maintainer_email'   : 'radical@rutgers.edu',
-    'url'                : 'https://www.github.com/radical-cybertools/radical.utils/',
+    'url'                : 'https://www.github.com/radical-cybertools/radical.pilot/',
     'license'            : 'MIT',
     'keywords'           : 'radical pilot job saga',
     'classifiers'        : [
@@ -226,11 +227,11 @@ setup_args = {
     'cmdclass'           : {
         'test'           : our_test,
                            },
-    'install_requires'   : ['saga-python>=0.44',
-                            'radical.utils>=0.44',
+    'install_requires'   : ['radical.saga>=0.60',
+                            'radical.utils>=0.60',
                             'pymongo',
                             'python-hostlist',
-                            'netifaces==0.10.4',
+                            'netifaces',
                             'setproctitle',
                             'ntplib',
                             'msgpack-python',
