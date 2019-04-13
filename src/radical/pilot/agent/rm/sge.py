@@ -6,6 +6,8 @@ __license__   = "MIT"
 import os
 import signal
 
+import radical.utils as ru
+
 from base import LRMS
 
 
@@ -55,14 +57,12 @@ class SGE(LRMS):
         # Parse SGE hostfile for cores
         sge_cores_count_list = [int(line.split()[1]) for line in open(sge_hostfile)]
         sge_core_counts      = list(set(sge_cores_count_list))
-        sge_gpus_per_node    = self._cfg.get('gpus_per_node', 0) # FIXME GPU
+        sge_gpus_per_node    = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
 
-        lfs_path = self._cfg.get('lfs_path_per_node', '')
-        lfs_path = os.path.expandvars(lfs_path)
-
-        sge_lfs_per_node     = {'path' : lfs_path,
-                                'size' : self._cfg.get('lfs_size_per_node', 0)
-                               }
+        sge_lfs_per_node     = {'path' : ru.expand_env(
+                                           self._cfg.get('lfs_path_per_node')),
+                               'size' :    self._cfg.get('lfs_size_per_node', 0)
+                              }
 
         # Check if nodes have the same core count
         if len(sge_core_counts) == 1:
