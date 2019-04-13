@@ -486,8 +486,9 @@ class Single(PMGRLaunchingComponent):
 
         # connect to the pilot's notification channel to obtain state
         # notifications, which are then forwarded to the local state pubsub.
-        self.register_subscriber(rpc.AGENT_PUBSUB, cb=self._agent_pubsub,
-                                                   cb_data={'pid': pid})
+        # FIXME V2
+      # self.register_subscriber(rpc.AGENT_PUBSUB, cb=self._agent_pubsub,
+      #                                            cb_data={'pid': pid})
 
         # FIXME: do we need to keep bridge jobs around?
         self._prof.prof('bridge_submission_stop', uid=pid)

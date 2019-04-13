@@ -27,6 +27,7 @@ GPU_THREAD_TYPE        = 'gpu_thread_type'
 
 LFS_PER_PROCESS        = 'lfs_per_process'
 TAG                    = 'tag'
+MEM_PER_PROCESS        = 'mem_per_process'
 
 INPUT_STAGING          = 'input_staging'
 OUTPUT_STAGING         = 'output_staging'
@@ -58,7 +59,7 @@ class ComputeUnitDescription(dict):
 
     - all processes use 1 CPU core.
     - use gpu_processes to request processes which have a GPU allocated
-    - use cpu_processes to request processes which have no GPU allocated (CPU only)
+    - use cpu_processes to request processes which have no GPU allocated
     - use cpu_threads to allocate additional cores for each cpu_process
     - use gpu_threads to allocate additional cores for each gpu_process
 
@@ -304,156 +305,45 @@ class ComputeUnitDescription(dict):
     #
     def __init__(self, from_dict=None):
 
-        pass
+        if from_dict:
+            for k,v in from_dict.iteritems():
+                self[k] = v
 
+
+
+    # --------------------------------------------------------------------------
+    #
     def verify(self):
+        '''
+        Verify that the description is syntactically and semantically correct.
+        This method encapsulates checks beyond the SAGA attribute level checks.
+        '''
 
-        # FIXME
-        return True
+        # replace 'None' values for string types with '', for int types with '0'
+        self.setdefault(KERNEL          , '')
+        self.setdefault(NAME            , '')
+        self.setdefault(EXECUTABLE      , '')
+        self.setdefault(ARGUMENTS       , '')
+        self.setdefault(ENVIRONMENT     , '')
+        self.setdefault(PRE_EXEC        , '')
+        self.setdefault(POST_EXEC       , '')
+        self.setdefault(PILOT           , '')
+        self.setdefault(STDOUT          , '')
+        self.setdefault(STDERR          , '')
+        self.setdefault(CPU_PROCESS_TYPE, '')
+        self.setdefault(CPU_THREAD_TYPE , '')
+        self.setdefault(GPU_PROCESS_TYPE, '')
+        self.setdefault(GPU_THREAD_TYPE , '')
 
+        self.setdefault(CPU_PROCESSES   , 0)
+        self.setdefault(CPU_THREADS     , 0)
+        self.setdefault(GPU_PROCESSES   , 0)
+        self.setdefault(GPU_THREADS     , 0)
+        self.setdefault(MEM_PER_PROCESS , 0)
 
-      # # initialize attributes
-      # rsa.Attributes.__init__(self)
-      #
-      # # set attribute interface properties
-      # self._attributes_extensible  (False)
-      # self._attributes_camelcasing (True)
-      #
-      # # register properties with the attribute interface
-      # # action description
-      # self._attributes_register(KERNEL,           None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-      # self._attributes_register(NAME,             None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-      # self._attributes_register(EXECUTABLE,       None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-      # self._attributes_register(ARGUMENTS,        None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
-      # self._attributes_register(ENVIRONMENT,      None, rsa.STRING, rsa.DICT,   rsa.WRITEABLE)
-      # self._attributes_register(TAGS,             None, rsa.ANY,    rsa.DICT,   rsa.WRITEABLE)
-      # self._attributes_register(PRE_EXEC,         None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
-      # self._attributes_register(POST_EXEC,        None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
-      # self._attributes_register(RESTARTABLE,      None, rsa.BOOL,   rsa.SCALAR, rsa.WRITEABLE)
-      # self._attributes_register(METADATA,         None, rsa.ANY,    rsa.SCALAR, rsa.WRITEABLE)
-      # self._attributes_register(CLEANUP,          None, rsa.BOOL,   rsa.SCALAR, rsa.WRITEABLE)
-      # self._attributes_register(PILOT,            None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-      #
-      #
-      # # I/O
-      # self._attributes_register(STDOUT,           None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-      # self._attributes_register(STDERR,           None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-      # self._attributes_register(INPUT_STAGING,    None, rsa.ANY,    rsa.VECTOR, rsa.WRITEABLE)
-      # self._attributes_register(OUTPUT_STAGING,   None, rsa.ANY,    rsa.VECTOR, rsa.WRITEABLE)
-      #
-      # # resource requirements
-      # self._attributes_register(CPU_PROCESSES,    None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
-      # self._attributes_register(CPU_PROCESS_TYPE, None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-      # self._attributes_register(CPU_THREADS,      None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
-      # self._attributes_register(CPU_THREAD_TYPE,  None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-      # self._attributes_register(GPU_PROCESSES,    None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
-      # self._attributes_register(GPU_PROCESS_TYPE, None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-      # self._attributes_register(GPU_THREADS,      None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
-      # self._attributes_register(GPU_THREAD_TYPE,  None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-      # self._attributes_register(LFS_PER_PROCESS,  None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
-      #
-      # # tag -- user level tag that can be used in schedling
-      # self._attributes_register(TAG,              None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-      #
-      # # dependencies
-      # self._attributes_register(RUN_AFTER,        None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
-      # self._attributes_register(START_AFTER,      None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
-      # self._attributes_register(CONCURRENT_WITH,  None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
-      # self._attributes_register(START_TIME,       None, rsa.TIME,   rsa.SCALAR, rsa.WRITEABLE)
-      # self._attributes_register(RUN_TIME,         None, rsa.TIME,   rsa.SCALAR, rsa.WRITEABLE)
-      #
-      # # explicitly set attrib defaults so they get listed and included via as_dict()
-      # self.set_attribute (KERNEL,           None)
-      # self.set_attribute (NAME,             None)
-      # self.set_attribute (EXECUTABLE,       None)
-      # self.set_attribute (ARGUMENTS,      list())
-      # self.set_attribute (ENVIRONMENT,    dict())
-      # self.set_attribute (TAGS,           dict())
-      # self.set_attribute (PRE_EXEC,       list())
-      # self.set_attribute (POST_EXEC,      list())
-      # self.set_attribute (STDOUT,           None)
-      # self.set_attribute (STDERR,           None)
-      # self.set_attribute (INPUT_STAGING,  list())
-      # self.set_attribute (OUTPUT_STAGING, list())
-      #
-      # self.set_attribute (CPU_PROCESSES,       1)
-      # self.set_attribute (CPU_PROCESS_TYPE,   '')
-      # self.set_attribute (CPU_THREADS,         1)
-      # self.set_attribute (CPU_THREAD_TYPE,    '')
-      # self.set_attribute (GPU_PROCESSES,       0)
-      # self.set_attribute (GPU_PROCESS_TYPE,   '')
-      # self.set_attribute (GPU_THREADS,         0)
-      # self.set_attribute (GPU_THREAD_TYPE,    '')
-      # self.set_attribute (LFS_PER_PROCESS,     0)
-      #
-      # self.set_attribute (TAG,              None)
-      #
-      # self.set_attribute (RESTARTABLE,     False)
-      # self.set_attribute (METADATA,         None)
-      # self.set_attribute (CLEANUP,         False)
-      # self.set_attribute (PILOT,              '')
-      #
-      # self._attributes_register_deprecated(CORES, CPU_PROCESSES)
-      # self._attributes_register_deprecated(MPI,   CPU_PROCESS_TYPE)
-      #
-      # # apply initialization dict
-      # if from_dict:
-      #     self.from_dict(from_dict)
-
-
-#   # --------------------------------------------------------------------------
-#   #
-#   def __deepcopy__ (self, memo):
-#
-#       other = ComputeUnitDescription ()
-#
-#       for key in self.list_attributes ():
-#           other.set_attribute(key, self.get_attribute (key))
-#
-#       return other
-#
-#
-#   # --------------------------------------------------------------------------
-#   #
-#   def __str__(self):
-#       """Returns a string representation of the object.
-#       """
-#       return str(self.as_dict())
-#
-#
-#   # --------------------------------------------------------------------------
-#   #
-#   def verify(self):
-#       '''
-#       Verify that the description is syntactically and semantically correct.
-#       This method encapsulates checks beyond the SAGA attribute level checks.
-#       '''
-#
-#     # # replace 'None' values for strng types with '', for int types with '0'. 
-#     # if self.get(KERNEL          ) is None: self[KERNEL          ] = ''
-#     # if self.get(NAME            ) is None: self[NAME            ] = ''
-#     # if self.get(EXECUTABLE      ) is None: self[EXECUTABLE      ] = ''
-#     # if self.get(ARGUMENTS       ) is None: self[ARGUMENTS       ] = ''
-#     # if self.get(ENVIRONMENT     ) is None: self[ENVIRONMENT     ] = ''
-#     # if self.get(PRE_EXEC        ) is None: self[PRE_EXEC        ] = ''
-#     # if self.get(POST_EXEC       ) is None: self[POST_EXEC       ] = ''
-#     # if self.get(PILOT           ) is None: self[PILOT           ] = ''
-#     # if self.get(STDOUT          ) is None: self[STDOUT          ] = ''
-#     # if self.get(STDERR          ) is None: self[STDERR          ] = ''
-#     # if self.get(CPU_PROCESS_TYPE) is None: self[CPU_PROCESS_TYPE] = ''
-#     # if self.get(CPU_THREAD_TYPE ) is None: self[CPU_THREAD_TYPE ] = ''
-#     # if self.get(GPU_PROCESS_TYPE) is None: self[GPU_PROCESS_TYPE] = ''
-#     # if self.get(GPU_THREAD_TYPE ) is None: self[GPU_THREAD_TYPE ] = ''
-#     #
-#     # if self.get(CPU_PROCESSES   ) is None: self[CPU_PROCESSES   ] = 0
-#     # if self.get(CPU_THREADS     ) is None: self[CPU_THREADS     ] = 0
-#     # if self.get(GPU_PROCESSES   ) is None: self[GPU_PROCESSES   ] = 0
-#     # if self.get(GPU_THREADS     ) is None: self[GPU_THREADS     ] = 0
-#
-#       if  not self.get('executable') and \
-#           not self.get('kernel')     :
-#           raise ValueError("CU description needs 'executable' or 'kernel'")
-
+        if  not self.get('executable') and \
+            not self.get('kernel')     :
+            raise ValueError("CU description needs 'executable' or 'kernel'")
 
 
 # ------------------------------------------------------------------------------

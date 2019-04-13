@@ -17,7 +17,6 @@ version = version_short
 
 # ------------------------------------------------------------------------------
 #
-from .db_utils          import *
 from .prof_utils        import *
 from .misc              import *
 from .session           import *

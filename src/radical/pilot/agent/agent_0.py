@@ -47,8 +47,10 @@ class Agent_0(rpu.Worker):
         print 'startup agent %s' % agent_name
 
         # load config, create session
+        # immediately perform env expansion on the cfg, so that we don't need to
+        # do that in all cfg consuming components
         agent_cfg  = '%s/%s.cfg' % (os.getcwd(), agent_name)
-        cfg        = ru.read_json_str(agent_cfg)
+        cfg        = ru.expand_env(ru.read_json_str(agent_cfg))
         rcfg       = cfg['rcfg']
         acfg       = cfg['acfg']
         descr      = cfg['description']
@@ -143,7 +145,7 @@ class Agent_0(rpu.Worker):
         self.register_timed_cb(self._check_state, 10)  # FIXME: configurable
 
         # register for state update and heartbeat notifications
-        self.register_pubslisher(rpc.AGENT_PUBSUB)
+        self.register_publisher(rpc.AGENT_PUBSUB)
 
         # registers the staging_input_queue as this is what we want to push
         # units to
@@ -409,7 +411,7 @@ class Agent_0(rpu.Worker):
                 return False  # we are done
 
         if msg['cmd'] == 'heartbeat':
-            if msg['arg']['uid'] == self._owner:    # FIXME: need pmgr id
+            if msg['arg']['uid'] == self._pmgr:    # FIXME: need pmgr id
                 self._heartbeat.beat()
 
         return True

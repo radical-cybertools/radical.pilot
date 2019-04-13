@@ -74,9 +74,8 @@ class Agent_n(rpu.Worker):
 
         # once is done, we signal success to the parent agent
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
-                                          'arg' : {'uid'  : self._uid, 
-                                                   'owner': self._owner, 
-                                                   'src'  : 'agent'}})
+                                          'arg' : {'uid': self._uid, 
+                                                   'src': 'agent'}})
 
 
     # --------------------------------------------------------------------------

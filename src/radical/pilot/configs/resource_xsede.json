@@ -239,11 +239,13 @@
             "description"                 : "https://www.xsede.org/psc-bridges/",
             "lrms"                        : "SLURM",
             "cores_per_node"              : null,
-            "gpus_per_node"               : null
+            "gpus_per_node"               : 2
         },
+
         "access" : {
-            "default_queue"               : "normal",
+            "default_queue"               : "RM",
             "mandatory_args"              : [],
+            "saga_jd_supplement"          : {"cpu_architecture": ["p100"]},
             "schemas" : {
                 "default"                 : "gsissh",
                 "gsissh" : {

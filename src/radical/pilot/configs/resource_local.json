@@ -37,6 +37,7 @@
                                              "echo  $RP_APP_TUNNEL_ADDR"],
                 "export_to_cu"            : [], 
                 "cu_pre_exec"             : [], 
+
                 "options" : {
                     "prte" : {
                         "pre_bootstrap_1" : ["export OMPI=/home/merzky/radical/prte/installed/2017_09_18_539f71d",
