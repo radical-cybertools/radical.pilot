@@ -82,8 +82,7 @@ class MPIRunCCMRun(LaunchMethod):
         hosts_string = ",".join(hostlist)
 
         command = "%s%s -np %d -host %s %s %s" % \
-                  (self.ccmrun_command,
-                   self.launch_command, len(hostlist),
+                  (self.ccmrun_command, self.launch_command, len(hostlist),
                    hosts_string, env_string, task_command)
 
         return command, None

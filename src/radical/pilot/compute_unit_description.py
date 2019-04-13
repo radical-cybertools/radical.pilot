@@ -39,6 +39,7 @@ PILOT                  = 'pilot'
 STDOUT                 = 'stdout'
 STDERR                 = 'stderr'
 RESTARTABLE            = 'restartable'
+TAGS                   = 'tags'
 METADATA               = 'metadata'
 
 # process / thread types (for both, CPU and GPU processes/threads)
@@ -216,6 +217,12 @@ class ComputeUnitDescription(attributes.Attributes):
        default: `False`
 
 
+    .. data:: tags
+
+       Cofiiguration specific tags which influence unit schedulinng and
+       execution.
+
+
     .. data:: metadata
 
        user defined metadata
@@ -317,6 +324,7 @@ class ComputeUnitDescription(attributes.Attributes):
         self._attributes_register(PRE_EXEC,         None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(POST_EXEC,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(RESTARTABLE,      None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(TAGS,             None, attributes.ANY,    attributes.DICT,   attributes.WRITEABLE)
         self._attributes_register(METADATA,         None, attributes.ANY,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PILOT,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
@@ -378,6 +386,7 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (TAG,              None)
 
         self.set_attribute (RESTARTABLE,     False)
+        self.set_attribute (TAGS,           dict())
         self.set_attribute (METADATA,         None)
         self.set_attribute (CLEANUP,         False)
         self.set_attribute (PILOT,              '')

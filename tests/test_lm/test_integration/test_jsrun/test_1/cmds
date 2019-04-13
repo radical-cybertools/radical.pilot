@@ -1,0 +1,4 @@
+# Task has 1 process, 1 OMP thread and is assigned to node 1, physical core 0
+
+export OMP_NUM_THREADS=1
+jsrun --erf_input resource-file /ccs/proj/csc190/Hello_jsrun/jsrun_layout | sort

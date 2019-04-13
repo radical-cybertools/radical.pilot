@@ -4,7 +4,7 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 1,
+        "cores"    : 1024,
         "gpus"     : 2
     },
 
@@ -252,6 +252,14 @@
 	"queue"        : "regular",
 	"schema"       : "local",
 	"cores"        : 72
+    },
+
+    "local.summit" : {
+        "project"  : "BIP178",
+        "queue"    : "batch",
+        "schema"   : "loccal",
+        "cores"    : 84,
+        "gpus"     : 12
     },
 
     "ornl.titan" : {

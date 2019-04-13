@@ -16,7 +16,6 @@ import radical.utils as ru
 from ...   import constants as rpc
 from .base import AgentSchedulingComponent
 
-import logging  # delayed import for atfork
 
 
 # ------------------------------------------------------------------------------
@@ -144,7 +143,7 @@ class Continuous(AgentSchedulingComponent):
 
         # * scattered:
         #   This is the continuous scheduler, because it attempts to allocate
-        #   a *continuous* set of cores/nodes for a unit.  It does, hoewver,
+        #   a *continuous* set of cores/nodes for a unit.  It does, however,
         #   also allow to scatter the allocation over discontinuous nodes if
         #   this option is set.  This implementation is not optimized for the
         #   scattered mode!  The default is 'False'.
@@ -299,25 +298,18 @@ class Continuous(AgentSchedulingComponent):
 
         if partial:
             # For partial requests the check simplifies: we just check if we
-            # have either, some cores *or* gpus *or* local_fs, to serve the
+            # have either, some cores *or* gpus, to serve the
             # request
             if (requested_cores and not free_cores) and \
-               (requested_gpus  and not free_gpus)  and \
-               (requested_lfs   and not free_lfs)   and \
-               (requested_mem   and not free_mem):
-                return [], [], None, None
-
-            if (requested_lfs or requested_mem) and \
-                ((requested_cores and not free_cores) and
-                 (requested_gpus  and not free_gpus )):
+               (requested_gpus  and not free_gpus ) :
                 return [], [], None, None
 
         else:
             # For non-partial requests (ie. full requests): its a no-match if
-            # either the cpu or gpu request cannot be served.
+            # any resource request cannot be served.
             if  requested_cores > free_cores or \
                 requested_gpus  > free_gpus  or \
-                requested_lfs   > free_lfs or \
+                requested_lfs   > free_lfs   or \
                 requested_mem   > free_mem:
                 return [], [], None, None
 
@@ -358,6 +350,7 @@ class Continuous(AgentSchedulingComponent):
                     break
 
         return cores, gpus, lfs, mem
+
 
 
     # --------------------------------------------------------------------------
@@ -662,7 +655,7 @@ class Continuous(AgentSchedulingComponent):
                     is_last        = False
 
                 # try next node
-                continue          
+                continue
 
             # we found something - add to the existing allocation, switch gears
             # (not first anymore), and try to find more if needed

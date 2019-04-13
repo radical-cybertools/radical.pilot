@@ -16,17 +16,16 @@ from .base import LaunchMethod
 #
 class Spark(LaunchMethod):
 
-        # --------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def __init__(self, name, cfg, session):
 
         LaunchMethod.__init__(self, name, cfg, session)
 
-    # pylint: disable= unused-argument
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger, profiler):
+    def lrms_config_hook(cls, name, cfg, lrms, logger, profiler=None):
 
         import radical.utils as ru
 
@@ -140,7 +139,7 @@ class Spark(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profiler):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profiler=None):
         if 'name' not in lm_info:
             raise RuntimeError('name not in lm_info for %s' % name)
 
@@ -153,7 +152,8 @@ class Spark(LaunchMethod):
                 logger.info("Spark stopped successfully")
 
         os.remove('spark-2.0.2-bin-hadoop2.7.tgz')
-    # pylint: enable= unused-argument
+
+
     # --------------------------------------------------------------------------
     #
     def _configure(self):
@@ -215,3 +215,7 @@ class Spark(LaunchMethod):
         self._log.debug("Spark  Command %s" % spark_command)
 
         return spark_command, None
+
+
+# ------------------------------------------------------------------------------
+

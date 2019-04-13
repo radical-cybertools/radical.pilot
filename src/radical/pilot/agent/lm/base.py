@@ -21,6 +21,7 @@ LM_NAME_MPIRUN_MPT    = 'MPIRUN_MPT'
 LM_NAME_MPIRUN_CCMRUN = 'MPIRUN_CCMRUN'
 LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
+LM_NAME_JSRUN         = 'JSRUN'
 LM_NAME_ORTE          = 'ORTE'
 LM_NAME_ORTE_LIB      = 'ORTE_LIB'
 LM_NAME_RSH           = 'RSH'
@@ -34,7 +35,6 @@ LM_NAME_SPARK         = 'SPARK'
 # LM_NAME_RUNJOB        = 'RUNJOB'
 
 
-# pylint: disable=protected-access
 # ==============================================================================
 #
 class LaunchMethod(object):
@@ -90,6 +90,7 @@ class LaunchMethod(object):
         from .ibrun          import IBRun
         from .mpiexec        import MPIExec
         from .mpirun         import MPIRun
+        from .jsrun          import JSRUN
         from .orte           import ORTE
         from .orte_lib       import ORTELib
         from .rsh            import RSH
@@ -118,6 +119,7 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_RSH    : MPIRun,
                 LM_NAME_MPIRUN_MPT    : MPIRun,
                 LM_NAME_MPIRUN_DPLACE : MPIRun,
+                LM_NAME_JSRUN         : JSRUN,
                 LM_NAME_ORTE          : ORTE,
                 LM_NAME_ORTE_LIB      : ORTELib,
                 LM_NAME_RSH           : RSH,
@@ -355,4 +357,4 @@ class LaunchMethod(object):
 
 
 # ------------------------------------------------------------------------------
-# pylint: enable=protected-access
+

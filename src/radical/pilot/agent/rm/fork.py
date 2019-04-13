@@ -10,7 +10,7 @@ import radical.utils as ru
 from .base import LRMS
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Fork(LRMS):
 
@@ -46,6 +46,9 @@ class Fork(LRMS):
                                            self._cfg.get('lfs_path_per_node')),
                                'size' :    self._cfg.get('lfs_size_per_node', 0)
                               }
+        self._log.debug('=== req: %d', self.requested_cores)
+        self._log.debug('=== cpn: %d', self.cores_per_node)
+
 
 
         if not self.cores_per_node:
@@ -58,8 +61,9 @@ class Fork(LRMS):
             # enumerate the node list entries for a unique uis
             self.node_list.append(["localhost", 'localhost_%d' % i])
 
-        self._log.debug('configure localhost as %s nodes (%s cores, %s gpus, %s lfs).',
-                len(self.node_list), self.cores_per_node, self.gpus_per_node, self.lfs_per_node)
+        self._log.debug('use localhost as %s nodes (%s cores, %s gpus, %s lfs)',
+                        len(self.node_list), self.cores_per_node,
+                        self.gpus_per_node, self.lfs_per_node)
 
 
 # ------------------------------------------------------------------------------
