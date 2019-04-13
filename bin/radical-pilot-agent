@@ -7,7 +7,7 @@ __license__   = "MIT"
 import sys
 import setproctitle
 
-import saga          as rs
+import radical.saga  as rs
 import radical.utils as ru
 import radical.pilot as rp
 

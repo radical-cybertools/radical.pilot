@@ -160,7 +160,6 @@ def read(fname):
 
 
 df = list()
-df.append(('share/%s'                       % name, ['docs/source/events.md']))
 df.append(('share/%s/examples'              % name, glob.glob('examples/[01]*.py')))
 df.append(('share/%s/examples'              % name, glob.glob('examples/hello*')))
 df.append(('share/%s/examples'              % name, glob.glob('examples/*.json')))
@@ -182,7 +181,7 @@ setup_args = {
     'author_email'       : 'radical@rutgers.edu',
     'maintainer'         : 'The RADICAL Group',
     'maintainer_email'   : 'radical@rutgers.edu',
-    'url'                : 'https://www.github.com/radical-cybertools/radical.utils/',
+    'url'                : 'https://www.github.com/radical-cybertools/radical.pilot/',
     'license'            : 'MIT',
     'keywords'           : 'radical pilot job saga',
     'classifiers'        : [
@@ -227,11 +226,11 @@ setup_args = {
     'cmdclass'           : {
         'test'           : our_test,
                            },
-    'install_requires'   : ['saga-python>=0.44',
-                            'radical.utils>=0.44',
+    'install_requires'   : ['radical.saga>=0.60',
+                            'radical.utils>=0.60',
                             'pymongo',
                             'python-hostlist',
-                            'netifaces==0.10.4',
+                            'netifaces',
                             'setproctitle',
                             'ntplib',
                             'msgpack-python',
