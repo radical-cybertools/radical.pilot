@@ -23,9 +23,11 @@ import copy
 import pprint
 import threading
 
+
+import radical.saga                 as rs
+import radical.saga.utils.pty_shell as rsup
+
 import radical.utils        as ru
-import saga                 as rs
-import saga.utils.pty_shell as rsup
 
 from . import utils         as rpu
 from . import states        as rps

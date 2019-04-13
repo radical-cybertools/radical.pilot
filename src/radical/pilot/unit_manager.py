@@ -359,7 +359,7 @@ class UnitManager(rpu.Component):
         # FIXME: we also pull for dead units.  That is not efficient...
         # FIXME: this needs to be converted into a tailed cursor in the update
         #        worker
-        units  = self._session._dbs.get_units(umgr_uid=self.uid)
+        units = self._session._dbs.get_units(umgr_uid=self.uid)
 
         for unit in units:
             if not self._update_unit(unit, publish=True, advance=False):
@@ -472,7 +472,6 @@ class UnitManager(rpu.Component):
         # each unit (if any are registered), which can lead to arbitrary,
         # application defined delays.
         to_notify  = list()
-        to_advance = list()
 
         with self._units_lock:
 
@@ -497,7 +496,9 @@ class UnitManager(rpu.Component):
                 if self._units[uid]._update(unit_dict):
                     to_notify.add(self._units[uid])
 
-            if advance and to_advance:
+                # we don't usually advance state at this point, but just keep up
+                # with state changes reported from elsewhere
+                if advance:
                     self.advance(unit_dict, s, publish=publish, push=False,
                                  prof=False)
 
@@ -851,19 +852,17 @@ class UnitManager(rpu.Component):
                     if unit.state not in rps.FINAL:
                         uids.append(uid)
 
-        if not state:
-            states = rps.FINAL
-        elif isinstance(state, list):
-            states = state
-        else:
-            states = [state]
+        if   not state                  : states = rps.FINAL
+        elif not isinstance(state, list): states = [state]
+        else                            : states =  state
 
         # we simplify state check by waiting for the *earliest* of the given
         # states - if the unit happens to be in any later state, we are sure the
         # earliest has passed as well.
         check_state_val = rps._unit_state_values[rps.FINAL[-1]]
         for state in states:
-            check_state_val = min(check_state_val, rps._unit_state_values[state])
+            check_state_val = min(check_state_val,
+                                  rps._unit_state_values[state])
 
         ret_list = True
         if not isinstance(uids, list):
@@ -903,7 +902,7 @@ class UnitManager(rpu.Component):
                 # state(s), but rather check if it ever *has been* in any of
                 # those states
                 if unit.state not in rps.FINAL and \
-                    rps._unit_state_values[unit.state] <= check_state_val:
+                    rps._unit_state_values[unit.state] < check_state_val:
                     # this unit does not match the wait criteria
                     check_again.append(unit)
 

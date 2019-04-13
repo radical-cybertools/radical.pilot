@@ -5,7 +5,10 @@ __license__   = "MIT"
 import math
 import multiprocessing
 
+import radical.utils as ru
+
 from .base import LRMS
+
 
 # ==============================================================================
 #
@@ -36,17 +39,28 @@ class Fork(LRMS):
         # cores into that many virtual nodes.  cpn defaults to requested_cores,
         # to preserve the previous behavior (1 node).
         self.cores_per_node = self._cfg.get('cores_per_node', self.requested_cores)
-        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0) # FIXME GPU
+        self.gpus_per_node  = self._cfg.get('gpus_per_node',   0)
+        self.mem_per_node   = self._cfg.get('memory_per_node', 0)
+
+        self.lfs_per_node   = {'path' : ru.expand_env(
+                                           self._cfg.get('lfs_path_per_node')),
+                               'size' :    self._cfg.get('lfs_size_per_node', 0)
+                              }
+
+
+        if not self.cores_per_node:
+            self.cores_per_node = 1
 
         self.node_list  = list()
-        requested_nodes = int(math.ceil(float(self.requested_cores) / \
+        requested_nodes = int(math.ceil(float(self.requested_cores) /
                                         float(self.cores_per_node ) ) )
         for i in range(requested_nodes):
             # enumerate the node list entries for a unique uis
             self.node_list.append(["localhost", 'localhost_%d' % i])
 
-        self._log.debug('configure localhost as %s nodes (%s cores, %s gpus).',
-                len(self.node_list), self.cores_per_node, self.gpus_per_node)
+        self._log.debug('configure localhost as %s nodes (%s cores, %s gpus, %s lfs).',
+                len(self.node_list), self.cores_per_node, self.gpus_per_node, self.lfs_per_node)
+
 
 # ------------------------------------------------------------------------------
 

@@ -29,7 +29,10 @@
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
         "cores_per_node"              : 8,
-        "gpus_per_node"               : 1
+        "gpus_per_node"               : 1,
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 1024,
+        "memory_per_node"             : 4096
     },
 
     "localhost_aprun": {
@@ -110,6 +113,8 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda",
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 1024,
         "cores_per_node"              : 8,
         "gpus_per_node"               : 1
     },
@@ -183,10 +188,12 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "default_remote_workdir"      : "$HOME",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1,
         "lrms"                        : "FORK",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
+        "agent_spawner"               : "SHELLFS",
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
@@ -214,6 +221,8 @@
            "filesystem_endpoint"     : "file://localhost/"
         },
         "default_remote_workdir"      : "$HOME",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1,
         "lrms"                        : "FORK",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",

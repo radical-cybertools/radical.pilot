@@ -154,7 +154,7 @@ class ComputeUnit(object):
                     'client_sandbox']:
 
             val = unit_dict.get(key, None)
-            if val != None:
+            if val is not None:
                 setattr(self, "_%s" % key, val)
 
         # invoke unit specific callbacks
@@ -398,6 +398,17 @@ class ComputeUnit(object):
         """
 
         return copy.deepcopy(self._descr)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def metadata(self):
+        """
+        Returns the metadata field of the unit's description
+        """
+
+        return copy.deepcopy(self._descr.get('metadata'))
 
 
     # --------------------------------------------------------------------------
