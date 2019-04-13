@@ -600,7 +600,7 @@
             "job_manager_endpoint"    : "slurm+ssh://bridges.psc.xsede.org/",
             "filesystem_endpoint"     : "go://xsede#bridges/"
         },
-        "default_queue"               : "normal",
+        "default_queue"               : "RM",
         "lrms"                        : "SLURM",
         "lfs_path_per_node"           : "$LOCAL",
         "lfs_size_per_node"           : 3713368,
