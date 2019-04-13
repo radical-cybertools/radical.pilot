@@ -12,15 +12,15 @@ import shutil
 import tempfile
 import threading
 
-import subprocess           as sp
+import subprocess              as sp
 
-import saga                 as rs
-import saga.filesystem      as rsfs
-import radical.utils        as ru
+import radical.saga            as rs
+import radical.saga.filesystem as rsfs
+import radical.utils           as ru
 
-from .... import pilot      as rp
-from ...  import states     as rps
-from ...  import constants  as rpc
+from .... import pilot         as rp
+from ...  import states        as rps
+from ...  import constants     as rpc
 
 from .base import PMGRLaunchingComponent
 

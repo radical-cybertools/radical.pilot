@@ -64,6 +64,23 @@ your user-id on the remote resource, use the following construct:
     login. This can help if you encounter random connection problems with
     RADICAL-Pilot.
 
+
+Configuring GSISSH Access for XSEDE resources
+=============================================
+The XSEDE resources require using gsissh tool to access. 
+Once the gsissh and myproxy are successfully installed, 
+one need to aquire a X509 certificate:
+
+.. code-block:: bash
+
+    $ export MYPROXY_SERVER_PORT=7512 
+    $ export MYPROXY_SERVER=myproxy.xsede.org
+    $ myproxy-logon -l <user_name> -T -b -t 1000
+    $ [Enter MyProxy pass phrase]
+    $ [you should receive a credential in /tmp/x509up_u1000]
+    $ gsissh -p 2222 login1.stampede2.tacc.utexas.edu
+
+
 .. _preconfigured_resources:
 
 Pre-Configured Resources
@@ -96,6 +113,13 @@ Writing a Custom Resource Configuration File
 If you want to use RADICAL-Pilot with a resource that is not in any of the
 provided resource configuration files, you can write your own, and drop it in
 ``$HOME/.radical/pilot/configs/<your_resource_configuration_file_name>.json``.
+
+.. note::
+    The remote resource configuration file name has to start with "resource_"
+    and end with ".json" suffix. Within each resource file, multiple resources
+    could be listed. For example, the `resource_xsede.json
+    <https://radicalpilot.readthedocs.io/en/latest/_downloads/resource_xsede.json>`_
+    file contains many different hpc resources from XSEDE.
 
 .. note::
     Be advised that you may need specific knowledge about the target resource to
