@@ -92,7 +92,7 @@ LOCK_TIMEOUT=600 # 10 min
 VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
 VIRTENV_TGZ="virtualenv-1.9.tar.gz"
 VIRTENV_IS_ACTIVATED=FALSE
-VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces==0.10.4 setproctitle orte_cffi msgpack-python future"
+VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces==0.10.4 setproctitle orte_cffi msgpack-python future regex"
 
 
 # ------------------------------------------------------------------------------
@@ -463,7 +463,9 @@ verify_install()
     fi
 
     # FIXME: attempt to load all required modules
-    modules='saga radical.utils pymongo hostlist netifaces setproctitle ntplib msgpack zmq'
+    modules="radical.saga radical.utils pymongo hostlist netifaces"
+    modules="$modules setproctitle ntplib msgpack zmq"
+
     for m in $modules
     do
         printf 'verify module viability: %-15s ...' $m
@@ -1313,11 +1315,9 @@ rp_install()
 #
 verify_rp_install()
 {
-    OLD_SAGA_VERBOSE=$SAGA_VERBOSE
     OLD_RADICAL_VERBOSE=$RADICAL_VERBOSE
     OLD_RADICAL_PILOT_VERBOSE=$RADICAL_PILOT_VERBOSE
 
-    SAGA_VERBOSE=WARNING
     RADICAL_VERBOSE=WARNING
     RADICAL_PILOT_VERBOSE=WARNING
 
@@ -1327,9 +1327,9 @@ verify_rp_install()
     echo
     echo "`$PYTHON --version` ($PYTHON)"
     echo "PYTHONPATH: $PYTHONPATH"
- (  $PYTHON -c 'print "utils : ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__' \
- && $PYTHON -c 'print "saga  : ",; import saga          as rs; print rs.version_detail,; print rs.__file__' \
- && $PYTHON -c 'print "pilot : ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__' \
+ (  $PYTHON -c 'print "RU: ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__' \
+ && $PYTHON -c 'print "RS: ",; import radical.saga  as rs; print rs.version_detail,; print rs.__file__' \
+ && $PYTHON -c 'print "RP: ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__' \
  && (echo 'install ok!'; true) \
  ) \
  || (echo 'install failed!'; false) \
@@ -1338,7 +1338,6 @@ verify_rp_install()
     echo "---------------------------------------------------------------------"
     echo
 
-    SAGA_VERBOSE=$OLD_SAGA_VERBOSE
     RADICAL_VERBOSE=$OLD_RADICAL_VERBOSE
     RADICAL_PILOT_VERBOSE=$OLD_RADICAL_PILOT_VERBOSE
 }
@@ -1761,7 +1760,6 @@ export PYTHONPATH=$PYTHONPATH
 
 # run agent in debug mode
 # FIXME: make option again?
-export SAGA_VERBOSE=DEBUG
 export RADICAL_VERBOSE=DEBUG
 export RADICAL_UTIL_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG

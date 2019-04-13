@@ -23,6 +23,9 @@ dh = ru.DebugHelper()
 #
 if __name__ == '__main__':
 
+    print "\n\tWARNING: this example fails with current versions of RP!!\n\n"
+    time.sleep(3)
+
     # we use a reporter class for nicer output
     report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
@@ -31,7 +34,7 @@ if __name__ == '__main__':
     # occupies 25% and 75% of the total resources, respectively.
 
     # use the resource specified as argument, fall back to localhost
-    if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
+    if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resrc]\n\n' % sys.argv[0])
     elif len(sys.argv) == 2: resource = sys.argv[1]
     else                   : resource = 'local.localhost'
 
@@ -47,7 +50,8 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
+        config = ru.read_json('%s/config.json'
+                             % os.path.dirname(os.path.abspath(__file__)))
         report.ok('>>ok\n')
 
         report.header('submit pilots')
@@ -72,7 +76,7 @@ if __name__ == '__main__':
                    'queue'        : config[resource]['queue'],
                    'access_schema': config[resource]['schema'],
 
-                   'agent_cores'  : 'automatic'  # auto-add to partition sizes
+                   'agent_cores'  : 'automatic',  # auto-add to partition sizes
                    'partitions'   : [{'config': 'aprun', 'cores' : part1_cores}, 
                                      {'config': 'orte',  'cores' : part2_cores}]
                   }
@@ -113,13 +117,14 @@ if __name__ == '__main__':
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
 
-        # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+        # Wait for all compute units to reach
+        # a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
 
         report.info('\n')
         for unit in units:
-            report.plain('  * %s [%3d - %4s] : %s @ %s\n' \
+            report.plain('  * %s [%3d - %4s] : %s @ %s\n'
                     % (unit.uid, unit.exit_code, unit.state[:4],
                        unit.partition, unit.pilot))
 
@@ -157,5 +162,5 @@ if __name__ == '__main__':
     report.header()
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
