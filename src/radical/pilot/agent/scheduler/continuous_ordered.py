@@ -119,15 +119,9 @@ class ContinuousOrdered(Continuous):
                 assert(uid not in self._units), 'duplicated unit %s' % uid
                 self._units[uid] = unit
 
-                # order info is parsed as '%s %d %d' % (ns, order, size)
-                elems = order_tag.split()
-
-                if len(elems) != 3:
-                    raise ValueError('cannot parse order tag [%s]' % order_tag)
-
-                ns    = str(elems[0])
-                order = int(elems[1])
-                size  = int(elems[2])
+                ns    = order_tag['ns']
+                order = order_tag['order']
+                size  = order_tag['size']
 
               # self._log.debug('tags %s: %s : %d : %d', uid, ns, order, size)
                 # initiate ns if needed
@@ -219,7 +213,7 @@ class ContinuousOrdered(Continuous):
 
                         unit = self._units[uid]
 
-                        # attempt to schedule this unit (use continuous algorithm)
+                        # attempt to schedule this unit with the continuous alg
                         if Continuous._try_allocation(self, unit):
 
                             # success - keep it and try the next one
@@ -301,9 +295,10 @@ class ContinuousOrdered(Continuous):
                     continue
 
             # get and parse order tag.  We don't need to repeat checks
-            elems = thing['description']['tags']['order'].split()
-            ns    = str(elems[0])
-            order = int(elems[1])
+            order_tag = thing['description']['tags']['order']
+            ns    = order_tag['ns']
+            order = order_tag['order']
+          # size  = order_tag['size']
 
             with self._lock:
                 self._ns[ns][order]['done'].append(uid)

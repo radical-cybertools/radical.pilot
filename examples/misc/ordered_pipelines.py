@@ -9,6 +9,8 @@ import sys
 import radical.pilot as rp
 import radical.utils as ru
 
+pwd = os.path.abspath(os.path.dirname(__file__))
+
 
 # ------------------------------------------------------------------------------
 #
@@ -51,38 +53,24 @@ if __name__ == '__main__':
         if len(sys.argv) > 2: N = int(sys.argv[2])
         else                : N = 8
 
-        P = N
+        n_pipes  = 2
+        n_stages = 5
+        n_tasks  = 4
 
         cuds = list()
-        for p in range(P):
-
-            S = p + 1
-
-            for s in range(S):
-
-                U = S
-                T = 10.0 / float(p + 1)
-
-                report.info('create %d units for pipeline %s:%d\n\t' % (U, p, s))
-                for u in range(U):
-
+        for p in range(n_pipes):
+            for s in range(n_stages):
+                for t in range(n_tasks):
                     cud = rp.ComputeUnitDescription()
-                    cud.executable       = '/bin/sleep'
-                    cud.arguments        = [T]
-                    cud.gpu_processes    = 0
+                    cud.executable       = '%s/pipeline_task.sh' % pwd
+                    cud.arguments        = [p, s, t, 10]
                     cud.cpu_processes    = 1
-                    cud.cpu_threads      = 1
-                    cud.cpu_process_type = rp.POSIX
-                    cud.cpu_thread_type  = rp.POSIX
-                    cud.tags             = {'order' : '%s %d %d' % (p, s, U)}
-                    cud.name             =  '%s %d %d' % (p, s, u)
+                    cud.tags             = {'order': {'ns'   : p, 
+                                                      'order': s,
+                                                      'size' : n_tasks}}
+                    cud.name             =  'p%03d-s%03d-t%03d' % (p, s, t)
                     cuds.append(cud)
                     report.progress()
-                report.ok('>>ok %3.1f\n' % T)
-
-        # the agent scheduler can handle units independent of submission order
-        # sort by stage
-        cuds = sorted(cuds, key=lambda e: [int(x) for x in e.name.split()][1])
 
         import random
         random.shuffle(cuds)
@@ -92,7 +80,7 @@ if __name__ == '__main__':
         # assigning ComputeUnits to the ComputePilots.
         umgr.submit_units(cuds)
 
-        # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+        # Wait for all compute units to reach a final state
         report.header('gather results')
         umgr.wait_units()
 
