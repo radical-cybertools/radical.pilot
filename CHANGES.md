@@ -5,6 +5,12 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.60.1  Hotfix                                                        2018-04-12
+--------------------------------------------------------------------------------
+
+  - work around a pip install problem
+
+
 0.60.0  Release                                                       2018-04-10
 --------------------------------------------------------------------------------
 
