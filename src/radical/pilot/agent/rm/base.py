@@ -21,7 +21,6 @@ RM_NAME_YARN        = 'YARN'
 RM_NAME_SPARK       = 'SPARK'
 
 
-
 # ==============================================================================
 #
 # Base class for LRMS implementations.
@@ -71,6 +70,7 @@ class LRMS(object):
         self._log            = self._session._log
         self._prof           = self._session._prof
         self.requested_cores = self._cfg['cores']
+        self.requested_gpus  = self._cfg['gpus']
 
         self._log.info("Configuring LRMS %s.", self.name)
 
@@ -81,6 +81,7 @@ class LRMS(object):
         self.cores_per_node  = None
         self.gpus_per_node   = None
         self.lfs_per_node    = None
+        self.mem_per_node    = None
 
         # The LRMS will possibly need to reserve nodes for the agent, according
         # to the agent layout.  We dig out the respective requirements from the
@@ -98,7 +99,7 @@ class LRMS(object):
             # make sure that the target either 'local', which we will ignore,
             # or 'node'.
             if target == 'local':
-                pass # ignore that one
+                pass  # ignore that one
             elif target == 'node':
                 self._agent_reqs.append(agent)
             else :
@@ -112,7 +113,7 @@ class LRMS(object):
         # Make sure we got a valid nodelist and a valid setting for
         # cores_per_node
         if not self.node_list or self.cores_per_node < 1:
-            raise RuntimeError('LRMS configuration invalid (%s)(%s)' % \
+            raise RuntimeError('LRMS configuration invalid (%s)(%s)' %
                     (self.node_list, self.cores_per_node))
 
         # Check if the LRMS implementation reserved agent nodes.  If not, pick
@@ -128,9 +129,9 @@ class LRMS(object):
                     break
 
         if self.agent_nodes:
-            self._log.info('Reserved agent node(s): %s' % self.agent_nodes.values())
-            self._log.info('Agent(s) running on node(s): %s' % self.agent_nodes.keys())
-            self._log.info('Remaining work node(s): %s' % self.node_list)
+            self._log.info('Reserved nodes: %s' % self.agent_nodes.values())
+            self._log.info('Agent    nodes: %s' % self.agent_nodes.keys())
+            self._log.info('Worker   nodes: %s' % self.node_list)
 
         # Check if we can do any work
         if not self.node_list:
@@ -138,33 +139,40 @@ class LRMS(object):
 
         # After LRMS configuration, we call any existing config hooks on the
         # launch methods.  Those hooks may need to adjust the LRMS settings
-        # (hello ORTE).  We only call LM hooks *once*
-        launch_methods = set() # set keeps entries unique
-        if 'mpi_launch_method' in self._cfg:
-            launch_methods.add(self._cfg['mpi_launch_method'])
-        launch_methods.add(self._cfg['task_launch_method'])
-        launch_methods.add(self._cfg['agent_launch_method'])
+        # (hello ORTE).  We only call LM hooks *once* (thus the set)
+        launch_methods = set()
+        launch_methods.add(self._cfg.get('mpi_launch_method'))
+        launch_methods.add(self._cfg.get('task_launch_method'))
+        launch_methods.add(self._cfg.get('agent_launch_method'))
+
+        launch_methods.discard(None)
 
         for lm in launch_methods:
-            if lm:
-                try:
-                    from .... import pilot as rp
-                    ru.dict_merge(self.lm_info,
-                            rp.agent.LM.lrms_config_hook(lm, self._cfg, self,
-                                self._log, self._prof))
-                except Exception as e:
-                    self._log.exception("lrms config hook failed")
-                    raise
+            try:
+                from .... import pilot as rp
+                ru.dict_merge(self.lm_info,
+                        rp.agent.LM.lrms_config_hook(lm, self._cfg, self,
+                            self._log, self._prof))
+            except Exception as e:
+                self._log.exception("lrms config hook failed: %s" % e)
+                raise
 
-                self._log.info("lrms config hook succeeded (%s)" % lm)
+            self._log.info("lrms config hook succeeded (%s)" % lm)
 
         # For now assume that all nodes have equal amount of cores and gpus
         cores_avail = (len(self.node_list) + len(self.agent_nodes)) * self.cores_per_node
         gpus_avail  = (len(self.node_list) + len(self.agent_nodes)) * self.gpus_per_node
-        if 'RADICAL_PILOT_PROFILE' not in os.environ:
+
+        # on debug runs, we allow more cpus/gpus to appear than physically exist
+        if 'RADICAL_DEBUG' not in os.environ:
             if cores_avail < int(self.requested_cores):
-                raise ValueError("Not enough cores available (%s) to satisfy allocation request (%s)." \
+                raise ValueError("Not enough cores available (%s < %s)."
                                 % (str(cores_avail), str(self.requested_cores)))
+
+            if gpus_avail < int(self.requested_gpus):
+                raise ValueError("Not enough gpus available (%s < %s)."
+                                % (str(gpus_avail), str(self.requested_gpus)))
+
 
         # NOTE: self.lrms_info is what scheduler and launch method can
         # ultimately use, as it is included into the cfg passed to all
@@ -188,6 +196,7 @@ class LRMS(object):
         self.lrms_info['gpus_per_node']  = self.gpus_per_node
         self.lrms_info['agent_nodes']    = self.agent_nodes
         self.lrms_info['lfs_per_node']   = self.lfs_per_node
+        self.lrms_info['mem_per_node']   = self.mem_per_node
 
 
     # --------------------------------------------------------------------------
@@ -238,30 +247,31 @@ class LRMS(object):
 
         # During LRMS termination, we call any existing shutdown hooks on the
         # launch methods.  We only call LM shutdown hooks *once*
-        launch_methods = set() # set keeps entries unique
-        if 'mpi_launch_method' in self._cfg:
-            launch_methods.add(self._cfg['mpi_launch_method'])
-        launch_methods.add(self._cfg['task_launch_method'])
-        launch_methods.add(self._cfg['agent_launch_method'])
+        launch_methods = set()
+        launch_methods.add(self._cfg.get('mpi_launch_method'))
+        launch_methods.add(self._cfg.get('task_launch_method'))
+        launch_methods.add(self._cfg.get('agent_launch_method'))
+
+        launch_methods.discard(None)
 
         for lm in launch_methods:
-            if lm:
-                try:
-                    from .... import pilot as rp
-                    ru.dict_merge(self.lm_info,
-                    rp.agent.LM.lrms_shutdown_hook(lm, self._cfg, self,
-                                                    self.lm_info, self._log,
-                                                    self._prof))
-                except Exception as e:
-                    self._log.exception("lrms shutdown hook failed")
-                    raise
+            try:
+                from .... import pilot as rp
+                ru.dict_merge(self.lm_info,
+                rp.agent.LM.lrms_shutdown_hook(lm, self._cfg, self,
+                                                self.lm_info, self._log,
+                                                self._prof))
+            except Exception as e:
+                self._log.exception("lrms shutdown hook failed: %s" % e)
+                raise
 
-                self._log.info("lrms shutdown hook succeeded (%s)" % lm)
+            self._log.info("lrms shutdown hook succeeded (%s)" % lm)
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
+
         raise NotImplementedError("_Configure missing for %s" % self.name)
 
 
