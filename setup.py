@@ -160,7 +160,6 @@ def read(fname):
 
 
 df = list()
-df.append(('share/%s'                       % name, ['docs/source/events.md']))
 df.append(('share/%s/examples'              % name, glob.glob('examples/[01]*.py')))
 df.append(('share/%s/examples'              % name, glob.glob('examples/hello*')))
 df.append(('share/%s/examples'              % name, glob.glob('examples/*.json')))
