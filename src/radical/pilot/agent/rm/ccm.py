@@ -58,7 +58,7 @@ class CCM(LRMS):
         self.cores_per_node = ccm_nodes_length / ccm_node_list_length
         self.gpus_per_node  = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
 
-        self.lfs_per_node   = {'path' : ru.expandvars(
+        self.lfs_per_node   = {'path' : ru.expand_env(
                                            self._cfg.get('lfs_path_per_node')),
                                'size' :    self._cfg.get('lfs_size_per_node', 0)
                               }
