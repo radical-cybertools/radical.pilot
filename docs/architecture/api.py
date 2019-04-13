@@ -133,58 +133,58 @@ As RADICAL-Pilot is obviously based on SAGA, the exceptions are derived from
 SAGA's exception model, and can be extended where we see fit.
 """
 
-import saga.exceptions as se
+import radical.saga.exceptions as rse
 
-class IncorrectURL (se.IncorrectUrl) :
+class IncorrectURL (rse.IncorrectUrl) :
   """
   The given URL could not be interpreted, for example due to an incorrect
   / unknown schema. 
   """
   pass
 
-class BadParameter (se.BadParameter) :
+class BadParameter (rse.BadParameter) :
   """
   A given parameter is out of bound or ill formatted.
   """
   pass
 
-class DoesNotExist (se.DoesNotExist) :
+class DoesNotExist (rse.DoesNotExist) :
   """
   An operation tried to access a non-existing entity.
   """
   pass
 
-class IncorrectState (se.IncorrectState) :
+class IncorrectState (rse.IncorrectState) :
   """
   The operation is not allowed on the entity in its current state.
   """
   pass
 
-class PermissionDenied (se.PermissionDenied) :
+class PermissionDenied (rse.PermissionDenied) :
   """
   The used identity is not permitted to perform the requested operation.
   """
   pass
 
-class AuthorizationFailed (se.AuthorizationFailed) :
+class AuthorizationFailed (rse.AuthorizationFailed) :
   """
   The backend could not establish a valid identity.
   """
   pass
 
-class AuthenticationFailed (se.AuthenticationFailed) :
+class AuthenticationFailed (rse.AuthenticationFailed) :
   """
   The backend could not establish a valid identity.
   """
   pass
 
-class Timeout (se.Timeout) :
+class Timeout (rse.Timeout) :
   """
   The interaction with the backend times out.
   """
   pass
 
-class NoSuccess (se.NoSuccess) :
+class NoSuccess (rse.NoSuccess) :
   """
   Some other error occurred.
   """

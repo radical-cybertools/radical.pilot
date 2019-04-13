@@ -124,8 +124,7 @@ class Shell(AgentExecutingComponent):
                                      # are not yet known
 
         # get some threads going -- those will do all the work.
-        try:    import radical.saga.utils.pty_shell as sups
-        except: import         saga.utils.pty_shell as sups
+        import radical.saga.utils.pty_shell as sups
 
         self.launcher_shell = sups.PTYShell("fork://localhost/")
         self.monitor_shell  = sups.PTYShell("fork://localhost/")
@@ -317,6 +316,8 @@ class Shell(AgentExecutingComponent):
         env  += "export RP_UNIT_ID=%s\n"        % cu['uid']
         env  += 'export RP_UNIT_NAME="%s"\n'    % cu['description'].get('name')
         env  += 'export RP_GTOD="%s"\n'         % cu['gtod']
+        env  += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
+                                                % self._pwd
         if 'RADICAL_PILOT_PROFILE' in os.environ:
             env += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
         env  += '''
