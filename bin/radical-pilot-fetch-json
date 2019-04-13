@@ -22,7 +22,11 @@ if __name__ == '__main__':
     print "saving json to %s.json" % sid
     ru.write_json(docs, "%s.json" % sid)
 
-    mongo.disconnect()
+    try:
+        mongo.disconnect()
+    except:
+        pass
+
 
 # ------------------------------------------------------------------------------
 
