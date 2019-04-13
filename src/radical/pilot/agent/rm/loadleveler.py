@@ -67,9 +67,9 @@ class LoadLeveler(LRMS):
     # FIXME: not used?
     #
     BGQ_CORES_PER_NODE      = 16
-    BGQ_GPUS_PER_NODE       =  0 # FIXME GPU
-    BGQ_NODES_PER_BOARD     = 32 # NODE       == Compute Card == Chip module
-    BGQ_BOARDS_PER_MIDPLANE = 16 # NODE BOARD == NODE CARD
+    BGQ_GPUS_PER_NODE       =  0  # FIXME GPU
+    BGQ_NODES_PER_BOARD     = 32  # NODE       == Compute Card == Chip module
+    BGQ_BOARDS_PER_MIDPLANE = 16  # NODE BOARD == NODE CARD
     BGQ_MIDPLANES_PER_RACK  =  2
 
 
@@ -152,7 +152,7 @@ class LoadLeveler(LRMS):
     #
     # Shape of whole BG/Q Midplane
     #
-    BGQ_MIDPLANE_SHAPE = {'A': 4, 'B': 4, 'C': 4, 'D': 4, 'E': 2} # '4x4x4x4x2'
+    BGQ_MIDPLANE_SHAPE = {'A': 4, 'B': 4, 'C': 4, 'D': 4, 'E': 2}  # '4x4x4x4x2'
 
 
     # --------------------------------------------------------------------------
@@ -209,7 +209,7 @@ class LoadLeveler(LRMS):
             # Determine the number of cpus per node.  Assume:
             # cores_per_node = lenght(nodefile) / len(unique_nodes_in_nodefile)
             loadl_cpus_per_node = len(loadl_nodes) / len(loadl_node_list)
-            loadl_gpus_per_node = self._cfg.get('gpus_per_node', 0) # FIXME GPU
+            loadl_gpus_per_node = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
 
         elif self.loadl_bg_block:
             # Blue Gene specific.
@@ -265,7 +265,7 @@ class LoadLeveler(LRMS):
                      (e[0], [e[1][key] for key in sorted(e[1])], e[2], e[3]))
 
             try:
-                loadl_node_list = [entry[Torus.TORUS_BLOCK_NAME] \
+                loadl_node_list = [entry[Torus.TORUS_BLOCK_NAME]
                                    for entry in self.torus_block]
             except Exception as e:
                 raise RuntimeError("Couldn't construct node list")
@@ -309,7 +309,7 @@ class LoadLeveler(LRMS):
 
         # TODO: Does the order of walking matter?
         #       It might because of the starting blocks ...
-        for dim in self.BGQ_DIMENSION_LABELS: # [::-1]:
+        for dim in self.BGQ_DIMENSION_LABELS:  # [::-1]:
             max_length = location[dim]
             self._log.debug("Within dim loop dim:%s, max_length: %d", dim, max_length)
 
@@ -525,8 +525,8 @@ class LoadLeveler(LRMS):
         llq_shape = self._bgq_str2shape(block_shape_str)
 
         # TODO: Could check this, but currently _shape2num is part of the other class
-        #if self._shape2num_nodes(llq_shape) != block_size:
-        #    self._log.error("Block Size doesn't match Block Shape")
+        # if self._shape2num_nodes(llq_shape) != block_size:
+        #     self._log.error("Block Size doesn't match Block Shape")
 
         # If the block is equal to or greater than a Midplane,
         # then there is no board list provided.
@@ -534,7 +534,7 @@ class LoadLeveler(LRMS):
         # we can construct it.
 
         if block_size >= 1024:
-            #raise NotImplementedError("Currently multiple midplanes are not yet supported.")
+            # raise NotImplementedError("Currently multiple midplanes are not yet supported.")
 
             # BG Size: 1024, BG Shape: 1x1x1x2, BG Midplane List: R04-M0,R04-M1
             midplanes = self._bgq_str2midplanes(midplane_list_str)
@@ -542,8 +542,8 @@ class LoadLeveler(LRMS):
             # Start of at the "lowest" available rack/midplane/board
             # TODO: No other explanation than that this seems to be the convention?
             # TODO: Can we safely assume that they are sorted?
-            #rack = midplane_dict_list[0]['R']
-            #midplane = midplane_dict_list[0]['M']
+            # rack = midplane_dict_list[0]['R']
+            # midplane = midplane_dict_list[0]['M']
             board = 0
 
             # block_shape = llq_shape * BGQ_MIDPLANE_SHAPE
@@ -558,8 +558,8 @@ class LoadLeveler(LRMS):
 
             # Start of at the "lowest" available rack/midplane/board
             # TODO: No other explanation than that this seems to be the convention?
-            #rack = midplane_dict_list[0]['R'] # Assume they are all equal
-            #midplane = min([entry['M'] for entry in midplane_dict_list])
+            # rack = midplane_dict_list[0]['R'] # Assume they are all equal
+            # midplane = min([entry['M'] for entry in midplane_dict_list])
             board = 0
 
             block_shape = self.BGQ_MIDPLANE_SHAPE
