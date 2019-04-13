@@ -2,32 +2,34 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import saga.attributes as attributes
 
-from .utils import logger
+import radical.saga.attributes as rsa
 
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
+#
 RESOURCE          = 'resource'
 ACCESS_SCHEMA     = 'access_schema'
 QUEUE             = 'queue'
-CORES             = 'cores'
-MEMORY            = 'memory'
+PROJECT           = 'project'
+CANDIDATE_HOSTS   = 'candidate_hosts'
 SANDBOX           = 'sandbox'
 OUTPUT            = 'output'
 ERROR             = 'error'
 RUNTIME           = 'runtime'
 CLEANUP           = 'cleanup'
-PROJECT           = 'project'
-CANDIDATE_HOSTS   = 'candidate_hosts'
 EXIT_ON_ERROR     = 'exit_on_error'
 _CONFIG           = '_config'
+
+CORES             = 'cores'
+GPUS              = 'gpus'
+MEMORY            = 'memory'
 
 
 # ------------------------------------------------------------------------------
 #
-class ComputePilotDescription(attributes.Attributes):
+class ComputePilotDescription(rsa.Attributes):
     """
     A ComputePilotDescription object describes the requirements and properties
     of a :class:`radical.pilot.Pilot` and is passed as a parameter to
@@ -124,36 +126,36 @@ class ComputePilotDescription(attributes.Attributes):
     #
     def __init__(self, from_dict=None):
 
-        logger.report.info('<<create pilot description')
-
         # initialize attributes
-        attributes.Attributes.__init__(self)
+        rsa.Attributes.__init__(self)
 
         # set attribute interface properties
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
-        self._attributes_register    (RESOURCE,         None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (ACCESS_SCHEMA,    None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (RUNTIME,          None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (SANDBOX,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (CORES,            None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (MEMORY,           None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (QUEUE,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (PROJECT,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (CANDIDATE_HOSTS,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        self._attributes_register    (EXIT_ON_ERROR,    None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (RESOURCE,         None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (ACCESS_SCHEMA,    None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (RUNTIME,          None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (SANDBOX,          None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (CORES,            None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (GPUS,             None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (MEMORY,           None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (QUEUE,            None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (PROJECT,          None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (CLEANUP,          None, rsa.BOOL,   rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (CANDIDATE_HOSTS,  None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
+        self._attributes_register    (EXIT_ON_ERROR,    None, rsa.BOOL,   rsa.SCALAR, rsa.WRITEABLE)
 
-        # Attributes not part of the published API
-        self._attributes_register    (_CONFIG,          None, attributes.ANY,    attributes.SCALAR, attributes.WRITEABLE)
+        # rsa not part of the published API
+        self._attributes_register    (_CONFIG,          None, rsa.ANY,    rsa.SCALAR, rsa.WRITEABLE)
 
         # explicitly set attrib defaults so they get listed and included via as_dict()
         self.set_attribute (RESOURCE,         None)
         self.set_attribute (ACCESS_SCHEMA,    None)
         self.set_attribute (RUNTIME,          None)
         self.set_attribute (SANDBOX,          None)
-        self.set_attribute (CORES,            None)
+        self.set_attribute (CORES,               0)
+        self.set_attribute (GPUS,                0)
         self.set_attribute (MEMORY,           None)
         self.set_attribute (QUEUE,            None)
         self.set_attribute (PROJECT,          None)
@@ -166,15 +168,14 @@ class ComputePilotDescription(attributes.Attributes):
         if from_dict:
             self.from_dict(from_dict)
 
-            if RESOURCE in from_dict and CORES in from_dict:
-                logger.report.plain(' [%s:%s]' % (from_dict[RESOURCE], from_dict[CORES]))
-            elif RESOURCE in from_dict:
-                logger.report.plain(' [%s]' % from_dict[RESOURCE])
+      # FIXME
+      #     logger.report.plain('[%s:%s:%s]' % (from_dict.get(RESOURCE, ''), 
+      #                                         from_dict.get(CORES,     1), 
+      #                                         from_dict.get(GPUS,      0)))
+      # logger.report.ok('>>ok\n')
 
-        logger.report.ok('>>ok\n')
 
-
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def __deepcopy__ (self, memo):
 

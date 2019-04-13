@@ -4,15 +4,12 @@ __license__   = "MIT"
 
 
 import os
-import shutil
 
-import saga          as rs
-import radical.utils as ru
+import radical.saga as rs
 
-from .... import pilot     as rp
-from ...  import utils     as rpu
-from ...  import states    as rps
-from ...  import constants as rpc
+from ...   import states             as rps
+from ...   import constants          as rpc
+from ...   import staging_directives as rpsd
 
 from .base import UMGRStagingOutputComponent
 
@@ -20,6 +17,13 @@ from .base import UMGRStagingOutputComponent
 # ==============================================================================
 #
 class Default(UMGRStagingOutputComponent):
+    """
+    This component performs all umgr side output staging directives for compute
+    units.  It gets units from the umgr_staging_output_queue, in
+    UMGR_STAGING_OUTPUT_PENDING state, will advance them to UMGR_STAGING_OUTPUT
+    state while performing the staging, and then moves then to the respective
+    final state.
+    """
 
     # --------------------------------------------------------------------------
     #
@@ -43,36 +47,46 @@ class Default(UMGRStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
+    def finalize_child(self):
+
+        try:
+            for key in self._cache:
+                self._cache[key].close()
+        except:
+            pass
+
+
+    # --------------------------------------------------------------------------
+    #
     def work(self, units):
 
         if not isinstance(units, list):
             units = [units]
 
-        for unit in units:
-            self._log.debug(" === work on %s in %s @ %s", unit['uid'], unit['state'], unit['control'])
         self.advance(units, rps.UMGR_STAGING_OUTPUT, publish=True, push=False)
 
         # we first filter out any units which don't need any output staging, and
         # advance them again as a bulk.  We work over the others one by one, and
         # advance them individually, to avoid stalling from slow staging ops.
-        
+
         no_staging_units = list()
         staging_units    = list()
 
         for unit in units:
+
+            # no matter if we perform any staging or not, we will push the full
+            # unit info to the DB on the next advance, since the units will be
+            # final
+            unit['$all']    = True
+            unit['control'] = None
 
             # check if we have any staging directives to be enacted in this
             # component
             actionables = list()
             for sd in unit['description'].get('output_staging', []):
 
-                action = sd['action']
-                flags  = sd['flags']
-                src    = ru.Url(sd['source'])
-                tgt    = ru.Url(sd['target'])
-
-                if action in [rpc.TRANSFER] and src.schema in ['file']:
-                    actionables.append([src, tgt, flags])
+                if sd['action'] == rpc.TRANSFER:
+                    actionables.append(sd)
 
             if actionables:
                 staging_units.append([unit, actionables])
@@ -84,10 +98,7 @@ class Default(UMGRStagingOutputComponent):
 
             # nothing to stage -- transition into final state.
             for unit in no_staging_units:
-                unit['$all']    = True
-                unit['control'] = None
-                unit['state']   = unit['target_state']
-
+                unit['state'] = unit['target_state']
             self.advance(no_staging_units, publish=True, push=True)
 
         for unit,actionables in staging_units:
@@ -100,43 +111,59 @@ class Default(UMGRStagingOutputComponent):
 
         uid = unit['uid']
 
-        # we have actionable staging directives
+        src_context = {'pwd'      : unit['unit_sandbox'],       # !!!
+                       'unit'     : unit['unit_sandbox'], 
+                       'pilot'    : unit['pilot_sandbox'], 
+                       'resource' : unit['resource_sandbox']}
+        tgt_context = {'pwd'      : os.getcwd(),                # !!!
+                       'unit'     : unit['unit_sandbox'], 
+                       'pilot'    : unit['pilot_sandbox'], 
+                       'resource' : unit['resource_sandbox']}
+
         # url used for cache (sandbox url w/o path)
-        sandbox  = rs.Url(unit["sandbox"])
-        tmp      = rs.Url(unit["sandbox"])
+        tmp      = rs.Url(unit["unit_sandbox"])
         tmp.path = '/'
-        key = str(tmp)
+        key      = str(tmp)
 
         if key not in self._cache:
             self._cache[key] = rs.filesystem.Directory(tmp, 
                     session=self._session)
-
         saga_dir = self._cache[key]
 
 
         # Loop over all transfer directives and execute them.
-        for src, tgt, flags in actionables:
+        for sd in actionables:
 
-            self._prof.prof('umgr staging out', msg=src, uid=uid)
+            action = sd['action']
+            flags  = sd['flags']
+            did    = sd['uid']
+            src    = sd['source']
+            tgt    = sd['target']
 
-            if rpc.CREATE_PARENTS in flags:
-                copy_flags = rs.filesystem.CREATE_PARENTS
-            else:
-                copy_flags = 0
+            self._prof.prof('staging_out_start', uid=uid, msg=did)
 
-            self._log.debug('')
-            self._log.debug(src)
-            self._log.debug(tgt)
+            self._log.debug('src: %s', src)
+            self._log.debug('tgt: %s', tgt)
 
-            saga_dir.copy(src, tgt, flags=copy_flags)
+            src = rpsd.complete_url(src, src_context, self._log)
+            tgt = rpsd.complete_url(tgt, tgt_context, self._log)
 
-            self._prof.prof('umgr staged  out', msg=src, uid=uid)
+            self._log.debug('src: %s', src)
+            self._log.debug('tgt: %s', tgt)
 
+            # Check if the src is a folder, if true
+            # add recursive flag if not already specified
+            if saga_dir.is_dir(src.path):
+                flags |= rs.filesystem.RECURSIVE
+
+            # Always set CREATE_PARENTS
+            flags |= rs.filesystem.CREATE_PARENTS
+
+            saga_dir.copy(src, tgt, flags=flags)
+            self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
         # all staging is done -- at this point the unit is final
-        unit['$all']    = True
-        unit['control'] = None
-        unit['state']   = unit['target_state']
+        unit['state'] = unit['target_state']
         self.advance(unit, publish=True, push=True)
 
 

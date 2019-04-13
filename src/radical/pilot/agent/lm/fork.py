@@ -26,7 +26,7 @@ class Fork(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger):
+    def lrms_config_hook(cls, name, cfg, lrms, logger, profiler):
         return {'version_info': {
             name: {'version': '0.42', 'version_detail': 'There is no spoon'}}}
 
@@ -34,10 +34,12 @@ class Fork(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        # NOTE: ignore thread and process counts, and expect application to do
+        #       the needful
+
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
         task_args    = cud.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
 

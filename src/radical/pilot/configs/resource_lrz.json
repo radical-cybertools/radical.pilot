@@ -1,6 +1,6 @@
 
 {
-    "supermuc": {
+    "supermuc_ssh": {
         "description"                 : "The SuperMUC petascale HPC cluster at LRZ, Munich (http://www.lrz.de/services/compute/supermuc/).",
         "notes"                       : "Default authentication to SuperMUC uses X509 and is firewalled, make sure you can gsissh into the machine from your registered IP address. Because of outgoing traffic restrictions your MongoDB needs to run on a port in the range 20000 to 25000.",
         "schemas"                     : ["gsissh", "ssh"],
@@ -22,7 +22,7 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIEXEC",
         "forward_tunnel_endpoint"     : "login03",
-        "pre_bootstrap_1"             : ["source /etc/profile",
+        "pre_bootstrap_0"             : ["source /etc/profile",
                                          "source /etc/profile.d/modules.sh",
                                          "module load python/2.7.6",
                                          "module unload mpi.ibm", "module load mpi.intel"

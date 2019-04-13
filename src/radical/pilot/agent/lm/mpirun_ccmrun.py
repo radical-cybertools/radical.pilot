@@ -3,7 +3,6 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os
 import radical.utils as ru
 
 from .base import LaunchMethod
@@ -11,8 +10,9 @@ from .base import LaunchMethod
 
 # ==============================================================================
 #
+# ccmrun: Cluster Compatibility Mode job launcher for Cray systems
+#
 class MPIRunCCMRun(LaunchMethod):
-    # TODO: This needs both mpirun and ccmrun
 
     # --------------------------------------------------------------------------
     #
@@ -24,47 +24,69 @@ class MPIRunCCMRun(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        # ccmrun: Cluster Compatibility Mode job launcher for Cray systems
-        self.launch_command= ru.which('ccmrun')
 
-        self.mpirun_command = ru.which('mpirun')
-        if not self.mpirun_command:
-            raise RuntimeError("mpirun not found!")
+        self.launch_command = ru.which([
+            'mpirun',            # General case
+            'mpirun_rsh',        # Gordon @ SDSC
+            'mpirun-mpich-mp',   # Mac OSX MacPorts
+            'mpirun-openmpi-mp'  # Mac OSX MacPorts
+        ])
+
+        self.ccmrun_command = ru.which([
+            'ccmrun',            # General case
+        ])
+
+        if not self.ccmrun_command:
+            raise RuntimeError("ccmrun not found!")
+
+        self.mpi_version, self.mpi_flavor = self._get_mpi_info(self.launch_command)
 
 
     # --------------------------------------------------------------------------
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
-        task_args    = cud.get('arguments') or []
+        task_env     = cud.get('environment') or dict()
+        task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
-        if not 'task_slots' in opaque_slots:
-            raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, opaque_slots))
+        # Construct the executable and arguments
+        if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
+        else          : task_command = task_exec
 
-        task_slots = opaque_slots['task_slots']
+        env_string = ''
+        env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
+        if env_list:
 
-        if task_argstr:
-            task_command = "%s %s" % (task_exec, task_argstr)
-        else:
-            task_command = task_exec
+            if self.mpi_flavor == self.MPI_FLAVOR_HYDRA:
+                env_string = '-envlist "%s"' % ','.join(env_list)
 
-        # Construct the hosts_string
+            elif self.mpi_flavor == self.MPI_FLAVOR_OMPI:
+                for var in env_list:
+                    env_string += '-x "%s" ' % var
+
+        if 'nodes' not in slots:
+            raise RuntimeError('insufficient information to launch via %s: %s'
+                              % (self.name, slots))
+
+        # Extract all the hosts from the slots
         # TODO: is there any use in using $HOME/.crayccm/ccm_nodelist.$JOBID?
-        hosts_string = ','.join([slot.split(':')[0] for slot in task_slots])
-        export_vars  = ' '.join(['-x ' + var for var in self.EXPORT_ENV_VARIABLES \
-                                             if  var in os.environ])
+        hostlist = list()
+        for node in slots['nodes']:
+            for cpu_proc in node['core_map']:
+                hostlist.append(node['name'])
+            for gpu_proc in node['gpu_map']:
+                hostlist.append(node['name'])
+        hosts_string = ",".join(hostlist)
 
-        mpirun_ccmrun_command = "%s %s %s -np %d -host %s %s" % (
-            self.launch_command, self.mpirun_command, export_vars,
-            task_cores, hosts_string, task_command)
+        command = "%s %s -np %d -host %s %s %s" % \
+                  (self.ccmrun_command, self.launch_command, len(hostlist), 
+                   hosts_string, env_string, task_command)
 
-        return mpirun_ccmrun_command, None
+        return command, None
 
 
 # ------------------------------------------------------------------------------

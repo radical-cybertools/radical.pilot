@@ -34,6 +34,8 @@ class RoundRobin(UMGRSchedulingComponent):
         self._pids = list()
         self._idx  = 0
 
+        self._log.debug('RoundRobin umgr scheduler configured')
+
 
     # --------------------------------------------------------------------------
     #
@@ -86,13 +88,39 @@ class RoundRobin(UMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
+    def _work(self, units):
 
-        if not isinstance(units, list):
-            units = [units]
+        unscheduled = list()
+        with self._pilots_lock:
 
-        self.advance(units, rps.UMGR_SCHEDULING, publish=True, push=False)
-        self._schedule_units(units)
+            for unit in units:
+
+                # check if units are already scheduled, ie. by the application
+                uid = unit.get('uid')
+                pid = unit.get('pilot')
+
+                if pid:
+                    # make sure we know this pilot
+                    if pid not in self._pilots:
+                        self._log.error('got unit %s for unknown pilot %s', uid, pid)
+                        self.advance(unit, rps.FAILED, publish=True, push=True)
+                        continue
+                    
+                    pilot = self._pilots[pid]['pilot']
+
+                    # make sure we have a sandbox defined, too
+                    if not unit.get('sandbox'):
+                        pilot = self._pilots[pid]['pilot']
+                        unit['sandbox'] = self._session._get_unit_sandbox(unit, pilot)
+
+                    self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING, 
+                                 publish=True, push=True)
+
+                else:
+                    # not yet scheduled - put in wait pool
+                    unscheduled.append(unit)
+                        
+        self._schedule_units(unscheduled)
 
 
     # --------------------------------------------------------------------------
@@ -105,8 +133,6 @@ class RoundRobin(UMGRSchedulingComponent):
 
                 # no pilots, no schedule...
                 with self._wait_lock:
-                    for unit in units:
-                        self._prof.prof('wait', uid=unit['uid'])
                     self._wait_pool += units
                     return
 
@@ -126,16 +152,15 @@ class RoundRobin(UMGRSchedulingComponent):
                     self._idx += 1
 
                     # we assign the unit to the pilot.
-                    # this is also a good opportunity to determine the unit sandbox
-                    unit['pilot']   = pid
-                    unit['sandbox'] = self._session._get_unit_sandbox(unit, pilot)
+                    self._assign_pilot(unit, pilot)
 
                     units_ok.append(unit)
 
                 except Exception as e:
                     self._log.exception('unit schedule preparation failed')
                     units_fail.append(unit)
-    
+
+            # make sure that all scheduled units have sandboxes known
 
             # advance all units
             self.advance(units_fail, rps.FAILED, publish=True, push=False)

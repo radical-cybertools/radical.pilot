@@ -27,7 +27,7 @@ class Yarn(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger):
+    def lrms_config_hook(cls, name, cfg, lrms, logger, profile):
         """
         FIXME: this config hook will inspect the LRMS nodelist and, if needed,
                will start the YARN cluster on node[0].
@@ -179,7 +179,7 @@ class Yarn(LaunchMethod):
         hadoop_home = None
         if lrms.name == 'YARNLRMS': # FIXME: use constant
             logger.info('Hook called by YARN LRMS')
-            logger.info('NameNode: {0}'.format(lrms.namenode_url))
+            logger.info('NameNode: %s', lrms.namenode_url)
             service_url    = lrms.namenode_url
             rm_url         = "%s:%s" % (lrms.rm_ip, lrms.rm_port)
             rm_ip          = lrms.rm_ip
@@ -190,14 +190,14 @@ class Yarn(LaunchMethod):
             if lrms.node_list[0] == 'localhost':
                 #Download the tar file
                 node_name = lrms.node_list[0]
-                stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz")
-                stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
+                stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.5/hadoop-2.6.5.tar.gz")
+                stat = os.system('tar xzf hadoop-2.6.5.tar.gz;mv hadoop-2.6.5 hadoop;rm -rf hadoop-2.6.5.tar.gz')
             else:
                 node = subprocess.check_output('/bin/hostname')
                 logger.info('Entered Else creation')
                 node_name = node.split('\n')[0]
-                stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz")
-                stat = os.system('tar xzf hadoop-2.6.0.tar.gz;mv hadoop-2.6.0 hadoop;rm -rf hadoop-2.6.0.tar.gz')
+                stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.5/hadoop-2.6.5.tar.gz")
+                stat = os.system('tar xzf hadoop-2.6.5.tar.gz;mv hadoop-2.6.5 hadoop;rm -rf hadoop-2.6.5.tar.gz')
                 # TODO: Decide how the agent will get Hadoop tar ball.
 
 
@@ -238,7 +238,7 @@ class Yarn(LaunchMethod):
             config_core_site(node_name)
             config_hdfs_site(lrms.node_list)
             config_mapred_site()
-            config_yarn_site(lrms.cores_per_node,lrms.node_list,host)
+            config_yarn_site(lrms.cores_per_node,lrms.node_list,host) # FIXME GPU
 
             logger.info('Start Formatting DFS')
             namenode_format = os.system(hadoop_home + '/bin/hdfs namenode -format -force')
@@ -260,6 +260,9 @@ class Yarn(LaunchMethod):
             os.system('%s/bin/hdfs dfs -mkdir /user/%s'%(hadoop_home,uname))
             check = subprocess.check_output(['%s/bin/hdfs'%hadoop_home,'dfs', '-ls', '/user'])
             logger.info(check)
+            logger.info('Getting YARN app')
+            os.system('wget https://www.dropbox.com/s/9yxbj9btibgtg40/Pilot-YARN-0.1-jar-with-dependencies.jar')
+
             # FIXME YARN: why was the scheduler configure called here?  Configure
             #             is already called during scheduler instantiation
             # self._scheduler._configure()
@@ -273,7 +276,7 @@ class Yarn(LaunchMethod):
         # The LRMS instance is only available here -- everything which is later
         # needed by the scheduler or launch method is stored in an 'lm_info'
         # dict.  That lm_info dict will be attached to the scheduler's lrms_info
-        # dict, and will be passed around as part of the opaque_slots structure,
+        # dict, and will be passed around as part of the slots structure,
         # so it is available on all LM create_command calls.
         lm_info = {'service_url'   : service_url,
                    'rm_url'        : rm_url,
@@ -289,7 +292,7 @@ class Yarn(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profile):
         if 'name' not in lm_info:
             raise RuntimeError('name not in lm_info for %s' % name)
 
@@ -311,9 +314,7 @@ class Yarn(LaunchMethod):
     def _configure(self):
 
         # Single Node configuration
-        # TODO : Multinode config
-        self._log.info('Getting YARN app')
-        os.system('wget https://dl.dropboxusercontent.com/u/28410803/Pilot-YARN-0.1-jar-with-dependencies.jar')
+        # FIXME : Upload App to another server, which will be always alive
         self._log.info(self._cfg['lrms_info']['lm_info'])
         self.launch_command = self._cfg['lrms_info']['lm_info']['launch_command']
         self._log.info('YARN was called')
@@ -323,11 +324,11 @@ class Yarn(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         work_dir     = cu['workdir']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
+        task_cores   = cud['cpu_processes'] * cud['cpu_threads']
         task_env     = cud.get('environment') or {}
         task_args    = cud.get('arguments')   or []
         task_argstr  = self._create_arg_string(task_args)
@@ -335,32 +336,32 @@ class Yarn(LaunchMethod):
         # Construct the args_string which is the arguments given as input to the
         # shell script. Needs to be a string
         self._log.debug("Constructing YARN command")
-        self._log.debug('Opaque Slots {0}'.format(opaque_slots))
+        self._log.debug('Slots : %s', slots)
 
-        if 'lm_info' not in opaque_slots:
+        if 'lm_info' not in slots:
             raise RuntimeError('No lm_info to launch via %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.name, slots))
 
-        if not opaque_slots['lm_info']:
+        if not slots['lm_info']:
             raise RuntimeError('lm_info missing for %s: %s' \
-                               % (self.name, opaque_slots))
+                               % (self.name, slots))
 
-        if 'service_url' not in opaque_slots['lm_info']:
+        if 'service_url' not in slots['lm_info']:
             raise RuntimeError('service_url not in lm_info for %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.name, slots))
 
-        if 'rm_url' not in opaque_slots['lm_info']:
+        if 'rm_url' not in slots['lm_info']:
             raise RuntimeError('rm_url not in lm_info for %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.name, slots))
 
 
-        if 'nodename' not in opaque_slots['lm_info']:
+        if 'nodename' not in slots['lm_info']:
             raise RuntimeError('nodename not in lm_info for %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.name, slots))
 
-        service_url = opaque_slots['lm_info']['service_url']
-        rm_url      = opaque_slots['lm_info']['rm_url']
-        client_node = opaque_slots['lm_info']['nodename']
+        service_url = slots['lm_info']['service_url']
+        rm_url      = slots['lm_info']['rm_url']
+        client_node = slots['lm_info']['nodename']
 
         #-----------------------------------------------------------------------
         # Create YARN script

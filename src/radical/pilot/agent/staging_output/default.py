@@ -4,9 +4,10 @@ __license__   = "MIT"
 
 
 import os
+import errno
 import shutil
 
-import saga          as rs
+import radical.saga  as rs
 import radical.utils as ru
 
 from .... import pilot     as rp
@@ -16,9 +17,10 @@ from ...  import constants as rpc
 
 from .base import AgentStagingOutputComponent
 
+from ...staging_directives import complete_url
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Default(AgentStagingOutputComponent):
     """
@@ -62,22 +64,72 @@ class Default(AgentStagingOutputComponent):
 
         self.advance(units, rps.AGENT_STAGING_OUTPUT, publish=True, push=False)
 
+        ru.raise_on('work bulk')
+
+        # we first filter out any units which don't need any input staging, and
+        # advance them again as a bulk.  We work over the others one by one, and
+        # advance them individually, to avoid stalling from slow staging ops.
+        
+        no_staging_units = list()
+        staging_units    = list()
+
         for unit in units:
 
-            self._handle_unit(unit)
+            uid = unit['uid']
+
+            # From here on, any state update will hand control over to the umgr
+            # again.  The next unit update should thus push *all* unit details,
+            # not only state.
+            unit['$all']    = True 
+            unit['control'] = 'umgr_pending'
+
+            # we always dig for stdout/stderr
+            self._handle_unit_stdio(unit)
+
+            # NOTE: all units get here after execution, even those which did not
+            #       finish successfully.  We do that so that we can make
+            #       stdout/stderr available for failed units (see
+            #       _handle_unit_stdio above).  But we don't need to perform any
+            #       other staging for those units, and in fact can make them
+            #       final.
+            if unit['target_state'] != rps.DONE:
+                unit['state'] = unit['target_state']
+                self._log.debug('unit %s skips staging (%s)', uid, unit['state'])
+                no_staging_units.append(unit)
+                continue
+
+            # check if we have any staging directives to be enacted in this
+            # component
+            actionables = list()
+            for sd in unit['description'].get('output_staging', []):
+                if sd['action'] in [rpc.LINK, rpc.COPY, rpc.MOVE]:
+                    actionables.append(sd)
+
+            if actionables:
+                # this unit needs some staging
+                staging_units.append([unit, actionables])
+            else:
+                # this unit does not need any staging at this point, and can be
+                # advanced
+                unit['state'] = rps.UMGR_STAGING_OUTPUT_PENDING
+                no_staging_units.append(unit)
+
+        if no_staging_units:
+            self.advance(no_staging_units, publish=True, push=True)
+
+        for unit,actionables in staging_units:
+            self._handle_unit_staging(unit, actionables)
 
 
     # --------------------------------------------------------------------------
     #
-    def _handle_unit(self, unit):
+    def _handle_unit_stdio(self, unit):
 
-        uid = unit['uid']
+        sandbox = ru.Url(unit['unit_sandbox']).path
+        uid     = unit['uid']
 
-        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
-        #       class definition.
-        sandbox = '%s/%s' % (self._pwd, uid)
+        self._prof.prof('staging_stdout_start', uid=uid)
 
-        ## parked from unit state checker: unit postprocessing
         # TODO: disable this at scale?
         if os.path.isfile(unit['stdout_file']):
             with open(unit['stdout_file'], 'r') as stdout_f:
@@ -87,6 +139,9 @@ class Default(AgentStagingOutputComponent):
                     txt = "unit stdout is binary -- use file staging"
 
                 unit['stdout'] += rpu.tail(txt)
+
+        self._prof.prof('staging_stdout_stop',  uid=uid)
+        self._prof.prof('staging_stderr_start', uid=uid)
 
         # TODO: disable this at scale?
         if os.path.isfile(unit['stderr_file']):
@@ -98,111 +153,170 @@ class Default(AgentStagingOutputComponent):
 
                 unit['stderr'] += rpu.tail(txt)
 
-        if 'RADICAL_PILOT_PROFILE' in os.environ:
-            if os.path.isfile("%s/PROF" % sandbox):
-                try:
-                    with open("%s/PROF" % sandbox, 'r') as prof_f:
-                        txt = prof_f.read()
-                        for line in txt.split("\n"):
-                            if line:
-                                x1, x2, x3 = line.split()
-                                self._prof.prof(x1, msg=x2, timestamp=float(x3),
-                                        uid=unit['uid'])
-                except Exception as e:
-                    self._log.error("Pre/Post profiling file read failed: `%s`" % e)
+        self._prof.prof('staging_stderr_stop', uid=uid)
+        self._prof.prof('staging_uprof_start', uid=uid)
+
+        unit_prof = "%s/%s.prof" % (sandbox, uid)
+
+        if os.path.isfile(unit_prof):
+            try:
+                with open(unit_prof, 'r') as prof_f:
+                    txt = prof_f.read()
+                    for line in txt.split("\n"):
+                        if line:
+                            ts, event, comp, tid, _uid, state, msg = line.split(',')
+                            self._prof.prof(timestamp=float(ts), event=event,
+                                            comp=comp, tid=tid, uid=_uid,
+                                            state=state, msg=msg)
+            except Exception as e:
+                self._log.error("Pre/Post profile read failed: `%s`" % e)
+
+        self._prof.prof('staging_uprof_stop', uid=uid)
 
 
-        # From here on, any state update will hand control over to the umgr
-        # again.  The next unit update should thus push *all* unit details, not
-        # only state.
-        unit['$all']    = True
-        unit['control'] = 'umgr_pending'
+    # --------------------------------------------------------------------------
+    #
+    def _handle_unit_staging(self, unit, actionables):
 
-        # NOTE: all units get here after execution, even those which did not
-        #       finish successfully.  We do that so that we can make
-        #       stdout/stderr available for failed units.  But at this point we
-        #       don't need to advance those units anymore, but can make them
-        #       final.
-        if unit['target_state'] != rps.DONE:
-            self.advance(unit, state=unit['target_state'], publish=True, push=False)
-            return
+        ru.raise_on('work unit')
 
-        # check if we have any staging directives to be enacted in this
-        # component
-        actionables = list()
-        for sd in unit['description'].get('output_staging', []):
+        uid = unit['uid']
 
-            src    = ru.Url(sd['source'])
-            tgt    = ru.Url(sd['target'])
+        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
+        #       class definition.
+        sandbox = ru.Url(unit['unit_sandbox']).path
+
+        # By definition, this compoentn lives on the pilot's target resource.
+        # As such, we *know* that all staging ops which would refer to the
+        # resource now refer to file://localhost, and thus translate the unit,
+        # pilot and resource sandboxes into that scope.  Some assumptions are
+        # made though:
+        #
+        #   * paths are directly translatable across schemas
+        #   * resource level storage is in fact accessible via file://
+        #
+        # FIXME: this is costly and should be cached.
+
+        unit_sandbox     = ru.Url(unit['unit_sandbox'])
+        pilot_sandbox    = ru.Url(unit['pilot_sandbox'])
+        resource_sandbox = ru.Url(unit['resource_sandbox'])
+
+        unit_sandbox.schema     = 'file'
+        pilot_sandbox.schema    = 'file'
+        resource_sandbox.schema = 'file'
+
+        unit_sandbox.host       = 'localhost'
+        pilot_sandbox.host      = 'localhost'
+        resource_sandbox.host   = 'localhost'
+
+        src_context = {'pwd'      : str(unit_sandbox),       # !!!
+                       'unit'     : str(unit_sandbox), 
+                       'pilot'    : str(pilot_sandbox), 
+                       'resource' : str(resource_sandbox)}
+        tgt_context = {'pwd'      : str(unit_sandbox),       # !!!
+                       'unit'     : str(unit_sandbox), 
+                       'pilot'    : str(pilot_sandbox), 
+                       'resource' : str(resource_sandbox)}
+
+        # we can now handle the actionable staging directives
+        for sd in actionables:
+
             action = sd['action']
             flags  = sd['flags']
             did    = sd['uid']
+            src    = sd['source']
+            tgt    = sd['target']
 
-            actionables.append([src, tgt, action, flags,  did])
+            self._prof.prof('staging_out_start', uid=uid, msg=did)
 
+            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER]), \
+                              'invalid staging action'
 
-        if actionables:
+            # we only handle staging which does *not* include 'client://' src or
+            # tgt URLs - those are handled by the umgr staging components
+            if src.startswith('client://'):
+                self._log.debug('skip staging for src %s', src)
+                self._prof.prof('staging_out_skip', uid=uid, msg=did)
+                continue
 
-            # we have actionables, thus we need staging area
-            # TODO: optimization: staging_area might already exist
-            staging_area = '%s/%s' % (self._pwd, self._cfg['staging_area'])
+            if tgt.startswith('client://'):
+                self._log.debug('skip staging for tgt %s', tgt)
+                self._prof.prof('staging_out_skip', uid=uid, msg=did)
+                continue
 
-            self._prof.prof("create  staging_area", uid=uid, msg=staging_area)
-            rpu.rec_makedir(staging_area)
-            self._prof.prof("created staging_area", uid=uid)
+            # Fix for when the target PATH is empty
+            # we assume current directory is the unit staging 'unit://'
+            # and we assume the file to be copied is the base filename of the source
+            if tgt is None: tgt = ''
+            if tgt.strip() == '':
+                tgt = 'unit:///{}'.format(os.path.basename(src))
+            # Fix for when the target PATH is exists *and* it is a folder
+            # we assume the 'current directory' is the target folder
+            # and we assume the file to be copied is the base filename of the source
+            elif os.path.exists(tgt.strip()) and os.path.isdir(tgt.strip()):
+                tgt = os.path.join(tgt, os.path.basename(src))
 
-            # Loop over all transfer directives and execute them.
-            for src, tgt, action, flags, did in actionables:
+            src = complete_url(src, src_context, self._log)
+            tgt = complete_url(tgt, tgt_context, self._log)
 
-                self._prof.prof('begin', uid=uid, msg=did)
+            # Currently, we use the same schema for files and folders.
+            assert(src.schema == 'file'), 'staging src must be file://'
 
-                # Handle special 'staging' schema
-                if tgt.schema == self._cfg['staging_schema']:
-                    self._log.info('Operating to staging')
-                    rel2staging = tgt.path.split('/',1)[1]
-                    target = os.path.join(staging_area, rel2staging)
-                elif action != rpc.TRANSFER:
-                    self._log.info('Operating to absolute path')
-                    target = tgt.path
-                    assert(target.startswith('/'))
-                elif action == rpc.TRANSFER:
-                    self._log.info('Operating to remote location')
-                    target = tgt
+            if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
+                assert(tgt.schema == 'file'), 'staging tgt expected as file://'
 
-                # make sure the src path is either absolute or relative to the
-                # sandbox
-                if not src.path.startswith('/'):
-                    src.path = '%s/%s' % (sandbox, src.path)
+            # SAGA will take care of dir creation - but we do it manually
+            # for local ops (copy, link, move)
+            if flags & rpc.CREATE_PARENTS and action != rpc.TRANSFER:
+                tgtdir = os.path.dirname(tgt.path)
+                if tgtdir != sandbox:
+                    self._log.debug("mkdir %s", tgtdir)
+                    rpu.rec_makedir(tgtdir)
 
-                if rpc.CREATE_PARENTS in flags and action != rpc.TRANSFER:
-                    tgtdir = os.path.dirname(target)
-                    if tgtdir != sandbox:
-                        # TODO: optimization point: create each dir only once
-                        self._log.debug("mkdir %s" % tgtdir)
-                        rpu.rec_makedir(tgtdir)
+            if   action == rpc.COPY: 
+                try:
+                    shutil.copytree(src.path, tgt.path)
+                except OSError as exc: 
+                    if exc.errno == errno.ENOTDIR:
+                        shutil.copy(src.path, tgt.path)
+                    else: 
+                        raise
+                
+            elif action == rpc.LINK:
+                # Fix issue/1513 if link source is file and target is folder
+                # should support POSIX standard where link is created
+                # with the same name as the source
+                if os.path.isfile(src.path) and os.path.isdir(tgt.path):
+                    os.symlink(src.path, 
+                               os.path.join(tgt.path, 
+                                            os.path.basename(src.path)))
+                else:  # default behavior
+                    os.symlink(src.path, tgt.path)
+            elif action == rpc.MOVE: shutil.move(src.path, tgt.path)
+            elif action == rpc.TRANSFER: pass
+                # This is currently never executed. Commenting it out.
+                # Uncomment and implement when uploads directly to remote URLs
+                # from units are supported.
+                # FIXME: we only handle srm staging right now, and only for
+                #        a specific target proxy. Other TRANSFER directives are
+                #        left to umgr output staging.  We should use SAGA to
+                #        attempt all staging ops which do not target the client
+                #        machine.
+                # if tgt.schema == 'srm':
+                #     # FIXME: cache saga handles
+                #     srm_dir = rs.filesystem.Directory('srm://proxy/?SFN=bogus')
+                #     srm_dir.copy(src, tgt)
+                #     srm_dir.close()
+                # else:
+                #     self._log.error('no transfer for %s -> %s', src, tgt)
+                #     self._prof.prof('staging_out_fail', uid=uid, msg=did)
+                #     raise NotImplementedError('unsupported transfer %s' % tgt)
 
-                if   action == rpc.LINK: os.symlink     (src.path, target)
-                elif action == rpc.COPY: shutil.copyfile(src.path, target)
-                elif action == rpc.MOVE: shutil.move    (src.path, target)
-                elif action == rpc.TRANSFER:
-
-                    # we only handle srm staging right now -- other TRANSFER
-                    # directives are left to umgr output staging
-                    if tgt.schema == 'srm':
-                        src_url = rs.Url(src.path)
-                        src_url.schema = 'file'
-                        srm_dir = rs.filesystem.Directory('srm://proxy/?SFN=bogus')
-                        srm_dir.copy(src_url, target)
-                else:
-                    raise NotImplementedError('unsupported action %s' % action)
-
-                self._prof.prof('end', uid=uid, msg=did)
-
-        # TODO: don't raise for non-fatal staging
+            self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
         # all agent staging is done -- pass on to umgr output staging
         self.advance(unit, rps.UMGR_STAGING_OUTPUT_PENDING, publish=True, push=False)
 
 
 # ------------------------------------------------------------------------------
-	
+

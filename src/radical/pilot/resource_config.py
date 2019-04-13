@@ -4,8 +4,10 @@ __license__   = "MIT"
 import os
 import radical.utils
 
-import saga.attributes  as attributes
+import radical.saga.attributes as attributes
+
 from radical.pilot.exceptions import * 
+
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
@@ -17,6 +19,7 @@ AGENT_SCHEDULER             = 'agent_scheduler'
 AGENT_SPAWNER               = 'agent_spawner'
 AGENT_CONFIG                = 'agent_config'
 CORES_PER_NODE              = 'cores_per_node'
+GPUS_PER_NODE               = 'gpus_per_node'
 DEFAULT_QUEUE               = 'default_queue'
 DEFAULT_REMOTE_WORKDIR      = 'default_remote_workdir'
 DESCRIPTION                 = 'description'
@@ -29,8 +32,8 @@ MANDATORY_ARGS              = 'mandatory_args'
 MPI_LAUNCH_METHOD           = 'mpi_launch_method'
 NOTES                       = 'notes'
 PILOT_AGENT                 = 'pilot_agent'
+PRE_BOOTSTRAP_0             = 'pre_bootstrap_0'
 PRE_BOOTSTRAP_1             = 'pre_bootstrap_1'
-PRE_BOOTSTRAP_2             = 'pre_bootstrap_2'
 RP_VERSION                  = 'rp_version'
 PYTHON_INTERPRETER          = 'python_interpreter'
 SCHEMAS                     = 'schemas'
@@ -44,6 +47,10 @@ VIRTENV_MODE                = 'private'
 SHARED_FILESYSTEM           = 'shared_filesystem'
 HEALTH_CHECK                = 'health_check'
 PYTHON_DISTRIBUTION         = 'python_dist'
+VIRTENV_DISTRIBUTION        = 'virtenv_dist'
+SAGA_JD_SUPPLEMENT          = 'saga_jd_supplement'
+LFS_PATH_PER_NODE           = 'lfs_path_per_node'
+LFS_SIZE_PER_NODE           = 'lfs_size_per_node'
 
 # ------------------------------------------------------------------------------
 #
@@ -60,7 +67,7 @@ class ResourceConfig(attributes.Attributes):
           rc.filesystem_endpoint  = "sftp://23.23.23.23"
           rc.default_queue        = "batch"
           rc.python_interpreter   = "/opt/python/2.7.6/bin/python"
-          rc.pre_bootstrap_1      = "module load mpi"
+          rc.pre_bootstrap_0      = "module load mpi"
           rc.valid_roots          = ["/home", "/work"]
           rc.bootstrapper         = "default_bootstrapper.sh"
 
@@ -116,11 +123,11 @@ class ResourceConfig(attributes.Attributes):
 
        [Type: `string`] [optional] TODO
 
-    .. data:: pre_bootstrap_1
+    .. data:: pre_bootstrap_0
 
        [Type: `string`] [optional] TODO
 
-    .. data:: pre_bootstrap_2
+    .. data:: pre_bootstrap_1
 
        [Type: `string`] [optional] TODO
 
@@ -221,7 +228,8 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(AGENT_SCHEDULER        ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_SPAWNER          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(AGENT_CONFIG           ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(CORES_PER_NODE         ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(CORES_PER_NODE         ,  None, attributes.INT   , attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(GPUS_PER_NODE          ,  None, attributes.INT   , attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(DEFAULT_QUEUE          ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(DEFAULT_REMOTE_WORKDIR ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(DESCRIPTION            ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
@@ -234,8 +242,8 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(MPI_LAUNCH_METHOD      ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(NOTES                  ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PILOT_AGENT            ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(PRE_BOOTSTRAP_0        ,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(PRE_BOOTSTRAP_1        ,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        self._attributes_register(PRE_BOOTSTRAP_2        ,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(RP_VERSION             ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PYTHON_INTERPRETER     ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(SCHEMAS                ,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
@@ -249,6 +257,10 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(SHARED_FILESYSTEM      ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(HEALTH_CHECK           ,  None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PYTHON_DISTRIBUTION    ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(VIRTENV_DISTRIBUTION   ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(SAGA_JD_SUPPLEMENT     ,  None, attributes.DICT  , attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(LFS_PATH_PER_NODE      ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(LFS_SIZE_PER_NODE      ,  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
 
         self['label'] = label
 

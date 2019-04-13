@@ -84,7 +84,7 @@ class ABDS(AgentExecutingComponent):
         self.tmpdir = tempfile.gettempdir()
 
         # if we need to transplant any original env into the CU, we dig the
-        # respective keys from the dump made by bootstrap_1.sh
+        # respective keys from the dump made by bootstrap_0.sh
         self._env_cu_export = dict()
         if self._cfg.get('export_to_cu'):
             with open('env.orig', 'r') as f:
@@ -114,11 +114,13 @@ class ABDS(AgentExecutingComponent):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_unit':
+        if cmd == 'cancel_units':
 
-            self._log.info("cancel unit command (%s)" % arg)
+            self._log.info("cancel_units command (%s)" % arg)
             with self._cancel_lock:
-                self._cus_to_cancel.append(arg)
+                self._cus_to_cancel.extend(arg['uids'])
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -170,12 +172,12 @@ class ABDS(AgentExecutingComponent):
         if not isinstance(units, list):
             units = [units]
 
-        self.advance(units, rps.ALLOCATING, publish=True, push=False)
+        self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
 
         for unit in units:
             self._handle_unit(unit)
 
-        self.advance(units, rps.EXECUTING_PENDING, publish=True, push=False)
+        self.advance(units, rps.AGENT_EXECUTING_PENDING, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -193,7 +195,7 @@ class ABDS(AgentExecutingComponent):
 
             self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
 
-            assert(cu['opaque_slots']) # FIXME: no assert, but check
+            assert(cu['slots']) # FIXME: no assert, but check
             self._prof.prof('exec', msg='unit launch', uid=cu['uid'])
 
             # Start a new subprocess to launch the unit
@@ -209,7 +211,7 @@ class ABDS(AgentExecutingComponent):
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            if cu['opaque_slots']:
+            if cu['slots']:
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
@@ -231,18 +233,54 @@ class ABDS(AgentExecutingComponent):
         # prep stdout/err so that we can append w/o checking for None
         cu['stdout'] = ''
         cu['stderr'] = ''
+        cu['workdir']=sandbox
 
-        launch_script_name = '%s/radical_pilot_cu_launch_script.sh' % sandbox
-        self._log.debug("Created launch_script: %s", launch_script_name)
+        launch_script_name = '%s/%s.sh' % (sandbox, cu['uid'])
 
         with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/sh\n\n')
 
+            # Create string for environment variable setting
+            env_string  = ''
+            if cu['description']['environment']:
+                for key,val in cu['description']['environment'].iteritems():
+                    env_string += 'export %s="%s"\n' % (key, val)
+            env_string += 'export RP_SESSION_ID="%s"\n'   % self._cfg['session_id']
+            env_string += 'export RP_PILOT_ID="%s"\n'     % self._cfg['pilot_id']
+            env_string += 'export RP_AGENT_ID="%s"\n'     % self._cfg['agent_name']
+            env_string += 'export RP_SPAWNER_ID="%s"\n'   % self.uid
+            env_string += 'export RP_UNIT_ID="%s"\n'      % cu['uid']
+            env_string += 'export RP_GTOD="%s"\n'         % self.gtod
+            env_string += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
+                                                          % self._pwd
             if 'RADICAL_PILOT_PROFILE' in os.environ:
-                launch_script.write("echo script start_script `%s` >> %s/PROF\n" % (self.gtod, sandbox))
-            launch_script.write('\n# Change to working directory for unit\ncd %s\n' % sandbox)
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
-                launch_script.write("echo script after_cd `%s` >> %s/PROF\n" % (self.gtod, sandbox))
+                env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
+            # also add any env vars requested for export by the resource config
+            for k,v in self._env_cu_export.iteritems():
+                env_string += "export %s=%s\n" % (k,v)
+
+            env_string += '''
+prof(){
+    if test -z "$RP_PROF"
+    then
+        return
+    fi
+    event=$1
+    now=$($RP_GTOD)
+    echo "$now,$event,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING," >> $RP_PROF
+}
+'''
+
+            # also add any env vars requested in the unit description
+            if cu['description']['environment']:
+                for key,val in cu['description']['environment'].iteritems():
+                    env_string += 'export %s=%s\n' % (key, val)
+
+            launch_script.write('\n# Environment variables\n%s\n' % env_string)
+
+            launch_script.write('prof cu_start\n')
+            launch_script.write('\n# Change to unit sandbox\ncd %s\n' % sandbox)
+            launch_script.write('prof cu_cd_done\n')
 
             # Before the Big Bang there was nothing
             if cu['description']['pre_exec']:
@@ -253,33 +291,15 @@ class ABDS(AgentExecutingComponent):
                 else:
                     pre_exec_string += "%s\n" % cu['description']['pre_exec']
                 # Note: extra spaces below are for visual alignment
-                launch_script.write("# Pre-exec commands\n")
-                if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo pre  start `%s` >> %s/PROF\n" % (self.gtod, sandbox))
+                launch_script.write("\n# Pre-exec commands\n")
+                launch_script.write('prof cu_pre_start\n')
                 launch_script.write(pre_exec_string)
-                if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo pre  stop `%s` >> %s/PROF\n" % (self.gtod, sandbox))
+                launch_script.write('prof cu_pre_stop\n')
 
             # YARN pre execution folder permission change
             launch_script.write('\n## Changing Working Directory permissions for YARN\n')
             launch_script.write('old_perm="`stat -c %a .`"\n')
             launch_script.write('chmod -R 777 .\n')
-
-            # Create string for environment variable setting
-            env_string  = "# CU environment\n"
-            env_string += "export RP_SESSION_ID=%s\n" % self._cfg['session_id']
-            env_string += "export RP_PILOT_ID=%s\n"   % self._cfg['pilot_id']
-            env_string += "export RP_AGENT_ID=%s\n"   % self._cfg['agent_name']
-            env_string += "export RP_SPAWNER_ID=%s\n" % self.uid
-            env_string += "export RP_UNIT_ID=%s\n"    % cu['uid']
-
-            # also add any env vars requested for export by the resource config
-            for k,v in self._env_cu_export.iteritems():
-                env_string += "export %s=%s\n" % (k,v)
-            if cu['description']['environment']:
-                for key,val in cu['description']['environment'].iteritems():
-                    env_string += 'export %s=%s\n' % (key, val)
-            launch_script.write('# Environment variables\n%s\n' % env_string)
 
             # The actual command line, constructed per launch-method
             try:
@@ -295,12 +315,12 @@ class ABDS(AgentExecutingComponent):
                 self._log.exception(msg)
                 raise RuntimeError(msg)
 
-            launch_script.write("# The command to run\n")
+            launch_script.write("\n# The command to run\n")
+            launch_script.write('prof cu_exec_start\n')
             launch_script.write("%s\n" % launch_command)
             launch_script.write("RETVAL=$?\n")
             launch_script.write("\ncat Ystdout\n")
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
-                launch_script.write("echo script after_exec `%s` >> %s/PROF\n" % (self.gtod, sandbox))
+            launch_script.write('prof cu_exec_stop\n')
 
             # After the universe dies the infrared death, there will be nothing
             if cu['description']['post_exec']:
@@ -310,18 +330,16 @@ class ABDS(AgentExecutingComponent):
                         post_exec_string += "%s\n" % elem
                 else:
                     post_exec_string += "%s\n" % cu['description']['post_exec']
-                launch_script.write("# Post-exec commands\n")
-                if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo post start `%s` >> %s/PROF\n" % (self.gtod, sandbox))
+                launch_script.write("\n# Post-exec commands\n")
+                launch_script.write('prof cu_post_start\n')
                 launch_script.write('%s\n' % post_exec_string)
-                if 'RADICAL_PILOT_PROFILE' in os.environ:
-                    launch_script.write("echo post stop  `%s` >> %s/PROF\n" % (self.gtod, sandbox))
+                launch_script.write('prof cu_post_stop\n')
 
             # YARN pre execution folder permission change
             launch_script.write('\n## Changing Working Directory permissions for YARN\n')
             launch_script.write('chmod $old_perm .\n')
 
-            launch_script.write("# Exit the script with the return code from the command\n")
+            launch_script.write("\n# Exit the script with the return code from the command\n")
             launch_script.write("exit $RETVAL\n")
 
         # done writing to launch script, get it ready for execution.
@@ -341,6 +359,8 @@ class ABDS(AgentExecutingComponent):
         self._prof.prof('control', msg='stdout and stderr files created', uid=cu['uid'])
 
         self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, sandbox)
+
+        self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['uid'])
 
         cu['proc'] = subprocess.Popen(args               = cmdline,
                                       bufsize            = 0,
@@ -367,9 +387,7 @@ class ABDS(AgentExecutingComponent):
 
         try:
             cuid = self.uid.replace('Component', 'Watcher')
-            self._prof = self._session.get_profiler(cuid)
             self._prof.prof('run', uid=self._pilot_id)
-            self._log = self._session._get_logger(cuid, level='DEBUG') # FIXME?
 
             while not self._terminate.is_set():
 
@@ -382,7 +400,7 @@ class ABDS(AgentExecutingComponent):
                     # learn about CUs until all slots are filled, because then
                     # we may not be able to catch finishing CUs in time -- so
                     # there is a fine balance here.  Balance means 100 (FIXME).
-                  # self._prof.prof('ExecWorker popen watcher pull cu from queue')
+                  # self._prof.prof('pull')
                     MAX_QUEUE_BULKSIZE = 100
                     while len(cus) < MAX_QUEUE_BULKSIZE :
                         cus.append (self._watch_queue.get_nowait())
@@ -428,8 +446,8 @@ class ABDS(AgentExecutingComponent):
             # This code snippet reads the YARN application report file and if
             # the application is RUNNING it update the state of the CU with the
             # right time stamp. In any other case it works as it was.
-            logfile = '%s/%s' % (cu['workdir'], '/YarnApplicationReport.log')
-            if cu['state']==rps.EXECUTING_PENDING \
+            logfile = '%s/%s' % (sandbox, '/YarnApplicationReport.log')
+            if cu['state']==rps.AGENT_EXECUTING_PENDING \
                     and os.path.isfile(logfile):
 
                 yarnreport = open(logfile,'r')
@@ -445,7 +463,8 @@ class ABDS(AgentExecutingComponent):
                         proc = cu['proc']
                         self._log.debug('Proc Print {0}'.format(proc))
                         del(cu['proc'])  # proc is not json serializable
-                        self.advance(cu, rps.EXECUTING, publish=True, push=False,timestamp=timestamp)
+                        self.advance(cu, rps.AGENT_EXECUTING, publish=True, 
+                                     push=False,timestamp=timestamp)
                         cu['proc']    = proc
 
                         # FIXME: Ioannis, what is this supposed to do?
@@ -501,17 +520,6 @@ class ABDS(AgentExecutingComponent):
                     self._cus_to_watch.remove(cu)
                     del(cu['proc'])  # proc is not json serializable
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
-
-                    if os.path.isfile("%s/PROF" % sandbox):
-                        with open("%s/PROF" % sandbox, 'r') as prof_f:
-                            try:
-                                txt = prof_f.read()
-                                for line in txt.split("\n"):
-                                    if line:
-                                        x1, x2, x3 = line.split()
-                                        self._prof.prof(x1, msg=x2, timestamp=float(x3), uid=cu['uid'])
-                            except Exception as e:
-                                self._log.error("Pre/Post profiling file read failed: `%s`" % e)
 
                     if exit_code != 0:
                         # The unit failed - fail after staging output

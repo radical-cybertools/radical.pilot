@@ -1,0 +1,12 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import radical.pilot as rp
+
+if len(sys.argv) > 1 and '-v' in sys.argv:
+    print rp.version_detail
+
+else:
+    print rp.version
+

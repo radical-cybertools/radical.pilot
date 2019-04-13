@@ -23,7 +23,8 @@ class AgentStagingInputComponent(rpu.Component):
     #
     def __init__(self, cfg, session):
 
-        self._uid = ru.generate_id('agent.staging.input.%(counter)s', ru.ID_CUSTOM)
+        self._uid = ru.generate_id(cfg['owner'] + '.staging.input.%(counter)s',
+                                   ru.ID_CUSTOM)
 
         rpu.Component.__init__(self, cfg, session)
 

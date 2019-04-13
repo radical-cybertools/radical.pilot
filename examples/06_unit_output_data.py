@@ -25,7 +25,7 @@ import radical.utils as ru
 if __name__ == '__main__':
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot', level=verbose)
+    report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
@@ -93,8 +93,8 @@ if __name__ == '__main__':
             cud.executable     = '/bin/cp'
             cud.arguments      = ['-v', 'input.dat', 'output.dat']
             cud.input_staging  = ['input.dat']
-            cud.output_staging = {'source': 'output.dat', 
-                                  'target': 'output_%03d.dat' % i,
+            cud.output_staging = {'source': 'unit:///output.dat', 
+                                  'target': 'client:///output_%03d.dat' % i,
                                   'action': rp.TRANSFER}
 
             cuds.append(cud)

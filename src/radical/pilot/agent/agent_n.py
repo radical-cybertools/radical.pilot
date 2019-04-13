@@ -35,7 +35,7 @@ class Agent_n(rpu.Worker):
     #
     def __init__(self, agent_name):
 
-        assert(agent_name != 'agent_0')
+        assert(agent_name != 'agent_0'), 'expect subagent, not agent_0'
         print "startup agent %s" % agent_name
 
         # load config, create session and controller, init rpu.Worker
@@ -43,18 +43,26 @@ class Agent_n(rpu.Worker):
         cfg        = ru.read_json_str(agent_cfg)
 
         self._uid         = agent_name
-        self._pilot_id    = cfg['pilot_id']
-        self._session_id  = cfg['session_id']
+        self._pid         = cfg['pilot_id']
+        self._sid         = cfg['session_id']
+        self._final_cause = None
 
         # Create a session.  
         #
         # This session will not connect to MongoDB, but will create any
         # communication channels and components/workers specified in the 
         # config -- we merge that information into our own config.
+        # We don't want the session to start components though, so remove them
+        # from the config copy.
         session_cfg = copy.deepcopy(cfg)
-        session_cfg['owner'] = self._uid
-        session = rp_Session(cfg=session_cfg, _connect=False)
-        ru.dict_merge(cfg, session.ctrl_cfg, ru.PRESERVE)
+        session_cfg['owner']      = self._uid
+        session_cfg['components'] = dict()
+        session = rp_Session(cfg=session_cfg, _connect=False, uid=self._sid)
+
+        # we still want the bridge addresses known though, so make sure they are
+        # merged into our own copy, along with any other additions done by the
+        # session.
+        ru.dict_merge(cfg, session._cfg, ru.PRESERVE)
         pprint.pprint(cfg)
 
         if session.is_connected:
@@ -70,16 +78,22 @@ class Agent_n(rpu.Worker):
     #
     def initialize_parent(self):
 
-        # FIXME: avoid a race with communication channel setup
-        time.sleep(10)
-
-        # once bootstrap_3 is done, we signal success to the parent agent
-        self._prof.prof('setup done - send alive', uid=self._uid)
-        self._log.debug('msg [%s] : %s [agent]', self._uid, self._owner)
+        # once is done, we signal success to the parent agent
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'alive',
                                           'arg' : {'sender' : self._uid, 
                                                    'owner'  : self._owner, 
                                                    'src'    : 'agent'}})
+
+
+    # --------------------------------------------------------------------------
+    #
+    def wait_final(self):
+
+        while self._final_cause is None:
+          # self._log.info('no final cause -> alive')
+            time.sleep(1)
+
+        self._log.debug('final: %s', self._final_cause)
 
 
     # --------------------------------------------------------------------------
@@ -91,6 +105,8 @@ class Agent_n(rpu.Worker):
             self._log.debug('close  session %s', self._session.uid)
             self._session.close()
             self._log.debug('closed session %s', self._session.uid)
+
+        self._final_cause = 'finalized'
 
 
 # ------------------------------------------------------------------------------

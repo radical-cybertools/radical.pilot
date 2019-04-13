@@ -74,7 +74,7 @@ def setup_stampede_4096(request):
         print "pm id stampede: {0}".format(pmgr3.uid)
 
         umgr3 = rp.UnitManager (session=session3,
-                               scheduler=rp.SCHED_DIRECT_SUBMISSION)
+                               scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
 
         pdesc3 = rp.ComputePilotDescription()
         pdesc3.resource = "xsede.stampede"
@@ -121,7 +121,7 @@ def setup_stampede_683(request):
         pmgr = rp.PilotManager(session=session)
 
         umgr = rp.UnitManager (session=session,
-                               scheduler=rp.SCHED_BACKFILLING)
+                               scheduler=rp.SCHEDULER_BACKFILLING)
 
         pdesc = rp.ComputePilotDescription()
         pdesc.resource = "xsede.stampede"

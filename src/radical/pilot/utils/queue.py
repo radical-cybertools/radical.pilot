@@ -7,7 +7,6 @@ import math
 import time
 import errno
 import pprint
-import signal
 import msgpack
 
 import Queue           as pyq
@@ -16,6 +15,8 @@ import threading       as mt
 import multiprocessing as mp
 
 import radical.utils   as ru
+
+from .misc import hostip as rpu_hostip
 
 
 # --------------------------------------------------------------------------
@@ -47,6 +48,8 @@ def _uninterruptible(f, *args, **kwargs):
         cnt += 1
         try:
             return f(*args, **kwargs)
+        except zmq.ContextTerminated as e:
+            return None
         except zmq.ZMQError as e:
             if e.errno == errno.EINTR:
                 if cnt > 10:
@@ -56,17 +59,6 @@ def _uninterruptible(f, *args, **kwargs):
             else:
                 # real error, raise it
                 raise
-
-# ------------------------------------------------------------------------------
-# 
-# NOTE: see docs/architecture/component_termination.py
-#       for info about mp.Process and signal handling
-# 
-def sigterm_handler(signum, frame):
-    raise KeyboardInterrupt('sigterm')
-
-def sigusr2_handler(signum, frame):
-    raise KeyboardInterrupt('sigusr2')
 
 
 # ------------------------------------------------------------------------------
@@ -109,7 +101,7 @@ def sigusr2_handler(signum, frame):
 
 # ==============================================================================
 #
-class Queue(mp.Process):
+class Queue(ru.Process):
 
     def __init__(self, session, qname, role, cfg, addr=None):
         """
@@ -129,8 +121,7 @@ class Queue(mp.Process):
 
         Addresses are of the form 'tcp://host:port'.  Both 'host' and 'port' can
         be wildcards for BRIDGE roles -- the bridge will report the in and out
-        addresses as obj.bridge_in and obj.bridge_out.
-        """
+        addresses as obj.addr_in and obj.addr_out.  """
 
         self._session = session
         self._qname   = qname
@@ -138,14 +129,14 @@ class Queue(mp.Process):
         self._cfg     = copy.deepcopy(cfg)
         self._addr    = addr
 
-        if self._role not in QUEUE_ROLES:
-            raise ValueError("unknown role '%s' (%s)" % (self._role, QUEUE_ROLES))
+        assert(self._role in QUEUE_ROLES), 'invalid role %s' % self._role
 
-        mp.Process.__init__(self)
+        self._uid = "%s.%s" % (self._qname.replace('_', '.'), self._role)
+        self._uid = ru.generate_id(self._uid)
+        self._log = self._session._get_logger(name=self._uid, 
+                         level=self._cfg.get('log_level'))
 
-        self._name    = "%s.%s" % (self._qname.replace('_', '.'), self._role)
-        self._log     = self._session._get_logger(self._name, 
-                                                  level=self._cfg.get('log_level', 'off'))
+        super(Queue, self).__init__(name=self._uid, log=self._log)
 
         # avoid superfluous logging calls in critical code sections
         if self._log.getEffectiveLevel() == 10: # logging.DEBUG:
@@ -153,11 +144,10 @@ class Queue(mp.Process):
         else:
             self._debug = False
 
-        self._q          = None           # the zmq queue
         self._lock       = mt.RLock()     # for _requested
         self._requested  = False          # send/recv sync
-        self._bridge_in  = None           # bridge input  addr
-        self._bridge_out = None           # bridge output addr
+        self._addr_in    = None           # bridge input  addr
+        self._addr_out   = None           # bridge output addr
         self._stall_hwm  = cfg.get('stall_hwm', 1)
         self._bulk_size  = cfg.get('bulk_size', 1)
 
@@ -166,16 +156,24 @@ class Queue(mp.Process):
 
         self._log.info("create %s - %s - %s", self._qname, self._role, self._addr)
 
+        self._q    = None           # the zmq queue
+        self._in   = None
+        self._out  = None
+        self._ctx  = None
+
 
         # ----------------------------------------------------------------------
         # behavior depends on the role...
         if self._role == QUEUE_INPUT:
 
-            ctx = zmq.Context()
-            self._q = ctx.socket(zmq.PUSH)
+            self._ctx = zmq.Context()
+            self._session._to_destroy.append(self._ctx)
+
+            self._q   = self._ctx.socket(zmq.PUSH)
             self._q.linger = _LINGER_TIMEOUT
             self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(self._addr)
+            self.start(spawn=False)
 
 
         # ----------------------------------------------------------------------
@@ -192,7 +190,15 @@ class Queue(mp.Process):
             self.start()
 
             try:
-                self._bridge_in, self._bridge_out = self._pqueue.get(True, _BRIDGE_TIMEOUT)
+                [addr_in, addr_out] = self._pqueue.get(True, _BRIDGE_TIMEOUT)
+
+                # store addresses
+                self._addr_in  = ru.Url(addr_in)
+                self._addr_out = ru.Url(addr_out)
+
+                # use the local hostip for bridge addresses
+                self._addr_in.host  = rpu_hostip()
+                self._addr_out.host = rpu_hostip()
 
             except pyq.Empty as e:
                 raise RuntimeError ("bridge did not come up! (%s)" % e)
@@ -201,18 +207,25 @@ class Queue(mp.Process):
         # ----------------------------------------------------------------------
         elif self._role == QUEUE_OUTPUT:
 
-            ctx = zmq.Context()
-            self._q = ctx.socket(zmq.REQ)
+            self._ctx = zmq.Context()
+            self._session._to_destroy.append(self._ctx)
+
+            self._q   = self._ctx.socket(zmq.REQ)
             self._q.linger = _LINGER_TIMEOUT
             self._q.hwm    = _HIGH_WATER_MARK
             self._q.connect(self._addr)
+            self.start(spawn=False)
 
 
     # --------------------------------------------------------------------------
     #
     @property
     def name(self):
-        return self._name
+        return self._uid
+
+    @property
+    def uid(self):
+        return self._uid
 
     @property
     def qname(self):
@@ -227,166 +240,143 @@ class Queue(mp.Process):
         return self._addr
 
     @property
-    def bridge_in(self):
-        assert(self._role == QUEUE_BRIDGE)
-        return self._bridge_in
+    def addr_in(self):
+        assert(self._role == QUEUE_BRIDGE), 'addr_in only set on bridges'
+        return self._addr_in
 
     @property
-    def bridge_out(self):
-        assert(self._role == QUEUE_BRIDGE)
-        return self._bridge_out
+    def addr_out(self):
+        assert(self._role == QUEUE_BRIDGE), 'addr_out only set on bridges'
+        return self._addr_out
 
 
     # --------------------------------------------------------------------------
-    #
-    def poll(self):
-        """
-        This is a wrapper around is_alive() which mimics the behavior of the same
-        call in the subprocess.Popen class with the same name.  It does not
-        return an exitcode though, but 'None' if the process is still
-        alive, and always '0' otherwise
-        """
-        if self.is_alive():
-            return None
+    # 
+    def ru_initialize_child(self):
+
+        assert(self._role == QUEUE_BRIDGE), 'only bridges can be started'
+
+        self._uid = self._uid + '.child'
+        self._log = self._session._get_logger(name=self._uid, 
+                         level=self._cfg.get('log_level'))
+
+        spt.setproctitle('rp.%s' % self._uid)
+        self._log.info('start bridge %s on %s', self._uid, self._addr)
+
+        # FIXME: should we cache messages coming in at the pull/push 
+        #        side, so as not to block the push end?
+
+        self._ctx = zmq.Context()
+        self._session._to_destroy.append(self._ctx)
+
+        self._in = self._ctx.socket(zmq.PULL)
+        self._in.linger = _LINGER_TIMEOUT
+        self._in.hwm    = _HIGH_WATER_MARK
+        self._in.bind(self._addr)
+
+        self._out = self._ctx.socket(zmq.REP)
+        self._out.linger = _LINGER_TIMEOUT
+        self._out.hwm    = _HIGH_WATER_MARK
+        self._out.bind(self._addr)
+
+        # communicate the bridge ports to the parent process
+        _addr_in  = self._in.getsockopt( zmq.LAST_ENDPOINT)
+        _addr_out = self._out.getsockopt(zmq.LAST_ENDPOINT)
+
+        self._pqueue.put([_addr_in, _addr_out])
+
+        self._log.info('bound bridge %s to %s : %s', self._uid, _addr_in, _addr_out)
+
+        # start polling for messages
+        self._poll = zmq.Poller()
+        self._poll.register(self._out, zmq.POLLIN)
+
+
+    # --------------------------------------------------------------------------
+    # 
+    def ru_finalize_common(self):
+
+        if self._q   : self._q   .close()
+        if self._in  : self._in  .close()
+        if self._out : self._out .close()
+        if self._ctx : self._ctx.destroy()
+
+
+    # --------------------------------------------------------------------------
+    # 
+    def work_cb(self):
+
+        # We wait for an incoming message.  When one is received,
+        # we'll poll all outgoing sockets for requests, and the
+        # forward the message to whoever requested it.
+        #
+        # If so configured, we can stall messages until reaching
+        # a certain high-water-mark, and upon reaching that will
+        # release all messages at once.  When stalling for such set
+        # of messages, we wait for self._stall_hwm messages, and
+        # then forward those to whatever output channel requesting
+        # them (individually),
+        # FIXME: we may want to release all stalled messages after
+        #        some (configurable) timeout?
+        # FIXME: is it worth introducing a 'flush' command or
+        #        message type?
+        # NOTE:  hwm collection interferes with termination:
+        #        while we wait for messages to arrive, we will not leave this
+        #        work_cb, and thus will not allow the `ru.Process` main loop to
+        #        terminate gracefully as needed.  One solution would be to
+        #        inject manual statements to check for termination conditions.
+        #        The other option would be to collect the messages across
+        #        multiple work_cb invocations -- but the latter options would
+        #        significantly increase the code complexity, as we would need to
+        #        maintain state across method invocations, so we opt for the
+        #        first option.
+        hwm  = self._stall_hwm
+        bulk = self._bulk_size
+
+        msgs = list()
+        while len(msgs) < hwm:
+            data = None
+            while self.is_alive(strict=False):
+                if _uninterruptible(self._in.poll, flags=zmq.POLLIN, 
+                                   timeout=1000):
+                    data = _uninterruptible(self._in.recv)
+                    break
+            if not data:
+                if not self.is_alive(strict=False):
+                    self._log.warn('not alive anymore?')
+                    return False
+            msg = msgpack.unpackb(data) 
+            if isinstance(msg, list): 
+                msgs += msg
+            else: 
+                msgs.append(msg)
+            self._log.debug('stall %s/%s', len(msgs), hwm)
+        self._log.debug('hwm   %s/%s', len(msgs), hwm)
+
+        # if 'bulk' is '0', we send all messages as
+        # a single bulk.  Otherwise, we chop them up
+        # into bulks of the given size
+        if bulk <= 0:
+            nbulks = 1
+            bulks  = [msgs]
         else:
-            return 0
+            nbulks = int(math.ceil(len(msgs) / float(bulk)))
+            bulks  = ru.partition(msgs, nbulks)
 
+        while bulks:
+            # timeout in ms
+            events = dict(_uninterruptible(self._poll.poll, 1000))
 
-    # --------------------------------------------------------------------------
-    #
-    def join(self, timeout=None):
+            if self._out in events:
 
-        try:
-            mp.Process.join(self)
+                req  = _uninterruptible(self._out.recv)
+                data = msgpack.packb(bulks.pop(0)) 
+                _uninterruptible(self._out.send, data)
 
-        except AssertionError as e:
-            self._log.warn('assert on join ignored')
+                # go to next message/bulk (break while loop)
+                self._log.debug('sent  %s [hwm: %s]', (nbulks-len(bulks)), hwm)
 
-
-    # --------------------------------------------------------------------------
-    # 
-    def stop(self):
-
-        try:
-            # only terminate if started and alive
-            if self.pid and self.is_alive():
-                self.terminate()
-                mp.Process.join(self, timeout=1)
-            
-            # make sure its dead
-            if self.is_alive():
-                raise RuntimeError('Cannot kill child %s' % self.pid)
-
-        except OSError as e:
-            self._log.warn('OSError on stop ignored')
-
-        except AttributeError as e:
-            self._log.warn('AttributeError on stop ignored')
-
-
-    # --------------------------------------------------------------------------
-    # 
-    def run(self):
-
-        assert(self._role == QUEUE_BRIDGE)
-
-        signal.signal(signal.SIGTERM, sigterm_handler)
-        signal.signal(signal.SIGUSR2, sigusr2_handler)
-
-        try:
-            spt.setproctitle('rp.%s' % self._name)
-            self._log.info('start bridge %s on %s', self._name, self._addr)
-
-            # FIXME: should we cache messages coming in at the pull/push 
-            #        side, so as not to block the push end?
-
-            ctx = zmq.Context()
-            _in = ctx.socket(zmq.PULL)
-            _in.linger = _LINGER_TIMEOUT
-            _in.hwm    = _HIGH_WATER_MARK
-            _in.bind(self._addr)
-
-            _out = ctx.socket(zmq.REP)
-            _out.linger = _LINGER_TIMEOUT
-            _out.hwm    = _HIGH_WATER_MARK
-            _out.bind(self._addr)
-
-            # communicate the bridge ports to the parent process
-            _in_port  =  _in.getsockopt(zmq.LAST_ENDPOINT)
-            _out_port = _out.getsockopt(zmq.LAST_ENDPOINT)
-
-            self._pqueue.put([_in_port, _out_port])
-
-            self._log.info('bound bridge %s to %s : %s', self._name, _in_port, _out_port)
-
-            # start polling for messages
-            _poll = zmq.Poller()
-            _poll.register(_out, zmq.POLLIN)
-
-
-            # We wait for an incoming message.  When one is received,
-            # we'll poll all outgoing sockets for requests, and the
-            # forward the message to whoever requested it.
-            #
-            # If so configured, we can stall messages until reaching
-            # a certain high-water-mark, and upon reaching that will
-            # release all messages at once.  When stalling for such set
-            # of messages, we wait for self._stall_hwm messages, and
-            # then forward those to whatever output channel requesting
-            # them (individually),
-            # FIXME: make hwm configurable
-            # FIXME: we may want to release all stalled messages after
-            #        some (configurable) timeout?
-            # FIXME: is it worth introducing a 'flush' command or
-            #        message type?
-            hwm  = self._stall_hwm
-            bulk = self._bulk_size
-            while True:
-
-                msgs = list()
-                while len(msgs) < hwm:
-                    data = _uninterruptible(_in.recv)
-                    msg  = msgpack.unpackb(data) 
-                    if isinstance(msg, list): 
-                        msgs += msg
-                    else: 
-                        msgs.append(msg)
-                  # self._log.debug('stall %s/%s', len(msgs), hwm)
-
-                # if 'bulk' is '0', we send all messages as
-                # a single bulk.  Otherwise, we chop them up
-                # into bulks of the given size
-                if bulk <= 0:
-                    nbulks = 1
-                    bulks  = [msgs]
-                else:
-                    nbulks = int(math.ceil(len(msgs) / float(bulk)))
-                    bulks  = ru.partition(msgs, nbulks)
-
-                while bulks:
-                    # timeout in ms
-                    events = dict(_uninterruptible(_poll.poll, 1000))
-
-                    if _out in events:
-
-                        req  = _uninterruptible(_out.recv)
-                        data = msgpack.packb(bulks.pop(0)) 
-                        _uninterruptible(_out.send, data)
-
-                        # go to next message/bulk (break while loop)
-                        self._log.debug('sent  %s [hwm: %s]', (nbulks-len(bulks)), hwm)
-
-        except Exception as e:
-            self._log.exception('bridge error: %s', e)
-
-        except SystemExit:
-            self._log.warn('bridge exit')
-       
-        except KeyboardInterrupt:
-            self._log.warn('bridge intr')
-       
-        finally:
-            self._log.debug('bridge final')
+        return True
 
 
     # --------------------------------------------------------------------------

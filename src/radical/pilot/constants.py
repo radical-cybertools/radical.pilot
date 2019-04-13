@@ -33,7 +33,7 @@ UMGR_UNSCHEDULE_PUBSUB         = 'umgr_unschedule_pubsub'
 UMGR_RESCHEDULE_PUBSUB         = 'umgr_reschedule_pubsub'
 
 AGENT_UNSCHEDULE_PUBSUB        = 'agent_unschedule_pubsub'
-AGENT_RESCHEDULE_PUBSUB        = 'agent_reschedule_pubsub'
+AGENT_SCHEDULE_PUBSUB          = 'agent_schedule_pubsub'
 
 CONTROL_PUBSUB                 = 'control_pubsub'
 STATE_PUBSUB                   = 'state_pubsub'
@@ -44,32 +44,46 @@ LOG_PUBSUB                     = 'log_pubsub'
 #
 # two-state for resource occupation.
 #
-FREE = 'Free'
-BUSY = 'Busy'
+FREE = 0
+BUSY = 1
 
 
 # ------------------------------------------------------------------------------
 #
 # staging defines
 #
-COPY     = 'Copy'     # local cp
-LINK     = 'Link'     # local ln -s
-MOVE     = 'Move'     # local mv
-TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special case of copy
+COPY     = 'Copy'      # local cp
+LINK     = 'Link'      # local ln -s
+MOVE     = 'Move'      # local mv
+TRANSFER = 'Transfer'  # saga remote transfer  TODO: special case of copy?
+TARBALL  = 'Tarball'   # remote staging will be executed using a tarball.
 
 #
-# Flags
+# Flags - inherit from RS where possible, add custom ones
 #
-CREATE_PARENTS = 'CreateParents'  # Create parent directories while writing file
-SKIP_FAILED    = 'SkipFailed'     # Don't stage out files if tasks failed
-NON_FATAL      = 'NonFatal'       # Don't fail the CU if input is missing
+import radical.saga.filesystem as rsf
+
+CREATE_PARENTS = rsf.CREATE_PARENTS  # Create parent directories if needed
+SKIP_FAILED    = 4096                # Don't stage out files if tasks failed
+NON_FATAL      = 8192                # Don't fail the CU if input is missing
+
+
+#
+# CU MPI flags
+#
+SERIAL         = 'Serial'
+MPI            = 'MPI'
+OpenMP         = 'OpenMP'
+GPU            = 'GPU'
+GPU_MPI        = 'GPU_MPI'
+GPU_OpenMP     = 'GPU_OpenMP'
 
 #
 # Defaults
 #
 DEFAULT_ACTION   = TRANSFER
 DEFAULT_PRIORITY = 0
-DEFAULT_FLAGS    = [CREATE_PARENTS, SKIP_FAILED]
+DEFAULT_FLAGS    = CREATE_PARENTS
 STAGING_AREA     = 'staging_area'
 
 
@@ -77,4 +91,6 @@ STAGING_AREA     = 'staging_area'
 SCHEDULER_ROUND_ROBIN  = "round_robin"
 SCHEDULER_BACKFILLING  = "backfilling"
 SCHEDULER_DEFAULT      = SCHEDULER_ROUND_ROBIN
+
+# ------------------------------------------------------------------------------
 

@@ -67,7 +67,7 @@ def get_session_docs(db, sid, cache=None, cachedir=None) :
 
     try :
         if  os.path.isfile (cache) :
-            print 'using cache: %s' % cache
+          # print 'using cache: %s' % cache
             return ru.read_json (cache)
     except Exception as e :
         # continue w/o cache
@@ -162,14 +162,14 @@ def get_session_slothist(db, sid, cache=None, cachedir=None) :
                     if started :
                         finished = event['timestamp']
                         break
-                    if event['state'] == EXECUTING :
+                    if event['state'] == AGENT_EXECUTING :
                         started = event['timestamp']
 
                 if not started or not finished :
                   # print "no start/finish for cu %s - ignored" % unit_doc['uid']
                     continue
 
-                for slot_id in unit_doc['slots'] :
+                for slot_id in unit_doc['opaque_slots'] :
                     if slot_id not in slot_infos :
                       # print "slot %s for pilot %s unknown - ignored" % (slot_id, pilot_id)
                         continue

@@ -15,6 +15,8 @@ from . import states    as rps
 from . import constants as rpc
 from . import types     as rpt
 
+from . import compute_unit_description as cud
+
 from .staging_directives import expand_description
 from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA
 
@@ -35,7 +37,6 @@ class ComputeUnit(object):
 
                       ud = radical.pilot.ComputeUnitDescription()
                       ud.executable = "/bin/date"
-                      ud.cores      = 1
 
                       unit = umgr.submit_units(ud)
     """
@@ -56,22 +57,33 @@ class ComputeUnit(object):
     #
     def __init__(self, umgr, descr):
 
+        # NOTE GPU: we allow `mpi` for backward compatibility - but need to
+        #      convert the bool into a decent value for `cpu_process_type`
+        if  descr[cud.CPU_PROCESS_TYPE] in [True, 'True']:
+            descr[cud.CPU_PROCESS_TYPE] = cud.MPI
+
+        # ensure that the description is viable
+        descr.verify()
+
         # 'static' members
         self._descr = descr.as_dict()
         self._umgr  = umgr
 
         # initialize state
-        self._session       = self._umgr.session
-        self._uid           = ru.generate_id('unit.%(counter)06d', ru.ID_CUSTOM)
-        self._state         = rps.NEW
-        self._log           = umgr._log
-        self._exit_code     = None
-        self._stdout        = None
-        self._stderr        = None
-        self._pilot         = None
-        self._sandbox       = None
-        self._callbacks     = dict()
-        self._cb_lock       = threading.RLock()
+        self._session          = self._umgr.session
+        self._uid              = ru.generate_id('unit.%(counter)06d', ru.ID_CUSTOM)
+        self._state            = rps.NEW
+        self._log              = umgr._log
+        self._exit_code        = None
+        self._stdout           = None
+        self._stderr           = None
+        self._pilot            = descr.get('pilot')
+        self._resource_sandbox = None
+        self._pilot_sandbox    = None
+        self._unit_sandbox     = None
+        self._client_sandbox   = None
+        self._callbacks        = dict()
+        self._cb_lock          = threading.RLock()
 
         for m in rpt.UMGR_METRICS:
             self._callbacks[m] = dict()
@@ -81,35 +93,12 @@ class ComputeUnit(object):
                 'cb'      : self._default_state_cb, 
                 'cb_data' : None}
 
-        # sanity checks on description
-        for check in ['cores']:
-            if not self._descr.get(check):
-                raise ValueError("ComputeUnitDescription needs '%s'" % check)
-
-        if  not self._descr.get('executable') and \
-            not self._descr.get('kernel')     :
-            raise ValueError("ComputeUnitDescription needs 'executable' or 'kernel'")
-
-        # If staging directives exist, expand them 
-        #
-        # FIXME: staging directives should be expanded later, during 
-        #        umgr_input_staging -- at that point we have enough information
-        #        to make *all* src and tgt names into full URLs (including fully
-        #        quualified paths), and can then rely on those being URLs in all
-        #        places.
+        # If staging directives exist, expand them to the full dict version.  Do
+        # not, however, expand any URLs as of yet, as we likely don't have
+        # sufficient information about pilot sandboxes etc.
         expand_description(self._descr)
 
         self._umgr.advance(self.as_dict(), rps.NEW, publish=False, push=False)
-
-    # --------------------------------------------------------------------------
-    #
-    @staticmethod
-    def create(umgr, descr):
-        """ 
-        PRIVATE: Create a new compute unit (in NEW state)
-        """
-
-        return ComputeUnit(umgr=umgr, descr=descr)
 
 
     # --------------------------------------------------------------------------
@@ -143,7 +132,7 @@ class ComputeUnit(object):
         Return True if state changed, False otherwise
         """
 
-        assert(unit_dict['uid'] == self.uid)
+        assert(unit_dict['uid'] == self.uid), 'update called on wrong instance'
 
         # NOTE: this method relies on state updates to arrive in order, and
         #       without gaps.
@@ -151,17 +140,25 @@ class ComputeUnit(object):
         target  = unit_dict['state']
 
         if target not in [rps.FAILED, rps.CANCELED]:
-            assert(rps._unit_state_value(target) - rps._unit_state_value(current) == 1)
+            try:
+                assert(rps._unit_state_value(target) - rps._unit_state_value(current) == 1), \
+                            'invalid state transition'
+            except:
+                self._log.error('%s: invalid state transition %s -> %s',
+                                self.uid, current, target)
+                raise
 
         self._state = target
 
         # we update all fields
         # FIXME: well, not all really :/
         # FIXME: setattr is ugly...  we should maintain all state in a dict.
-        for key in ['state', 'stdout', 'stderr', 'exit_code', 'pilot', 'sandbox']:
+        for key in ['state', 'stdout', 'stderr', 'exit_code', 'pilot', 
+                    'resource_sandbox', 'pilot_sandbox', 'unit_sandbox', 
+                    'client_sandbox']:
 
             val = unit_dict.get(key, None)
-            if val:
+            if val is not None:
                 setattr(self, "_%s" % key, val)
 
         # invoke unit specific callbacks
@@ -170,8 +167,8 @@ class ComputeUnit(object):
             cb      = cb_val['cb']
             cb_data = cb_val['cb_data']
 
-          # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, self.state, cb_name)
-            
+            self._log.debug('%s calls state cb %s', self.uid, cb)
+
             if cb_data: cb(self, self.state, cb_data)
             else      : cb(self, self.state)
 
@@ -187,17 +184,20 @@ class ComputeUnit(object):
         """
 
         ret = {
-            'type':        'unit',
-            'umgr':        self.umgr.uid,
-            'uid':         self.uid,
-            'name':        self.name,
-            'state':       self.state,
-            'exit_code':   self.exit_code,
-            'stdout':      self.stdout,
-            'stderr':      self.stderr,
-            'pilot':       self.pilot,
-            'sandbox':     self.sandbox,
-            'description': self.description   # this is a deep copy
+            'type':             'unit',
+            'umgr':             self.umgr.uid,
+            'uid':              self.uid,
+            'name':             self.name,
+            'state':            self.state,
+            'exit_code':        self.exit_code,
+            'stdout':           self.stdout,
+            'stderr':           self.stderr,
+            'pilot':            self.pilot,
+            'resource_sandbox': self.resource_sandbox,
+            'pilot_sandbox':    self.pilot_sandbox,
+            'unit_sandbox':     self.unit_sandbox,
+            'client_sandbox':   self.client_sandbox,
+            'description':      self.description   # this is a deep copy
         }
 
         return ret
@@ -346,24 +346,15 @@ class ComputeUnit(object):
     # --------------------------------------------------------------------------
     #
     @property
-    def working_directory(self):
-        """
-        Returns the full working directory URL of this unit, if that is
-        already known, or 'None' otherwise
-
-        **Returns:**
-            * A URL (radical.utils.Url).
-
-        **NOTE:** deprecated, use *`sandbox`*
-        """
-
+    def working_directory(self): # **NOTE:** deprecated, use *`sandbox`*
         return self.sandbox
 
-
-    # --------------------------------------------------------------------------
-    #
     @property
     def sandbox(self):
+        return self.unit_sandbox
+
+    @property
+    def unit_sandbox(self):
         """
         Returns the full sandbox URL of this unit, if that is already
         known, or 'None' otherwise.
@@ -383,7 +374,20 @@ class ComputeUnit(object):
         #       There is thus implicit knowledge shared between the RP client
         #       and the RP agent on how the sandbox path is formed!
 
-        return self._sandbox
+        return self._unit_sandbox
+
+
+    @property
+    def resource_sandbox(self):
+        return self._resource_sandbox
+
+    @property
+    def pilot_sandbox(self):
+        return self._pilot_sandbox
+
+    @property
+    def client_sandbox(self):
+        return self._client_sandbox
 
 
     # --------------------------------------------------------------------------
@@ -398,6 +402,17 @@ class ComputeUnit(object):
         """
 
         return copy.deepcopy(self._descr)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def metadata(self):
+        """
+        Returns the metadata field of the unit's description
+        """
+
+        return copy.deepcopy(self._descr.get('metadata'))
 
 
     # --------------------------------------------------------------------------

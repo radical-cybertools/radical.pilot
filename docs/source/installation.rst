@@ -14,6 +14,9 @@ RADICAL-Pilot requires the following packages:
 * virtualenv >= 1.11
 * pip == 1.4.1
 
+or
+* Anaconda Python 2.7
+
 If you plan to use RADICAL-Pilot on remote machines, you would also require to
 setup a password-less ssh login to the particular machine. 
 (`help <http://www.debian-administration.org/article/152/Password-less_logins_with_OpenSSH>`_)
@@ -31,33 +34,32 @@ support and authentication to increased the security of RADICAL-Pilot.
 Installation
 ============
 
-To install RADICAL-Pilot in a virtual environment, open a terminal and run:
+RADICAL-Pilot is distributed via PyPi and Conda-Forge. To install RADICAL-Pilot
+to a virtual environment do:
 
-If your shell is BASH,
-
+via PyPi
+-----------------
 .. code-block:: bash
 
     virtualenv --system-site-packages $HOME/ve
     source $HOME/ve/bin/activate
     pip install radical.pilot
 
+via Conda-Forge
+-----------------
+.. code-block:: bash
 
-If your shell is CSH,
-
-.. code-block:: csh
-
-    virtualenv --system-site-packages $HOME/ve
-    source $HOME/ve/bin/activate.csh
-    pip install radical.pilot    
-    rehash
+    conda create -n ve -y python=2.7
+    source activate ve
+    conda install radical.pilot -c conda-forge
 
 For a quick sanity check, to make sure that the the packages have been installed
 properly, run:
 
 .. code-block:: bash
 
-    $ radicalpilot-version
-    0.37
+    $ radical-pilot-version
+    0.50.21
 
 The exact output will obviously depend on the exact version of RP which got
 installed.
@@ -102,7 +104,10 @@ secured resources, we strongly recommend the usage of a secured MongoDB
 instance!
 
 The ``dbname`` component in the database url can be any valid MongoDB database
-name (ie. it musy not contain dots).  RP will create that DB on the fly.
+name (ie. it musy not contain dots).RP will not create that DB on the fly and 
+requires the DB to be setup prior to creating the session object. But RP will 
+create collections in that DB on its own, named after RP session IDs.
+
 
 A MongoDB server can support more than one user. In an environment where
 multiple users use RP applications, a single MongoDB server for all users
@@ -146,7 +151,8 @@ follows:
 Now you can login to the machine by using ``ssh mach1``.  Please make also sure
 that your ssh keys are registered on the target resources -- while RP can in
 principle handle password based login, the repeated prompts for passwords makes
-RP applications very difficult to use.
+RP applications very difficult to use. To learn more about accessing remote machine 
+using RP, see the chapter `Using Local and Remote HPC Resources <./machconf.rst>`.
 
 Source: http://nerderati.com/2011/03/17/simplify-your-life-with-an-ssh-config-file/
 
@@ -195,6 +201,11 @@ to ``0.6c11`` via
 .. code-block:: bash
 
     $ pip install --upgrade setuptools==0.6c11
+
+.. note::
+
+    RADICAL-Pilot can be installed under Anaconda, although that mode is not
+    tested as thoroughly compared to installation under non-Anaconda Python.
 
 
 **Mailing Lists**

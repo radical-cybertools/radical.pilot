@@ -12,7 +12,6 @@ os.environ['RADICAL_PILOT_VERBOSE'] = verbose
 import radical.pilot as rp
 import radical.utils as ru
 
-
 # ------------------------------------------------------------------------------
 #
 # READ the RADICAL-Pilot documentation: http://radicalpilot.readthedocs.org/
@@ -25,7 +24,7 @@ import radical.utils as ru
 if __name__ == '__main__':
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot', level=verbose)
+    report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
@@ -92,8 +91,12 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
             cud.executable     = '/usr/bin/wc'
             cud.arguments      = ['-c', 'input.dat']
-            cud.input_staging  = ['input.dat']
-
+            #cud.input_staging  = ['input.dat']
+            
+          # this is a shortcut for:
+            cud.input_staging  = {'source': 'client:///input.dat', 
+                                  'target': 'unit:///input.dat',
+                                  'action': rp.TRANSFER}
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')

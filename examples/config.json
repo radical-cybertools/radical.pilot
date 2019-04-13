@@ -4,6 +4,36 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
+        "cores"    : 1,
+        "gpus"     : 2
+    },
+
+    "local.localhost_aprun" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 32,
+        "gpus"     : 2
+    },
+
+    "local.localhost_orte" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 2
+    },
+
+    "local.localhost_orte" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 64
+    },
+
+    "local.localhost_ortelib" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
         "cores"    : 2
     },
 
@@ -28,31 +58,24 @@
         "cores"    : 2
     },
 
-    "local.localhost_orte" : {
-        "project"  : null,
-        "queue"    : null,
-        "schema"   : null,
-        "cores"    : 2
-    },
-
-    "local.localhost_ortelib" : {
-        "project"  : null,
-        "queue"    : null,
-        "schema"   : null,
-        "cores"    : 2
-    },
-
-    "ncsa.bw" : {
+    "ncsa.bw_orte" : {
         "project"  : "gk4",
         "queue"    : "debug",
-        "schema"   : "gsissh",
+        "schema"   : "local",
+        "cores"    : 64
+    },
+
+    "ncsa.bw_aprun" : {
+        "project"  : "gk4",
+        "queue"    : "debug",
+        "schema"   : "local",
         "cores"    : 64
     },
 
     "ncsa.bw_lib" : {
         "project"  : "gk4",
         "queue"    : "debug",
-        "schema"   : "gsissh",
+        "schema"   : "local",
         "cores"    : 64
     },
 
@@ -66,7 +89,7 @@
     "ncsa.bw_ccm" : {
         "project"  : "gk4",
         "queue"    : "debug",
-        "schema"   : "gsissh",
+        "schema"   : "local",
         "cores"    : 64
     },
 
@@ -78,7 +101,7 @@
     },
 
     "epsrc.archer" : {
-        "project"  : "e290",
+        "project"  : "d137",
         "queue"    : "short",
         "schema"   : null,
         "cores"    : 64
@@ -98,11 +121,32 @@
         "cores"    : 64
     },
 
-    "xsede.supermic" : {
-        "project"  : "TG-CCR140028",
+    "xsede.supermic_ssh" : {
+        "project"  : "TG-MCB090174",
         "queue"    : "workq",
         "schema"   : "gsissh",
         "cores"    : 64
+    },
+
+    "xsede.supermic" : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "workq",
+        "schema"   : "gsissh",
+        "cores"    : 80
+    },
+
+    "xsede.supermic_orte" : {
+        "project"  : "TG-CCR140028",
+        "queue"    : "workq",
+        "schema"   : "gsissh",
+        "cores"    : 80
+    },
+
+    "xsede.supermic_ortelib" : {
+        "project"  : "TG-CCR140028",
+        "queue"    : "workq",
+        "schema"   : "gsissh",
+        "cores"    : 80
     },
 
     "xsede.stampede" : {
@@ -126,6 +170,13 @@
         "cores"    : 64
     },
 
+    "xsede.bridges" : {
+        "project"  : null,
+        "queue"    : "RM",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
     "xsede.wrangler" : {
         "project"  : "TG-MCB090174",
         "queue"    : "debug",
@@ -134,6 +185,13 @@
     },
 
     "xsede.comet"  : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "compute",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.comet_ssh"  : {
         "project"  : "TG-MCB090174",
         "queue"    : "compute",
         "schema"   : "gsissh",
@@ -189,23 +247,52 @@
         "cores"    : 64
     },
 
+    "ncar.cheyenne": {
+	"project"      : "URTG0014",
+	"queue"        : "regular",
+	"schema"       : "local",
+	"cores"        : 72
+    },
+
+    "ornl.titan" : {
+        "project"  : "BIP149",
+        "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    : 160
+    },
+
     "ornl.titan_aprun" : {
-        "project"  : "BIP103",
+        "project"  : "BIP149",
+        "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    : 160
+    },
+
+    "ornl.titan_ortelib" : {
+        "project"  : "BIP149",
         "queue"    : "debug",
         "schema"   : "local",
         "cores"    : 64
     },
 
-    "ornl.titan_lib" : {
-        "project"  : "BIP103",
+    "ornl.titan_orte"   : {
+        "project"  : "BIP149",
         "queue"    : "debug",
         "schema"   : "local",
-        "cores"    : 64
+        "cores"    : 160
     },
 
-    "ornl.titan"   : {
-        "project"  : "BIP103",
+    "ornl.titan_aprun"   : {
+        "project"  : "BIP149",
         "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    : 64,
+        "gpus"     : 4
+    },
+
+    "ornl.rhea_aprun"   : {
+        "project"  : "BIP149",
+        "queue"    : "batch",
         "schema"   : "local",
         "cores"    : 64
     },
@@ -225,7 +312,8 @@
     },
 
     "osg.xsede-virt-clust"   : {
-        "project"  : "TG-CCR140028",
+      # "project"  : "TG-CCR140028",
+        "project"  : "TG-MCB090174",
         "queue"    : null,
         "schema"   : "gsissh",
         "cores"    : 1
@@ -238,12 +326,20 @@
         "cores"    : 64
     }, 
 
+    "fub.allegro"   : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 36,
+        "gpus"     : 12
+    },
+
     "lumc.shark"   : {
         "project"  : null,
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 16
-    },
+    }, 
 
     "lumc.gb-ui"   : {
         "project"  : null,
@@ -257,6 +353,20 @@
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 1
+    },
+
+    "radical.one" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 8
+    }, 
+
+    "radical.two" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 8
     }
 }
 

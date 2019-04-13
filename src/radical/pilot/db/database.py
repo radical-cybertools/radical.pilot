@@ -3,24 +3,20 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os 
 import copy
-import saga
 import time
-import gridfs
-import pprint
 import pymongo
+
 import radical.utils     as ru
 
-from .. import utils     as rpu
 from .. import states    as rps
 
 
-#-----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 class DBSession(object):
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def __init__(self, sid, dburl, cfg, logger, connect=True):
         """ 
@@ -157,7 +153,8 @@ class DBSession(object):
         close the session
         """
         if self.closed:
-            raise RuntimeError('No active session.')
+            return None
+          # raise RuntimeError('No active session.')
 
         self._closed = time.time()
 
@@ -180,7 +177,8 @@ class DBSession(object):
         Adds a pilot managers doc
         """
         if self.closed:
-            raise Exception('No active session.')
+            return None
+          # raise Exception('No active session.')
 
         pmgr_doc['_id']  = pmgr_doc['uid']
         pmgr_doc['type'] = 'pmgr'
@@ -200,7 +198,8 @@ class DBSession(object):
         # FIXME: explicit bulk vs. insert(multi=True)
 
         if self.closed:
-            raise Exception('No active session.')
+            return None
+          # raise Exception('No active session.')
 
         bulk = self._c.initialize_ordered_bulk_op()
 
@@ -224,27 +223,35 @@ class DBSession(object):
 
     #--------------------------------------------------------------------------
     #
-    def pilot_command(self, cmd, arg, pids):
+    def pilot_command(self, cmd, arg, pids=None):
         """
         send a command and arg to a set of pilots
         """
 
         if self.closed:
-            raise Exception('session is closed')
+            return None
+          # raise Exception('session is closed')
 
         if not self._c:
             raise Exception('session is disconnected ')
 
-        if not isinstance(pids, list):
+        if pids and not isinstance(pids, list):
             pids = [pids]
 
         try:
-            cmd_spec = {'cmd' : cmd, 'arg' : arg}
+            cmd_spec = {'cmd' : cmd,
+                        'arg' : arg}
+
             # FIXME: evaluate res
-            res = self._c.update({'type'  : 'pilot',
-                                  'uid'   : {'$in' : pids}},
-                                 {'$push' : {'cmd' : cmd_spec}},
-                                 multi = True)
+            if pids:
+                res = self._c.update({'type'  : 'pilot',
+                                      'uid'   : {'$in' : pids}},
+                                     {'$push' : {'cmd' : cmd_spec}},
+                                     multi = True)
+            else:
+                res = self._c.update({'type'  : 'pilot'},
+                                     {'$push' : {'cmd' : cmd_spec}},
+                                     multi = True)
 
         except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)
@@ -283,6 +290,7 @@ class DBSession(object):
         # model, ie. is the largest of any state the pilot progressed through
         for doc in docs:
             doc['state'] = rps._pilot_state_collapse(doc['states'])
+
         return docs
 
 
@@ -295,16 +303,23 @@ class DBSession(object):
         return dict {uid:unit}
         """
         if self.closed:
-            raise Exception("No active session.")
+            return None
+          # raise Exception("No active session.")
+
+        # we only pull units which are not yet owned by the umgr
 
         if not unit_ids:
-            cursor = self._c.find({'type' : 'unit', 
-                                   'umgr' : umgr_uid})
+            cursor = self._c.find({'type'   : 'unit',
+                                   'umgr'   : umgr_uid,
+                                   'control': {'$ne' : 'umgr'},
+                                   })
 
         else:
-            cursor = self._c.find({'type' : 'unit', 
-                                   'uid'  : {'$in': unit_ids},
-                                   'umgr' : umgr_uid})
+            cursor = self._c.find({'type'   : 'unit',
+                                   'umgr'   : umgr_uid,
+                                   'uid'    : {'$in' : unit_ids},
+                                   'control': {'$ne' : 'umgr'  },
+                                   })
 
         # make sure we return every unit doc only once
         # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
@@ -326,7 +341,8 @@ class DBSession(object):
         Adds a unit managers document
         """
         if self.closed:
-            raise Exception('No active session.')
+            return None
+          # raise Exception('No active session.')
 
         umgr_doc['_id']  = umgr_doc['uid']
         umgr_doc['type'] = 'umgr'
@@ -346,26 +362,44 @@ class DBSession(object):
         # FIXME: explicit bulk vs. insert(multi=True)
 
         if self.closed:
-            raise Exception('No active session.')
+            return None
+          # raise Exception('No active session.')
 
-        bulk = self._c.initialize_ordered_bulk_op()
+        # We can only insert DB bulks up to a certain size, which is hardcoded
+        # here.  In principle, the update should go to the update worker anyway
+        # -- but as long as we use the DB as communication channel, we need to
+        # make sure that the insert is executed before handing off control over
+        # the unit to other components, thus the synchronous insert call.
+        # (FIXME)
+        bcs = 1024  # bulk_collection_size
+        cur = 0     # bulk index
 
-        for doc in unit_docs:
-            doc['_id']     = doc['uid']
-            doc['type']    = 'unit'
-            doc['control'] = 'umgr'
-            doc['states']  = [doc['state']]
-            doc['cmd']     = list()
+        while True:
 
-            bulk.insert(doc)
+            subset = unit_docs[cur : cur+bcs]
+            bulk   = self._c.initialize_ordered_bulk_op()
+            cur   += bcs
 
-        try:
-            res = bulk.execute()
-            self._log.debug('bulk unit insert result: %s', res)
-            # FIXME: evaluate res
-        except pymongo.errors.OperationFailure as e:
-            self._log.exception('pymongo error: %s' % e.details)
-            raise RuntimeError('pymongo error: %s' % e.details)
+            if not subset:
+                # all units are done
+                break
+
+            for doc in subset:
+                doc['_id']     = doc['uid']
+                doc['type']    = 'unit'
+                doc['control'] = 'umgr'
+                doc['states']  = [doc['state']]
+                doc['cmd']     = list()
+                bulk.insert(doc)
+
+            try:
+                res = bulk.execute()
+                self._log.debug('bulk unit insert result: %s', res)
+                # FIXME: evaluate res
+
+            except pymongo.errors.OperationFailure as e:
+                self._log.exception('pymongo error: %s' % e.details)
+                raise RuntimeError( 'pymongo error: %s' % e.details)
 
     # --------------------------------------------------------------------------
     #

@@ -23,8 +23,8 @@ agent scheduler will place the units on the set of resources (cores) that agent
 is managing.  The agent scheduler can be configured via agent and resource
 configuration files (see :ref:`chapter_resources`).
 
-Round-Robin Scheduler (``SCHED_ROUND_ROBIN``)
----------------------------------------------
+Round-Robin Scheduler (``SCHEDULER_ROUND_ROBIN``)
+-------------------------------------------------
 
 The Round-Robin scheduler will fairly distributed arriving compute units over
 the set of known pilots, independent of unit state, expected workload, pilot
@@ -33,8 +33,8 @@ fast scheduler, which does not impose any additional communication roundtrips
 between the unit manager and pilot agents.
 
 
-Backfilling Scheduler (``SCHED_BACKFILLING``)
----------------------------------------------
+Backfilling Scheduler (``SCHEDULER_BACKFILLING``)
+-------------------------------------------------
 
 The backfilling scheduler does a better job at actual load balancing, but at the
 cost of additional communication roundtrips.  It depends on the actual

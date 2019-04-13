@@ -1,132 +1,76 @@
 
 import os
+import sys
 
 import radical.utils as ru
 
 from .constants import *
 
-# The Staging Directives are specified using a dict in the following form:
-#   staging_directive = {
-#       'source':   None, # ru.Url() or string
-#       'target':   None, # ru.Url() or string
-#       'action':   None, # See 'Action operators' below
-#       'flags':    None, # See 'Flags' below
-#       'priority': 0     # Control ordering of actions
-#   }
 
-#
-# Action operators
-#
 # ------------------------------------------------------------------------------
 #
 def expand_description(descr):
     """
-    call expand_staging_directive for the 'input_staging' and 'output_staging'
-    elements of the given description
+    convert any simple, string based staging directive in the description into 
+    its dictionary equivalent
+
+    In this context, the following kinds of expansions are performed:
+
+      in:  ['input.dat'] 
+      out: {'source' : 'client:///input.dat', 
+            'target' : 'unit:///input.dat',
+            'action' : rp.TRANSFER}
+
+      in:  ['input.dat > staged.dat']
+      out: {'source' : 'client:///input.dat', 
+            'target' : 'unit:///staged.dat',
+            'action' : rp.TRANSFER}
+
+    This method changes the given description in place - repeated calls on the
+    same description instance will have no effect.  However, we expect this
+    method to be called only once during unit construction.
     """
 
-    input_directives  = expand_staging_directives(descr.get('input_staging' ))
-    output_directives = expand_staging_directives(descr.get('output_staging'))
+    if descr.get('input_staging')  is None: descr['input_staging']  = list()
+    if descr.get('output_staging') is None: descr['output_staging'] = list()
 
-    # we now have full sd dicts.  Make sure that we have absolute path
-    # for the relevant local targets and sources.
-    for sd in input_directives:
-        sd['source'] = make_abs_url(sd['source'])
-
-    for sd in output_directives:
-        sd['target'] = make_abs_url(sd['target'])
-
-    descr['input_staging']  = input_directives
-    descr['output_staging'] = output_directives
-
-
-# ------------------------------------------------------------------------------
-def make_abs_url(path):
-    """
-    Some paths in data staging directives are to be interpreted as relative to
-    the applications working directory.  This specifically holds for *input
-    staging sources* and *output staging targets*, at least in those cases where
-    they are aspecified as relative path, ie. not as an URL with schema and/or
-    host element.
-
-    This helper is testing exactly that condition.  If it applies, it converts
-    the path to an absolute URL with `file://localhost/$PWD/` root.  It returns
-    that Url as a string, so that it can be readily placed back into the staging
-    directives (which are strings at that point).
-    """
-
-    if path.startswith('/'): is_abs = True
-    else                   : is_abs = False
-
-    url = ru.Url(path)
-
-    if url.schema in [None, '', 'file'     ] and \
-       url.host   in [None, '', 'localhost'] :
-        url.schema = 'file'
-        url.host   = 'localhost'
-        if is_abs: url.path = path
-        else     : url.path = '%s/%s' % (os.getcwd(), path)
-
-    return str(url)
+    descr['input_staging' ] = expand_staging_directives(descr['input_staging' ])
+    descr['output_staging'] = expand_staging_directives(descr['output_staging'])
 
 
 # ------------------------------------------------------------------------------
 #
-def expand_staging_directives(staging_directives):
+def expand_staging_directives(sds):
     """
     Take an abbreviated or compressed staging directive and expand it.
     """
 
-    log = ru.get_logger('radical.pilot.utils')
-
-    if not staging_directives:
+    if not sds:
         return []
 
-    # Convert single entries into a list
-    if not isinstance(staging_directives, list):
-        staging_directives = [staging_directives]
+    if not isinstance(sds, list):
+        sds = [sds]
 
-    # Use this to collect the return value
-    new_staging_directive = []
-
-    # We loop over the list of staging directives
-    for sd in staging_directives:
+    ret = list()
+    for sd in sds:
 
         if isinstance(sd, basestring):
-
             # We detected a string, convert into dict.  The interpretation
             # differs depending of redirection characters being present in the
             # string.
 
-            append = False
-            if '>>'  in sd:
-                src, tgt = sd.split('>>', 2)
-                append = True
-            elif '>' in sd :
-                src, tgt = sd.split('>',  2)
-                append  = False
-            elif '<<' in sd:
-                tgt, src = sd.split('<<', 2)
-                append = True
-            elif '<'  in sd:
-                tgt, src = sd.split('<',  2)
-                append = False
-            else:
-                src, tgt = sd, os.path.basename(sd)
-                append = False
+            if   '>>' in sd: src, tgt = sd.split('>>', 2)
+            elif '>'  in sd: src, tgt = sd.split('>' , 2)
+            elif '<<' in sd: tgt, src = sd.split('<<', 2)
+            elif '<'  in sd: tgt, src = sd.split('<' , 2)
+            else           : src, tgt = sd, os.path.basename(ru.Url(sd).path)
 
-            if append:
-                log.warn("append mode on staging not supported (ignored)")
-
-            new_sd = {'uid':      ru.generate_id('sd'),
-                      'source':   src.strip(),
-                      'target':   tgt.strip(),
-                      'action':   DEFAULT_ACTION,
-                      'flags':    DEFAULT_FLAGS,
-                      'priority': DEFAULT_PRIORITY
-            }
-            log.debug("Converting string '%s' into dict '%s'" % (sd, new_sd))
-            new_staging_directive.append(new_sd)
+            expanded = {'uid':      ru.generate_id('sd'),
+                        'source':   src.strip(),
+                        'target':   tgt.strip(),
+                        'action':   DEFAULT_ACTION,
+                        'flags':    DEFAULT_FLAGS,
+                        'priority': DEFAULT_PRIORITY}
 
         elif isinstance(sd, dict):
 
@@ -134,123 +78,140 @@ def expand_staging_directives(staging_directives):
             valid_keys = ['source', 'target', 'action', 'flags', 'priority']
             for k in sd:
                 if k not in valid_keys:
-                    raise ValueError('invalif entry "%s" on staging directive' % k)
+                    raise ValueError('"%s" is invalid on staging directive' % k)
 
-            # We detected a dict, will have to distinguish between single and multiple entries
-            if 'action' in sd:
-                action = sd['action']
-            else:
-                action = DEFAULT_ACTION
+            source   = sd.get('source')
+            target   = sd.get('target',   os.path.basename(ru.Url(source).path))
+            action   = sd.get('action',   DEFAULT_ACTION)
+            flags    = sd.get('flags',    DEFAULT_FLAGS)
+            priority = sd.get('priority', DEFAULT_PRIORITY)
 
-            if 'flags' in sd:
-                flags = sd['flags']
-            else:
-                flags = DEFAULT_FLAGS
-
-            if 'priority' in sd:
-                priority = sd['priority']
-            else:
-                priority = DEFAULT_PRIORITY
-
-            if not 'source' in sd:
+            if not source:
                 raise Exception("Staging directive dict has no source member!")
-            source = sd['source']
 
-            if 'target' in sd:
-                target = sd['target']
-            else:
-                # Set target to None, as inferring it depends on the type of source
-                target = None
+            # RCT flags should always be rendered as OR'ed integers - but old
+            # versions of the RP API rendered them as list of strings.  We
+            # convert to the integer version for backward compatibility - but we
+            # complain loudly if we find actual strings.
+            if isinstance(flags, list):
+                int_flags = 0
+                for flag in flags:
+                    if isinstance(flags, basestring):
+                        raise ValueError('"%s" is no valid RP constant' % flag)
+                    int_flags != flag
+                flags = int_flags
 
-            if isinstance(source, basestring) or isinstance(source, ru.Url):
+            elif isinstance(flags, basestring):
+                raise ValueError('use RP constants for staging flags!')
 
-                if target:
-                    # Detect asymmetry in source and target length
-                    if isinstance(target, list):
-                        raise Exception("Source is singular but target is a list")
-                else:
-                    # We had no target specified, assume the basename of source
-                    if isinstance(source, basestring):
-                        target = os.path.basename(source)
-                    elif isinstance(source, ru.Url):
-                        target = os.path.basename(source.path)
-                    else:
-                        raise Exception("Source %s is neither a string nor a Url (%s)!" %
-                                        (source, type(source)))
-
-                # This is a regular entry, complete and append it
-                new_sd = {'uid':      ru.generate_id('sd'),
-                          'source':   source,
-                          'target':   target,
-                          'action':   action,
-                          'flags':    flags,
-                          'priority': priority,
-                }
-                new_staging_directive.append(new_sd)
-                log.debug("Completing entry '%s'" % new_sd)
-
-            elif isinstance(source, list):
-                # We detected a list of sources, we need to expand it
-
-                # We will break up the list entries in source into an equal length list of dicts
-                new_sds = []
-
-                if target:
-                    # Target is also specified, make sure it is a list of equal length
-
-                    if not isinstance(target, list):
-                        raise Exception("Both source and target are specified, but target is not a list")
-
-                    if len(source) != len(target):
-                        raise Exception("Source (%d) and target (%d) are lists of different length" % (len(source), len(target)))
-
-                    # Now that we have established that the list are of equal size we can combine them
-                    for src_entry, tgt_entry in zip(source, target):
-
-                        new_sd = {'uid':      ru.generate_id('sd'),
-                                  'source':   src_entry,
-                                  'target':   tgt_entry,
-                                  'action':   action,
-                                  'flags':    flags,
-                                  'priority': priority
-                        }
-                        new_sds.append(new_sd)
-                else:
-                    # Target is not specified, use the source for the target too.
-
-                    # Go over all entries in the list and create an equal length list of dicts.
-                    for src_entry in source:
-
-                        if isinstance(source, basestring):
-                            target = os.path.basename(src_entry),
-                        elif isinstance(source, ru.Url):
-                            target = os.path.basename(src_entry.path),
-                        else:
-                            raise Exception("Source %s is neither a string nor a Url (%s)!" %
-                                             (source, type(source)))
-
-                        new_sd = {'uid':      ru.generate_id('sd'),
-                                  'source':   src_entry,
-                                  'target':   target,
-                                  'action':   action,
-                                  'flags':    flags,
-                                  'priority': priority
-                        }
-                        new_sds.append(new_sd)
-
-                log.debug("Converting list '%s' into dicts '%s'" % (source, new_sds))
-
-                # Add the content of the local list to global list
-                new_staging_directive.extend(new_sds)
-
-            else:
-                raise Exception("Source %s is neither an entry nor a list (%s)!" %
-                                (source, type(source)))
+            expanded = {'uid':      ru.generate_id('sd'),
+                        'source':   source,
+                        'target':   target,
+                        'action':   action,
+                        'flags':    flags,
+                        'priority': priority}
 
         else:
             raise Exception("Unknown type of staging directive: %s (%s)" % (sd, type(sd)))
 
-    return new_staging_directive
+        # we warn the user when  src or tgt are using the deprecated
+        # `staging://` schema
+        if str(expanded['source']).startswith('staging://'):
+            sys.stderr.write('staging:// schema is deprecated - use pilot://\n')
+            expanded['source'] = str(expanded['source']).replace('staging://', 
+                                                                 'pilot://')
+
+        if str(expanded['target']).startswith('staging://'):
+            sys.stderr.write('staging:// schema is deprecated - use pilot://\n')
+            expanded['target'] = str(expanded['target']).replace('staging://', 
+                                                                 'pilot://')
+
+        ret.append(expanded)
+
+    return ret
+
+
+# ------------------------------------------------------------------------------
+#
+def complete_url(path, context, log=None):
+    '''
+    Some paths in data staging directives are to be interpreted relative to
+    certain locations, namely relative to
+
+        * `client://`  : the client's working directory
+        * `resource://`: the RP    sandbox on the target resource
+        * `pilot://`   : the pilot sandbox on the target resource
+        * `unit://`    : the unit  sandbox on the target resource
+
+    For the above schemas, we interpret `schema://` the same as `schema:///`,
+    ie. we treat this as a namespace, not as location qualified by a hostname.
+
+    The `context` parameter is expected to be a dict which provides a set of
+    URLs to be used to expand the path.
+
+    Other URL schemas are left alone, any other strings are interpreted as
+    path in the context of `pwd`.
+
+    The method returns an instance of ru.Url.  Note that URL parsing is not
+    really cheap, so this method should be used conservatively.
+    '''
+
+    # FIXME: consider evaluation of env vars
+
+    purl = ru.Url(path)
+
+    log.debug('<- %s (%s)', path, type(path))
+    log.debug('   %s', purl)
+
+    str_path = str(path)
+
+    # we always want a schema, and fall back to file:// or pwd://, depending if
+    # the path is absolute or relative.  Note that pwd:// is interpreted in the
+    # context of the staging component, which may live on the client or target
+    # resource -- we make no attempt at expanding the path at this point.
+    # We further assume that the user knows what she is doing when using
+    # absolute paths, and make no attempts to verify those either.
+    if not purl.schema:
+        if str_path.startswith('/'):
+            purl.schema = 'file'
+        else:
+            purl.schema = 'pwd'
+
+    schema = purl.schema
+
+    if schema == 'client': 
+        # 'client' is 'pwd' in client context.  
+        # We don't check context though.
+        schema = 'pwd'  
+
+    log.debug('   %s', schema)
+    if schema in context.keys():
+
+        # we interpret any hostname as part of the path element
+        if   purl.host and purl.path: ppath = '%s/%s' % (purl.host, purl.path)
+        elif purl.host              : ppath =    '%s' % (           purl.host)
+        elif purl.path              : ppath =    '%s' % (           purl.path)
+        else                        : ppath =     '.'
+
+        if schema not in context:
+            raise ValueError('cannot expand schema (%s) for staging' % schema)
+
+        log.debug('   expand with %s', context[schema])
+        ret = ru.Url(context[schema])
+
+        if schema in ['resource', 'pilot']:
+            # use a dedicated staging area dir
+            ret.path += '/staging_area'
+
+        ret.path += '/%s' % ppath
+        purl      = ret
+
+    # if not schema is set, assume file:// on localhost
+    if not purl.schema:
+        purl.schema = 'file'
+
+    log.debug('-> %s', purl)
+    return purl
 
 
 # ------------------------------------------------------------------------------

@@ -1,0 +1,295 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import pprint
+import datetime
+import pymongo
+import radical.utils       as ru
+import radical.pilot       as rp
+import radical.pilot.utils as rpu
+
+
+_DEFAULT_DBURL = 'mongodb://user:password@localhost:27017/radicalpilot/'
+_DEFAULT_DBURL = 'mongodb://user:password@ec2-184-72-89-141.compute-1.amazonaws.com:27017/radicalpilot/'
+
+if  'RADICAL_PILOT_DBURL' in os.environ:
+    _DEFAULT_DBURL = os.environ['RADICAL_PILOT_DBURL']
+
+_DEFAULT_DBURL = ru.Url(_DEFAULT_DBURL)
+if  not _DEFAULT_DBURL.path or '/' == _DEFAULT_DBURL.path:
+    _DEFAULT_DBURL.path = 'radicalpilot'
+
+_DEFAULT_DBURL = str(_DEFAULT_DBURL)
+
+# ------------------------------------------------------------------------------
+#
+def usage(msg=None, noexit=False):
+
+    if  msg:
+        print "\n      Error: %s" % msg
+
+    print """
+      usage      : %s [-d <dburl>] [-m <mode>] [-a <age>] [-s <sid>]
+      example    : %s -a 3d -m purge
+                   purge all sessions older than 3 days in the default database
+
+      modes :
+
+        help     : show this message
+        list     : list   matching sessions
+        purge    : remove matching sessions
+        export   : export matching sessions to .json files
+        dump     : dump 1 matching session  to stdout
+
+      options :
+        -a <age> : apply mode to all sessions older than <age>
+                   age is formed as <int>+<suffix>.  Valid suffixes are:
+                   m : minutes
+                   h : hours
+                   d : days   (default)
+                   w : weeks
+                   M : months ( 30 days)
+                   y : years  (365 days)
+        -s <sid> : apply mode to session with given ID
+        -d <url> : use given database URL instead of default (%s).
+
+      The default command is 'list'.  
+      
+""" % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL)
+
+    if msg:
+        sys.exit(1)
+
+    if not noexit:
+        sys.exit(0)
+
+
+# ------------------------------------------------------------------------------
+#
+def get_sessions(db, dbname, age, session):
+
+    sids = list()
+    now  = datetime.datetime.now()
+
+    if session:
+        sids.append(session)
+    else:
+        sids = rpu.get_session_ids(db)
+
+    if not sids:
+        print 'no matching session in database at %s' % url
+        return
+
+    sessions = dict()
+    created  = list()
+    for sid in sids:
+
+        docs = rpu.get_session_docs(db, sid)
+        if  not docs or \
+            not 'session' in docs or \
+            not 'created' in docs['session']:
+            # invalid session
+            print 'check  session %s ? (%17s)' % (sid, '???')
+            continue
+
+        c = docs['session']['created']
+
+        if isinstance(c, float):
+            c = datetime.datetime.utcfromtimestamp(c) 
+
+        if (now-c) > age:
+            sessions[sid] = docs
+            created.append(c)
+            print 'check  session %s + (%17s)' % (sid, now-c)
+        else:
+            print 'check  session %s - (%17s)' % (sid, now-c)
+            print 'optimignore remaining sessions'
+            break
+
+
+    for c in sorted(created):
+        for sid in sessions:
+            session_created = sessions[sid]['session']['created']
+            if isinstance(c, float):
+                session_created = datetime.datetime.utcfromtimestamp(session_created) 
+            if session_created == c:
+                print 'match  session %s   (%17s)' % (sid, now-c)
+
+    return sessions
+
+
+# ------------------------------------------------------------------------------
+#
+def list_sessions(db, dbname, age, session):
+
+    sids = list()
+    now  = datetime.datetime.now()
+
+    if session:
+        sids.append(session)
+    else:
+        sids = rpu.get_session_ids(db)
+
+    if not sids:
+        print 'no matching session in database at %s' % url
+        return []
+
+    session_ids = list()
+    for sid in sids:
+
+        docs = rpu.get_session_docs(db[dbname], sid)
+        if  not docs or \
+            not 'session' in docs or \
+            not 'created' in docs['session']:
+            # invalid session
+            print 'check  session %s ? (%17s)' % (sid, '???')
+            continue
+
+        c = docs['session']['created']
+
+        if isinstance(c, float):
+            c = datetime.datetime.utcfromtimestamp(c) 
+
+        if (now-c) > age:
+            session_ids.append(sid)
+            print 'check  session %s + (%17s)' % (sid, now-c)
+        else:
+            print 'check  session %s - (%17s)' % (sid, now-c)
+            print 'optimignore remaining sessions'
+            break
+
+    for sid in session_ids:
+        print sid
+
+    return session_ids
+
+
+# ------------------------------------------------------------------------------
+#
+def purge_sessions(db, dbname, age, session):
+
+    session_ids = list_sessions(db, dbname, age, session)
+    database    = db[dbname]
+
+    for sid in session_ids:
+
+        db.drop_collection(sid)
+      # collection = database[sid]
+      # collection.drop()
+        print 'purged session %s' % sid
+
+
+# ------------------------------------------------------------------------------
+#
+def export_sessions(db, dbname, age, session):
+
+    sessions = get_sessions(db, dbname, age, session)
+
+    for sid in sessions:
+
+        docs = sessions[sid]
+
+        print "export session %s.json" % sid
+        ru.write_json(docs, "%s.json" % sid)
+
+
+# ------------------------------------------------------------------------------
+#
+def dump_session(db, dbname, age, session):
+
+    sessions = get_sessions(db, dbname, age, session)
+
+    for sid in sessions:
+        print "\n%s:\n%s" % (sid, pprint.pformat(sessions[sid]))
+
+
+# ------------------------------------------------------------------------------
+# 
+def parse_commandline():
+
+    return options
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__':
+
+    import optparse
+    parser = optparse.OptionParser(add_help_option=False)
+
+    parser.add_option('-s', '--session', dest='session')
+    parser.add_option('-d', '--dburl',   dest='url')
+    parser.add_option('-m', '--mode',    dest='mode')
+    parser.add_option('-a', '--age',     dest='age')
+    parser.add_option('-h', '--help',    dest='help', action="store_true")
+
+    options, args = parser.parse_args()
+
+    if  args:
+        usage("Too many arguments (%s)" % args)
+
+    if  options.help:
+        usage()
+
+    if  options.mode in ['help']: 
+        usage()
+
+    if  not options.mode:
+        usage("No mode specified")
+
+    if  not options.url: 
+        options.url = _DEFAULT_DBURL 
+
+    mode    = options.mode 
+    url     = options.url
+    session = options.session
+    age     = options.age
+
+    mongo, db, dbname, cname, pname = ru.mongodb_connect(str(url), _DEFAULT_DBURL)
+
+    print "modes   : %s" % mode
+    print "db url  : %s" % url
+
+    if  session:
+        print "session : %s" % session
+
+    if  age:
+        suffix=age[-1]
+        if  suffix in '01234567890':
+            suffix = 'd'
+            num    = int(age)
+        
+        if  suffix in 'mhdwMy':
+            num    = int(age[:-1])
+        else:
+            print suffix
+            usage("invalid age specification (%s)" % options.age)
+
+        if  suffix is 'm': age = datetime.timedelta(minutes =       num)
+        if  suffix is 'h': age = datetime.timedelta(hours   =       num)
+        if  suffix is 'd': age = datetime.timedelta(days    =       num)
+        if  suffix is 'w': age = datetime.timedelta(days    =   7 * num)
+        if  suffix is 'M': age = datetime.timedelta(days    =  30 * num)
+        if  suffix is 'y': age = datetime.timedelta(days    = 365 * num)
+
+
+    else:
+        age = datetime.timedelta.min
+
+    print "age     : %s" % age
+
+
+    for m in mode.split(','):
+
+        if   m == 'list'  : list_sessions  (db, dbname, age, session)
+        elif m == 'dump'  : dump_session   (db, dbname, age, session)
+        elif m == 'purge' : purge_sessions (db, dbname, age, session) 
+        elif m == 'export': export_sessions(db, dbname, age, session) 
+        elif m == 'help'  : usage(noexit=True)
+        else              : usage("unknown mode '%s'" % m)
+
+    mongo.disconnect()
+
+# ------------------------------------------------------------------------------
+

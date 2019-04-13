@@ -22,6 +22,7 @@ class DPlace(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
+
         # dplace: job launcher for SGI systems (e.g. on Blacklight)
         self.launch_command = ru.which('dplace')
 
@@ -30,25 +31,26 @@ class DPlace(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        opaque_slots = cu['opaque_slots']
+        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_cores   = cud['cores']
+        task_cores   = cud['cpu_processes']  # FIXME: cpu_threads
         task_args    = cud.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
 
-        if 'task_offsets' not in opaque_slots :
+        if 'task_offsets' not in slots :
             raise RuntimeError('insufficient information to launch via %s: %s' \
-                    % (self.name, opaque_slots))
+                    % (self.name, slots))
 
-        task_offsets = opaque_slots['task_offsets']
+        task_offsets = slots['task_offsets']        # This needs to revisited 
+        assert(len(task_offsets) == 1)              # since slots structure has 
+        dplace_offset = task_offsets[0]             # changed
 
         if task_argstr:
             task_command = "%s %s" % (task_exec, task_argstr)
         else:
             task_command = task_exec
 
-        dplace_offset = task_offsets
 
         dplace_command = "%s -c %d-%d %s" % (
             self.launch_command, dplace_offset,

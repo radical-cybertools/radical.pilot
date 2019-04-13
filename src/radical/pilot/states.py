@@ -63,6 +63,12 @@ def _pilot_state_progress(pid, current, target):
         if target in [DONE, FAILED, CANCELED]:
             return[target, []]
 
+    # allow to transition from FAILED to DONE (done gets picked up from DB,
+    # sometimes after pilot watcher detects demise)
+    if current == FAILED:
+        if target in [DONE, FAILED]:
+            return[target, []]
+
     if current in FINAL and target != current:
         if target in FINAL:
             raise ValueError('invalid transition for %s: %s -> %s' % (pid, current, target))
@@ -264,6 +270,28 @@ if 'RP_ENABLE_OLD_DEFINES' in os.environ:
     EXECUTING              = AGENT_EXECUTING
     PENDING_OUTPUT_STAGING = UMGR_STAGING_OUTPUT_PENDING
     STAGING_OUTPUT         = UMGR_STAGING_OUTPUT
+
+_legacy_states = {
+    'New'                        : NEW, 
+    'AllocatingPending'          : UMGR_SCHEDULING_PENDING,
+    'Allocating'                 : UMGR_SCHEDULING,
+    'PendingInputStaging'        : UMGR_STAGING_INPUT_PENDING,
+    'StagingInput'               : UMGR_STAGING_INPUT,
+    'AgentStagingInputPending'   : AGENT_STAGING_INPUT_PENDING,
+    'AgentStagingInput'          : AGENT_STAGING_INPUT,
+    'ExecutingPending'           : AGENT_EXECUTING_PENDING,
+    'Executing'                  : AGENT_EXECUTING,
+    'AgentStagingOutputPending'  : AGENT_STAGING_OUTPUT_PENDING,
+    'AgentStagingOutput'         : AGENT_STAGING_OUTPUT,
+    'PendingOutputStaging'       : UMGR_STAGING_OUTPUT_PENDING,
+    'StagingOutput'              : UMGR_STAGING_OUTPUT,
+    'Done'                       : DONE, 
+    'Canceled'                   : CANCELED,
+    'CANCELED'                   : CANCELED,
+    'Failed'                     : FAILED,
+    'FAILED'                     : FAILED
+}
+
 
 # -----------------------------------------------------------------------------
 

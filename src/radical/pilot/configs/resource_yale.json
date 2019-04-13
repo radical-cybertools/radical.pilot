@@ -1,5 +1,6 @@
+
 {
-    "grace": {
+    "grace_ssh": {
         "description"                 : "Grace is a shared-use facility within Yale’s Faculty of Arts and Sciences (FAS).",
         "notes"                       : "",
         "schemas"                     : ["ssh"],
@@ -15,14 +16,14 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
-        "pre_bootstrap_1"             : [
+        "pre_bootstrap_0"             : [
             "module load Langs/Python/2.7.6",
             "module load MPI/OpenMPI"],
-        "pre_bootstrap_2"             : [],
+        "pre_bootstrap_1"             : [],
         "valid_roots"                 : ["/"],
         "rp_version"                  : "local",
-        "virtenv"                     : "%(global_sandbox)s/ve_grace",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
     }
 }
+

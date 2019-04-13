@@ -25,7 +25,7 @@ import radical.utils as ru
 if __name__ == '__main__':
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot', level=verbose)
+    report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
@@ -82,7 +82,7 @@ if __name__ == '__main__':
             # Create a workload of ComputeUnits.
             # Each compute unit reports the id of the pilot it runs on.
 
-            n = 5   # number of units to run
+            n = 128   # number of units to run
             report.info('create %d unit description(s)\n\t' % n)
 
             cuds = list()
@@ -91,8 +91,8 @@ if __name__ == '__main__':
                 # create a new CU description, and fill it.
                 # Here we don't use dict initialization.
                 cud = rp.ComputeUnitDescription()
-                cud.executable = '/bin/sleep'
-                cud.arguments  = ['60']
+                cud.executable = '/bin/echo'
+                cud.arguments  = ['$RP_PILOT_ID']
 
                 cuds.append(cud)
                 report.progress()

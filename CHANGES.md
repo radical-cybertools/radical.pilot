@@ -5,6 +5,346 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.60.1  Hotfix                                                        2018-04-12
+--------------------------------------------------------------------------------
+
+  - work around a pip install problem
+
+
+0.60.0  Release                                                       2018-04-10
+--------------------------------------------------------------------------------
+
+  - add issue template 
+  - rename RP_PILOT_SBOX to RP_PILOT_STAGING and expose to tasks
+  - fix bridges default partition (#1816)
+  - fix #1826 
+  - fix off-by-one error on unit state check 
+  - ignore failing DB disconnect 
+  - follow rename of saga-python to radical.saga
+
+
+0.50.23 Release                                                       2018-03-20
+--------------------------------------------------------------------------------
+
+  - hotfix: use popen spawner for localhost
+
+
+0.50.22 Release                                                       2018-02-11
+--------------------------------------------------------------------------------
+
+  - another fix LSF var expansion
+
+
+0.50.21 Release                                                       2018-12-19
+--------------------------------------------------------------------------------
+
+  - fix LSF var expansion
+
+
+0.50.20 Release                                                       2018-11-25
+--------------------------------------------------------------------------------
+
+  - fix Titan OMPI installation
+  - support metdata for units
+  - fix git error detection during setup
+
+
+0.50.19 Release                                                       2018-11-15
+--------------------------------------------------------------------------------
+
+  - ensure profile fetching on empty tarballs
+
+
+0.50.18 Release                                                       2018-11-13
+--------------------------------------------------------------------------------
+
+  - support for data locality aware scheduling
+
+
+0.50.17 Release                                                       2018-10-31
+--------------------------------------------------------------------------------
+
+  - improve event documentation
+  - support CU level metadata
+
+
+0.50.16 Release                                                       2018-10-26
+--------------------------------------------------------------------------------
+
+  - add new shell spawner as popen replacement
+
+
+0.50.15 Release                                                       2018-10-24
+--------------------------------------------------------------------------------
+
+  - fix recursive pilot staging             
+
+
+0.50.14 Release                                                       2018-10-24
+--------------------------------------------------------------------------------
+
+  - add Cheyenne support - thanks Vivek!
+
+
+0.50.13 Release                                                       2018-10-16
+--------------------------------------------------------------------------------
+
+  - survive if SAGA does not support job.name (#1744)
+
+
+0.50.12 Release                                                       2018-10-12
+--------------------------------------------------------------------------------
+
+  - fix stacksize usage on BW
+
+
+0.50.11 Release                                                       2018-10-09
+--------------------------------------------------------------------------------
+
+  - fix 'getting_started' example (no MPI)
+
+
+0.50.10 Release                                                       2018-09-29
+--------------------------------------------------------------------------------
+
+  - ensure the correct code path in SAGA for Blue Waters
+
+
+0.50.9  Release                                                       2018-09-28
+--------------------------------------------------------------------------------
+
+  - fix examples
+  - fix issue #1715 (#1716) 
+  - remove Stampede's resource configs. issue #1711
+  - supermic does not like `curl -1` (#1723) 
+
+
+0.50.8  Release                                                       2018-08-03
+--------------------------------------------------------------------------------
+
+  - make sure that CUD values are not None (#1688)
+  - don't limit pymongo version anymore (#1687) 
+
+
+0.50.7  Release                                                       2018-08-01
+--------------------------------------------------------------------------------
+
+  - fix bwpy handling
+
+
+0.50.6  Release                                                       2018-07-31
+--------------------------------------------------------------------------------
+
+  - fix curl tssl negotiation problem (#1683)
+
+
+0.50.5  Release                                                       2018-07-30
+--------------------------------------------------------------------------------
+
+  - fix default values for process and thread types (#1681) 
+  - fix outdated links in ompi deploy script 
+  - fix/issue 1671 (#1680) 
+  - fix scheduler config checks (#1677) 
+
+
+0.50.4  Release                                                       2018-07-13
+--------------------------------------------------------------------------------
+
+  - set oversubscribe default to True
+
+
+0.50.3  Release                                                       2018-07-11
+--------------------------------------------------------------------------------
+
+  - disable rcfg expnsion
+
+
+0.50.2  Release                                                       2018-07-08
+--------------------------------------------------------------------------------
+
+  - fix relative tarball unpack paths
+
+
+0.50.1  Release                                                       2018-07-05
+--------------------------------------------------------------------------------
+
+  - GPU support
+  - many bug fixes
+
+
+0.47.14 Release                                                       2018-06-13
+--------------------------------------------------------------------------------
+
+  - fix recursive output staging
+
+
+0.47.13 Release                                                       2018-06-02
+--------------------------------------------------------------------------------
+
+  - catch up with RU log, rep and prof settings
+
+
+0.47.12 Release                                                       2018-05-19
+--------------------------------------------------------------------------------
+
+  - ensure that units are started in their own process group, to ensure clean
+    cancellation semantics.
+
+
+0.47.11 Release                                                       2018-05-08
+--------------------------------------------------------------------------------
+
+  - fix schemas on BW (local orte, local aprun)
+
+
+0.47.10 Release                                                       2018-04-19
+--------------------------------------------------------------------------------
+
+  - fix #1602
+
+
+0.47.9 Release                                                        2018-04-18
+--------------------------------------------------------------------------------
+
+  - fix default scheduler for localhost
+
+
+0.47.8 Release                                                        2018-04-16
+--------------------------------------------------------------------------------
+
+  - hotfix to catch up with pypi upgrade
+
+
+0.47.7 Release                                                        2018-04-15
+--------------------------------------------------------------------------------
+
+  - bugfix related to radical.entk #255
+
+
+0.47.6 Release                                                        2018-04-12
+--------------------------------------------------------------------------------
+
+  - bugfix related to #1590
+
+
+0.47.5 Release                                                        2018-04-12
+--------------------------------------------------------------------------------
+
+  - make sure a dict object exists even on empty env settings (#1590)
+
+
+0.47.4 Release                                                        2018-03-20
+--------------------------------------------------------------------------------
+
+  - fifo agent scheduler (#1537) 
+  - hombre agent scheduler (#1536) 
+  - Fix/issue 1466 (#1544) 
+  - Fix/issue 1501 (#1541) 
+  - switch to new OMPI deployment on titan (#1529) 
+  - add agent configuration doc (#1540) 
+
+
+0.47.3 Release                                                        2018-03-20
+--------------------------------------------------------------------------------
+
+  - add resource limit test 
+  - add tmp cheyenne config 
+  - api rendering proposal for partitions 
+  - fix bootstrap sequence (BW)
+  - tighten bootstrap process, add documentation 
+
+
+0.47.2 Release                                                        2018-02-28
+--------------------------------------------------------------------------------
+
+  - fix issue 1538
+  - fix issue 1554
+  - expose profiler to LM hooks (#1522) 
+  - fix bin names (#1549) 
+  - fix event docs, add an event for symmetry (#1527) 
+  - name attribute has been changed to uid, fixes issue #1518
+  - make use of flags consistent between RP and RS (#1547) 
+  - add support for recursive data staging (#1513. #1514)  (JD, VB, GC)
+  - change staging flags to integers (inherited from RS)
+  - add support for bulk data transfer (#1512) (IP, SM)
+
+
+0.47 Release                                                          2017-11-19
+--------------------------------------------------------------------------------
+
+  - Correctly added 'lm_info.cores_per_node' SLURM 
+  - Torque RM now respects config settings for cpn 
+  - Update events.md 
+  - add SIGUSR2 for clean termination on SGE 
+  - add information about partial event orders 
+  - add issue demonstrators 
+  - add some notes on cpython issue demonstrators 
+  - add xsede.supermic_orte configuration
+  - add xsede.supermic_ortelib configuration 
+  - apply RU's managed process to termination stress test 
+  - attempt to localize aprun units 
+  - better hops for titan 
+  - better integration of CU script and app profs 
+  - catch up with config changes for local testing 
+  - centralize URL derivation for pilot job service endpoints, hops, and sandboxes 
+  - clarify use of namespace vs. full qualified URL in the context of RP file staging 
+  - clean up config management, inheritance 
+  - don't fetch json twice 
+  - ensure that profiles are flushed and packed correctly 
+  - fail missing pilots on termination 
+  - fix AGENT_ACTIVE profile timing
+  - fix close-session purge mode 
+  - fix cray agent config, avoid termination race
+  - fix duplicated transition events 
+  - fix osg config 
+  - fix #1283 
+  - fixing error from bootstrapper + aprun parsing error 
+  - force profile flush earlier
+  - get cpn for ibrun 
+  - implement session.list_resources() per #1419 
+  - make sure a canceled pilot stays canceled 
+  - make cb return codes consistent
+  - make sure profs are flushed on termination 
+  - make sure the umgr only pulls units its interested in 
+  - profile mkdir 
+  - publish resource_details (incl. lm_info) again 
+  - re-add a profile flag to advance() 
+  - remove old controllers 
+  - remove old files 
+  - remove uid clashes for sub-agent components and components in general 
+  - setup number of cores per node on stampede2 
+  - smaller default pilot size for supermic 
+  - switch to ibrun for comet_ssh 
+  - track unit drops 
+  - use js hop for untar 
+  - using new process class 
+  - GPU/CPU pinning test is now complete, needs some env settings in the launchers 
+
+
+0.46.2 Release                                                        2017-09-02
+--------------------------------------------------------------------------------
+
+  - hotfix for #1426 - thanks Iannis!
+
+
+0.46.1 Release                                                        2017-08-23
+--------------------------------------------------------------------------------
+
+  - hotfix for #1415
+
+
+Version 0.46                                                          2017-08-11
+--------------------------------------------------------------------------------
+
+  - TODO
+
+
+0.45.3 Release                                                        2017-05-09
+--------------------------------------------------------------------------------
+
+  - Documentation update for the BW tutorial
+
+
 0.45.1 Release                                                        2017-03-05
 --------------------------------------------------------------------------------
 
