@@ -26,8 +26,8 @@ SCHEDULER_NAME_SPARK              = "SPARK"
 SCHEDULER_NAME_TORUS              = "TORUS"
 SCHEDULER_NAME_YARN               = "YARN"
 
-# SCHEDULER_NAME_CONTINUOUS_FIFO    = "CONTINUOUS_FIFO"
 # SCHEDULER_NAME_CONTINUOUS_SUMMIT  = "CONTINUOUS_SUMMIT"
+# SCHEDULER_NAME_CONTINUOUS_FIFO    = "CONTINUOUS_FIFO"
 
 # ------------------------------------------------------------------------------
 #
