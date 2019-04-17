@@ -149,11 +149,18 @@
         "cores"    : 80
     },
 
-    "princeton.tiger" : {
+    "princeton.tiger_cpu" : {
         "project"  : "geo",
         "queue"    : "cpu",
         "schema"   : "local",
-        "cores"    : 1
+        "cores"    : 40
+    },
+
+    "princeton.tiger_gpu" : {
+        "project"  : "geo",
+        "queue"    : "gpu",
+        "schema"   : "local",
+        "cores"    : 56
     },
 
     "xsede.stampede" : {
