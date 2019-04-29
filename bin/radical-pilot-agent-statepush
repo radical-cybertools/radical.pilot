@@ -34,11 +34,11 @@ if __name__ == '__main__':
         json  = sys.argv[1]
         state = sys.argv[2]
 
-        cfg   = ru.read_json(json)
-        sid   = cfg['session_id']
-        pid   = cfg['pilot_id']
-        dburl = cfg['dburl']
-        print 'dburl   : %s' % dburl
+        cfg      = ru.read_json(json)
+        sid      = cfg['session_id']
+        pid      = cfg['pilot_id']
+        dburl    = cfg['dburl']
+        hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
 
     elif len(sys.argv) == 4:
         sid      = sys.argv[1]
@@ -47,17 +47,17 @@ if __name__ == '__main__':
         dburl    = os.environ['RADICAL_PILOT_DBURL']
         hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
 
-        print 'dburl   : %s' % dburl
-
-        if hostport:
-            print 'dburl   : %s' % dburl
-            print 'tunnel  : %s' % hostport
-            dburl = ru.Url(dburl)
-            dburl.host, dburl.port = hostport.split(':')
-            print 'dburl   : %s' % dburl
-
     else:
         raise ValueError('need sid, pid and state arguments %s' % sys.argv[1:])
+
+
+    print 'dburl   : %s' % dburl
+    print 'tunnel  : %s' % hostport
+
+    if hostport:
+        dburl = ru.Url(dburl)
+        dburl.host, dburl.port = hostport.split(':')
+        print 'dburl[t]: %s' % dburl
 
     print 'session : %s' % sid
     print 'pilot   : %s' % pid

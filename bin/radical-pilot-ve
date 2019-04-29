@@ -10,10 +10,10 @@ VE_TAR="$VE_VER.tar.gz"
 VE_URL="https://files.pythonhosted.org/packages/6a/56/74dce1fdeeabbcc0a3fcf299115f6814bd9c39fc4161658b513240a75ea7/$VE_TAR"
 
 PID=$$
-UID=$(id -un)
+IDU=$(id -un)
 
 test -z "$TMP" && TMP=/tmp
-BASE="$TMP/ve-$PID-$UID/"
+BASE="$TMP/ve-$PID-$IDU/"
 
 
 # ------------------------------------------------------------------------------
@@ -31,6 +31,15 @@ then
     printf "\n\tusage:    $0 <ve_location>"
     printf "\n\tsynopsis: fetch virtualenv and create a VE at ve_location\n"
 fi
+
+
+# ------------------------------------------------------------------------------
+#
+# ensure we have the absolute VE location
+#
+mkdir -p "$VE"
+cd "$VE"
+VE=$(pwd -P)
 
 
 # ------------------------------------------------------------------------------
