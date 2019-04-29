@@ -16,6 +16,7 @@ needs to be kept in sync with the respective RP code.
 import os
 import sys
 import time
+
 import radical.utils as ru
 
 
@@ -39,10 +40,15 @@ if __name__ == '__main__':
         dburl = cfg['dburl']
 
     elif len(sys.argv) == 4:
-        sid   = sys.argv[1]
-        pid   = sys.argv[2]
-        state = sys.argv[3]
-        dburl = os.environ['RADICAL_PILOT_DBURL']
+        sid      = sys.argv[1]
+        pid      = sys.argv[2]
+        state    = sys.argv[3]
+        dburl    = os.environ['RADICAL_PILOT_DBURL']
+        hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
+
+        if hostport:
+            dburl = ru.Url(dburl)
+            dburl.host, dburl.port = hostport.split(':')
 
     else:
         raise ValueError('need sid, pid and state arguments %s' % sys.argv[1:])
@@ -53,7 +59,7 @@ if __name__ == '__main__':
     print 'state   : %s' % pid
 
     # mpongodb_connect wants a string at the moment
-    mongo, db, _, _, _ = ru.mongodb_connect(dburl)
+    mongo, db, _, _, _ = ru.mongodb_connect(str(dburl))
 
     if not mongo or not db:
         raise RuntimeError('Could not connect to database at %s' % dburl)
