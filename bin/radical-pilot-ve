@@ -10,7 +10,7 @@ VE_TAR="$VE_VER.tar.gz"
 VE_URL="https://files.pythonhosted.org/packages/6a/56/74dce1fdeeabbcc0a3fcf299115f6814bd9c39fc4161658b513240a75ea7/$VE_TAR"
 
 PID=$$
-UID=$(id -u)
+UID=$(id -un)
 
 test -z "$TMP" && TMP=/tmp
 BASE="$TMP/ve-$PID-$UID/"
