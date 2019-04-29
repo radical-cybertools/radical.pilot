@@ -19,14 +19,16 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
-        "pre_bootstrap_0"             : ["module load anaconda/5.3.1", 
-                                         "module load intel/18.0", 
-                                         "module load openmpi/intel-17.0/2.1.0/64"],
+        "pre_bootstrap_0"             : ["module purge", 
+                                         "module load intel", 
+                                         "module load intel-mpi",
+                                         "module load intel-python/2.7"
+                                        ],
         "default_remote_workdir"      : "$HOME",
         "valid_roots"                 : [],
         "rp_version"                  : "local",
         "virtenv_mode"                : "use",
-        "virtenv"                     : "/home/amerzky/radical.pilot.sandbox/ve.princeton.tiger_cpu.0.60.1",
+        "virtenv"                     : "$HOME/radical.pilot.sandbox/ve.princeton.tiger",
         "python_dist"                 : "default",
         "export_to_cu"                : [],
         "cu_pre_exec"                 : [],
@@ -35,6 +37,7 @@
         "mem_per_node"                : 0,
         "forward_tunnel_endpoint"     : "tigercpu.princeton.edu"
     },
+
     "tiger_gpu": {
         "description"                 : "",
         "notes"                       : "",
@@ -45,7 +48,7 @@
             "job_manager_endpoint"    : "slurm://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
-        "default_queue"               : "cpu",
+        "default_queue"               : "gpu",
         "lrms"                        : "SLURM",
         "cores_per_node"              : 28,
         "gpus_per_node"               : 4,
@@ -54,19 +57,22 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
-        "pre_bootstrap_0"             : ["module load openmpi/gcc"],
+        "pre_bootstrap_0"             : ["module purge", 
+                                         "module load intel", 
+                                         "module load intel-mpi",
+                                         "module load intel-python/2.7"
         "default_remote_workdir"      : "$HOME",
         "valid_roots"                 : [],
         "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
+        "virtenv_mode"                : "use",
+        "virtenv"                     : "$HOME/radical.pilot.sandbox/ve.princeton.tiger",
         "python_dist"                 : "default",
         "export_to_cu"                : [],
         "cu_pre_exec"                 : [],
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
         "mem_per_node"                : 0,
-        "forward_tunnel_endpoint"     : "tigercpu.princeton.edu"
+        "forward_tunnel_endpoint"     : "tigergpu.princeton.edu"
     }
-
 }
 
