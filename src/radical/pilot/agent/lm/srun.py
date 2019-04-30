@@ -40,14 +40,15 @@ class Srun(LaunchMethod):
     #
     def _configure(self):
 
-        self._srun = ru.which('srun')
+        self.launch_command = ru.which('srun')
 
-        out, err, ret = ru.sh_callout('%s -V' % self._srun)
+        out, err, ret = ru.sh_callout('%s -V' % self.launch_command)
         if ret:
             raise RuntimeError('cannot use srun [%s] [%s]' % (out, err))
 
         self._version = out.split()[1]
-        self._log.debug('using srun from %s [%s]', self._srun, self._version)
+        self._log.debug('using srun from %s [%s]',
+                        self.launch_command, self._version)
 
 
     # --------------------------------------------------------------------------
@@ -55,12 +56,12 @@ class Srun(LaunchMethod):
     def construct_command(self, cu, launch_script_hop):
 
         slots        = cu['slots']
-        sbox         = cu['unit_sandbox']
         cud          = cu['description']
         task_exec    = cud['executable']
         task_env     = cud.get('environment') or dict()
         task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
+        sbox         = ru.Url(cu['unit_sandbox']).path
 
         # Construct the executable and arguments
         if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
@@ -95,6 +96,7 @@ class Srun(LaunchMethod):
             for _ in node['gpu_map']:
                 hostlist.append(node['name'])
 
+        placement = ""
         if uniform and len(hostlist) > 1:
             # we can attempt placement - flag it and prepare SLURM_HOSTFILE
             placement = "--distribution=arbitrary"
@@ -103,15 +105,13 @@ class Srun(LaunchMethod):
                 fout.write(','.join(hostlist))
                 fout.write('\n')
 
-            if not env_string:
-                env_string = '--export='
-            env_string += '"SLURM_HOSTFILE=%s"' % hostfile
-                
-        else:
-            placement = ""
+            if not cu['description']['pre_exec']:
+                cu['description']['pre_exec'] = list()
+            cu['description']['pre_exec'].append(
+                              'export SLURM_HOSTFILE="%s"' % hostfile)
 
-        command = "%s -np %d %s %s %s" \
-                % (self._srun, len(hostlist), placement, 
+        command = "%s -n %d %s %s %s" \
+                % (self.launch_command, len(hostlist), placement, 
                    env_string, task_command)
 
         return command, None
