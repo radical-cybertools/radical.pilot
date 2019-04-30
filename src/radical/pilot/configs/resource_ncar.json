@@ -28,11 +28,15 @@
     "cheyenne": {
         "description"                 : "An SGI ICE XA Cluster located at the National Center for Atmospheric Research (NCAR), (https://www2.cisl.ucar.edu/resources/computational-systems/cheyenne)",
         "notes"                       : "Requires the use of a token from an USB on every connection.",
-        "schemas"                     : ["local"],
+        "schemas"                     : ["local", "ssh"],
         "local"                       : {
             "job_manager_hop"         : "fork://localhost/",
             "job_manager_endpoint"    : "pbspro://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
+        },
+        "ssh"                         : {
+            "job_manager_endpoint"    : "ssh+pbspro://cheyenne.ucar.edu/",
+            "filesystem_endpoint"     : "file://cheyenne.ucar.edu/"
         },
 
         "default_queue"               : "regular",
@@ -56,6 +60,5 @@
         "python_dist"                 : "default",
         "virtenv_dist"                : "system"
     }
-
 }
 
