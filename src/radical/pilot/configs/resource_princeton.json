@@ -3,12 +3,17 @@
     "tiger_cpu": {
         "description"                 : "",
         "notes"                       : "",
-        "schemas"                     : ["local"],
+        "schemas"                     : ["local", "ssh"],
         "mandatory_args"              : [],
-        "local"                      :
+        "local"                       :
         {
             "job_manager_endpoint"    : "slurm://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "ssh+slurm://tigercpu.princeton.edu/",
+            "filesystem_endpoint"     : "sftp://tigercpu.princeton.edu/"
         },
         "default_queue"               : "cpu",
         "lrms"                        : "SLURM",
@@ -41,12 +46,17 @@
     "tiger_gpu": {
         "description"                 : "",
         "notes"                       : "",
-        "schemas"                     : ["local"],
+        "schemas"                     : ["local", "ssh"],
         "mandatory_args"              : [],
         "local"                      :
         {
             "job_manager_endpoint"    : "slurm://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "ssh+slurm://tigercpu.princeton.edu/",
+            "filesystem_endpoint"     : "sftp://tigercpu.princeton.edu/"
         },
         "default_queue"               : "gpu",
         "lrms"                        : "SLURM",
