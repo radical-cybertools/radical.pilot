@@ -12,7 +12,7 @@
         },
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "ssh+slurm://tigercpu.princeton.edu/",
+            "job_manager_endpoint"    : "slurm+ssh://tigercpu.princeton.edu/",
             "filesystem_endpoint"     : "sftp://tigercpu.princeton.edu/"
         },
         "default_queue"               : "cpu",
@@ -55,7 +55,7 @@
         },
         "ssh"                         :
         {
-            "job_manager_endpoint"    : "ssh+slurm://tigercpu.princeton.edu/",
+            "job_manager_endpoint"    : "slurm+ssh://tigercpu.princeton.edu/",
             "filesystem_endpoint"     : "sftp://tigercpu.princeton.edu/"
         },
         "default_queue"               : "gpu",
