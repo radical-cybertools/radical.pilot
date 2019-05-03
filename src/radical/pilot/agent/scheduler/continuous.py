@@ -190,6 +190,8 @@ class Continuous(AgentSchedulingComponent):
                 # resources"
                 #
                 smt = self._lrms_info.get('smt', 1)
+
+                # only socket `1` is affected at the moment
                 for s in [1]:
                     for i in range(smt):
                         idx = s * 21 * smt + i
@@ -217,7 +219,7 @@ class Continuous(AgentSchedulingComponent):
         # the lock is freed here
         if not unit['slots']:
 
-            # signal the unit remains unhandled (Fales signals that failure)
+            # signal the unit remains unhandled (False signals that failure)
             self._prof.prof('schedule_fail', uid=uid)
             return False
 
