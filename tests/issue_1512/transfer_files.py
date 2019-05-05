@@ -5,7 +5,7 @@ import argparse
 import tarfile
 from time import time
 
-import saga as rs
+import radical.saga as rs
 import radical.utils as ru
 from radical.pilot.staging_directives import complete_url
 

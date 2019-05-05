@@ -7,7 +7,7 @@ import unittest
 
 import radical.utils as ru
 import radical.pilot as rp
-import saga          as rs
+import radical.saga  as rs
 
 from   radical.pilot.umgr.staging_input.default import Default
 

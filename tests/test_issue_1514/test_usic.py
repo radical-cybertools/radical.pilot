@@ -3,12 +3,12 @@ import shutil
 import json
 import radical.utils as ru
 import radical.pilot as rp
-import saga as rs
+import radical.saga as rs
 from radical.pilot.umgr.staging_input.default import Default
-import saga.filesystem as rsf
+import radical.saga.filesystem as rsf
 import pytest
 import re
-import saga.utils.pty_shell as rsups
+import radical.saga.utils.pty_shell as rsups
 
 
 try:
