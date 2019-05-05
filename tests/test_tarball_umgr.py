@@ -81,7 +81,7 @@ class TestStagingInputComponent(unittest.TestCase):
 
         component           = Default(cfg=self.cfg, session=None)
         component._prof     = mocked_profiler
-        component._log      = ru.get_logger('dummy')
+        component._log      = ru.Logger('dummy')
         component._session  = None
         component._fs_cache = dict()
         component._js_cache = dict()

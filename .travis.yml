@@ -12,6 +12,8 @@ install:
   - pip install .
 
 script:
+  - export RADICAL_PILOT_DBURL=mongodb://rp:rprprp1@ds043457.mlab.com:43457/rp
+  - export RADICAL_PILOT_TEST_DBNAME=test
   - python setup.py test
 
 notifications:

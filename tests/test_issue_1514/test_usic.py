@@ -136,7 +136,7 @@ def test_transfer_single_file_to_unit(
     component._fs_cache = dict()
     component._prof = mocked_profiler
     component._session = session
-    component._log = ru.get_logger('dummy')
+    component._log = ru.Logger('dummy')
 
     # Create an "actionable" with a single file staging
     # for our unit
@@ -193,7 +193,7 @@ def test_transfer_single_folder_to_unit(
     component._fs_cache = dict()
     component._prof = mocked_profiler
     component._session = session
-    component._log = ru.get_logger('dummy')
+    component._log = ru.Logger('dummy')
 
     # Create an "actionable" with a folder containing a file
     # staged with our unit
@@ -257,7 +257,7 @@ def test_transfer_multiple_folders_to_unit(
     component._fs_cache = dict()
     component._prof = mocked_profiler
     component._session = session
-    component._log = ru.get_logger('dummy')
+    component._log = ru.Logger('dummy')
 
     # Create an "actionable" with a folder containing another folder
     # containing a file staged with our unit
