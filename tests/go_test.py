@@ -9,9 +9,9 @@ import radical.pilot as rp
 def pilot_state_cb (pilot, state) :
     """ this callback is invoked on all pilot state changes """
 
-    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+  # print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
-    if  state in [rp.FAILED, rp.DONE] :
+    if state in [rp.FAILED]:
         sys.exit (1)
 
 
@@ -22,9 +22,9 @@ def unit_state_change_cb (unit, state) :
 
     print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
 
-    if  state == rp.FAILED :
-        print "                         '%s' stderr: %s." % (unit.uid, unit.stderr)
-        print "                         '%s' stdout: %s." % (unit.uid, unit.stdout)
+    if state == rp.FAILED:
+      # print " '%s' stderr: %s." % (unit.uid, unit.stderr)
+      # print " '%s' stdout: %s." % (unit.uid, unit.stdout)
         sys.exit (1)
 
 
@@ -34,7 +34,7 @@ def unit_state_change_cb (unit, state) :
 # RADICAL-Pilot objects. It encapsulates the MongoDB connection(s) as
 # well as security contexts.
 
-def test_go():
+def test_globus_online():
 
     # FIXME: test disabled
     return
@@ -59,7 +59,7 @@ def test_go():
         # Define a X-core that runs for N minutes.
         pdesc = rp.ComputePilotDescription()
         pdesc.resource = "nersc.edison"
-      # pdesc.access_schema = "go"
+      # pdesc.access   = "go"
         pdesc.runtime  = 10  # N minutes
         pdesc.cores    = 24  # X cores
         pdesc.queue    = "debug"
@@ -67,10 +67,11 @@ def test_go():
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        cud_list = []
+        cud_list = list()
 
         pilot_globe = {
-            'source': 'go://marksant#netbook/Users/mark/proj/radical.pilot/examples/helloworld_mpi.py',
+            'source': 'go://marksant#netbook/Users/mark/proj/radical.pilot/' \
+                      'examples/helloworld_mpi.py',
             'target': 'go://nersc#edison/scratch2/scratchdirs/marksant/go/',
           # 'target': 'staging:///go/',
             'action':  rp.TRANSFER
@@ -85,19 +86,17 @@ def test_go():
 
         for unit_count in range(0, 1):
 
-            mpi_test_task = rp.ComputeUnitDescription()
+            cud = rp.ComputeUnitDescription()
 
-            mpi_test_task.pre_exec      = [
-                "module load python",
-                "module load mpi4py"
-            ]
-            mpi_test_task.input_staging = [unit_globe]
-            mpi_test_task.executable    = "python-mpi"
-            mpi_test_task.arguments     = ["helloworld_mpi.py"]
-            mpi_test_task.mpi           = True
-            mpi_test_task.cores         = 24
+            cud.pre_exec      = ["module load python",
+                                  "module load mpi4py"]
+            cud.input_staging = [unit_globe]
+            cud.executable    = "python-mpi"
+            cud.arguments     = ["helloworld_mpi.py"]
+            cud.mpi           = True
+            cud.cores         = 24
 
-            cud_list.append(mpi_test_task)
+            cud_list.append(cud)
 
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
@@ -120,20 +119,17 @@ def test_go():
         # Wait for all compute units to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
 
-        if not isinstance(units, list):
-            units = [units]
-
         for unit in units:
-            print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
-
+          # print "* Task %s - state: %s, exit code: %s, started: %s, " \
+          #       "finished: %s, stdout: %s" \
+          #     % (unit.uid, unit.state, unit.exit_code, unit.start_time,
+          #        unit.stop_time, unit.stdout)
             assert (unit.state == rp.DONE)
-
-    except Exception as e:
-        print "TEST FAILED"
-        raise
 
     finally:
         # Remove session from database
         session.close()
+
+
+# ------------------------------------------------------------------------------
 
