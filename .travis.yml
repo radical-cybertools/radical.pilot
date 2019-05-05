@@ -21,5 +21,8 @@ notifications:
     on_failure: always
 
 after_success:
-  - codecov
+  - after_success:
+      - coverage combine; \
+        coverage xml; \
+        coverage report;
 
