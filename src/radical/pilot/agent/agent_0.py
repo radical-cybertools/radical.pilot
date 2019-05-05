@@ -147,7 +147,8 @@ class Agent_0(rpu.Worker):
                  'state'            : rps.PMGR_ACTIVE,
                  'resource_details' : {
                      'lm_info'      : self._lrms.lm_info.get('version_info'),
-                     'lm_detail'    : self._lrms.lm_info.get('lm_detail')},
+                     'lm_detail'    : self._lrms.lm_info.get('lm_detail'), 
+                     'rm_info'      : self._lrms.lrms_info},
                  '$set'             : ['resource_details']}
         self.advance(pilot, publish=True, push=False)
 
