@@ -3,19 +3,19 @@
 import os
 import sys
 import json
-import time
 import pytest
 import logging
-import datetime
 import radical.pilot as rp
 
 logging.raiseExceptions = False
 
-json_data=open("../pytest_config.json")
+PWD = os.path.dirname(__file__)
+json_data = open("%s/../pytest_config.json" % PWD)
 CONFIG = json.load(json_data)
 json_data.close()
 
-#-------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 def pilot_state_cb (pilot, state):
     """ this callback is invoked on all pilot state changes """
@@ -32,7 +32,8 @@ def pilot_state_cb (pilot, state):
         for cb in pilot.callback_history:
             print cb
 
-#-------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 def unit_state_cb (unit, state):
     """ this callback is invoked on all unit state changes """
@@ -55,7 +56,8 @@ def unit_state_cb (unit, state):
         for cb in unit.callback_history:
             print cb
 
-#-------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 @pytest.fixture(scope="module")
 def setup_stampede_4096(request):
@@ -88,7 +90,7 @@ def setup_stampede_4096(request):
 
         umgr3.add_pilots(pilot3)
 
-    except Exception as e:
+    except Exception:
         print 'test failed'
         raise
 
@@ -104,7 +106,8 @@ def setup_stampede_4096(request):
 
     return session3, pilot3, pmgr3, umgr3, "xsede.stampede"
 
-#-------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 @pytest.fixture(scope="module")
 def setup_stampede_683(request):
@@ -135,14 +138,14 @@ def setup_stampede_683(request):
 
         umgr.add_pilots(pilot)
 
-    except Exception as e:
+    except Exception:
         print 'test failed'
         raise
 
     def fin():
         print "finalizing..."
         pmgr.cancel_pilots()       
-        pmgr.wait_pilots() 
+        pmgr.wait_pilots()#
 
         print 'closing session'
         session.close()
@@ -151,12 +154,12 @@ def setup_stampede_683(request):
 
     return session, pilot, pmgr, umgr, "xsede.stampede"
 
-#-------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # add tests below...
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # ATTENTION: This test consumes about 20 CPU hours on stampede
 #
-
 def test_issue_104(setup_stampede_4096):
 
     session, pilot, pmgr, umgr, resource = setup_stampede_4096
@@ -171,7 +174,7 @@ def test_issue_104(setup_stampede_4096):
 
         compute_units.append(cu)
 
-    units = umgr.submit_units(compute_units)
+    umgr.submit_units(compute_units)
 
     umgr.wait_units()
 
@@ -185,9 +188,9 @@ def test_issue_104(setup_stampede_4096):
         print "  STDOUT: %s" % unit.stdout
         print "  STDERR: %s" % unit.stderr
 
-#-------------------------------------------------------------------------------
-#
 
+# ------------------------------------------------------------------------------
+#
 def test_issue_503(setup_stampede_683):
 
     session, pilot, pmgr, umgr, resource = setup_stampede_683
@@ -204,7 +207,7 @@ def test_issue_503(setup_stampede_683):
 
         compute_units.append(cud)
 
-    umgr.register_callback(unit_state_change_cb)
+  # umgr.register_callback(unit_state_change_cb)
 
     units = umgr.submit_units(compute_units)
 
@@ -216,5 +219,5 @@ def test_issue_503(setup_stampede_683):
     for unit in units:
         print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
             % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
-        
+
         assert (unit.state == rp.DONE)
