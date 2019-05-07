@@ -119,7 +119,7 @@ def test_nonmpi_unit_with_tagging(
     component._lrms_cores_per_node = cfg['lrms_info']['cores_per_node']
     component._lrms_gpus_per_node = cfg['lrms_info']['gpus_per_node']
     component._lrms_lfs_per_node = cfg['lrms_info']['lfs_per_node']
-    component._log = ru.get_logger('test.component')
+    component._log = ru.Logger('test.component')
     component._slot_lock = threading.RLock()
     component._prof = ru.Profiler('test')
     component._tag_history = dict()
@@ -334,7 +334,7 @@ def test_mpi_unit_with_tagging(
     component._lrms_lfs_per_node = cfg['lrms_info']['lfs_per_node']
     component._slot_lock = threading.RLock()
     component._scattered = True
-    component._log = ru.get_logger('test.component')
+    component._log = ru.Logger('test.component')
     component._prof = ru.Profiler('test')
     component._tag_history = dict()
 

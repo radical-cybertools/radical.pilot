@@ -100,7 +100,7 @@ def test_mpi_unit_with_continuous_scheduler(
     component._lrms_gpus_per_node = cfg['lrms_info']['gpus_per_node']
     component._lrms_lfs_per_node = cfg['lrms_info']['lfs_per_node']
     component._tag_history = dict()
-    component._log = ru.get_logger('test.component')
+    component._log = ru.Logger('test.component')
 
     component.nodes = []
     for node, node_uid in component._lrms_node_list:

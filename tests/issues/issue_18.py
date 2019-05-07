@@ -52,7 +52,7 @@ class TestIssue18(unittest.TestCase):
     def test__issue_18_part_1(self):
         """ https://github.com/radical-cybertools/radical.pilot/issues/18
         """
-        import saga
+        import radical.saga as rs
 
         session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
 
@@ -79,7 +79,7 @@ class TestIssue18(unittest.TestCase):
             assert False, "Couldn't find SAGA Job ID in logs."
 
         # KILL THE AGENT PROCESS. 
-        s = saga.job.Service("fork://localhost")
+        s = rs.job.Service("fork://localhost")
         j = s.get_job(saga_id)
         j.cancel()
 
