@@ -70,7 +70,7 @@ class TestComponentSlurmResourceManager(unittest.TestCase):
 
         # Initialize the component before each test
         self.component = Slurm(cfg=None, session=None)
-        self.component._log = ru.get_logger('dummy')
+        self.component._log = ru.Logger('dummy')
         self.component.cores_per_node = None
         self.component.gpus_per_node = None
         self.component.lfs_per_node = None
