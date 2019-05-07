@@ -78,7 +78,7 @@ class TestAPRUNlaunchMethod(unittest.TestCase):
     def test_aprun_construct(self, mocked_init, mocked_raise_on):
         launch_method = APRun(cfg={'Testing'}, session=self._session)
         launch_method.launch_command = 'aprun'
-        launch_method._log  = ru.get_logger('dummy')
+        launch_method._log  = ru.Logger('dummy')
 
         aprun_cmd, _ = launch_method.construct_command(
             self._cu, launch_script_hop=1)
