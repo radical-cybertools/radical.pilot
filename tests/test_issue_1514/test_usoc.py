@@ -3,13 +3,13 @@ import shutil
 import json
 import radical.utils as ru
 import radical.pilot as rp
-import saga as rs
+import radical.saga as rs
 from radical.pilot.umgr.staging_output.default import Default
-import saga.filesystem as rsf
+import radical.saga.filesystem as rsf
 import pytest
 from glob import glob
 import re
-import saga.utils.pty_shell as rsups
+import radical.saga.utils.pty_shell as rsups
 
 try:
     import mock
@@ -157,7 +157,7 @@ def test_transfer_single_file_from_unit(
     component._cache = dict()
     component._prof = mocked_profiler
     component._session = session
-    component._log = ru.get_logger('dummy')
+    component._log = ru.Logger('dummy')
 
     # Create an "actionable" with a single file staging
     # for our unit
@@ -210,7 +210,7 @@ def test_transfer_single_folder_from_unit(
     component._cache = dict()
     component._prof = mocked_profiler
     component._session = session
-    component._log = ru.get_logger('dummy')
+    component._log = ru.Logger('dummy')
 
     # Create an "actionable" with a folder containing a file
     # staged with our unit
@@ -264,7 +264,7 @@ def test_transfer_multiple_folders_from_unit(
     component._cache = dict()
     component._prof = mocked_profiler
     component._session = session
-    component._log = ru.get_logger('dummy')
+    component._log = ru.Logger('dummy')
 
     # Create an "actionable" with a folder containing another folder
     # containing a file staged with our unit
