@@ -5,7 +5,7 @@ import argparse
 import tarfile
 from time import time
 
-import saga as rs
+import radical.saga as rs
 import radical.utils as ru
 from radical.pilot.staging_directives import complete_url
 
@@ -50,9 +50,9 @@ def transfer_file(src_files, target_dir, resource, tar):
                        'pilot': tgt_dir,
                        'resource': tgt_dir}
         src = complete_url(src_filename, src_context,
-                           ru.get_logger('transfer.files'))
+                           ru.Logger('transfer.files'))
         tgt = complete_url(src_filename, tgt_context,
-                           ru.get_logger('transfer.files'))
+                           ru.Logger('transfer.files'))
 
         #target_file = target_dir + src_file.split('/')[-1]
         remote_dir.copy(src, tgt, flags=rs.filesystem.CREATE_PARENTS)
