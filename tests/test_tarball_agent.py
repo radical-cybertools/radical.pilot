@@ -83,7 +83,7 @@ class TestStagingInputComponent(unittest.TestCase):
 
         component       = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log  = ru.get_logger('dummy')
+        component._log  = ru.Logger('dummy')
 
         actionables = list()
         actionables.append({'uid'     : ru.generate_id('sd'),
