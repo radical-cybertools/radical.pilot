@@ -15,9 +15,10 @@ RUNTIME  =    10
 SLEEP    =     1
 CORES    =    16
 UNITS    =    16
-SCHED    = rp.SCHEDULER_DIRECT_SUBMISSION
+SCHED    = rp.SCHEDULER_ROUND_ROBIN
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 def pilot_state_cb (pilot, state):
 
@@ -33,7 +34,7 @@ def pilot_state_cb (pilot, state):
         sys.exit (1)
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def unit_state_cb (unit, state):
 
@@ -55,14 +56,14 @@ def unit_state_cb (unit, state):
         sys.exit(2)
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def wait_queue_size_cb(umgr, wait_queue_size):
 
     print "[Callback]: wait_queue_size: %s." % wait_queue_size
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def run_test(cfg):
 
@@ -117,7 +118,7 @@ def run_test(cfg):
             cud.input_staging  = [ input_sd_umgr,  input_sd_agent]
             cud.output_staging = [output_sd_umgr, output_sd_agent]
             cuds.append(cud)
-            
+
         units = umgr.submit_units(cuds)
 
         umgr.wait_units()
@@ -158,7 +159,7 @@ def run_test(cfg):
         # pilots.
 
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
@@ -183,7 +184,7 @@ if __name__ == "__main__":
             print 'no config found for %s' % target
             print 'known targets: %s' % ', '.join (configs.keys())
             continue
-        
+
         cfg = configs[target]
         cfg['cp_resource'] = target
         cfg['pwd']         = pwd
@@ -192,11 +193,11 @@ if __name__ == "__main__":
             run_test (cfg)
         except Exception as e:
             import traceback
-            traceback.print_exc ()  
+            traceback.print_exc ()
             print "mpi test for '%s' failed: %s" % (target, e)
             failed += 1
 
     sys.exit(failed)
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 

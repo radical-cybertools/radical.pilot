@@ -91,7 +91,7 @@ profile_event()
     # FIXME: provide an RU shell script to source for this
     PROFILE="bootstrap_0.prof"
 
-    if test -z "$RADICAL_PROFILE$RADICAL_PILOT_PROFILE"
+    if test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
     then
         return
     fi
@@ -1133,7 +1133,9 @@ fi
 
 echo "# -------------------------------------------------------------------"
 echo "# push final pilot state: $SESSION_ID $PILOT_ID $final_state"
-$PYTHON `which radical-pilot-agent-statepush` agent_0.cfg $final_state
+sp=$(which radical-pilot-agent-statepush)
+test -z "$sp" && echo "statepush not found"
+test -z "$sp" || $PYTHON "$sp" agent_0.cfg "$final_state"
 
 echo
 echo "# -------------------------------------------------------------------"

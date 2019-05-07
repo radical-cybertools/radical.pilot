@@ -159,6 +159,7 @@ class LRMS(object):
                             self._log, self._prof))
                 self._log.info("lrms config hook succeeded (%s)" % lm)
             except Exception as e:
+                # FIXME don't catch/raise
                 self._log.error("lrms config hook failed: %s" % e)
                 raise
 
