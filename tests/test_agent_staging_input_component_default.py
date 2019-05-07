@@ -117,7 +117,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_copy_single_file(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -143,7 +143,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_link_single_file(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -170,7 +170,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_move_single_file(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -197,7 +197,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_copy_single_file_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -223,7 +223,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_link_single_file_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -250,7 +250,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_move_single_file_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -277,7 +277,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_copy_single_file_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -303,7 +303,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_link_single_file_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -330,7 +330,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_move_single_file_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -357,7 +357,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_copy_single_folder(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -385,7 +385,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_link_single_folder(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -416,7 +416,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_move_single_folder(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -447,7 +447,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_copy_single_folder_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -475,7 +475,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_link_single_folder_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -506,7 +506,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_move_single_folder_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -536,7 +536,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_copy_single_folder_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -564,7 +564,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_link_single_folder_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -596,7 +596,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_move_single_folder_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -627,7 +627,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_copy_single_file_to_sandbox(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -655,7 +655,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_link_single_file_to_sandbox(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -683,7 +683,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_move_single_file_to_sandbox(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -711,7 +711,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_copy_single_file_to_sandbox(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -739,7 +739,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_link_single_file_to_sandbox(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -767,7 +767,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_move_single_file_to_sandbox(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -795,7 +795,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_copy_single_file_to_sandbox(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -823,7 +823,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_link_single_file_to_sandbox(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -851,7 +851,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_move_single_file_to_sandbox(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -879,7 +879,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_copy_multi_folder(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -912,7 +912,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_link_multi_folder(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -945,7 +945,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_move_multi_folder(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -978,7 +978,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_copy_multi_folder_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1011,7 +1011,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_link_multi_folder_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1044,7 +1044,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_move_multi_folder_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1076,7 +1076,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_copy_multi_folder_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1109,7 +1109,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_link_multi_folder_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1142,7 +1142,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_move_multi_folder_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1183,7 +1183,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_copy_single_file_other_dir(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1209,7 +1209,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_link_single_file_other_dir(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1236,7 +1236,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_move_single_file_other_dir(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1263,7 +1263,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_copy_single_file_other_dir_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1289,7 +1289,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_link_single_file_other_dir_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1316,7 +1316,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_move_single_file_other_dir_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1343,7 +1343,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_copy_single_file_other_dir_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1369,7 +1369,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_link_single_file_other_dir_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1396,7 +1396,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_move_single_file_other_dir_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1423,7 +1423,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_copy_single_folder_other_dir(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1451,7 +1451,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_link_single_folder_other_dir(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1482,7 +1482,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_move_single_folder_other_dir(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1513,7 +1513,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_copy_single_folder_other_dir_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1541,7 +1541,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_link_single_folder_other_dir_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1572,7 +1572,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_move_single_folder_other_dir_rename(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1602,7 +1602,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_copy_single_folder_other_dir_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1630,7 +1630,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_link_single_folder_other_dir_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),
@@ -1662,7 +1662,7 @@ class TestStagingInputComponent(unittest.TestCase):
     def test_move_single_folder_other_dir_noname(self, mocked_init, mocked_method, mocked_profiler, mocked_raise_on):
         component = Default(cfg=self.cfg, session=None)
         component._prof = mocked_profiler
-        component._log = ru.get_logger('dummy')
+        component._log = ru.Logger('dummy')
         actionables = list()
         actionables.append({
             'uid'   : ru.generate_id('sd'),

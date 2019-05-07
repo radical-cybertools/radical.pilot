@@ -18,7 +18,7 @@ if DBURL is None:
     print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
     sys.exit(1)
     
-DBNAME = os.getenv("RADICAL_PILOT_TEST_DBNAME")
+DBNAME = os.getenv("RADICAL_PILOT_TEST_DBNAME", 'test')
 if DBNAME is None:
     print "ERROR: RADICAL_PILOT_TEST_DBNAME (MongoDB database name) is not defined."
     sys.exit(1)

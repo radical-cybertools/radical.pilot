@@ -27,23 +27,15 @@ class AcceptanceTests(unittest.TestCase):
         """Initialize tests, just creates instance variables needed."""
         super(AcceptanceTests, cls).setUpClass()
 
-        # Set-up the resource, hard-coding 'localhost' for now...
         cls.resource = None
+        cls.session  = None
+        cls.pmgr     = None
+        cls.umgr     = None
+        cls.n        = 128   # number of units to run
+        cls.config   = ru.read_json('%s/config.json' % os.path.dirname(__file__))
 
-        # Create a new session. No need to try/except this: if session creation
-        # fails, there is not much we can do anyways...
-        cls.session = None
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        cls.pmgr = None
-        # Create a UnitManager object.
-        cls.umgr = None
+        cls.setUp()
 
-        # Read in configuration
-        cls.config = ru.read_json('%s/config.json' %
-                                  os.path.dirname(os.path.abspath(__file__)))
-
-        # Number of Compute Units (CUs)
-        cls.n = 128   # number of units to run
 
     def setUp(self):
         """ Getting the resources is slow, to avoid calling it for each
@@ -52,34 +44,27 @@ class AcceptanceTests(unittest.TestCase):
         # Set-up the resource, hard-coding 'localhost' for now...
         self.resource = 'local.localhost'
 
-        # Create a new session. No need to try/except this: if session creation
-        # fails, there is not much we can do anyways...
         self.session = rp.Session()
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        self.pmgr = rp.PilotManager(session=self.session)
-        # Create a UnitManager object.
-        self.umgr = rp.UnitManager(session=self.session)
+        self.pmgr    = rp.PilotManager(session=self.session)
+        self.umgr    = rp.UnitManager(session=self.session)
 
-        # Define an [n]-core local pilot that runs for [x] minutes
-        # Here we use a dict to initialize the description object
         self.pd_init = {
-            'resource': self.resource,
-            'runtime': 15,  # pilot runtime (min)
+            'resource':      self.resource,
+            'runtime':       15,
             'exit_on_error': True,
-            'project': self.config[self.resource]['project'],
-            'queue': self.config[self.resource]['queue'],
+            'project':       self.config[self.resource]['project'],
+            'queue':         self.config[self.resource]['queue'],
             'access_schema': self.config[self.resource]['schema'],
-            'cores': self.config[self.resource]['cores'],
+            'cores':         self.config[self.resource]['cores'],
         }
+
 
     def test_00_getting_started(self):
         """Test a standard pilot run"""
 
         # Create description object from template description
-        pilot_desc = rp.ComputePilotDescription(self.pd_init)
-
-        # Launch the pilot.
-        pilot = self.pmgr.submit_pilots(pilot_desc)
+        pd    = rp.ComputePilotDescription(self.pd_init)
+        pilot = self.pmgr.submit_pilots(pd)
 
         self.umgr.add_pilots(pilot)
 
@@ -283,4 +268,6 @@ class AcceptanceTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(verbosity=2, failfast=True, catchbreak=True)
+    pass
+    # FIXME: disabled
+    # unittest.main(verbosity=2, failfast=True, catchbreak=True)

@@ -1,19 +1,19 @@
+
 {
-    "cname": "UmgrStagingInputComponent",
-    "dburl": "mongodb://rp:rp@ds015335.mlab.com:15335/rp",
-    "pilot_id": "pilot.0000",
-    "pilot_sandbox": "",
-    "resource_cfg": {
-	"default_remote_workdir": "$HOME",
-	"filesystem_endpoint": "file://localhost/",
-	"job_manager_endpoint": "fork://localhost/"
-    },
-    "resource_sandbox": "",
-    "session_id": "",
-    "session_sandbox": "",
-    "staging_area": "staging_area",
-    "staging_schema": "staging",
-    "target": "local",
-    "uid": "agent_0",
-    "workdir": ""
+    "cname"            : "UmgrStagingInputComponent",
+    "dburl"            : "mongodb://rp:rprprp1@ds043457.mlab.com:43457/rp",
+    "pilot_id"         : "pilot.0000",
+    "pilot_sandbox"    : "",
+    "resource_cfg"     : {"default_remote_workdir" : "$HOME",
+	                      "filesystem_endpoint"    : "file://localhost/",
+	                      "job_manager_endpoint"   : "fork://localhost/"},
+    "resource_sandbox" : "",
+    "session_id"       : "",
+    "session_sandbox"  : "",
+    "staging_area"     : "staging_area",
+    "staging_schema"   : "staging",
+    "target"           : "local",
+    "uid"              : "agent_0",
+    "workdir"          : ""
 }
+
