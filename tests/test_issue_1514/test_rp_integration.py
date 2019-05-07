@@ -9,12 +9,12 @@ import sys
 
 import radical.pilot as rp
 import radical.utils as ru
-import saga as rs
+import radical.saga as rs
 import traceback
-import saga.filesystem as rsf
-import saga.filesystem.constants as constants
+import radical.saga.filesystem as rsf
+import radical.saga.filesystem.constants as constants
 import re
-import saga.utils.pty_shell as rsups
+import radical.saga.utils.pty_shell as rsups
 from glob import glob
 import shutil
 
@@ -50,7 +50,7 @@ def test_integration():
     # Here we use a dict to initialize the description object
     pd_init = {
         'resource': resource,
-        'runtime': 15,  # pilot runtime (min)
+        'runtime': 15,   # pilot runtime (min)
         'exit_on_error': True,
         'project': config[resource]['project'],
         'queue': config[resource]['queue'],

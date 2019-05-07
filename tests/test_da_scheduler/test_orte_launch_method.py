@@ -71,7 +71,7 @@ class TestORTElaunchMethod(unittest.TestCase):
     def test_orte_nompi_construct(self,mocked_init,mocked_raise_on):
         launch_method = ORTE(cfg={'Testing'}, session = self._session)
         launch_method.launch_command = 'orterun'
-        launch_method._log = ru.get_logger('dummy')
+        launch_method._log = ru.Logger('dummy')
 
         orte_cmd, _ = launch_method.construct_command(self._cu, launch_script_hop=1)
         
