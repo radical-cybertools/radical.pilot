@@ -1,21 +1,21 @@
 #!/usr/bin/env python
 
 import os
-import sys
 import json
 import time
 import pytest
 import logging
-import datetime
 import radical.pilot as rp
 
 logging.raiseExceptions = False
 
-json_data=open("../pytest_config.json")
+PWD = os.path.dirname(__file__)
+json_data = open("%s/../pytest_config.json" % PWD)
 CONFIG = json.load(json_data)
 json_data.close()
 
-#-------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 def pilot_state_cb (pilot, state):
     """ this callback is invoked on all pilot state changes """
@@ -31,7 +31,8 @@ def pilot_state_cb (pilot, state):
         for cb in pilot.callback_history:
             print cb
 
-#-------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 def unit_state_cb (unit, state):
     """ this callback is invoked on all unit state changes """
@@ -39,8 +40,8 @@ def unit_state_cb (unit, state):
     if not unit :
         return
 
-    #global cb_counter
-    #cb_counter += 1
+    # global cb_counter
+    # cb_counter += 1
 
     print "[Callback]: ComputeUnit  '%s: %s' (on %s) state: %s." \
         % (unit.name, unit.uid, unit.pilot_id, state)
@@ -53,7 +54,8 @@ def unit_state_cb (unit, state):
         for cb in unit.callback_history:
             print cb
 
-#-------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 @pytest.fixture(scope="module")
 def setup_local_1(request):
@@ -81,7 +83,7 @@ def setup_local_1(request):
 
         umgr1.add_pilots(pilot1)
 
-    except Exception as e:
+    except Exception:
         print 'test failed'
         raise
 
@@ -99,7 +101,7 @@ def setup_local_1(request):
     return session1, pilot1, pmgr1, umgr1, "local.localhost" 
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 @pytest.fixture(scope="module")
 def setup_local_2(request):
@@ -127,7 +129,7 @@ def setup_local_2(request):
 
         umgr1.add_pilots(pilot1)
 
-    except Exception as e:
+    except Exception:
         print 'test failed'
         raise
 
@@ -145,7 +147,7 @@ def setup_local_2(request):
     return session1, pilot1, pmgr1, umgr1, "local.localhost"
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 @pytest.fixture(scope="class")
 def setup_gordon(request):
@@ -179,7 +181,7 @@ def setup_gordon(request):
 
         umgr1.add_pilots(pilot1)
 
-    except Exception as e:
+    except Exception:
         print 'test failed'
         raise
 
@@ -197,7 +199,7 @@ def setup_gordon(request):
     return session1, pilot1, pmgr1, umgr1, "xsede.gordon"
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 @pytest.fixture(scope="class")
 def setup_comet(request):
@@ -230,7 +232,7 @@ def setup_comet(request):
 
         umgr2.add_pilots(pilot2)
 
-    except Exception as e:
+    except Exception:
         print 'test failed'
         raise
 
@@ -247,7 +249,7 @@ def setup_comet(request):
     return session2, pilot2, pmgr2, umgr2, "xsede.comet"
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 @pytest.fixture(scope="class")
 def setup_stampede(request):
@@ -280,7 +282,7 @@ def setup_stampede(request):
 
         umgr3.add_pilots(pilot3)
 
-    except Exception as e:
+    except Exception:
         print 'test failed'
         raise
 
@@ -297,7 +299,7 @@ def setup_stampede(request):
     return session3, pilot3, pmgr3, umgr3, "xsede.stampede"
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 @pytest.fixture(scope="class")
 def setup_stampede_two(request):
@@ -322,7 +324,7 @@ def setup_stampede_two(request):
         pdesc3.resource = "xsede.stampede"
         pdesc3.project  = CONFIG["xsede.stampede"]["project"]
         pdesc3.runtime  = 20
-        pdesc3.cores    = int(CONFIG["xsede.stampede"]["cores"])*2
+        pdesc3.cores    = int(CONFIG["xsede.stampede"]["cores"]) * 2
         pdesc3.cleanup  = False
 
         pilot3 = pmgr3.submit_pilots(pdesc3)
@@ -330,7 +332,7 @@ def setup_stampede_two(request):
 
         umgr3.add_pilots(pilot3)
 
-    except Exception as e:
+    except Exception:
         print 'test failed'
         raise
 
@@ -347,9 +349,9 @@ def setup_stampede_two(request):
     return session3, pilot3, pmgr3, umgr3, "xsede.stampede"
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # add tests below...
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # 
 class TestRemoteOne(object):
 
@@ -380,7 +382,7 @@ class TestRemoteOne(object):
         for unit in units:
             assert (unit.state == rp.DONE)
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def test_pass_mpi_one(self, setup_stampede):
 
@@ -406,14 +408,14 @@ class TestRemoteOne(object):
         umgr.wait_units()
 
         for unit in units:
-            #print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
+            # print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
             #      % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
 
             assert (unit.state == rp.DONE)
             for i in range(int(CONFIG[resource]["cores"])):
                 assert ('mpi rank %d/%d' % (i, int(CONFIG[resource]["cores"])) in unit.stdout)
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # issue 572
     #
     def test_fail_issue_572(self, setup_stampede):
@@ -454,10 +456,11 @@ class TestRemoteOne(object):
         for cu in units:
             assert (cu.state == rp.DONE)
 
-#-------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 class TestRemoteTwo(object):
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # multi-node mpi executable
     #
     def test_pass_mpi_two(self, setup_stampede_two):
@@ -468,7 +471,7 @@ class TestRemoteTwo(object):
 
         compute_units = []
 
-        proc = int(CONFIG[resource]["cores"])*2
+        proc = int(CONFIG[resource]["cores"]) * 2
 
         for i in range(16):
             cudesc = rp.ComputeUnitDescription()
@@ -490,7 +493,8 @@ class TestRemoteTwo(object):
             for i in range(proc):
                 assert ('mpi rank %d/%d' % (i, proc) in unit.stdout)
 
-#-------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # issue 172
 #
 def test_fail_issue_172(setup_stampede):
@@ -500,11 +504,12 @@ def test_fail_issue_172(setup_stampede):
     umgr.register_callback(unit_state_cb)
 
     # generate some units which use env vars in different ways, w/ and w/o MPI
-    env_variants = ['UNDEFINED', # Special case: env will not be set
-                    None, # None
-                    {}, # empty dict
-                    {'foo': 'bar'}, # single entry dict
-                    {'foo': 'bar', 'sports': 'bar', 'banana': 'bar'} # multi entry dict
+    env_variants = ['UNDEFINED',     # Special case: env will not be set
+                    None,            # None
+                    {},              # empty dict
+                    {'foo': 'bar'},  # single entry dict
+                    {'foo': 'bar', 'sports': 'bar', 'banana': 'bar'}
+                                     # multi entry dict
                    ]
 
     compute_units = []
@@ -550,7 +555,7 @@ def test_fail_issue_172(setup_stampede):
         print unit.stdout
         print "\n\n"
         print "* Task %s - env: %s state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-            % (unit.uid, unit.description.environment, unit.state, \
+            % (unit.uid, unit.description.environment, unit.state,
                unit.exit_code, unit.start_time, unit.stop_time, repr(unit.stdout))
 
         assert (unit.state == rp.DONE)
@@ -572,7 +577,8 @@ def test_fail_issue_172(setup_stampede):
         if unit.name == "mpi_5":
             assert("Taverns: bar, bar, bar" in unit.stdout)
 
-#-------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # issue 359; check! does not work now...
 #
 def test_pass_issue_359():
@@ -631,10 +637,10 @@ def test_pass_issue_359():
         for unit in unit_list:
             print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
                 % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
-            
+
             assert(unit.state == rp.DONE)
 
-    except Exception as e:
+    except Exception:
         print 'test failed'
         raise
 
@@ -644,12 +650,13 @@ def test_pass_issue_359():
 
         session.close()
 
-#-------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # issue 450, fails
 #
 def test_fail_issue_450(setup_stampede):
 
-    TEST_SIZE=10 * 1024 * 1024  # 10 MB
+    TEST_SIZE = 10 * 1024 * 1024  # 10 MB
 
     os.system('head -c %d /dev/urandom > file.dat' % TEST_SIZE)
 
@@ -661,7 +668,7 @@ def test_fail_issue_450(setup_stampede):
     for unit_count in range(0, 16):
         cud               = rp.ComputeUnitDescription()
         cud.executable    = "/bin/bash"
-        cud.arguments     = [ "-c", 'size=`cat file.dat | wc -c`; echo Size is \$size; if [ \$size != %d ]; then exit 1; fi' % TEST_SIZE]
+        cud.arguments     = ["-c", 'size=`cat file.dat | wc -c`; echo Size is \$size; if [ \$size != %d ]; then exit 1; fi' % TEST_SIZE]
         cud.cores         = 1
         cud.input_staging = ['file.dat']
         compute_units.append(cud)
@@ -677,7 +684,8 @@ def test_fail_issue_450(setup_stampede):
         assert (unit.state == rp.DONE)
         assert("Size is 10485760" in unit.stdout)
 
-#-------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # issue 57
 #
 def test_pass_issue_57():
@@ -691,29 +699,29 @@ def test_pass_issue_57():
             c = rp.Context('ssh')
             c.user_id = CONFIG["xsede.stampede"]["user_id"]
             session.add_context(c)
-        
+
             pmgr = rp.PilotManager(session=session)
             umgr = rp.UnitManager(session=session, 
                                   scheduler=rp.SCHEDULER_ROUND_ROBIN) 
-        
+
             pdesc = rp.ComputePilotDescription()
             pdesc.resource = "xsede.stampede"
             pdesc.project  = CONFIG["xsede.stampede"]["project"]
             pdesc.cores = i
             pdesc.runtime = 20
             pdesc.cleanup = False
-        
+
             pilots = pmgr.submit_pilots(pdesc)
-        
+
             umgr.add_pilots(pilots)
-        
+
             unit_descrs = []
-            for k in range(0, i*2):
+            for k in range(0, i * 2):
                 cu = rp.ComputeUnitDescription()
                 cu.cores = 1
                 cu.executable = "/bin/date"
                 unit_descrs.append(cu)
-        
+
             units = umgr.submit_units(unit_descrs)
 
             umgr.wait_units()
@@ -724,7 +732,7 @@ def test_pass_issue_57():
             pmgr.cancel_pilots()       
             pmgr.wait_pilots()
 
-        except Exception as e:
+        except Exception:
             print "TEST FAILED"
             raise
 
