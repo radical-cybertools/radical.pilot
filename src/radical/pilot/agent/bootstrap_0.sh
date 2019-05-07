@@ -176,7 +176,7 @@ profile_event()
 {
     PROFILE="bootstrap_0.prof"
 
-    if test -z "$RADICAL_PILOT_PROFILE"
+    if test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
     then
         return
     fi
@@ -1047,15 +1047,6 @@ virtenv_create()
     # make sure the new pip version is used (but keep the python executable)
     rehash "$PYTHON"
 
-
-    # NOTE: On india/fg 'pip install saga-python' does not work as pip fails to
-    #       install apache-libcloud (missing bz2 compression).  We thus install
-    #       that dependency via easy_install.
-    run_cmd "install apache-libcloud" \
-            "easy_install --upgrade apache-libcloud" \
-         || echo "Couldn't install/upgrade apache-libcloud! Lets see how far we get ..."
-
-
     # now that the virtenv is set up, we install all dependencies
     # of the RADICAL stack
     for dep in $VIRTENV_RADICAL_DEPS
@@ -1526,7 +1517,7 @@ PB1_LDLB="$LD_LIBRARY_PATH"
 #        We should split the parsing and the execution of those.
 #        "bootstrap start" is here so that $PILOT_ID is known.
 # Create header for profile log
-if ! test -z "$RADICAL_PILOT_PROFILE"
+if ! test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
 then
     echo 'create gtod'
     create_gtod
@@ -2010,7 +2001,9 @@ fi
 
 echo "# -------------------------------------------------------------------"
 echo "# push final pilot state: $SESSION_ID $PILOT_ID $final_state"
-$PYTHON `which radical-pilot-agent-statepush` agent_0.cfg $final_state
+sp=$(which radical-pilot-agent-statepush)
+test -z "$sp" && echo "statepush not found"
+test -z "$sp" || $PYTHON "$sp" agent_0.cfg "$final_state"
 
 echo
 echo "# -------------------------------------------------------------------"
