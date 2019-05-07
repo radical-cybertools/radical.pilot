@@ -180,6 +180,7 @@ def get_session_description(sid, src=None, dburl=None):
     for pilot in sorted(json['pilot'], key=lambda k: k['uid']):
         uid  = pilot['uid']
         pmgr = pilot['pmgr']
+        pilot['cfg']['resource_details'] = pilot['resource_details']
         tree[pmgr]['children'].append(uid)
         tree[uid] = {'uid'        : uid,
                      'etype'      : 'pilot',

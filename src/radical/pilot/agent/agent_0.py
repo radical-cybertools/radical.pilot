@@ -162,10 +162,11 @@ class Agent_0(rpu.Worker):
                  'resource_details' : {
                      'lm_info'      : self._lrms.lm_info.get('version_info'),
                      'lm_detail'    : self._lrms.lm_info.get('lm_detail')}
+                     'rm_info'      : self._lrms.lrms_info},
+                 '$set'             : ['resource_details']}
                  }
-        self._log.error('--- after dict')
         self.putter('client_notify', {'type': 'state', 'data': pilot})
-        self._log.error('--- after put')
+        self.advance(pilot, publish=True, push=False)
 
         # record hostname in profile to enable mapping of profile entries
         self._prof.prof(event='hostname', uid=self._pid, msg=ru.get_hostname())
@@ -220,12 +221,12 @@ class Agent_0(rpu.Worker):
         err = None
         log = None
 
-        try    : out = open('./agent_0.out', 'r').read(1024)
-        except Exception: pass
-        try    : err = open('./agent_0.err', 'r').read(1024)
-        except Exception: pass
-        try    : log = open('./agent_0.log', 'r').read(1024)
-        except Exception: pass
+        try   : out = open('./agent_0.out', 'r').read(1024)
+        except: pass
+        try   : err = open('./agent_0.err', 'r').read(1024)
+        except: pass
+        try   : log = open('./agent_0.log', 'r').read(1024)
+        except: pass
 
         # FIXME
         # ret = self._db._c.update({'type'   : 'pilot',
