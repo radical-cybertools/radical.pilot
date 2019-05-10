@@ -646,6 +646,7 @@ class Default(PMGRLaunchingComponent):
             # a url that was the result of a hop or a local lrms.
             if js_url.scheme not in ['ssh', 'gsissh']:
                 js_url.scheme = 'fork'
+                js_url.host   = 'localhost'
 
         with self._cache_lock:
             if  js_url in self._saga_js_cache:
