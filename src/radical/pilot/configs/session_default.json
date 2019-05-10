@@ -4,7 +4,7 @@
 # a functional rp session, both on the client and on the agent side.
 {
     # fallback db url
-    "default_dburl"      : "mongodb://rp:rp@ds015335.mlab.com:15335/rp",
+    "default_dburl"      : "mongodb://rp:rprprp1@ds043457.mlab.com:43457/rp",
 
     "bridges" : {
         "log_pubsub"     : {"log_level" : "error",
