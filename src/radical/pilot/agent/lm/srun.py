@@ -55,7 +55,7 @@ class Srun(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        slots        = cu['slots']
+        slots        = cu.get('slots')
         cud          = cu['description']
         task_exec    = cud['executable']
         task_env     = cud.get('environment') or dict()
@@ -74,44 +74,56 @@ class Srun(LaunchMethod):
             env_string = '-export="%s"' % ','.join(env_list)
 
 
-        # Extract all the hosts from the slots
-        hostlist = list()
-        uniform  = True
-        chunk    = None
-        for node in slots['nodes']:
+        if not slots:
+            # leave placement to srun
+            nprocs    = cud['cpu_processes']
+            ncores    = cud['cpu_threads']
+            placement = ''
 
-            this_chunk = [len(node['core_map']),
-                          len(node['gpu_map' ])]
 
-            if not chunk:
-                chunk = this_chunk
+        else:
+            
+            # Extract all the hosts from the slots
+            hostlist = list()
+            uniform  = True
+            chunk    = None
+            for node in slots['nodes']:
 
-            if chunk != this_chunk:
-                uniform = False
-                break
+                this_chunk = [len(node['core_map']),
+                              len(node['gpu_map' ])]
 
-            for _ in node['core_map']:
-                hostlist.append(node['name'])
+                if not chunk:
+                    chunk = this_chunk
 
-            for _ in node['gpu_map']:
-                hostlist.append(node['name'])
+                if chunk != this_chunk:
+                    uniform = False
+                    break
 
-        placement = ""
-        if uniform and len(hostlist) > 1:
-            # we can attempt placement - flag it and prepare SLURM_HOSTFILE
-            placement = "--distribution=arbitrary"
-            hostfile  = '%s/slurm_hostfile' % sbox
-            with open(hostfile, 'w') as fout:
-                fout.write(','.join(hostlist))
-                fout.write('\n')
+                for _ in node['core_map']:
+                    hostlist.append(node['name'])
 
-            if not cu['description']['pre_exec']:
-                cu['description']['pre_exec'] = list()
-            cu['description']['pre_exec'].append(
-                              'export SLURM_HOSTFILE="%s"' % hostfile)
+                for _ in node['gpu_map']:
+                    hostlist.append(node['name'])
 
-        command = "%s -n %d %s %s %s" \
-                % (self.launch_command, len(hostlist), placement, 
+            placement = ""
+            if uniform and len(hostlist) > 1:
+                # we can attempt placement - flag it and prepare SLURM_HOSTFILE
+                placement = "--distribution=arbitrary"
+                hostfile  = '%s/slurm_hostfile' % sbox
+                with open(hostfile, 'w') as fout:
+                    fout.write(','.join(hostlist))
+                    fout.write('\n')
+
+                if not cu['description']['pre_exec']:
+                    cu['description']['pre_exec'] = list()
+                cu['description']['pre_exec'].append(
+                                  'export SLURM_HOSTFILE="%s"' % hostfile)
+
+            nprocs = len(hostlist)
+            ncores = len(slots[0]['core_map'][0])
+
+        command = "%s -n %d -c %d %s %s %s" \
+                % (self.launch_command, nprocs, ncores, placement, 
                    env_string, task_command)
 
         return command, None

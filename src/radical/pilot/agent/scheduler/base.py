@@ -25,6 +25,7 @@ SCHEDULER_NAME_SCATTERED       = "SCATTERED"
 SCHEDULER_NAME_SPARK           = "SPARK"
 SCHEDULER_NAME_TORUS           = "TORUS"
 SCHEDULER_NAME_YARN            = "YARN"
+SCHEDULER_NAME_NOOP            = "NOOP"
 
 
 # ------------------------------------------------------------------------------
@@ -310,8 +311,9 @@ class AgentSchedulingComponent(rpu.Component):
         from .scattered       import Scattered
         from .hombre          import Hombre
         from .torus           import Torus
-        from .yarn            import Yarn
         from .spark           import Spark
+        from .yarn            import Yarn
+        from .noop            import Noop
 
         try:
             impl = {
@@ -320,8 +322,9 @@ class AgentSchedulingComponent(rpu.Component):
                 SCHEDULER_NAME_SCATTERED      : Scattered,
                 SCHEDULER_NAME_HOMBRE         : Hombre,
                 SCHEDULER_NAME_TORUS          : Torus,
+                SCHEDULER_NAME_SPARK          : Spark,
                 SCHEDULER_NAME_YARN           : Yarn,
-                SCHEDULER_NAME_SPARK          : Spark
+                SCHEDULER_NAME_NOOP           : Noop,
             }[name]
 
             impl = impl(cfg, session)
@@ -574,8 +577,10 @@ class AgentSchedulingComponent(rpu.Component):
 
         unit = msg
 
-        if not unit['slots']:
-            # Nothing to do -- how come?
+        slots = unit.get('slots')
+
+        if not slots:
+            # Nothing to do
             self._log.error("cannot unschedule: %s (no slots)" % unit)
             return True
 
@@ -587,7 +592,7 @@ class AgentSchedulingComponent(rpu.Component):
         # in a different thread....
         with self._slot_lock:
             self._prof.prof('unschedule_start', uid=unit['uid'])
-            self._release_slot(unit['slots'])
+            self._release_slot(slots)
             self._prof.prof('unschedule_stop',  uid=unit['uid'])
 
         # notify the scheduling thread, ie. trigger an attempt to use the freed
