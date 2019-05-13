@@ -99,6 +99,11 @@
             "log_level" : "error",
             "stall_hwm" : 1,
             "bulk_size" : 0
+        },
+        "rct_bridge" : {
+            "log_level" : "error",
+            "stall_hwm" : 1,
+            "bulk_size" : 0
         }
     },
 
