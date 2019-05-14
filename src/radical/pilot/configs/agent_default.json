@@ -100,7 +100,12 @@
             "stall_hwm" : 1,
             "bulk_size" : 0
         },
-        "funcexec_pubsub" : {
+        "funcexec_in_queue" : {
+            "log_level" : "error",
+            "stall_hwm" : 1,
+            "bulk_size" : 0
+        }
+        "funcexec_out_queue" : {
             "log_level" : "error",
             "stall_hwm" : 1,
             "bulk_size" : 0
