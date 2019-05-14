@@ -100,7 +100,7 @@
             "stall_hwm" : 1,
             "bulk_size" : 0
         },
-        "rct_bridge" : {
+        "funcexec_pubsub" : {
             "log_level" : "error",
             "stall_hwm" : 1,
             "bulk_size" : 0
