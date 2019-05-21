@@ -41,7 +41,7 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 8
+        "cores"    : 64
     },
 
     "local.devel" : {

@@ -220,9 +220,12 @@ class FUNCS(AgentExecutingComponent) :
 
                 for unit in units:
                     unit['target_state'] = unit['state']
+                    unit['pilot']        = '%s.%s' % (self.uid, unit['wid'])
+
                     self._log.debug('=== got %s [%s] [%s] [%s]', 
                                     unit['uid'],    unit['state'],
                                     unit['stdout'], unit['stderr'])
+
                 self.advance(units, rps.AGENT_STAGING_OUTPUT_PENDING,
                              publish=True, push=True)
             else:

@@ -77,7 +77,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 32
+        n = 1024 * 2
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -107,11 +107,13 @@ if __name__ == '__main__':
         report.header('gather results')
         umgr.wait_units()
 
-        for unit in units:
+        for unit in (units[:10] + units[-10:]):
             if unit.state == rp.DONE:
-                print '  + %s: %-10s: %s' % (unit.state, unit.stdout)
+                print '\t+ %s: %-10s: %10s: %s' \
+                    % (unit.uid, unit.state, unit.pilot, unit.stdout)
             else:
-                print '  - %s: %-10s: %s' % (unit.state, unit.stderr)
+                print '\t- %s: %-10s: %10s: %s' \
+                    % (unit.uid, unit.state, unit.pilot, unit.stderr)
 
 
     except Exception as e:
