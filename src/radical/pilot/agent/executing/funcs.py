@@ -34,7 +34,7 @@ class FUNCS(AgentExecutingComponent) :
 
         AgentExecutingComponent.__init__ (self, cfg, session)
 
-        self._watcher   = None
+        self._collector = None
         self._terminate = threading.Event()
 
 
@@ -43,6 +43,7 @@ class FUNCS(AgentExecutingComponent) :
     def initialize_child(self):
 
         self._pwd = os.getcwd()
+        self.gtod = "%s/gtod" % self._pwd
 
         self.register_input(rps.AGENT_EXECUTING_PENDING,
                             rpc.AGENT_EXECUTING_QUEUE, self.work)
@@ -53,8 +54,18 @@ class FUNCS(AgentExecutingComponent) :
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
-        self.register_publisher ("funcexec_pubsub")
-        self.register_subscriber("funcexec_queue", self.collect_cb)
+        addr_wrk = self._cfg['bridges']['funcs_wrk_queue']
+        addr_res = self._cfg['bridges']['funcs_res_queue']
+
+        self._log.debug('=== wrk in  addr: %s', addr_wrk['addr_in' ])
+        self._log.debug('=== res out addr: %s', addr_res['addr_out'])
+
+        self._funcs_wrk = rpu.Queue(self._session, 'funcs_wrk_queue',
+                                    rpu.QUEUE_INPUT, self._cfg,
+                                    addr_wrk['addr_in'])
+        self._funcs_res = rpu.Queue(self._session, 'funcs_res_queue',
+                                    rpu.QUEUE_OUTPUT, self._cfg,
+                                    addr_res['addr_out'])
 
         self._cancel_lock    = threading.RLock()
         self._cus_to_cancel  = list()
@@ -64,31 +75,35 @@ class FUNCS(AgentExecutingComponent) :
         self._pilot_id = self._cfg['pilot_id']
 
         # run watcher thread
-        self._watcher = ru.Thread(target=self._watch, name="Watcher")
-        self._watcher.start()
+        self._collector = ru.Thread(target=self._collect, name="Collector")
+        self._collector.start()
 
         # we need to launch the executors on all nodes, and use the
-        # task_launcher for that
+        # agent_launcher for that
         self._launcher = rp.agent.LM.create(
-                name    = self._cfg.get('task_launch_method'),
+                name    = self._cfg.get('agent_launch_method'),
                 cfg     = self._cfg,
                 session = self._session)
 
         # now run the func launcher on all nodes
-        self._executors = list()
-        self._nodes     = self._cfg['lrms_info']['node_list']
+        self._nodes = self._cfg['lrms_info']['node_list']
         for idx, node in enumerate(self._nodes):
-            uid   = 'func_exec.%04d' % idx
-            unit  = {'uid'        : uid,
-                     'description': {'executable'   : None,  # FIXME
+            uid   = 'func_exec.%04d' % idx 
+            funcs = {'uid'        : uid,
+                     'description': {'executable'   : 'radical-pilot-agent-funcs',
                                      'cpu_processes': 1,
+                                     'environment'  : []
+                                    },
+                     'slots'      : [{'name'        : node[0], 
+                                      'uid'         : node[1], 
+                                      'cores'       : [[0]], 
+                                      'gpus'        : []}
+                                    ], 
+                     'cfg'        : {'addr_wrk'     : addr_wrk['addr_out'],
+                                     'addr_res'     : addr_res['addr_in']
                                     }
-                     'slots'      : [{'name' : node['name'], 
-                                      'uid'  : node['uid'], 
-                                      'cores': [[0]], 
-                                      'gpus' : []}]
                     }
-            self._spawn(self._launcher, unit)
+            self._spawn(self._launcher, funcs)
 
 
     # --------------------------------------------------------------------------
@@ -111,6 +126,72 @@ class FUNCS(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
+    def _spawn(self, launcher, funcs):
+
+        # NOTE: see documentation of funcs['sandbox'] semantics in the ComputeUnit
+        #       class definition.
+        sandbox = '%s/%s'     % (self._pwd, funcs['uid'])
+        fname   = '%s/%s.sh'  % (sandbox,   funcs['uid'])
+        cfgname = '%s/%s.cfg' % (sandbox,   funcs['uid'])
+        descr   = funcs['description']
+
+        rpu.rec_makedir(sandbox)
+        ru.write_json(funcs.get('cfg'), cfgname)
+
+        launch_cmd, hop_cmd = launcher.construct_command(funcs, fname)
+
+        if hop_cmd : cmdline = hop_cmd
+        else       : cmdline = fname
+
+        with open(fname, "w") as fout:
+
+            fout.write('#!/bin/sh\n\n')
+
+            # Create string for environment variable setting
+            fout.write('export RP_SESSION_ID="%s"\n' % self._cfg['session_id'])
+            fout.write('export RP_PILOT_ID="%s"\n'   % self._cfg['pilot_id'])
+            fout.write('export RP_AGENT_ID="%s"\n'   % self._cfg['agent_name'])
+            fout.write('export RP_SPAWNER_ID="%s"\n' % self.uid)
+            fout.write('export RP_FUNCS_ID="%s"\n'   % funcs['uid'])
+            fout.write('export RP_GTOD="%s"\n'       % self.gtod)
+            fout.write('export RP_TMP="%s"\n'        % self._cu_tmp)
+
+            # also add any env vars requested in the unit description
+            if descr.get('environment', []):
+                for key,val in descr['environment'].iteritems():
+                    fout.write('export "%s=%s"\n' % (key, val))
+
+            fout.write('\n%s\n\n' % launch_cmd)
+            fout.write('RETVAL=$?\n')
+            fout.write("exit $RETVAL\n")
+
+        # done writing to launch script, get it ready for execution.
+        st = os.stat(fname)
+        os.chmod(fname, st.st_mode | stat.S_IEXEC)
+
+        # prepare stdout/stderr
+        stdout_file = descr.get('stdout') or 'STDOUT'
+        stderr_file = descr.get('stderr') or 'STDERR'
+
+        fout = open('%s/%s.out' % (sandbox, funcs['uid']), "w")
+        ferr = open('%s/%s.err' % (sandbox, funcs['uid']), "w")
+
+        self._prof.prof('exec_start', uid=funcs['uid'])
+        funcs['proc'] = subprocess.Popen(args       = cmdline,
+                                         executable = None,
+                                         stdin      = None,
+                                         stdout     = fout,
+                                         stderr     = ferr,
+                                         preexec_fn = os.setsid,
+                                         close_fds  = True,
+                                         shell      = True,
+                                         cwd        = sandbox)
+
+        self._prof.prof('exec_ok', uid=funcs['uid'])
+
+
+    # --------------------------------------------------------------------------
+    #
     def work(self, units):
 
         if not isinstance(units, list):
@@ -120,80 +201,10 @@ class FUNCS(AgentExecutingComponent) :
 
 
         for unit in units:
-            # TODO: publish tasks toward "funcexec_pubsub"
-            pass
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _spawn(self, launcher, cu):
-
-        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
-        #       class definition.
-        sandbox = '%s/%s' % (self._pwd, cu['uid'])
-
-        with open(launch_script_name, "w") as launch_script:
-            launch_script.write('#!/bin/sh\n\n')
-
-            # Create string for environment variable setting
-            env_string = ''
-            env_string += 'export RP_SESSION_ID="%s"\n'   % self._cfg['session_id']
-            env_string += 'export RP_PILOT_ID="%s"\n'     % self._cfg['pilot_id']
-            env_string += 'export RP_AGENT_ID="%s"\n'     % self._cfg['agent_name']
-            env_string += 'export RP_SPAWNER_ID="%s"\n'   % self.uid
-            env_string += 'export RP_UNIT_ID="%s"\n'      % cu['uid']
-            env_string += 'export RP_GTOD="%s"\n'         % self.gtod
-            env_string += 'export RP_TMP="%s"\n'          % self._cu_tmp
-            env_string += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
-                                                          % self._pwd
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
-                env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
-            else:
-                env_string += 'unset  RP_PROF\n'
-
-            launch_command, hop_cmd = launcher.construct_command(cu, launch_script_name)
-
-            if hop_cmd : cmdline = hop_cmd
-            else       : cmdline = launch_script_name
-
-            # also add any env vars requested in the unit description
-            if descr['environment']:
-                for key,val in descr['environment'].iteritems():
-                    env_string += 'export "%s=%s"\n' % (key, val)
-
-            launch_script.write('prof executor_start\n')
-            launch_script.write('%s\n' % launch_command)
-            launch_script.write('RETVAL=$?\n')
-            launch_script.write('prof executor_stop\n')
-            launch_script.write("exit $RETVAL\n")
-
-        # done writing to launch script, get it ready for execution.
-        st = os.stat(launch_script_name)
-        os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
-
-        # prepare stdout/stderr
-        stdout_file = descr.get('stdout') or 'STDOUT'
-        stderr_file = descr.get('stderr') or 'STDERR'
-
-        cu['stdout_file'] = os.path.join(sandbox, stdout_file)
-        cu['stderr_file'] = os.path.join(sandbox, stderr_file)
-
-        _stdout_file_h = open(cu['stdout_file'], "w")
-        _stderr_file_h = open(cu['stderr_file'], "w")
-
-        self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, sandbox)
-
-        self._prof.prof('exec_start', uid=cu['uid'])
-        cu['proc'] = subprocess.Popen(args       = cmdline,
-                                      executable = None,
-                                      stdin      = None,
-                                      stdout     = _stdout_file_h,
-                                      stderr     = _stderr_file_h,
-                                      preexec_fn = os.setsid,
-                                      close_fds  = True,
-                                      shell      = True,
-                                      cwd        = sandbox)
-        self._prof.prof('exec_ok', uid=cu['uid'])
+            print 'got unit %s' % unit['uid']
+            assert(unit['description']['cpu_process_type'] == 'FUNC')
+            self._funcs_wrk.put(unit)
+            print 'put unit %s' % unit['uid']
 
 
     # --------------------------------------------------------------------------
@@ -202,13 +213,18 @@ class FUNCS(AgentExecutingComponent) :
 
         while not self._terminate.is_set():
 
-            # pull units from "funcexec_out_queue"
-            units = list()
+            # pull units from "funcs_out_queue"
+            units = self._funcs_res.get_nowait(1000)
 
             if units:
-                self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING,
-                             publish=True, push=True)
 
+                for unit in units:
+                    unit['target_state'] = unit['state']
+                    self._log.debug('=== got %s [%s] [%s] [%s]', 
+                                    unit['uid'],    unit['state'],
+                                    unit['stdout'], unit['stderr'])
+                self.advance(units, rps.AGENT_STAGING_OUTPUT_PENDING,
+                             publish=True, push=True)
             else:
                 time.sleep(0.1)
 

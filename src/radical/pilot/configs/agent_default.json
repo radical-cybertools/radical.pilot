@@ -100,13 +100,13 @@
             "stall_hwm" : 1,
             "bulk_size" : 0
         },
-        "funcexec_in_queue" : {
-            "log_level" : "error",
+        "funcs_wrk_queue" : {
+            "log_level" : "debug",
             "stall_hwm" : 1,
             "bulk_size" : 0
-        }
-        "funcexec_out_queue" : {
-            "log_level" : "error",
+        },
+        "funcs_res_queue" : {
+            "log_level" : "debug",
             "stall_hwm" : 1,
             "bulk_size" : 0
         }

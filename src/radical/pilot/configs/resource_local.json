@@ -237,6 +237,35 @@
                                          "export PATH=$OMPI/bin/:$PATH",
                                          "export LD_LIBRARY_PATH=$OMPI/lib/:$LD_LIBRARY_PATH",
                                          "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"]
+  },
+
+    "localhost_funcs": {
+        "description"                 : "",
+        "notes"                       : "",
+        "schemas"                     : ["local", "ssh"],
+        "ssh"                         :
+        {
+           "job_manager_endpoint"    : "ssh://localhost/",
+           "filesystem_endpoint"     : "sftp://localhost/"
+        },
+        "local"                       :
+        {
+           "job_manager_endpoint"    : "fork://localhost/",
+           "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_remote_workdir"      : "$HOME",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1,
+        "lrms"                        : "FORK",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "FUNCS",
+        "agent_launch_method"         : "FORK",
+        "task_launch_method"          : "FUNCS",
+      # "mpi_launch_method"           : "MPIRUN",
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default",
+        "pre_bootstrap_0"             : []
   }
 }
 
