@@ -199,12 +199,9 @@ class FUNCS(AgentExecutingComponent) :
 
         self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
 
-
         for unit in units:
-            print 'got unit %s' % unit['uid']
             assert(unit['description']['cpu_process_type'] == 'FUNC')
             self._funcs_wrk.put(unit)
-            print 'put unit %s' % unit['uid']
 
 
     # --------------------------------------------------------------------------
