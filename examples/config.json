@@ -149,6 +149,20 @@
         "cores"    : 80
     },
 
+    "princeton.tiger_cpu" : {
+        "project"  : "geo",
+        "queue"    : "cpu",
+        "schema"   : "ssh",
+        "cores"    : 40
+    },
+
+    "princeton.tiger_gpu" : {
+        "project"  : "geo",
+        "queue"    : "gpu",
+        "schema"   : "local",
+        "cores"    : 56
+    },
+
     "xsede.stampede" : {
         "project"  : "TG-MCB090174",
         "queue"    : "development",
