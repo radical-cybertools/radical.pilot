@@ -50,6 +50,8 @@ class Executor(object):
         self._prof = ru.Profiler(self._uid)
         self._cfg  = ru.read_json('%s.cfg' % self._uid)
 
+        self._initialize()
+
 
     # --------------------------------------------------------------------------
     #
@@ -117,8 +119,6 @@ class Executor(object):
         listen on the command channel for things to do (like, terminate).
         '''
 
-        self._initialize()
-
         while True:
 
           # msgs = self._zmq_ctl.get_nowait(100)
@@ -150,6 +150,12 @@ class Executor(object):
         '''
         thread feeding tasks pulled from the ZMQ work queue to worker processes
         '''
+
+        # FIXME: This drains the qork queue with no regard of load balancing.
+        #        For example, the first <n_cores> tasks may stall this executer
+        #        for a long time, but new tasks are pulled nonetheless, even if
+        #        other executors are not stalling and could execute them timely.
+        #        We should at most fill a cache of limited size.
 
         while not self._term.is_set():
 
