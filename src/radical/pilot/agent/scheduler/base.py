@@ -20,14 +20,14 @@ from ... import constants as rpc
 #
 SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
 SCHEDULER_NAME_CONTINUOUS_ORDERED = "CONTINUOUS_ORDERED"
-SCHEDULER_NAME_CONTINUOUS_SUMMIT  = "CONTINUOUS_SUMMIT"
 SCHEDULER_NAME_HOMBRE             = "HOMBRE"
 SCHEDULER_NAME_SCATTERED          = "SCATTERED"
 SCHEDULER_NAME_SPARK              = "SPARK"
 SCHEDULER_NAME_TORUS              = "TORUS"
 SCHEDULER_NAME_YARN               = "YARN"
 
-# SCHEDULER_NAME_CONTINUOUS_FIFO  = "CONTINUOUS_FIFO"
+# SCHEDULER_NAME_CONTINUOUS_SUMMIT  = "CONTINUOUS_SUMMIT"
+# SCHEDULER_NAME_CONTINUOUS_FIFO    = "CONTINUOUS_FIFO"
 
 # ------------------------------------------------------------------------------
 #
@@ -308,7 +308,6 @@ class AgentSchedulingComponent(rpu.Component):
         name = cfg['scheduler']
 
         from .continuous_ordered import ContinuousOrdered
-        from .continuous_summit  import ContinuousSummit
         from .continuous         import Continuous
         from .scattered          import Scattered
         from .hombre             import Hombre
@@ -316,12 +315,12 @@ class AgentSchedulingComponent(rpu.Component):
         from .yarn               import Yarn
         from .spark              import Spark
 
+      # from .continuous_summit  import ContinuousSummit
       # from .continuous_fifo    import ContinuousFifo
 
         try:
             impl = {
                 SCHEDULER_NAME_CONTINUOUS_ORDERED: ContinuousOrdered,
-                SCHEDULER_NAME_CONTINUOUS_SUMMIT:  ContinuousSummit,
                 SCHEDULER_NAME_CONTINUOUS:         Continuous,
                 SCHEDULER_NAME_SCATTERED:          Scattered,
                 SCHEDULER_NAME_HOMBRE:             Hombre,
@@ -329,6 +328,7 @@ class AgentSchedulingComponent(rpu.Component):
                 SCHEDULER_NAME_YARN:               Yarn,
                 SCHEDULER_NAME_SPARK:              Spark,
 
+              # SCHEDULER_NAME_CONTINUOUS_SUMMIT:  ContinuousSummit,
               # SCHEDULER_NAME_CONTINUOUS_FIFO:    ContinuousFifo,
             }[name]
 
