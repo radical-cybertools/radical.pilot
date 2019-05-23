@@ -256,7 +256,7 @@ class AgentSchedulingComponent(rpu.Component):
         self._lrms_cores_per_node = self._cfg['lrms_info']['cores_per_node']
         self._lrms_gpus_per_node  = self._cfg['lrms_info']['gpus_per_node']
         self._lrms_lfs_per_node   = self._cfg['lrms_info']['lfs_per_node']
-        self._lrms_mem_per_node   = self._cfg['lrms_info']['mem_per_node'] 
+        self._lrms_mem_per_node   = self._cfg['lrms_info']['mem_per_node']
 
         if not self._lrms_node_list:
             raise RuntimeError("LRMS %s didn't _configure node_list."
