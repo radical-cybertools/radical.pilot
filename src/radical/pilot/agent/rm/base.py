@@ -18,7 +18,7 @@ RM_NAME_SLURM       = 'SLURM'
 RM_NAME_TORQUE      = 'TORQUE'
 RM_NAME_YARN        = 'YARN'
 RM_NAME_SPARK       = 'SPARK'
-
+RM_NAME_DEBUG       = 'DEBUG'
 
 # ==============================================================================
 #
@@ -153,6 +153,7 @@ class LRMS(object):
                         rp.agent.LM.lrms_config_hook(lm, self._cfg, self,
                             self._log, self._prof))
             except Exception as e:
+                # FIXME don't catch/raise
                 self._log.exception("lrms config hook failed: %s" % e)
                 raise
 
@@ -216,6 +217,7 @@ class LRMS(object):
         from .torque      import Torque     
         from .yarn        import Yarn      
         from .spark       import Spark       
+        from .debug       import Debug
 
         # Make sure that we are the base-class!
         if cls != LRMS:
@@ -233,7 +235,8 @@ class LRMS(object):
                 RM_NAME_SLURM       : Slurm,
                 RM_NAME_TORQUE      : Torque,
                 RM_NAME_YARN        : Yarn,
-                RM_NAME_SPARK       : Spark
+                RM_NAME_SPARK       : Spark,
+                RM_NAME_DEBUG       : Debug
             }[name]
             return impl(cfg, session)
 

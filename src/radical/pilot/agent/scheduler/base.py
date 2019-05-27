@@ -18,16 +18,17 @@ from ... import constants as rpc
 #
 # 'enum' for RPs's pilot scheduler types
 #
-SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
 SCHEDULER_NAME_CONTINUOUS_ORDERED = "CONTINUOUS_ORDERED"
-SCHEDULER_NAME_CONTINUOUS_SUMMIT  = "CONTINUOUS_SUMMIT"
+SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
 SCHEDULER_NAME_HOMBRE             = "HOMBRE"
-SCHEDULER_NAME_SCATTERED          = "SCATTERED"
 SCHEDULER_NAME_SPARK              = "SPARK"
 SCHEDULER_NAME_TORUS              = "TORUS"
 SCHEDULER_NAME_YARN               = "YARN"
+SCHEDULER_NAME_SPARK              = "SPARK"
 
-# SCHEDULER_NAME_CONTINUOUS_FIFO  = "CONTINUOUS_FIFO"
+# SCHEDULER_NAME_SCATTERED          = "SCATTERED"
+# SCHEDULER_NAME_CONTINUOUS_FIFO    = "CONTINUOUS_FIFO"
+# SCHEDULER_NAME_CONTINUOUS_SUMMIT  = "CONTINUOUS_SUMMIT"
 
 # ------------------------------------------------------------------------------
 #
@@ -308,28 +309,30 @@ class AgentSchedulingComponent(rpu.Component):
         name = cfg['scheduler']
 
         from .continuous_ordered import ContinuousOrdered
-        from .continuous_summit  import ContinuousSummit
         from .continuous         import Continuous
-        from .scattered          import Scattered
         from .hombre             import Hombre
         from .torus              import Torus
         from .yarn               import Yarn
         from .spark              import Spark
 
+      # from .continuous_summit  import ContinuousSummit
       # from .continuous_fifo    import ContinuousFifo
+      # from .scattered          import Scattered
 
         try:
             impl = {
-                SCHEDULER_NAME_CONTINUOUS_ORDERED: ContinuousOrdered,
-                SCHEDULER_NAME_CONTINUOUS_SUMMIT:  ContinuousSummit,
-                SCHEDULER_NAME_CONTINUOUS:         Continuous,
-                SCHEDULER_NAME_SCATTERED:          Scattered,
-                SCHEDULER_NAME_HOMBRE:             Hombre,
-                SCHEDULER_NAME_TORUS:              Torus,
-                SCHEDULER_NAME_YARN:               Yarn,
-                SCHEDULER_NAME_SPARK:              Spark,
 
-              # SCHEDULER_NAME_CONTINUOUS_FIFO:    ContinuousFifo,
+                SCHEDULER_NAME_CONTINUOUS_ORDERED : ContinuousOrdered,
+                SCHEDULER_NAME_CONTINUOUS         : Continuous,
+                SCHEDULER_NAME_HOMBRE             : Hombre,
+                SCHEDULER_NAME_TORUS              : Torus,
+                SCHEDULER_NAME_YARN               : Yarn,
+                SCHEDULER_NAME_SPARK              : Spark,
+
+              # SCHEDULER_NAME_CONTINUOUS_SUMMIT  : ContinuousSummit,
+              # SCHEDULER_NAME_CONTINUOUS_FIFO    : ContinuousFifo,
+              # SCHEDULER_NAME_SCATTERED          : Scattered,
+
             }[name]
 
             impl = impl(cfg, session)
@@ -408,40 +411,19 @@ class AgentSchedulingComponent(rpu.Component):
         Returns a multi-line string corresponding to the status of the node list
         '''
 
+        glyphs = {rpc.FREE : '-',
+                  rpc.BUSY : '#',
+                  rpc.DOWN : '!'}
         ret = "|"
         for node in self.nodes:
             for core in node['cores']:
-                if core == rpc.FREE:
-                    ret += '-'
-                else:
-                    ret += '#'
+                ret += glyphs[core]
             ret += ':'
             for gpu in node['gpus']:
-                if gpu == rpc.FREE:
-                    ret += '-'
-                else:
-                    ret += '#'
+                ret += glyphs[gpu]
             ret += '|'
 
         return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _configure(self):
-        raise NotImplementedError("_configure() missing for %s" % self.uid)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _allocate_slot(self, cud):
-        raise NotImplementedError("_allocate_slot() missing for %s" % self.uid)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _release_slot(self, slots):
-        raise NotImplementedError("_release_slot() missing for %s" % self.uid)
 
 
     # --------------------------------------------------------------------------
@@ -495,9 +477,9 @@ class AgentSchedulingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _try_allocation(self, unit):
-        """
+        '''
         attempt to allocate cores/gpus for a specific unit.
-        """
+        '''
 
         # needs to be locked as we try to acquire slots here, but slots are
         # freed in a different thread.  But we keep the lock duration short...
@@ -576,9 +558,9 @@ class AgentSchedulingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def unschedule_cb(self, topic, msg):
-        """
+        '''
         release (for whatever reason) all slots allocated to this unit
-        """
+        '''
 
         unit = msg
 
@@ -639,13 +621,12 @@ class AgentSchedulingComponent(rpu.Component):
             if self._try_allocation(unit):
 
                 # allocated unit -- advance it
-                self.advance(unit, rps.AGENT_EXECUTING_PENDING, 
+                self.advance(unit, rps.AGENT_EXECUTING_PENDING,
                              publish=True, push=True)
 
                 # remove it from the wait queue
                 with self._wait_lock:
                     self._wait_pool.remove(unit)
-
 
         # return True to keep the cb registered
         return True

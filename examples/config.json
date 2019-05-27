@@ -4,7 +4,7 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 1024,
+        "cores"    : 1,
         "gpus"     : 2
     },
 
@@ -149,6 +149,20 @@
         "cores"    : 80
     },
 
+    "princeton.tiger_cpu" : {
+        "project"  : "geo",
+        "queue"    : "cpu",
+        "schema"   : "local",
+        "cores"    : 40
+    },
+
+    "princeton.tiger_gpu" : {
+        "project"  : "geo",
+        "queue"    : "gpu",
+        "schema"   : "local",
+        "cores"    : 56
+    },
+
     "xsede.stampede" : {
         "project"  : "TG-MCB090174",
         "queue"    : "development",
@@ -260,6 +274,13 @@
         "schema"   : "loccal",
         "cores"    : 84,
         "gpus"     : 12
+    },
+
+    "ornl.summit" : {
+        "project"  : "BIP178",
+        "queue"    : "batch",
+        "schema"   : "local",
+        "cores"    : 420
     },
 
     "ornl.titan" : {

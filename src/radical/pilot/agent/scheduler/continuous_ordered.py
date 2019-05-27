@@ -3,7 +3,6 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import copy
-import pprint
 import threading as mt
 
 from .continuous import Continuous
@@ -17,10 +16,12 @@ from ... import constants as rpc
 # This is a simple extension of the Continuous scheduler which evaluates the
 # `order` tag of arriving units, which is expected to have the form
 #
-#   order : "ns order size"
+#   order : {'ns'   : <string>,
+#            'order': <int>, 
+#            'size' : <int>}
 #
 # where 'ns' is a namespace, 'order' is an integer defining the order of bag of
-# tasks in that namespace, and 'size' is the number of units in that BoT.  The
+# tasks in that namespace, and 'size' is the number of tasks in that bag.  The
 # semantics of the scheduler is that, for any given namespace, a BoT with order
 # 'n' will only be executed after 'size' tasks of the BoT with order 'n-1' have
 # been executed.  The first BoT is expected to have order '0'.
@@ -29,10 +30,7 @@ from ... import constants as rpc
 # where one stage needs to be completed before units from the next stage can be
 # considered for scheduling.
 #
-# NOTE: we use the `unschedule` event to determine when unit from a certain BoT
-#       is completed - but that is not a good marker for unit completion:
-#       - output staging is ignored
-#       - failed units cannot be recognized
+# FIXME: - failed units cannot yet be recognized
 #
 class ContinuousOrdered(Continuous):
 
@@ -49,19 +47,13 @@ class ContinuousOrdered(Continuous):
 
         Continuous._configure(self)
 
-
         # This scheduler will wait for state updates, and will consider a unit
         # `done` once it reaches a trigger state.  When a state update is found
         # which shows that the units reached that state, it is marked as 'done'
         # in the respective order of its namespace.
         #
-        # FIXME: units for a BoT `m` with `m>n` could be considered eligible for
-        #        scheduling after the BoT `n` is completely scheduled, executed,
-        #        *or* staged-out (agent side).  we assume it is the latter, but
-        #        will keep this configurable.
         self._trigger_state = rps.UMGR_STAGING_OUTPUT_PENDING
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
-
 
         # a namespace entry will look like this:
         #
@@ -71,7 +63,7 @@ class ContinuousOrdered(Continuous):
         #      'uids': [...]}, # ids    of units to be scheduled
         #      'done': [...]}, # ids    of units in trigger state
         #     }, 
-        #    ...
+        #     ...
         #   }
         #
         # prepare an initial entry for each ns which ensures that BOT #0 is
@@ -82,12 +74,10 @@ class ContinuousOrdered(Continuous):
         self._unordered  = list()       # IDs of units which are not ordered
         self._ns         = dict()       # nothing has run, yet
 
-        self._ns_init    = {'current' : 0
-                           }
+        self._ns_init    = {'current' : 0}
         self._order_init = {'size'    : 0, 
                             'uids'    : list(),
-                            'done'    : list()
-                           }
+                            'done'    : list()}
 
 
     # --------------------------------------------------------------------------
@@ -119,15 +109,9 @@ class ContinuousOrdered(Continuous):
                 assert(uid not in self._units), 'duplicated unit %s' % uid
                 self._units[uid] = unit
 
-                # order info is parsed as '%s %d %d' % (ns, order, size)
-                elems = order_tag.split()
-
-                if len(elems) != 3:
-                    raise ValueError('cannot parse order tag [%s]' % order_tag)
-
-                ns    = str(elems[0])
-                order = int(elems[1])
-                size  = int(elems[2])
+                ns    = order_tag['ns']
+                order = order_tag['order']
+                size  = order_tag['size']
 
               # self._log.debug('tags %s: %s : %d : %d', uid, ns, order, size)
                 # initiate ns if needed
@@ -219,7 +203,7 @@ class ContinuousOrdered(Continuous):
 
                         unit = self._units[uid]
 
-                        # attempt to schedule this unit (use continuous algorithm)
+                        # attempt to schedule this unit with the continuous alg
                         if Continuous._try_allocation(self, unit):
 
                             # success - keep it and try the next one
@@ -301,9 +285,10 @@ class ContinuousOrdered(Continuous):
                     continue
 
             # get and parse order tag.  We don't need to repeat checks
-            elems = thing['description']['tags']['order'].split()
-            ns    = str(elems[0])
-            order = int(elems[1])
+            order_tag = thing['description']['tags']['order']
+            ns    = order_tag['ns']
+            order = order_tag['order']
+          # size  = order_tag['size']
 
             with self._lock:
                 self._ns[ns][order]['done'].append(uid)

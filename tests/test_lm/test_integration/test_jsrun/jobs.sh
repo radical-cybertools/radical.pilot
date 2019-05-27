@@ -46,48 +46,16 @@ assert() {
     tid=$3
 
     failed=0
-    while read line;
-    do
-        lhs=`echo $line | cut -f 1 -d ' '`
-        exp_rhs=`echo $line | cut -f 3 -d ' '`
-        if [[ $lhs =  "MPI_Ranks" ]];
-        then
-            act_rhs=`cat $act_out | grep -e 'MPI Ranks' | cut -f 4 -d ' ' | tr ',' ' ' | sed 's/ //g'`
-            if [[ ! $act_rhs = $exp_rhs ]];
-            then
-                echo "Expected ranks = $exp_rhs, actual ranks = $act_rhs" >> results_$d/$tid/full_output.log
-                failed=1
-            fi
-        fi
-        if [[ $lhs =  "OpenMP_Threads" ]];
-        then
-            act_rhs=`cat $act_out | grep -e 'OpenMP Threads' | cut -f 7 -d ' ' | tr ',' ' ' | sed 's/ //g'`
-            if [[ ! $act_rhs = $exp_rhs ]];
-            then
-                echo "Expected threads = $exp_rhs, actual threads = $act_rhs" >> results_$d/$tid/full_output.log
-                failed=1
-            fi
-        fi
-        if [[ $lhs =  "GPUs_per_Resource_Set" ]];
-        then
-            act_rhs=`cat $act_out | grep -e 'GPUs per Resource Set' | cut -f 12 -d ' ' | tr ',' ' '`
-            if [[ ! $act_rhs = $exp_rhs ]];
-            then
-                echo "Expected gpus per resource set = $exp_rhs, actual gpus per resource set = $act_rhs" >> results_$d/$tid/full_output.log
-                failed=1
-            fi
-        fi
-        if [[ $lhs =  "Unique_Nodes" ]];
-        then
-            act_rhs=`cat $act_out | grep -e '^MPI Rank' | cut -f 11 -d ' ' | tr ',' ' ' | uniq -c | wc -l`
-            if [[ ! $act_rhs = $exp_rhs ]];
-            then
-                echo "Expected unique nodes = $exp_rhs, actual unique nodes = $act_rhs" >> results_$d/$tid/full_output.log
-                failed=1
-            fi
-        fi
 
-    done < $exp_out
+    # Remove node ids from act_out
+    act_out=`cat $act_out | sed 's/Node ....../Node /g' | sed 's/OMP_threadID ./OMP_threadID /g' | sort`
+    exp_out=`cat $exp_out | sort`
+    if [[ ! $act_out = $exp_out ]];
+    then
+        echo "Expected output = $exp_out, actual output = $act_out" >> results_$d/$tid/full_output.log
+        failed=1
+    fi
+
 
     if [[ $failed = 1 ]];
         then
@@ -95,8 +63,9 @@ assert() {
         else
             echo "Test $tid passed" >> results_$d/summary.log
     fi
-    
+
 }
+
 
 # Following tests from https://gist.github.com/vivek-bala/2bc5857e437dce2972e8faab5e886e6f
 
@@ -105,13 +74,13 @@ touch results_$d/summary.log
 for tid in test_*;
 do
     res_set=`cat $tid/res_set`
-    omp_env=`sed '2q;d' $tid/cmds`
-    cmd=`sed '3q;d' $tid/cmds`
+    omp_env=`sed '4q;d' $tid/cmds`
+    cmd=`sed '5q;d' $tid/cmds`
     exp_out="$tid/exp_out"
     echo "Running test $tid"
     run_cmd "$res_set" "$omp_env" "$cmd" "$exp_out" "$tid"
     assert "results_$d/$tid/jsrun_output.log" "$exp_out" "$tid"
 done
 
-mail -s "Jsrun tests $d" $dest < results_$d/summary.log
+# mail -s "Jsrun tests $d" $dest < results_$d/summary.log
 mv jsrun_test.* results_$d/
