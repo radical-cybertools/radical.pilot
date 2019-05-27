@@ -1103,7 +1103,7 @@ class Session(rs.Session):
 
         # we don't cache unit sandboxes, they are just a string concats.
         pilot_sandbox = self._get_pilot_sandbox(pilot)
-        unit_sandbox  = unit.get('sandbox')
+        unit_sandbox  = unit['description'].get('sandbox')
 
         if not unit_sandbox:
             unit_sandbox = unit['uid']
