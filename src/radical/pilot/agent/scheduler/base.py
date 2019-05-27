@@ -18,15 +18,16 @@ from ... import constants as rpc
 #
 # 'enum' for RPs's pilot scheduler types
 #
-SCHEDULER_NAME_CONTINUOUS      = "CONTINUOUS"
-SCHEDULER_NAME_CONTINUOUS_FIFO = "CONTINUOUS_FIFO"
-SCHEDULER_NAME_HOMBRE          = "HOMBRE"
-SCHEDULER_NAME_SCATTERED       = "SCATTERED"
-SCHEDULER_NAME_SPARK           = "SPARK"
-SCHEDULER_NAME_TORUS           = "TORUS"
-SCHEDULER_NAME_YARN            = "YARN"
-SCHEDULER_NAME_NOOP            = "NOOP"
+SCHEDULER_NAME_CONTINUOUS_ORDERED = "CONTINUOUS_ORDERED"
+SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
+SCHEDULER_NAME_HOMBRE             = "HOMBRE"
+SCHEDULER_NAME_SCATTERED          = "SCATTERED"
+SCHEDULER_NAME_SPARK              = "SPARK"
+SCHEDULER_NAME_TORUS              = "TORUS"
+SCHEDULER_NAME_YARN               = "YARN"
+SCHEDULER_NAME_NOOP               = "NOOP"
 
+# SCHEDULER_NAME_CONTINUOUS_FIFO    = "CONTINUOUS_FIFO"
 
 # ------------------------------------------------------------------------------
 #
@@ -290,6 +291,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # configure the scheduler instance
         self._configure()
+
         self._log.debug("slot status after  init      : %s", self.slot_status())
 
 
@@ -306,25 +308,30 @@ class AgentSchedulingComponent(rpu.Component):
 
         name = cfg['scheduler']
 
-        from .continuous_fifo import ContinuousFifo
-        from .continuous      import Continuous
-        from .scattered       import Scattered
-        from .hombre          import Hombre
-        from .torus           import Torus
-        from .spark           import Spark
-        from .yarn            import Yarn
-        from .noop            import Noop
+        from .continuous_ordered import ContinuousOrdered
+        from .continuous         import Continuous
+        from .scattered          import Scattered
+        from .hombre             import Hombre
+        from .torus              import Torus
+        from .yarn               import Yarn
+        from .spark              import Spark
+        from .noop               import Noop
+
+      # from .continuous_fifo    import ContinuousFifo
 
         try:
             impl = {
-                SCHEDULER_NAME_CONTINUOUS_FIFO: ContinuousFifo,
-                SCHEDULER_NAME_CONTINUOUS     : Continuous,
-                SCHEDULER_NAME_SCATTERED      : Scattered,
-                SCHEDULER_NAME_HOMBRE         : Hombre,
-                SCHEDULER_NAME_TORUS          : Torus,
-                SCHEDULER_NAME_SPARK          : Spark,
-                SCHEDULER_NAME_YARN           : Yarn,
-                SCHEDULER_NAME_NOOP           : Noop,
+                SCHEDULER_NAME_CONTINUOUS_ORDERED : ContinuousOrdered,
+                SCHEDULER_NAME_CONTINUOUS         : Continuous,
+                SCHEDULER_NAME_SCATTERED          : Scattered,
+                SCHEDULER_NAME_HOMBRE             : Hombre,
+                SCHEDULER_NAME_TORUS              : Torus,
+                SCHEDULER_NAME_YARN               : Yarn,
+                SCHEDULER_NAME_SPARK              : Spark,
+                SCHEDULER_NAME_NOOP               : Noop,
+
+              # SCHEDULER_NAME_CONTINUOUS_FIFO    : ContinuousFifo,
+
             }[name]
 
             impl = impl(cfg, session)
@@ -514,10 +521,10 @@ class AgentSchedulingComponent(rpu.Component):
         if self._log.isEnabledFor(logging.DEBUG):
             self._log.debug("after  allocate   %s: %s", unit['uid'],
                             self.slot_status())
-            self._log.debug("%s [%s/%s] : %s", unit['uid'],
-                            unit['description']['cpu_processes'],
-                            unit['description']['gpu_processes'],
-                            pprint.pformat(unit['slots']))
+          # self._log.debug("%s [%s/%s] : %s", unit['uid'],
+          #                 unit['description']['cpu_processes'],
+          #                 unit['description']['gpu_processes'],
+          #                 pprint.pformat(unit['slots']))
 
         # True signals success
         return True
@@ -557,7 +564,7 @@ class AgentSchedulingComponent(rpu.Component):
             core_map.append(p_map)
 
         if idx != len(cores):
-            self._log.debug('%s -- %s -- %s -- %s',
+            self._log.error('%s -- %s -- %s -- %s',
                             idx, len(cores), cores, n_procs)
         assert(idx == len(cores))
 
@@ -624,9 +631,9 @@ class AgentSchedulingComponent(rpu.Component):
 
         unit = msg
 
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before schedule   %s: %s", unit['uid'],
-                            self.slot_status())
+      # if self._log.isEnabledFor(logging.DEBUG):
+      #     self._log.debug("before schedule   %s: %s", unit['uid'],
+      #                     self.slot_status())
 
         # cycle through wait queue, and see if we get anything placed now.  We
         # cycle over a copy of the list, so that we can modify the list on the
@@ -642,7 +649,6 @@ class AgentSchedulingComponent(rpu.Component):
                 # remove it from the wait queue
                 with self._wait_lock:
                     self._wait_pool.remove(unit)
-
 
         # return True to keep the cb registered
         return True
