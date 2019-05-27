@@ -79,7 +79,7 @@ class TestMPIEXEClaunchMethod(unittest.TestCase):
         launch_method.launch_command = 'mpiexec'
         launch_method.mpi_version = None
         launch_method.mpi_flavor = None
-        launch_method._log  = ru.get_logger('dummy')
+        launch_method._log  = ru.Logger('dummy')
 
         mpiexec_cmd, _ = launch_method.construct_command(self._cu, launch_script_hop=1)
         
