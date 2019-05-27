@@ -24,6 +24,7 @@ SCHEDULER_NAME_HOMBRE             = "HOMBRE"
 SCHEDULER_NAME_SPARK              = "SPARK"
 SCHEDULER_NAME_TORUS              = "TORUS"
 SCHEDULER_NAME_YARN               = "YARN"
+SCHEDULER_NAME_SPARK              = "SPARK"
 
 # SCHEDULER_NAME_SCATTERED          = "SCATTERED"
 # SCHEDULER_NAME_CONTINUOUS_FIFO    = "CONTINUOUS_FIFO"
@@ -320,16 +321,18 @@ class AgentSchedulingComponent(rpu.Component):
 
         try:
             impl = {
-                SCHEDULER_NAME_CONTINUOUS_ORDERED: ContinuousOrdered,
-                SCHEDULER_NAME_CONTINUOUS:         Continuous,
-                SCHEDULER_NAME_HOMBRE:             Hombre,
-                SCHEDULER_NAME_TORUS:              Torus,
-                SCHEDULER_NAME_YARN:               Yarn,
-                SCHEDULER_NAME_SPARK:              Spark,
 
-              # SCHEDULER_NAME_SCATTERED:          Scattered,
-              # SCHEDULER_NAME_CONTINUOUS_FIFO:    ContinuousFifo,
-              # SCHEDULER_NAME_CONTINUOUS_SUMMIT:  ContinuousSummit,
+                SCHEDULER_NAME_CONTINUOUS_ORDERED : ContinuousOrdered,
+                SCHEDULER_NAME_CONTINUOUS         : Continuous,
+                SCHEDULER_NAME_HOMBRE             : Hombre,
+                SCHEDULER_NAME_TORUS              : Torus,
+                SCHEDULER_NAME_YARN               : Yarn,
+                SCHEDULER_NAME_SPARK              : Spark,
+
+              # SCHEDULER_NAME_CONTINUOUS_SUMMIT  : ContinuousSummit,
+              # SCHEDULER_NAME_CONTINUOUS_FIFO    : ContinuousFifo,
+              # SCHEDULER_NAME_SCATTERED          : Scattered,
+
             }[name]
 
             impl = impl(cfg, session)
@@ -624,7 +627,6 @@ class AgentSchedulingComponent(rpu.Component):
                 # remove it from the wait queue
                 with self._wait_lock:
                     self._wait_pool.remove(unit)
-
 
         # return True to keep the cb registered
         return True

@@ -1,3 +1,4 @@
+
 language: python
 sudo: disabled
 
@@ -15,6 +16,8 @@ git:
 
 env:
   global:
+    - RADICAL_PILOT_DBURL=mongodb://rct:rct_test@one.radical-project.org/rct_test
+    - RADICAL_PILOT_TEST_DBNAME=rct_test
     - LOC=/home/travis/virtualenv/python2.7  # Location where VE is created on travis
     - CMD1="coverage run -m pytest -vvv tests/;flake8 tests/;pylint tests/"
     - CMD2="flake8 --config=.flake8 $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/;flake8 --config=.flake8 $LOC/lib/python2.7/site-packages/radical/pilot/agent/rm/;"
@@ -26,6 +29,11 @@ env:
     - MAIN_CMD=$CMD2
     - MAIN_CMD=$CMD3
   
+before_install:
+  - uname -a
+  - ulimit -a
+  - python -V
+
 # command to install dependencies
 install:
   - pip install .
@@ -47,3 +55,10 @@ after_success:
       coverage report; \
       curl -s https://codecov.io/bash | bash
     fi
+
+notifications:
+  email:
+    recipients: andre@merzky.net
+    on_success: change
+    on_failure: always
+

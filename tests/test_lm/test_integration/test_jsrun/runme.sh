@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# current directory
-cd /ccs/home/vivekb/test_jsrun
+# Git pull to get recent changes
+git pull
 
 # Run the jobs file 
 bsub jobs.sh
