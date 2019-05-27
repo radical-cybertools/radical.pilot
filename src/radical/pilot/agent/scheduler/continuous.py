@@ -562,14 +562,14 @@ class Continuous(AgentSchedulingComponent):
 
         cores_per_node = self._lrms_cores_per_node
         gpus_per_node  = self._lrms_gpus_per_node
-        lfs_per_node   = self._lrms_lfs_per_node
+        lfs_per_node   = self._lrms_lfs_per_node['size']
         mem_per_node   = self._lrms_mem_per_node
 
         # we always fail when too many threads are requested
         if threads_per_proc > cores_per_node:
             raise ValueError('too many threads requested')
 
-        if lfs_per_process > lfs_per_node['size']:
+        if lfs_per_process > lfs_per_node:
             raise ValueError('too much LFS requested')
 
         if mem_per_process > mem_per_node:
@@ -584,10 +584,10 @@ class Continuous(AgentSchedulingComponent):
         alloced_lfs   = 0
         alloced_mem   = 0
 
-        slots = {'cores_per_node': cores_per_node,
-                 'gpus_per_node' : gpus_per_node,
-                 'lfs_per_node'  : lfs_per_node,
-                 'mem_per_node'  : mem_per_node,
+        slots = {'cores_per_node': self._lrms_cores_per_node,
+                 'gpus_per_node' : self._lrms_gpus_per_node,
+                 'lfs_per_node'  : self._lrms_lfs_per_node,
+                 'mem_per_node'  : self._lrms_mem_per_node,
                  'lm_info'       : self._lrms_lm_info,
                  'nodes'         : list(),
                  }
@@ -614,7 +614,7 @@ class Continuous(AgentSchedulingComponent):
             # that this can also be the first node, for small units.
             if  requested_cores - alloced_cores <= cores_per_node and \
                 requested_gpus  - alloced_gpus  <= gpus_per_node  and \
-                requested_lfs   - alloced_lfs   <= lfs_per_node['size'] and \
+                requested_lfs   - alloced_lfs   <= lfs_per_node   and \
                 requested_mem   - alloced_mem   <= mem_per_node:
                 is_last = True
 
@@ -629,8 +629,8 @@ class Continuous(AgentSchedulingComponent):
             # we only search up to node-size on this node.  Duh!
             find_cores = min(requested_cores - alloced_cores, cores_per_node)
             find_gpus  = min(requested_gpus  - alloced_gpus,  gpus_per_node)
-            find_lfs   = min(requested_lfs   - alloced_lfs,   lfs_per_node['size'])
-            find_mem   = min(requested_mem   - alloced_mem, mem_per_node)
+            find_lfs   = min(requested_lfs   - alloced_lfs,   lfs_per_node)
+            find_mem   = min(requested_mem   - alloced_mem,   mem_per_node)
 
             # under the constraints so derived, check what we find on this node
             cores, gpus, lfs, mem = self._find_resources(node=node,
