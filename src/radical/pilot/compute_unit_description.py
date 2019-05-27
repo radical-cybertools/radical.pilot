@@ -12,9 +12,9 @@ NAME                   = 'name'
 EXECUTABLE             = 'executable'
 ARGUMENTS              = 'arguments'
 ENVIRONMENT            = 'environment'
+SANDBOX                = 'sandbox'
 
 CORES                  = 'cores'  # deprecated
-
 CPU_PROCESSES          = 'cpu_processes'
 CPU_PROCESS_TYPE       = 'cpu_process_type'
 CPU_THREADS            = 'cpu_threads'
@@ -133,6 +133,13 @@ class ComputeUnitDescription(attributes.Attributes):
 
        default: `{}`
 
+
+    .. data:: sandbox
+
+       (`Attribute`) This specifies the working directory of the unit.  That
+       directory *MUST* be relative to the pilot sandbox.  It will be created if
+       it does not exist.  By default, the sandbox has the name of the unit's
+       uid.
 
     .. data:: stdout
 
@@ -314,6 +321,7 @@ class ComputeUnitDescription(attributes.Attributes):
         self._attributes_register(EXECUTABLE,       None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(ARGUMENTS,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(ENVIRONMENT,      None, attributes.STRING, attributes.DICT,   attributes.WRITEABLE)
+        self._attributes_register(SANDBOX,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PRE_EXEC,         None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(POST_EXEC,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(RESTARTABLE,      None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
@@ -354,6 +362,7 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (KERNEL,           None)
         self.set_attribute (NAME,             None)
         self.set_attribute (EXECUTABLE,       None)
+        self.set_attribute (SANDBOX,          None)
         self.set_attribute (ARGUMENTS,      list())
         self.set_attribute (ENVIRONMENT,    dict())
         self.set_attribute (PRE_EXEC,       list())
