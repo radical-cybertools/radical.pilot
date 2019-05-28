@@ -40,7 +40,7 @@
     "local.localhost_funcs" : {
         "project"  : null,
         "queue"    : null,
-        "schema"   : null,
+        "schema"   : "ssh",
         "cores"    : 64
     },
 

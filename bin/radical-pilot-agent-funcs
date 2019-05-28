@@ -13,12 +13,20 @@ import radical.utils   as ru
 import queue
 mp.Queue.Empty = queue.Empty
 
-# FIXME: activate virtenv if needed
 # FIXME: the func executor may need a small bootstrapper
 
-# _ve  = "/home/merzky/radical/radical.pilot.devel/ve"
-# _vea = "%s/bin/activate_this.py" % _ve
-# execfile(_vea, dict(__file__=_vea))
+pwd = sys.argv[1]
+
+# ------------------------------------------------------------------------------
+# activate virtenv if needed
+ve = None
+if len(sys.argv) > 2:
+    ve = sys.argv[2]
+
+if ve and ve not in ['', 'None', None]:
+
+    activate = "%s/bin/activate_this.py" % ve
+    execfile(activate, dict(__file__=activate))
 
 
 # ------------------------------------------------------------------------------
@@ -46,9 +54,9 @@ class Executor(object):
 
         self._nw   = n_workers
         self._uid  = os.environ['RP_FUNCS_ID']
-        self._log  = ru.Logger(self._uid)
-        self._prof = ru.Profiler(self._uid)
-        self._cfg  = ru.read_json('%s.cfg' % self._uid)
+        self._log  = ru.Logger(self._uid,   path=pwd)
+        self._prof = ru.Profiler(self._uid, path=pwd)
+        self._cfg  = ru.read_json('%s/%s.cfg' % (pwd, self._uid))
 
         self._initialize()
 

@@ -259,7 +259,7 @@
         "lrms"                        : "FORK",
         "agent_scheduler"             : "NOOP",
         "agent_spawner"               : "FUNCS",
-        "agent_launch_method"         : "FORK",
+        "agent_launch_method"         : "SSH",
         "task_launch_method"          : "FUNCS",
       # "mpi_launch_method"           : "MPIRUN",
         "rp_version"                  : "local",
