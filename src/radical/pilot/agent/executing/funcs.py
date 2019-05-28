@@ -86,19 +86,27 @@ class FUNCS(AgentExecutingComponent) :
                 session = self._session)
 
         # now run the func launcher on all nodes
-        self._nodes = self._cfg['lrms_info']['node_list']
-        for idx, node in enumerate(self._nodes):
+        ve  = os.environ.get('VIRTUAL_ENV',  '')
+        exe = ru.which('radical-pilot-agent-funcs')
+
+        if not exe:
+            exe = '%s/rp_install/bin/radical-pilot-agent-funcs' % self._pwd
+
+        for idx, node in enumerate(self._cfg['lrms_info']['node_list']):
             uid   = 'func_exec.%04d' % idx 
+            pwd   = '%s/%s' % (self._pwd, uid)
             funcs = {'uid'        : uid,
-                     'description': {'executable'   : 'radical-pilot-agent-funcs',
+                     'description': {'executable'   : exe,
+                                     'arguments'    : [pwd, ve],
                                      'cpu_processes': 1,
-                                     'environment'  : []
+                                     'environment'  : [], 
                                     },
-                     'slots'      : [{'name'        : node[0], 
-                                      'uid'         : node[1], 
-                                      'cores'       : [[0]], 
-                                      'gpus'        : []}
-                                    ], 
+                     'slots'      : {'nodes'        : [{'name'  : node[0], 
+                                                        'uid'   : node[1], 
+                                                        'cores' : [[0]], 
+                                                        'gpus'  : []
+                                                       }]
+                                    }, 
                      'cfg'        : {'addr_wrk'     : addr_wrk['addr_out'],
                                      'addr_res'     : addr_res['addr_in']
                                     }
