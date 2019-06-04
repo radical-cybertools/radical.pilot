@@ -1,7 +1,7 @@
 
 {
     "cname"            : "AgentStagingInputComponent",
-    "dburl"            : "mongodb://rp:rprprp1@ds043457.mlab.com:43457/rp",
+    "dburl"            : "mongodb://rct:rct_test@one.radical-project.org/rct_test",
     "pilot_id"         : "pilot.0000",
     "pilot_sandbox"    : "",
     "resource_cfg"     : {"default_remote_workdir" : "$HOME",

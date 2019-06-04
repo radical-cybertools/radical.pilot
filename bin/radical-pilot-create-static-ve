@@ -10,7 +10,7 @@ echo "prefix : $prefix"
 echo "arg    : $arg"
 echo
 
-reqs="pymongo==2.8 python-hostlist netifaces==0.10.4 setproctitle ntplib pyzmq"
+reqs="pymongo==2.8 python-hostlist netifaces setproctitle ntplib pyzmq"
 reqs="$reqs apache-libcloud colorama backports.ssl-match-hostname msgpack-python"
 reqs="$reqs future regex msgpack parse"
 

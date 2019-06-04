@@ -77,6 +77,7 @@ class Slurm(LRMS):
         # in case of a single partial node allocation.
         self.cores_per_node = self._cfg.get('cores_per_node', 0)
         self.gpus_per_node  = self._cfg.get('gpus_per_node',  0)  # FIXME GPU
+        self.mem_per_node   = self._cfg.get('mem_per_node',   0)
 
         self.lfs_per_node   = {'path' : ru.expand_env(
                                            self._cfg.get('lfs_path_per_node')),
