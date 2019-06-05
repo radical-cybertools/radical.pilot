@@ -225,7 +225,7 @@ class FUNCS(AgentExecutingComponent) :
 
                 for unit in units:
                     unit['target_state'] = unit['state']
-                    unit['pilot']        = '%s.%s' % (self.uid, unit['wid'])
+                    unit['pilot']        = self._pilot_id
 
                     self._log.debug('=== got %s [%s] [%s] [%s]', 
                                     unit['uid'],    unit['state'],
