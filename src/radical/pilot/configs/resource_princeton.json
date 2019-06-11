@@ -1,0 +1,89 @@
+
+{
+    "tiger_cpu": {
+        "description"                 : "",
+        "notes"                       : "",
+        "schemas"                     : ["local", "ssh"],
+        "mandatory_args"              : [],
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://tigercpu.princeton.edu/",
+            "filesystem_endpoint"     : "sftp://tigercpu.princeton.edu/"
+        },
+        "default_queue"               : "cpu",
+        "lrms"                        : "SLURM",
+        "cores_per_node"              : 40,
+        "gpus_per_node"               : 0,
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "MPIRUN",
+        "mpi_launch_method"           : "MPIRUN",
+        "pre_bootstrap_0"             : ["module purge", 
+                                         "module load intel/18.0", 
+                                         "module load intel-mpi/intel/2018.3",
+                                         "module load intel-python/2.7"
+                                        ],
+        "default_remote_workdir"      : "$HOME",
+        "valid_roots"                 : [],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "use",
+        "virtenv"                     : "$HOME/radical.pilot.sandbox/ve.princeton.tiger",
+        "python_dist"                 : "default",
+        "export_to_cu"                : [],
+        "cu_pre_exec"                 : [],
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 0,
+        "mem_per_node"                : 0,
+        "forward_tunnel_endpoint"     : "tigercpu.princeton.edu"
+    },
+
+    "tiger_gpu": {
+        "description"                 : "",
+        "notes"                       : "",
+        "schemas"                     : ["local", "ssh"],
+        "mandatory_args"              : [],
+        "local"                      :
+        {
+            "job_manager_endpoint"    : "slurm://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://tigercpu.princeton.edu/",
+            "filesystem_endpoint"     : "sftp://tigercpu.princeton.edu/"
+        },
+        "default_queue"               : "gpu",
+        "lrms"                        : "SLURM",
+        "cores_per_node"              : 28,
+        "gpus_per_node"               : 4,
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "MPIRUN",
+        "mpi_launch_method"           : "MPIRUN",
+        "pre_bootstrap_0"             : ["module purge", 
+                                         "module load intel/18.0", 
+                                         "module load intel-mpi/intel/2018.3",
+                                         "module load intel-python/2.7"
+                                        ],
+        "default_remote_workdir"      : "$HOME",
+        "valid_roots"                 : [],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "use",
+        "virtenv"                     : "$HOME/radical.pilot.sandbox/ve.princeton.tiger",
+        "python_dist"                 : "default",
+        "export_to_cu"                : [],
+        "cu_pre_exec"                 : [],
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 0,
+        "mem_per_node"                : 0,
+        "forward_tunnel_endpoint"     : "tigergpu.princeton.edu"
+    }
+}
+

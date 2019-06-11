@@ -4,6 +4,8 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import sys
+import random
+
 import radical.pilot as rp
 
 # READ: The RADICAL-Pilot documentation: 
@@ -37,9 +39,8 @@ def pilot_state_cb (pilot, state):
     print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
 
     if state == rp.FAILED:
-        print 'Pilot failed -- ABORT!  ABORT!  ABORT!'
+        print '=== Pilot failed'
         print pilot.log[-1] # Get the last log message
-        sys.exit (1)
 
 
 #------------------------------------------------------------------------------
@@ -62,9 +63,8 @@ def unit_state_cb (unit, state):
     print "[Callback]: ComputeUnit '%s' state: %s." % (unit.uid, state)
 
     if state == rp.FAILED:
-        print 'Unit failed -- ABORT!  ABORT!  ABORT!'
-        print 'stderr: %s' % unit.stderr # Get the unit's stderr
-        sys.exit (1)
+        print '=== Unit failed!'
+        print '=== stderr: %s' % unit.stderr # Get the unit's stderr
 
 
 #-------------------------------------------------------------------------------
@@ -113,19 +113,27 @@ if __name__ == "__main__":
         pilot = pmgr.submit_pilots(pd)
         umgr.add_pilots(pilot)
 
-        # we submit one compute unit which will just fail
-        cud = rp.ComputeUnitDescription()
-        cud.executable = '/bin/fail'
 
-        cuds=list()
-        for i in range(100):
+        # we submit n tasks, some of which will fail
+        n    = 10
+        cuds = list()
+        for _ in range(n):
+            cud = rp.ComputeUnitDescription()
+            if random.random() < 0.5:
+                cud.executable = '/bin/true'
+                print '+',
+            else:
+                cud.executable = '/bin/fail'
+                print '-',
             cuds.append(cud)
+        print
 
-        # submit the unit...
+        # submit the units...
         cus = umgr.submit_units(cuds)
 
-        # ...and wait for it's successfull 'completion', ie. forever
-        state = umgr.wait_units (state=rp.FINAL)
+        # ...and wait for their completion
+        state = umgr.wait_units(state=rp.FINAL)
+
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
@@ -143,14 +151,7 @@ if __name__ == "__main__":
         # always clean up the session, no matter if we caught an exception or
         # not.
         print "closing session"
-        session.close ()
-
-        # the above is equivalent to
-        #
-        #   session.close (cleanup=True, terminate=True)
-        #
-        # it will thus both clean out the session's database record, and kill
-        # all remaining pilots (none in our example).
+        session.close()
 
 
 #-------------------------------------------------------------------------------
