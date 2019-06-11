@@ -5,6 +5,23 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+0.62.0  Release                                                       2019-06-08
+--------------------------------------------------------------------------------
+
+  - add unit test 
+  - trigger tests 
+  - remove obsolete fifo scheduler (use the ordered scheduler instead)
+  - add ordered scheduler 
+  - add tiger support 
+  - add ssh access to cheyenne 
+  - cleanup examples
+  - fix dplace support
+  - support app specified unit sandboxes
+  - fix pilot statepush over tunnels 
+  - fix titan ve creation, add new static ve
+  - fix for cheyenne
+
+ 
 0.61.0  Release                                                       2019-05-07
 --------------------------------------------------------------------------------
 
