@@ -1,0 +1,73 @@
+#!/bin/sh
+
+# ------------------------------------------------------------------------------
+#
+# setup
+#
+VE="$1"
+VE_VER="virtualenv-16.5.0"
+VE_TAR="$VE_VER.tar.gz" 
+VE_URL="https://files.pythonhosted.org/packages/6a/56/74dce1fdeeabbcc0a3fcf299115f6814bd9c39fc4161658b513240a75ea7/$VE_TAR"
+
+PID=$$
+IDU=$(id -un)
+
+test -z "$TMP" && TMP=/tmp
+BASE="$TMP/ve-$PID-$IDU/"
+
+
+# ------------------------------------------------------------------------------
+#
+# arguments and usage
+#
+if test -z "$VE"
+then
+    printf "\n\tusage: $0 <ve_location>\n"
+    exit 1
+fi
+
+if test "$VE" = '-h' -o "$VE" = '-help'
+then
+    printf "\n\tusage:    $0 <ve_location>"
+    printf "\n\tsynopsis: fetch virtualenv and create a VE at ve_location\n"
+fi
+
+
+# ------------------------------------------------------------------------------
+#
+# ensure we have the absolute VE location
+#
+mkdir -p "$VE"
+cd "$VE"
+VE=$(pwd -P)
+
+
+# ------------------------------------------------------------------------------
+#
+# ensure we have the tools we need
+#
+GET=$(which curl)
+test -z "$GET" && GET="$GET -O"
+test -z "$GET" || GET=$(which wget)
+test -z "$GET" && echo "abort - need wget or curl"
+test -z "$GET" && exit 1
+
+PY=$(which python)
+test -z "$PY"  && echo "abort - need python"
+test -z "$PY"  && exit 1
+
+
+# ------------------------------------------------------------------------------
+# only do things if needed
+test -d "$BASE"   || mkdir -p "$BASE"
+cd      "$BASE"
+
+test -f "$VE_TAR" || "$GET" "$VE_URL"
+test -d "$VE_VER" || tar zxf "$VE_TAR"
+cd      "$VE_VER"
+
+"$PY" virtualenv.py "$VE"
+
+
+# ------------------------------------------------------------------------------
+

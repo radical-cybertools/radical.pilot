@@ -314,6 +314,7 @@ class Shell(AgentExecutingComponent):
         env  += "export RP_AGENT_ID=%s\n"       % self._cfg['agent_name']
         env  += "export RP_SPAWNER_ID=%s\n"     % self.uid
         env  += "export RP_UNIT_ID=%s\n"        % cu['uid']
+        env  += 'export RP_UNIT_NAME="%s"\n'    % cu['description'].get('name')
         env  += 'export RP_GTOD="%s"\n'         % cu['gtod']
         env  += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
                                                 % self._pwd
