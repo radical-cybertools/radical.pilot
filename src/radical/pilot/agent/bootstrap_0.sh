@@ -1611,7 +1611,7 @@ get_tunnel(){
     ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$addr -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
 
     # Kill ssh process when bootstrap_0 dies, to prevent lingering ssh's
-    trap 'jobs -p | grep ssh | xargs kill' EXIT
+    trap 'jobs -p | grep ssh | xargs -tr -n 1 kill' EXIT
 
     # and export to agent
     export RP_BS_TUNNEL="$BIND_ADDRESS:$DBPORT"

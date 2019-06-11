@@ -92,11 +92,13 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable     = '/bin/sh'
-            cud.arguments      = ['09_mpi_units.sh']
-            cud.input_staging  = ['%s/09_mpi_units.sh' % PWD]
-            cud.cores          = 3
-            cud.mpi            = True
+            cud.executable       = '/bin/sh'
+            cud.arguments        = ['09_mpi_units.sh']
+            cud.input_staging    = ['%s/09_mpi_units.sh' % PWD]
+            cud.cpu_processes    = p_num
+            cud.cpu_process_type = rp.MPI
+            cud.cpu_threads      = t_num
+            cud.cpu_thread_type  = rp.OpenMP
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -121,8 +123,9 @@ if __name__ == '__main__':
                     ranks.append(rank)
             for p in range(p_num):
                 for t in range(t_num):
-                    rank = '%d:%d/1' % (p, t)
-                    assert(rank in ranks), 'missing rank %s' % rank
+                    rank = '%d:%d/%d' % (p, t, t_num)
+                    assert(rank in ranks), 'missing rank %s (%s)' % (rank,
+                            ranks)
 
 
     except Exception as e:

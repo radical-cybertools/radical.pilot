@@ -36,21 +36,21 @@ def rec_makedir(target):
             raise
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 @ffi.def_extern()
 def launch_cb(task, jdata, status, cbdata):
     return ffi.from_handle(cbdata).unit_spawned_cb(task, status)
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 @ffi.def_extern()
 def finish_cb(task, jdata, status, cbdata):
     return ffi.from_handle(cbdata).unit_completed_cb(task, status)
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class ORTE(AgentExecutingComponent):
 
@@ -93,9 +93,8 @@ class ORTE(AgentExecutingComponent):
                self._cfg['mpi_launch_method' ] == "ORTE_LIB"), \
                "ORTE_LIB spawner only works with ORTE_LIB LM's."
 
-        self._task_launcher = rp.agent.LM.create(name    = "ORTE_LIB",
-                                                 cfg     = self._cfg,
-                                                 session = self._session)
+        self._task_launcher = rp.agent.LM.create(name="ORTE_LIB", cfg=self._cfg,
+                                                 session=self._session)
         self._orte_initialized = False
         self._cu_environment   = self._populate_cu_environment()
 
@@ -164,6 +163,7 @@ class ORTE(AgentExecutingComponent):
 
         return new_env
 
+
     # --------------------------------------------------------------------------
     #
     def work(self, units):
@@ -197,7 +197,7 @@ class ORTE(AgentExecutingComponent):
             launcher = self._task_launcher
 
             if not launcher:
-                raise RuntimeError("no launcher (mpi=%s)" % cu['description']['mpi'])
+                raise RuntimeError("no launcher")
 
             self._log.debug("Launching unit with %s (%s).", 
                             launcher.name, launcher.launch_command)
@@ -319,6 +319,7 @@ class ORTE(AgentExecutingComponent):
 
         return ret
 
+
     # --------------------------------------------------------------------------
     #
     def spawn(self, launcher, cu):
@@ -360,11 +361,11 @@ class ORTE(AgentExecutingComponent):
         #         post += "%s || %s\n" % (elem, fail)
         #     launch_script.write("# Post-exec commands\n")
         #     if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #         launch_script.write("echo cu_post_start `%s` >> %s/%s.prof\n" \
+        #         launch_script.write("echo cu_post_start `%s` >> %s/%s.prof\n"
         #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
         #     launch_script.write('%s\n' % post)
         #     if 'RADICAL_PILOT_PROFILE' in os.environ:
-        #         launch_script.write("echo cu_post_stop  `%s` >> %s/%s.prof\n" \
+        #         launch_script.write("echo cu_post_stop  `%s` >> %s/%s.prof\n"
         #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
 
 
@@ -394,6 +395,7 @@ class ORTE(AgentExecutingComponent):
             "RP_AGENT_ID=%s"   % self._cfg['agent_name'],
             "RP_SPAWNER_ID=%s" % self.uid,
             "RP_UNIT_ID=%s"    % cu['uid'],
+            "RP_UNIT_NAME=%s"  % cu['description'].get('name'),
             "RP_PILOT_STAGING=%s/staging_area" % self._pwd
         ]
         for env in rp_envs:
