@@ -56,9 +56,9 @@ class MPIRunDPlace(LaunchMethod):
         task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
-        if task_threads > 1:
-            # dplace pinning would disallow threads to map to other cores
-            raise ValueError('dplace can not place threads [%d]' % task_threads)
+      # if task_threads > 1:
+      #     # dplace pinning would disallow threads to map to other cores
+      #     raise ValueError('dplace can not place threads [%d]' % task_threads)
 
         if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
         else          : task_command = task_exec
@@ -74,6 +74,7 @@ class MPIRunDPlace(LaunchMethod):
                 for var in env_list:
                     env_string += '-x "%s" ' % var
 
+
         if 'nodes' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'
                               % (self.name, slots))
@@ -83,26 +84,26 @@ class MPIRunDPlace(LaunchMethod):
         for node in slots['nodes']:
             tmp_list = list()
             for cpu_proc in node['core_map']:
+                host_list.append(node['name'])
                 tmp_list.append(cpu_proc[0])
-                host_list.append(node['name'])
             for gpu_proc in node['gpu_map']:
-                tmp_list.append(gpu_proc[0])
                 host_list.append(node['name'])
+                tmp_list.append(gpu_proc[0])
 
             if core_list:
                 if sorted(core_list) != sorted(tmp_list):
-                    raise ValueError('dplace expects heterogeneous layouts')
+                    raise ValueError('dplace expects homoogeneous layouts')
             else:
                 core_list = tmp_list
 
         np          = len(host_list) + len(core_list)
-        host_string = ",".join(host_list)  # FIXME: differs for mpich/hydra
+        host_string = ",".join(host_list)
         core_string = ','.join(core_list)
 
 
-        command = "%s -h %s -np %d %s -c %s %s %s" % \
+        command = "%s -h %s -np %d %s -s %d -c %s %s %s" % \
                   (self.launch_command, host_string, np,
-                   self.dplace_command, core_string,
+                   self.dplace_command, np, core_string,
                    env_string, task_command)
 
         return command, None
