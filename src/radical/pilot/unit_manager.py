@@ -653,14 +653,14 @@ class UnitManager(rpu.Component):
         if len(pilot_ids) == 0:
             raise ValueError('cannot remove no pilots')
 
-        self._rep.info('<<add %d pilot(s)' % len(pilot_ids))
+        self._rep.info('<<rem %d pilot(s)' % len(pilot_ids))
 
         with self._pilots_lock:
 
             # sanity check, and keep pilots around for inspection
             for pid in pilot_ids:
                 if pid not in self._pilots:
-                    raise ValueError('pilot %s not added' % pid)
+                    raise ValueError('pilot %s not removed' % pid)
                 del(self._pilots[pid])
 
         # publish to the command channel for the scheduler to pick up
@@ -723,6 +723,9 @@ class UnitManager(rpu.Component):
 
             if not ud.executable:
                 raise ValueError('compute unit executable must be defined')
+
+            if ud.sandbox and ud.sandbox[0] == '/':
+                raise ValueError('compute unit sandbox must be relative.')
 
             unit = ComputeUnit(umgr=self, descr=ud)
             units.append(unit)
