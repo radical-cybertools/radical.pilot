@@ -98,6 +98,7 @@ if __name__ == '__main__':
             cud.cpu_processes    = p_num
             cud.cpu_threads      = t_num
             cud.cpu_process_type = rp.MPI
+            cud.cpu_thread_type  = rp.OpenMP
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -123,8 +124,8 @@ if __name__ == '__main__':
             for p in range(p_num):
                 for t in range(t_num):
                     rank = '%d:%d/%d' % (p, t, t_num)
-                    assert(rank in ranks), 'missing rank %s' % rank
-
+                    assert(rank in ranks), 'missing rank %s (%s)' % (rank,
+                            ranks)
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
