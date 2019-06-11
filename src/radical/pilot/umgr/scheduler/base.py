@@ -132,7 +132,7 @@ class UMGRSchedulingComponent(rpu.Component):
         # self._pilots accordingly.  Unit state changes will be ignored -- if
         # a scheduler needs to keep track of those, it will need to add its own
         # callback.
-        
+
         cmd = msg.get('cmd')
         arg = msg.get('arg')
 
