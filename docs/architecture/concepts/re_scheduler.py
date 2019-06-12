@@ -17,7 +17,7 @@ cross_nodes   = False  # can processes cross nodes?
 #
 #   - CPU cores for threads which belong to the same process need to be near
 #     each other  (on the same node or even the same core)
-#   - GPUs need to be near to the processes usinng them  (on the same node or
+#   - GPUs need to be near to the processes using them  (on the same node or
 #     even the same socket).
 #
 # FIXME: do we need to introduce an additional hierarchy level: 

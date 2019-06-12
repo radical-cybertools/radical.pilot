@@ -5,13 +5,42 @@
     https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
-0.50.23 Release                                                       2018-03-20
+0.61.0  Release                                                       2019-05-07
+--------------------------------------------------------------------------------
+
+  - add travis support, test cleanup
+  - ensure safe bootstrapper termination on faulty installs
+  - push node_list to mongodb for analytics
+  - fix default dburl
+  - fix imports in tests
+  - remove deprecated special case in bootstrapper
+
+
+0.60.1  Hotfix                                                        2019-04-12
+--------------------------------------------------------------------------------
+
+  - work around a pip install problem
+
+
+0.60.0  Release                                                       2019-04-10
+--------------------------------------------------------------------------------
+
+  - add issue template 
+  - rename RP_PILOT_SBOX to RP_PILOT_STAGING and expose to tasks
+  - fix bridges default partition (#1816)
+  - fix #1826 
+  - fix off-by-one error on unit state check 
+  - ignore failing DB disconnect 
+  - follow rename of saga-python to radical.saga
+
+
+0.50.23 Release                                                       2019-03-20
 --------------------------------------------------------------------------------
 
   - hotfix: use popen spawner for localhost
 
 
-0.50.22 Release                                                       2018-02-11
+0.50.22 Release                                                       2019-02-11
 --------------------------------------------------------------------------------
 
   - another fix LSF var expansion

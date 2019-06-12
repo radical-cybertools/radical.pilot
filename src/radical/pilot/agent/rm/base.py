@@ -153,6 +153,7 @@ class LRMS(object):
                         rp.agent.LM.lrms_config_hook(lm, self._cfg, self,
                             self._log, self._prof))
             except Exception as e:
+                # FIXME don't catch/raise
                 self._log.exception("lrms config hook failed: %s" % e)
                 raise
 

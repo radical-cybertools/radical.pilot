@@ -12,9 +12,9 @@ NAME                   = 'name'
 EXECUTABLE             = 'executable'
 ARGUMENTS              = 'arguments'
 ENVIRONMENT            = 'environment'
+SANDBOX                = 'sandbox'
 
 CORES                  = 'cores'  # deprecated
-
 CPU_PROCESSES          = 'cpu_processes'
 CPU_PROCESS_TYPE       = 'cpu_process_type'
 CPU_THREADS            = 'cpu_threads'
@@ -47,7 +47,6 @@ POSIX                  = 'POSIX'   # native threads / application threads
 MPI                    = 'MPI'
 OpenMP                 = 'OpenMP'
 CUDA                   = 'CUDA'
-
 
 
 # ------------------------------------------------------------------------------
@@ -134,6 +133,13 @@ class ComputeUnitDescription(attributes.Attributes):
 
        default: `{}`
 
+
+    .. data:: sandbox
+
+       (`Attribute`) This specifies the working directory of the unit.  That
+       directory *MUST* be relative to the pilot sandbox.  It will be created if
+       it does not exist.  By default, the sandbox has the name of the unit's
+       uid.
 
     .. data:: stdout
 
@@ -321,6 +327,7 @@ class ComputeUnitDescription(attributes.Attributes):
         self._attributes_register(EXECUTABLE,       None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(ARGUMENTS,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(ENVIRONMENT,      None, attributes.STRING, attributes.DICT,   attributes.WRITEABLE)
+        self._attributes_register(SANDBOX,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(PRE_EXEC,         None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(POST_EXEC,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
         self._attributes_register(RESTARTABLE,      None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
@@ -362,6 +369,7 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (KERNEL,           None)
         self.set_attribute (NAME,             None)
         self.set_attribute (EXECUTABLE,       None)
+        self.set_attribute (SANDBOX,          None)
         self.set_attribute (ARGUMENTS,      list())
         self.set_attribute (ENVIRONMENT,    dict())
         self.set_attribute (PRE_EXEC,       list())
@@ -427,14 +435,14 @@ class ComputeUnitDescription(attributes.Attributes):
         This method encapsulates checks beyond the SAGA attribute level checks.
         '''
 
-        # replace 'None' values for strng types with '', for int types with '0'. 
+        # replace 'None' values for strng types with '', etc
         if self.get(KERNEL          ) is None: self[KERNEL          ] = ''
         if self.get(NAME            ) is None: self[NAME            ] = ''
         if self.get(EXECUTABLE      ) is None: self[EXECUTABLE      ] = ''
-        if self.get(ARGUMENTS       ) is None: self[ARGUMENTS       ] = ''
-        if self.get(ENVIRONMENT     ) is None: self[ENVIRONMENT     ] = ''
-        if self.get(PRE_EXEC        ) is None: self[PRE_EXEC        ] = ''
-        if self.get(POST_EXEC       ) is None: self[POST_EXEC       ] = ''
+        if self.get(ARGUMENTS       ) is None: self[ARGUMENTS       ] = list()
+        if self.get(ENVIRONMENT     ) is None: self[ENVIRONMENT     ] = dict()
+        if self.get(PRE_EXEC        ) is None: self[PRE_EXEC        ] = list()
+        if self.get(POST_EXEC       ) is None: self[POST_EXEC       ] = list()
         if self.get(PILOT           ) is None: self[PILOT           ] = ''
         if self.get(STDOUT          ) is None: self[STDOUT          ] = ''
         if self.get(STDERR          ) is None: self[STDERR          ] = ''
@@ -442,7 +450,6 @@ class ComputeUnitDescription(attributes.Attributes):
         if self.get(CPU_THREAD_TYPE ) is None: self[CPU_THREAD_TYPE ] = ''
         if self.get(GPU_PROCESS_TYPE) is None: self[GPU_PROCESS_TYPE] = ''
         if self.get(GPU_THREAD_TYPE ) is None: self[GPU_THREAD_TYPE ] = ''
-
         if self.get(CPU_PROCESSES   ) is None: self[CPU_PROCESSES   ] = 0
         if self.get(CPU_THREADS     ) is None: self[CPU_THREADS     ] = 0
         if self.get(GPU_PROCESSES   ) is None: self[GPU_PROCESSES   ] = 0

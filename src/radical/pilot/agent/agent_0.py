@@ -147,7 +147,8 @@ class Agent_0(rpu.Worker):
                  'state'            : rps.PMGR_ACTIVE,
                  'resource_details' : {
                      'lm_info'      : self._lrms.lm_info.get('version_info'),
-                     'lm_detail'    : self._lrms.lm_info.get('lm_detail')},
+                     'lm_detail'    : self._lrms.lm_info.get('lm_detail'), 
+                     'rm_info'      : self._lrms.lrms_info},
                  '$set'             : ['resource_details']}
         self.advance(pilot, publish=True, push=False)
 
@@ -186,11 +187,11 @@ class Agent_0(rpu.Worker):
         else                                 : state = rps.FAILED
 
         self._log.debug('final state: %s (%s)', state, self._final_cause)
-      # # we don't rely on the existence / viability of the update worker at
-      # # that point.
-      # FIXME:
-      # self._log.debug('update db state: %s: %s', state, self._final_cause)
-      # self._update_db(state, self._final_cause)
+
+        # we don't rely on the existence / viability of the update worker at
+        # that point.
+        self._log.debug('update db state: %s: %s', state, self._final_cause)
+        self._update_db(state, self._final_cause)
 
 
     # --------------------------------------------------------------------------
@@ -227,12 +228,12 @@ class Agent_0(rpu.Worker):
         err = None
         log = None
 
-        try    : out = open('./agent_0.out', 'r').read(1024)
-        except Exception: pass
-        try    : err = open('./agent_0.err', 'r').read(1024)
-        except Exception: pass
-        try    : log = open('./agent_0.log', 'r').read(1024)
-        except Exception: pass
+        try   : out = open('./agent_0.out', 'r').read(1024)
+        except: pass
+        try   : err = open('./agent_0.err', 'r').read(1024)
+        except: pass
+        try   : log = open('./agent_0.log', 'r').read(1024)
+        except: pass
 
         ret = self._session._dbs._c.update(
                 {'type'   : 'pilot',
