@@ -20,13 +20,6 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 2
-    },
-
-    "local.localhost_orte" : {
-        "project"  : null,
-        "queue"    : null,
-        "schema"   : null,
         "cores"    : 64
     },
 
@@ -34,7 +27,14 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 2
+        "cores"    : 64
+    },
+
+    "local.localhost_prte" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 64
     },
 
     "local.localhost_anaconda" : {
