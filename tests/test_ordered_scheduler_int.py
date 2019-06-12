@@ -6,6 +6,9 @@ __license__   = 'MIT'
 import os
 import sys
 
+if 'RADICAL_REPORT' in os.environ:
+    del(os.environ['RADICAL_REPORT'])
+
 import radical.pilot as rp
 import radical.utils as ru
 
@@ -14,32 +17,24 @@ pwd = os.path.abspath(os.path.dirname(__file__))
 
 # ------------------------------------------------------------------------------
 #
-if __name__ == '__main__':
+def test_ordered_scheduler():
 
     report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
-
-    # use the resource specified as argument, fall back to localhost
-    if   len(sys.argv) > 1: resource = sys.argv[1]
-    else                  : resource = 'local.localhost'
 
     session = rp.Session()
 
     try:
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/../config.json' % os.path.dirname(__file__))
         report.ok('>>ok\n')
 
         report.header('submit pilots')
 
-        pd_init = {'resource'      : resource,
-                   'runtime'       : 60,  # pilot runtime (min)
+        pd_init = {'resource'      : 'local.localhost',
+                   'runtime'       : 5,
                    'exit_on_error' : True,
-                   'project'       : config[resource]['project'],
-                   'queue'         : config[resource]['queue'],
-                   'access_schema' : config[resource]['schema'],
-                   'cores'         : config[resource]['cores']
+                   'cores'         : 10
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
         pmgr  = rp.PilotManager(session=session)

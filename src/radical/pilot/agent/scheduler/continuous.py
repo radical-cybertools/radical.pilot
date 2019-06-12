@@ -190,6 +190,8 @@ class Continuous(AgentSchedulingComponent):
                 # resources"
                 #
                 smt = self._lrms_info.get('smt', 1)
+
+                # only socket `1` is affected at the moment
                 for s in [1]:
                     for i in range(smt):
                         idx = s * 21 * smt + i
@@ -217,7 +219,7 @@ class Continuous(AgentSchedulingComponent):
         # the lock is freed here
         if not unit['slots']:
 
-            # signal the unit remains unhandled (Fales signals that failure)
+            # signal the unit remains unhandled (False signals that failure)
             self._prof.prof('schedule_fail', uid=uid)
             return False
 
@@ -599,14 +601,14 @@ class Continuous(AgentSchedulingComponent):
 
         cores_per_node = self._lrms_cores_per_node
         gpus_per_node  = self._lrms_gpus_per_node
-        lfs_per_node   = self._lrms_lfs_per_node
+        lfs_per_node   = self._lrms_lfs_per_node['size']
         mem_per_node   = self._lrms_mem_per_node
 
         # we always fail when too many threads are requested
         if threads_per_proc > cores_per_node:
             raise ValueError('too many threads requested')
 
-        if lfs_per_process > lfs_per_node['size']:
+        if lfs_per_process > lfs_per_node:
             raise ValueError('too much LFS requested')
 
         if mem_per_process > mem_per_node:
@@ -626,10 +628,10 @@ class Continuous(AgentSchedulingComponent):
         tag           = cud.get('tag')
 
         slots = {'nodes'         : list(),
-                 'cores_per_node': cores_per_node,
-                 'gpus_per_node' : gpus_per_node,
-                 'lfs_per_node'  : lfs_per_node,
-                 'mem_per_node'  : mem_per_node,
+                 'cores_per_node': self._lrms_cores_per_node,
+                 'gpus_per_node' : self._lrms_gpus_per_node,
+                 'lfs_per_node'  : self._lrms_lfs_per_node,
+                 'mem_per_node'  : self._lrms_mem_per_node,
                  'lm_info'       : self._lrms_lm_info,
                 }
 
@@ -654,9 +656,9 @@ class Continuous(AgentSchedulingComponent):
             # if only a small set of cores/gpus remains unallocated (ie. less
             # than node size), we are in fact looking for the last node.  Note
             # that this can also be the first node, for small units.
-            if  requested_cores - alloced_cores <= cores_per_node       and \
-                requested_gpus  - alloced_gpus  <= gpus_per_node        and \
-                requested_lfs   - alloced_lfs   <= lfs_per_node['size'] and \
+            if  requested_cores - alloced_cores <= cores_per_node and \
+                requested_gpus  - alloced_gpus  <= gpus_per_node  and \
+                requested_lfs   - alloced_lfs   <= lfs_per_node   and \
                 requested_mem   - alloced_mem   <= mem_per_node:
                 is_last = True
 
@@ -671,7 +673,7 @@ class Continuous(AgentSchedulingComponent):
             # we only search up to node-size on this node.  Duh!
             find_cores = min(requested_cores - alloced_cores, cores_per_node)
             find_gpus  = min(requested_gpus  - alloced_gpus,  gpus_per_node)
-            find_lfs   = min(requested_lfs   - alloced_lfs,   lfs_per_node['size'])
+            find_lfs   = min(requested_lfs   - alloced_lfs,   lfs_per_node)
             find_mem   = min(requested_mem   - alloced_mem,   mem_per_node)
 
             # under the constraints so derived, check what we find on this node
