@@ -77,7 +77,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 128
+        n = 42 * 4 * 4 * 10
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
