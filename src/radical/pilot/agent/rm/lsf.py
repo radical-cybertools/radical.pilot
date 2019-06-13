@@ -63,6 +63,7 @@ class LSF(LRMS):
                                            self._cfg.get('lfs_path_per_node')),
                                 'size':    self._cfg.get('lfs_size_per_node', 0)
                                }
+        lsf_mem_per_node     = self._cfg.get('mem_per_node', 0)
 
         self._log.info("Found unique core counts: %s Using: %d",
                       lsf_core_counts, lsf_cores_per_node)
@@ -72,6 +73,7 @@ class LSF(LRMS):
         self.cores_per_node   = lsf_cores_per_node
         self.gpus_per_node    = lsf_gpus_per_node
         self.lfs_per_node     = lsf_lfs_per_node
+        self.mem_per_node     = lsf_mem_per_node
 
 
 # ------------------------------------------------------------------------------

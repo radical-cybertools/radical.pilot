@@ -125,6 +125,10 @@ class JSRUN(LaunchMethod):
 
         command = '%s --erf_input %s  %s %s' % (self.launch_command, rs_fname, 
                                                 env_string, task_command)
+
+        with open('./commands.log', 'a') as fout:
+            fout.write('%s\n' % command)
+
         return command, None
 
 

@@ -196,6 +196,8 @@ class Continuous(AgentSchedulingComponent):
                     for i in range(smt):
                         idx = s * 21 * smt + i
                         node_entry['cores'][idx] = rpc.DOWN
+                        idx = s * 40 * smt + i
+                        node_entry['cores'][idx] = rpc.DOWN
 
             self.nodes.append(node_entry)
 
@@ -613,10 +615,6 @@ class Continuous(AgentSchedulingComponent):
 
         if mem_per_process > mem_per_node:
             raise ValueError('too much memory requested')
-
-        if requested_cores > cores_per_node:
-            raise ValueError('Number of threads greater than that available on a node')
-
 
         # set conditions to find the first matching node
         is_first      = True

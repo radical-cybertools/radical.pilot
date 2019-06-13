@@ -78,6 +78,8 @@ if __name__ == '__main__':
         # Each compute unit runs '/bin/date'.
 
         n = 1024 * 10
+        n = 42 * 4 * 4 * 10
+        n = 1024
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
