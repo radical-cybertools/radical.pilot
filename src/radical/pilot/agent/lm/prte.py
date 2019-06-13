@@ -26,6 +26,8 @@ class PRTE(LaunchMethod):
         # (sub-)agent and CU execution.
         self.env_removables.extend(["OMPI_", "OPAL_", "PMIX_"])
 
+        self._verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
+
 
     # --------------------------------------------------------------------------
     #
@@ -192,11 +194,16 @@ class PRTE(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_mpi     = bool('mpi' in cud.get('cpu_process_type', '').lower())
-        task_cores   = cud.get('cpu_processes', 0) + cud.get('gpu_processes', 0)
         task_env     = cud.get('environment') or dict()
         task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
+
+        n_threads = cu['description'].get('cpu_threads',   1)
+        n_procs   = cu['description'].get('cpu_processes', 0) \
+                  + cu['description'].get('gpu_processes', 0)
+
+        if not n_procs  : n_procs   = 1
+        if not n_threads: n_threads = 1
 
       # import pprint
       # self._log.debug('=== prep %s', pprint.pformat(cu))
@@ -225,53 +232,50 @@ class PRTE(LaunchMethod):
             for var in env_list:
                 env_string += '-x "%s" ' % var
 
-        # Construct the hosts_string, env vars
-        hosts_string = ''
-        depths       = set()
-        for node in slots['nodes']:
+        if 'nodes' not in slots:
+            # this task is unscheduled - we leave it to PRRTE/PMI-X to
+            # correctly place the task.  Just count procs and threads.
 
-            # On some Crays, like on ARCHER, the hostname is "archer_N".  In
-            # that case we strip off the part upto and including the underscore.
-            #
-            # TODO: If this ever becomes a problem, i.e. we encounter "real"
-            #       hostnames with underscores in it, or other hostname 
-            #       mangling, we need to turn this into a system specific 
-            #       regexp or so.
-            node_id = node[0].rsplit('_', 1)[-1] 
+            map_flag  = ' --bind-to none -use-hwthread-cpus --oversubscribe'
+            map_flag += ' -n %d --cpus-per-proc %d' % (n_procs, n_threads)
 
-            # add all cpu and gpu process slots to the node list.
-            for cpu_slot in node[2]: hosts_string += '%s,' % node_id
-            for gpu_slot in node[3]: hosts_string += '%s,' % node_id
-            for cpu_slot in node[2]: depths.add(len(cpu_slot))
+        else:
+            # enact the scheduler's placement
+            hosts_string = ''
+            depths       = set()
+            for node in slots['nodes']:
+                self._log.debug('=== %s' % node)
 
-        # FIXME: is this binding correct?
-      # assert(len(depths) == 1), depths
-      # depth = list(depths)[0]
-      # if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
-      # else        : map_flag = '--bind-to none'
-        map_flag = '--bind-to none --oversubscribe'
+                # add all cpu and gpu process slots to the node list.
+                for cpu_slot in node[2]: hosts_string += '%s,' % node[0]
+                for gpu_slot in node[3]: hosts_string += '%s,' % node[0]
+                for cpu_slot in node[2]: depths.add(len(cpu_slot))
 
-        # remove trailing ','
-        hosts_string = hosts_string.rstrip(',')
+            # remove trailing ','
+            hosts_string = hosts_string.rstrip(',')
+
+            # FIXME: ensure correct binding for procs and threads
+          # assert(len(depths) == 1), depths
+          # depth = depths.pop()
+          # if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
+          # else        : map_flag = '--bind-to none'
+            map_flag  = ' --bind-to none -use-hwthread-cpus --oversubscribe'
+            map_flag += ' -n %d --cpus-per-proc %d' % (n_procs, n_threads)
+            map_flag += ' -host %s' % hosts_string
+
 
         # Additional (debug) arguments to prun
-        if os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'):
+        if True or self._verbose:
             debug_strings = ['-display-devel-map', 
                              '-display-allocation', 
                              '--debug-devel',
-                             '--mca oob_base_verbose 100',
-                             '--mca rml_base_verbose 100'
                             ]
         else:
             debug_strings = []
         debug_string = ' '.join(debug_strings)
 
-        if task_mpi: np_flag = '-np %s' % task_cores
-        else       : np_flag = '-np 1'
-
-        command = '%s %s --hnp "%s" %s %s -host %s %s %s' % (
-                  self.launch_command, debug_string, dvm_uri, np_flag,
-                  map_flag, hosts_string, env_string, task_command)
+        command = '%s %s --hnp "%s" %s %s %s' % (self.launch_command,
+                  debug_string, dvm_uri, map_flag, env_string, task_command)
 
         return command, None
 

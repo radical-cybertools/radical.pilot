@@ -124,9 +124,6 @@ int main ()
     return (0);
 }
 EOT
-    echo
-    module list
-    echo
 
     if ! test -e "./gtod"
     then
@@ -167,7 +164,6 @@ EOT
 
     TIME_ZERO=`./gtod`
     export TIME_ZERO
-
 }
 
 # ------------------------------------------------------------------------------
@@ -1508,6 +1504,9 @@ PB1_LDLB="$LD_LIBRARY_PATH"
 # Create header for profile log
 if ! test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
 then
+    echo 'create gtod'
+    create_gtod
+else
     echo 'create gtod'
     create_gtod
 fi

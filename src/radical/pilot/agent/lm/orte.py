@@ -250,19 +250,9 @@ class ORTE(LaunchMethod):
         depths       = set()
         for node in slots['nodes']:
 
-            # On some Crays, like on ARCHER, the hostname is "archer_N".  In
-            # that case we strip off the part upto and including the underscore.
-            #
-            # TODO: If this ever becomes a problem, i.e. we encounter "real"
-            #       hostnames with underscores in it, or other hostname 
-            #       mangling, we need to turn this into a system specific 
-            #       regexp or so.
-            self._log.debug('node: %s', node)
-            node_id = node['uid'].rsplit('_', 1)[-1] 
-
             # add all cpu and gpu process slots to the node list.
-            for _        in node['core_map']: hosts_string += '%s,' % node_id
-            for _        in node['gpu_map' ]: hosts_string += '%s,' % node_id
+            for _        in node['core_map']: hosts_string += '%s,' % node['uid']
+            for _        in node['gpu_map' ]: hosts_string += '%s,' % node['uid']
             for cpu_slot in node['core_map']: depths.add(len(cpu_slot))
 
         # assert(len(depths) == 1), depths

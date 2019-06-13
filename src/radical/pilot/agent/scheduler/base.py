@@ -217,6 +217,13 @@ class AgentSchedulingComponent(rpu.Component):
         rpu.Component.__init__(self, cfg, session)
 
 
+        tmp = os.environ.get('RP_UNIFORM_WORKLOAD', '').lower()
+        if tmp in ['true', 'yes', '1']:
+            self._uniform_wl = True
+        else:
+            self._uniform_wl = False
+
+
     # --------------------------------------------------------------------------
     #
     # Once the component process is spawned, `initialize_child()` will be called
@@ -627,6 +634,10 @@ class AgentSchedulingComponent(rpu.Component):
                 # remove it from the wait queue
                 with self._wait_lock:
                     self._wait_pool.remove(unit)
+
+            else:
+                if self._uniform_wl:
+                    break
 
         # return True to keep the cb registered
         return True
