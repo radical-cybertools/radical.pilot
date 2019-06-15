@@ -3,49 +3,14 @@ __copyright__ = "Copyright 2017, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-
-import os
 import copy
-import pprint
 import threading as mt
-
-import radical.utils as ru
 
 from .base import AgentSchedulingComponent
 
 
 # ------------------------------------------------------------------------------
 #
-# FIXME: make this a runtime switch depending on cprofile availability
-# FIXME: move this to utils (implies another parameter to `dec_all_methods()`)
-#
-import cProfile
-cprof = cProfile.Profile()
-
-
-def cprof_it(func):
-    def wrapper(*args, **kwargs):
-        retval = cprof.runcall(func, *args, **kwargs)
-        return retval
-    return wrapper
-
-
-def dec_all_methods(dec):
-    import inspect
-    def dectheclass(cls):
-        if ru.is_main_thread():
-            cprof_env   = os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "")
-            cprof_elems = cprof_env.split()
-            if "CONTINUOUS" in cprof_elems:
-                for name, m in inspect.getmembers(cls, inspect.ismethod):
-                    setattr(cls, name, dec(m))
-        return cls
-    return dectheclass
-
-
-# ------------------------------------------------------------------------------
-#
-@dec_all_methods(cprof_it)
 class Hombre(AgentSchedulingComponent):
     '''
     HOMBRE: HOMogeneous Bag-of-task REsource allocator.  Don't kill me...
@@ -74,11 +39,6 @@ class Hombre(AgentSchedulingComponent):
     # FIXME: this should not be overloaded here, but in the base class
     #
     def finalize_child(self):
-
-        cprof_env = os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "")
-        if "HOMBRE" in cprof_env.split():
-            self_thread = mt.current_thread()
-            cprof.dump_stats("python-%s.profile" % self_thread.name)
 
         # make sure that parent finalizers are called
         super(Hombre, self).finalize_child()
@@ -142,7 +102,7 @@ class Hombre(AgentSchedulingComponent):
         if single_node:
             if cores_needed > self.cpn or \
                gpus_needed  > self.gpn:
-                    raise ValueError('unit does not fit on node')
+                raise ValueError('unit does not fit on node')
 
 
         # ---------------------------------------------------------------------
@@ -159,21 +119,20 @@ class Hombre(AgentSchedulingComponent):
             cblocks.append(range(cidx,cidx + cblock))
             cidx += cblock
 
-        gblock  = 1
+        gblock   = 1
         ngblocks = cud['gpu_processes']
-        gblocks = list()
-        gidx    = 0
+        gblocks  = list()
+        gidx     = 0
         while gidx + gblock < self.gpn:
             gblocks.append(range(gidx,gidx + gblock))
             gidx += gblock
 
-        self._log.debug('==== core blocks %s', cblocks)
-        self._log.debug('==== gpu  blocks %s', gblocks)
+        self._log.debug('core blocks %s', cblocks)
+        self._log.debug('gpu  blocks %s', gblocks)
 
         for node in self.nodes:
             node['cblocks'] = copy.deepcopy(cblocks)
             node['gblocks'] = copy.deepcopy(gblocks)
-
 
         # ----------------------------------------------------------------------
         def next_slot(slot=None):
@@ -204,7 +163,8 @@ class Hombre(AgentSchedulingComponent):
 
             while slot['ncblocks'] < ncblocks:
                 if node['cblocks']:
-                    slot['nodes'].append([nname, nuid, [node['cblocks'].pop(0)], []])
+                    cblock = node['cblocks'].pop(0)
+                    slot['nodes'].append([nname, nuid, [cblock], []])
                     slot['ncblocks'] += 1
                 else:
                     nok = False
@@ -212,7 +172,8 @@ class Hombre(AgentSchedulingComponent):
 
             while slot['ngblocks'] < ngblocks:
                 if node['gblocks']:
-                    slot['nodes'].append([nname, nuid, [], [node['gblocks'].pop(0)]])
+                    gblock = node['gblocks'].pop(0)
+                    slot['nodes'].append([nname, nuid, [], [gblock]])
                     slot['ngblocks'] += 1
                 else:
                     nok = False
@@ -228,6 +189,7 @@ class Hombre(AgentSchedulingComponent):
         if not self.free:
             raise RuntimeError('configuration cannot be used for this workload')
 
+        # run this method only once
         self._configured = True
 
 
@@ -240,8 +202,7 @@ class Hombre(AgentSchedulingComponent):
         '''
 
       # self._log.debug('=> allocate [%d]', len(self.free))
-        if not self._configured:
-            self._delayed_configure(cud)
+        self._delayed_configure(cud)
 
         # ensure that all CUDs require the same amount of reources
         for k,v in self.chunk.iteritems():
@@ -273,7 +234,7 @@ class Hombre(AgentSchedulingComponent):
       # self._log.debug('=> release  [%d]', len(self.free))
         self._log.debug('release  slot %s', slots['nodes'])
         with self.lock:
-             self.free.append(slots)
+            self.free.append(slots)
       # self._log.debug('<= release  [%d]', len(self.free))
 
 
