@@ -28,11 +28,15 @@
     "cheyenne": {
         "description"                 : "An SGI ICE XA Cluster located at the National Center for Atmospheric Research (NCAR), (https://www2.cisl.ucar.edu/resources/computational-systems/cheyenne)",
         "notes"                       : "Requires the use of a token from an USB on every connection.",
-        "schemas"                     : ["local"],
+        "schemas"                     : ["local", "ssh"],
         "local"                       : {
             "job_manager_hop"         : "fork://localhost/",
             "job_manager_endpoint"    : "pbspro://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
+        },
+        "ssh"                         : {
+            "job_manager_endpoint"    : "ssh+pbspro://cheyenne.ucar.edu/",
+            "filesystem_endpoint"     : "file://cheyenne.ucar.edu/"
         },
 
         "default_queue"               : "regular",
@@ -45,17 +49,16 @@
         "agent_launch_method"         : "MPIRUN",
         "task_launch_method"          : "MPIRUN_MPT",
         "mpi_launch_method"           : "MPIRUN_MPT",
-        "pre_bootstrap_1"             : ["module load python/2.7.14"],
+        "pre_bootstrap_1"             : ["module load python/2.7.15"],
         "forward_tunnel_endpoint"     : "cheyenne1",
         "default_remote_workdir"      : "$TMPDIR",
         "valid_roots"                 : ["/glade/scratch","/glade/p/work","/glade/u/home"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "use",
-        "virtenv"                     : "/glade/scratch/vivekb/radical.pilot.sandbox/ve.rp.cheyenne.2018.10.01",    
+        "virtenv"                     : "/glade/scratch/vivekb/radical.pilot.sandbox/ve.rp.cheyenne.2019.02.07",    
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system"
     }
-
 }
 
