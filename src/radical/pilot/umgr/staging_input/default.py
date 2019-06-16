@@ -196,7 +196,7 @@ class Default(UMGRStagingInputComponent):
 
             if len(unit_sboxes) >= UNIT_BULK_MKDIR_THRESHOLD:
 
-                self._log.debug('=== tar %d sboxes', len(unit_sboxes))
+                self._log.debug('tar %d sboxes', len(unit_sboxes))
 
                 # no matter the bulk mechanism, we need a SAGA handle to the
                 # remote FS

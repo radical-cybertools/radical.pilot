@@ -255,7 +255,7 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _pilot_state_cb(self, pilots):
+    def _pilot_state_cb(self, pilots, state=None):
 
         if self._terminate.is_set():
             return False
@@ -285,7 +285,11 @@ class UnitManager(rpu.Component):
                             ['%s:%s' % (p.uid, p.state) for p in pilots])
             return True
 
+        if not isinstance(pilots, list):
+            pilots = [pilots]
+
         for pilot in pilots:
+
             state = pilot.state
 
             if state in rps.FINAL:
@@ -486,7 +490,7 @@ class UnitManager(rpu.Component):
 
             # we don't care about units we don't know
             if uid not in self._units:
-                self._log.debug('=== umgr: unknown: %s', uid)
+                self._log.debug('umgr: unknown: %s', uid)
                 return None
 
             unit = self._units[uid]
@@ -495,7 +499,7 @@ class UnitManager(rpu.Component):
             current = unit.state
             target  = unit_dict['state']
             if current == target:
-                self._log.debug('=== umgr: static: %s', uid)
+                self._log.debug('umgr: static: %s', uid)
                 return None
 
             target, passed = rps._unit_state_progress(uid, current, target)
@@ -515,7 +519,7 @@ class UnitManager(rpu.Component):
                     self.advance(unit_dict, s, publish=publish, push=False,
                                  prof=False)
 
-            self._log.debug('=== umgr: notify: %s', len(to_notify))
+            self._log.debug('umgr: notify: %s', len(to_notify))
             return to_notify
 
 
@@ -563,7 +567,7 @@ class UnitManager(rpu.Component):
         if not isinstance(metrics, list):
             metrics = [metrics]
 
-        self._log.debug('=== umgr: cbs: %s', pprint.pformat(self._callbacks))
+        self._log.debug('umgr: cbs: %s', pprint.pformat(self._callbacks))
         with self._cb_lock:
 
             for metric in metrics:
@@ -599,7 +603,7 @@ class UnitManager(rpu.Component):
 
                             cbs[cb_name]['units'].add(unit)
 
-                self._log.debug('=== umgr: CBS: %s', pprint.pformat(cbs))
+                self._log.debug('umgr: CBS: %s', pprint.pformat(cbs))
 
                 for cb_name in cbs:
 
