@@ -3,17 +3,13 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os
-import sys
 import copy
 import time
 import threading
 
 import radical.utils as ru
 
-from . import utils     as rpu
 from . import states    as rps
-from . import constants as rpc
 from . import types     as rpt
 
 
@@ -24,7 +20,8 @@ class ComputePilot(object):
     A ComputePilot represent a resource overlay on a local or remote resource.
 
     .. note:: A ComputePilot cannot be created directly. The factory method
-              :meth:`radical.pilot.PilotManager.submit_pilots` has to be used instead.
+              :meth:`radical.pilot.PilotManager.submit_pilots` has to be used
+              instead.
 
                 **Example**::
 
@@ -37,7 +34,7 @@ class ComputePilot(object):
 
                       pilot = pm.submit_pilots(pd)
     """
-    
+
     # --------------------------------------------------------------------------
     # In terms of implementation, a Pilot is not much more than a dict whose
     # content are dynamically updated to reflect the state progression through
@@ -93,17 +90,13 @@ class ComputePilot(object):
         self._pilot_sandbox    = ru.Url()
         self._client_sandbox   = ru.Url()
 
-        self._log.debug(' ===== 1: %s [%s]', self._pilot_sandbox, type(self._pilot_sandbox))
-
         pilot = self.as_dict()
-        self._log.debug(' ===== 2: %s [%s]', pilot['pilot_sandbox'], type(pilot['pilot_sandbox']))
 
         self._pilot_jsurl, self._pilot_jshop \
                                = self._session._get_jsurl           (pilot)
         self._resource_sandbox = self._session._get_resource_sandbox(pilot)
         self._pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
         self._client_sandbox   = self._session._get_client_sandbox()
-        self._log.debug(' ===== 3: %s [%s]', self._pilot_sandbox, type(self._pilot_sandbox))
 
 
     # --------------------------------------------------------------------------
@@ -122,16 +115,17 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def _default_state_cb(self, pilot, state):
+    def _default_state_cb(self, pilot, state=None):
 
-        self._log.info("[Callback]: pilot %s state: %s.", self.uid, self.state)
 
-        if self.state == rps.FAILED and self._exit_on_error:
-            self._log.error("[Callback]: pilot '%s' failed (exit on error)", self.uid)
-            # FIXME: how to tell main?  Where are we in the first place?
-          # ru.cancel_main_thread('int')
-            raise RuntimeError('pilot %s failed - fatal!' % self.uid)
-          # sys.exit()
+        uid   = self.uid
+        state = self.state
+
+        self._log.info("[Callback]: pilot %s state: %s.", uid, state)
+
+        if state == rps.FAILED and self._exit_on_error:
+            self._log.error("[Callback]: pilot '%s' failed (exit)", uid)
+            raise RuntimeError('pilot %s failed - fatal!' % uid)
 
 
     # --------------------------------------------------------------------------
@@ -145,7 +139,9 @@ class ComputePilot(object):
         """
 
         if pilot_dict['uid'] != self.uid:
-            self._log.error('incorrect uid: %s / %s', pilot_dict['uid'], self.uid)
+            self._log.error('incorrect uid: %s / %s',
+                            pilot_dict['uid'], self.uid)
+
         assert(pilot_dict['uid'] == self.uid), 'update called on wrong instance'
 
         # NOTE: this method relies on state updates to arrive in order, and
@@ -157,10 +153,12 @@ class ComputePilot(object):
 
 
             try:
-                assert(rps._pilot_state_value(target) - rps._pilot_state_value(current)), \
-                            'invalid state transition'
-            except:
-                self._log.error('%s: invalid state transition %s -> %s', 
+                state_diff = rps._pilot_state_value(target) - \
+                             rps._pilot_state_value(current)
+                assert(state_diff), 'invalid state transition'
+
+            except Exception:
+                self._log.exception('%s: invalid state transition %s -> %s', 
                         self.uid, current, target)
                 raise
 
@@ -178,14 +176,15 @@ class ComputePilot(object):
             cb      = cb_val['cb']
             cb_data = cb_val['cb_data']
 
-          # print ' ~~~ call pcbs: %s -> %s : %s' % (self.uid, self.state, cb_name)
+            print ' ~~~ call pcbs: %s -> %s : %s [%s]' \
+                    % (self.uid, self.state, cb_name, cb_data)
             self._log.debug('%s calls cb %s', self.uid, cb)
-            
-            if cb_data: cb(self, self.state, cb_data)
-            else      : cb(self, self.state)
+
+            if cb_data: cb([self], cb_data)
+            else      : cb([self])
 
         # ask pmgr to invoke any global callbacks
-        self._pmgr._call_pilot_callbacks(self, self.state)
+        self._pmgr._call_pilot_callbacks(self)
 
 
     # --------------------------------------------------------------------------
@@ -424,7 +423,7 @@ class ComputePilot(object):
 
         """
         if metric not in rpt.PMGR_METRICS :
-            raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
+            raise ValueError ("invalid pmgr metric '%s'" % metric)
 
         with self._cb_lock:
             cb_name = cb.__name__
@@ -437,7 +436,7 @@ class ComputePilot(object):
     def unregister_callback(self, cb, metric=rpt.PILOT_STATE):
 
         if metric and metric not in rpt.UMGR_METRICS :
-            raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
+            raise ValueError ("invalid pmgr metric '%s'" % metric)
 
         if not metric:
             metrics = rpt.PMGR_METRICS
@@ -458,7 +457,7 @@ class ComputePilot(object):
                 for cb_name in to_delete:
 
                     if cb_name not in self._callbacks[metric]:
-                        raise ValueError("Callback '%s' is not registered" % cb_name)
+                        raise ValueError("unknown callback '%s'" % cb_name)
 
                     del(self._callbacks[metric][cb_name])
 
@@ -526,13 +525,13 @@ class ComputePilot(object):
         """
         Cancel the pilot.
         """
-        
+
         # clean connection cache
         try:
             for key in self._cache:
                 self._cache[key].close()
             self._cache = dict()
-        except:
+        except Exception:
             pass
 
       # print 'pilot: cancel'

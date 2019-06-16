@@ -4,9 +4,7 @@ __license__   = "MIT"
 
 
 import os
-import copy
 import time
-import pprint
 import threading as mt
 
 import radical.utils as ru
@@ -19,12 +17,19 @@ from .  import types     as rpt
 from .staging_directives import expand_staging_directives
 
 
+# bulk callbacks are implemented, but are currently not used nor exposed.
+_USE_BULK_CB = False
+if os.environ.get('RP_USE_BULK_CB', '').lower() in ['true', 'yes', '1']:
+    _USE_BULK_CB = True
+
+
 # ------------------------------------------------------------------------------
 #
 class PilotManager(rpu.Component):
     """
-    A PilotManager manages :class:`radical.pilot.ComputePilot` instances that are
-    submitted via the :func:`radical.pilot.PilotManager.submit_pilots` method.
+    A PilotManager manages :class:`radical.pilot.ComputePilot` instances that
+    are submitted via the :func:`radical.pilot.PilotManager.submit_pilots`
+    method.
 
     It is possible to attach one or more :ref:`chapter_machconf`
     to a PilotManager to outsource machine specific configuration
@@ -62,7 +67,7 @@ class PilotManager(rpu.Component):
     The pilot manager can issue notification on pilot state changes.  Whenever
     state notification arrives, any callback registered for that notification is
     fired.  
-    
+
     NOTE: State notifications can arrive out of order wrt the pilot state model!
     """
 
@@ -93,7 +98,7 @@ class PilotManager(rpu.Component):
         for m in rpt.PMGR_METRICS:
             self._callbacks[m] = dict()
 
-        cfg = ru.read_json("%s/configs/pmgr_%s.json" \
+        cfg = ru.read_json("%s/configs/pmgr_%s.json"
                 % (os.path.dirname(__file__),
                    os.environ.get('RADICAL_PILOT_PMGR_CFG', 'default')))
 
@@ -242,7 +247,7 @@ class PilotManager(rpu.Component):
         return str(self.as_dict())
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _state_pull_cb(self):
 
@@ -304,8 +309,7 @@ class PilotManager(rpu.Component):
 
         # FIXME: this is breaking the bulk!
 
-        pid   = pilot_dict['uid']
-        state = pilot_dict['state']
+        pid = pilot_dict['uid']
 
         with self._pilots_lock:
 
@@ -339,7 +343,7 @@ class PilotManager(rpu.Component):
                     self.advance(pilot_dict, s, publish=publish, push=False)
 
                 if s in [rps.PMGR_ACTIVE]:
-                    self._log.info('pilot %s is %s: %s [%s]', \
+                    self._log.info('pilot %s is %s: %s [%s]',
                             pid, s, pilot_dict.get('lm_info'), 
                                     pilot_dict.get('lm_detail')) 
 
@@ -348,20 +352,20 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _call_pilot_callbacks(self, pilot_obj, state):
+    def _call_pilot_callbacks(self, pilot):
 
         with self._pcb_lock:
             for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
 
                 cb      = cb_val['cb']
                 cb_data = cb_val['cb_data']
-                
-              # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, self.state, cb_name)
-                self._log.debug('pmgr calls cb %s for %s', pilot_obj.uid, cb)
 
-                if cb_data: cb(pilot_obj, state, cb_data)
-                else      : cb(pilot_obj, state)
-          # print ' ~~~~ done PCBS'
+              # print ' ~~~ call PCBS: %s -> %s : %s [%s]' \
+              #         % (self.uid, pilot.state, cb_name, cb_data)
+                self._log.debug('pmgr calls cb %s for %s', pilot.uid, cb)
+
+                if cb_data: cb([pilot], cb_data)
+                else      : cb([pilot])
 
 
     # --------------------------------------------------------------------------
@@ -509,7 +513,7 @@ class PilotManager(rpu.Component):
                 self._pilots[pilot.uid] = pilot
 
             if self._session._rec:
-                ru.write_json(pd.as_dict(), "%s/%s.batch.%03d.json" \
+                ru.write_json(pd.as_dict(), "%s/%s.batch.%03d.json"
                         % (self._session._rec, pilot.uid, self._rec_id))
 
             if 'resource' in pd and 'cores' in pd:
@@ -556,7 +560,7 @@ class PilotManager(rpu.Component):
         **Returns:**
               * A list of :class:`radical.pilot.ComputePilot` objects.
         """
-        
+
         self.is_valid()
 
         if not uids:
@@ -662,7 +666,7 @@ class PilotManager(rpu.Component):
 
             self._rep.idle()
 
-            to_check = [pilot for pilot in to_check \
+            to_check = [pilot for pilot in to_check
                                if pilot.state not in states and \
                                   pilot.state not in rps.FINAL]
 
@@ -678,7 +682,7 @@ class PilotManager(rpu.Component):
         self._rep.idle(mode='stop')
 
         if to_check: self._rep.warn('>>timeout\n')
-        else       : self._rep.ok(  '>>ok\n')
+        else       : self._rep.ok('>>ok\n')
 
         # grab the current states to return
         state = None
@@ -769,7 +773,7 @@ class PilotManager(rpu.Component):
         # FIXME: the signature should be (self, metrics, cb, cb_data)
 
         if metric not in rpt.PMGR_METRICS :
-            raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
+            raise ValueError ("invalid pmgr metric '%s'" % metric)
 
         with self._pcb_lock:
             cb_name = cb.__name__
@@ -782,7 +786,7 @@ class PilotManager(rpu.Component):
     def unregister_callback(self, cb, metric=rpt.PILOT_STATE):
 
         if metric and metric not in rpt.PMGR_METRICS :
-            raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
+            raise ValueError ("invalid pmgr metric '%s'" % metric)
 
         if not metric:
             metrics = rpt.PMGR_METRICS
@@ -803,7 +807,7 @@ class PilotManager(rpu.Component):
                 for cb_name in to_delete:
 
                     if cb_name not in self._callbacks[metric]:
-                        raise ValueError("Callback '%s' is not registered" % cb_name)
+                        raise ValueError("unknown callback '%s'" % cb_name)
 
                     del(self._callbacks[metric][cb_name])
 

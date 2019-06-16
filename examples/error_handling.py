@@ -15,38 +15,50 @@ import radical.pilot as rp
 # you want to see what happens behind the scences!
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
-def pilot_state_cb (pilot, state):
-    """ this callback is invoked on all pilot state changes """
+def pilot_state_cb(pilots, state=None):
+    """
+    this callback is invoked on all pilot state changes
+    """
+
+    if not isinstance(pilots, list):
+        pilots = [pilots]
 
     # Callbacks happen in a different thread than the main application thread --
     # they are truly asynchronous.  That means, however, that a 'sys.exit()'
     # will not end the application, but will end the thread (in this case the
     # pilot_manager_controller thread).  For that reason we wrapped all threads
-    # in their own try/except clauses, and then translate the `sys.exit()` into an
-    # 'thread.interrupt_main()' call -- this will raise a 'KeyboardInterrupt' in
-    # the main thread which can be interpreted by your application, for example
-    # to initiate a clean shutdown via `session.close()` (see code later below.)
-    # The same `KeyboardShutdown` will also be raised when you interrupt the
-    # application via `^C`.
+    # in their own try/except clauses, and then translate the `sys.exit()` into
+    # an 'thread.interrupt_main()' call -- this will raise a 'KeyboardInterrupt'
+    # in the main thread which can be interpreted by your application, for
+    # example to initiate a clean shutdown via `session.close()` (see code later
+    # below.) The same `KeyboardShutdown` will also be raised when you interrupt
+    # the application via `^C`.
     #
     # Note that other error handling semantics is available, depending on your
     # application's needs.  The application could for example spawn
     # a replacement pilot at this point, or reduce the number of compute units
     # to match the remaining set of pilots.
 
-    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+    for pilot in pilots:
+        print "[Callback]: Pilot '%s' state: %s." % (pilot.uid, pilot.state)
 
-    if state == rp.FAILED:
-        print '=== Pilot failed'
-        print pilot.log[-1] # Get the last log message
+        print '=== Pilot state: %s' % pilot.state
+        if pilot.state == rp.FAILED:
+            print '=== Pilot failed'
+            print pilot.log[-1]  # Get the last log message
+
+    return True
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state):
+def unit_state_cb(units, state=None):
     """ this callback is invoked on all unit state changes """
+
+    if not isinstance(units, list):
+        units = [units]
 
     # The principle for unit state callbacks is exactly the same as for the
     # pilot state callbacks -- only that they are invoked by the unit manager on
@@ -60,16 +72,21 @@ def unit_state_cb (unit, state):
     # compute units, or spawn a pilot on a different resource which might be
     # better equipped to handle the unit payload.
 
-    print "[Callback]: ComputeUnit '%s' state: %s." % (unit.uid, state)
+    print '=== unit cb for %d units' % len(units)
+    for unit in units:
+        print '  === unit %s: %s' % (unit.uid, unit.state)
 
-    if state == rp.FAILED:
-        print '=== Unit failed!'
-        print '=== stderr: %s' % unit.stderr # Get the unit's stderr
+        if unit.state == rp.FAILED:
+            print '  === Unit failed!'
+            print '  === stderr: %s' % unit.stderr  # Get the unit's stderr
+
+    return True
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
+
     # This example shows how simple error handling can be implemented 
     # synchronously using blocking wait() calls.
     #
@@ -154,5 +171,5 @@ if __name__ == "__main__":
         session.close()
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 

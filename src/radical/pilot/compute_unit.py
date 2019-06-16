@@ -79,7 +79,6 @@ class ComputeUnit(object):
         self._unit_sandbox     = None
         self._client_sandbox   = None
         self._callbacks        = dict()
-        self._cb_lock          = threading.RLock()
 
         for m in rpt.UMGR_METRICS:
             self._callbacks[m] = dict()
@@ -113,7 +112,7 @@ class ComputeUnit(object):
 
     # --------------------------------------------------------------------------
     #
-    def _default_state_cb(self, unit, state):
+    def _default_state_cb(self, unit, state=None):
 
         self._log.info("[Callback]: unit %s state: %s.", self.uid, self.state)
 
@@ -124,22 +123,20 @@ class ComputeUnit(object):
         """
         This will update the facade object after state changes etc, and is
         invoked by whatever component receiving that updated information.
-
-        Return True if state changed, False otherwise
         """
 
         assert(unit_dict['uid'] == self.uid), 'update called on wrong instance'
 
-        # NOTE: this method relies on state updates to arrive in order, and
-        #       without gaps.
+        # this method relies on state updates to arrive in order
         current = self.state
         target  = unit_dict['state']
 
         if target not in [rps.FAILED, rps.CANCELED]:
             try:
-                assert(rps._unit_state_value(target) - rps._unit_state_value(current) == 1), \
-                            'invalid state transition'
-            except:
+                state_diff = rps._unit_state_value(target) - \
+                             rps._unit_state_value(current)
+                assert(state_diff == 1), 'invalid state transition'
+            except Exception:
                 self._log.error('%s: invalid state transition %s -> %s',
                                 self.uid, current, target)
                 raise
@@ -157,19 +154,9 @@ class ComputeUnit(object):
             if val is not None:
                 setattr(self, "_%s" % key, val)
 
-        # invoke unit specific callbacks
-        for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
-
-            cb      = cb_val['cb']
-            cb_data = cb_val['cb_data']
-
-            self._log.debug('%s calls state cb %s', self.uid, cb)
-
-            if cb_data: cb(self, self.state, cb_data)
-            else      : cb(self, self.state)
-
-        # ask umgr to invoke any global callbacks
-        return self.state
+        # callbacks are not invoked here - but we report back to the umgr what
+        # callbacks need calling.
+        return self._callbacks[rpt.UNIT_STATE]
 
 
     # --------------------------------------------------------------------------
@@ -413,9 +400,9 @@ class ComputeUnit(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_callback(self, cb, cb_data=None):
-        """
-        Registers a callback function that is triggered every time the
+    def register_callback(self, cb, cb_data=None, metric=None):
+        '''
+        Registers a callback function that is triggered every time a
         unit's state changes.
 
         All callback functions need to have the same signature::
@@ -428,10 +415,13 @@ class ComputeUnit(object):
 
             def cb(obj, state, cb_data)
 
-        and 'cb_data' are passed along.
+        and 'cb_data' are passed unchanged.
+        '''
 
-        """
-        self._umgr.register_callback(self.uid, rpt.UNIT_STATE, cb, cb_data)
+        if not metric:
+            metric = rpt.UNIT_STATE
+
+        self._umgr.register_callback(cb, cb_data, metric=metric, uid=self._uid)
 
 
     # --------------------------------------------------------------------------
@@ -498,7 +488,7 @@ class ComputeUnit(object):
         """
         Cancel the unit.
         """
-        
+
         self._umgr.cancel_units(self.uid)
 
 
