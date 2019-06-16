@@ -354,7 +354,10 @@ class PilotManager(rpu.Component):
     #
     def _call_pilot_callbacks(self, pilot):
 
+        state = pilot.state
+
         with self._pcb_lock:
+
             for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
 
                 cb      = cb_val['cb']
@@ -364,8 +367,12 @@ class PilotManager(rpu.Component):
               #         % (self.uid, pilot.state, cb_name, cb_data)
                 self._log.debug('pmgr calls cb %s for %s', pilot.uid, cb)
 
-                if cb_data: cb([pilot], cb_data)
-                else      : cb([pilot])
+                if _USE_BULK_CB:
+                    if cb_data: cb([pilot], cb_data)
+                    else      : cb([pilot])
+                else:
+                    if cb_data: cb(pilot, state, cb_data)
+                    else      : cb(pilot, state)
 
 
     # --------------------------------------------------------------------------
