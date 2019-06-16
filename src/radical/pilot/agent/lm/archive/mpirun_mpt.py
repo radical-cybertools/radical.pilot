@@ -67,10 +67,10 @@ class MPIRun_MPT(LaunchMethod):
         # Extract all the hosts from the slots
         hostlist = list()
         for node in slots['nodes']:
-            for cpu_proc in node[2]:
-                hostlist.append(node[0])
-            for gpu_proc in node[3]:
-                hostlist.append(node[0])
+            for cpu_proc in node['core_map']:
+                hostlist.append(node['name'])
+            for gpu_proc in node['gpu_map']:
+                hostlist.append(node['name'])
         hosts_string = ",".join(hostlist)
 
         # On Cheyenne (which is the only machine that requires mpirun_mpt
