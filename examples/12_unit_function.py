@@ -5,12 +5,12 @@ __license__   = 'MIT'
 
 import os
 import sys
-
-verbose  = os.environ.get('RADICAL_PILOT_VERBOSE', 'REPORT')
-os.environ['RADICAL_PILOT_VERBOSE'] = verbose
+import time
 
 import radical.pilot as rp
 import radical.utils as ru
+
+dh = ru.DebugHelper()
 
 
 # ------------------------------------------------------------------------------
@@ -20,7 +20,7 @@ import radical.utils as ru
 # ------------------------------------------------------------------------------
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
@@ -55,20 +55,18 @@ if __name__ == '__main__':
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
-        pd_init = {
-                'resource'      : resource,
-                'runtime'       : 15,  # pilot runtime (min)
-                'exit_on_error' : True,
-                'project'       : config[resource]['project'],
-                'queue'         : config[resource]['queue'],
-                'access_schema' : config[resource]['schema'],
-                'cores'         : config[resource]['cores'],
-                }
+        pd_init = {'resource'      : resource,
+                   'runtime'       : 60,  # pilot runtime (min)
+                   'exit_on_error' : True,
+                   'project'       : config[resource]['project'],
+                   'queue'         : config[resource]['queue'],
+                   'access_schema' : config[resource]['schema'],
+                   'cores'         : config[resource]['cores'],
+                  }
         pdesc = rp.ComputePilotDescription(pd_init)
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
-
 
         report.header('submit units')
 
@@ -76,14 +74,10 @@ if __name__ == '__main__':
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-        # Create a workload of char-counting a simple file.  We first create the
-        # file right here, and then use it as unit input data for each unit.
-        os.system('hostname >  input.dat')
-        os.system('date     >> input.dat')
-        os.system('hostname >  input2.dat')
-        os.system('date     >> input2.dat')
+        # Create a workload of ComputeUnits.
+        # Each compute unit runs '/bin/date'.
 
-        n = 16   # number of units to run
+        n = 1024 * 2
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -92,17 +86,13 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable     = '/usr/bin/ls'
-            cud.arguments      = ['-all']
-
-            # Move multiple files to a CU by using a tarball
-            cud.input_staging  = [{'source': 'client:///input.dat', 
-                                   'target': 'unit:///input.dat',
-                                   'action': rp.TARBALL},
-                                  {'source': 'client:///input2.dat', 
-                                   'target': 'unit:///input2.dat',
-                                   'action': rp.TARBALL}]
-
+            cud.executable       = 'time.time'
+            cud.arguments        = []
+            cud.pre_exec         = ['import time']
+            cud.gpu_processes    = 0
+            cud.cpu_processes    = 1
+            cud.cpu_threads      = 1
+            cud.cpu_process_type = rp.FUNC
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -112,23 +102,24 @@ if __name__ == '__main__':
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
 
-        # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+        # Wait for all compute units to reach a final state (DONE, CANCELED or
+        # FAILED).
         report.header('gather results')
         umgr.wait_units()
-    
-        report.info('\n')
-        for unit in units:
-            report.plain('  * %s: %s, exit: %3s, out: %s\n' \
-                    % (unit.uid, unit.state[:4], 
-                        unit.exit_code, unit.stdout.strip()[:35]))
-    
-        # delete the sample input files
-        os.system('rm input.dat')
+
+        for unit in (units[:10] + units[-10:]):
+            if unit.state == rp.DONE:
+                print '\t+ %s: %-10s: %10s: %s' \
+                    % (unit.uid, unit.state, unit.pilot, unit.stdout)
+            else:
+                print '\t- %s: %-10s: %10s: %s' \
+                    % (unit.uid, unit.state, unit.pilot, unit.stderr)
 
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
         report.error('caught Exception: %s\n' % e)
+        ru.print_exception_trace()
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -136,16 +127,17 @@ if __name__ == '__main__':
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
+        ru.print_exception_trace()
         report.warn('exit requested\n')
 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close()
+        session.close(download=True)
 
     report.header()
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 

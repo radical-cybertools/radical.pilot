@@ -16,6 +16,7 @@ EXECUTING_NAME_SHELL   = "SHELL"
 EXECUTING_NAME_SHELLFS = "SHELLFS"
 EXECUTING_NAME_ABDS    = "ABDS"
 EXECUTING_NAME_ORTE    = "ORTE"
+EXECUTING_NAME_FUNCS   = "FUNCS"
 
 
 # ==============================================================================
@@ -58,6 +59,7 @@ class AgentExecutingComponent(rpu.Component):
         from .shell    import Shell
         from .shell_fs import ShellFS
         from .abds     import ABDS
+        from .funcs    import FUNCS
 
         try:
             from .orte     import ORTE
@@ -69,6 +71,7 @@ class AgentExecutingComponent(rpu.Component):
         elif name == EXECUTING_NAME_SHELLFS: impl = ShellFS(cfg, session)
         elif name == EXECUTING_NAME_ABDS   : impl = ABDS   (cfg, session)
         elif name == EXECUTING_NAME_ORTE   : impl = ORTE   (cfg, session)
+        elif name == EXECUTING_NAME_FUNCS  : impl = FUNCS  (cfg, session)
         else: raise ValueError("invalid AgentExecutingComponent '%s'" % name)
 
         return impl

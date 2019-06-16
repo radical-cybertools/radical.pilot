@@ -23,13 +23,6 @@
         "cores"    : 2
     },
 
-    "local.localhost_orte" : {
-        "project"  : null,
-        "queue"    : null,
-        "schema"   : null,
-        "cores"    : 64
-    },
-
     "local.localhost_ortelib" : {
         "project"  : null,
         "queue"    : null,
@@ -42,6 +35,13 @@
         "queue"    : null,
         "schema"   : null,
         "cores"    : 2
+    },
+
+    "local.localhost_funcs" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : "ssh",
+        "cores"    : 64
     },
 
     "local.devel" : {
@@ -152,7 +152,7 @@
     "princeton.tiger_cpu" : {
         "project"  : "geo",
         "queue"    : "cpu",
-        "schema"   : "local",
+        "schema"   : "ssh",
         "cores"    : 40
     },
 
@@ -206,6 +206,13 @@
     },
 
     "xsede.comet_ssh"  : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "compute",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.comet_ssh_funcs"  : {
         "project"  : "TG-MCB090174",
         "queue"    : "compute",
         "schema"   : "gsissh",
