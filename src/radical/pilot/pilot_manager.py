@@ -26,7 +26,7 @@ if os.environ.get('RP_USE_BULK_CB', '').lower() in ['true', 'yes', '1']:
 # ------------------------------------------------------------------------------
 #
 class PilotManager(rpu.Component):
-    """
+    '''
     A PilotManager manages :class:`radical.pilot.ComputePilot` instances that
     are submitted via the :func:`radical.pilot.PilotManager.submit_pilots`
     method.
@@ -69,7 +69,7 @@ class PilotManager(rpu.Component):
     fired.  
 
     NOTE: State notifications can arrive out of order wrt the pilot state model!
-    """
+    '''
 
     # --------------------------------------------------------------------------
     #
