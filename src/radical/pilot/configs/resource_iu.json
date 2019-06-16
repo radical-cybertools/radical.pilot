@@ -46,7 +46,7 @@
         ],
         "forward_tunnel_endpoint"     : "localhost",
         "tunnel_bind_device"          : "ipogif0",
-        "default_remote_workdir"      : "/N/dc2/scratch/$USER",
+        "default_sandbox_base"        : "/N/dc2/scratch/$USER",
         "valid_roots"                 : ["/N"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",

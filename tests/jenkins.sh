@@ -16,10 +16,10 @@ export FAILED=0
 
 export TEST_OK="JENKINS TEST SUCCESS"
 
-export SAGA_VERBOSE=DEBUG
-export RADICAL_VERBOSE=DEBUG
-export RADICAL_UTILS_VERBOSE=DEBUG
-export RADICAL_PILOT_VERBOSE=DEBUG
+export SAGA_LOG_LVL=DEBUG
+export RADICAL_LOG_LVL=DEBUG
+export RADICAL_UTILS_LOG_LVL=DEBUG
+export RADICAL_PILOT_LOG_LVL=DEBUG
 
 export FILE_TGT="../report"
 export LINK_TGT="http://ci.radical-project.org/job/radical.pilot.devel/branch/devel/ws/radical.pilot/report/"

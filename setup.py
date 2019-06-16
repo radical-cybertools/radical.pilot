@@ -111,7 +111,7 @@ def get_version(mod_root):
           # tree, we won't be able to derive git version tags -- so we pack the
           # formerly derived version as ./VERSION
             shutil.move("VERSION", "VERSION.bak")            # backup version
-            shutil.copy("%s/VERSION" % path, "VERSION")      # use full version instead
+            shutil.copy("%s/VERSION" % path, "VERSION")      # use full version
             os.system  ("python setup.py sdist")             # build sdist
             shutil.copy('dist/%s' % sdist_name,
                         '%s/%s'   % (mod_root, sdist_name))  # copy into tree
@@ -163,6 +163,7 @@ df.append(('share/%s/examples'              % name, glob.glob('examples/hello*')
 df.append(('share/%s/examples'              % name, glob.glob('examples/*.json')))
 df.append(('share/%s/examples/docs'         % name, glob.glob('examples/docs/*')))
 df.append(('share/%s/examples/misc'         % name, glob.glob('examples/misc/*')))
+df.append(('share/%s/examples/misc/gromacs' % name, glob.glob('examples/misc/gromacs/*')))
 df.append(('share/%s/examples/kmeans'       % name, glob.glob('examples/kmeans/*')))
 df.append(('share/%s/examples/mandelbrot'   % name, glob.glob('examples/mandelbrot/*')))
 df.append(('share/%s/examples/data_staging' % name, glob.glob('examples/data_staging/*')))
@@ -217,7 +218,8 @@ setup_args = {
                             'bin/radical-pilot-stats.plot',
                             'bin/radical-pilot-version',
                             'bin/radical-pilot-agent',
-                            'bin/radical-pilot-agent-statepush'
+                            'bin/radical-pilot-bridge',
+                            'bin/radical-pilot-component',
                            ],
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz',
                                  'VERSION', 'SDIST', sdist_name]},

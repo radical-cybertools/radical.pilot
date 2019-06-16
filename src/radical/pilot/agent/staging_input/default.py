@@ -41,12 +41,13 @@ class Default(AgentStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         self._pwd = os.getcwd()
 
+        # first agent component gets units from the agent queue
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
-                            rpc.AGENT_STAGING_INPUT_QUEUE, self.work)
+                            rpc.AGENT_QUEUE_IN, self.work)
 
         self.register_output(rps.AGENT_SCHEDULING_PENDING, 
                              rpc.AGENT_SCHEDULING_QUEUE)
@@ -59,14 +60,14 @@ class Default(AgentStagingInputComponent):
         if not isinstance(units, list):
             units = [units]
 
-        self.advance(units, rps.AGENT_STAGING_INPUT, publish=True, push=False)
+        self._log.info("units pulled: %4d", len(units))
 
-        ru.raise_on('work bulk')
+        self.advance(units, rps.AGENT_STAGING_INPUT, publish=True, push=False)
 
         # we first filter out any units which don't need any input staging, and
         # advance them again as a bulk.  We work over the others one by one, and
         # advance them individually, to avoid stalling from slow staging ops.
-        
+
         no_staging_units = list()
         staging_units    = list()
 
@@ -98,7 +99,7 @@ class Default(AgentStagingInputComponent):
     #
     def _handle_unit(self, unit, actionables):
 
-        ru.raise_on('work unit')
+      # ru.raise_on('work unit')
 
         uid = unit['uid']
 

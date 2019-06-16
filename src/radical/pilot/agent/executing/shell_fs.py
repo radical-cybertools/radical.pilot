@@ -24,14 +24,16 @@ class ShellFS(AgentExecutingComponent):
     #
     def __init__(self, cfg, session):
 
-        AgentExecutingComponent.__init__ (self, cfg, session)
+        super(ShellFS, self).__init__ (cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         from .... import pilot as rp
+
+        super(ShellFS, self).initialize()
 
         self._pwd = os.getcwd() 
         self._tmp = self._pwd   # keep temporary files in $PWD for now (slow)
@@ -48,10 +50,14 @@ class ShellFS(AgentExecutingComponent):
         # Mimic what virtualenv's "deactivate" would do
         self._deactivate = "\n# deactivate pilot virtualenv\n"
 
-        old_path  = os.environ.get('_OLD_VIRTUAL_PATH',       None)
-        old_ppath = os.environ.get('_OLD_VIRTUAL_PYTHONPATH', None)
-        old_home  = os.environ.get('_OLD_VIRTUAL_PYTHONHOME', None)
-        old_ps1   = os.environ.get('_OLD_VIRTUAL_PS1',        None)
+        old_path  = os.environ.get('_OLD_PATH',       None)
+        old_ppath = os.environ.get('_OLD_PYTHONPATH', None)
+        old_home  = os.environ.get('_OLD_PYTHONHOME', None)
+        old_ps1   = os.environ.get('_OLD_PS1',        None)
+
+        if old_path:
+            # hi titan nodes
+            old_path += ":/usr/bin:/bin:/usr/local/bin:/sbin:/usr/sbin"
 
         if old_ppath: self._deactivate += 'export PATH="%s"\n'        % old_ppath
         if old_path : self._deactivate += 'export PYTHONPATH="%s"\n'  % old_path
@@ -139,7 +145,6 @@ class ShellFS(AgentExecutingComponent):
         # run thread to watch then info fifo
         self._terminate = threading.Event()
         self._watcher   = threading.Thread(target=self._watch, name="Watcher")
-        self._watcher.daemon = True
         self._watcher.start ()
 
         # start the shell executor
@@ -152,14 +157,7 @@ class ShellFS(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
-
-        self._terminate.set()
-
-        try:
-            self._sh.kill()
-        except:
-            pass
+    def finalize(self):
 
         try:
             os.unlink(self._fifo_cmd_name)
@@ -227,18 +225,22 @@ class ShellFS(AgentExecutingComponent):
             with self._cancel_lock:
                 self._to_cancel.remove(cu['uid'])
 
-            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                         {'cmd': 'unschedule',
+                          'arg': [cu]})
             self.advance(cu, rps.CANCELED, publish=True, push=False)
             return True
 
         # launch the new unit
         try:
-            mpi = cu['description'].get('mpi', False) 
-            if mpi: launcher = self._mpi_launcher
-            else  : launcher = self._task_launcher
+            cpt = cu['description']['cpu_process_type']
+            gpt = cu['description']['gpu_process_type']
+
+            if rpc.MPI in [cpt, gpt]: launcher = self._mpi_launcher
+            else                    : launcher = self._task_launcher
 
             if not launcher:
-                raise RuntimeError("no launcher (mpi=%s)" % mpi)
+                raise RuntimeError("no launcher (mpi=%s)" % [cpt, gpt])
 
             self._log.debug("Launching with %s (%s).", launcher.name,
                             launcher.launch_command)
@@ -257,7 +259,9 @@ class ShellFS(AgentExecutingComponent):
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             if cu.get('slots'):
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                             {'cmd': 'unschedule',
+                              'arg': [cu]})
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
 
@@ -305,34 +309,43 @@ class ShellFS(AgentExecutingComponent):
 
         sandbox  = '%s/%s' % (self._pwd, cu['uid'])
 
-        env  += "# CU environment\n"
-        env  += "export RP_SESSION_ID=%s\n"     % self._cfg['session_id']
-        env  += "export RP_PILOT_ID=%s\n"       % self._cfg['pilot_id']
-        env  += "export RP_AGENT_ID=%s\n"       % self._cfg['agent_name']
-        env  += "export RP_SPAWNER_ID=%s\n"     % self.uid
-        env  += "export RP_UNIT_ID=%s\n"        % cu['uid']
-        env  += 'export RP_GTOD="%s"\n'         % self.gtod
+        cu_env = cu['description']['environment']
+
+        cu_env['RP_SESSION_ID'] = str(self._cfg['session_id'])
+        cu_env['RP_PILOT_ID'  ] = str(self._cfg['pilot_id'])
+        cu_env['RP_AGENT_ID'  ] = str(self._cfg['agent_name'])
+        cu_env['RP_SPAWNER_ID'] = str(self.uid)
+        cu_env['RP_UNIT_ID'   ] = str(cu['uid'])
+        cu_env['RP_GTOD'      ] = str(self.gtod)
+        cu_env['RP_PROF'      ] = '%s/%s.prof' % (sandbox, cu['uid'])
+        cu_env['RP_TMP'       ] = str(self._cu_tmp)
+        cu_env['RP_PROCESSES' ] = str(descr['cpu_processes'])
+        cu_env['RP_THREADS'   ] = str(descr['cpu_threads'])
+
+        # FIXME: this should be set by an LM filter or something (GPU)
+        if descr['cpu_thread_type'] == rpc.OpenMP:
+            cu_env['OMP_NUM_THREADS'] = str(descr['cpu_threads'])
+
         if 'RADICAL_PILOT_PROFILE' in os.environ or \
            'RADICAL_PROFILE'       in os.environ :
-            env += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
+            cu_env['RP_PROF'] = '%s/%s.prof' % (sandbox, cu['uid'])
+
         env  += '''
 prof(){
     test -z "$RP_PROF" && return
     event=$1
     now=$($RP_GTOD)
-    echo "$now,$event,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING," >> $RP_PROF
+    echo "$now,$event,unit_script,,$RP_UNIT_ID,AGENT_EXECUTING," >> $RP_PROF
 }
+
 '''
+
+        for k,v in cu_env:
+            env += 'export %s="%s"\n' % (k,v)
 
         # also add any env vars requested for export by the resource config
         for k,v in self._env_cu_export.iteritems():
             env += "export %s=%s\n" % (k,v)
-
-        # also add any env vars requested in hte unit description
-        if descr['environment']:
-            for e in descr['environment'] :
-                env += "export %s=%s\n"  %  (e, descr['environment'][e])
-        env  += "\n"
 
         cwd  += "# CU sandbox\n"
         cwd  += "mkdir -p %s\n" % sandbox
@@ -461,7 +474,13 @@ prof(){
 
         TIMEOUT = 1.0   # check for stop signal now and then
 
+        main_thread = ru.main_thread()
         while not self._terminate.is_set():
+
+            main_thread.join(0)
+            if not ru.main_thread():
+                # parent thread is gone - finish also
+                return
 
             try:
                 line     = self._readline(TIMEOUT)
@@ -501,7 +520,9 @@ prof(){
             del(self._registry[uid])
 
         # free unit slots.
-        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                     {'cmd': 'unschedule',
+                      'arg': [cu]})
 
         if ret is None:
             cu['exit_code'] = None

@@ -1,8 +1,6 @@
 
 ### Format of this file:
 
-    event_name          : semantic event description (details on 'uid', 'msg', 'state' fields)
-
 Events marked as `optional` depend on the content of unit descriptions etc, all
 other events will usually be present in 'normal' runs.  All events have an event
 name, a timestamp, and a component (which recorded the event) defined - all
@@ -106,7 +104,7 @@ indication on event ordering *within each individual component*.
 ### bootstrap_0.sh
 
     bootstrap_0_start   : pilot bootstrapper 1 starts                (uid: pilot)
-    tunnel_setup_start  : setting up tunnel    starts                (uid: pilot)
+    tunnel_setup_start  : setting up tunnel    starts                (uid: pilot, [CFG-R])
     tunnel_setup_stop   : setting up tunnel    stops                 (uid: pilot, [CFG-R])
     ve_setup_start      : pilot ve setup       starts                (uid: pilot)
     ve_create_start     : pilot ve creation    starts                (uid: pilot, [CFG-R])
@@ -138,16 +136,15 @@ indication on event ordering *within each individual component*.
     cmd                 : command received from pmgr                 (uid: pilot, msg: command, [API])
     get                 : units   received from unit manager         (uid: pilot, msg: 'bulk size: %d')
     get                 : unit    received from unit manager         (uid: unit)
-    orte_dvm_start      : ORTE DVM startup by launch method          (uid: pilot) [CFG-R])
-    orte_dvm_ok         : ORTE DVM startup completed                 (uid: pilot) [CFG-R])
-    orte_dvm_fail       : ORTE DVM startup failed                    (uid: pilot) [CFG-R])
-    orte_dvm_stop       : ORTE DVM stopped                           (uid: pilot) [CFG-R])
+    dvm_start           : DVM startup by launch method               (uid: pilot) [CFG-R])
+    dvm_ok              : DVM startup completed                      (uid: pilot) [CFG-R])
+    dvm_fail            : DVM startup failed                         (uid: pilot) [CFG-R])
+    dvm_stop            : DVM stopped                                (uid: pilot) [CFG-R])
 
 
     partial orders
     * per instance      : sync_rel, hostname, (cmd | get)*
-    * per instance      : orte_dvm_start, (orte_dvm_ok | orte_dvm_fail),
-                          orte_dvm_stop
+    * per instance      : dvm_start, (dvm_ok | dvm_fail), dvm_stop
 
 
 ### AgentSchedulingComponent (Component)
@@ -263,8 +260,7 @@ indication on event ordering *within each individual component*.
     - [API]           - only for corresponding RP API calls
     - [CFG]           - only for some RP configurations
       - [CFG-R]       - only for some bootstrapping configurations
-      - [CFG-ORTE]    - only for ORTE launch method
-      - [CFG-ORTELIB] - only for ORTELIB launch method
+      - [CFG-DVM]     - only for launch methods which use a DVM
     - [CU]            - only for some CU descriptions
       - [CU-DS]       - only for units specifying data staging directives
       - [CU-PRE]      - only for units specifying pre-exec directives

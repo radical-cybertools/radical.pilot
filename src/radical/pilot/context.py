@@ -22,9 +22,9 @@ class Context (rs.Context):
     #
     def __init__ (self, ctype, thedict=None) :
 
-        # init the saga.Context
+        # init the rs.Context
         self._apitype  = 'radical.saga.Context'
-        super (Context, self).__init__ (ctype, )
+        super(Context, self).__init__ (ctype, )
 
         # set given defaults
         if  thedict :

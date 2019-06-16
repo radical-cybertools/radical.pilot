@@ -3,22 +3,18 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os
 import copy
 import time
 import threading
 
 import radical.utils as ru
 
-from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
-from . import types     as rpt
 
 from . import compute_unit_description as cud
 
 from .staging_directives import expand_description
-from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA
 
 
 # ------------------------------------------------------------------------------
@@ -29,7 +25,8 @@ class ComputeUnit(object):
     ComputeUnits allow to control and query the state of this task.
 
     .. note:: A unit cannot be created directly. The factory method
-              :meth:`radical.pilot.UnitManager.submit_units` has to be used instead.
+              :meth:`radical.pilot.UnitManager.submit_units` has to be
+              used instead.
 
                 **Example**::
 
@@ -66,7 +63,8 @@ class ComputeUnit(object):
         descr.verify()
 
         # 'static' members
-        self._descr = descr.as_dict()
+        self._dict  = None
+        self._descr = descr
         self._umgr  = umgr
 
         # initialize state
@@ -77,7 +75,7 @@ class ComputeUnit(object):
         self._exit_code        = None
         self._stdout           = None
         self._stderr           = None
-        self._pilot            = descr.get('pilot')
+        self._pilot            = self._descr.get('pilot')
         self._resource_sandbox = None
         self._pilot_sandbox    = None
         self._unit_sandbox     = None
@@ -85,11 +83,11 @@ class ComputeUnit(object):
         self._callbacks        = dict()
         self._cb_lock          = threading.RLock()
 
-        for m in rpt.UMGR_METRICS:
+        for m in rpc.UMGR_METRICS:
             self._callbacks[m] = dict()
 
         # we always invke the default state cb
-        self._callbacks[rpt.UNIT_STATE][self._default_state_cb.__name__] = {
+        self._callbacks[rpc.UNIT_STATE][self._default_state_cb.__name__] = {
                 'cb'      : self._default_state_cb, 
                 'cb_data' : None}
 
@@ -112,7 +110,7 @@ class ComputeUnit(object):
     #
     def __str__(self):
 
-        return [self.uid, self.pilot, self.state]
+        return [self.uid, self.state]
 
 
     # --------------------------------------------------------------------------
@@ -162,7 +160,7 @@ class ComputeUnit(object):
                 setattr(self, "_%s" % key, val)
 
         # invoke unit specific callbacks
-        for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
+        for cb_name, cb_val in self._callbacks[rpc.UNIT_STATE].iteritems():
 
             cb      = cb_val['cb']
             cb_data = cb_val['cb_data']
@@ -183,24 +181,26 @@ class ComputeUnit(object):
         Returns a Python dictionary representation of the object.
         """
 
-        ret = {
-            'type':             'unit',
-            'umgr':             self.umgr.uid,
-            'uid':              self.uid,
-            'name':             self.name,
-            'state':            self.state,
-            'exit_code':        self.exit_code,
-            'stdout':           self.stdout,
-            'stderr':           self.stderr,
-            'pilot':            self.pilot,
-            'resource_sandbox': self.resource_sandbox,
-            'pilot_sandbox':    self.pilot_sandbox,
-            'unit_sandbox':     self.unit_sandbox,
-            'client_sandbox':   self.client_sandbox,
-            'description':      self.description   # this is a deep copy
-        }
+        if not self._dict:
 
-        return ret
+            self._dict = {
+                'type':             'unit',
+                'umgr':             self.umgr.uid,
+                'uid':              self.uid,
+                'name':             self.name,
+                'state':            self.state,
+                'exit_code':        self.exit_code,
+                'stdout':           self.stdout,
+                'stderr':           self.stderr,
+                'pilot':            self.pilot,
+                'resource_sandbox': self.resource_sandbox,
+                'pilot_sandbox':    self.pilot_sandbox,
+                'unit_sandbox':     self.unit_sandbox,
+                'client_sandbox':   self.client_sandbox,
+                'description':      copy.deepcopy(self.description)
+            }
+
+        return self._dict
 
 
     # --------------------------------------------------------------------------
@@ -401,7 +401,7 @@ class ComputeUnit(object):
             * description (dict)
         """
 
-        return copy.deepcopy(self._descr)
+        return self._descr
 
 
     # --------------------------------------------------------------------------
@@ -435,7 +435,7 @@ class ComputeUnit(object):
         and 'cb_data' are passed along.
 
         """
-        self._umgr.register_callback(self.uid, rpt.UNIT_STATE, cb, cb_data)
+        self._umgr.register_callback(self.uid, rpc.UNIT_STATE, cb, cb_data)
 
 
     # --------------------------------------------------------------------------

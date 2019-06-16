@@ -85,11 +85,11 @@ Since working with distributed systems is inherently complex and much of the
 complexity is hidden within RADICAL-Pilot, it is necessary to do a lot of
 internal logging. By default, logging output is disabled, but if something goes
 wrong or if you're just curious, you can enable the logging output by setting
-the environment variable ``RADICAL_PILOT_VERBOSE`` to a value between CRITICAL
+the environment variable ``RADICAL_PILOT_LOG_LVL`` to a value between CRITICAL
 (print only critical messages) and DEBUG (print all messages).
 
 Give it a try with the above example:
 
 .. code-block:: bash
 
-  RADICAL_PILOT_VERBOSE=DEBUG python simple_bot.py
+  RADICAL_PILOT_LOG_LVL=DEBUG python simple_bot.py

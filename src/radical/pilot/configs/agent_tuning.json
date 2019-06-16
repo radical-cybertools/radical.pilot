@@ -1,0 +1,12 @@
+
+# `max_io_loglength`     : max number of cu out/err chars to push to db
+# `bulk_collection_size` : max number of updates to put into a db bulk
+# `bulk_collection_time` : max seconds to collect db notification bulks
+{
+    "default"  : "bulked", 
+    "bulked"   : {"max_io_loglength"     : 1024,
+                  "bulk_collection_size" :  100,
+                  "bulk_collection_time" :  0.1
+    }
+}
+

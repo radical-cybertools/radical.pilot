@@ -44,15 +44,16 @@ class Default(AgentStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         self._pwd = os.getcwd()
 
         self.register_input(rps.AGENT_STAGING_OUTPUT_PENDING, 
                             rpc.AGENT_STAGING_OUTPUT_QUEUE, self.work)
 
-        # we don't need an output queue -- units are picked up via mongodb
-        self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING, None) # drop units
+        # push units back to the client side
+        self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING, 
+                             rpc.AGENT_QUEUE_OUT)
 
 
     # --------------------------------------------------------------------------
@@ -64,12 +65,12 @@ class Default(AgentStagingOutputComponent):
 
         self.advance(units, rps.AGENT_STAGING_OUTPUT, publish=True, push=False)
 
-        ru.raise_on('work bulk')
+      # ru.raise_on('work bulk')
 
         # we first filter out any units which don't need any input staging, and
         # advance them again as a bulk.  We work over the others one by one, and
         # advance them individually, to avoid stalling from slow staging ops.
-        
+
         no_staging_units = list()
         staging_units    = list()
 
@@ -178,7 +179,7 @@ class Default(AgentStagingOutputComponent):
     #
     def _handle_unit_staging(self, unit, actionables):
 
-        ru.raise_on('work unit')
+      # ru.raise_on('work unit')
 
         uid = unit['uid']
 
@@ -304,7 +305,7 @@ class Default(AgentStagingOutputComponent):
                 #        machine.
                 # if tgt.schema == 'srm':
                 #     # FIXME: cache saga handles
-                #     srm_dir = rs.filesystem.Directory('srm://proxy/?SFN=bogus')
+                #     srm_dir = rs.fs.Directory('srm://proxy/?SFN=bogus')
                 #     srm_dir.copy(src, tgt)
                 #     srm_dir.close()
                 # else:
@@ -315,7 +316,8 @@ class Default(AgentStagingOutputComponent):
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
         # all agent staging is done -- pass on to umgr output staging
-        self.advance(unit, rps.UMGR_STAGING_OUTPUT_PENDING, publish=True, push=False)
+        self.advance(unit, rps.UMGR_STAGING_OUTPUT_PENDING, publish=True,
+                     push=True)
 
 
 # ------------------------------------------------------------------------------

@@ -66,7 +66,7 @@ class ORTE(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         self._pwd = os.getcwd()
 
@@ -89,8 +89,8 @@ class ORTE(AgentExecutingComponent):
         self.task_map_lock = threading.Lock()
 
         # we needs the LaunchMethods to construct commands.
-        assert(self._cfg['task_launch_method'] == \
-               self._cfg['mpi_launch_method' ] == \
+        assert(self._cfg['task_launch_method'] ==
+               self._cfg['mpi_launch_method' ] ==
                "ORTE_LIB"), "ORTE_LIB spawner only works with ORTE_LIB LM's."
 
         self._task_launcher = rp.agent.LM.create(name    = "ORTE_LIB",
@@ -129,24 +129,24 @@ class ORTE(AgentExecutingComponent):
         # Get the environment of the agent
         new_env = copy.deepcopy(os.environ)
 
-        #
+
         # Mimic what virtualenv's "deactivate" would do
         #
-        old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
+        old_path = new_env.pop('_OLD_PATH', None)
         if old_path:
             new_env['PATH'] = old_path
 
         # TODO: verify this snippet from:
         # https://github.com/radical-cybertools/radical.pilot/pull/973/files
-        # old_ppath = new_env.pop('_OLD_VIRTUAL_PYTHONPATH', None)
+        # old_ppath = new_env.pop('_OLD_PYTHONPATH', None)
         # if old_ppath:
         #     new_env['PYTHONPATH'] = old_ppath
 
-        old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
+        old_home = new_env.pop('_OLD_PYTHONHOME', None)
         if old_home:
             new_env['PYTHON_HOME'] = old_home
 
-        old_ps = new_env.pop('_OLD_VIRTUAL_PS1', None)
+        old_ps = new_env.pop('_OLD_PS1', None)
         if old_ps:
             new_env['PS1'] = old_ps
 
@@ -217,7 +217,9 @@ class ORTE(AgentExecutingComponent):
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             if cu['slots']:
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                             {'cmd': 'unschedule',
+                              'arg': [cu]})
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
 
@@ -237,7 +239,9 @@ class ORTE(AgentExecutingComponent):
             # unit launch failed
             self._prof.prof('exec_fail', uid=uid)
             self._log.error("unit %s startup failed: %s", uid, status)
-            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                         {'cmd': 'unschedule',
+                          'arg': [cu]})
 
             cu['target_state'] = rps.FAILED
             self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, 
@@ -265,7 +269,9 @@ class ORTE(AgentExecutingComponent):
         cu['exit_code'] = exit_code
         cu['finished']  = timestamp
 
-        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, 
+                     {'cmd': 'unschedule',
+                      'arg': [cu]})
 
         if exit_code != 0:
             # unit failed - fail after staging output
@@ -290,15 +296,15 @@ class ORTE(AgentExecutingComponent):
         slots = cu['slots']
 
         if 'lm_info' not in slots:
-            raise RuntimeError('No lm_info to init via %s: %s' \
+            raise RuntimeError('No lm_info to init via %s: %s'
                                % (self.name, slots))
 
         if not slots['lm_info']:
-            raise RuntimeError('lm_info missing for %s: %s' \
+            raise RuntimeError('lm_info missing for %s: %s'
                                % (self.name, slots))
 
         if 'dvm_uri' not in slots['lm_info']:
-            raise RuntimeError('dvm_uri not in lm_info for %s: %s' \
+            raise RuntimeError('dvm_uri not in lm_info for %s: %s'
                                % (self.name, slots))
 
         dvm_uri = slots['lm_info']['dvm_uri']
@@ -307,9 +313,9 @@ class ORTE(AgentExecutingComponent):
         orte_lib.opal_set_using_threads(True)
 
         argv_keepalive = [
-            ffi.new("char[]", "RADICAL-Pilot"), # will be stripped off by lib
+            ffi.new("char[]", "RADICAL-Pilot"),  # will be stripped off by lib
             ffi.new("char[]", "--hnp"), ffi.new("char[]", str(dvm_uri)),
-            ffi.NULL, # required
+            ffi.NULL,  # required
         ]
         argv = ffi.new("char *[]", argv_keepalive)
         ret = orte_lib.orte_submit_init(3, argv, ffi.NULL)

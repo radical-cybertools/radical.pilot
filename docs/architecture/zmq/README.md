@@ -1,35 +1,78 @@
-ZMQ Queue Example
 
-* c1: upstream component
-* c2: queue component (load balancing)
-* C3: downstream component
+RP uses Queues to communicate entities like pilots and units, and uses Pubsub
+channels to communicate events like state upudates or failures.  Those Queues
+and Pubsub channels are implemented in ZMQ.  This directory contains the
+conceptual code snippets which document how exactly ZMQ is used in the code.
+Those code snippets are actually interoperable with the RP implementation in
+`src/radical/pilot/utils/{queue,pubsub}.py`, and can be used as endpoints for
+testing etc.
 
-Run n instances of upstream components in separate terminals, like this:
-```
-  ./c1.py <name> <delay>
-```
-where name is used to identify the component (so that we can later see what
-downstream component gto work from which upstream component), and delay is the
-time in seconds (float) between each work item being produced.
+For both communication types, we provide three different entities, two for
+producers and consumers of messages, and one `bridge` type for load balancing
+and message distribution.  The types are:
 
-Run 1 instance of the queue component (no arguments).
-```
-  ./c2.py
-```
-Run m instances of downstream components with:
-```
-  ./c3.py <delay>
-```
-where 'delay' is the time the component will to work on an item, ie. the time
-between two work item pickups.
+  Queue : PUT, BRIDGE, GET
+  Pubsub: PUB, BRIDGE, SUB
 
-The startup can happen in any order.  Once running, any component can be shut
-down and restarted.  You can start multiples of `c1.py` and `c3.py`.
+RP modules usually instantiate only one pubsub bridge, which manages multiple
+channels (channels are identified by a `topic` string - ZMQ rules for topic
+string interpretations apply).
 
-observe that:
-  - items remain ordered
-  - downstream components get fair shares
-  - upstream components are never blocked 
-    (no send buffer fills up until we fill available memory)
-  - the code footprint is very manageable
+Queues are established by instantiating one bridge instance per queue.
+
+The bridges need to be started first - they create a small control file which
+contains the input and output addresses to be used by message producers and
+consumers in order to use those bridges (i.e. in order to join those
+communication channels).
+
+
+Pubsub Tools::
+
+   Bridge:
+        pubsub/pubsub.py         <channel>
+        bin/radical-pilot-bridge <channel> pubsub
+
+    Producer:
+        pubsub/pub.py            <channel> <topic_1> ...
+        bin/radical-pilot-pub    <channel> <topic_1> ...
+
+    Consumer:
+        pubsub/sub.py            <channel> <topic_1> ...
+        bin/radical-pilot-sub    <channel> <topic_1> ...
+
+
+Queue Tools::
+
+   Bridge:
+        queue/queue.py           <name>
+        bin/radical-pilot-bridge <name> queue
+
+    Producer:
+        pubsub/put.py            <name>
+        bin/radical-pilot-put    <name>
+
+    Consumer:
+        pubsub/get.py            <name>
+        bin/radical-pilot-get    <name>
+
+Pubsub Scenario:
+
+    cd  pubsub
+    ./pubsub.py states
+    ./pub.py    states unit
+    ./pub.py    states pilot
+    ./sub.py    states unit pilot
+    ./sub.py    states unit pilot
+
+
+Queue Scenario:
+
+    cd  queue
+    ./queue.py  execution
+    ./put.py    execution
+    ./put.py    execution
+    ./get.py    execution
+    ./get.py    execution
+    ./get.py    execution
+
 

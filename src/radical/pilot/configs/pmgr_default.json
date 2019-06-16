@@ -3,9 +3,6 @@
 # specified.  It contains the minimal set of settings required for
 # a functional pilot manager.
 {
-    # time to sleep between database polls (seconds)
-    "db_poll_sleeptime" : 10.0,
-
     "bridges" : {
         "pmgr_launching_queue" : {"log_level" : "error",
                                   "stall_hwm" : 1,
@@ -14,7 +11,8 @@
 
     "components" : {
         # how many instances of the respective components should be started
-        "PMGRLaunchingComponent" : {"count" : 1}
+        "PMGRLaunchingComponent" : {"count" : 1, 
+                                    "type"  : "single"}
     }
 }
 

@@ -23,6 +23,7 @@ LM_NAME_MPIRUN_MPT    = 'MPIRUN_MPT'
 LM_NAME_MPIRUN_CCMRUN = 'MPIRUN_CCMRUN'
 LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
+LM_NAME_PRTE          = 'PRTE'
 LM_NAME_ORTE          = 'ORTE'
 LM_NAME_ORTE_LIB      = 'ORTE_LIB'
 LM_NAME_POE           = 'POE'
@@ -102,6 +103,7 @@ class LaunchMethod(object):
         from .mpirun_ccmrun  import MPIRunCCMRun
         from .mpirun_dplace  import MPIRunDPlace
         from .mpirun_rsh     import MPIRunRSH
+        from .prte           import PRTE
         from .orte           import ORTE
         from .orte_lib       import ORTELib
         from .poe            import POE
@@ -124,6 +126,7 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_CCMRUN : MPIRunCCMRun,
                 LM_NAME_MPIRUN_DPLACE : MPIRunDPlace,
                 LM_NAME_MPIRUN_RSH    : MPIRunRSH,
+                LM_NAME_PRTE          : PRTE,
                 LM_NAME_ORTE          : ORTE,
                 LM_NAME_ORTE_LIB      : ORTELib,
                 LM_NAME_POE           : POE,
@@ -158,12 +161,14 @@ class LaunchMethod(object):
             raise TypeError("LaunchMethod config hook only available to base class!")
 
         from .fork           import Fork
+        from .prte           import PRTE
         from .orte           import ORTE
         from .yarn           import Yarn
         from .spark          import Spark
 
         impl = {
             LM_NAME_FORK          : Fork,
+            LM_NAME_PRTE          : PRTE,
             LM_NAME_ORTE          : ORTE,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
@@ -190,11 +195,13 @@ class LaunchMethod(object):
         if cls != LaunchMethod:
             raise TypeError("LaunchMethod shutdown hook only available to base class!")
 
+        from .prte           import PRTE
         from .orte           import ORTE
         from .yarn           import Yarn
         from .spark          import Spark
 
         impl = {
+            LM_NAME_PRTE          : PRTE,
             LM_NAME_ORTE          : ORTE,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
@@ -326,12 +333,15 @@ class LaunchMethod(object):
         flavor  = self.MPI_FLAVOR_UNKNOWN
 
         out, err, ret = ru.sh_callout('%s -v' % exe)
+        self._log.debug('=== 1 %s %s %s', ret, out, err)
 
         if ret:
             out, err, ret = ru.sh_callout('%s --version' % exe)
+            self._log.debug('=== 2 %s %s %s', ret, out, err)
 
         if ret:
             out, err, ret = ru.sh_callout('%s -info' % exe)
+            self._log.debug('=== 3 %s %s %s', ret, out, err)
 
         if not ret:
             for line in out.splitlines():

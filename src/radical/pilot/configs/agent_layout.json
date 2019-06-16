@@ -1,0 +1,100 @@
+
+# `shared`: if true, use agent node also for CUs (not yet implemented)
+# `target`: sub-agents hosting additional component instances can run on the
+#           same node ('local') or on other nodes ('node') as `agent_0`. 
+#           agent_0 must always have target 'local'.
+# All bridges must live in agent_0.
+
+{
+    "default" : "beowulf", 
+    "beowulf" : {
+        "agent_0" : {
+            "target"     : "local",
+            "shared"     : false,
+            "components" : {
+                "AgentStagingInputComponent"  : {"count" : 1},
+                "AgentSchedulingComponent"    : {"count" : 1},
+                "AgentExecutingComponent"     : {"count" : 1},
+                "AgentStagingOutputComponent" : {"count" : 1}
+            },
+
+            "bridges" : {
+                "agent_staging_input_queue"   : {"log_level" : "debug",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 0},
+                "agent_scheduling_queue"      : {"log_level" : "debug",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 0},
+                "agent_executing_queue"       : {"log_level" : "debug",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 0},
+                "agent_staging_output_queue"  : {"log_level" : "debug",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 0},
+                                              
+                "agent_unschedule_pubsub"     : {"log_level" : "debug",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 0},
+                "agent_schedule_pubsub"       : {"log_level" : "debug",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 0},
+                "log_pubsub"                  : {"log_level" : "debug",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 0},
+                "state_pubsub"                : {"log_level" : "debug",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 0},
+                "control_pubsub"              : {"log_level" : "debug",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 0}
+            }
+        }
+    },
+    "cray" : {
+        "agent_0" : {
+            "target"     : "local",
+            "shared"     : false,
+            "agent_1": {
+                "target"    : "node",
+                "shared"    : false,
+                "components": {
+                    "AgentStagingInputComponent"  : {"count" : 1},
+                    "AgentSchedulingComponent"    : {"count" : 1},
+                    "AgentExecutingComponent"     : {"count" : 1},
+                    "AgentStagingOutputComponent" : {"count" : 1}
+                }
+            },
+            "bridges" : {
+                "agent_staging_input_queue"   : {"log_level" : "debug",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 0},
+                "agent_scheduling_queue"      : {"log_level" : "debug",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 0},
+                "agent_executing_queue"       : {"log_level" : "debug",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 0},
+                "agent_staging_output_queue"  : {"log_level" : "debug",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 0},
+                                              
+                "agent_unschedule_pubsub"     : {"log_level" : "debug",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 0},
+                "agent_schedule_pubsub"       : {"log_level" : "debug",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 0},
+                "log_pubsub"                  : {"log_level" : "debug",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 0},
+                "state_pubsub"                : {"log_level" : "debug",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 0},
+                "control_pubsub"              : {"log_level" : "debug",
+                                                 "stall_hwm" : 1,
+                                                 "bulk_size" : 0}
+            }
+        }
+    }
+}
+

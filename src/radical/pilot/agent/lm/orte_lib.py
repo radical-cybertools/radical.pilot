@@ -80,7 +80,7 @@ class ORTELib(LaunchMethod):
         dvm_args = [stdbuf_cmd, stdbuf_arg, dvm_command]
 
         # Additional (debug) arguments to orte-dvm
-        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+        if os.environ.get('RADICAL_PILOT_ORTE_DEBUG'):
             debug_strings = [
                              '--debug-devel',
                              '--mca odls_base_verbose 100',
@@ -147,7 +147,7 @@ class ORTELib(LaunchMethod):
                 if line:
                     logger.debug('dvm output: %s', line)
                 else:
-                    time.sleep(1.0)
+                    time.sleep(0.1)
 
             if retval != 0:
                 # send a kill signal to the main thread.
@@ -285,7 +285,7 @@ class ORTELib(LaunchMethod):
         hosts_string = hosts_string.rstrip(',')
 
         # Additional (debug) arguments to orterun
-        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+        if os.environ.get('RADICAL_PILOT_ORTE_DEBUG'):
             debug_strings = ['-display-devel-map', 
                              '-display-allocation', 
                              '--debug-devel',
