@@ -1,0 +1,31 @@
+
+language: python
+python:   "2.7"
+
+before_install:
+  - uname -a
+  - ulimit -a
+  - python -V
+  - pip install pytest coverage codecov flake8
+
+install:
+  - pip install .
+
+script:
+  - export RADICAL_PILOT_DBURL=mongodb://rct:rct_test@one.radical-project.org/rct_test
+  - export RADICAL_PILOT_TEST_DBNAME=rct_test
+  - python setup.py test
+
+notifications:
+  email:
+    recipients: andre@merzky.net
+    on_success: change
+    on_failure: always
+
+after_success:
+  - after_success:
+      - coverage combine; \
+        coverage xml; \
+        coverage report;
+
+

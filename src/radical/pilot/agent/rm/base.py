@@ -78,10 +78,10 @@ class LRMS(object):
         self.lrms_info       = dict()
         self.node_list       = list()
         self.agent_nodes     = dict()
-        self.cores_per_node  = None
-        self.gpus_per_node   = None
-        self.lfs_per_node    = None
-        self.mem_per_node    = None
+        self.cores_per_node  = 0
+        self.gpus_per_node   = 0
+        self.lfs_per_node    = 0
+        self.mem_per_node    = 0
 
         # The LRMS will possibly need to reserve nodes for the agent, according
         # to the agent layout.  We dig out the respective requirements from the
@@ -154,6 +154,7 @@ class LRMS(object):
                         rp.agent.LM.lrms_config_hook(lm, self._cfg, self,
                             self._log, self._prof))
             except Exception as e:
+                # FIXME don't catch/raise
                 self._log.exception("lrms config hook failed: %s" % e)
                 raise
 

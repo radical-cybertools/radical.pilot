@@ -1,13 +1,12 @@
+
 {
     "cname"            : "AgentStagingInputComponent",
-    "dburl"            : "mongodb://rp:rp@ds015335.mlab.com:15335/rp",
+    "dburl"            : "mongodb://rct:rct_test@one.radical-project.org/rct_test",
     "pilot_id"         : "pilot.0000",
     "pilot_sandbox"    : "",
-    "resource_cfg"     : {
-	    "default_remote_workdir" : "$HOME",
-	    "filesystem_endpoint"    : "file://localhost/",
-	    "job_manager_endpoint"   : "fork://localhost/"
-    },
+    "resource_cfg"     : {"default_remote_workdir" : "$HOME",
+	                      "filesystem_endpoint"    : "file://localhost/",
+	                      "job_manager_endpoint"   : "fork://localhost/"},
     "resource_sandbox" : "",
     "session_id"       : "",
     "session_sandbox"  : "",
@@ -17,3 +16,4 @@
     "uid"              : "agent_0",
     "workdir"          : ""
 }
+
