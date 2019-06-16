@@ -4,7 +4,7 @@
 # a functional rp session, both on the client and on the agent side.
 {
     # fallback db url
-    "default_dburl"      : "mongodb://rct:rct_test@one.radical-project.org/rct_test",
+    "default_dburl"      : "mongodb://rct:rct_test@two.radical-project.org/rct_test",
 
     "bridges" : {
         "log_pubsub"     : {"log_level" : "error",
