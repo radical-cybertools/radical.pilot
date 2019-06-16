@@ -12,7 +12,7 @@ echo
 
 reqs="pymongo==2.8 python-hostlist netifaces setproctitle ntplib pyzmq"
 reqs="$reqs apache-libcloud colorama backports.ssl-match-hostname msgpack-python"
-reqs="$reqs future regex"
+reqs="$reqs future regex msgpack parse"
 
 # setuptools="setuptools==0.6c11"
 # pip="pip==1.4.1"
@@ -112,11 +112,16 @@ mkdir -p "$prefix"
 cd $prefix
 
 echo -n "install virtualenv "
-VIRTENV_TGZ="virtualenv-1.9.tar.gz"
-VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/$VIRTENV_TGZ"
-curl -k -L -O "$VIRTENV_TGZ_URL" 2>&1 | progress
-tar zxmf "$VIRTENV_TGZ"
-VIRTENV_CMD="$PYTHON virtualenv-1.9/virtualenv.py"
+
+VIRTENV_CMD="$(which virtualenv 2>/dev/null)"
+if test -z "$VIRTENV_CMD"
+then
+    VIRTENV_TGZ="virtualenv-1.9.tar.gz"
+    VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/$VIRTENV_TGZ"
+    curl -k -L -O "$VIRTENV_TGZ_URL" 2>&1 | progress
+    tar zxmf "$VIRTENV_TGZ"
+    VIRTENV_CMD="$PYTHON virtualenv-1.9/virtualenv.py"
+fi
 
 echo -n "create  virtualenv "
 stdbuf -oL $VIRTENV_CMD "$prefix" | progress
