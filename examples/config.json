@@ -4,7 +4,7 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 1024,
+        "cores"    : 1,
         "gpus"     : 2
     },
 
@@ -147,6 +147,20 @@
         "queue"    : "workq",
         "schema"   : "gsissh",
         "cores"    : 80
+    },
+
+    "princeton.tiger_cpu" : {
+        "project"  : "geo",
+        "queue"    : "cpu",
+        "schema"   : "local",
+        "cores"    : 40
+    },
+
+    "princeton.tiger_gpu" : {
+        "project"  : "geo",
+        "queue"    : "gpu",
+        "schema"   : "local",
+        "cores"    : 56
     },
 
     "xsede.stampede" : {
