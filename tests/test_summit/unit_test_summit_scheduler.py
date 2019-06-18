@@ -25,7 +25,7 @@ cur_dir = os.path.dirname(os.path.abspath(__file__))
 
 
 # ------------------------------------------------------------------------------
-# 
+#
 def setUp():
 
     test_cases = json.load(open('test_cases_summit_scheduler.json'))
@@ -66,7 +66,7 @@ def test_allocate_slot(mocked_init,
     component._lrms_gpus_per_socket  = cfg['lrms_info']['gpus_per_socket']
     component._lrms_lfs_per_node     = cfg['lrms_info']['lfs_per_node']
     component._tag_history           = dict()
-    component._log                   = ru.get_logger('dummy')
+    component._log                   = ru.Logger('dummy')
 
     component._configure()
 
@@ -123,7 +123,7 @@ def test_release_slot(mocked_init,
 
         assert component.nodes ==  test_cases['final_state'][i]
 
-    tearDown()    
+    tearDown()
 
 
 # ------------------------------------------------------------------------------

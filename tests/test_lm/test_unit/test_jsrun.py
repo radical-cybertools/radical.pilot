@@ -57,7 +57,7 @@ def test_construct_command(mocked_init, mocked_configure,
                            mocked_create_resource_set_file, mocked_raise_on):
 
     test_cases = setUp('lm', 'jsrun')
-    
+
     component = JSRUN(cfg=None, session=None)
     component._log  = ru.Logger('dummy')
     component.launch_command = 'jsrun'

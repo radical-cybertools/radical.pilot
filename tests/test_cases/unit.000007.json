@@ -12,7 +12,7 @@
 
     "setup" : {
         "lm" : {
-            "slots": {  
+            "slots": {
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
                 "task_offsets"  : [16],
@@ -34,7 +34,7 @@
             },
             "unit_sandbox": "./"
         }
-    }, 
+    },
 
     "results": {
         "lm": { "ibrun" : ["ibrun -n 2 -o 16 /bin/sleep \"10\" ",null],

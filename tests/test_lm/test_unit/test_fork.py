@@ -30,7 +30,7 @@ def test_configure(mocked_init, mocked_raise_on):
 @mock.patch.object(Fork, '__init__',   return_value=None)
 @mock.patch.object(Fork, '_configure', return_value=None)
 @mock.patch('radical.utils.raise_on')
-def test_construct_command(mocked_init, 
+def test_construct_command(mocked_init,
                            mocked_configure,
                            mocked_raise_on):
 
