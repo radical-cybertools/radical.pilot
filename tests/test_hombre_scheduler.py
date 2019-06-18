@@ -1,8 +1,6 @@
 
 
 import os
-import copy
-import pprint
 import pytest
 
 import radical.utils           as ru
@@ -73,9 +71,9 @@ def cud_mpi():
 # ------------------------------------------------------------------------------
 # Cleanup any folders and files to leave the system state
 # as prior to the test
-def tearDown():
+def tearDown(session):
 
-    pass
+    session.close()
 
 
 # ------------------------------------------------------------------------------
@@ -91,6 +89,7 @@ def test_nonmpi_unit_withhombre_scheduler(mocked_init,
     cfg, session = setUp()
 
     component = Hombre(cfg=dict(), session=session)
+    component._log                 = ru.Logger('radical.pilot.test')
     component._configured          = False
     component._cfg                 = cfg
     component._lrms_info           = cfg['lrms_info']
@@ -102,7 +101,7 @@ def test_nonmpi_unit_withhombre_scheduler(mocked_init,
 
     component.nodes = list()
     for node in component._lrms_node_list:
-        component.nodes.append({'uid'  : node[0], 
+        component.nodes.append({'uid'  : node[0],
                                 'name' : node[1]})
 
     # populate component attributes
@@ -175,7 +174,7 @@ def test_nonmpi_unit_withhombre_scheduler(mocked_init,
     newslot = component._allocate_slot(cud)
     assert(newslot == slot)
 
-    tearDown()
+    tearDown(session)
 
 
 # ------------------------------------------------------------------------------
@@ -191,6 +190,7 @@ def test_mpi_unit_withhombre_scheduler(mocked_init,
     cfg, session = setUp()
 
     component = Hombre(cfg=dict(), session=session)
+    component._log                 = ru.Logger('radical.pilot.test')
     component._configured          = False
     component._cfg                 = cfg
     component._lrms_info           = cfg['lrms_info']
@@ -202,7 +202,7 @@ def test_mpi_unit_withhombre_scheduler(mocked_init,
 
     component.nodes = list()
     for node in component._lrms_node_list:
-        component.nodes.append({'uid'  : node[0], 
+        component.nodes.append({'uid'  : node[0],
                                 'name' : node[1]})
 
     # populate component attributes
@@ -263,7 +263,7 @@ def test_mpi_unit_withhombre_scheduler(mocked_init,
     newslot = component._allocate_slot(cud)
     assert(newslot == slot)
 
-    tearDown()
+    tearDown(session)
 
 
 # ------------------------------------------------------------------------------
