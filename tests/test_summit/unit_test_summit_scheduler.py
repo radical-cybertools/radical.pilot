@@ -112,7 +112,7 @@ def test_release_slot(mocked_init,
     component._lrms_gpus_per_socket  = cfg['lrms_info']['gpus_per_socket']
     component._lrms_lfs_per_node     = cfg['lrms_info']['lfs_per_node']
     component._tag_history           = dict()
-    component._log                   = ru.get_logger('dummy')
+    component._log                   = ru.Logger('dummy')
 
     component._configure()
 
@@ -148,7 +148,7 @@ def test_initialize_child(mocked_init,
     cfg, _, test_cases = setUp()
 
     component      = ContinuousSummit(cfg=cfg, session=None)
-    component._log = ru.get_logger('dummy')
+    component._log = ru.Logger('dummy')
     component._cfg = cfg
 
     component.initialize_child()

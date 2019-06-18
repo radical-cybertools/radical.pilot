@@ -41,7 +41,7 @@ def test_construct_command(mocked_init,
 
     component.launch_command = 'orterun'
     component.name           = 'orte'
-    component._log           = ru.get_logger('dummy')
+    component._log           = ru.Logger('dummy')
 
     for unit, result in test_cases:
         if result == "RuntimeError":

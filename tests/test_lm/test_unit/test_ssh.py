@@ -57,7 +57,7 @@ def test_construct_command(mocked_init,
     test_cases = setUp('lm', 'ssh')
     component  = SSH(name=None, cfg=None, session=None)
 
-    component._log           = ru.get_logger('dummy')
+    component._log           = ru.Logger('dummy')
     component.name           = 'SSH'
     component.mpi_flavor     = None
     component.launch_command = 'ssh'

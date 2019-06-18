@@ -37,7 +37,7 @@ def test_construct_command(mocked_init,
     test_cases = setUp('lm', 'fork')
     component  = Fork(name=None, cfg=None, session=None)
 
-    component._log           = ru.get_logger('dummy')
+    component._log           = ru.Logger('dummy')
 
     for unit, result in test_cases:
         command, hop = component.construct_command(unit, None)
