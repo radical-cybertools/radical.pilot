@@ -21,7 +21,8 @@ def setUp():
     cfg          = session.get_resource_config(resource='ornl.summitdev')
     cfg["cores"] = 40
 
-    os.environ['LSB_DJOB_HOSTFILE'] = './sample_summitdev_hostfile'
+    os.environ['LSB_DJOB_HOSTFILE'] = '%s/sample_summitdev_hostfile' \
+            % os.path.dirname(__file__)
 
     return cfg, session
 
