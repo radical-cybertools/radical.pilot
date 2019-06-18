@@ -126,8 +126,8 @@ class JSRUN(LaunchMethod):
         # CUDA without MPI, use jsrun --smpiargs="off"
         #
         # We only set this for CUDA tasks
-        if 'cuda' in cud['gpu_thread_type'].lower():
-            if 'mpi' in cud['gpu_process_type'].lower():
+        if 'cuda' in cud.get('gpu_thread_type', '').lower():
+            if 'mpi' in cud.get('gpu_process_type', '').lower():
                 smpiargs = '--smpiargs="-gpu"'
             else:
                 smpiargs = '--smpiargs="off"'
