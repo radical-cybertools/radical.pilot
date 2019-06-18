@@ -89,7 +89,7 @@ class Agent_0(rpu.Worker):
         # communication channels and components/workers specified in the
         # config -- we merge that information into our own config.
         # We don't want the session to start components though, so remove them
-        # from the config copy.        
+        # from the config copy.
         session_cfg = copy.deepcopy(cfg)
         session_cfg['components'] = dict()
         session = rp_Session(cfg=session_cfg, uid=self._sid)
@@ -147,7 +147,7 @@ class Agent_0(rpu.Worker):
                  'state'            : rps.PMGR_ACTIVE,
                  'resource_details' : {
                      'lm_info'      : self._lrms.lm_info.get('version_info'),
-                     'lm_detail'    : self._lrms.lm_info.get('lm_detail'), 
+                     'lm_detail'    : self._lrms.lm_info.get('lm_detail'),
                      'rm_info'      : self._lrms.lrms_info},
                  '$set'             : ['resource_details']}
         self.advance(pilot, publish=True, push=False)
@@ -284,7 +284,7 @@ class Agent_0(rpu.Worker):
         # FIXME: we need a watcher cb to watch sub-agent state
 
         self._log.debug('start_sub_agents')
-        self._log.debug('%s' % pprint.pformat(self._cfg['lrms_info']))
+      # self._log.debug('%s' % pprint.pformat(self._cfg['lrms_info']))
 
         if not self._cfg.get('agents'):
             self._log.debug('start_sub_agents noop')
@@ -333,7 +333,7 @@ class Agent_0(rpu.Worker):
                   'gpu_processes' : 0,
                   'gpu_threads'   : 0,
                 # 'nodes'         : [[node[0], node[1], [[0]], []]],
-                  'nodes'         : [{'name'    : node[0], 
+                  'nodes'         : [{'name'    : node[0],
                                       'uid'     : node[1],
                                       'core_map': [[0]],
                                       'gpu_map' : [],
