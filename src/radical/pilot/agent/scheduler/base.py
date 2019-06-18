@@ -30,8 +30,6 @@ SCHEDULER_NAME_SPARK              = "SPARK"
 # SCHEDULER_NAME_CONTINUOUS_SUMMIT  = "CONTINUOUS_SUMMIT"
 # SCHEDULER_NAME_CONTINUOUS_FIFO    = "CONTINUOUS_FIFO"
 
-# SCHEDULER_NAME_CONTINUOUS_FIFO    = "CONTINUOUS_FIFO"
-
 
 # ------------------------------------------------------------------------------
 #
@@ -645,7 +643,7 @@ class AgentSchedulingComponent(rpu.Component):
             if self._try_allocation(unit):
 
                 # allocated unit -- advance it
-                self.advance(unit, rps.AGENT_EXECUTING_PENDING, 
+                self.advance(unit, rps.AGENT_EXECUTING_PENDING,
                              publish=True, push=True)
 
                 # remove it from the wait queue
