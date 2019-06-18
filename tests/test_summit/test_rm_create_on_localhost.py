@@ -54,6 +54,8 @@ def test_rm_create_on_localhost():
     import pprint
     pprint.pprint(lrms.lrms_info)
     assert lrms.lrms_info == {'agent_nodes'     : {},
+                              'gpus_per_node'   : 6,
+                              'cores_per_node'  : 20,
                               'cores_per_socket': 10,
                               'gpus_per_socket' : 3,
                               'sockets_per_node': 2,
