@@ -60,7 +60,7 @@ def test_ordered_scheduler():
                     cud.executable       = '%s/pipeline_task.sh' % pwd
                     cud.arguments        = [p, s, t, 10]
                     cud.cpu_processes    = 1
-                    cud.tags             = {'order': {'ns'   : p, 
+                    cud.tags             = {'order': {'ns'   : p,
                                                       'order': s,
                                                       'size' : n_tasks}}
                     cud.name             =  'p%03d-s%03d-t%03d' % (p, s, t)
@@ -98,7 +98,7 @@ def test_ordered_scheduler():
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close(download=True)
+        session.close(download=False)
 
     report.header()
 

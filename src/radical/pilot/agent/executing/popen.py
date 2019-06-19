@@ -196,8 +196,6 @@ class Popen(AgentExecutingComponent) :
             self._log.debug("Launching unit with %s (%s).",
                             launcher.name, launcher.launch_command)
 
-            assert(cu['slots'])
-
             # Start a new subprocess to launch the unit
             self.spawn(launcher=launcher, cu=cu)
 
