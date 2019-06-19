@@ -10,34 +10,11 @@ import uuid
 
 from pymongo import MongoClient
 
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to the MongoDB website:
-# http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
-if DBURL is None:
-    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
-    
-DBNAME = os.getenv("RADICAL_PILOT_TEST_DBNAME", 'test')
-if DBNAME is None:
-    print "ERROR: RADICAL_PILOT_TEST_DBNAME (MongoDB database name) is not defined."
-    sys.exit(1)
-
 
 #-----------------------------------------------------------------------------
 #
 class TestUnit(unittest.TestCase):
     # silence deprecation warnings under py3
-
-    def setUp(self):
-        # clean up fragments from previous tests
-        client = MongoClient(DBURL)
-        client.drop_database(DBNAME)
-
-    def tearDown(self):
-        # clean up after ourselves
-        client = MongoClient(DBURL)
-        client.drop_database(DBNAME)
 
     def failUnless(self, expr):
         # St00pid speling.
@@ -52,7 +29,7 @@ class TestUnit(unittest.TestCase):
     def test__unit_wait(self):
         """ Test if we can wait for different unit states.
         """
-        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
+        session = radical.pilot.Session()
 
         pm = radical.pilot.PilotManager(session=session)
 
@@ -97,7 +74,7 @@ class TestUnit(unittest.TestCase):
     def test__unit_cancel(self):
         """ Test if we can cancel a compute unit
         """
-        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
+        session = radical.pilot.Session()
 
         pm = radical.pilot.PilotManager(session=session)
 
@@ -148,7 +125,7 @@ class TestUnit(unittest.TestCase):
     def test__unit_cancel_um(self):
         """ Test if we can cancel a compute unit through the UM
         """
-        session = radical.pilot.Session(database_url=DBURL, database_name=DBNAME)
+        session = radical.pilot.Session()
 
         pm = radical.pilot.PilotManager(session=session)
 

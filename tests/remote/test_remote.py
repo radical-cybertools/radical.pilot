@@ -11,19 +11,6 @@ from pymongo import MongoClient
 import radical.pilot as rp
 
 
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to the MongoDB website:
-# http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
-if DBURL is None:
-    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
-
-DBNAME = os.getenv("RADICAL_PILOT_TEST_DBNAME", 'test')
-if DBNAME is None:
-    print "ERROR: RADICAL_PILOT_TEST_DBNAME (MongoDB database name) is not defined."
-    sys.exit(1)
-
 
 # -----------------------------------------------------------------------------
 #
@@ -32,9 +19,6 @@ class TestRemoteSubmission(unittest.TestCase):
 
     def setUp(self):
         # clean up fragments from previous tests
-        client = MongoClient(DBURL)
-        client.drop_database(DBNAME)
-
         self.test_resource = os.getenv('RADICAL_PILOT_TEST_REMOTE_RESOURCE',     "local.localhost")
         self.test_ssh_uid  = os.getenv('RADICAL_PILOT_TEST_REMOTE_SSH_USER_ID',  None)
         self.test_ssh_key  = os.getenv('RADICAL_PILOT_TEST_REMOTE_SSH_USER_KEY', None)
@@ -42,11 +26,6 @@ class TestRemoteSubmission(unittest.TestCase):
         self.test_cores    = os.getenv('RADICAL_PILOT_TEST_REMOTE_CORES',        "1")
         self.test_num_cus  = os.getenv('RADICAL_PILOT_TEST_REMOTE_NUM_CUS',      "2")
         self.test_timeout  = os.getenv('RADICAL_PILOT_TEST_TIMEOUT',             "5")
-
-    def tearDown(self):
-        # clean up after ourselves
-        client = MongoClient(DBURL)
-        client.drop_database(DBNAME)
 
     def failUnless(self, expr):
         # St00pid speling.
@@ -61,7 +40,7 @@ class TestRemoteSubmission(unittest.TestCase):
     def test__remote_simple_submission(self):
         """ Test simple remote submission with one pilot.
         """
-        session = rp.Session(database_url=DBURL, database_name=DBNAME)
+        session = rp.Session()
         c = rp.Context('ssh')
         c.user_id  = self.test_ssh_uid
         c.user_key = self.test_ssh_key
@@ -112,7 +91,7 @@ class TestRemoteSubmission(unittest.TestCase):
     def test__remote_pilot_wait(self):
         """ Test if we can wait for different pilot states.
         """
-        session = rp.Session(database_url=DBURL, database_name=DBNAME)
+        session = rp.Session()
         c = rp.Context('ssh')
         c.user_id  = self.test_ssh_uid
         c.user_key = self.test_ssh_key
@@ -151,7 +130,7 @@ class TestRemoteSubmission(unittest.TestCase):
     def test__remote_pilot_cancel(self):
         """ Test if we can cancel a pilot.
         """
-        session = rp.Session(database_url=DBURL, database_name=DBNAME)
+        session = rp.Session()
         c = rp.Context('ssh')
         c.user_id  = self.test_ssh_uid
         c.user_key = self.test_ssh_key
