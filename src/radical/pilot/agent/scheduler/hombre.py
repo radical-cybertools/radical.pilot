@@ -93,13 +93,10 @@ class Hombre(AgentSchedulingComponent):
         gpus_needed  = cud['gpu_processes']
 
         # check if we need single or multi-node chunks
-        single_node = False
         if  cud['cpu_process_type'] != 'MPI' and \
             cud['gpu_process_type'] != 'MPI' :
 
-            single_node = True
-
-        if single_node:
+            # single node task - check if it fits
             if cores_needed > self.cpn or \
                gpus_needed  > self.gpn:
                 raise ValueError('unit does not fit on node')
@@ -143,8 +140,8 @@ class Hombre(AgentSchedulingComponent):
             return {'nodes'         : list(),
                     'cores_per_node': self.cpn,
                     'gpus_per_node' : self.gpn,
-                    'lm_info'       : self._lrms_lm_info, 
-                    'ncblocks'      : 0, 
+                    'lm_info'       : self._lrms_lm_info,
+                    'ncblocks'      : 0,
                     'ngblocks'      : 0}
         # ---------------------------------------------------------------------
         nidx   = 0
