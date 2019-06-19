@@ -1004,17 +1004,21 @@ class Session(rs.Session):
                     sandbox_base = sandbox_raw
 
                 else:
-                    js_url = rs.Url(rcfg['job_manager_endpoint'])
+                    js_url = rcfg['job_manager_endpoint']
+                    js_url = rcfg.get('job_manager_hop', js_url)
+                    js_url = rs.Url(js_url)
         
                     if 'ssh' in js_url.schema.split('+'):
                         js_url.schema = 'ssh'
                     elif 'gsissh' in js_url.schema.split('+'):
                         js_url.schema = 'gsissh'
                     elif 'fork' in js_url.schema.split('+'):
-                        js_url.schema = 'fork'
+                        js_url.schema   = 'fork'
+                        js_url.hostname = 'localhost'
                     elif '+' not in js_url.schema:
                         # For local access to queueing systems use fork
-                        js_url.schema = 'fork'
+                        js_url.schema   = 'fork'
+                        js_url.hostname = 'localhost'
                     else:
                         raise Exception("unsupported access schema: %s" % js_url.schema)
         

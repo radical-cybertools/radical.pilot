@@ -21,14 +21,14 @@ from ... import constants as rpc
 SCHEDULER_NAME_CONTINUOUS_ORDERED = "CONTINUOUS_ORDERED"
 SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
 SCHEDULER_NAME_HOMBRE             = "HOMBRE"
-SCHEDULER_NAME_SCATTERED          = "SCATTERED"
 SCHEDULER_NAME_SPARK              = "SPARK"
 SCHEDULER_NAME_TORUS              = "TORUS"
 SCHEDULER_NAME_YARN               = "YARN"
-SCHEDULER_NAME_SPARK              = "SPARK"
+SCHEDULER_NAME_NOOP               = "NOOP"
 
 # SCHEDULER_NAME_CONTINUOUS_SUMMIT  = "CONTINUOUS_SUMMIT"
 # SCHEDULER_NAME_CONTINUOUS_FIFO    = "CONTINUOUS_FIFO"
+# SCHEDULER_NAME_SCATTERED          = "SCATTERED"
 
 
 # ------------------------------------------------------------------------------
@@ -311,28 +311,30 @@ class AgentSchedulingComponent(rpu.Component):
 
         from .continuous_ordered import ContinuousOrdered
         from .continuous         import Continuous
-        from .scattered          import Scattered
         from .hombre             import Hombre
         from .torus              import Torus
         from .yarn               import Yarn
         from .spark              import Spark
+        from .noop               import Noop
 
-      # from .continuous_fifo    import ContinuousFifo
       # from .continuous_summit  import ContinuousSummit
+      # from .continuous_fifo    import ContinuousFifo
+      # from .scattered          import Scattered
 
         try:
             impl = {
 
                 SCHEDULER_NAME_CONTINUOUS_ORDERED : ContinuousOrdered,
                 SCHEDULER_NAME_CONTINUOUS         : Continuous,
-                SCHEDULER_NAME_SCATTERED          : Scattered,
                 SCHEDULER_NAME_HOMBRE             : Hombre,
                 SCHEDULER_NAME_TORUS              : Torus,
                 SCHEDULER_NAME_YARN               : Yarn,
                 SCHEDULER_NAME_SPARK              : Spark,
+                SCHEDULER_NAME_NOOP               : Noop,
 
               # SCHEDULER_NAME_CONTINUOUS_SUMMIT  : ContinuousSummit,
               # SCHEDULER_NAME_CONTINUOUS_FIFO    : ContinuousFifo,
+              # SCHEDULER_NAME_SCATTERED          : Scattered,
 
             }[name]
 
@@ -586,8 +588,10 @@ class AgentSchedulingComponent(rpu.Component):
 
         unit = msg
 
-        if not unit['slots']:
-            # Nothing to do -- how come?
+        slots = unit.get('slots')
+
+        if not slots:
+            # Nothing to do
             self._log.error("cannot unschedule: %s (no slots)" % unit)
             return True
 
@@ -599,7 +603,7 @@ class AgentSchedulingComponent(rpu.Component):
         # in a different thread....
         with self._slot_lock:
             self._prof.prof('unschedule_start', uid=unit['uid'])
-            self._release_slot(unit['slots'])
+            self._release_slot(slots)
             self._prof.prof('unschedule_stop',  uid=unit['uid'])
 
         # notify the scheduling thread, ie. trigger an attempt to use the freed

@@ -28,6 +28,7 @@ LM_NAME_RSH           = 'RSH'
 LM_NAME_SSH           = 'SSH'
 LM_NAME_YARN          = 'YARN'
 LM_NAME_SPARK         = 'SPARK'
+LM_NAME_SRUN          = 'SRUN'
 
 # deprecated
 # LM_NAME_POE           = 'POE'
@@ -40,7 +41,7 @@ LM_NAME_SPARK         = 'SPARK'
 class LaunchMethod(object):
 
     # List of environment variables that designated Launch Methods should export
-    # FIXME: we should find out what env vars are changed or added by 
+    # FIXME: we should find out what env vars are changed or added by
     #        cud.pre_exec, and then should also export those.  That would make
     #        our launch script ore complicated though...
     EXPORT_ENV_VARIABLES = [
@@ -67,6 +68,14 @@ class LaunchMethod(object):
         self.env_removables = []
 
         self._configure()
+
+        # TODO: This doesn't make too much sense for LM's that use multiple
+        #       commands, perhaps this needs to move to per LM __init__.
+        if self.launch_command is None:
+            raise RuntimeError("Launcher not found for LaunchMethod '%s'"
+                              % self.name)
+
+        self._log.debug('launch_command: %s', self.launch_command)
 
 
     # --------------------------------------------------------------------------
@@ -97,6 +106,7 @@ class LaunchMethod(object):
         from .ssh            import SSH
         from .yarn           import Yarn
         from .spark          import Spark
+        from .srun           import Srun
 
       # # deprecated
       # from .mpirun_ccmrun  import MPIRunCCMRun
@@ -126,6 +136,7 @@ class LaunchMethod(object):
                 LM_NAME_SSH           : SSH,
                 LM_NAME_YARN          : Yarn,
                 LM_NAME_SPARK         : Spark
+                LM_NAME_SRUN          : Srun,
 
               # # deprecated
               # LM_NAME_DPLACE        : DPlace,
@@ -168,9 +179,12 @@ class LaunchMethod(object):
             LM_NAME_SPARK         : Spark
         }.get(name)
 
-        if impl:
-            logger.info('call LRMS config hook for LM %s: %s' % (name, impl))
-            return impl.lrms_config_hook(name, cfg, lrms, logger, profiler)
+        if not impl:
+            logger.info('no config hook defined for LaunchMethod %s' % name)
+            return None
+
+        logger.info('LRMS config hook for LaunchMethod %s: %s' % (name, impl))
+        return impl.lrms_config_hook(name, cfg, lrms, logger, profiler)
 
 
     # --------------------------------------------------------------------------
@@ -196,21 +210,26 @@ class LaunchMethod(object):
             LM_NAME_SPARK         : Spark
         }.get(name)
 
-        if impl:
-            logger.info('LRMS shutdown hook for LM %s: %s' % (name, impl))
-            return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info, 
-                                           logger, profiler)
+        if not impl:
+            logger.info('no shutdown hook defined for LaunchMethod %s' % name)
+            return None
+
+        logger.info('LRMS shutdown hook for LM %s: %s' % (name, impl))
+        return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info,
+                                       logger, profiler)
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
+
         raise NotImplementedError("incomplete LM %s" % self.name)
 
 
     # --------------------------------------------------------------------------
     #
     def construct_command(self, cu, launch_script_hop):
+
         raise NotImplementedError("incomplete LM %s" % self.name)
 
 
@@ -222,7 +241,7 @@ class LaunchMethod(object):
         # Open appropriately named temporary file
         # NOTE: we make an assumption about the unit sandbox here
         filename = '%s/%s.hosts' % (uid, uid)
-        handle   = open(filename, 'w') 
+        handle   = open(filename, 'w')
 
         if not impaired:
             # Write "hostN x\nhostM y\n" entries
@@ -231,7 +250,7 @@ class LaunchMethod(object):
 
             # Convert it into an ordered dict,
             # which hopefully resembles the original ordering
-            count_dict = collections.OrderedDict(sorted(counter.items(), 
+            count_dict = collections.OrderedDict(sorted(counter.items(),
                                                  key=lambda t: t[0]))
 
             for (host, count) in count_dict.iteritems():
@@ -267,7 +286,7 @@ class LaunchMethod(object):
             count_dict[host] /= host_gcd
 
         # Recreate a list of hosts based on the normalized dict
-        hosts = []
+        hosts = list()
         for (host, count) in count_dict.iteritems():
             hosts.extend([host] * count)
 
@@ -300,10 +319,11 @@ class LaunchMethod(object):
                     continue
 
                 arg = arg.replace('"', '\\"')    # Escape all double quotes
+
                 if arg[0] == arg[-1] == "'" :    # between outer single quotes?
                     arg_string += '%s ' % arg    # ... pass it as is.
                 else:
-                    arg_string += '"%s" ' % arg  # else return double quoted 
+                    arg_string += '"%s" ' % arg  # else return double quoted
 
         return arg_string
 
