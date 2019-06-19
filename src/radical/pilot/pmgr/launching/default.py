@@ -775,6 +775,7 @@ class Default(PMGRLaunchingComponent):
         number_cores    = pilot['description']['cores']
         number_gpus     = pilot['description']['gpus']
         runtime         = pilot['description']['runtime']
+        app_comm        = pilot['description']['app_comm']
         queue           = pilot['description']['queue']
         project         = pilot['description']['project']
         cleanup         = pilot['description']['cleanup']
@@ -1049,6 +1050,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['spawner']            = agent_spawner
         agent_cfg['scheduler']          = agent_scheduler
         agent_cfg['runtime']            = runtime
+        agent_cfg['app_comm']           = app_comm
         agent_cfg['dburl']              = str(database_url)
         agent_cfg['session_id']         = sid
         agent_cfg['pilot_id']           = pid
