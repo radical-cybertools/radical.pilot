@@ -31,6 +31,7 @@ LM_NAME_RSH           = 'RSH'
 LM_NAME_SSH           = 'SSH'
 LM_NAME_YARN          = 'YARN'
 LM_NAME_SPARK         = 'SPARK'
+LM_NAME_SRUN          = 'SRUN'
 
 
 # ==============================================================================
@@ -71,7 +72,8 @@ class LaunchMethod(object):
         # TODO: This doesn't make too much sense for LM's that use multiple
         #       commands, perhaps this needs to move to per LM __init__.
         if self.launch_command is None:
-            raise RuntimeError("Launch command not found for LaunchMethod '%s'" % self.name)
+            raise RuntimeError("Launcher not found for LaunchMethod '%s'"
+                              % self.name)
 
         self._log.debug('launch_command: %s', self.launch_command)
 
@@ -85,7 +87,7 @@ class LaunchMethod(object):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
-            raise TypeError("LaunchMethod factory only available to base class!")
+            raise TypeError("LaunchMethod.create only available to base class!")
 
         # In case of undefined LM just return None
         if not name:
@@ -110,6 +112,7 @@ class LaunchMethod(object):
         from .ssh            import SSH
         from .yarn           import Yarn
         from .spark          import Spark
+        from .srun           import Srun
 
         try:
             impl = {
@@ -131,12 +134,13 @@ class LaunchMethod(object):
                 LM_NAME_RSH           : RSH,
                 LM_NAME_SSH           : SSH,
                 LM_NAME_YARN          : Yarn,
-                LM_NAME_SPARK         : Spark
+                LM_NAME_SPARK         : Spark,
+                LM_NAME_SRUN          : Srun,
             }[name]
             return impl(cfg, session)
 
         except KeyError:
-            session._log.exception("LaunchMethod '%s' unknown or defunct" % name)
+            session._log.exception("LaunchMethod '%s' unknown / defunct" % name)
 
         except Exception as e:
             session._log.exception("LaunchMethod cannot be used: %s!" % e)
@@ -155,7 +159,7 @@ class LaunchMethod(object):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
-            raise TypeError("LaunchMethod config hook only available to base class!")
+            raise TypeError("LaunchMethod hooks only available to base class!")
 
         from .fork           import Fork
         from .orte           import ORTE
@@ -170,10 +174,10 @@ class LaunchMethod(object):
         }.get(name)
 
         if not impl:
-            logger.info('no LRMS config hook defined for LaunchMethod %s' % name)
+            logger.info('no config hook defined for LaunchMethod %s' % name)
             return None
 
-        logger.info('call LRMS config hook for LaunchMethod %s: %s' % (name, impl))
+        logger.info('LRMS config hook for LaunchMethod %s: %s' % (name, impl))
         return impl.lrms_config_hook(name, cfg, lrms, logger, profiler)
 
 
@@ -188,7 +192,7 @@ class LaunchMethod(object):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
-            raise TypeError("LaunchMethod shutdown hook only available to base class!")
+            raise TypeError("LaunchMethod hooks only available to base class!")
 
         from .orte           import ORTE
         from .yarn           import Yarn
@@ -201,23 +205,26 @@ class LaunchMethod(object):
         }.get(name)
 
         if not impl:
-            logger.info('no LRMS shutdown hook defined for LaunchMethod %s' % name)
+            logger.info('no shutdown hook defined for LaunchMethod %s' % name)
             return None
 
-        logger.info('call LRMS shutdown hook for LaunchMethod %s: %s' % (name, impl))
-        return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info, logger, profiler)
+        logger.info('LRMS shutdown hook for LaunchMethod %s: %s' % (name, impl))
+        return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info,
+                                       logger, profiler)
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        raise NotImplementedError("_configure() not implemented for LaunchMethod: %s." % self.name)
+        raise NotImplementedError("no _configure() for LaunchMethod: %s."
+                                 % self.name)
 
 
     # --------------------------------------------------------------------------
     #
     def construct_command(self, cu, launch_script_hop):
-        raise NotImplementedError("construct_command() not implemented for LaunchMethod: %s." % self.name)
+        raise NotImplementedError("no construct_command() for LaunchMethod: %s."
+                                 % self.name)
 
 
     # --------------------------------------------------------------------------
@@ -226,7 +233,8 @@ class LaunchMethod(object):
     def _create_hostfile(cls, all_hosts, separator=' ', impaired=False):
 
         # Open appropriately named temporary file
-        handle, filename = tempfile.mkstemp(prefix='rp_hostfile', dir=os.getcwd())
+        handle, filename = tempfile.mkstemp(prefix='rp_hostfile',
+                                            dir=os.getcwd())
 
         if not impaired:
             #
@@ -237,7 +245,8 @@ class LaunchMethod(object):
             counter = collections.Counter(all_hosts)
             # Convert it into an ordered dict,
             # which hopefully resembles the original ordering
-            count_dict = collections.OrderedDict(sorted(counter.items(), key=lambda t: t[0]))
+            count_dict = collections.OrderedDict(sorted(counter.items(),
+                                                 key=lambda t: t[0]))
 
             for (host, count) in count_dict.iteritems():
                 os.write(handle, '%s%s%d\n' % (host, separator, count))
@@ -278,7 +287,8 @@ class LaunchMethod(object):
         hosts = []
         [hosts.extend([host] * count)
                 for (host, count) in count_dict.iteritems()]
-        # Esthetically sort the list, as we lost ordering by moving to a dict/set
+
+        # Esthetically sort the list
         hosts.sort()
 
         return hosts
@@ -307,10 +317,12 @@ class LaunchMethod(object):
                     continue
 
                 arg = arg.replace('"', '\\"')    # Escape all double quotes
-                if arg[0] == arg[-1] == "'" :    # If a string is between outer single quotes,
+                if arg[0] == arg[-1] == "'" :    # If a string is between
+                                                 #     outer single quotes,
                     arg_string += '%s ' % arg    # ... pass it as is.
                 else:
-                    arg_string += '"%s" ' % arg  # Otherwise return between double quotes.
+                    arg_string += '"%s" ' % arg  # Otherwise return between
+                                                 #     double quotes.
 
         return arg_string
 
@@ -361,8 +373,6 @@ class LaunchMethod(object):
         self._log.debug('mpi version: %s [%s]', version, flavor)
 
         return version, flavor
-
-
 
 
 # ------------------------------------------------------------------------------

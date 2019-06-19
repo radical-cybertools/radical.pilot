@@ -12,7 +12,6 @@ install:
   - pip install .
 
 script:
-  - export RADICAL_PILOT_DBURL=mongodb://rct:rct_test@one.radical-project.org/rct_test
   - export RADICAL_PILOT_TEST_DBNAME=rct_test
   - python setup.py test
 

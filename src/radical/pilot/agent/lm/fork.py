@@ -37,7 +37,6 @@ class Fork(LaunchMethod):
         # NOTE: ignore thread and process counts, and expect application to do
         #       the needful
 
-        slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
         task_args    = cud.get('arguments') or []

@@ -83,6 +83,20 @@ class Agent_0(rpu.Worker):
             dburl.host, dburl.port = hostport.split(':')
             cfg['dburl'] = str(dburl)
 
+        # if the pilot description contains a request for application comm
+        # channels, merge those into the agent config
+        app_comm = cfg.get('app_comm')
+        if app_comm:
+            if isinstance(app_comm, list):
+                app_comm = {ac: {'bulk_size': 0,
+                                 'stall_hwm': 1,
+                                 'log_level': 'error'} for ac in app_comm}
+            for ac in app_comm:
+                if ac in cfg['bridges']:
+                    raise ValueError('reserved app_comm name %s' % ac)
+                cfg['bridges'][ac] = app_comm[ac]
+
+
         # Create a session.
         #
         # This session will connect to MongoDB, and will also create any
@@ -102,6 +116,18 @@ class Agent_0(rpu.Worker):
 
         if not session.is_connected:
             raise RuntimeError('agent_0 could not connect to mongodb')
+
+        # some of the bridge addresses also need to be exposed to the workload
+        if app_comm:
+            if 'unit_environment' not in cfg:
+                cfg['unit_environment'] = dict()
+            for ac in app_comm:
+                if ac not in cfg['bridges']:
+                    raise RuntimeError('missing app_comm %s' % ac)
+                cfg['unit_environment']['RP_%s_IN' % ac.upper()] = \
+                        cfg['bridges'][ac]['addr_in']
+                cfg['unit_environment']['RP_%s_OUT' % ac.upper()] = \
+                        cfg['bridges'][ac]['addr_out']
 
         # at this point the session is up and connected, and it should have
         # brought up all communication bridges and the UpdateWorker.  We are
@@ -535,6 +561,13 @@ class Agent_0(rpu.Worker):
                         uid=self._pid)
 
         for unit in unit_list:
+
+            # make sure the units obtain env settings (if needed)
+            if 'unit_environment' in self._cfg:
+                if not unit['description'].get('environment'):
+                    unit['description']['environment'] = dict()
+                for k,v in self._cfg['unit_environment'].iteritems():
+                    unit['description']['environment'][k] = v
 
             # we need to make sure to have the correct state:
             unit['state'] = rps._unit_state_collapse(unit['states'])
