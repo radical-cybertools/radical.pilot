@@ -20,10 +20,10 @@ class Srun(LaunchMethod):
     the task uses (a part of) a single node, or the task is using multiple nodes
     uniformely.  Core pinning is only available on tasks which use exactly one
     full node (and in that case becomes useless for our purposes).
-    
+
     We use srun in the following way:
 
-        IF    task <= nodesize  
+        IF    task <= nodesize
         OR    task is uniformel
         THEN  enforce node placement
         ELSE  leave *all* placement to slurm
@@ -82,7 +82,7 @@ class Srun(LaunchMethod):
 
 
         else:
-            
+
             # Extract all the hosts from the slots
             hostlist = list()
             uniform  = True
@@ -106,7 +106,8 @@ class Srun(LaunchMethod):
                     hostlist.append(node['name'])
 
             placement = ""
-            if uniform and len(hostlist) > 1:
+            if uniform:
+
                 # we can attempt placement - flag it and prepare SLURM_HOSTFILE
                 placement = "--distribution=arbitrary"
                 hostfile  = '%s/slurm_hostfile' % sbox
@@ -123,7 +124,7 @@ class Srun(LaunchMethod):
             ncores = len(slots[0]['core_map'][0])
 
         command = "%s -n %d -c %d %s %s %s" \
-                % (self.launch_command, nprocs, ncores, placement, 
+                % (self.launch_command, nprocs, ncores, placement,
                    env_string, task_command)
 
         return command, None

@@ -9,34 +9,11 @@ from pymongo import MongoClient
 import radical.pilot as rp
 
 
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to the MongoDB website:
-# http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
-if DBURL is None:
-    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
-
-DBNAME = os.getenv("RADICAL_PILOT_TEST_DBNAME", 'test')
-if DBNAME is None:
-    print "ERROR: RADICAL_PILOT_TEST_DBNAME (MongoDB database name) is not defined."
-    sys.exit(1)
-
 
 # -----------------------------------------------------------------------------
 #
 class TestResourceConfigs(unittest.TestCase):
     # silence deprecation warnings under py3
-
-    def setUp(self):
-        # clean up fragments from previous tests
-        client = MongoClient(DBURL)
-        client.drop_database(DBNAME)
-
-    def tearDown(self):
-        # clean up after ourselves
-        client = MongoClient(DBURL)
-        client.drop_database(DBNAME)
 
     def failUnless(self, expr):
         # St00pid speling.
@@ -51,7 +28,7 @@ class TestResourceConfigs(unittest.TestCase):
     def test__add_resource_config_1(self):
         """ Test if we can wait for different pilot states.
         """
-        session = rp.Session(database_url=DBURL)
+        session = rp.Session()
 
 
         rc = rp.ResourceConfig('test')
@@ -65,7 +42,7 @@ class TestResourceConfigs(unittest.TestCase):
     def test__add_resource_config_2(self):
         """ Test if we can wait for different pilot states.
         """
-        session = rp.Session(database_url=DBURL)
+        session = rp.Session()
 
         rc = rp.ResourceConfig("mylocalhost")
         rc.task_launch_method   = "LOCAL"

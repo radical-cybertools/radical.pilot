@@ -29,32 +29,6 @@ import logging  # delayed import for atfork
 
 # ------------------------------------------------------------------------------
 #
-import cProfile
-cprof = cProfile.Profile()
-
-
-def cprof_it(func):
-    def wrapper(*args, **kwargs):
-        retval = cprof.runcall(func, *args, **kwargs)
-        return retval
-    return wrapper
-
-
-def dec_all_methods(dec):
-    def dectheclass(cls):
-        if ru.is_main_thread():
-            cprof_env   = os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "")
-            cprof_elems = cprof_env.split()
-            if "CONTINUOUS" in cprof_elems:
-                for name, m in inspect.getmembers(cls, inspect.ismethod):
-                    setattr(cls, name, dec(m))
-        return cls
-    return dectheclass
-
-
-# ------------------------------------------------------------------------------
-#
-@dec_all_methods(cprof_it)
 class Noop(AgentSchedulingComponent):
     '''
     The Noop scheduler does not perform any placement.
@@ -73,11 +47,6 @@ class Noop(AgentSchedulingComponent):
     # FIXME: this should not be overloaded here, but in the base class
     #
     def finalize_child(self):
-
-        cprof_env = os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "")
-        if "NOOP" in cprof_env.split():
-            self_thread = mt.current_thread()
-            cprof.dump_stats("python-%s.profile" % self_thread.name)
 
         # make sure that parent finalizers are called
         super(Noop, self).finalize_child()
