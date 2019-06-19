@@ -152,7 +152,7 @@
     "princeton.tiger_cpu" : {
         "project"  : "geo",
         "queue"    : "cpu",
-        "schema"   : "local",
+        "schema"   : "ssh",
         "cores"    : 40
     },
 
