@@ -10,7 +10,7 @@ branches:
 
 os:
   - linux
-  
+
 git:
   depth: 1
 
@@ -28,7 +28,7 @@ env:
     - MAIN_CMD=$CMD1 COVERAGE=true
     - MAIN_CMD=$CMD2
     - MAIN_CMD=$CMD3
-  
+
 before_install:
   - uname -a
   - ulimit -a
@@ -42,11 +42,11 @@ install:
   - pip install pylint
   - pip install codecov
 
-   
+
 script:
   - echo $MAIN_CMD
   - eval $MAIN_CMD
-  
+
 after_success:
   - |
     if [[ $COVERAGE == 'true' ]]; then \
