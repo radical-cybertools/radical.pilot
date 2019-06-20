@@ -189,18 +189,6 @@ class Popen(AgentExecutingComponent) :
             # FIXME: this switch is insufficient for mixed units (MPI/OpenMP)
             if cpt == 'MPI': launcher = self._mpi_launcher
             else           : launcher = self._task_launcher
-
-            if gpt == 'CUDA':
-                # This assumes single GPU device per unit. FIXME: generalize for
-                # mulitple GPU devices
-                gpu_devices = []
-                for node in cu['slots']['nodes']:
-                    for gpu_slot in node[3]:
-                        if gpu_slot:
-                            gpu_devices.append(gpu_slot[0])
-
-                cu['description']['environment']['CUDA_VISIBLE_DEVICES'] = ','.join(str(gpu_dev) for gpu_dev in gpu_devices)
-
             
             if not launcher:
                 raise RuntimeError("no launcher (process type = %s)" % cpt)
