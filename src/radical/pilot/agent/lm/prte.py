@@ -69,7 +69,8 @@ class PRTE(LaunchMethod):
         cmdline   = '%s %s %s %s ' % (stdbuf_cmd, stdbuf_arg, prte, prte_args)
 
         # Additional (debug) arguments to prte
-        if os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'):
+        verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
+        if verbose:
             debug_strings = [
                              '--debug-devel',
                              '--mca odls_base_verbose 100',
@@ -169,7 +170,7 @@ class PRTE(LaunchMethod):
                 prun = ru.which('prun')
                 if not prun:
                     raise Exception("Couldn't find prun")
-                ru.sh_callout('%s --hnp %s --terminate' 
+                ru.sh_callout('%s --hnp %s --terminate'
                              % (prun, lm_info['dvm_uri']))
                 profiler.prof(event='dvm_stop', uid=cfg['pilot_id'])
 
@@ -265,9 +266,9 @@ class PRTE(LaunchMethod):
 
 
         # Additional (debug) arguments to prun
-        if True or self._verbose:
-            debug_strings = ['-display-devel-map', 
-                             '-display-allocation', 
+        if self._verbose:
+            debug_strings = ['-display-devel-map',
+                             '-display-allocation',
                              '--debug-devel',
                             ]
         else:
