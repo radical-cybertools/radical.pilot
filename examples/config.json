@@ -20,7 +20,7 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 2
+        "cores"    : 64
     },
 
     "local.localhost_ortelib" : {
@@ -34,7 +34,14 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 2
+        "cores"    : 64
+    },
+
+    "local.localhost_prte" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 64
     },
 
     "local.localhost_funcs" : {
@@ -275,6 +282,20 @@
 	"cores"        : 72
     },
 
+    "ornl.summit" : {
+        "project"  : "BIP178",
+        "queue"    : "batch",
+        "schema"   : "local",
+        "cores"    : 4200
+    },
+
+    "ornl.summit_prte" : {
+        "project"  : "BIP178",
+        "queue"    : "batch",
+        "schema"   : "local",
+        "cores"    : 4200
+    },
+
     "ornl.titan" : {
         "project"  : "BIP149",
         "queue"    : "debug",
@@ -345,7 +366,7 @@
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 64
-    }, 
+    },
 
     "fub.allegro"   : {
         "project"  : null,
@@ -360,7 +381,7 @@
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 16
-    }, 
+    },
 
     "lumc.gb-ui"   : {
         "project"  : null,
@@ -381,7 +402,7 @@
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 8
-    }, 
+    },
 
     "radical.two" : {
         "project"  : null,

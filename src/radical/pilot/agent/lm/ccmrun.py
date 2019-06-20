@@ -14,9 +14,9 @@ class CCMRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, session)
+        LaunchMethod.__init__(self, name, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -30,19 +30,16 @@ class CCMRun(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        slots        = cu['slots']
+        # NOTE: we actually ignore the slots defined by the scheduler
+
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cpu_processes']  # FIXME: cpu_threads
         task_args    = cud.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
 
-        if task_argstr:
-            task_command = "%s %s" % (task_exec, task_argstr)
-        else:
-            task_command = task_exec
-
-        ccmrun_command = "%s -n %d %s" % (self.launch_command, task_cores, task_command)
+        ccmrun_command = "%s -n %d %s %s" % (self.launch_command, task_cores,
+                                             task_exec, task_argstr)
 
         return ccmrun_command, None
 

@@ -539,7 +539,11 @@
     "supermic_orte": {
         "description"                 : "SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)",
         "notes"                       : "Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.",
-        "schemas"                     : ["gsissh", "ssh"],
+        "schemas"                     : ["local", "gsissh", "ssh"],
+        "local"                      : {
+            "job_manager_endpoint"    : "torque://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
         "gsissh"                      : {
             "job_manager_endpoint"    : "torque+gsissh://supermic.cct-lsu.xsede.org:2222/",
             "filesystem_endpoint"     : "gsisftp://supermic.cct-lsu.xsede.org:2222/"
