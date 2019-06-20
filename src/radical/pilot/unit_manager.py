@@ -13,7 +13,6 @@ import radical.utils as ru
 from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
-from . import types     as rpt
 
 from . import compute_unit_description as rpcud
 
@@ -68,8 +67,8 @@ class UnitManager(rpu.Component):
 
     The unit manager can issue notification on unit state changes.  Whenever
     state notification arrives, any callback registered for that notification is
-    fired.  
-    
+    fired.
+
     NOTE: State notifications can arrive out of order wrt the unit state model!
     """
 
@@ -82,7 +81,7 @@ class UnitManager(rpu.Component):
         **Arguments:**
             * session [:class:`radical.pilot.Session`]:
               The session instance to use.
-            * scheduler (`string`): 
+            * scheduler (`string`):
               The name of the scheduler plug-in to use.
 
         **Returns:**
@@ -127,12 +126,12 @@ class UnitManager(rpu.Component):
 
         # The output queue is used to forward submitted units to the
         # scheduling component.
-        self.register_output(rps.UMGR_SCHEDULING_PENDING, 
+        self.register_output(rps.UMGR_SCHEDULING_PENDING,
                              rpc.UMGR_SCHEDULING_QUEUE)
 
         # the umgr will also collect units from the agent again, for output
         # staging and finalization
-        self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING, 
+        self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING,
                              rpc.UMGR_STAGING_OUTPUT_QUEUE)
 
         # register the state notification pull cb
@@ -156,7 +155,7 @@ class UnitManager(rpu.Component):
 
 
     # --------------------------------------------------------------------------
-    # 
+    #
     def initialize_common(self):
 
         # the manager must not carry bridge and component handles across forks
@@ -167,13 +166,13 @@ class UnitManager(rpu.Component):
     #
     def _atfork_prepare(self): pass
     def _atfork_parent(self) : pass
-    def _atfork_child(self)  : 
+    def _atfork_child(self)  :
         self._bridges    = dict()
         self._components = dict()
 
 
     # --------------------------------------------------------------------------
-    # 
+    #
     def finalize_parent(self):
 
         # terminate umgr components
@@ -281,7 +280,7 @@ class UnitManager(rpu.Component):
         # FIXME: should is_valid be used?  Either way, `self._closed` is not an
         #        `mt.Event`!
         if self._closed:
-            self._log.debug('umgr closed, ignore pilot cb %s', 
+            self._log.debug('umgr closed, ignore pilot cb %s',
                             ['%s:%s' % (p.uid, p.state) for p in pilots])
             return True
 
@@ -314,7 +313,7 @@ class UnitManager(rpu.Component):
 
                 # update the units to avoid pulling them again next time.
                 # NOTE:  this needs not locking with the unit pulling in the
-                #        _unit_pull_cb, as that will only pull umgr_pending 
+                #        _unit_pull_cb, as that will only pull umgr_pending
                 #        units.
                 uids = [unit['uid'] for unit in units]
 
@@ -384,7 +383,7 @@ class UnitManager(rpu.Component):
         # under umgr control, and push them into the respective queues
         # FIXME: this should also be based on a tailed cursor
         # FIXME: Unfortunately, 'find_and_modify' is not bulkable, so we have
-        #        to use 'find'.  To avoid finding the same units over and over 
+        #        to use 'find'.  To avoid finding the same units over and over
         #        again, we update the 'control' field *before* running the next
         #        find -- so we do it right here.
         unit_cursor = self.session._dbs._c.find({'type'    : 'unit',
@@ -527,22 +526,19 @@ class UnitManager(rpu.Component):
     #
     def _unit_cb(self, unit, state):
 
-        metric = rpt.UNIT_STATE
-
         with self._cb_lock:
 
             uid      = unit.uid
-            cbs      = dict()
             cb_dicts = list()
 
             # get wildcard callbacks
             if '*' in self._callbacks:
-                cb_dict = self._callbacks['*'].get(rpt.UNIT_STATE)
+                cb_dict = self._callbacks['*'].get(rpc.UNIT_STATE)
                 if cb_dict:
                     cb_dicts.append(cb_dict)
 
             if uid in self._callbacks:
-                cb_dict = self._callbacks[uid].get(rpt.UNIT_STATE)
+                cb_dict = self._callbacks[uid].get(rpc.UNIT_STATE)
                 if cb_dict:
                     cb_dicts.append(cb_dict)
 
@@ -562,7 +558,7 @@ class UnitManager(rpu.Component):
     def _bulk_cbs(self, units,  metrics=None):
 
         if not metrics:
-            metrics = rpt.UNIT_STATE
+            metrics = rpc.UNIT_STATE
 
         if not isinstance(metrics, list):
             metrics = [metrics]
@@ -581,12 +577,12 @@ class UnitManager(rpu.Component):
 
                     # get wildcard callbacks
                     if '*' in self._callbacks:
-                        cb_dict = self._callbacks['*'].get(rpt.UNIT_STATE)
+                        cb_dict = self._callbacks['*'].get(rpc.UNIT_STATE)
                         if cb_dict:
                             cb_dicts.append(cb_dict)
 
                     if uid in self._callbacks:
-                        cb_dict = self._callbacks[uid].get(rpt.UNIT_STATE)
+                        cb_dict = self._callbacks[uid].get(rpc.UNIT_STATE)
                         if cb_dict:
                             cb_dicts.append(cb_dict)
 
@@ -597,8 +593,8 @@ class UnitManager(rpu.Component):
                             if cb_name not in cbs:
                                 cb           = cb_dict[cb_name]['cb']
                                 cb_data      = cb_dict[cb_name]['cb_data']
-                                cbs[cb_name] = {'cb'     : cb, 
-                                                'cb_data': cb_data, 
+                                cbs[cb_name] = {'cb'     : cb,
+                                                'cb_data': cb_data,
                                                 'units'  : set()}
 
                             cbs[cb_name]['units'].add(unit)
@@ -772,7 +768,7 @@ class UnitManager(rpu.Component):
 
         # publish to the command channel for the scheduler to pick up
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'remove_pilots',
-                                          'arg' : {'pids'  : pilot_ids, 
+                                          'arg' : {'pids'  : pilot_ids,
                                                    'umgr'  : self.uid}})
         self._rep.ok('>>ok\n')
 
@@ -856,7 +852,7 @@ class UnitManager(rpu.Component):
 
         # Only after the insert can we hand the units over to the next
         # components (ie. advance state).
-        self.advance(unit_docs, rps.UMGR_SCHEDULING_PENDING, 
+        self.advance(unit_docs, rps.UMGR_SCHEDULING_PENDING,
                      publish=True, push=True)
         self._rep.ok('>>ok\n')
 
@@ -1039,7 +1035,7 @@ class UnitManager(rpu.Component):
         immediately set to `CANCELED`, even if some RP component may still
         operate on the units.  Specifically, other state transitions, including
         other final states (`DONE`, `FAILED`) can occur *after* cancellation.
-        This is a side effect of an optimization: we consider this 
+        This is a side effect of an optimization: we consider this
         acceptable tradeoff in the sense "Oh, that unit was DONE at point of
         cancellation -- ok, we can use the results, sure!".
 
@@ -1083,7 +1079,7 @@ class UnitManager(rpu.Component):
             self.advance(unit_docs, state=rps.CANCELED, publish=True, push=True)
 
         # we *always* issue the cancellation command to the local components
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units', 
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units',
                                           'arg' : {'uids' : uids,
                                                    'umgr' : self.uid}})
 
@@ -1116,7 +1112,7 @@ class UnitManager(rpu.Component):
         object would be the unit in question, and the value would be the new
         state of the unit.
 
-        If 'cb_data' is given, then the 'cb' signature changes to 
+        If 'cb_data' is given, then the 'cb' signature changes to
 
             def cb(obj, state, cb_data)
 
@@ -1140,9 +1136,9 @@ class UnitManager(rpu.Component):
         # FIXME: the signature should be (self, metrics, cb, cb_data)
 
         if not metric:
-            metric = rpt.UNIT_STATE
+            metric = rpc.UNIT_STATE
 
-        if  metric not in rpt.UMGR_METRICS:
+        if  metric not in rpc.UMGR_METRICS:
             raise ValueError ("Metric '%s' not available on the umgr" % metric)
 
         if not uid:
@@ -1161,7 +1157,7 @@ class UnitManager(rpu.Component):
             if metric not in self._callbacks[uid]:
                 self._callbacks[uid][metric] = dict()
 
-            self._callbacks[uid][metric][cb_name] = {'cb'      : cb, 
+            self._callbacks[uid][metric][cb_name] = {'cb'      : cb,
                                                      'cb_data' : cb_data}
 
 
@@ -1170,7 +1166,7 @@ class UnitManager(rpu.Component):
     def unregister_callback(self, cb=None, metrics=None, uid=None):
 
         if not metrics:
-            metrics = rpt.UMGR_METRICS
+            metrics = rpc.UMGR_METRICS
 
         if not isinstance(metrics, list):
             metrics = [metrics]
@@ -1181,11 +1177,15 @@ class UnitManager(rpu.Component):
         elif uid not in self._units:
             raise ValueError('no such unit %s' % uid)
 
+        for metric in metrics:
+            if metric not in rpc.UMGR_METRICS :
+                raise ValueError ("invalid umgr metric '%s'" % metric)
+
         with self._cb_lock:
 
             for metric in metrics:
 
-                if metric not in rpt.UMGR_METRICS :
+                if metric not in rpc.UMGR_METRICS :
                     raise ValueError("cb metric '%s' unknown" % metric)
 
                 if metric not in self._callbacks[uid]:

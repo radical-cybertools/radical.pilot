@@ -10,7 +10,7 @@ import threading
 import radical.utils as ru
 
 from . import states    as rps
-from . import types     as rpt
+from . import constants as rpc
 
 
 # ------------------------------------------------------------------------------
@@ -73,12 +73,12 @@ class ComputePilot(object):
         self._exit_on_error = self._descr.get('exit_on_error')
 
 
-        for m in rpt.PMGR_METRICS:
+        for m in rpc.PMGR_METRICS:
             self._callbacks[m] = dict()
 
         # we always invoke the default state cb
-        self._callbacks[rpt.PILOT_STATE][self._default_state_cb.__name__] = {
-                'cb'      : self._default_state_cb, 
+        self._callbacks[rpc.PILOT_STATE][self._default_state_cb.__name__] = {
+                'cb'      : self._default_state_cb,
                 'cb_data' : None}
 
         # `as_dict()` needs `pilot_dict` and other attributes.  Those should all
@@ -158,7 +158,7 @@ class ComputePilot(object):
                 assert(state_diff), 'invalid state transition'
 
             except Exception:
-                self._log.exception('%s: invalid state transition %s -> %s', 
+                self._log.exception('%s: invalid state transition %s -> %s',
                         self.uid, current, target)
                 raise
 
@@ -171,7 +171,7 @@ class ComputePilot(object):
 
         # invoke pilot specific callbacks
         # FIXME: this iteration needs to be thread-locked!
-        for cb_name, cb_val in self._callbacks[rpt.PILOT_STATE].iteritems():
+        for cb_name, cb_val in self._callbacks[rpc.PILOT_STATE].iteritems():
 
             cb      = cb_val['cb']
             cb_data = cb_val['cb_data']
@@ -369,10 +369,10 @@ class ComputePilot(object):
         #       be what the agent is seeing, specifically in the case of
         #       non-shared filesystems (OSG).  The agent thus uses
         #       `$PWD` as sandbox, with the assumption that this will
-        #       get mapped to whatever is here returned as sandbox URL.  
+        #       get mapped to whatever is here returned as sandbox URL.
         #
         #       There is thus implicit knowledge shared between the RP client
-        #       and the RP agent that `$PWD` *is* the sandbox!  The same 
+        #       and the RP agent that `$PWD` *is* the sandbox!  The same
         #       implicitly also holds for the staging area, which is relative
         #       to the pilot sandbox.
         if self._pilot_sandbox:
@@ -404,7 +404,7 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_callback(self, cb, metric=rpt.PILOT_STATE, cb_data=None):
+    def register_callback(self, cb, metric=rpc.PILOT_STATE, cb_data=None):
         """
         Registers a callback function that is triggered every time the
         pilot's state changes.
@@ -415,31 +415,31 @@ class ComputePilot(object):
 
         where ``object`` is a handle to the object that triggered the callback
         and ``state`` is the new state of that object.  If 'cb_data' is given,
-        then the 'cb' signature changes to 
+        then the 'cb' signature changes to
 
             def cb(obj, state, cb_data)
 
         and 'cb_data' are passed along.
 
         """
-        if metric not in rpt.PMGR_METRICS :
+        if metric not in rpc.PMGR_METRICS :
             raise ValueError ("invalid pmgr metric '%s'" % metric)
 
         with self._cb_lock:
             cb_name = cb.__name__
-            self._callbacks[metric][cb_name] = {'cb'      : cb, 
+            self._callbacks[metric][cb_name] = {'cb'      : cb,
                                                 'cb_data' : cb_data}
 
 
     # --------------------------------------------------------------------------
     #
-    def unregister_callback(self, cb, metric=rpt.PILOT_STATE):
+    def unregister_callback(self, cb, metric=rpc.PILOT_STATE):
 
-        if metric and metric not in rpt.UMGR_METRICS :
+        if metric and metric not in rpc.UMGR_METRICS :
             raise ValueError ("invalid pmgr metric '%s'" % metric)
 
         if not metric:
-            metrics = rpt.PMGR_METRICS
+            metrics = rpc.PMGR_METRICS
         elif isinstance(metric, list):
             metrics =  metric
         else:

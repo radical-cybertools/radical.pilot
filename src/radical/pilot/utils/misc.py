@@ -1,17 +1,11 @@
 
 import os
-import sys
-import copy
 import time
 import errno
-import datetime
-import pymongo
 import netifaces
-import threading
-import multiprocessing
 
-import radical.utils as ru
 from   radical.pilot.states import *
+
 
 # ------------------------------------------------------------------------------
 #
@@ -88,12 +82,13 @@ def hostip(req=None, black_list=None, pref_list=None, logger=None):
     # Known intefaces in preferred order
     if not pref_list:
         pref_list = [
-            'ipogif0', # Cray's
-            'br0'      # SuperMIC
+            'ipogif0',  # Cray's
+            'ib0',      # IBM (Summit)
+            'br0'       # SuperMIC
         ]
 
     gateways = netifaces.gateways()
-    if  not 'default' in gateways or \
+    if  'default' not in gateways or \
         not gateways['default']:
         return '127.0.0.1'
 
@@ -172,7 +167,7 @@ def create_tar(tgt, dnames):
 
     def rpad(s, size):
         return s + (size - len(s)) * '\0'
-    
+
     def write_dir(path):
         data  = rpad(path, 100) \
               + rpad('%o' % mode,   8) \

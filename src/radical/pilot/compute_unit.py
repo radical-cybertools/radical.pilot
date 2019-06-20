@@ -10,7 +10,7 @@ import threading
 import radical.utils as ru
 
 from . import states    as rps
-from . import types     as rpt
+from . import constants as rpc
 
 from . import compute_unit_description as cud
 
@@ -80,12 +80,12 @@ class ComputeUnit(object):
         self._client_sandbox   = None
         self._callbacks        = dict()
 
-        for m in rpt.UMGR_METRICS:
+        for m in rpc.UMGR_METRICS:
             self._callbacks[m] = dict()
 
         # we always invke the default state cb
-        self._callbacks[rpt.UNIT_STATE][self._default_state_cb.__name__] = {
-                'cb'      : self._default_state_cb, 
+        self._callbacks[rpc.UNIT_STATE][self._default_state_cb.__name__] = {
+                'cb'      : self._default_state_cb,
                 'cb_data' : None}
 
         # If staging directives exist, expand them to the full dict version.  Do
@@ -146,17 +146,15 @@ class ComputeUnit(object):
         # we update all fields
         # FIXME: well, not all really :/
         # FIXME: setattr is ugly...  we should maintain all state in a dict.
-        for key in ['state', 'stdout', 'stderr', 'exit_code', 'pilot', 
-                    'resource_sandbox', 'pilot_sandbox', 'unit_sandbox', 
+        for key in ['state', 'stdout', 'stderr', 'exit_code', 'pilot',
+                    'resource_sandbox', 'pilot_sandbox', 'unit_sandbox',
                     'client_sandbox']:
 
             val = unit_dict.get(key, None)
             if val is not None:
                 setattr(self, "_%s" % key, val)
 
-        # callbacks are not invoked here - but we report back to the umgr what
-        # callbacks need calling.
-        return self._callbacks[rpt.UNIT_STATE]
+        # callbacks are not invoked here anymore, but are bulked in the umgr
 
 
     # --------------------------------------------------------------------------
@@ -352,7 +350,7 @@ class ComputeUnit(object):
         #       be what the agent is seeing, specifically in the case of
         #       non-shared filesystems (OSG).  The agent thus uses
         #       `$PWD/cu['uid']` as sandbox, with the assumption that this will
-        #       get mapped to whatever is here returned as sandbox URL.  
+        #       get mapped to whatever is here returned as sandbox URL.
         #
         #       There is thus implicit knowledge shared between the RP client
         #       and the RP agent on how the sandbox path is formed!
@@ -411,7 +409,7 @@ class ComputeUnit(object):
 
         where ``object`` is a handle to the object that triggered the callback
         and ``state`` is the new state of that object.  If 'cb_data' is given,
-        then the 'cb' signature changes to 
+        then the 'cb' signature changes to
 
             def cb(obj, state, cb_data)
 
@@ -419,7 +417,7 @@ class ComputeUnit(object):
         '''
 
         if not metric:
-            metric = rpt.UNIT_STATE
+            metric = rpc.UNIT_STATE
 
         self._umgr.register_callback(cb, cb_data, metric=metric, uid=self._uid)
 

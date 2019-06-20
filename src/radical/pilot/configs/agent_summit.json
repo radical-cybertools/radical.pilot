@@ -1,0 +1,48 @@
+{
+    "staging_area"         : "staging_area",
+    "staging_schema"       : "staging",
+    "max_io_loglength"     : 1024,
+    "bulk_collection_size" :    1,
+    "bulk_collection_time" :  1.0,
+    "db_poll_sleeptime"    :  1.0,
+  # "network_interface"    : "ipogif0",
+
+    "target"  : "local",
+    "bridges" : {
+        "agent_staging_input_queue"  : { "log_level" : "debug",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 1},
+        "agent_scheduling_queue"     : { "log_level" : "debug",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 1},
+        "agent_executing_queue"      : { "log_level" : "debug",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 1},
+        "agent_staging_output_queue" : { "log_level" : "debug",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 1},
+
+        "agent_unschedule_pubsub"    : {"log_level" : "debug"},
+        "agent_schedule_pubsub"      : {"log_level" : "debug"},
+
+        "control_pubsub"             : {"log_level" : "debug"},
+        "state_pubsub"               : {"log_level" : "debug"},
+        "log_pubsub"                 : {"log_level" : "debug"}
+    },
+
+    "components": {
+        "UpdateWorker"                : {"count" : 1},
+        "AgentSchedulingComponent"    : {"count" : 1},
+        "AgentStagingInputComponent"  : {"count" : 1},
+        "AgentStagingOutputComponent" : {"count" : 1}
+    },
+    
+    "agents": {
+        "agent_1": {
+            "target": "node",
+            "components": {
+                "AgentExecutingComponent" : {"count" : 1}
+            }
+        }
+    }
+}
