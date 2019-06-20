@@ -1,0 +1,10 @@
+########################################################################
+
+*** MPI Ranks: 6, OpenMP Threads: 1, GPUs per Resource Set: 1 ***
+========================================================================
+MPI Rank 000, OMP_thread 00 on HWThread 000 of Node  - RT_GPU_id 0 : GPU_id 0 
+MPI Rank 001, OMP_thread 00 on HWThread 004 of Node  - RT_GPU_id 0 : GPU_id 1 
+MPI Rank 002, OMP_thread 00 on HWThread 008 of Node  - RT_GPU_id 0 : GPU_id 2 
+MPI Rank 003, OMP_thread 00 on HWThread 044 of Node  - RT_GPU_id 0 : GPU_id 3 
+MPI Rank 004, OMP_thread 00 on HWThread 048 of Node  - RT_GPU_id 0 : GPU_id 4 
+MPI Rank 005, OMP_thread 00 on HWThread 052 of Node  - RT_GPU_id 0 : GPU_id 5 

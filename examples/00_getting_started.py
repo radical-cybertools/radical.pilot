@@ -61,7 +61,7 @@ if __name__ == '__main__':
                    'project'       : config[resource]['project'],
                    'queue'         : config[resource]['queue'],
                    'access_schema' : config[resource]['schema'],
-                   'cores'         : config[resource]['cores'],
+                   'cores'         : 1024
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
