@@ -138,7 +138,7 @@ class LaunchMethod(object):
                 LM_NAME_RSH           : RSH,
                 LM_NAME_SSH           : SSH,
                 LM_NAME_YARN          : Yarn,
-                LM_NAME_SPARK         : Spark
+                LM_NAME_SPARK         : Spark,
                 LM_NAME_SRUN          : Srun,
 
               # # deprecated
