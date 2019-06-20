@@ -144,9 +144,7 @@ class our_test(Command):
     def finalize_options  (self): pass
     def run(self):
         testdir = "%s/tests/" % os.path.dirname(os.path.realpath(__file__))
-        retval  = sp.call([sys.executable,
-                          '%s/run_tests.py'          % testdir,
-                          '%s/configs/basetests.cfg' % testdir])
+        retval  = sp.call(['pytest',testdir])
         raise SystemExit(retval)
 
 
@@ -160,6 +158,7 @@ def read(fname):
 
 
 df = list()
+# df.append(('share/%s'                       % name, ['docs/source/events.md']))
 df.append(('share/%s/examples'              % name, glob.glob('examples/[01]*.py')))
 df.append(('share/%s/examples'              % name, glob.glob('examples/hello*')))
 df.append(('share/%s/examples'              % name, glob.glob('examples/*.json')))
@@ -176,7 +175,7 @@ setup_args = {
     'version'            : version,
     'description'        : 'The RADICAL pilot job framework '
                            '(http://radical.rutgers.edu/)',
-    'long_description'   : (read('README.md') + '\n\n' + read('CHANGES.md')),
+  # 'long_description'   : (read('README.md') + '\n\n' + read('CHANGES.md')),
     'author'             : 'RADICAL Group at Rutgers University',
     'author_email'       : 'radical@rutgers.edu',
     'maintainer'         : 'The RADICAL Group',

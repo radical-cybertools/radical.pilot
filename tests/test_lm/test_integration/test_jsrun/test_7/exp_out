@@ -1,0 +1,36 @@
+########################################################################
+
+*** MPI Ranks: 8, OpenMP Threads: 4, GPUs per Resource Set: 0 ***
+========================================================================
+MPI Rank 000 of 008 on HWThread 000 of Node , OMP_threadID  of 4
+MPI Rank 000 of 008 on HWThread 004 of Node , OMP_threadID  of 4
+MPI Rank 000 of 008 on HWThread 008 of Node , OMP_threadID  of 4
+MPI Rank 000 of 008 on HWThread 012 of Node , OMP_threadID  of 4
+MPI Rank 001 of 008 on HWThread 016 of Node , OMP_threadID  of 4
+MPI Rank 001 of 008 on HWThread 020 of Node , OMP_threadID  of 4
+MPI Rank 001 of 008 on HWThread 024 of Node , OMP_threadID  of 4
+MPI Rank 001 of 008 on HWThread 028 of Node , OMP_threadID  of 4
+MPI Rank 002 of 008 on HWThread 032 of Node , OMP_threadID  of 4
+MPI Rank 002 of 008 on HWThread 036 of Node , OMP_threadID  of 4
+MPI Rank 002 of 008 on HWThread 040 of Node , OMP_threadID  of 4
+MPI Rank 002 of 008 on HWThread 044 of Node , OMP_threadID  of 4
+MPI Rank 003 of 008 on HWThread 048 of Node , OMP_threadID  of 4
+MPI Rank 003 of 008 on HWThread 052 of Node , OMP_threadID  of 4
+MPI Rank 003 of 008 on HWThread 056 of Node , OMP_threadID  of 4
+MPI Rank 003 of 008 on HWThread 060 of Node , OMP_threadID  of 4
+MPI Rank 004 of 008 on HWThread 064 of Node , OMP_threadID  of 4
+MPI Rank 004 of 008 on HWThread 068 of Node , OMP_threadID  of 4
+MPI Rank 004 of 008 on HWThread 072 of Node , OMP_threadID  of 4
+MPI Rank 004 of 008 on HWThread 076 of Node , OMP_threadID  of 4
+MPI Rank 005 of 008 on HWThread 080 of Node , OMP_threadID  of 4
+MPI Rank 005 of 008 on HWThread 092 of Node , OMP_threadID  of 4
+MPI Rank 005 of 008 on HWThread 096 of Node , OMP_threadID  of 4
+MPI Rank 005 of 008 on HWThread 100 of Node , OMP_threadID  of 4
+MPI Rank 006 of 008 on HWThread 104 of Node , OMP_threadID  of 4
+MPI Rank 006 of 008 on HWThread 108 of Node , OMP_threadID  of 4
+MPI Rank 006 of 008 on HWThread 112 of Node , OMP_threadID  of 4
+MPI Rank 006 of 008 on HWThread 116 of Node , OMP_threadID  of 4
+MPI Rank 007 of 008 on HWThread 120 of Node , OMP_threadID  of 4
+MPI Rank 007 of 008 on HWThread 124 of Node , OMP_threadID  of 4
+MPI Rank 007 of 008 on HWThread 128 of Node , OMP_threadID  of 4
+MPI Rank 007 of 008 on HWThread 132 of Node , OMP_threadID  of 4  

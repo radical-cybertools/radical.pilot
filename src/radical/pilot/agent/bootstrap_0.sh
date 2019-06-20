@@ -124,9 +124,6 @@ int main ()
     return (0);
 }
 EOT
-    echo
-    module list
-    echo
 
     if ! test -e "./gtod"
     then
@@ -167,7 +164,6 @@ EOT
 
     TIME_ZERO=`./gtod`
     export TIME_ZERO
-
 }
 
 # ------------------------------------------------------------------------------
@@ -176,7 +172,7 @@ profile_event()
 {
     PROFILE="bootstrap_0.prof"
 
-    if test -z "$RADICAL_PILOT_PROFILE"
+    if test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
     then
         return
     fi
@@ -1047,32 +1043,12 @@ virtenv_create()
     # make sure the new pip version is used (but keep the python executable)
     rehash "$PYTHON"
 
-
-    # NOTE: On india/fg 'pip install saga-python' does not work as pip fails to
-    #       install apache-libcloud (missing bz2 compression).  We thus install
-    #       that dependency via easy_install.
-    run_cmd "install apache-libcloud" \
-            "easy_install --upgrade apache-libcloud" \
-         || echo "Couldn't install/upgrade apache-libcloud! Lets see how far we get ..."
-
-
     # now that the virtenv is set up, we install all dependencies
     # of the RADICAL stack
     for dep in $VIRTENV_RADICAL_DEPS
     do
-        # NOTE: we have to make sure not to use wheels on titan
-        hostname | grep titan 2&>1 >/dev/null
-        if test "$?" = 1
-        then
-            # this is titan
-          # wheeled="--no-use-wheel"
-            wheeled="--no-binary :all:"
-        else
-            wheeled=""
-        fi
-
         run_cmd "install $dep" \
-                "$PIP install $wheeled $dep" \
+                "$PIP install $dep" \
              || echo "Couldn't install $dep! Lets see how far we get ..."
     done
 
@@ -1526,8 +1502,11 @@ PB1_LDLB="$LD_LIBRARY_PATH"
 #        We should split the parsing and the execution of those.
 #        "bootstrap start" is here so that $PILOT_ID is known.
 # Create header for profile log
-if ! test -z "$RADICAL_PILOT_PROFILE"
+if ! test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
 then
+    echo 'create gtod'
+    create_gtod
+else
     echo 'create gtod'
     create_gtod
 fi
@@ -1621,7 +1600,7 @@ get_tunnel(){
     ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$addr -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
 
     # Kill ssh process when bootstrap_0 dies, to prevent lingering ssh's
-    trap 'jobs -p | grep ssh | xargs kill' EXIT
+    trap 'jobs -p | grep ssh | xargs -tr -n 1 kill' EXIT
 
     # and export to agent
     export RP_BS_TUNNEL="$BIND_ADDRESS:$DBPORT"
@@ -1709,7 +1688,7 @@ then
     RADICAL_PILOT_NTPHOST="46.101.140.169"
 fi
 echo "ntphost: $RADICAL_PILOT_NTPHOST"
-ping -c 1 "$RADICAL_PILOT_NTPHOST"
+ping -c 1 "$RADICAL_PILOT_NTPHOST" || true  # ignore errors
 
 # Before we start the (sub-)agent proper, we'll create a bootstrap_2.sh script
 # to do so.  For a single agent this is not needed -- but in the case where
@@ -2010,7 +1989,9 @@ fi
 
 echo "# -------------------------------------------------------------------"
 echo "# push final pilot state: $SESSION_ID $PILOT_ID $final_state"
-$PYTHON `which radical-pilot-agent-statepush` agent_0.cfg $final_state
+sp=$(which radical-pilot-agent-statepush)
+test -z "$sp" && echo "statepush not found"
+test -z "$sp" || $PYTHON "$sp" agent_0.cfg "$final_state"
 
 echo
 echo "# -------------------------------------------------------------------"

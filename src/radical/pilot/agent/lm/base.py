@@ -21,12 +21,20 @@ LM_NAME_MPIRUN_MPT    = 'MPIRUN_MPT'
 LM_NAME_MPIRUN_CCMRUN = 'MPIRUN_CCMRUN'
 LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
+LM_NAME_JSRUN         = 'JSRUN'
+LM_NAME_PRTE          = 'PRTE'
 LM_NAME_ORTE          = 'ORTE'
 LM_NAME_ORTE_LIB      = 'ORTE_LIB'
 LM_NAME_RSH           = 'RSH'
 LM_NAME_SSH           = 'SSH'
 LM_NAME_YARN          = 'YARN'
 LM_NAME_SPARK         = 'SPARK'
+LM_NAME_SRUN          = 'SRUN'
+
+# deprecated
+# LM_NAME_POE           = 'POE'
+# LM_NAME_DPLACE        = 'DPLACE'
+# LM_NAME_RUNJOB        = 'RUNJOB'
 
 # deprecated
 # LM_NAME_POE           = 'POE'
@@ -39,7 +47,7 @@ LM_NAME_SPARK         = 'SPARK'
 class LaunchMethod(object):
 
     # List of environment variables that designated Launch Methods should export
-    # FIXME: we should find out what env vars are changed or added by 
+    # FIXME: we should find out what env vars are changed or added by
     #        cud.pre_exec, and then should also export those.  That would make
     #        our launch script ore complicated though...
     EXPORT_ENV_VARIABLES = [
@@ -89,12 +97,24 @@ class LaunchMethod(object):
         from .ibrun          import IBRun
         from .mpiexec        import MPIExec
         from .mpirun         import MPIRun
+        from .jsrun          import JSRUN
+        from .prte           import PRTE
         from .orte           import ORTE
         from .orte_lib       import ORTELib
         from .rsh            import RSH
         from .ssh            import SSH
         from .yarn           import Yarn
         from .spark          import Spark
+        from .srun           import Srun
+
+      # # deprecated
+      # from .mpirun_ccmrun  import MPIRunCCMRun
+      # from .mpirun_dplace  import MPIRunDPlace
+      # from .mpirun_mpt     import MPIRun_MPT
+      # from .mpirun_rsh     import MPIRunRSH
+      # from .dplace         import DPlace
+      # from .poe            import POE
+      # from .runjob         import Runjob
 
       # # deprecated
       # from .mpirun_ccmrun  import MPIRunCCMRun
@@ -117,12 +137,15 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_RSH    : MPIRun,
                 LM_NAME_MPIRUN_MPT    : MPIRun,
                 LM_NAME_MPIRUN_DPLACE : MPIRun,
+                LM_NAME_JSRUN         : JSRUN,
+                LM_NAME_PRTE          : PRTE,
                 LM_NAME_ORTE          : ORTE,
                 LM_NAME_ORTE_LIB      : ORTELib,
                 LM_NAME_RSH           : RSH,
                 LM_NAME_SSH           : SSH,
                 LM_NAME_YARN          : Yarn,
-                LM_NAME_SPARK         : Spark
+                LM_NAME_SPARK         : Spark,
+                LM_NAME_SRUN          : Srun,
 
               # # deprecated
               # LM_NAME_DPLACE        : DPlace,
@@ -154,20 +177,25 @@ class LaunchMethod(object):
             raise TypeError("LM config hook only available to base class!")
 
         from .fork           import Fork
+        from .prte           import PRTE
         from .orte           import ORTE
         from .yarn           import Yarn
         from .spark          import Spark
 
         impl = {
             LM_NAME_FORK          : Fork,
+            LM_NAME_PRTE          : PRTE,
             LM_NAME_ORTE          : ORTE,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
         }.get(name)
 
-        if impl:
-            logger.info('call LRMS config hook for LM %s: %s' % (name, impl))
-            return impl.lrms_config_hook(name, cfg, lrms, logger, profiler)
+        if not impl:
+            logger.info('no config hook defined for LaunchMethod %s' % name)
+            return None
+
+        logger.info('LRMS config hook for LM %s: %s' % (name, impl))
+        return impl.lrms_config_hook(name, cfg, lrms, logger, profiler)
 
 
     # --------------------------------------------------------------------------
@@ -183,31 +211,38 @@ class LaunchMethod(object):
         if cls != LaunchMethod:
             raise TypeError("LM shutdown hook only available to base class!")
 
+        from .prte           import PRTE
         from .orte           import ORTE
         from .yarn           import Yarn
         from .spark          import Spark
 
         impl = {
+            LM_NAME_PRTE          : PRTE,
             LM_NAME_ORTE          : ORTE,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
         }.get(name)
 
-        if impl:
-            logger.info('LRMS shutdown hook for LM %s: %s' % (name, impl))
-            return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info, 
-                                           logger, profiler)
+        if not impl:
+            logger.info('no shutdown hook defined for LaunchMethod %s' % name)
+            return None
+
+        logger.info('LRMS shutdown hook for LM %s: %s' % (name, impl))
+        return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info,
+                                       logger, profiler)
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
+
         raise NotImplementedError("incomplete LM %s" % self.name)
 
 
     # --------------------------------------------------------------------------
     #
     def construct_command(self, cu, launch_script_hop):
+
         raise NotImplementedError("incomplete LM %s" % self.name)
 
 
@@ -219,7 +254,7 @@ class LaunchMethod(object):
         # Open appropriately named temporary file
         # NOTE: we make an assumption about the unit sandbox here
         filename = '%s/%s.hosts' % (uid, uid)
-        handle   = open(filename, 'w') 
+        handle   = open(filename, 'w')
 
         if not impaired:
             # Write "hostN x\nhostM y\n" entries
@@ -228,7 +263,7 @@ class LaunchMethod(object):
 
             # Convert it into an ordered dict,
             # which hopefully resembles the original ordering
-            count_dict = collections.OrderedDict(sorted(counter.items(), 
+            count_dict = collections.OrderedDict(sorted(counter.items(),
                                                  key=lambda t: t[0]))
 
             for (host, count) in count_dict.iteritems():
@@ -264,9 +299,10 @@ class LaunchMethod(object):
             count_dict[host] /= host_gcd
 
         # Recreate a list of hosts based on the normalized dict
-        hosts = []
-        [hosts.extend([host] * count)
-                for (host, count) in count_dict.iteritems()]
+        hosts = list()
+        for (host, count) in count_dict.iteritems():
+            hosts.extend([host] * count)
+
         # sort the list for readbility
         hosts.sort()
 
@@ -298,8 +334,9 @@ class LaunchMethod(object):
                 arg = arg.replace('"', '\\"')    # Escape all double quotes
                 if arg[0] == arg[-1] == "'" :    # between outer single quotes?
                     arg_string += '%s ' % arg    # ... pass it as is.
+
                 else:
-                    arg_string += '"%s" ' % arg  # else return double quoted 
+                    arg_string += '"%s" ' % arg  # else return double quoted
 
         return arg_string
 
@@ -314,13 +351,13 @@ class LaunchMethod(object):
         version = None
         flavor  = self.MPI_FLAVOR_UNKNOWN
 
-        out, err, ret = ru.sh_callout('%s -v' % exe)
+        out, _, ret = ru.sh_callout('%s -v' % exe)
 
         if ret:
-            out, err, ret = ru.sh_callout('%s --version' % exe)
+            out, _, ret = ru.sh_callout('%s --version' % exe)
 
         if ret:
-            out, err, ret = ru.sh_callout('%s -info' % exe)
+            out, _, ret = ru.sh_callout('%s -info' % exe)
 
         if not ret:
             for line in out.splitlines():

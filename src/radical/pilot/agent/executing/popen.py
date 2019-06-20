@@ -196,8 +196,6 @@ class Popen(AgentExecutingComponent) :
             self._log.debug("Launching unit with %s (%s).",
                             launcher.name, launcher.launch_command)
 
-            assert(cu['slots'])
-
             # Start a new subprocess to launch the unit
             self.spawn(launcher=launcher, cu=cu)
 
@@ -213,8 +211,7 @@ class Popen(AgentExecutingComponent) :
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            if cu.get('slots'):
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
 
@@ -250,6 +247,7 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_AGENT_ID="%s"\n'     % self._cfg['agent_name']
             env_string += 'export RP_SPAWNER_ID="%s"\n'   % self.uid
             env_string += 'export RP_UNIT_ID="%s"\n'      % cu['uid']
+            env_string += 'export RP_UNIT_NAME="%s"\n'    % cu['description'].get('name')
             env_string += 'export RP_GTOD="%s"\n'         % self.gtod
             env_string += 'export RP_TMP="%s"\n'          % self._cu_tmp
             env_string += 'export RP_PILOT_STAGING="%s/staging_area"\n' \

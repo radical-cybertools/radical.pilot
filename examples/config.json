@@ -20,13 +20,6 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 2
-    },
-
-    "local.localhost_orte" : {
-        "project"  : null,
-        "queue"    : null,
-        "schema"   : null,
         "cores"    : 64
     },
 
@@ -34,7 +27,14 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 2
+        "cores"    : 64
+    },
+
+    "local.localhost_prte" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 64
     },
 
     "local.localhost_anaconda" : {
@@ -149,6 +149,20 @@
         "cores"    : 80
     },
 
+    "princeton.tiger_cpu" : {
+        "project"  : "geo",
+        "queue"    : "cpu",
+        "schema"   : "ssh",
+        "cores"    : 40
+    },
+
+    "princeton.tiger_gpu" : {
+        "project"  : "geo",
+        "queue"    : "gpu",
+        "schema"   : "local",
+        "cores"    : 56
+    },
+
     "xsede.stampede" : {
         "project"  : "TG-MCB090174",
         "queue"    : "development",
@@ -252,6 +266,20 @@
 	"queue"        : "regular",
 	"schema"       : "local",
 	"cores"        : 72
+    },
+
+    "ornl.summit" : {
+        "project"  : "BIP178",
+        "queue"    : "batch",
+        "schema"   : "local",
+        "cores"    : 4200
+    },
+
+    "ornl.summit_prte" : {
+        "project"  : "BIP178",
+        "queue"    : "batch",
+        "schema"   : "local",
+        "cores"    : 4200
     },
 
     "ornl.titan" : {

@@ -83,6 +83,20 @@ class Agent_0(rpu.Worker):
             dburl.host, dburl.port = hostport.split(':')
             cfg['dburl'] = str(dburl)
 
+        # if the pilot description contains a request for application comm
+        # channels, merge those into the agent config
+        app_comm = cfg.get('app_comm')
+        if app_comm:
+            if isinstance(app_comm, list):
+                app_comm = {ac: {'bulk_size': 0,
+                                 'stall_hwm': 1,
+                                 'log_level': 'error'} for ac in app_comm}
+            for ac in app_comm:
+                if ac in cfg['bridges']:
+                    raise ValueError('reserved app_comm name %s' % ac)
+                cfg['bridges'][ac] = app_comm[ac]
+
+
         # Create a session.
         #
         # This session will connect to MongoDB, and will also create any
@@ -102,6 +116,18 @@ class Agent_0(rpu.Worker):
 
         if not session.is_connected:
             raise RuntimeError('agent_0 could not connect to mongodb')
+
+        # some of the bridge addresses also need to be exposed to the workload
+        if app_comm:
+            if 'unit_environment' not in cfg:
+                cfg['unit_environment'] = dict()
+            for ac in app_comm:
+                if ac not in cfg['bridges']:
+                    raise RuntimeError('missing app_comm %s' % ac)
+                cfg['unit_environment']['RP_%s_IN' % ac.upper()] = \
+                        cfg['bridges'][ac]['addr_in']
+                cfg['unit_environment']['RP_%s_OUT' % ac.upper()] = \
+                        cfg['bridges'][ac]['addr_out']
 
         # at this point the session is up and connected, and it should have
         # brought up all communication bridges and the UpdateWorker.  We are
@@ -147,7 +173,8 @@ class Agent_0(rpu.Worker):
                  'state'            : rps.PMGR_ACTIVE,
                  'resource_details' : {
                      'lm_info'      : self._lrms.lm_info.get('version_info'),
-                     'lm_detail'    : self._lrms.lm_info.get('lm_detail')},
+                     'lm_detail'    : self._lrms.lm_info.get('lm_detail'), 
+                     'rm_info'      : self._lrms.lrms_info},
                  '$set'             : ['resource_details']}
         self.advance(pilot, publish=True, push=False)
 
@@ -186,11 +213,11 @@ class Agent_0(rpu.Worker):
         else                                 : state = rps.FAILED
 
         self._log.debug('final state: %s (%s)', state, self._final_cause)
-      # # we don't rely on the existence / viability of the update worker at
-      # # that point.
-      # FIXME:
-      # self._log.debug('update db state: %s: %s', state, self._final_cause)
-      # self._update_db(state, self._final_cause)
+
+        # we don't rely on the existence / viability of the update worker at
+        # that point.
+        self._log.debug('update db state: %s: %s', state, self._final_cause)
+        self._update_db(state, self._final_cause)
 
 
     # --------------------------------------------------------------------------
@@ -227,12 +254,12 @@ class Agent_0(rpu.Worker):
         err = None
         log = None
 
-        try    : out = open('./agent_0.out', 'r').read(1024)
-        except Exception: pass
-        try    : err = open('./agent_0.err', 'r').read(1024)
-        except Exception: pass
-        try    : log = open('./agent_0.log', 'r').read(1024)
-        except Exception: pass
+        try   : out = open('./agent_0.out', 'r').read(1024)
+        except: pass
+        try   : err = open('./agent_0.err', 'r').read(1024)
+        except: pass
+        try   : log = open('./agent_0.log', 'r').read(1024)
+        except: pass
 
         ret = self._session._dbs._c.update(
                 {'type'   : 'pilot',
@@ -325,25 +352,21 @@ class Agent_0(rpu.Worker):
                 #        work with a number of launch methods.  Can the
                 #        offset computation be moved to the LRMS?
                 ls_name = "%s/%s.sh" % (os.getcwd(), sa)
-                slots = {
-                  'cpu_processes' : 1,
-                  'cpu_threads'   : 1,
-                  'gpu_processes' : 0,
-                  'gpu_threads'   : 0,
-                # 'nodes'         : [[node[0], node[1], [[0]], []]],
-                  'nodes'         : [{'name'    : node[0], 
-                                     'uid'     : node[1],
-                                     'core_map': [[0]],
-                                     'gpu_map' : [],
-                                     'lfs'     : {'path': '/tmp', 'size': 0}
-                                    }],
-                  'cores_per_node': self._cfg['lrms_info']['cores_per_node'],
-                  'gpus_per_node' : self._cfg['lrms_info']['gpus_per_node'],
-                  'lm_info'       : self._cfg['lrms_info']['lm_info']
-                }
+                slots   = copy.deepcopy(self._cfg['lrms_info'])
+                slots['cpu_processes'] = 1
+                slots['cpu_threads'  ] = 1
+                slots['gpu_processes'] = 0
+                slots['gpu_threads'  ] = 0
+                slots['nodes'        ] = [{'name'    : node[0],
+                                           'uid'     : node[1],
+                                           'core_map': [[0]],
+                                           'gpu_map' : [],
+                                           'lfs'     : {'path': '/tmp', 'size': 0}
+                                          }]
                 agent_cmd = {
                         'uid'          : sa,
                         'slots'        : slots,
+                        'unit_sandbox' : os.getcwd(),
                         'description'  : {
                             'cpu_processes' : 1,
                             'executable'    : "/bin/sh",
@@ -534,6 +557,13 @@ class Agent_0(rpu.Worker):
                         uid=self._pid)
 
         for unit in unit_list:
+
+            # make sure the units obtain env settings (if needed)
+            if 'unit_environment' in self._cfg:
+                if not unit['description'].get('environment'):
+                    unit['description']['environment'] = dict()
+                for k,v in self._cfg['unit_environment'].iteritems():
+                    unit['description']['environment'][k] = v
 
             # we need to make sure to have the correct state:
             unit['state'] = rps._unit_state_collapse(unit['states'])

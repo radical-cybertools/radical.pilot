@@ -32,7 +32,6 @@ import radical.utils        as ru
 from . import utils         as rpu
 from . import states        as rps
 from . import constants     as rpc
-from . import types         as rpt
 
 from .unit_manager    import UnitManager
 from .pilot_manager   import PilotManager
@@ -1004,17 +1003,21 @@ class Session(rs.Session):
                     sandbox_base = sandbox_raw
 
                 else:
-                    js_url = rs.Url(rcfg['job_manager_endpoint'])
+                    js_url = rcfg['job_manager_endpoint']
+                    js_url = rcfg.get('job_manager_hop', js_url)
+                    js_url = rs.Url(js_url)
         
                     if 'ssh' in js_url.schema.split('+'):
                         js_url.schema = 'ssh'
                     elif 'gsissh' in js_url.schema.split('+'):
                         js_url.schema = 'gsissh'
                     elif 'fork' in js_url.schema.split('+'):
-                        js_url.schema = 'fork'
+                        js_url.schema   = 'fork'
+                        js_url.hostname = 'localhost'
                     elif '+' not in js_url.schema:
                         # For local access to queueing systems use fork
-                        js_url.schema = 'fork'
+                        js_url.schema   = 'fork'
+                        js_url.hostname = 'localhost'
                     else:
                         raise Exception("unsupported access schema: %s" % js_url.schema)
         
@@ -1101,9 +1104,14 @@ class Session(rs.Session):
 
         self.is_valid()
 
-        # we don't cache unit sandboxes, they are just a string concat.
+        # we don't cache unit sandboxes, they are just a string concats.
         pilot_sandbox = self._get_pilot_sandbox(pilot)
-        return "%s/%s/" % (pilot_sandbox, unit['uid'])
+        unit_sandbox  = unit['description'].get('sandbox')
+
+        if not unit_sandbox:
+            unit_sandbox = unit['uid']
+
+        return "%s/%s/" % (pilot_sandbox, unit_sandbox)
 
 
     # --------------------------------------------------------------------------

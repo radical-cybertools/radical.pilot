@@ -40,10 +40,9 @@ class IBRun(LaunchMethod):
         task_cores   = cud['cpu_processes']  # FIXME: handle cpu_threads
         task_args    = cud.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
-        cpn          = slots['lm_info']['cores_per_node']
 
-        if not 'task_offsets' in slots:
-            raise RuntimeError('insufficient information to launch via %s: %s' \
+        if 'task_offsets' not in slots:
+            raise RuntimeError('insufficient information to launch via %s: %s'
                     % (self.name, slots))
 
         task_offsets = slots['task_offsets']        # This needs to revisited 

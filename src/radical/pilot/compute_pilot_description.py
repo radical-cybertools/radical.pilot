@@ -18,6 +18,7 @@ SANDBOX           = 'sandbox'
 OUTPUT            = 'output'
 ERROR             = 'error'
 RUNTIME           = 'runtime'
+APP_COMM          = 'app_comm'
 CLEANUP           = 'cleanup'
 EXIT_ON_ERROR     = 'exit_on_error'
 _CONFIG           = '_config'
@@ -113,6 +114,19 @@ class ComputePilotDescription(rsa.Attributes):
        [Type: `list`] [optional] The list of names of hosts where this pilot
        is allowed to start on.
 
+    .. data: app_comm
+
+       [Type: `list`] [optional] The list of names is interpreted as
+       communication channels to start within the pilot agent, for the purpose
+       of application communication, ie., that tasks running on that pilot are
+       able to use those channels to communicate amongst each other.
+
+       The names are expected to end in `_queue` or `_pubsub`, indicating the
+       type of channel to create.  Once created, tasks will find environment
+       variables of the name `RP_%s_IN` and `RP_%s_OUT`, where `%s` is replaced
+       with the given channel name (uppercased), and `IN/OUT` indicate the
+       respective endpoint addresses for the created channels
+
     .. data:: cleanup
 
        [Type: `bool`] [optional] If cleanup is set to True, the pilot will 
@@ -136,6 +150,7 @@ class ComputePilotDescription(rsa.Attributes):
         self._attributes_register    (RESOURCE,         None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
         self._attributes_register    (ACCESS_SCHEMA,    None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
         self._attributes_register    (RUNTIME,          None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (APP_COMM,         None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
         self._attributes_register    (SANDBOX,          None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
         self._attributes_register    (CORES,            None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
         self._attributes_register    (GPUS,             None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
@@ -153,6 +168,7 @@ class ComputePilotDescription(rsa.Attributes):
         self.set_attribute (RESOURCE,         None)
         self.set_attribute (ACCESS_SCHEMA,    None)
         self.set_attribute (RUNTIME,          None)
+        self.set_attribute (APP_COMM,         None)
         self.set_attribute (SANDBOX,          None)
         self.set_attribute (CORES,               0)
         self.set_attribute (GPUS,                0)
