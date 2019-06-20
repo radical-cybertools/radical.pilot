@@ -59,11 +59,11 @@ class LSF(LRMS):
         lsf_core_counts      = list(set(lsf_cores_count_list))
         lsf_cores_per_node   = min(lsf_core_counts)
         lsf_gpus_per_node    = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
-
-        lsf_lfs_per_node     = {'path' : ru.expand_env(
-                                            self._cfg.get('lfs_path_per_node')),
-                                'size' :    self._cfg.get('lfs_size_per_node', 0)
+        lsf_lfs_per_node     = {'path': ru.expand_env(
+                                           self._cfg.get('lfs_path_per_node')),
+                                'size':    self._cfg.get('lfs_size_per_node', 0)
                                }
+        lsf_mem_per_node     = self._cfg.get('mem_per_node', 0)
 
         self._log.info("Found unique core counts: %s Using: %d",
                       lsf_core_counts, lsf_cores_per_node)
@@ -73,6 +73,7 @@ class LSF(LRMS):
         self.cores_per_node   = lsf_cores_per_node
         self.gpus_per_node    = lsf_gpus_per_node
         self.lfs_per_node     = lsf_lfs_per_node
+        self.mem_per_node     = lsf_mem_per_node
 
 
 # ------------------------------------------------------------------------------

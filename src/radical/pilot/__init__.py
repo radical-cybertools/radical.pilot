@@ -11,7 +11,6 @@ import radical.utils as _ru
 
 # ------------------------------------------------------------------------------
 # constants and types
-from .types      import *
 from .states     import *
 from .constants  import *
 from .exceptions import *

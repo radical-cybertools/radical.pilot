@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 
+import os
 import logging
 import pprint
 import threading
@@ -218,6 +219,13 @@ class AgentSchedulingComponent(rpu.Component):
         rpu.Component.__init__(self, cfg, session)
 
 
+        tmp = os.environ.get('RP_UNIFORM_WORKLOAD', '').lower()
+        if tmp in ['true', 'yes', '1']:
+            self._uniform_wl = True
+        else:
+            self._uniform_wl = False
+
+
     # --------------------------------------------------------------------------
     #
     # Once the component process is spawned, `initialize_child()` will be called
@@ -414,40 +422,19 @@ class AgentSchedulingComponent(rpu.Component):
         Returns a multi-line string corresponding to the status of the node list
         '''
 
+        glyphs = {rpc.FREE : '-',
+                  rpc.BUSY : '#',
+                  rpc.DOWN : '!'}
         ret = "|"
         for node in self.nodes:
             for core in node['cores']:
-                if core == rpc.FREE:
-                    ret += '-'
-                else:
-                    ret += '#'
+                ret += glyphs[core]
             ret += ':'
             for gpu in node['gpus']:
-                if gpu == rpc.FREE:
-                    ret += '-'
-                else:
-                    ret += '#'
+                ret += glyphs[gpu]
             ret += '|'
 
         return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _configure(self):
-        raise NotImplementedError("_configure() missing for %s" % self.uid)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _allocate_slot(self, cud):
-        raise NotImplementedError("_allocate_slot() missing for %s" % self.uid)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _release_slot(self, slots):
-        raise NotImplementedError("_release_slot() missing for %s" % self.uid)
 
 
     # --------------------------------------------------------------------------
@@ -501,9 +488,9 @@ class AgentSchedulingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _try_allocation(self, unit):
-        """
+        '''
         attempt to allocate cores/gpus for a specific unit.
-        """
+        '''
 
         # needs to be locked as we try to acquire slots here, but slots are
         # freed in a different thread.  But we keep the lock duration short...
@@ -582,9 +569,9 @@ class AgentSchedulingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def unschedule_cb(self, topic, msg):
-        """
+        '''
         release (for whatever reason) all slots allocated to this unit
-        """
+        '''
 
         unit = msg
 
@@ -653,6 +640,10 @@ class AgentSchedulingComponent(rpu.Component):
                 # remove it from the wait queue
                 with self._wait_lock:
                     self._wait_pool.remove(unit)
+
+            else:
+                if self._uniform_wl:
+                    break
 
         # return True to keep the cb registered
         return True

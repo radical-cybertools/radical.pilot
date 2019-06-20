@@ -77,9 +77,10 @@ class JSRUN(LaunchMethod):
         rs_str = 'cpu_index_using: physical\n'
         rank = 0
         for node in slots['nodes']:
+
             gpu_maps = list(node['gpu_map'])
             for map_set in node['core_map']:
-                cores = ','.join(str(core * 4) for core in map_set)
+                cores = ','.join(str(core) for core in map_set)
                 rs_str += 'rank: %d: {'  % rank
                 rs_str += ' host: %s;'  % str(node['uid'])
                 rs_str += ' cpu: {%s}'  % cores
@@ -100,8 +101,7 @@ class JSRUN(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        # FIXME: derive task_procs from slots (to include GPU)
-
+        uid          = cu['uid']
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
@@ -110,14 +110,15 @@ class JSRUN(LaunchMethod):
         task_argstr  = self._create_arg_string(task_args)
         task_sandbox = ru.Url(cu['unit_sandbox']).path
 
-        self._log.debug('prep %s', cu['uid'])
+        assert(slots), 'missing slots for %s' % uid
+
+        self._log.debug('prep %s', uid)
 
         if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
         else          : task_command = task_exec
 
         env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
         env_string = ' '.join(['-E "%s"' % var for var in env_list])
-
 
         # from https://www.olcf.ornl.gov/ \
         #             wp-content/uploads/2018/11/multi-gpu-workshop.pdf
@@ -134,12 +135,16 @@ class JSRUN(LaunchMethod):
         else:
             smpiargs = ''
 
-        rs_fname = self._create_resource_set_file(slots=slots, uid=cu['uid'],
+        rs_fname = self._create_resource_set_file(slots=slots, uid=uid,
                                                   sandbox=task_sandbox)
 
       # flags = '-n%d -a1 ' % (task_procs)
         command = '%s --erf_input %s %s %s %s' % (self.launch_command, rs_fname,
-                                             smpiargs, env_string, task_command)
+                                                  smpiargs, env_string, task_command)
+                                                env_string, task_command)
+
+      # with open('./commands.log', 'a') as fout:
+      #     fout.write('%s\n' % command)
 
         return command, None
 

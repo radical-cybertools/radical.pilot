@@ -4,9 +4,11 @@ __license__ = "MIT"
 
 
 import os
+import pprint
 
 from base import LRMS
 import radical.utils as ru
+
 
 # ------------------------------------------------------------------------------
 #
@@ -16,11 +18,11 @@ class LSF_SUMMIT(LRMS):
     #
     def __init__(self, cfg, session):
 
-        # We temporarily do not call the base class constructor. The 
-        # constraint was not to change the base class at any point. 
+        # We temporarily do not call the base class constructor. The
+        # constraint was not to change the base class at any point.
         # The constructor of the base class performs certain computations
         # that are specific to a node architecture, i.e., (i) requirement of
-        # cores_per_node and gpus_per_node, (ii) no requirement for 
+        # cores_per_node and gpus_per_node, (ii) no requirement for
         # sockets_per_node, and (iii) no validity checks on cores_per_socket,
         # gpus_per_socket, and sockets_per_node. It is, hence, incompatible
         # with the node architecture expected within this module.
@@ -58,6 +60,8 @@ class LSF_SUMMIT(LRMS):
         self.cores_per_socket   = None
         self.gpus_per_socket    = None
         self.lfs_per_node       = None
+        self.mem_per_node       = None
+        self.smt                = int(os.environ.get('RADICAL_SAGA_SMT', 1))
 
         # The LRMS will possibly need to reserve nodes for the agent, according
         # to the agent layout.  We dig out the respective requirements from the
@@ -75,7 +79,7 @@ class LSF_SUMMIT(LRMS):
             # make sure that the target either 'local', which we will ignore,
             # or 'node'.
             if target == 'local':
-                pass # ignore that one
+                pass  # ignore that one
             elif target == 'node':
                 self._agent_reqs.append(agent)
             else :
@@ -91,8 +95,9 @@ class LSF_SUMMIT(LRMS):
         if not self.node_list        or\
            self.sockets_per_node < 1 or \
            self.cores_per_socket < 1:
-            raise RuntimeError('LRMS configuration invalid (%s)(%s)(%s)' % \
-                    (self.node_list, self.sockets_per_node, self.cores_per_socket))
+            raise RuntimeError('LRMS configuration invalid (%s)(%s)(%s)' %
+                    (self.node_list, self.sockets_per_node,
+                     self.cores_per_socket))
 
         # Check if the LRMS implementation reserved agent nodes.  If not, pick
         # the first couple of nodes from the nodelist as a fallback.
@@ -118,7 +123,7 @@ class LSF_SUMMIT(LRMS):
         # After LRMS configuration, we call any existing config hooks on the
         # launch methods.  Those hooks may need to adjust the LRMS settings
         # (hello ORTE).  We only call LM hooks *once*
-        launch_methods = set() # set keeps entries unique
+        launch_methods = set()  # set keeps entries unique
         if 'mpi_launch_method' in self._cfg:
             launch_methods.add(self._cfg['mpi_launch_method'])
         launch_methods.add(self._cfg['task_launch_method'])
@@ -131,25 +136,25 @@ class LSF_SUMMIT(LRMS):
                     ru.dict_merge(self.lm_info,
                             rp.agent.LM.lrms_config_hook(lm, self._cfg, self,
                                 self._log, self._prof))
-                except Exception as e:
+
+                except:
                     self._log.exception("lrms config hook failed")
                     raise
 
                 self._log.info("lrms config hook succeeded (%s)" % lm)
 
         # For now assume that all nodes have equal amount of cores and gpus
-        cores_avail = (len(self.node_list) + len(self.agent_nodes)) * self.cores_per_socket * self.sockets_per_node
-        gpus_avail  = (len(self.node_list) + len(self.agent_nodes)) * self.gpus_per_socket * self.sockets_per_node
-        if 'RADICAL_PILOT_PROFILE' not in os.environ:
-            if cores_avail < int(self.requested_cores):
-                raise ValueError("Not enough cores available (%s) to satisfy allocation request (%s)." \
-                                % (str(cores_avail), str(self.requested_cores)))
+        cores_avail = (len(self.node_list) + len(self.agent_nodes)) \
+                    * self.cores_per_socket * self.sockets_per_node
+        gpus_avail  = (len(self.node_list) + len(self.agent_nodes)) \
+                    * self.gpus_per_socket * self.sockets_per_node
+
 
         # NOTE: self.lrms_info is what scheduler and launch method can
-        # ultimately use, as it is included into the cfg passed to all
-        # components.
+        #       ultimately use, as it is included into the cfg passed to all
+        #       components.
         #
-        # seven elements are well defined:
+        # it defines
         #   lm_info:            dict received via the LM's lrms_config_hook
         #   node_list:          list of node names to be used for unit execution
         #   sockets_per_node:   integer number of sockets on a node
@@ -157,22 +162,28 @@ class LSF_SUMMIT(LRMS):
         #   gpus_per_socket:    integer number of gpus per socket
         #   agent_nodes:        list of node names reserved for agent execution
         #   lfs_per_node:       dict consisting the path and size of lfs on each node
+        #   mem_per_node:       number of MB per node
+        #   smt:                threads per core (exposed as core in RP)
         #
 
-        self.lrms_info['name']              = self.name
-        self.lrms_info['lm_info']           = self.lm_info
-        self.lrms_info['node_list']         = self.node_list
-        self.lrms_info['sockets_per_node']  = self.sockets_per_node
-        self.lrms_info['cores_per_socket']  = self.cores_per_socket
-        self.lrms_info['gpus_per_socket']   = self.gpus_per_socket
-        self.lrms_info['cores_per_node']    = self.sockets_per_node * self.cores_per_socket
-        self.lrms_info['gpus_per_node']     = self.sockets_per_node * self.gpus_per_socket
-        self.lrms_info['agent_nodes']       = self.agent_nodes
-        self.lrms_info['lfs_per_node']      = self.lfs_per_node
+        self.lrms_info = {
+            'name'             : self.name,
+            'lm_info'          : self.lm_info,
+            'node_list'        : self.node_list,
+            'sockets_per_node' : self.sockets_per_node,
+            'cores_per_socket' : self.cores_per_socket * self.smt,
+            'gpus_per_socket'  : self.gpus_per_socket,
+            'cores_per_node'   : self.sockets_per_node * self.cores_per_socket * self.smt,
+            'gpus_per_node'    : self.sockets_per_node * self.gpus_per_socket,
+            'agent_nodes'      : self.agent_nodes,
+            'lfs_per_node'     : self.lfs_per_node,
+            'mem_per_node'     : self.mem_per_node,
+            'smt'              : self.smt
+        }
+
 
     # --------------------------------------------------------------------------
     #
-
     def _configure(self):
 
         lsf_hostfile = os.environ.get('LSB_DJOB_HOSTFILE')
@@ -205,17 +216,19 @@ class LSF_SUMMIT(LRMS):
                     if node not in lsf_nodes: lsf_nodes[node]  = 1
                     else                    : lsf_nodes[node] += 1
 
-        self._log.debug('found nodes: %s', lsf_nodes)
+        self._log.debug('found %d nodes: %s', len(lsf_nodes), lsf_nodes)
 
         # RP currently requires uniform node configuration, so we expect the
         # same core count for all nodes
         assert(len(set(lsf_nodes.values())) == 1)
         lsf_cores_per_node = lsf_nodes.values()[0]
+        self._log.debug('found %d nodes with %d cores', len(lsf_nodes), lsf_cores_per_node)
 
         # We cannot inspect gpu and socket numbers yet (TODO), so pull those
         # from the configuration
         lsf_sockets_per_node = self._cfg.get('sockets_per_node', 1)
         lsf_gpus_per_node    = self._cfg.get('gpus_per_node',    0)
+        lsf_mem_per_node     = self._cfg.get('mem_per_node',     0)
 
         # ensure we can derive the number of cores per socket
         assert(not lsf_cores_per_node % lsf_sockets_per_node)
@@ -225,12 +238,12 @@ class LSF_SUMMIT(LRMS):
         assert(not lsf_gpus_per_node % lsf_sockets_per_node)
         lsf_gpus_per_socket = lsf_gpus_per_node / lsf_sockets_per_node
 
-        # get LSF info from configs, too
+        # get lfs info from configs, too
         lsf_lfs_per_node = {'path': self._cfg.get('lfs_path_per_node', None),
                             'size': self._cfg.get('lfs_size_per_node', 0)}
 
-        # structure of the node list is 
-        # 
+        # structure of the node list is
+        #
         #   [[node_name_1, node_uid_1],
         #    [node_name_2, node_uid_2],
         #    ...
@@ -240,13 +253,15 @@ class LSF_SUMMIT(LRMS):
         # need an integer index later on for resource set specifications.
         # (LSF starts node indexes at 1, not 0)
 
-        self.node_list        = [[node, idx + 1] 
-                                        for idx,node
-                                        in  enumerate(sorted(lsf_nodes.keys()))]
+        self.node_list = [[n, str(i + 1)] for i, n
+                                          in enumerate(sorted(lsf_nodes.keys()))]
+        self._log.debug('node list: %s', pprint.pformat(self.node_list))
+
         self.sockets_per_node = lsf_sockets_per_node
         self.cores_per_socket = lsf_cores_per_socket
         self.gpus_per_socket  = lsf_gpus_per_socket
         self.lfs_per_node     = lsf_lfs_per_node
+        self.mem_per_node     = lsf_mem_per_node
 
 
 # ------------------------------------------------------------------------------

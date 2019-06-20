@@ -22,6 +22,7 @@ LM_NAME_MPIRUN_CCMRUN = 'MPIRUN_CCMRUN'
 LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
 LM_NAME_JSRUN         = 'JSRUN'
+LM_NAME_PRTE          = 'PRTE'
 LM_NAME_ORTE          = 'ORTE'
 LM_NAME_ORTE_LIB      = 'ORTE_LIB'
 LM_NAME_RSH           = 'RSH'
@@ -100,6 +101,7 @@ class LaunchMethod(object):
         from .mpiexec        import MPIExec
         from .mpirun         import MPIRun
         from .jsrun          import JSRUN
+        from .prte           import PRTE
         from .orte           import ORTE
         from .orte_lib       import ORTELib
         from .rsh            import RSH
@@ -130,12 +132,13 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_MPT    : MPIRun,
                 LM_NAME_MPIRUN_DPLACE : MPIRun,
                 LM_NAME_JSRUN         : JSRUN,
+                LM_NAME_PRTE          : PRTE,
                 LM_NAME_ORTE          : ORTE,
                 LM_NAME_ORTE_LIB      : ORTELib,
                 LM_NAME_RSH           : RSH,
                 LM_NAME_SSH           : SSH,
                 LM_NAME_YARN          : Yarn,
-                LM_NAME_SPARK         : Spark
+                LM_NAME_SPARK         : Spark,
                 LM_NAME_SRUN          : Srun,
 
               # # deprecated
@@ -168,12 +171,14 @@ class LaunchMethod(object):
             raise TypeError("LM config hook only available to base class!")
 
         from .fork           import Fork
+        from .prte           import PRTE
         from .orte           import ORTE
         from .yarn           import Yarn
         from .spark          import Spark
 
         impl = {
             LM_NAME_FORK          : Fork,
+            LM_NAME_PRTE          : PRTE,
             LM_NAME_ORTE          : ORTE,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
@@ -200,11 +205,13 @@ class LaunchMethod(object):
         if cls != LaunchMethod:
             raise TypeError("LM shutdown hook only available to base class!")
 
+        from .prte           import PRTE
         from .orte           import ORTE
         from .yarn           import Yarn
         from .spark          import Spark
 
         impl = {
+            LM_NAME_PRTE          : PRTE,
             LM_NAME_ORTE          : ORTE,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
