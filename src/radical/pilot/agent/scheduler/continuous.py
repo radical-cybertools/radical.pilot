@@ -241,6 +241,17 @@ class Continuous(AgentSchedulingComponent):
             # nodelist state (BUSY)
             self._change_slot_states(slots, rpc.BUSY)
 
+            # We should check if the unit uses GPUs and set up correctly
+            # which device to use based on the scheduling decision
+            gpu_maps = list()
+            for slot in unit['slots']:
+                if slot['gpu_map'] not in gpu_maps:
+                gpu_maps.append(slot['gpu_map'])
+            if len(gpu_maps) == 1:
+                # uniform GPU requirements
+                unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = \
+                        ','.join(gpi_map[0] for gpu_map in gpu_maps[0])
+
         return slots
 
 
