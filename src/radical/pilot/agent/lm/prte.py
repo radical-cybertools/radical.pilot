@@ -147,7 +147,7 @@ class PRTE(LaunchMethod):
         dvm_watcher.start()
 
         lm_info = {'dvm_uri'     : dvm_uri,
-                   'version_info': {name: prte_info}}
+                   'version_info': prte_info}
 
         # we need to inform the actual LM instance about the prte URI.  So we
         # pass it back to the LRMS which will keep it in an 'lm_info', which
