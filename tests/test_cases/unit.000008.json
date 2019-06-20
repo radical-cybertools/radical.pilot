@@ -24,7 +24,14 @@
                                    "launch_command" : "", 
                                    "nodename"       : "test"
                                   },
-                "lfs_per_node"  : 0
+                "lfs_per_node"  : 0,
+                "nodes"         : [{"name"    : "node1",
+                                    "uid"     : "node1",
+                                    "core_map": [[0]],
+                                    "gpu_map" : [],
+                                    "lfs"     : {"size": 0,
+                                                 "path": null}
+                }]
             }
         }
     }, 
@@ -33,7 +40,8 @@
         "lm": {
             "spark" : ["//bin/sleep     ",null],
             "ssh"   : "RuntimeError",
-            "rsh"   : "RuntimeError"
+            "rsh"   : "RuntimeError",
+            "mpiexec" : ["mpiexec -H node1 -np 1   /bin/sleep", null]
         }
     }
 }

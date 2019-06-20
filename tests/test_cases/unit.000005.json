@@ -41,7 +41,8 @@
             "mpirun": ["mpirun -np 2  -host node1,node1  /bin/sleep \"10\"", null],
             "ibrun" : ["ibrun -n 1 -o 0 /bin/sleep \"10\" ", null],
             "ssh"   : ["/bin/sleep \"10\" ","ssh node1 PATH=test_path 1"],
-            "jsrun"  : ["jsrun --erf_input rs_layout_cu_000000  -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" /bin/sleep \"10\" ",null]
+            "jsrun"  : ["jsrun --erf_input rs_layout_cu_000000  -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" /bin/sleep \"10\" ",null],
+            "mpiexec" : ["mpiexec -H node1,node1 -np 2   /bin/sleep \"10\" ", null]
         },
         "resource_file": {
             "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0}; gpu: {0}}\n"]
