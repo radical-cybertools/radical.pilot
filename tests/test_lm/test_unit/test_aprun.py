@@ -40,7 +40,7 @@ def test_construct_command(mocked_init,
 
     component.launch_command = 'aprun'
     component.name           = 'aprun'
-    component._log           = ru.get_logger('dummy')
+    component._log           = ru.Logger('dummy')
 
     for unit, result in test_cases:
         command, hop = component.construct_command(unit, None)

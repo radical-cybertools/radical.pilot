@@ -57,7 +57,7 @@ def test_construct_command(mocked_init, mocked_configure,
     test_cases = setUp('lm', 'jsrun')
     
     component = JSRUN(cfg=None, session=None)
-    component._log  = ru.get_logger('dummy')
+    component._log  = ru.Logger('dummy')
     component.launch_command = 'jsrun'
     for unit, result,_ in test_cases:
         command, hop = component.construct_command(unit, None)

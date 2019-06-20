@@ -38,7 +38,7 @@ def test_construct_command(mocked_init,
     test_cases = setUp('lm', 'ccmrun')
     component  = CCMRun(name=None, cfg=None, session=None)
 
-    component._log           = ru.get_logger('dummy')
+    component._log           = ru.Logger('dummy')
     component.name           = 'CCMRun'
     component.mpi_flavor     = None
     component.launch_command = 'ccmrun'
