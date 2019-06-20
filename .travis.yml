@@ -6,7 +6,7 @@ python:
   - "2.7"
 
 branches:
-  - feature/rm_tests
+  - devel
 
 os:
   - linux
@@ -23,15 +23,15 @@ env:
     - NEW=`echo $LOG | cut -d ' ' -f3`
     - DIFF=`git diff --name-only --diff-filter=b $OLD...$NEW`
     - LOC=/home/travis/virtualenv/python2.7  # Location where VE is created on travis
-    - CMD1="coverage run -m pytest -vvv tests/;flake8 tests/;pylint tests/"
-    - CMD2="flake8 --config=.flake8 $DIFF"
-    - CMD3="pylint $DIFF"
+    - PYTEST="coverage run -m pytest -vvv tests/;flake8 tests/;pylint tests/"
+    - FLAKE8="flake8 --config=.flake8 $DIFF"
+    - PYLINT="pylint $DIFF"
     - COVERAGE=false
     - CODECOV_TOKEN="c7e0d993-d31a-4d39-8ffa-07c30ea73e48"
   matrix:
-    - MAIN_CMD=$CMD1 COVERAGE=true
-    - MAIN_CMD=$CMD2
-    - MAIN_CMD=$CMD3
+    - MAIN_CMD=$PYTEST COVERAGE=true
+    - MAIN_CMD=$FLAKE8
+    - MAIN_CMD=$PYLINT
 
 before_install:
   - uname -a
