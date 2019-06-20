@@ -61,7 +61,7 @@ if __name__ == '__main__':
                    'project'       : config[resource]['project'],
                    'queue'         : config[resource]['queue'],
                    'access_schema' : config[resource]['schema'],
-                   'cores'         : config[resource]['cores'],
+                   'cores'         : 1024
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
@@ -77,7 +77,9 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 128
+        n = 1024 * 10
+        n = 42 * 4 * 4 * 10
+        n = 1024
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()

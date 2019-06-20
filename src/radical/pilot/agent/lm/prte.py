@@ -13,9 +13,7 @@ from .base import LaunchMethod
 
 # ==============================================================================
 #
-# NOTE: This requires a development version of Open MPI available.
-#
-class ORTE(LaunchMethod):
+class PRTE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
@@ -23,51 +21,42 @@ class ORTE(LaunchMethod):
 
         LaunchMethod.__init__(self, name, cfg, session)
 
-        # We remove all ORTE related environment variables from the launcher
-        # environment, so that we can use ORTE for both launch of the
+        # We remove all PRUN related environment variables from the launcher
+        # environment, so that we can use PRUN for both launch of the
         # (sub-)agent and CU execution.
         self.env_removables.extend(["OMPI_", "OPAL_", "PMIX_"])
+
+        self._verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
     def lrms_config_hook(cls, name, cfg, lrms, logger, profiler):
-        """
-        FIXME: this config hook will manipulate the LRMS nodelist.  Not a nice
-               thing to do, but hey... :P
-               What really should be happening is that the LRMS digs information
-               on node reservation out of the config and configures the node
-               list accordingly.  This config hook should be limited to starting
-               the DVM.
-        """
 
-        dvm_command = ru.which('orte-dvm')
-        if not dvm_command:
-            raise Exception("Couldn't find orte-dvm")
+        prte = ru.which('prte')
+        if not prte:
+            raise Exception("Couldn't find prte")
 
-        # Now that we found the orte-dvm, get ORTE version
-        out, _, _ = ru.sh_callout('orte-info | grep "Open RTE"', shell=True)
-        orte_info = dict()
+        # Now that we found the prte, get PRUN version
+        out, err, ret = ru.sh_callout('prte_info | grep "Open RTE"', shell=True)
+        prte_info = dict()
         for line in out.split('\n'):
 
             line = line.strip()
-            if not line:
-                continue
 
-            key, val = line.split(':', 1)
-            if 'Open RTE' == key.strip():
-                orte_info['version'] = val.strip()
-            elif  'Open RTE repo revision' == key.strip():
-                orte_info['version_detail'] = val.strip()
+            if 'Open RTE:' in line:
+                prte_info['version'] = line.split(':')[1].strip()
 
-        assert(orte_info.get('version'))
-        logger.info("Found Open RTE: %s / %s",
-                    orte_info['version'], orte_info.get('version_detail'))
+            elif  'Open RTE repo revision:' in line:
+                prte_info['version_detail'] = line.split(':')[1].strip()
+
+        logger.info("Found Open RTE: %s [%s]",
+                    prte_info.get('version'), prte_info.get('version_detail'))
 
         # Use (g)stdbuf to disable buffering.
         # We need this to get the "DVM ready",
-        # without waiting for orte-dvm to complete.
+        # without waiting for prte to complete.
         # The command seems to be generally available on our Cray's,
         # if not, we can code some home-coooked pty stuff.
         stdbuf_cmd =  ru.which(['stdbuf', 'gstdbuf'])
@@ -75,12 +64,13 @@ class ORTE(LaunchMethod):
             raise Exception("Couldn't find (g)stdbuf")
         stdbuf_arg = "-oL"
 
-        # Base command = (g)stdbuf <args> + orte-dvm + dvm-args + debug_args
-        dvm_args = '--report-uri -'
-        cmdline  = '%s %s %s %s ' % (stdbuf_cmd, stdbuf_arg, dvm_command, dvm_args)
+        # Base command = (g)stdbuf <args> + prte + prte-args + debug_args
+        prte_args = '--report-uri -'
+        cmdline   = '%s %s %s %s ' % (stdbuf_cmd, stdbuf_arg, prte, prte_args)
 
-        # Additional (debug) arguments to orte-dvm
-        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
+        # Additional (debug) arguments to prte
+        verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
+        if verbose:
             debug_strings = [
                              '--debug-devel',
                              '--mca odls_base_verbose 100',
@@ -89,10 +79,11 @@ class ORTE(LaunchMethod):
         else:
             debug_strings = []
 
+        # Split up the debug strings into args and add them to the cmdline
         cmdline += ' '.join(debug_strings)
 
         vm_size = len(lrms.node_list)
-        logger.info("Start DVM on %d nodes ['%s']", vm_size, ' '.join(cmdline))
+        logger.info("Start prte on %d nodes ['%s']", vm_size, ' '.join(cmdline))
         profiler.prof(event='dvm_start', uid=cfg['pilot_id'])
 
         dvm_uri     = None
@@ -100,26 +91,18 @@ class ORTE(LaunchMethod):
 
         while True:
 
-            line = dvm_process.stdout.readline().strip()
+            line = dvm_process.stdout.readline()
 
-            if line.startswith('VMURI:'):
+            if '://' in line:
 
-                if len(line.split(' ')) != 2:
-                    raise Exception("Unknown VMURI format: %s" % line)
+                dvm_uri = line.strip()
+                logger.info("prte uri: %s" % dvm_uri)
 
-                label, dvm_uri = line.split(' ', 1)
-
-                if label != 'VMURI:':
-                    raise Exception("Unknown VMURI format: %s" % line)
-
-                logger.info("ORTE DVM URI: %s" % dvm_uri)
-
-            elif line == 'DVM ready':
-
+            elif 'DVM ready' in line:
                 if not dvm_uri:
                     raise Exception("VMURI not found!")
 
-                logger.info("ORTE DVM startup successful!")
+                logger.info("prte startup successful!")
                 profiler.prof(event='dvm_ok', uid=cfg['pilot_id'])
                 break
 
@@ -128,23 +111,23 @@ class ORTE(LaunchMethod):
                 # Check if the process is still around,
                 # and log output in debug mode.
                 if dvm_process.poll() is None:
-                    logger.debug("ORTE: %s", line)
+                    logger.debug("PRUN: %s", line)
                 else:
                     # Process is gone: fatal!
+                    raise Exception("prun process disappeared")
                     profiler.prof(event='dvm_fail', uid=cfg['pilot_id'])
-                    raise Exception("DVM process disappeared")
 
 
         # ----------------------------------------------------------------------
         def _watch_dvm():
 
-            logger.info('starting DVM watcher')
+            logger.info('starting prte watcher')
 
             retval = dvm_process.poll()
             while retval is None:
                 line = dvm_process.stdout.readline().strip()
                 if line:
-                    logger.debug('dvm output: %s', line)
+                    logger.debug('prte output: %s', line)
                 else:
                     time.sleep(1.0)
 
@@ -153,20 +136,20 @@ class ORTE(LaunchMethod):
                 # We know that Python and threading are likely not to play well
                 # with signals - but this is an exceptional case, and not part
                 # of the stadard termination sequence.  If the signal is
-                # swallowed, the next `orte-submit` call will trigger
+                # swallowed, the next `prun` call will trigger
                 # termination anyway.
                 os.kill(os.getpid())
 
-            logger.info('DVM stopped (%d)' % dvm_process.returncode)
+            logger.info('prte stopped (%d)' % dvm_process.returncode)
         # ----------------------------------------------------------------------
 
         dvm_watcher = ru.Thread(target=_watch_dvm, name="DVMWatcher")
         dvm_watcher.start()
 
         lm_info = {'dvm_uri'     : dvm_uri,
-                   'version_info': {name: orte_info}}
+                   'version_info': prte_info}
 
-        # we need to inform the actual LM instance about the DVM URI.  So we
+        # we need to inform the actual LM instance about the prte URI.  So we
         # pass it back to the LRMS which will keep it in an 'lm_info', which
         # will then be passed as part of the slots via the scheduler
         return lm_info
@@ -183,26 +166,26 @@ class ORTE(LaunchMethod):
 
         if 'dvm_uri' in lm_info:
             try:
-                logger.info('terminating dvm')
-                orterun = ru.which('orterun')
-                if not orterun:
-                    raise Exception("Couldn't find orterun")
-                ru.sh_callout('%s --hnp %s --terminate' 
-                             % (orterun, lm_info['dvm_uri']))
+                logger.info('terminating prte')
+                prun = ru.which('prun')
+                if not prun:
+                    raise Exception("Couldn't find prun")
+                ru.sh_callout('%s --hnp %s --terminate'
+                             % (prun, lm_info['dvm_uri']))
                 profiler.prof(event='dvm_stop', uid=cfg['pilot_id'])
 
             except Exception as e:
                 # use the same event name as for runtime failures - those are
                 # not distinguishable at the moment from termination failures
                 profiler.prof(event='dvm_fail', uid=cfg['pilot_id'], msg=e)
-                logger.exception('dvm termination failed')
+                logger.exception('prte termination failed')
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
 
-        self.launch_command = ru.which('orterun')
+        self.launch_command = ru.which('prun')
 
 
     # --------------------------------------------------------------------------
@@ -212,11 +195,16 @@ class ORTE(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_mpi     = bool('mpi' in cud.get('cpu_process_type', '').lower())
-        task_cores   = cud.get('cpu_processes', 0) + cud.get('gpu_processes', 0)
         task_env     = cud.get('environment') or dict()
         task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
+
+        n_threads = cu['description'].get('cpu_threads',   1)
+        n_procs   = cu['description'].get('cpu_processes', 0) \
+                  + cu['description'].get('gpu_processes', 0)
+
+        if not n_procs  : n_procs   = 1
+        if not n_threads: n_threads = 1
 
       # import pprint
       # self._log.debug('=== prep %s', pprint.pformat(cu))
@@ -245,45 +233,50 @@ class ORTE(LaunchMethod):
             for var in env_list:
                 env_string += '-x "%s" ' % var
 
-        # Construct the hosts_string, env vars
-        hosts_string = ''
-        depths       = set()
-        for node in slots['nodes']:
+        if 'nodes' not in slots:
+            # this task is unscheduled - we leave it to PRRTE/PMI-X to
+            # correctly place the task.  Just count procs and threads.
 
-            # add all cpu and gpu process slots to the node list.
-            for _        in node['core_map']: hosts_string += '%s,' % node['uid']
-            for _        in node['gpu_map' ]: hosts_string += '%s,' % node['uid']
-            for cpu_slot in node['core_map']: depths.add(len(cpu_slot))
+            map_flag  = ' --bind-to none -use-hwthread-cpus --oversubscribe'
+            map_flag += ' -n %d --cpus-per-proc %d' % (n_procs, n_threads)
 
-        # assert(len(depths) == 1), depths
-        # depth = list(depths)[0]
+        else:
+            # enact the scheduler's placement
+            hosts_string = ''
+            depths       = set()
+            for node in slots['nodes']:
+                self._log.debug('=== %s' % node)
 
-        # FIXME: is this binding correct?
-      # if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
-      # else        : map_flag = '--bind-to none'
-        map_flag = '--bind-to none'
+                # add all cpu and gpu process slots to the node list.
+                for cpu_slot in node[2]: hosts_string += '%s,' % node[0]
+                for gpu_slot in node[3]: hosts_string += '%s,' % node[0]
+                for cpu_slot in node[2]: depths.add(len(cpu_slot))
 
-        # remove trailing ','
-        hosts_string = hosts_string.rstrip(',')
+            # remove trailing ','
+            hosts_string = hosts_string.rstrip(',')
 
-        # Additional (debug) arguments to orterun
-        if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
-            debug_strings = ['-display-devel-map', 
-                             '-display-allocation', 
+            # FIXME: ensure correct binding for procs and threads
+          # assert(len(depths) == 1), depths
+          # depth = depths.pop()
+          # if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
+          # else        : map_flag = '--bind-to none'
+            map_flag  = ' --bind-to none -use-hwthread-cpus --oversubscribe'
+            map_flag += ' -n %d --cpus-per-proc %d' % (n_procs, n_threads)
+            map_flag += ' -host %s' % hosts_string
+
+
+        # Additional (debug) arguments to prun
+        if self._verbose:
+            debug_strings = ['-display-devel-map',
+                             '-display-allocation',
                              '--debug-devel',
-                             '--mca oob_base_verbose 100',
-                             '--mca rml_base_verbose 100'
                             ]
         else:
             debug_strings = []
         debug_string = ' '.join(debug_strings)
 
-        if task_mpi: np_flag = '-np %s' % task_cores
-        else       : np_flag = '-np 1'
-
-        command = '%s %s --hnp "%s" %s %s -host %s %s %s' % (
-                  self.launch_command, debug_string, dvm_uri, np_flag,
-                  map_flag, hosts_string, env_string, task_command)
+        command = '%s %s --hnp "%s" %s %s %s' % (self.launch_command,
+                  debug_string, dvm_uri, map_flag, env_string, task_command)
 
         return command, None
 

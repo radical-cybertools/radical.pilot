@@ -152,9 +152,6 @@ class PBSPro(LRMS):
 
         node_list = []
         for vnode in vnodes_list:
-            # strip the last _0 of the vnodes to get the node name
-            # Disabled as ARCHER no longer splits the nodes into multiple vnodes it seems
-            # vnode = vnode.rsplit('_', 1)[0]
             node_list.append(vnode)
 
         # only unique node names

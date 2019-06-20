@@ -23,27 +23,26 @@ from .base import AgentSchedulingComponent
 # This is a continuous scheduler with awareness of a node's file-storage and
 # unit tagging capabilities.
 #
-#
 # Local Storage:
 #
 # The storage availability will be obtained from the lrms_node_list and assigned
 # to the node list of the class. The lfs requirement will be obtained from the
 # cud in the alloc_nompi and alloc_mpi methods. Using the availability and
 # requirement, the _find_resources method will return the core and gpu ids.
-# 
+#
 # Expected DS of the nodelist
 # self.nodes = [{
 #                   'name'    : 'node_1',
 #                   'uid'     : xxxx,
-#                   'cores'   : 16,
-#                   'gpus'    : 2,
+#                   'cores'   : [],
+#                   'gpus'    : [],
 #                   'lfs'     : 128
 #               },
 #               {
 #                   'name'    : 'node_2',
 #                   'uid'     : yyyy,
-#                   'cores'   : 16,
-#                   'gpus'    : 2,
+#                   'cores'   : [],
+#                   'gpus'    : [],
 #                   'lfs'     : 256
 #                },
 #              ]
@@ -81,6 +80,7 @@ class Continuous(AgentSchedulingComponent):
         AgentSchedulingComponent.__init__(self, cfg, session)
 
         self._tag_history = dict()
+
 
 
     # --------------------------------------------------------------------------
@@ -130,18 +130,44 @@ class Continuous(AgentSchedulingComponent):
 
             self._lrms_cores_per_node -= self._lrms_gpus_per_node
 
-            # since we just changed this fundamental setting, we need to
-            # recreate the nodelist.
-            self.nodes = []
-            for node, node_uid in self._lrms_node_list:
-                self.nodes.append({
-                    'name' : node,
-                    'uid'  : node_uid,
-                    'cores': [rpc.FREE] * self._lrms_cores_per_node,
-                    'gpus' : [rpc.FREE] * self._lrms_gpus_per_node,
-                    'lfs'  :              self._lrms_lfs_per_node,
-                    'mem'  :              self._lrms_mem_per_node
-                })
+        # since we just changed this fundamental setting, we need to
+        # recreate the nodelist.
+        self.nodes = []
+        for node, node_uid in self._lrms_node_list:
+
+            node_entry = {'name'   : node,
+                          'uid'    : node_uid,
+                          'cores'  : [rpc.FREE] * self._lrms_cores_per_node,
+                          'gpus'   : [rpc.FREE] * self._lrms_gpus_per_node,
+                          'lfs'    :              self._lrms_lfs_per_node,
+                          'mem'    :              self._lrms_mem_per_node}
+
+            # summit
+            if self._lrms_cores_per_node > 40:
+
+                # Summit cannot address the last core of the second socket at
+                # the moment, so we mark it as `DOWN` and the scheduler skips
+                # it.  We need to check the SMT setting to make sure the right
+                # logical cores are marked.  The error we see on those cores is:
+                # "ERF error: 1+ cpus are not available"
+                #
+                # This is related to the known issue listed on
+                # https://www.olcf.ornl.gov/for-users/system-user-guides \
+                #                          /summit/summit-user-guide/
+                #
+                # "jsrun explicit resource file (ERF) allocates incorrect
+                # resources"
+                #
+                smt = self._lrms_info.get('smt', 1)
+
+                # only socket `1` is affected at the moment
+              # for s in [0, 1]:
+                for s in [1]:
+                    for i in range(smt):
+                        idx = s * 21 * smt + i
+                        node_entry['cores'][idx] = rpc.DOWN
+
+            self.nodes.append(node_entry)
 
 
     # --------------------------------------------------------------------------
@@ -151,34 +177,37 @@ class Continuous(AgentSchedulingComponent):
         attempt to allocate cores/gpus for a specific unit.
         """
 
+        uid = unit['uid']
+
         # needs to be locked as we try to acquire slots here, but slots are
         # freed in a different thread.  But we keep the lock duration short...
         with self._slot_lock:
 
-            self._prof.prof('schedule_try', uid=unit['uid'])
-            unit['slots'] = self._allocate_slot(unit['description'])
+            self._prof.prof('schedule_try', uid=uid)
+            unit['slots'] = self._allocate_slot(unit)
 
         # the lock is freed here
         if not unit['slots']:
 
             # signal the unit remains unhandled (False signals that failure)
-            self._prof.prof('schedule_fail', uid=unit['uid'])
+            self._prof.prof('schedule_fail', uid=uid)
             return False
+
 
         # allocation worked!  If the unit was tagged, store the node IDs for
         # this tag, so that later units can reuse that information
         tag = unit['description'].get('tag')
-        if tag: 
+        if tag:
             nodes = unit['slots']['nodes']
             self._tag_history[tag] = [node['uid'] for node in nodes]
 
-        # go off and launch the process
-        self._prof.prof('schedule_ok', uid=unit['uid'])
+        # got an allocation, we can go off and launch the process
+        self._prof.prof('schedule_ok', uid=uid)
 
         if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  allocate   %s: %s", unit['uid'],
+            self._log.debug("after  allocate   %s: %s", uid,
                             self.slot_status())
-            self._log.debug("%s [%s/%s] : %s", unit['uid'],
+            self._log.debug("%s [%s/%s] : %s", uid,
                             unit['description']['cpu_processes'],
                             unit['description']['gpu_processes'],
                             pprint.pformat(unit['slots']))
@@ -189,7 +218,7 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _allocate_slot(self, cud):
+    def _allocate_slot(self, unit):
         '''
         This is the main method of this implementation, and is triggered when
         a unit needs to be mapped to a set of cores / gpus.  We make
@@ -197,12 +226,15 @@ class Continuous(AgentSchedulingComponent):
         on the same node).
         '''
 
+        uid = unit['uid']
+        cud = unit['description']
+
         # single_node allocation is enforced for non-message passing tasks
-        if cud['cpu_process_type'] == 'MPI' or \
-                cud['gpu_process_type'] == 'MPI':
-            slots = self._alloc_mpi(cud)
+        if cud['cpu_process_type'] in [rpc.MPI] or \
+           cud['gpu_process_type'] in [rpc.MPI]:
+            slots = self._alloc_mpi(unit)
         else:
-            slots = self._alloc_nompi(cud)
+            slots = self._alloc_nompi(unit)
 
         if slots:
             # the unit was placed, we need to reflect the allocation in the
@@ -228,7 +260,7 @@ class Continuous(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     def _find_resources(self, node, requested_cores, requested_gpus,
-                        requested_lfs, requested_mem, core_chunk=0, 
+                        requested_lfs, requested_mem, core_chunk=0,
                         partial=False, lfs_chunk=0, gpu_chunk=0, mem_chunk=0):
         '''
         Find up to the requested number of free cores and gpus in the node.
@@ -265,12 +297,17 @@ class Continuous(AgentSchedulingComponent):
         free_lfs   = node['lfs']['size']
         free_mem   = node['mem']
 
+        alloc_cores = 0
+        alloc_gpus  = 0
+        alloc_lfs   = 0
+        alloc_mem   = 0
+
         if partial:
             # For partial requests the check simplifies: we just check if we
             # have either, some cores *or* gpus, to serve the
             # request
             if (requested_cores and not free_cores) and \
-               (requested_gpus  and not free_gpus ) :
+               (requested_gpus  and not free_gpus)  :
                 return [], [], None, None
 
         else:
@@ -287,21 +324,32 @@ class Continuous(AgentSchedulingComponent):
         # We need to land enough procs on a node such that the cores,
         # lfs and gpus requested per proc is available on the same node
 
-        nprocs = list()
+        num_procs = dict()
 
-        if requested_cores: nprocs.append(min(requested_cores, free_cores) / core_chunk)
-        if requested_gpus : nprocs.append(min(requested_gpus,  free_gpus)  / gpu_chunk)
-        if requested_lfs  : nprocs.append(min(requested_lfs,   free_lfs)   / lfs_chunk)
-        if requested_mem  : nprocs.append(min(requested_mem,   free_mem)   / mem_chunk)
+        if requested_cores:
+            alloc_cores = min(requested_cores, free_cores)
+            num_procs['cores'] = alloc_cores / core_chunk
 
-        # Find min number of procs determined across lfs, cores, gpus
-        nprocs = min(nprocs)
+        if requested_gpus:
+            alloc_gpus = min(requested_gpus, free_gpus)
+            num_procs['gpus'] = alloc_gpus / gpu_chunk
 
-        # Find normalized lfs, cores and gpus
-        if requested_cores: alloc_cores = nprocs * core_chunk
-        if requested_gpus : alloc_gpus  = nprocs * gpu_chunk
-        if requested_lfs  : lfs         = nprocs * lfs_chunk
-        if requested_mem  : mem         = nprocs * mem_chunk
+        if requested_lfs:
+            alloc_lfs = min(requested_lfs, free_lfs)
+            num_procs['lfs'] = alloc_lfs / lfs_chunk
+
+        if requested_mem:
+            alloc_mem = min(requested_mem, free_mem)
+            num_procs['mem'] = alloc_mem / mem_chunk
+
+
+        # Find normalized cores, gpus and lfs
+        if requested_cores: alloc_cores = num_procs['cores'] * core_chunk
+        if requested_gpus : alloc_gpus  = num_procs['gpus']  * gpu_chunk
+        if requested_lfs  : lfs         = num_procs['lfs']   * lfs_chunk
+        if requested_mem  : mem         = num_procs['mem']   * mem_chunk
+
+        self._log.debug('alc : %s %s %s %s', alloc_cores, alloc_gpus, lfs, mem)
 
         # now dig out the core and gpu IDs.
         if requested_cores:
@@ -321,7 +369,6 @@ class Continuous(AgentSchedulingComponent):
         return cores, gpus, lfs, mem
 
 
-
     # --------------------------------------------------------------------------
     #
     def _get_node_maps(self, cores, gpus, threads_per_proc):
@@ -338,7 +385,7 @@ class Continuous(AgentSchedulingComponent):
 
         # make sure the core sets can host the requested number of threads
         assert(not len(cores) % threads_per_proc)
-        n_procs = len(cores) / threads_per_proc
+        n_procs =  len(cores) / threads_per_proc
 
         idx = 0
         for p in range(n_procs):
@@ -362,7 +409,7 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _alloc_nompi(self, cud):
+    def _alloc_nompi(self, unit):
         """
         Find a suitable set of cores and gpus *within a single node*.
 
@@ -370,6 +417,9 @@ class Continuous(AgentSchedulingComponent):
         cud: Compute Unit description. Needs to specify at least one CPU
         process and one thread per CPU process, or one GPU process.
         """
+
+        uid = unit['uid']
+        cud = unit['description']
 
         # dig out the allocation request details
         lfs_chunk   = cud['lfs_per_process']
@@ -386,15 +436,11 @@ class Continuous(AgentSchedulingComponent):
            total_lfs   > self._lrms_lfs_per_node['size'] or \
            total_mem   > self._lrms_mem_per_node:
 
-            txt  = 'Non-mpi unit does not fit onto single node. \n'
-            txt += 'requested cores=%s; available cores=%s \n' % (
-                   total_cores, self._lrms_cores_per_node)
-            txt += 'requested gpus=%s; available gpus=%s \n' % (
-                   total_gpus, self._lrms_gpus_per_node)
-            txt += 'requested lfs=%s; available lfs=%s' % (
-                   total_lfs, self._lrms_lfs_per_node['size'])
-            txt += 'requested mem=%s; available mem=%s' % (
-                   total_mem, self._lrms_mem_per_node)
+            txt  = 'Non-mpi unit %s does not fit onto node \n' % uid
+            txt += '   cores: %s >? %s \n' % (total_cores, self._lrms_cores_per_node)
+            txt += '   gpus : %s >? %s \n' % (total_gpus,  self._lrms_gpus_per_node)
+            txt += '   lfs  : %s >? %s \n' % (total_lfs,   self._lrms_lfs_per_node)
+            txt += '   mem  : %s >? %s'    % (total_mem,   self._lrms_mem_per_node)
             raise ValueError(txt)
 
         # ok, we can go ahead and try to find a matching node
@@ -403,6 +449,7 @@ class Continuous(AgentSchedulingComponent):
         cores     = list()
         gpus      = list()
         lfs       = None
+        mem       = None
         tag       = cud.get('tag')
 
         for node in self.nodes:  # FIXME optimization: iteration start
@@ -438,8 +485,8 @@ class Continuous(AgentSchedulingComponent):
                 break
 
         # If we did not find any node to host this request, return `None`
-        if not cores and not gpus:
-            return None        
+        if not node_name:
+            return None
 
         # We have to communicate to the launcher where exactly processes are to
         # be placed, and what cores are reserved for application threads.  See
@@ -459,12 +506,12 @@ class Continuous(AgentSchedulingComponent):
                  'gpus_per_node'  : self._lrms_gpus_per_node,
                  'lfs_per_node'   : self._lrms_lfs_per_node,
                  'mem_per_node'   : self._lrms_mem_per_node,
-                 'lm_info'        : self._lrms_lm_info, 
+                 'lm_info'        : self._lrms_lm_info,
                  'nodes'          : [{'name'    : node_name,
                                       'uid'     : node_uid,
                                       'core_map': core_map,
                                       'gpu_map' : gpu_map,
-                                      'lfs'     : {'size': lfs, 
+                                      'lfs'     : {'size': lfs,
                                                    'path': lfs_path},
                                       'mem'     : mem
                                       }]}
@@ -474,7 +521,7 @@ class Continuous(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     #
-    def _alloc_mpi(self, cud):
+    def _alloc_mpi(self, unit):
         """
         Find an available set of slots, potentially across node boundaries.  By
         default, we only allow for partial allocations on the first and last
@@ -490,15 +537,15 @@ class Continuous(AgentSchedulingComponent):
         spawn the requested number of threads on the respective node.
         """
 
+        uid = unit['uid']
+        cud = unit['description']
+
         # dig out the allocation request details
         requested_procs  = cud['cpu_processes']
         threads_per_proc = cud['cpu_threads']
         requested_gpus   = cud['gpu_processes']
         lfs_per_process  = cud['lfs_per_process']
         mem_per_process  = cud['mem_per_process']
-
-        tag = cud.get('tag')
-        uid = cud.get('uid')
 
         # make sure that processes are at least single-threaded
         if not threads_per_proc:
@@ -538,21 +585,22 @@ class Continuous(AgentSchedulingComponent):
             raise ValueError('too much memory requested')
 
         # set conditions to find the first matching node
-        tag           = cud.get('tag')
         is_first      = True
         is_last       = False
         alloced_cores = 0
         alloced_gpus  = 0
         alloced_lfs   = 0
         alloced_mem   = 0
+        tag           = cud.get('tag')
 
-        slots = {'cores_per_node': self._lrms_cores_per_node,
+        slots = {'nodes'         : list(),
+                 'cores_per_node': self._lrms_cores_per_node,
                  'gpus_per_node' : self._lrms_gpus_per_node,
                  'lfs_per_node'  : self._lrms_lfs_per_node,
                  'mem_per_node'  : self._lrms_mem_per_node,
                  'lm_info'       : self._lrms_lm_info,
-                 'nodes'         : list(),
-                 }
+                }
+
 
         # start the search
         for node in self.nodes:
@@ -645,13 +693,15 @@ class Continuous(AgentSchedulingComponent):
                                    'uid'     : node_uid,
                                    'core_map': core_map,
                                    'gpu_map' : gpu_map,
-                                   'lfs'     : {'size': lfs, 
+                                   'lfs'     : {'size': lfs,
                                                 'path': lfs_path},
                                    'mem'     : mem})
+
             alloced_cores += len(cores)
             alloced_gpus  += len(gpus)
             alloced_lfs   += lfs
             alloced_mem   += mem
+
             is_first       = False
 
             # or maybe don't continue the search if we have in fact enough!
