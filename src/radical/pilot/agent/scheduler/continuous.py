@@ -29,7 +29,7 @@ from .base import AgentSchedulingComponent
 # to the node list of the class. The lfs requirement will be obtained from the
 # cud in the alloc_nompi and alloc_mpi methods. Using the availability and
 # requirement, the _find_resources method will return the core and gpu ids.
-# 
+#
 # Expected DS of the nodelist
 # self.nodes = [{
 #                   'name'    : 'node_1',
@@ -161,6 +161,7 @@ class Continuous(AgentSchedulingComponent):
                 smt = self._lrms_info.get('smt', 1)
 
                 # only socket `1` is affected at the moment
+              # for s in [0, 1]:
                 for s in [1]:
                     for i in range(smt):
                         idx = s * 21 * smt + i
@@ -196,7 +197,7 @@ class Continuous(AgentSchedulingComponent):
         # allocation worked!  If the unit was tagged, store the node IDs for
         # this tag, so that later units can reuse that information
         tag = unit['description'].get('tag')
-        if tag: 
+        if tag:
             nodes = unit['slots']['nodes']
             self._tag_history[tag] = [node['uid'] for node in nodes]
 
@@ -259,7 +260,7 @@ class Continuous(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     def _find_resources(self, node, requested_cores, requested_gpus,
-                        requested_lfs, requested_mem, core_chunk=0, 
+                        requested_lfs, requested_mem, core_chunk=0,
                         partial=False, lfs_chunk=0, gpu_chunk=0, mem_chunk=0):
         '''
         Find up to the requested number of free cores and gpus in the node.
@@ -505,12 +506,12 @@ class Continuous(AgentSchedulingComponent):
                  'gpus_per_node'  : self._lrms_gpus_per_node,
                  'lfs_per_node'   : self._lrms_lfs_per_node,
                  'mem_per_node'   : self._lrms_mem_per_node,
-                 'lm_info'        : self._lrms_lm_info, 
+                 'lm_info'        : self._lrms_lm_info,
                  'nodes'          : [{'name'    : node_name,
                                       'uid'     : node_uid,
                                       'core_map': core_map,
                                       'gpu_map' : gpu_map,
-                                      'lfs'     : {'size': lfs, 
+                                      'lfs'     : {'size': lfs,
                                                    'path': lfs_path},
                                       'mem'     : mem
                                       }]}
@@ -582,10 +583,6 @@ class Continuous(AgentSchedulingComponent):
 
         if mem_per_process > mem_per_node:
             raise ValueError('too much memory requested')
-
-        if requested_cores > cores_per_node:
-            raise ValueError('Number of threads greater than that available on a node')
-
 
         # set conditions to find the first matching node
         is_first      = True
@@ -696,7 +693,7 @@ class Continuous(AgentSchedulingComponent):
                                    'uid'     : node_uid,
                                    'core_map': core_map,
                                    'gpu_map' : gpu_map,
-                                   'lfs'     : {'size': lfs, 
+                                   'lfs'     : {'size': lfs,
                                                 'path': lfs_path},
                                    'mem'     : mem})
 

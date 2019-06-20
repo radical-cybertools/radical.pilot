@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 
+import os
 import logging
 import pprint
 import threading
@@ -215,6 +216,13 @@ class AgentSchedulingComponent(rpu.Component):
                                     ru.ID_CUSTOM)
 
         rpu.Component.__init__(self, cfg, session)
+
+
+        tmp = os.environ.get('RP_UNIFORM_WORKLOAD', '').lower()
+        if tmp in ['true', 'yes', '1']:
+            self._uniform_wl = True
+        else:
+            self._uniform_wl = False
 
 
     # --------------------------------------------------------------------------
@@ -631,6 +639,10 @@ class AgentSchedulingComponent(rpu.Component):
                 # remove it from the wait queue
                 with self._wait_lock:
                     self._wait_pool.remove(unit)
+
+            else:
+                if self._uniform_wl:
+                    break
 
         # return True to keep the cb registered
         return True

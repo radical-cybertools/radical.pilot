@@ -20,13 +20,6 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 2
-    },
-
-    "local.localhost_orte" : {
-        "project"  : null,
-        "queue"    : null,
-        "schema"   : null,
         "cores"    : 64
     },
 
@@ -34,7 +27,14 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 2
+        "cores"    : 64
+    },
+
+    "local.localhost_prte" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 64
     },
 
     "local.localhost_anaconda" : {
@@ -268,19 +268,18 @@
 	"cores"        : 72
     },
 
-    "local.summit" : {
-        "project"  : "BIP178",
-        "queue"    : "batch",
-        "schema"   : "loccal",
-        "cores"    : 84,
-        "gpus"     : 12
-    },
-
     "ornl.summit" : {
         "project"  : "BIP178",
         "queue"    : "batch",
         "schema"   : "local",
-        "cores"    : 420
+        "cores"    : 4200
+    },
+
+    "ornl.summit_prte" : {
+        "project"  : "BIP178",
+        "queue"    : "batch",
+        "schema"   : "local",
+        "cores"    : 4200
     },
 
     "ornl.titan" : {
