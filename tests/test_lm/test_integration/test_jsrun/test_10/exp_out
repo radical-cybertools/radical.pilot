@@ -1,0 +1,28 @@
+########################################################################
+
+*** MPI Ranks: 6, OpenMP Threads: 4, GPUs per Resource Set: 1 ***
+========================================================================
+MPI Rank 000, OMP_thread 00 on HWThread 000 of Node  - RT_GPU_id 0 : GPU_id 0 
+MPI Rank 000, OMP_thread 01 on HWThread 004 of Node  - RT_GPU_id 0 : GPU_id 0 
+MPI Rank 000, OMP_thread 02 on HWThread 008 of Node  - RT_GPU_id 0 : GPU_id 0 
+MPI Rank 000, OMP_thread 03 on HWThread 012 of Node  - RT_GPU_id 0 : GPU_id 0 
+MPI Rank 001, OMP_thread 00 on HWThread 016 of Node  - RT_GPU_id 0 : GPU_id 1 
+MPI Rank 001, OMP_thread 01 on HWThread 020 of Node  - RT_GPU_id 0 : GPU_id 1 
+MPI Rank 001, OMP_thread 02 on HWThread 024 of Node  - RT_GPU_id 0 : GPU_id 1 
+MPI Rank 001, OMP_thread 03 on HWThread 028 of Node  - RT_GPU_id 0 : GPU_id 1 
+MPI Rank 002, OMP_thread 00 on HWThread 032 of Node  - RT_GPU_id 0 : GPU_id 2 
+MPI Rank 002, OMP_thread 01 on HWThread 036 of Node  - RT_GPU_id 0 : GPU_id 2 
+MPI Rank 002, OMP_thread 02 on HWThread 040 of Node  - RT_GPU_id 0 : GPU_id 2 
+MPI Rank 002, OMP_thread 03 on HWThread 044 of Node  - RT_GPU_id 0 : GPU_id 2 
+MPI Rank 003, OMP_thread 00 on HWThread 048 of Node  - RT_GPU_id 0 : GPU_id 3 
+MPI Rank 003, OMP_thread 01 on HWThread 052 of Node  - RT_GPU_id 0 : GPU_id 3 
+MPI Rank 003, OMP_thread 02 on HWThread 056 of Node  - RT_GPU_id 0 : GPU_id 3
+MPI Rank 003, OMP_thread 03 on HWThread 060 of Node  - RT_GPU_id 0 : GPU_id 3 
+MPI Rank 004, OMP_thread 00 on HWThread 064 of Node  - RT_GPU_id 0 : GPU_id 4 
+MPI Rank 004, OMP_thread 01 on HWThread 068 of Node  - RT_GPU_id 0 : GPU_id 4 
+MPI Rank 004, OMP_thread 02 on HWThread 072 of Node  - RT_GPU_id 0 : GPU_id 4 
+MPI Rank 004, OMP_thread 03 on HWThread 076 of Node  - RT_GPU_id 0 : GPU_id 4 
+MPI Rank 005, OMP_thread 00 on HWThread 088 of Node  - RT_GPU_id 0 : GPU_id 5 
+MPI Rank 005, OMP_thread 01 on HWThread 092 of Node  - RT_GPU_id 0 : GPU_id 5 
+MPI Rank 005, OMP_thread 02 on HWThread 096 of Node  - RT_GPU_id 0 : GPU_id 5 
+MPI Rank 005, OMP_thread 03 on HWThread 100 of Node  - RT_GPU_id 0 : GPU_id 5 

@@ -10,7 +10,7 @@ import radical.utils as ru
 from .base import LRMS
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Fork(LRMS):
 
@@ -38,13 +38,16 @@ class Fork(LRMS):
         # if cores_per_node is set in the agent config, we slice the number of
         # cores into that many virtual nodes.  cpn defaults to requested_cores,
         # to preserve the previous behavior (1 node).
-        self.cores_per_node = self._cfg.get('cores_per_node',
-                                            self.requested_cores)
+        self.cores_per_node = self._cfg.get('cores_per_node', self.requested_cores)
         self.gpus_per_node  = self._cfg.get('gpus_per_node', 0)
         self.mem_per_node   = self._cfg.get('mem_per_node',  0)
 
-        self.lfs_per_node   = {'path': self._cfg.get('lfs_path_per_node', ''),
-                               'size': self._cfg.get('lfs_size_per_node', 0)}
+        self.lfs_per_node   = {'path' : ru.expand_env(
+                                           self._cfg.get('lfs_path_per_node')),
+                               'size' :    self._cfg.get('lfs_size_per_node', 0)
+                              }
+        self._log.debug('=== req: %d', self.requested_cores)
+        self._log.debug('=== cpn: %d', self.cores_per_node)
 
         if not self.cores_per_node:
             self.cores_per_node = 1

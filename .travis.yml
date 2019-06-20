@@ -1,30 +1,64 @@
 
 language: python
-python:   "2.7"
+sudo: disabled
+
+python:
+  - "2.7"
+
+branches:
+  - feature/lm_tests
+
+os:
+  - linux
+
+git:
+  depth: 1
+
+env:
+  global:
+    - RADICAL_PILOT_DBURL=mongodb://rct:rct_test@one.radical-project.org/rct_test
+    - RADICAL_PILOT_TEST_DBNAME=rct_test
+    - LOC=/home/travis/virtualenv/python2.7  # Location where VE is created on travis
+    - CMD1="coverage run -m pytest -vvv tests/;flake8 tests/;pylint tests/"
+    - CMD2="flake8 --config=.flake8 $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/;flake8 --config=.flake8 $LOC/lib/python2.7/site-packages/radical/pilot/agent/rm/;"
+    - CMD3="pylint $LOC/lib/python2.7/site-packages/radical/pilot/agent/lm/;pylint $LOC/lib/python2.7/site-packages/radical/pilot/agent/rm/"
+    - COVERAGE=false
+    - CODECOV_TOKEN="c7e0d993-d31a-4d39-8ffa-07c30ea73e48"
+  matrix:
+    - MAIN_CMD=$CMD1 COVERAGE=true
+    - MAIN_CMD=$CMD2
+    - MAIN_CMD=$CMD3
 
 before_install:
   - uname -a
   - ulimit -a
   - python -V
-  - pip install pytest coverage codecov flake8
 
+# command to install dependencies
 install:
   - pip install .
+  - pip install coverage
+  - pip install flake8
+  - pip install pylint
+  - pip install codecov
+
 
 script:
-  - export RADICAL_PILOT_TEST_DBNAME=rct_test
-  - python setup.py test
+  - echo $MAIN_CMD
+  - eval $MAIN_CMD
+
+after_success:
+  - |
+    if [[ $COVERAGE == 'true' ]]; then \
+      coverage combine; \
+      coverage xml; \
+      coverage report; \
+      curl -s https://codecov.io/bash | bash
+    fi
 
 notifications:
   email:
     recipients: andre@merzky.net
     on_success: change
     on_failure: always
-
-after_success:
-  - after_success:
-      - coverage combine; \
-        coverage xml; \
-        coverage report;
-
 

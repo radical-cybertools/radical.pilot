@@ -352,25 +352,21 @@ class Agent_0(rpu.Worker):
                 #        work with a number of launch methods.  Can the
                 #        offset computation be moved to the LRMS?
                 ls_name = "%s/%s.sh" % (os.getcwd(), sa)
-                slots = {
-                  'cpu_processes' : 1,
-                  'cpu_threads'   : 1,
-                  'gpu_processes' : 0,
-                  'gpu_threads'   : 0,
-                # 'nodes'         : [[node[0], node[1], [[0]], []]],
-                  'nodes'         : [{'name'    : node[0], 
-                                     'uid'     : node[1],
-                                     'core_map': [[0]],
-                                     'gpu_map' : [],
-                                     'lfs'     : {'path': '/tmp', 'size': 0}
-                                    }],
-                  'cores_per_node': self._cfg['lrms_info']['cores_per_node'],
-                  'gpus_per_node' : self._cfg['lrms_info']['gpus_per_node'],
-                  'lm_info'       : self._cfg['lrms_info']['lm_info']
-                }
+                slots   = copy.deepcopy(self._cfg['lrms_info'])
+                slots['cpu_processes'] = 1
+                slots['cpu_threads'  ] = 1
+                slots['gpu_processes'] = 0
+                slots['gpu_threads'  ] = 0
+                slots['nodes'        ] = [{'name'    : node[0],
+                                           'uid'     : node[1],
+                                           'core_map': [[0]],
+                                           'gpu_map' : [],
+                                           'lfs'     : {'path': '/tmp', 'size': 0}
+                                          }]
                 agent_cmd = {
                         'uid'          : sa,
                         'slots'        : slots,
+                        'unit_sandbox' : os.getcwd(),
                         'description'  : {
                             'cpu_processes' : 1,
                             'executable'    : "/bin/sh",
