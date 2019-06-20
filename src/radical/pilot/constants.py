@@ -91,6 +91,7 @@ OpenMP         = 'OpenMP'
 GPU            = 'GPU'
 GPU_MPI        = 'GPU_MPI'
 GPU_OpenMP     = 'GPU_OpenMP'
+
 #
 # Defaults
 #
