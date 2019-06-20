@@ -189,7 +189,7 @@ class Popen(AgentExecutingComponent) :
             # FIXME: this switch is insufficient for mixed units (MPI/OpenMP)
             if cpt == 'MPI': launcher = self._mpi_launcher
             else           : launcher = self._task_launcher
-            
+
             if not launcher:
                 raise RuntimeError("no launcher (process type = %s)" % cpt)
 
