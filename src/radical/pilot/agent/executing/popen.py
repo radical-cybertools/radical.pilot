@@ -223,8 +223,7 @@ class Popen(AgentExecutingComponent) :
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            if cu.get('slots'):
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
 
