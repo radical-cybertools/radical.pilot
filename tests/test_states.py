@@ -58,7 +58,7 @@ def test_unit_state_value():
 # ------------------------------------------------------------------------------
 #
 def test_unit_state_collapse():
-    from radical.pilot.states import _unit_state_collapse, _unit_state_values
+    from radical.pilot.states import _unit_state_collapse
     states = ['AGENT_STAGING_OUTPUT',
               'AGENT_EXECUTING_PENDING',
               'UMGR_SCHEDULING',
