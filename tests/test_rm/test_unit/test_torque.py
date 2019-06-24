@@ -20,9 +20,8 @@ except ImportError:
 @mock.patch('radical.utils.raise_on')
 @mock.patch('hostlist.expand_hostlist', return_value=['nodes1', 'nodes1'])
 def test_configure(mocked_init, mocked_raise_on, mocked_expand_hoslist):
-    '''
-    Test 1 no config file
-    '''
+    
+    # Test 1 no config file
     os.environ['PBS_NODEFILE'] = 'nodefile.smic3'
     os.environ['PBS_NCPUS'] = '4'
     os.environ['PBS_NUM_PPN'] = '24'
@@ -67,7 +66,7 @@ def test_configure(mocked_init, mocked_raise_on, mocked_expand_hoslist):
 @mock.patch('hostlist.expand_hostlist', return_value=['nodes1', 'nodes1'])
 def test_configure_error(mocked_init, mocked_raise_on, mocked_expand_hoslist):
 
-    # Test 1 no config file check nodelist
+    # Test 1 no config file check nodefile
     if 'PBS_NODEFILE' in os.environ:
         del os.environ['PBS_NODEFILE']
     os.environ['PBS_NCPUS'] = '2'
