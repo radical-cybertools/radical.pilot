@@ -510,7 +510,7 @@ class AgentSchedulingComponent(rpu.Component):
         gpu_maps = list()
         for slot in unit['slots']:
             if slot['gpu_map'] not in gpu_maps:
-            gpu_maps.append(slot['gpu_map'])
+                gpu_maps.append(slot['gpu_map'])
         if len(gpu_maps) == 1:
             # uniform GPU requirements
             unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = \
