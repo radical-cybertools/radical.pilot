@@ -22,8 +22,8 @@ except ImportError:
 def test_configure(mocked_init, mocked_raise_on, mocked_expand_hoslist):
     # Test 1 no config file
     os.environ['PBS_NODEFILE'] = 'nodefile.smic3'
-    os.environ['PBS_NCPUS'] = '4'
-    os.environ['PBS_NUM_PPN'] = '24'
+    os.environ['PBS_NCPUS'] = '2'
+    os.environ['PBS_NUM_PPN'] = '4'
     os.environ['PBS_NUM_NODES'] = '2'
 
     component = Torque(cfg=None, session=None)
@@ -33,7 +33,7 @@ def test_configure(mocked_init, mocked_raise_on, mocked_expand_hoslist):
     component._configure()
 
     assert component.node_list == [['nodes1', 'nodes1']]
-    assert component.cores_per_node == 24
+    assert component.cores_per_node == 4
     assert component.gpus_per_node == 0
     assert component.lfs_per_node == {'path': None, 'size': 0}
 
@@ -46,14 +46,14 @@ def test_configure(mocked_init, mocked_raise_on, mocked_expand_hoslist):
     component = Torque(cfg=None, session=None)
     component.name = 'Torque'
     component._log = ru.Logger('dummy')
-    component._cfg = {'cores_per_node': 24,
+    component._cfg = {'cores_per_node': 4,
                       'gpus_per_node': 1,
                       'lfs_path_per_node': 'test/',
                       'lfs_size_per_node': 100}
     component.lm_info = {'cores_per_node': None}
     component._configure()
     assert component.node_list == [['nodes1', 'nodes1']]
-    assert component.cores_per_node == 24
+    assert component.cores_per_node == 4
     assert component.gpus_per_node == 1
     assert component.lfs_per_node == {'path': 'test/', 'size': 100}
 
