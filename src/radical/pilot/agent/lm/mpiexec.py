@@ -14,9 +14,9 @@ class MPIExec(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, session)
+        LaunchMethod.__init__(self, name, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -70,10 +70,10 @@ class MPIExec(LaunchMethod):
         # entries can have the same node names, we *add* new information.
         host_slots = dict()
         for node in slots['nodes']:
-            node_name = node[0]
+            node_name = node['name']
             if node_name not in host_slots:
                 host_slots[node_name] = 0
-            host_slots[node_name] += len(node[2]) + len(node[3])  # cpu + gpu
+            host_slots[node_name] += len(node['core_map']) + len(node['gpu_map'])  # cpu + gpu
 
         # If we have a CU with many cores, and the compression didn't work
         # out, we will create a hostfile and pass that as an argument

@@ -29,7 +29,10 @@
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
         "cores_per_node"              : 8,
-        "gpus_per_node"               : 1
+        "gpus_per_node"               : 1,
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 1024,
+        "memory_per_node"             : 4096
     },
 
     "localhost_aprun": {
@@ -110,6 +113,8 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda",
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 1024,
         "cores_per_node"              : 8,
         "gpus_per_node"               : 1
     },
@@ -138,7 +143,9 @@
         "mpi_launch_method"           : "MPIEXEC",
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "default"
+        "python_dist"                 : "default",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1
     },
 
     "localhost_spark_anaconda": {
@@ -165,7 +172,9 @@
         "mpi_launch_method"           : "MPIEXEC",
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "anaconda"
+        "python_dist"                 : "anaconda",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1
     },
 
     "localhost_orte": {
@@ -183,20 +192,65 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "default_remote_workdir"      : "$HOME",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1,
         "lrms"                        : "FORK",
         "agent_type"                  : "multicore",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
+        "agent_scheduler"             : "HOMBRE",
+        "agent_spawner"               : "SHELLFS",
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
+     #  "virtenv"                     : "$HOME/radical/radical.pilot.merge/ve/",
         "python_dist"                 : "default",
-        "pre_bootstrap_0"             : ["export OMPI=/home/merzky/radical/ompi/installed/2017_09_18_539f71d",
-                                         "export PATH=$OMPI/bin/:$PATH",
-                                         "export LD_LIBRARY_PATH=$OMPI/lib/:$LD_LIBRARY_PATH",
-                                         "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"]
+        "pre_bootstrap_0"             : [
+            "export OMPI_HOME=$HOME/radical/ompi/src/openmpi-3.0.2/install/",
+            "export PATH=$OMPI_HOME/bin/:$PATH",
+            "export LD_LIBRARY_PATH=$OMPI_HOME/lib/:$LD_LIBRARY_PATH",
+            "export PKG_CONFIG_PATH=$OMPI_HOME/share/pkgconfig/:$PKG_CONFIG_PATH"
+        ],
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1
+    },
+
+    "localhost_prte": {
+        "description"                 : "Your local machine.",
+        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
+        "schemas"                     : ["local", "ssh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "ssh://localhost/",
+            "filesystem_endpoint"     : "sftp://localhost/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_remote_workdir"      : "$HOME",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1,
+        "lrms"                        : "FORK",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "HOMBRE",
+        "agent_spawner"               : "SHELLFS",
+        "agent_launch_method"         : "PRTE",
+        "task_launch_method"          : "PRTE",
+        "mpi_launch_method"           : "PRTE",
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+      # "virtenv"                     : "$HOME/radical/radical.pilot.merge/ve/",
+        "python_dist"                 : "default",
+        "pre_bootstrap_0"             : [
+            "export PRTE_HOME=$HOME/radical//prte/install/",
+            "export PATH=$PRTE_HOME/bin/:$PATH",
+            "export LD_LIBRARY_PATH=$PRTE_HOME/lib/:$LD_LIBRARY_PATH",
+            "export PKG_CONFIG_PATH=$PRTE_HOME/share/pkgconfig/:$PKG_CONFIG_PATH"
+        ],
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1
     },
 
     "localhost_ortelib": {
@@ -214,6 +268,8 @@
            "filesystem_endpoint"     : "file://localhost/"
         },
         "default_remote_workdir"      : "$HOME",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1,
         "lrms"                        : "FORK",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
@@ -227,7 +283,9 @@
         "pre_bootstrap_0"             : ["export OMPI=/home/merzky/radical/ompi/installed/2017_09_18_539f71d",
                                          "export PATH=$OMPI/bin/:$PATH",
                                          "export LD_LIBRARY_PATH=$OMPI/lib/:$LD_LIBRARY_PATH",
-                                         "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"]
+                                         "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"],
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1
   }
 }
 

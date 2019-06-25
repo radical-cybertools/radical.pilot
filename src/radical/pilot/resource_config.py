@@ -4,8 +4,10 @@ __license__   = "MIT"
 import os
 import radical.utils
 
-import saga.attributes  as attributes
+import radical.saga.attributes as attributes
+
 from radical.pilot.exceptions import * 
+
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
@@ -47,6 +49,8 @@ HEALTH_CHECK                = 'health_check'
 PYTHON_DISTRIBUTION         = 'python_dist'
 VIRTENV_DISTRIBUTION        = 'virtenv_dist'
 SAGA_JD_SUPPLEMENT          = 'saga_jd_supplement'
+LFS_PATH_PER_NODE           = 'lfs_path_per_node'
+LFS_SIZE_PER_NODE           = 'lfs_size_per_node'
 
 # ------------------------------------------------------------------------------
 #
@@ -255,6 +259,8 @@ class ResourceConfig(attributes.Attributes):
         self._attributes_register(PYTHON_DISTRIBUTION    ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(VIRTENV_DISTRIBUTION   ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(SAGA_JD_SUPPLEMENT     ,  None, attributes.DICT  , attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(LFS_PATH_PER_NODE      ,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register(LFS_SIZE_PER_NODE      ,  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
 
         self['label'] = label
 

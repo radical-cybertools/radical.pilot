@@ -46,22 +46,36 @@ LOG_PUBSUB                     = 'log_pubsub'
 #
 FREE = 0
 BUSY = 1
+DOWN = 2
+
+
+# -----------------------------------------------------------------------------
+#
+# definitions of metrics
+#
+UNIT_STATE           = 'UNIT_STATE'
+WAIT_QUEUE_SIZE      = 'WAIT_QUEUE_SIZE'
+UMGR_METRICS         = [UNIT_STATE, 
+                        WAIT_QUEUE_SIZE]
+
+PILOT_STATE          = 'PILOT_STATE'
+PMGR_METRICS         = [PILOT_STATE]
 
 
 # ------------------------------------------------------------------------------
 #
 # staging defines
 #
-COPY     = 'Copy'     # local cp
-LINK     = 'Link'     # local ln -s
-MOVE     = 'Move'     # local mv
-TRANSFER = 'Transfer' # saga remote transfer TODO: This might just be a special case of copy
-TARBALL  = 'Tarball'  # remote staging will be executed using a tarball.
+COPY     = 'Copy'      # local cp
+LINK     = 'Link'      # local ln -s
+MOVE     = 'Move'      # local mv
+TRANSFER = 'Transfer'  # saga remote transfer  TODO: special case of copy?
+TARBALL  = 'Tarball'   # remote staging will be executed using a tarball.
 
 #
 # Flags - inherit from RS where possible, add custom ones
 #
-import saga.filesystem as rsf
+import radical.saga.filesystem as rsf
 
 CREATE_PARENTS = rsf.CREATE_PARENTS  # Create parent directories if needed
 SKIP_FAILED    = 4096                # Don't stage out files if tasks failed

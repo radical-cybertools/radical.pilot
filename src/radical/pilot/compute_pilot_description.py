@@ -2,7 +2,8 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import saga.attributes as attributes
+
+import radical.saga.attributes as rsa
 
 
 # ------------------------------------------------------------------------------
@@ -17,6 +18,7 @@ SANDBOX           = 'sandbox'
 OUTPUT            = 'output'
 ERROR             = 'error'
 RUNTIME           = 'runtime'
+APP_COMM          = 'app_comm'
 CLEANUP           = 'cleanup'
 EXIT_ON_ERROR     = 'exit_on_error'
 _CONFIG           = '_config'
@@ -28,7 +30,7 @@ MEMORY            = 'memory'
 
 # ------------------------------------------------------------------------------
 #
-class ComputePilotDescription(attributes.Attributes):
+class ComputePilotDescription(rsa.Attributes):
     """
     A ComputePilotDescription object describes the requirements and properties
     of a :class:`radical.pilot.Pilot` and is passed as a parameter to
@@ -112,6 +114,19 @@ class ComputePilotDescription(attributes.Attributes):
        [Type: `list`] [optional] The list of names of hosts where this pilot
        is allowed to start on.
 
+    .. data: app_comm
+
+       [Type: `list`] [optional] The list of names is interpreted as
+       communication channels to start within the pilot agent, for the purpose
+       of application communication, ie., that tasks running on that pilot are
+       able to use those channels to communicate amongst each other.
+
+       The names are expected to end in `_queue` or `_pubsub`, indicating the
+       type of channel to create.  Once created, tasks will find environment
+       variables of the name `RP_%s_IN` and `RP_%s_OUT`, where `%s` is replaced
+       with the given channel name (uppercased), and `IN/OUT` indicate the
+       respective endpoint addresses for the created channels
+
     .. data:: cleanup
 
        [Type: `bool`] [optional] If cleanup is set to True, the pilot will 
@@ -126,32 +141,34 @@ class ComputePilotDescription(attributes.Attributes):
     def __init__(self, from_dict=None):
 
         # initialize attributes
-        attributes.Attributes.__init__(self)
+        rsa.Attributes.__init__(self)
 
         # set attribute interface properties
         self._attributes_extensible  (False)
         self._attributes_camelcasing (True)
 
-        self._attributes_register    (RESOURCE,         None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (ACCESS_SCHEMA,    None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (RUNTIME,          None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (SANDBOX,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (CORES,            None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (GPUS,             None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (MEMORY,           None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (QUEUE,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (PROJECT,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register    (CANDIDATE_HOSTS,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        self._attributes_register    (EXIT_ON_ERROR,    None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
+        self._attributes_register    (RESOURCE,         None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (ACCESS_SCHEMA,    None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (RUNTIME,          None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (APP_COMM,         None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
+        self._attributes_register    (SANDBOX,          None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (CORES,            None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (GPUS,             None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (MEMORY,           None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (QUEUE,            None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (PROJECT,          None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (CLEANUP,          None, rsa.BOOL,   rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (CANDIDATE_HOSTS,  None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
+        self._attributes_register    (EXIT_ON_ERROR,    None, rsa.BOOL,   rsa.SCALAR, rsa.WRITEABLE)
 
-        # Attributes not part of the published API
-        self._attributes_register    (_CONFIG,          None, attributes.ANY,    attributes.SCALAR, attributes.WRITEABLE)
+        # rsa not part of the published API
+        self._attributes_register    (_CONFIG,          None, rsa.ANY,    rsa.SCALAR, rsa.WRITEABLE)
 
         # explicitly set attrib defaults so they get listed and included via as_dict()
         self.set_attribute (RESOURCE,         None)
         self.set_attribute (ACCESS_SCHEMA,    None)
         self.set_attribute (RUNTIME,          None)
+        self.set_attribute (APP_COMM,         None)
         self.set_attribute (SANDBOX,          None)
         self.set_attribute (CORES,               0)
         self.set_attribute (GPUS,                0)

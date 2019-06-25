@@ -15,9 +15,9 @@ class RSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
+    def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, logger)
+        LaunchMethod.__init__(self, name, cfg, session)
 
         # Instruct the ExecWorkers to unset this environment variable.
         # Otherwise this will break nested RSH with SHELL spawner, i.e. when
@@ -57,10 +57,10 @@ class RSH(LaunchMethod):
             raise RuntimeError('insufficient information to launch via %s: %s'
                               % (self.name, slots))
 
-        if len(slots['nodes'] > 1):
+        if len(slots['nodes']) > 1:
             raise RuntimeError('rsh cannot run multinode units')
 
-        host = slots['nodes'][0][0]
+        host = slots['nodes'][0]['name']
 
         # Pass configured and available environment variables to the remote shell
         export_vars  = ' '.join(['%s=%s' % (var, os.environ[var]) 

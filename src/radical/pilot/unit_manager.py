@@ -12,7 +12,6 @@ import radical.utils as ru
 from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
-from . import types     as rpt
 
 from . import compute_unit_description as rpcud
 
@@ -94,7 +93,7 @@ class UnitManager(rpu.Component):
         self._closed      = False
         self._rec_id      = 0       # used for session recording
 
-        for m in rpt.UMGR_METRICS:
+        for m in rpc.UMGR_METRICS:
             self._callbacks[m] = dict()
 
         cfg = ru.read_json("%s/configs/umgr_%s.json" \
@@ -206,7 +205,7 @@ class UnitManager(rpu.Component):
         # FIXME: really?
         with self._cb_lock:
             self._callbacks = dict()
-            for m in rpt.UMGR_METRICS:
+            for m in rpc.UMGR_METRICS:
                 self._callbacks[m] = dict()
 
         self._log.info("Closed UnitManager %s." % self._uid)
@@ -354,7 +353,7 @@ class UnitManager(rpu.Component):
         # FIXME: we also pull for dead units.  That is not efficient...
         # FIXME: this needs to be converted into a tailed cursor in the update
         #        worker
-        units  = self._session._dbs.get_units(umgr_uid=self.uid)
+        units = self._session._dbs.get_units(umgr_uid=self.uid)
 
         for unit in units:
             if not self._update_unit(unit, publish=True, advance=False):
@@ -485,6 +484,8 @@ class UnitManager(rpu.Component):
                 unit_dict['state'] = s
                 self._units[uid]._update(unit_dict)
 
+                # we don't usually advance state at this point, but just keep up
+                # with state changes reported from elsewhere
                 if advance:
                     self.advance(unit_dict, s, publish=publish, push=False,
                                  prof=False)
@@ -497,7 +498,7 @@ class UnitManager(rpu.Component):
     def _call_unit_callbacks(self, unit_obj, state):
 
         with self._cb_lock:
-            for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
+            for cb_name, cb_val in self._callbacks[rpc.UNIT_STATE].iteritems():
 
                 self._log.debug('%s calls state cb %s for %s', 
                                 self.uid, cb_name, unit_obj.uid)
@@ -651,14 +652,14 @@ class UnitManager(rpu.Component):
         if len(pilot_ids) == 0:
             raise ValueError('cannot remove no pilots')
 
-        self._rep.info('<<add %d pilot(s)' % len(pilot_ids))
+        self._rep.info('<<rem %d pilot(s)' % len(pilot_ids))
 
         with self._pilots_lock:
 
             # sanity check, and keep pilots around for inspection
             for pid in pilot_ids:
                 if pid not in self._pilots:
-                    raise ValueError('pilot %s not added' % pid)
+                    raise ValueError('pilot %s not removed' % pid)
                 del(self._pilots[pid])
 
         # publish to the command channel for the scheduler to pick up
@@ -721,6 +722,9 @@ class UnitManager(rpu.Component):
 
             if not ud.executable:
                 raise ValueError('compute unit executable must be defined')
+
+            if ud.sandbox and ud.sandbox[0] == '/':
+                raise ValueError('compute unit sandbox must be relative.')
 
             unit = ComputeUnit(umgr=self, descr=ud)
             units.append(unit)
@@ -835,19 +839,17 @@ class UnitManager(rpu.Component):
                     if unit.state not in rps.FINAL:
                         uids.append(uid)
 
-        if not state:
-            states = rps.FINAL
-        elif isinstance(state, list):
-            states = state
-        else:
-            states = [state]
+        if   not state                  : states = rps.FINAL
+        elif not isinstance(state, list): states = [state]
+        else                            : states =  state
 
         # we simplify state check by waiting for the *earliest* of the given
         # states - if the unit happens to be in any later state, we are sure the
         # earliest has passed as well.
         check_state_val = rps._unit_state_values[rps.FINAL[-1]]
         for state in states:
-            check_state_val = min(check_state_val, rps._unit_state_values[state])
+            check_state_val = min(check_state_val,
+                                  rps._unit_state_values[state])
 
         ret_list = True
         if not isinstance(uids, list):
@@ -887,7 +889,7 @@ class UnitManager(rpu.Component):
                 # state(s), but rather check if it ever *has been* in any of
                 # those states
                 if unit.state not in rps.FINAL and \
-                    rps._unit_state_values[unit.state] <= check_state_val:
+                    rps._unit_state_values[unit.state] < check_state_val:
                     # this unit does not match the wait criteria
                     check_again.append(unit)
 
@@ -989,7 +991,7 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def register_callback(self, cb, metric=rpt.UNIT_STATE, cb_data=None):
+    def register_callback(self, cb, metric=rpc.UNIT_STATE, cb_data=None):
         """
         Registers a new callback function with the UnitManager.  Manager-level
         callbacks get called if the specified metric changes.  The default
@@ -1019,7 +1021,7 @@ class UnitManager(rpu.Component):
 
         # FIXME: the signature should be (self, metrics, cb, cb_data)
 
-        if  metric not in rpt.UMGR_METRICS :
+        if  metric not in rpc.UMGR_METRICS :
             raise ValueError ("Metric '%s' not available on the umgr" % metric)
 
         with self._cb_lock:
@@ -1033,11 +1035,11 @@ class UnitManager(rpu.Component):
     def unregister_callback(self, cb=None, metric=None):
 
 
-        if metric and metric not in rpt.UMGR_METRICS :
+        if metric and metric not in rpc.UMGR_METRICS :
             raise ValueError ("Metric '%s' not available on the umgr" % metric)
 
         if not metric:
-            metrics = rpt.UMGR_METRICS
+            metrics = rpc.UMGR_METRICS
         elif isinstance(metric, list):
             metrics = metric
         else:

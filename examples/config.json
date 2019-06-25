@@ -4,7 +4,7 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 32,
+        "cores"    : 1,
         "gpus"     : 2
     },
 
@@ -20,14 +20,21 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 2
+        "cores"    : 64
     },
 
-    "local.localhost_orte" : {
+    "local.localhost_ortelib" : {
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 2
+        "cores"    : 64
+    },
+
+    "local.localhost_prte" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 64
     },
 
     "local.localhost_anaconda" : {
@@ -49,27 +56,6 @@
         "queue"    : null,
         "schema"   : null,
         "cores"    : 2
-    },
-
-    "local.localhost_orte" : {
-        "project"  : null,
-        "queue"    : null,
-        "schema"   : null,
-        "cores"    : 2
-    },
-
-    "local.localhost_ortelib" : {
-        "project"  : null,
-        "queue"    : null,
-        "schema"   : null,
-        "cores"    : 2
-    },
-
-    "ncar.cheyenne_mpirun" : {
-        "project"  : "urtg0014",
-        "queue"    : "regular",
-        "schema"   : "fork",
-        "cores"    : 64
     },
 
     "ncsa.bw_orte" : {
@@ -161,6 +147,20 @@
         "queue"    : "workq",
         "schema"   : "gsissh",
         "cores"    : 80
+    },
+
+    "princeton.tiger_cpu" : {
+        "project"  : "geo",
+        "queue"    : "cpu",
+        "schema"   : "ssh",
+        "cores"    : 40
+    },
+
+    "princeton.tiger_gpu" : {
+        "project"  : "geo",
+        "queue"    : "gpu",
+        "schema"   : "local",
+        "cores"    : 56
     },
 
     "xsede.stampede" : {
@@ -261,7 +261,35 @@
         "cores"    : 64
     },
 
+    "ncar.cheyenne": {
+	"project"      : "URTG0014",
+	"queue"        : "regular",
+	"schema"       : "local",
+	"cores"        : 72
+    },
+
+    "ornl.summit" : {
+        "project"  : "BIP178",
+        "queue"    : "batch",
+        "schema"   : "local",
+        "cores"    : 4200
+    },
+
+    "ornl.summit_prte" : {
+        "project"  : "BIP178",
+        "queue"    : "batch",
+        "schema"   : "local",
+        "cores"    : 4200
+    },
+
     "ornl.titan" : {
+        "project"  : "BIP149",
+        "queue"    : "debug",
+        "schema"   : "local",
+        "cores"    : 160
+    },
+
+    "ornl.titan_aprun" : {
         "project"  : "BIP149",
         "queue"    : "debug",
         "schema"   : "local",
@@ -279,7 +307,7 @@
         "project"  : "BIP149",
         "queue"    : "debug",
         "schema"   : "local",
-        "cores"    : 64
+        "cores"    : 160
     },
 
     "ornl.titan_aprun"   : {

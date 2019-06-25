@@ -13,7 +13,6 @@ import radical.utils as ru
 from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
-from . import types     as rpt
 
 from . import compute_unit_description as cud
 
@@ -85,11 +84,11 @@ class ComputeUnit(object):
         self._callbacks        = dict()
         self._cb_lock          = threading.RLock()
 
-        for m in rpt.UMGR_METRICS:
+        for m in rpc.UMGR_METRICS:
             self._callbacks[m] = dict()
 
         # we always invke the default state cb
-        self._callbacks[rpt.UNIT_STATE][self._default_state_cb.__name__] = {
+        self._callbacks[rpc.UNIT_STATE][self._default_state_cb.__name__] = {
                 'cb'      : self._default_state_cb, 
                 'cb_data' : None}
 
@@ -158,11 +157,11 @@ class ComputeUnit(object):
                     'client_sandbox']:
 
             val = unit_dict.get(key, None)
-            if val != None:
+            if val is not None:
                 setattr(self, "_%s" % key, val)
 
         # invoke unit specific callbacks
-        for cb_name, cb_val in self._callbacks[rpt.UNIT_STATE].iteritems():
+        for cb_name, cb_val in self._callbacks[rpc.UNIT_STATE].iteritems():
 
             cb      = cb_val['cb']
             cb_data = cb_val['cb_data']
@@ -406,6 +405,17 @@ class ComputeUnit(object):
 
     # --------------------------------------------------------------------------
     #
+    @property
+    def metadata(self):
+        """
+        Returns the metadata field of the unit's description
+        """
+
+        return copy.deepcopy(self._descr.get('metadata'))
+
+
+    # --------------------------------------------------------------------------
+    #
     def register_callback(self, cb, cb_data=None):
         """
         Registers a callback function that is triggered every time the
@@ -424,7 +434,7 @@ class ComputeUnit(object):
         and 'cb_data' are passed along.
 
         """
-        self._umgr.register_callback(self.uid, rpt.UNIT_STATE, cb, cb_data)
+        self._umgr.register_callback(self.uid, rpc.UNIT_STATE, cb, cb_data)
 
 
     # --------------------------------------------------------------------------

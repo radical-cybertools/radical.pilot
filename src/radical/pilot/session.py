@@ -20,11 +20,15 @@ import copy
 import glob
 import threading
 
+
+import radical.saga                 as rs
+import radical.saga.utils.pty_shell as rsup
+
 import radical.utils        as ru
-import saga                 as rs
-import saga.utils.pty_shell as rsup
 
 from . import utils         as rpu
+from . import states        as rps
+from . import constants     as rpc
 
 from .resource_config import ResourceConfig
 from .db              import DBSession
@@ -55,7 +59,7 @@ class Session(rs.Session):
     #
     def __init__(self, dburl=None, uid=None, cfg=None, _connect=True):
         """
-        Creates a new session.  A new Session instance is created and 
+        Creates a new session.  A new Session instance is created and
         stored in the database.
 
         **Arguments:**
@@ -63,7 +67,7 @@ class Session(rs.Session):
               RP uses the environment variable RADICAL_PILOT_DBURL.  If that is
               not set, an error will be raises.
 
-            * **uid** (`string`): Create a session with this UID.  
+            * **uid** (`string`): Create a session with this UID.
               *Only use this when you know what you are doing!*
 
         **Returns:**
@@ -151,7 +155,7 @@ class Session(rs.Session):
 
         # fall back to config data where possible
         # sanity check on parameters
-        if not uid : 
+        if not uid :
             uid = self._cfg.get('session_id')
 
         if uid:
@@ -159,13 +163,13 @@ class Session(rs.Session):
             self._reconnected = True
         else:
             # generate new uid, reset all other ID counters
-            # FIXME: this will screw up counters for *concurrent* sessions, 
+            # FIXME: this will screw up counters for *concurrent* sessions,
             #        as the ID generation is managed in a process singleton.
             self._uid = ru.generate_id('rp.session',  mode=ru.ID_PRIVATE)
             ru.reset_id_counters(prefix='rp.session', reset_all_others=True)
 
-        if not self._cfg.get('session_id'): self._cfg['session_id'] = self._uid 
-        if not self._cfg.get('owner')     : self._cfg['owner']      = self._uid 
+        if not self._cfg.get('session_id'): self._cfg['session_id'] = self._uid
+        if not self._cfg.get('owner')     : self._cfg['owner']      = self._uid
         if not self._cfg.get('logdir')    : self._cfg['logdir']     = '%s/%s' \
                                                      % (os.getcwd(), self._uid)
         self._logdir = self._cfg['logdir']
@@ -188,7 +192,7 @@ class Session(rs.Session):
 
             if not dburl:
                 # we forgive missing dburl on reconnect, but not otherwise
-                raise RuntimeError("no database URL (set RADICAL_PILOT_DBURL)")  
+                raise RuntimeError("no database URL (set RADICAL_PILOT_DBURL)")
 
 
         self._dburl = ru.Url(dburl)
@@ -235,7 +239,7 @@ class Session(rs.Session):
 
                 # create recording path and record session
                 os.system('mkdir -p %s' % self._rec)
-                ru.write_json({'dburl': str(self.dburl)}, 
+                ru.write_json({'dburl': str(self.dburl)},
                               "%s/session.json" % self._rec)
                 self._log.info("recording session in %s" % self._rec)
 
@@ -243,7 +247,7 @@ class Session(rs.Session):
         # create/connect database handle
         try:
             self._dbs = DBSession(sid=self.uid, dburl=str(self._dburl),
-                                  cfg=self._cfg, logger=self._log, 
+                                  cfg=self._cfg, logger=self._log,
                                   connect=_connect)
 
             # from here on we should be able to close the session again
@@ -283,13 +287,13 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _atfork_prepare(self): 
+    def _atfork_prepare(self):
         pass
 
     def _atfork_parent(self) :
         pass
 
-    def _atfork_child(self)  : 
+    def _atfork_child(self)  :
         self._components = list()
         self._bridges    = list()
         self._to_close   = list()
@@ -387,8 +391,8 @@ class Session(rs.Session):
 
             for rc in rcs:
                 self._log.info("Load resource configurations for %s" % rc)
-                self._resource_configs[rc] = rcs[rc].as_dict() 
-                self._log.debug('read rcfg for %s (%s)', 
+                self._resource_configs[rc] = rcs[rc].as_dict()
+                self._log.debug('read rcfg for %s (%s)',
                         rc, self._resource_configs[rc].get('cores_per_node'))
 
         home         = os.environ.get('HOME', '')
@@ -413,9 +417,9 @@ class Session(rs.Session):
                                   policy='overwrite')
                 else:
                     # new config -- add as is
-                    self._resource_configs[rc] = rcs[rc].as_dict() 
+                    self._resource_configs[rc] = rcs[rc].as_dict()
 
-                self._log.debug('fix  rcfg for %s (%s)', 
+                self._log.debug('fix  rcfg for %s (%s)',
                         rc, self._resource_configs[rc].get('cores_per_node'))
 
         default_aliases = "%s/configs/resource_aliases.json" % module_path
@@ -436,17 +440,17 @@ class Session(rs.Session):
     def close(self, cleanup=False, terminate=True, download=False):
         """Closes the session.
 
-        All subsequent attempts access objects attached to the session will 
+        All subsequent attempts access objects attached to the session will
         result in an error. If cleanup is set to True (default) the session
         data is removed from the database.
 
         **Arguments:**
             * **cleanup** (`bool`): Remove session from MongoDB (implies * terminate)
-            * **terminate** (`bool`): Shut down all pilots associated with the session. 
+            * **terminate** (`bool`): Shut down all pilots associated with the session.
 
         **Raises:**
             * :class:`radical.pilot.IncorrectState` if the session is closed
-              or doesn't exist. 
+              or doesn't exist.
         """
 
         # close only once
@@ -496,7 +500,7 @@ class Session(rs.Session):
         self._prof.close()
 
         # support GC
-        for x in self._to_close: 
+        for x in self._to_close:
             try:    x.close()
             except: pass
         for x in self._to_stop:
@@ -633,7 +637,7 @@ class Session(rs.Session):
         This is a thin wrapper around `ru.Logger()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
         """
-        return ru.Logger(name=name, ns='radical.pilot', targets=['.'], 
+        return ru.Logger(name=name, ns='radical.pilot', targets=['.'],
                          path=self._logdir, level=level)
 
 
@@ -695,11 +699,11 @@ class Session(rs.Session):
     #
     def list_pilot_managers(self):
         """
-        Lists the unique identifiers of all :class:`radical.pilot.PilotManager` 
+        Lists the unique identifiers of all :class:`radical.pilot.PilotManager`
         instances associated with this session.
 
         **Returns:**
-            * A list of :class:`radical.pilot.PilotManager` uids 
+            * A list of :class:`radical.pilot.PilotManager` uids
               (`list` of `strings`).
         """
 
@@ -710,12 +714,12 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def get_pilot_managers(self, pmgr_uids=None):
-        """ 
+        """
         returns known PilotManager(s).
 
         **Arguments:**
 
-            * **pmgr_uids** [`string`]: 
+            * **pmgr_uids** [`string`]:
               unique identifier of the PilotManager we want
 
         **Returns:**
@@ -750,7 +754,7 @@ class Session(rs.Session):
     #
     def list_unit_managers(self):
         """
-        Lists the unique identifiers of all :class:`radical.pilot.UnitManager` 
+        Lists the unique identifiers of all :class:`radical.pilot.UnitManager`
         instances associated with this session.
 
         **Returns:**
@@ -764,12 +768,12 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def get_unit_managers(self, umgr_uids=None):
-        """ 
+        """
         returns known UnitManager(s).
 
         **Arguments:**
 
-            * **umgr_uids** [`string`]: 
+            * **umgr_uids** [`string`]:
               unique identifier of the UnitManager we want
 
         **Returns:**
@@ -804,7 +808,7 @@ class Session(rs.Session):
     # -------------------------------------------------------------------------
     #
     def add_resource_config(self, resource_config):
-        """Adds a new :class:`radical.pilot.ResourceConfig` to the PilotManager's 
+        """Adds a new :class:`radical.pilot.ResourceConfig` to the PilotManager's
            dictionary of known resources, or accept a string which points to
            a configuration file.
 
@@ -836,7 +840,7 @@ class Session(rs.Session):
 
             for rc in rcs:
                 self._log.info("load resource configurations for %s" % rc)
-                self._resource_configs[rc] = rcs[rc].as_dict() 
+                self._resource_configs[rc] = rcs[rc].as_dict()
 
         else:
             self._log.debug('add  rcfg for %s', resource_config.label)
@@ -882,7 +886,7 @@ class Session(rs.Session):
     #
     def fetch_profiles(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_profiles(self._uid, dburl=self.dburl, tgt=tgt, 
+        return rpu.fetch_profiles(self._uid, dburl=self.dburl, tgt=tgt,
                                   session=self)
 
 
@@ -890,7 +894,7 @@ class Session(rs.Session):
     #
     def fetch_logfiles(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_logfiles(self._uid, dburl=self.dburl, tgt=tgt, 
+        return rpu.fetch_logfiles(self._uid, dburl=self.dburl, tgt=tgt,
                                   session=self)
 
 
@@ -953,7 +957,7 @@ class Session(rs.Session):
                     sandbox_raw = rcfg.get('default_remote_workdir', "$PWD")
 
                 # If the sandbox contains expandables, we need to resolve those
-                # remotely.  
+                # remotely.
                 #
                 # NOTE: Note that this will only work for (gsi)ssh or shell
                 #       based access mechanisms
@@ -970,6 +974,9 @@ class Session(rs.Session):
                     elif 'fork'   in elems: js_url.schema = 'fork'
                     elif len(elems) == 1  : js_url.schema = 'fork'
                     else: raise Exception("invalid schema: %s" % js_url.schema)
+
+                    if js_url.schema == 'fork':
+                        js_url.hostname = 'localhost'
 
                     self._log.debug("rsup.PTYShell('%s')", js_url)
                     shell = rsup.PTYShell(js_url, self)
@@ -1054,9 +1061,14 @@ class Session(rs.Session):
 
         self.is_valid()
 
-        # we don't cache unit sandboxes, they are just a string concat.
+        # we don't cache unit sandboxes, they are just a string concats.
         pilot_sandbox = self._get_pilot_sandbox(pilot)
-        return "%s/%s/" % (pilot_sandbox, unit['uid'])
+        unit_sandbox  = unit['description'].get('sandbox')
+
+        if not unit_sandbox:
+            unit_sandbox = unit['uid']
+
+        return "%s/%s/" % (pilot_sandbox, unit_sandbox)
 
 
     # --------------------------------------------------------------------------
