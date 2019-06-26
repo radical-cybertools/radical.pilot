@@ -24,7 +24,7 @@ env:
     - DIFF=`git diff --name-only --diff-filter=b $OLD...$NEW`
     - DIFF=$(echo $DIFF | grep -o -e '\b[^ ]*.py\b')
     - LOC=/home/travis/virtualenv/python2.7  # Location where VE is created on travis
-    - CMD_PYTEST="coverage run -m pytest -vvv tests/;flake8 tests/;pylint tests/"
+    - CMD_PYTEST="coverage run -m pytest -vvv tests/"
     - CMD_FLAKE8="if ! test -z \"$DIFF\"; then flake8 --config=.flake8 $DIFF;else echo 'Nothing to pep8'; fi"
     - CMD_PYLINT="if ! test -z \"$DIFF\"; then pylint $DIFF;else echo 'Nothing to lint';fi"
     - CMD_PYTEST="coverage run -m pytest -vvv tests/;flake8 tests/;pylint tests/"
