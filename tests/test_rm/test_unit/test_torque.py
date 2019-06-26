@@ -21,7 +21,7 @@ except ImportError:
 @mock.patch('hostlist.expand_hostlist', return_value=['nodes1', 'nodes1'])
 def test_configure(mocked_init, mocked_raise_on, mocked_expand_hoslist):
     # Test 1 no config file
-    os.environ['PBS_NODEFILE'] = 'nodefile.smic3'
+    os.environ['PBS_NODEFILE'] = 'tests/test_cases/rm/nodelist.torque'
     os.environ['PBS_NCPUS'] = '2'
     os.environ['PBS_NUM_PPN'] = '4'
     os.environ['PBS_NUM_NODES'] = '2'
@@ -38,7 +38,7 @@ def test_configure(mocked_init, mocked_raise_on, mocked_expand_hoslist):
     assert component.lfs_per_node == {'path': None, 'size': 0}
 
     # Test 2 config file
-    os.environ['PBS_NODEFILE'] = 'nodefile.smic3'
+    os.environ['PBS_NODEFILE'] = 'tests/test_cases/rm/nodelist.torque'
     os.environ['PBS_NCPUS'] = '2'
     os.environ['PBS_NUM_PPN'] = '4'
     os.environ['PBS_NUM_NODES'] = '2'
@@ -82,7 +82,7 @@ def test_configure_error(mocked_init, mocked_raise_on, mocked_expand_hoslist):
         component._configure()
 
     # Test 2 no config file check Number of CPUS
-    os.environ['PBS_NODEFILE'] = 'nodefile.smic3'
+    os.environ['PBS_NODEFILE'] = 'tests/test_cases/rm/nodelist.torque'
     if 'PBS_NCPUS' in os.environ:
         del os.environ['PBS_NCPUS']
     os.environ['PBS_NUM_PPN'] = '4'
@@ -99,7 +99,7 @@ def test_configure_error(mocked_init, mocked_raise_on, mocked_expand_hoslist):
         warnings.warn("PBS_NCPUS not set!", RuntimeWarning)
 
     # Test 3 no config file check Number of Processes per Node
-    os.environ['PBS_NODEFILE'] = 'nodefile.smic3'
+    os.environ['PBS_NODEFILE'] = 'tests/test_cases/rm/nodelist.torque'
     os.environ['PBS_NCPUS'] = '2'
     if 'PBS_NUM_PPN' in os.environ:
         del os.environ['PBS_NUM_PPN']
@@ -117,7 +117,7 @@ def test_configure_error(mocked_init, mocked_raise_on, mocked_expand_hoslist):
         warnings.warn("PBS_PPN not set!", RuntimeWarning)
 
     # Test 4 no config file check Number of Nodes
-    os.environ['PBS_NODEFILE'] = 'nodefile.smic3'
+    os.environ['PBS_NODEFILE'] = 'tests/test_cases/rm/nodelist.torque'
     os.environ['PBS_NCPUS'] = '2'
     os.environ['PBS_NUM_PPN'] = '4'
     if 'PBS_NUM_NODES' in os.environ:
