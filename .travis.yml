@@ -26,7 +26,6 @@ env:
     - CMD_PYTEST="coverage run -m pytest -vvv tests/"
     - CMD_FLAKE8="if ! test -z \"$DIFF\"; then flake8 --config=.flake8 $DIFF;else echo 'Nothing to pep8'; fi"
     - CMD_PYLINT="if ! test -z \"$DIFF\"; then pylint $DIFF;else echo 'Nothing to lint';fi"
-    - CMD_PYTEST="coverage run -m pytest -vvv tests/;flake8 tests/;pylint tests/"
     - CMD_FLAKE8_TESTS="flake8 --config=.flake8 tests/"
     - CMD_PYLINT_TESTS="pylint tests/"
     - COVERAGE=false
