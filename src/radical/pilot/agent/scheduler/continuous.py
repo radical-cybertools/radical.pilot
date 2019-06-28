@@ -472,9 +472,10 @@ class Continuous(AgentSchedulingComponent):
                                                     requested_gpus=total_gpus,
                                                     requested_lfs=total_lfs,
                                                     requested_mem=total_mem,
-                                                    partial=False,
-                                                    lfs_chunk=lfs_chunk,
                                                     core_chunk=core_chunk,
+                                                    partial=False,
+                                                    gpu_chunk=1,
+                                                    lfs_chunk=lfs_chunk,
                                                     mem_chunk=mem_chunk)
             if len(cores) == total_cores and \
                len(gpus)  == total_gpus:
@@ -650,6 +651,7 @@ class Continuous(AgentSchedulingComponent):
                                                     requested_mem=find_mem,
                                                     core_chunk=threads_per_proc,
                                                     partial=partial,
+                                                    gpu_chunk=1,
                                                     lfs_chunk=lfs_per_process,
                                                     mem_chunk=mem_per_process)
 
