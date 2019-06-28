@@ -354,7 +354,7 @@ class Agent_0(rpu.Worker):
                 #        out for the moment, which will make this unable to
                 #        work with a number of launch methods.  Can the
                 #        offset computation be moved to the LRMS?
-                bs_name = "%s/bootstrap_2.sh" % (self._pwd, sa)
+                bs_name = "%s/bootstrap_2.sh" % (self._pwd)
                 ls_name = "%s/%s.sh" % (self._pwd, sa)
                 slots = {
                     'cpu_processes' : 1,
