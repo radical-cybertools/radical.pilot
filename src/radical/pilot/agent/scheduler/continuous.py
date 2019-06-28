@@ -351,6 +351,13 @@ class Continuous(AgentSchedulingComponent):
 
         self._log.debug('alc : %s %s %s %s', alloc_cores, alloc_gpus, lfs, mem)
 
+        if requested_gpus:
+            for idx, state in enumerate(node['gpus']):
+                if state == rpc.FREE:        # use if free
+                    gpus.append(idx)
+                if alloc_gpus == len(gpus):  # break if enough
+                    break
+
         # now dig out the core and gpu IDs.
         if requested_cores:
             for idx, state in enumerate(node['cores']):
@@ -359,12 +366,21 @@ class Continuous(AgentSchedulingComponent):
                 if alloc_cores == len(cores):   # break if enough
                     break
 
-        if requested_gpus:
-            for idx, state in enumerate(node['gpus']):
-                if state == rpc.FREE:        # use if free
-                    gpus.append(idx)
-                if alloc_gpus == len(gpus):  # break if enough
-                    break
+        # if we found a gpu, we need at least one core in order to place
+        # the process which uses that GPU.
+        if gpus and not cores:
+            gpus = list()
+
+        # make sure we have full chunks
+        if cores:
+            n_core_chunks = len(cores) / core_chunk
+            n_cores = n_core_chunks * core_chunk
+            cores = cores[:n_cores]
+
+        if gpus:
+            n_gpu_chunks = len(gpus) / gpu_chunk
+            n_gpus = n_gpu_chunks * gpu_chunk
+            gpus = gpus[:n_gpus]
 
         return cores, gpus, lfs, mem
 
@@ -379,30 +395,36 @@ class Continuous(AgentSchedulingComponent):
         single-threaded.
         For more details, see top level comment of `base.py`.
         """
+        self._log.debug('=== 5 found %s cores, %s gpus, %d tpp', 
+                            cores, gpus, threads_per_proc)
+        self._log.debug('=== 5 found %s cores, %s gpus, %d tpp', 
+                            len(cores), len(gpus), threads_per_proc)
 
         core_map = list()
         gpu_map  = list()
 
-        # make sure the core sets can host the requested number of threads
-        assert(not len(cores) % threads_per_proc)
-        n_procs =  len(cores) / threads_per_proc
+        if cores:
+            # make sure the core sets can host the requested number of threads
+            assert(not len(cores) % threads_per_proc)
+            n_procs =  len(cores) / threads_per_proc
 
-        idx = 0
-        for p in range(n_procs):
-            p_map = list()
-            for t in range(threads_per_proc):
-                p_map.append(cores[idx])
-                idx += 1
-            core_map.append(p_map)
+            idx = 0
+            for p in range(n_procs):
+                p_map = list()
+                for t in range(threads_per_proc):
+                    p_map.append(cores[idx])
+                    idx += 1
+                core_map.append(p_map)
 
-        if idx != len(cores):
-            self._log.debug('%s -- %s -- %s -- %s',
-                            idx, len(cores), cores, n_procs)
-        assert(idx == len(cores))
+            if idx != len(cores):
+                self._log.debug('%s -- %s -- %s -- %s',
+                                idx, len(cores), cores, n_procs)
+            assert(idx == len(cores))
 
-        # gpu procs are considered single threaded right now (FIXME)
-        for g in gpus:
-            gpu_map.append([g])
+        if gpus:
+            # gpu procs are considered single threaded right now (FIXME)
+            for g in gpus:
+                gpu_map.append([g])
 
         return core_map, gpu_map
 
@@ -468,15 +490,15 @@ class Continuous(AgentSchedulingComponent):
             # attempt to find the required number of cores and gpus on this
             # node - do not allow partial matches.
             cores, gpus, lfs, mem = self._find_resources(node=node,
-                                                    requested_cores=total_cores,
-                                                    requested_gpus=total_gpus,
-                                                    requested_lfs=total_lfs,
-                                                    requested_mem=total_mem,
-                                                    core_chunk=core_chunk,
-                                                    partial=False,
-                                                    gpu_chunk=1,
-                                                    lfs_chunk=lfs_chunk,
-                                                    mem_chunk=mem_chunk)
+                                                         requested_cores=total_cores,
+                                                         requested_gpus=total_gpus,
+                                                         requested_lfs=total_lfs,
+                                                         requested_mem=total_mem,
+                                                         core_chunk=core_chunk,
+                                                         partial=False,
+                                                         gpu_chunk=1,
+                                                         lfs_chunk=lfs_chunk,
+                                                         mem_chunk=mem_chunk)
             if len(cores) == total_cores and \
                len(gpus)  == total_gpus:
 
