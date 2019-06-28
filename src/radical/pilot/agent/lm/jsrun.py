@@ -141,7 +141,6 @@ class JSRUN(LaunchMethod):
       # flags = '-n%d -a1 ' % (task_procs)
         command = '%s --erf_input %s %s %s %s' % (self.launch_command, rs_fname,
                                                   smpiargs, env_string, task_command)
-                                                env_string, task_command)
 
       # with open('./commands.log', 'a') as fout:
       #     fout.write('%s\n' % command)
