@@ -31,7 +31,7 @@ def test_configure(mocked_init, mocked_raise_on, mocked_which):
 @mock.patch.object(APRun, '__init__',   return_value=None)
 @mock.patch.object(APRun, '_configure', return_value=None)
 @mock.patch('radical.utils.raise_on')
-def test_construct_command(mocked_init, 
+def test_construct_command(mocked_init,
                            mocked_configure,
                            mocked_raise_on):
 
@@ -40,7 +40,7 @@ def test_construct_command(mocked_init,
 
     component.launch_command = 'aprun'
     component.name           = 'aprun'
-    component._log           = ru.get_logger('dummy')
+    component._log           = ru.Logger('dummy')
 
     for unit, result in test_cases:
         command, hop = component.construct_command(unit, None)

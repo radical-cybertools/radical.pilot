@@ -25,7 +25,7 @@ def test_configure(mocked_init, mocked_raise_on, mocked_expand_hostlist):
     os.environ['SLURM_CPUS_ON_NODE'] = '24'
 
     component = Slurm(cfg=None, session=None)
-    component._log = ru.get_logger('dummy')
+    component._log = ru.Logger('dummy')
     component._cfg = {}
     component.lm_info = {'cores_per_node': None}
     component._configure()
@@ -42,7 +42,7 @@ def test_configure(mocked_init, mocked_raise_on, mocked_expand_hostlist):
     os.environ['SLURM_CPUS_ON_NODE'] = '24'
 
     component = Slurm(cfg=None, session=None)
-    component._log = ru.get_logger('dummy')
+    component._log = ru.Logger('dummy')
     component._cfg = {'cores_per_node': 24,
                       'gpus_per_node': 1,
                       'lfs_path_per_node': 'test/',
@@ -70,7 +70,7 @@ def test_configure_error(mocked_init, mocked_raise_on, mocked_expand_hostlist):
     os.environ['SLURM_CPUS_ON_NODE'] = '24'
 
     component = Slurm(cfg=None, session=None)
-    component._log = ru.get_logger('dummy')
+    component._log = ru.Logger('dummy')
     component._cfg = {}
     component.lm_info = {}
 
@@ -84,7 +84,7 @@ def test_configure_error(mocked_init, mocked_raise_on, mocked_expand_hostlist):
     os.environ['SLURM_CPUS_ON_NODE'] = '24'
 
     component = Slurm(cfg=None, session=None)
-    component._log = ru.get_logger('dummy')
+    component._log = ru.Logger('dummy')
     component._cfg = {}
     component.lm_info = {}
 
@@ -98,7 +98,7 @@ def test_configure_error(mocked_init, mocked_raise_on, mocked_expand_hostlist):
     os.environ['SLURM_CPUS_ON_NODE'] = '24'
 
     component = Slurm(cfg=None, session=None)
-    component._log = ru.get_logger('dummy')
+    component._log = ru.Logger('dummy')
     component._cfg = {}
     component.lm_info = {}
 
@@ -112,7 +112,7 @@ def test_configure_error(mocked_init, mocked_raise_on, mocked_expand_hostlist):
     del os.environ['SLURM_CPUS_ON_NODE']
 
     component = Slurm(cfg=None, session=None)
-    component._log = ru.get_logger('dummy')
+    component._log = ru.Logger('dummy')
     component._cfg = {}
     component.lm_info = {}
 
