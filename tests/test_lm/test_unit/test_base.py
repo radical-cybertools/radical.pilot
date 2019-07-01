@@ -15,6 +15,19 @@ except ImportError:
 
 # ------------------------------------------------------------------------------
 #
+@mock.patch.object(LaunchMethod, '_configure', return_value=None)
+def test_init(mocked_configure):
+    session = mock.Mock()
+    session._log = mock.Mock()
+    lm = LaunchMethod(name='test', cfg={}, session=session)
+    assert lm.name     == 'test'
+    assert lm._cfg     == {}
+    assert lm._session == session
+    assert lm._log     == session._log
+
+
+# ------------------------------------------------------------------------------
+#
 def test_configure():
 
     session = mock.Mock()

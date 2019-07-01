@@ -11,7 +11,7 @@
 
     "setup" : {
         "lm" : {
-            "slots": {  
+            "slots": {
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
                 "task_offsets"   : [4],
@@ -30,7 +30,7 @@
             },
             "unit_sandbox": "./"
         }
-    }, 
+    },
 
     "results": {
         "lm": {
@@ -42,7 +42,7 @@
             "ssh"     : ["/bin/sleep \"10\" ","ssh node1 PATH=test_path 1"],
             "rsh"     : ["/bin/sleep \"10\" ","rsh node1 PATH=test_path 1"],
             "spark"   : "RuntimeError",
-            "jsrun"   : ["jsrun --erf_input rs_layout_cu_000000  -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" /bin/sleep \"10\" ",null],
+            "jsrun"   : ["jsrun --erf_input rs_layout_cu_000003  -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" /bin/sleep \"10\" ",null],
             "mpiexec" : ["mpiexec -H node1 -np 1   /bin/sleep \"10\" ", null]
         },
         "resource_file": {

@@ -46,10 +46,12 @@ def test_create_resource_set_file(mocked_init, mocked_method, mocked_raise_on):
 
 # ------------------------------------------------------------------------------
 #
+def _create_resource_set_file(self, slots, uid, sandbox):
+    return 'rs_layout_cu_%06d' % (int(uid.split('_')[1]))
 @mock.patch.object(JSRUN, '__init__', return_value=None)
 @mock.patch.object(JSRUN, '_configure', return_value='jsrun')
 @mock.patch.object(JSRUN, '_create_resource_set_file',
-                          return_value='rs_layout_cu_000000')
+                           _create_resource_set_file)
 @mock.patch('radical.utils.raise_on')
 def test_construct_command(mocked_init, mocked_configure,
                            mocked_create_resource_set_file, mocked_raise_on):

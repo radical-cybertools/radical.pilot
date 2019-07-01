@@ -12,7 +12,7 @@
 
     "setup" : {
         "lm" : {
-            "slots": {  
+            "slots": {
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
                 "task_offsets"  : [16],
@@ -34,7 +34,7 @@
             },
             "unit_sandbox": "./"
         }
-    }, 
+    },
 
     "results": {
         "lm": { "ibrun" : ["ibrun -n 2 -o 16 /bin/sleep \"10\" ",null],
@@ -42,7 +42,7 @@
                 "spark" : "RuntimeError",
                 "orte"  : "RuntimeError",
                 "rsh"   : "RuntimeError",
-                "jsrun"  : ["jsrun --erf_input rs_layout_cu_000000  -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" /bin/sleep \"10\" ",null]
+                "jsrun"  : ["jsrun --erf_input rs_layout_cu_000007  -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" /bin/sleep \"10\" ",null]
         },
         "resource_file": {
             "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0,1}}\n","rank: 1: { host: node2; cpu: {0,1}}\n"]
