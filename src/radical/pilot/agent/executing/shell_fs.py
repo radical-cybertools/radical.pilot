@@ -312,8 +312,7 @@ class ShellFS(AgentExecutingComponent):
         env  += "export RP_SPAWNER_ID=%s\n"     % self.uid
         env  += "export RP_UNIT_ID=%s\n"        % cu['uid']
         env  += 'export RP_GTOD="%s"\n'         % self.gtod
-        if 'RADICAL_PILOT_PROFILE' in os.environ or \
-           'RADICAL_PROFILE'       in os.environ :
+        if self._prof.enabled:
             env += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
         env  += '''
 prof(){
