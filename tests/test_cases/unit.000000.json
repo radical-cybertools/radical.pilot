@@ -49,7 +49,8 @@
             "rsh"     : "ValueError",
             "ccmrun"  : ["ccmrun -n 1 /bin/sleep ",null],
             "jsrun"   : ["jsrun --erf_input rs_layout_cu_000000  -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" /bin/sleep",null],
-            "mpiexec" : ["mpiexec -H node1 -np 1   /bin/sleep",null]
+            "mpiexec" : ["mpiexec -H node1 -np 1   /bin/sleep",null],
+            "prte"    : ["prun  --hnp \"dvm_uri\"  --bind-to none -use-hwthread-cpus --oversubscribe -n 1 --cpus-per-proc 1 -host node1 -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep",null]
         },
         "resource_file": {
             "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0}}\n"]

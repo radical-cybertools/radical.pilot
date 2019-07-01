@@ -5,7 +5,6 @@ import glob
 import radical.utils as ru
 from test_common                  import setUp
 from radical.pilot.agent.lm.jsrun import JSRUN
-from pprint import pprint
 
 try:
     import mock
@@ -46,8 +45,6 @@ def test_create_resource_set_file(mocked_init, mocked_method, mocked_raise_on):
 
 # ------------------------------------------------------------------------------
 #
-def _create_resource_set_file(self, slots, uid, sandbox):
-    return 'rs_layout_cu_%06d' % (int(uid.split('_')[1]))
 @mock.patch.object(JSRUN, '__init__', return_value=None)
 @mock.patch.object(JSRUN, '_configure', return_value='jsrun')
 @mock.patch('radical.utils.raise_on')
