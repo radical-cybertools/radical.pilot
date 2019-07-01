@@ -268,8 +268,9 @@ prof(){
         return
     fi
     event=$1
+    msg=$2
     now=$($RP_GTOD)
-    echo "$now,$event,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING," >> $RP_PROF
+    echo "$now,$event,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING,$msg" >> $RP_PROF
 }
 '''
 
@@ -333,7 +334,7 @@ prof(){
                 launch_script.write("\n# Post-exec commands\n")
                 launch_script.write('prof cu_post_start\n')
                 launch_script.write('%s\n' % post)
-                launch_script.write('prof cu_post_stop\n')
+                launch_script.write('prof cu_post_stop "$ret=RETVAL"\n')
 
             launch_script.write("\n# Exit the script with the return code from the command\n")
             launch_script.write("prof cu_stop\n")

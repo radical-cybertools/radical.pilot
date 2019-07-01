@@ -424,6 +424,7 @@ class Continuous(AgentSchedulingComponent):
         # dig out the allocation request details
         lfs_chunk   = cud['lfs_per_process']
         core_chunk  = cud['cpu_threads']
+        gpu_chunk   = cud['gpu_threads']
         mem_chunk   = cud['mem_per_process']
         total_cores = cud['cpu_processes'] * core_chunk
         total_gpus  = cud['gpu_processes']
@@ -442,6 +443,9 @@ class Continuous(AgentSchedulingComponent):
             txt += '   lfs  : %s >? %s \n' % (total_lfs,   self._lrms_lfs_per_node)
             txt += '   mem  : %s >? %s'    % (total_mem,   self._lrms_mem_per_node)
             raise ValueError(txt)
+
+        if not core_chunk: core_chunk = 1
+        if not gpu_chunk:  gpu_chunk  = 1
 
         # ok, we can go ahead and try to find a matching node
         node_name = None
@@ -473,8 +477,9 @@ class Continuous(AgentSchedulingComponent):
                                                     requested_lfs=total_lfs,
                                                     requested_mem=total_mem,
                                                     partial=False,
-                                                    lfs_chunk=lfs_chunk,
                                                     core_chunk=core_chunk,
+                                                    gpu_chunk=gpu_chunk,
+                                                    lfs_chunk=lfs_chunk,
                                                     mem_chunk=mem_chunk)
             if len(cores) == total_cores and \
                len(gpus)  == total_gpus:
@@ -544,12 +549,15 @@ class Continuous(AgentSchedulingComponent):
         requested_procs  = cud['cpu_processes']
         threads_per_proc = cud['cpu_threads']
         requested_gpus   = cud['gpu_processes']
+        gpu_chunkg       = cud['gpu_threads']
         lfs_per_process  = cud['lfs_per_process']
         mem_per_process  = cud['mem_per_process']
 
         # make sure that processes are at least single-threaded
         if not threads_per_proc:
             threads_per_proc = 1
+
+        if not gpu_chunk:  gpu_chunk  = 1
 
         # cores needed for all threads and processes
         requested_cores = requested_procs * threads_per_proc
@@ -650,6 +658,7 @@ class Continuous(AgentSchedulingComponent):
                                                     requested_mem=find_mem,
                                                     core_chunk=threads_per_proc,
                                                     partial=partial,
+                                                    gpu_chunk=gpu_chunk,
                                                     lfs_chunk=lfs_per_process,
                                                     mem_chunk=mem_per_process)
 
