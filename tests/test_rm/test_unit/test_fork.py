@@ -34,7 +34,6 @@ def test_configure(mocked_init, mocked_raise_on,mocked_multiprocessing_cpu_count
                       'gpus_per_node': 0,
                       'lfs_path_per_node': 'test/',
                       'lfs_size_per_node': 100}
-    component.lm_info = {'cores_per_node': None}
     component._configure()
 
     assert component.cores_per_node == 48
