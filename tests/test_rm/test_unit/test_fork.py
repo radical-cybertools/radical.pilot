@@ -57,7 +57,7 @@ def test_configure_error(mocked_init, mocked_raise_on,mocked_multiprocessing_cpu
 
     assert component.gpus_per_node == 0 
     assert component.mem_per_node ==  0
-    assert component.lfs_per_node == {'path': '', 'size': 0}
+    assert component.lfs_per_node == {'path': None, 'size': 0}
     if (component.requested_cores == 0) :
         with pytest.raises(ValueError) :
             print ('RP should rasie Runtime or Value error for "number of requested cores should not = 0"')
