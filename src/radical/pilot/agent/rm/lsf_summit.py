@@ -260,6 +260,8 @@ class LSF_SUMMIT(LRMS):
         self.sockets_per_node = lsf_sockets_per_node
         self.cores_per_socket = lsf_cores_per_socket
         self.gpus_per_socket  = lsf_gpus_per_socket
+        self.cores_per_node   = lsf_cores_per_socket * lsf_sockets_per_node
+        self.gpus_per_node    = lsf_gpus_per_socket * lsf_sockets_per_node
         self.lfs_per_node     = lsf_lfs_per_node
         self.mem_per_node     = lsf_mem_per_node
 

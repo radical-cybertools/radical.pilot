@@ -203,10 +203,11 @@ class Continuous(AgentSchedulingComponent):
 
         # We should check if the unit uses GPUs and set up correctly
         # which device to use based on the scheduling decision
+        unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = None
         if unit['description']['cpu_process_type'] not in [rpc.MPI] and \
            unit['description']['gpu_process_type'] not in [rpc.MPI]:
             gpu_maps = list()
-            for slot in unit['slots']:
+            for slot in unit['slots']['nodes']:
                 if slot['gpu_map'] not in gpu_maps:
                     gpu_maps.append(slot['gpu_map'])
             if len(gpu_maps) == 1:

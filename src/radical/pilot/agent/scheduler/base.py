@@ -508,6 +508,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # We should check if the unit requires GPUs and set up correctly
         # which device to use based on the scheduling decision
+        unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = None
         if unit['description']['cpu_process_type'] not in [rpc.MPI] and \
            unit['description']['gpu_process_type'] not in [rpc.MPI]:
             gpu_maps = list()
