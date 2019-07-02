@@ -117,7 +117,7 @@ class PRTE(LaunchMethod):
                             break
 
             except Exception as e:
-                self._log.debug('DVM check: %s' % e)
+                logger.debug('DVM check: %s' % e)
                 time.sleep(0.5)
 
             if dvm_uri:
@@ -250,9 +250,10 @@ class PRTE(LaunchMethod):
             for var in env_list:
                 env_string += '-x "%s" ' % var
 
-      # map_flag  = ' --bind-to hwthread:overload-allowed --use-hwthread-cpus --oversubscribe'
-      # map_flag += ' -np %d --cpus-per-proc %d' % (n_procs, n_threads)
-        map_flag  = ' -np %d --report-bindings' % n_procs
+        map_flag  = ' -np %d --cpus-per-proc %d' % (n_procs, n_threads)
+        map_flag += ' --report-bindings'
+        map_flag += ' --bind-to hwthread:overload-allowed --use-hwthread-cpus'
+      # map_flag += ' --oversubscribe'
 
         if 'nodes' not in slots:
             # this task is unscheduled - we leave it to PRRTE/PMI-X to
@@ -280,7 +281,7 @@ class PRTE(LaunchMethod):
         if self._verbose:
             debug_string = ' '.join([# '-display-devel-map',
                                      # '-display-allocation',
-                                     # '--debug-devel', 
+                                     # '--debug-devel',
                                        '--report-bindings',
                                     ])
 
