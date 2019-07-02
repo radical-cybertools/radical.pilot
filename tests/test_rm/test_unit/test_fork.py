@@ -25,8 +25,7 @@ def test_configure(mocked_init, mocked_raise_on,mocked_multiprocessing_cpu_count
     assert component.cores_per_node == 48
     assert component.gpus_per_node == 0 
     assert component.mem_per_node ==  0
-    assert component.lfs_per_node == {'path': '',
-                                      'size': 0}
+    assert component.lfs_per_node == {'path': '', 'size': 0}
 
     component = Fork()
     component.requested_cores = 48
