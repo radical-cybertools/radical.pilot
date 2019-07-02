@@ -9,7 +9,7 @@ try:
 except ImportError:
     from unittest import mock
 
-# ------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------
 #
 # Test 1 congif file 
 @mock.patch.object(Fork, '__init__', return_value=None)
