@@ -2,9 +2,9 @@
     "staging_area"         : "staging_area",
     "staging_schema"       : "staging",
     "max_io_loglength"     : 1024,
-    "bulk_collection_size" :    1,
-    "bulk_collection_time" :  1.0,
-    "db_poll_sleeptime"    :  1.0,
+    "bulk_collection_size" : 1024,
+    "bulk_collection_time" :  2.0,
+    "db_poll_sleeptime"    :  2.0,
   # "network_interface"    : "ipogif0",
 
     "target"  : "local",
@@ -31,19 +31,19 @@
     },
 
     "components": {
-        "UpdateWorker"                : {"count" : 1},
-        "AgentSchedulingComponent"    : {"count" : 1},
-        "AgentStagingInputComponent"  : {"count" : 1},
-        "AgentStagingOutputComponent" : {"count" : 1},
-        "AgentExecutingComponent"     : {"count" : 1}
-    }
+        "UpdateWorker"                : {"count" : 1}
+    },
     
-  # "agents": {
-  #     "agent_1": {
-  #         "target": "node",
-  #         "components": {
-  #             "AgentExecutingComponent" : {"count" : 1}
-  #         }
-  #     }
-  # }
+    "agents": {
+        "agent_1": {
+            "target": "node",
+            "components": {
+                "AgentSchedulingComponent"    : {"count" : 1},
+                "AgentStagingInputComponent"  : {"count" : 2},
+                "AgentStagingOutputComponent" : {"count" : 2},
+                "AgentExecutingComponent"     : {"count" : 2}
+            }
+        }
+    }
 }
+
