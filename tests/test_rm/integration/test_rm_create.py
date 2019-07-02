@@ -33,9 +33,11 @@ def tearDown():
 
 # ------------------------------------------------------------------------------
 #
-def test_rm_create():
+def test_rm_create_fork():
 
     cfg, session = setUp('local.localhost')
+    cfg['cores'] = 1
+    cfg['gpus'] = 0
 
     lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
 
@@ -45,8 +47,6 @@ def test_rm_create():
 
     # Check if the lrms object has the expected lrms_info dict
     # This dict is required by the scheduler and lm
-    import pprint
-    pprint.pprint(lrms.lrms_info)
     '''
     assert lrms.lrms_info == {'agent_nodes'     : {},
                               'gpus_per_node'   : 6,
@@ -62,6 +62,17 @@ def test_rm_create():
                                                    ['r0c1n15', 3],
                                                    ['r0c1n16', 4]]}
     '''
+    tearDown()
+
+
+def test_rm_create_pbspro():
+
+    cfg = session.get_resource_config(resource='epsrc.archer_aprun')
+    cfg['cores'] = 1
+    cfg['gpus'] = 0
+
+    lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
+
     tearDown()
 
 
