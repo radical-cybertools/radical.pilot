@@ -2,6 +2,7 @@
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os
 
 import radical.utils as ru
 
@@ -119,6 +120,11 @@ class JSRUN(LaunchMethod):
 
         env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
         env_string = ' '.join(['-E "%s"' % var for var in env_list])
+
+        # jsrun fails if an -E export is not set
+        for var in env_list:
+            if var not in os.environ:
+                os.environ[var] = ''
 
         # from https://www.olcf.ornl.gov/ \
         #             wp-content/uploads/2018/11/multi-gpu-workshop.pdf
