@@ -118,13 +118,14 @@ class JSRUN(LaunchMethod):
         if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
         else          : task_command = task_exec
 
-        env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
-        env_string = ' '.join(['-E "%s"' % var for var in env_list])
-
-        # jsrun fails if an -E export is not set
-        for var in env_list:
-            if var not in os.environ:
-                os.environ[var] = ''
+        env_string = ''
+      # env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
+      # env_string = ' '.join(['-E "%s"' % var for var in env_list])
+      #
+      # # jsrun fails if an -E export is not set
+      # for var in env_list:
+      #     if var not in os.environ:
+      #         os.environ[var] = ''
 
         # from https://www.olcf.ornl.gov/ \
         #             wp-content/uploads/2018/11/multi-gpu-workshop.pdf

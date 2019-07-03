@@ -268,7 +268,7 @@
 	    "cores"    : 72
     },
 
-    "local.summit" : {
+    "ornl.summit" : {
         "project"  : "BIP178",
         "queue"    : "batch",
         "schema"   : "local",
