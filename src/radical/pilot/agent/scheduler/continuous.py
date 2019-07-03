@@ -3,19 +3,12 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 
-import os
-import inspect
 import logging
 import pprint
 
 
-import threading     as mt
-
-import radical.utils as ru
-
 from ...   import constants as rpc
 from .base import AgentSchedulingComponent
-
 
 
 # ------------------------------------------------------------------------------
@@ -61,9 +54,6 @@ from .base import AgentSchedulingComponent
 # FIXME: the alert reader will realize a discrepancy in the above set of
 #        assumptions.
 #
-# ------------------------------------------------------------------------------
-
-
 # ------------------------------------------------------------------------------
 #
 class Continuous(AgentSchedulingComponent):
@@ -201,18 +191,8 @@ class Continuous(AgentSchedulingComponent):
             nodes = unit['slots']['nodes']
             self._tag_history[tag] = [node['uid'] for node in nodes]
 
-        # We should check if the unit uses GPUs and set up correctly
-        # which device to use based on the scheduling decision
-        if unit['description']['cpu_process_type'] not in [rpc.MPI] and \
-           unit['description']['gpu_process_type'] not in [rpc.MPI]:
-            gpu_maps = list()
-            for slot in unit['slots']:
-                if slot['gpu_map'] not in gpu_maps:
-                    gpu_maps.append(slot['gpu_map'])
-            if len(gpu_maps) == 1:
-                # uniform GPU requirements
-                unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = \
-                        ','.join(gpu_map[0] for gpu_map in gpu_maps[0])
+        # translate gpu maps into `CUDA_VISIBLE_DEVICES` env
+        self._handle_cuda(unit)
 
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=uid)
@@ -239,7 +219,6 @@ class Continuous(AgentSchedulingComponent):
         on the same node).
         '''
 
-        uid = unit['uid']
         cud = unit['description']
 
         # single_node allocation is enforced for non-message passing tasks
@@ -550,7 +529,6 @@ class Continuous(AgentSchedulingComponent):
         spawn the requested number of threads on the respective node.
         """
 
-        uid = unit['uid']
         cud = unit['description']
 
         # dig out the allocation request details

@@ -507,7 +507,29 @@ class AgentSchedulingComponent(rpu.Component):
             self._prof.prof('schedule_fail', uid=unit['uid'])
             return False
 
-        # FIXME: the code below should probably live elsewhere, not in this
+        # translate gpu maps into `CUDA_VISIBLE_DEVICES` env
+        self._handle_cuda(unit)
+
+        # got an allocation, we can go off and launch the process
+        self._prof.prof('schedule_ok', uid=unit['uid'])
+
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("after  allocate   %s: %s", unit['uid'],
+                            self.slot_status())
+          # self._log.debug("%s [%s/%s] : %s", unit['uid'],
+          #                 unit['description']['cpu_processes'],
+          #                 unit['description']['gpu_processes'],
+          #                 pprint.pformat(unit['slots']))
+
+        # True signals success
+        return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _handle_cuda(self, unit):
+
+        # FIXME: this code should probably live elsewhere, not in this
         #        performance critical scheduler base class
         #
         # Check if unit requires GPUs.  If so, set CUDA_VISIBLE_DEVICES to the
@@ -537,21 +559,6 @@ class AgentSchedulingComponent(rpu.Component):
                 # uniform, non-zero gpu map
                 unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = \
                             ','.join(gpu for gpu in gpu_map)
-
-
-        # got an allocation, we can go off and launch the process
-        self._prof.prof('schedule_ok', uid=unit['uid'])
-
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  allocate   %s: %s", unit['uid'],
-                            self.slot_status())
-          # self._log.debug("%s [%s/%s] : %s", unit['uid'],
-          #                 unit['description']['cpu_processes'],
-          #                 unit['description']['gpu_processes'],
-          #                 pprint.pformat(unit['slots']))
-
-        # True signals success
-        return True
 
 
     # --------------------------------------------------------------------------
