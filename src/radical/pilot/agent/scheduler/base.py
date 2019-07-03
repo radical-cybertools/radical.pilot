@@ -554,11 +554,11 @@ class AgentSchedulingComponent(rpu.Component):
                            'GPU schedule (%s)' % gpu_maps)
 
         else:
-            gpu_map = gpu_maps.pop()
+            gpu_map = gpu_maps[0]
             if gpu_map:
                 # uniform, non-zero gpu map
                 unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = \
-                            ','.join(gpu for gpu in gpu_map)
+                            ','.join(str(gpu_set[0]) for gpu_set in gpu_map)
 
 
     # --------------------------------------------------------------------------
