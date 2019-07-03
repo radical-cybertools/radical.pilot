@@ -31,6 +31,7 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 # SCHEDULER_NAME_CONTINUOUS_FIFO    = "CONTINUOUS_FIFO"
 # SCHEDULER_NAME_SCATTERED          = "SCATTERED"
 
+
 # ------------------------------------------------------------------------------
 #
 # An RP agent scheduler will place incoming units onto a set of cores and gpus.
