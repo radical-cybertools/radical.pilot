@@ -203,6 +203,7 @@ class Continuous(AgentSchedulingComponent):
 
         # We should check if the unit uses GPUs and set up correctly
         # which device to use based on the scheduling decision
+        self._log.debug("gpu_map %", unit['slots']['nodes'])
         unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = None
         if unit['description']['cpu_process_type'] not in [rpc.MPI] and \
            unit['description']['gpu_process_type'] not in [rpc.MPI]:
@@ -213,7 +214,7 @@ class Continuous(AgentSchedulingComponent):
             if len(gpu_maps) == 1:
                 # uniform GPU requirements
                 unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = \
-                        ','.join(gpu_map[0] for gpu_map in gpu_maps[0])
+                        ','.join(str(gpu_map[0]) for gpu_map in gpu_maps[0])
 
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=uid)
