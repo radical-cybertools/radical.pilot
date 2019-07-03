@@ -510,12 +510,11 @@ class AgentSchedulingComponent(rpu.Component):
         # FIXME: the code below should probably live elsewhere, not in this
         #        performance critical scheduler base class
         #
-        # We should check if the unit requires GPUs and set up correctly
-        # which device to use based on the scheduling decision.  We only do that
-        # for uniform GPU setting for now, and will isse a warning on
-        # non-uniform ones
+        # Check if unit requires GPUs.  If so, set CUDA_VISIBLE_DEVICES to the
+        # list of assigned  GPU IDs.  We only handle uniform GPU setting for
+        # now, and will isse a warning on non-uniform ones.
+        # The default setting is ``
         #
-        # default setting is ``
         unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = ''
         self._log.debug('=== %s', pprint.pformat(unit['slots']))
 
