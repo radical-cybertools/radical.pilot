@@ -510,12 +510,19 @@ class AgentSchedulingComponent(rpu.Component):
         #        performance critical scheduler base class
         #
         # We should check if the unit requires GPUs and set up correctly
-        # which device to use based on the scheduling decision.
-        # We only do that for uniform GPU setting for now, and will issue
-        # a warning on non-uniform ones.  Default setting is `None`
-        unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = None
+        # which device to use based on the scheduling decision.  We only do that
+        # for uniform GPU setting for now, and will isse a warning on
+        # non-uniform ones
+        #
+        # default setting is ``
+        unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = ''
+        self._log.debug('=== %s', pprint.pformat(unit['slots']))
 
-        gpu_maps = set([node['gpu_map'] for node in unit['slots']['nodes']])
+        gpu_maps = list()
+        for node in unit['slots']['nodes']:
+            if node['gpu_map'] not in gpu_maps:
+                gpu_maps.append(node['gpu_map'])
+
         if not gpu_maps:
             # no gpu maps, nothing to do
             pass
