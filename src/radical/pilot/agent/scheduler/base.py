@@ -506,19 +506,33 @@ class AgentSchedulingComponent(rpu.Component):
             self._prof.prof('schedule_fail', uid=unit['uid'])
             return False
 
+        # FIXME: the code below should probably live elsewhere, not in this
+        #        performance critical scheduler base class
+        #
         # We should check if the unit requires GPUs and set up correctly
-        # which device to use based on the scheduling decision
+        # which device to use based on the scheduling decision.  We only do that
+        # for uniform GPU setting for now, and will isse a warning on
+        # non-uniform ones
+        #
+        # default setting is `None`
         unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = None
-        if unit['description']['cpu_process_type'] not in [rpc.MPI] and \
-           unit['description']['gpu_process_type'] not in [rpc.MPI]:
-            gpu_maps = list()
-            for slot in unit['slots']:
-                if slot['gpu_map'] not in gpu_maps:
-                    gpu_maps.append(slot['gpu_map'])
-            if len(gpu_maps) == 1:
-                # uniform GPU requirements
+
+        gpu_maps = set([node['gpu_map'] for node in unit['slots']['nodes']])
+        if not gpu_maps:
+            # no gpu maps, nothing to do
+            pass
+
+        elif len(gpu_maps) > 1:
+            self._log.warn('cannot set CUDA_VISIBLE_DEVICES for non-uniform'
+                           'GPU schedule (%s)' % gpu_maps)
+
+        else:
+            gpu_map = gpu_maps.pop()
+            if gpu_map:
+                # uniform, non-zero gpu map
                 unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = \
-                        ','.join(gpu_map[0] for gpu_map in gpu_maps[0])
+                            ','.join(gpu for gpu in gpu_map)
+
 
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=unit['uid'])
