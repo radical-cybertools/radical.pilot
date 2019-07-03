@@ -186,7 +186,8 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 #        https://github.com/radical-cybertools/radical.pilot/blob/feature/ \
 #                           events/docs/source/events.md \
 #                           #agentschedulingcomponent-component
-#
+
+
 # ------------------------------------------------------------------------------
 #
 class AgentSchedulingComponent(rpu.Component):
@@ -514,10 +515,15 @@ class AgentSchedulingComponent(rpu.Component):
         # for uniform GPU setting for now, and will isse a warning on
         # non-uniform ones
         #
-        # default setting is `None`
-        unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = None
+        # default setting is ``
+        unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = ''
+        self._log.debug('=== %s', pprint.pformat(unit['slots']))
 
-        gpu_maps = set([node['gpu_map'] for node in unit['slots']['nodes']])
+        gpu_maps = list()
+        for node in unit['slots']['nodes']:
+            if node['gpu_map'] not in gpu_maps:
+                gpu_maps.append(node['gpu_map'])
+
         if not gpu_maps:
             # no gpu maps, nothing to do
             pass

@@ -61,7 +61,7 @@ if __name__ == '__main__':
                    'project'       : config[resource]['project'],
                    'queue'         : config[resource]['queue'],
                    'access_schema' : config[resource]['schema'],
-                   'cores'         : 1024 + (42 * 4)
+                   'cores'         : 4
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
@@ -86,8 +86,7 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = '/gpfs/alpine/bip178/scratch/merzky1/lm_testing/lm_task.sh'
-            cud.arguments        = ['10']
+            cud.executable       = '/bin/date'
             cud.gpu_processes    = 0
             cud.cpu_processes    = 1
             cud.cpu_threads      = 1

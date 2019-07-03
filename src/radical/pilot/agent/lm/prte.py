@@ -208,7 +208,7 @@ class PRTE(LaunchMethod):
     def construct_command(self, cu, launch_script_hop):
 
         import time
-        time.sleep(0.1)
+        time.sleep(0.05)
 
         slots        = cu['slots']
         cud          = cu['description']
