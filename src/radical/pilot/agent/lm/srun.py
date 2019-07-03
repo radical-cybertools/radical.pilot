@@ -31,9 +31,9 @@ class Srun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, session)
+        LaunchMethod.__init__(self, name, cfg, session)
 
 
     # --------------------------------------------------------------------------

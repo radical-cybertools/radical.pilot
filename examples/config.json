@@ -163,6 +163,13 @@
         "cores"    : 56
     },
 
+    "xsede.frontera" : {
+        "project"  : "FTA-Jha",
+        "queue"    : "development",
+        "schema"   : "local",
+        "cores"    : 64
+    },
+
     "xsede.stampede" : {
         "project"  : "TG-MCB090174",
         "queue"    : "development",
