@@ -2,6 +2,7 @@
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import math
 
 import radical.utils as ru
 
@@ -64,25 +65,22 @@ class Srun(LaunchMethod):
         sbox         = ru.Url(cu['unit_sandbox']).path
 
         # Construct the executable and arguments
-        if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
-        else          : task_command = task_exec
+        if task_argstr: task_cmd = "%s %s" % (task_exec, task_argstr)
+        else          : task_cmd = task_exec
 
-        env_string = ''
+        env = ''
         env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
         if env_list:
-
-            env_string = '-export="%s"' % ','.join(env_list)
-
+            env = '--export="%s"' % ','.join(env_list)
 
         if not slots:
             # leave placement to srun
-            nprocs    = cud['cpu_processes']
             ncores    = cud['cpu_threads']
-            placement = ''
-
+            nprocs    = cud['cpu_processes']
+            cpn       = self._cfg.get('cores_per_node', 1)
+            nnodes    = int(math.ceil(nprocs / float(cpn)))
 
         else:
-
             # Extract all the hosts from the slots
             hostlist = list()
             uniform  = True
@@ -105,29 +103,29 @@ class Srun(LaunchMethod):
                 for _ in node['gpu_map']:
                     hostlist.append(node['name'])
 
-            placement = ""
             if uniform:
 
                 # we can attempt placement - flag it and prepare SLURM_HOSTFILE
-                placement = "--distribution=arbitrary"
-                hostfile  = '%s/slurm_hostfile' % sbox
+                hostfile = '%s/slurm_hostfile' % sbox
                 with open(hostfile, 'w') as fout:
                     fout.write(','.join(hostlist))
                     fout.write('\n')
 
-                if not cu['description']['pre_exec']:
+                if not cu['description'].get('pre_exec'):
                     cu['description']['pre_exec'] = list()
                 cu['description']['pre_exec'].append(
                                   'export SLURM_HOSTFILE="%s"' % hostfile)
 
+            ncores = len(slots['nodes'][0]['core_map'][0])
+            nnodes = len(set(hostlist))
             nprocs = len(hostlist)
-            ncores = len(slots[0]['core_map'][0])
 
-        command = "%s -n %d -c %d %s %s %s" \
-                % (self.launch_command, nprocs, ncores, placement,
-                   env_string, task_command)
+        placement = '-N %d -n %d' % (nnodes, nprocs)
+        if ncores > 1:
+            placement += ' -c %d' % ncores
 
-        return command, None
+        cmd = '%s %s %s %s' % (self.launch_command, placement, env, task_cmd)
+        return cmd, None
 
 
 # ------------------------------------------------------------------------------
