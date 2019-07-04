@@ -40,7 +40,7 @@ class TestUnit(unittest.TestCase):
         cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
         cpd.cleanup = True
 
-        pilot = pm.submit_pilots(pilot_descriptions=cpd)
+        pilot = pm.submit_pilots(descriptions=cpd)
 
         um = radical.pilot.UnitManager(
             session=session,
@@ -85,7 +85,7 @@ class TestUnit(unittest.TestCase):
         cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
         cpd.cleanup = True
 
-        pilot = pm.submit_pilots(pilot_descriptions=cpd)
+        pilot = pm.submit_pilots(descriptions=cpd)
 
         um = radical.pilot.UnitManager(
             session=session,
@@ -136,7 +136,7 @@ class TestUnit(unittest.TestCase):
         cpd.sandbox = "/tmp/radical.pilot.sandbox.unittests"
         cpd.cleanup = True
 
-        pilot = pm.submit_pilots(pilot_descriptions=cpd)
+        pilot = pm.submit_pilots(descriptions=cpd)
 
         um = radical.pilot.UnitManager(
             session=session,

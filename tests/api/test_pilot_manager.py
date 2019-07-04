@@ -80,8 +80,8 @@ class Test_PilotManager(unittest.TestCase):
             cpd.sandbox = "/tmp/rp.sandbox.unittests"
             cpd.cleanup = True
 
-            pm1.submit_pilots(pilot_descriptions=cpd)
-            pm2.submit_pilots(pilot_descriptions=cpd)
+            pm1.submit_pilots(descriptions=cpd)
+            pm2.submit_pilots(descriptions=cpd)
 
         assert len(pm1.list_pilots()) == 2, "Wrong number of pilots returned."
         assert len(pm2.list_pilots()) == 2, "Wrong number of pilots returned."
@@ -109,8 +109,8 @@ class Test_PilotManager(unittest.TestCase):
             cpd.sandbox = "/tmp/rp.sandbox.unittests"
             cpd.cleanup = True
 
-            pm1.submit_pilots(pilot_descriptions=cpd)
-            pm2.submit_pilots(pilot_descriptions=cpd)
+            pm1.submit_pilots(descriptions=cpd)
+            pm2.submit_pilots(descriptions=cpd)
 
         assert len(pm1.list_pilots()) == 2, "Wrong number of pilots returned."
         assert len(pm2.list_pilots()) == 2, "Wrong number of pilots returned."
@@ -145,10 +145,10 @@ class Test_PilotManager(unittest.TestCase):
             cpd.sandbox = "/tmp/rp.sandbox.unittests"
             cpd.cleanup = True
 
-            pilot_pm1 = pm1.submit_pilots(pilot_descriptions=cpd)
+            pilot_pm1 = pm1.submit_pilots(descriptions=cpd)
             pm1_pilot_uids.append(pilot_pm1.uid)
 
-            pilot_pm2 = pm2.submit_pilots(pilot_descriptions=cpd)
+            pilot_pm2 = pm2.submit_pilots(descriptions=cpd)
             pm2_pilot_uids.append(pilot_pm2.uid)
 
         for i in pm1.list_pilots():
