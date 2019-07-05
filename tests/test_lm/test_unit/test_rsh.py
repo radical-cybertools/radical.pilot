@@ -62,7 +62,6 @@ def test_construct_command(mocked_init,
     component.launch_command = 'rsh'
 
     for unit, result in test_cases:
-        print unit['uid']
         if result == "ValueError":
             with pytest.raises(ValueError):
                 command, hop = component.construct_command(unit, None)
