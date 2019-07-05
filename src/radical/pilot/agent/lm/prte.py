@@ -39,7 +39,7 @@ class PRTE(LaunchMethod):
             raise Exception("Couldn't find prte")
 
         # Now that we found the prte, get PRUN version
-        out, err, ret = ru.sh_callout('prte_info | grep "Open RTE"', shell=True)
+        out, _, _ = ru.sh_callout('prte_info | grep "Open RTE"', shell=True)
         prte_info = dict()
         for line in out.split('\n'):
 
@@ -207,7 +207,6 @@ class PRTE(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        import time
         time.sleep(0.1)
 
         slots        = cu['slots']
@@ -270,8 +269,9 @@ class PRTE(LaunchMethod):
 
             for node in slots['nodes']:
 
-                for cpu_slot in node['core_map']: hosts += '%s,' % node['name']
-                for gpu_slot in node['gpu_map' ]: hosts += '%s,' % node['name']
+                # for each cpu and gpu slot, add the respective node name
+                for _ in node['core_map']: hosts += '%s,' % node['name']
+                for _ in node['gpu_map' ]: hosts += '%s,' % node['name']
 
             # remove trailing ','
             map_flag += ' -host %s' % hosts.rstrip(',')
@@ -279,7 +279,8 @@ class PRTE(LaunchMethod):
         # Additional (debug) arguments to prun
         debug_string = ''
         if self._verbose:
-            debug_string = ' '.join([# '-display-devel-map',
+            debug_string = ' '.join([
+                                     # '-display-devel-map',
                                      # '-display-allocation',
                                      # '--debug-devel',
                                        '--report-bindings',
