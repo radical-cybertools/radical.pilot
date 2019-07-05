@@ -50,14 +50,14 @@ def test_configure_fail(mocked_init, mocked_raise_on, mocked_which):
 @mock.patch.object(SSH, '_configure', return_value=None)
 @mock.patch.dict(os.environ,{'PATH':'test_path'})
 @mock.patch('radical.utils.raise_on')
-def test_construct_command(mocked_init, 
+def test_construct_command(mocked_init,
                            mocked_configure,
                            mocked_raise_on):
 
     test_cases = setUp('lm', 'ssh')
     component  = SSH(name=None, cfg=None, session=None)
 
-    component._log           = ru.get_logger('dummy')
+    component._log           = ru.Logger('dummy')
     component.name           = 'SSH'
     component.mpi_flavor     = None
     component.launch_command = 'ssh'

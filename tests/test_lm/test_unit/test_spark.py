@@ -21,7 +21,7 @@ except ImportError:
 def test_configure(mocked_init, mocked_raise_on):
 
     component      = Spark(name=None, cfg=None, session=None)
-    component._log = ru.get_logger('dummy')
+    component._log = ru.Logger('dummy')
     component._cfg = {'lrms_info':{'lm_info':{'launch_command':'spark-submit'}}}
     component._configure()
     assert('spark-submit' == component.launch_command)
@@ -34,14 +34,14 @@ def test_configure(mocked_init, mocked_raise_on):
 @mock.patch.object(Spark, '__init__',   return_value=None)
 @mock.patch.object(Spark, '_configure', return_value=None)
 @mock.patch('radical.utils.raise_on')
-def test_construct_command(mocked_init, 
+def test_construct_command(mocked_init,
                            mocked_configure,
                            mocked_raise_on):
 
     test_cases = setUp('lm', 'spark')
     component  = Spark(cfg=None, session=None, name=None)
 
-    component._log           = ru.get_logger('dummy')
+    component._log           = ru.Logger('dummy')
     component.launch_command = ''
     component.name           = 'Spark'
 
