@@ -36,6 +36,11 @@ LM_NAME_SRUN          = 'SRUN'
 # LM_NAME_DPLACE        = 'DPLACE'
 # LM_NAME_RUNJOB        = 'RUNJOB'
 
+# deprecated
+# LM_NAME_POE           = 'POE'
+# LM_NAME_DPLACE        = 'DPLACE'
+# LM_NAME_RUNJOB        = 'RUNJOB'
+
 
 # ==============================================================================
 #
@@ -82,14 +87,6 @@ class LaunchMethod(object):
 
         self._configure()
 
-        # TODO: This doesn't make too much sense for LM's that use multiple
-        #       commands, perhaps this needs to move to per LM __init__.
-        if self.launch_command is None:
-            raise RuntimeError("Launcher not found for LaunchMethod '%s'"
-                              % self.name)
-
-        self._log.debug('launch_command: %s', self.launch_command)
-
 
     # --------------------------------------------------------------------------
     #
@@ -121,6 +118,15 @@ class LaunchMethod(object):
         from .yarn           import Yarn
         from .spark          import Spark
         from .srun           import Srun
+
+      # # deprecated
+      # from .mpirun_ccmrun  import MPIRunCCMRun
+      # from .mpirun_dplace  import MPIRunDPlace
+      # from .mpirun_mpt     import MPIRun_MPT
+      # from .mpirun_rsh     import MPIRunRSH
+      # from .dplace         import DPlace
+      # from .poe            import POE
+      # from .runjob         import Runjob
 
       # # deprecated
       # from .mpirun_ccmrun  import MPIRunCCMRun
@@ -200,7 +206,7 @@ class LaunchMethod(object):
             logger.info('no config hook defined for LaunchMethod %s' % name)
             return None
 
-        logger.info('LRMS config hook for LaunchMethod %s: %s' % (name, impl))
+        logger.info('LRMS config hook for LM %s: %s' % (name, impl))
         return impl.lrms_config_hook(name, cfg, lrms, logger, profiler)
 
 
@@ -338,9 +344,9 @@ class LaunchMethod(object):
                     continue
 
                 arg = arg.replace('"', '\\"')    # Escape all double quotes
-
                 if arg[0] == arg[-1] == "'" :    # between outer single quotes?
                     arg_string += '%s ' % arg    # ... pass it as is.
+
                 else:
                     arg_string += '"%s" ' % arg  # else return double quoted
 
