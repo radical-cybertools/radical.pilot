@@ -30,7 +30,7 @@ class Spark(LRMS):
         # when we profile the agent, we fake any number of cores, so don't
         # perform any sanity checks.  Otherwise we use at most all available
         # cores (and informa about unused ones)
-        if 'RADICAL_PILOT_PROFILE' not in os.environ:
+        if self._prof.enabled:
 
             detected_cpus = multiprocessing.cpu_count()
 

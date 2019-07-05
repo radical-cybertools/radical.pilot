@@ -318,7 +318,7 @@ class Shell(AgentExecutingComponent):
         env  += 'export RP_GTOD="%s"\n'         % cu['gtod']
         env  += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
                                                 % self._pwd
-        if 'RADICAL_PILOT_PROFILE' in os.environ:
+        if self._prof.enabled:
             env += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
         env  += '''
 prof(){

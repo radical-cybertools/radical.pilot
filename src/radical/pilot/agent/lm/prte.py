@@ -192,6 +192,9 @@ class PRTE(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
+        import time
+        time.sleep(0.1)
+
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
@@ -248,9 +251,9 @@ class PRTE(LaunchMethod):
                 self._log.debug('=== %s' % node)
 
                 # add all cpu and gpu process slots to the node list.
-                for cpu_slot in node[2]: hosts_string += '%s,' % node[0]
-                for gpu_slot in node[3]: hosts_string += '%s,' % node[0]
-                for cpu_slot in node[2]: depths.add(len(cpu_slot))
+                for cpu_slot in node['core_map']: hosts_string += '%s,' % node['name']
+                for gpu_slot in node['gpu_map' ]: hosts_string += '%s,' % node['name']
+                for cpu_slot in node['core_map']: depths.add(len(cpu_slot))
 
             # remove trailing ','
             hosts_string = hosts_string.rstrip(',')

@@ -345,11 +345,11 @@ class ORTE(AgentExecutingComponent):
         #         pre += "%s || %s\n" % (elem, fail)
         #     # Note: extra spaces below are for visual alignment
         #     launch_script.write("# Pre-exec commands\n")
-        #     if 'RADICAL_PILOT_PROFILE' in os.environ:
+        #     if self._prof.enabled:
         #         launch_script.write("echo cu_pre_start `%s` >> %s/%s.prof\n"\
         #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
         #     launch_script.write(pre)
-        #     if 'RADICAL_PILOT_PROFILE' in os.environ:
+        #     if self._prof.enabled:
         #         launch_script.write("echo cu_pre_stop `%s` >> %s/%s.prof\n" \
         #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
 
@@ -361,11 +361,11 @@ class ORTE(AgentExecutingComponent):
         #     for elem in cu['description']['post_exec']:
         #         post += "%s || %s\n" % (elem, fail)
         #     launch_script.write("# Post-exec commands\n")
-        #     if 'RADICAL_PILOT_PROFILE' in os.environ:
+        #     if self._prof.enabled:
         #         launch_script.write("echo cu_post_start `%s` >> %s/%s.prof\n"
         #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
         #     launch_script.write('%s\n' % post)
-        #     if 'RADICAL_PILOT_PROFILE' in os.environ:
+        #     if self._prof.enabled:
         #         launch_script.write("echo cu_post_stop  `%s` >> %s/%s.prof\n"
         #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
 
@@ -425,7 +425,7 @@ class ORTE(AgentExecutingComponent):
         # Wrap in (sub)shell for output redirection
         arg_list.append(ffi.new("char[]", "sh"))
         arg_list.append(ffi.new("char[]", "-c"))
-        if 'RADICAL_PILOT_PROFILE' in os.environ:
+        if self._prof.enabled:
             task_command = "echo script cu_start `%s` >> %s/%s.prof; " \
                          % (self.gtod, cu_tmpdir, cu['uid']) \
                          + "echo script cu_cd_done `%s` >> %s/%s.prof; " \

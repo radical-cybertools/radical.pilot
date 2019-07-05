@@ -2,10 +2,8 @@
 # pylint: disable=protected-access, unused-argument
 
 
-from test_common                 import setUp
 from radical.pilot.agent.lm.base import LaunchMethod
 
-import radical.utils as ru
 import radical.pilot as rp
 import pytest
 
@@ -14,17 +12,18 @@ try:
 except ImportError:
     from unittest import mock
 
+
 # ------------------------------------------------------------------------------
 #
 @mock.patch.object(LaunchMethod, '_configure', return_value=None)
 def test_init(mocked_configure):
     session = rp.Session()
     lm = LaunchMethod(name='test', cfg={}, session=session)
-    assert lm.name      == 'test'
-    assert lm._cfg         == {}
-    assert lm._session     == session
-    assert lm._log         == session._log
-# ------------------------------------------------------------------------------
+    assert lm.name     == 'test'
+    assert lm._cfg     == {}
+    assert lm._session == session
+    assert lm._log     == session._log
+
 
 # ------------------------------------------------------------------------------
 #
@@ -83,11 +82,8 @@ def test_create(mocked_configure):
 
     for key,val in lm_types.iteritems():
 
-        print key, val
         lm = LaunchMethod.create(name=key, cfg={}, session=session)
-        print lm
-        assert isinstance(lm, val)
-# ------------------------------------------------------------------------------
+        assert isinstance(lm, val), '%s -/- %s' % (lm, val)
 
 
 # ------------------------------------------------------------------------------
@@ -96,5 +92,7 @@ def test_configure():
 
     session = rp.Session()
     with pytest.raises(NotImplementedError):
-        lm = LaunchMethod(name='test', cfg={}, session=session)
+        _ = LaunchMethod(name='test', cfg={}, session=session)
+
+
 # ------------------------------------------------------------------------------
