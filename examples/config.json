@@ -276,17 +276,26 @@
     },
 
     "ncar.cheyenne": {
-	"project"      : "URTG0014",
-	"queue"        : "regular",
-	"schema"       : "local",
-	"cores"        : 72
+	    "project"  : "URTG0014",
+	    "queue"    : "regular",
+	    "schema"   : "local",
+	    "cores"    : 72
     },
 
-    "ornl.summit" : {
+    "ornl.summit"  : {
         "project"  : "BIP178",
         "queue"    : "batch",
         "schema"   : "local",
-        "cores"    : 4200
+        "cores"    : 84,
+        "gpus"     : 12
+    },
+
+    "local.summit" : {
+        "project"  : "BIP178",
+        "queue"    : "batch",
+        "schema"   : "local",
+        "cores"    : 84,
+        "gpus"     : 12
     },
 
     "ornl.summit_prte" : {
