@@ -254,8 +254,9 @@ class ABDS(AgentExecutingComponent):
             env_string += 'export RP_GTOD="%s"\n'         % self.gtod
             env_string += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
                                                           % self._pwd
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
+            if self._prof.enabled:
                 env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
+
             # also add any env vars requested for export by the resource config
             for k,v in self._env_cu_export.iteritems():
                 env_string += "export %s=%s\n" % (k,v)

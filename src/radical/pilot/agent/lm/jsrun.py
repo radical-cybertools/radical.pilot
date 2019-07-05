@@ -30,7 +30,7 @@ class JSRUN(LaunchMethod):
     def _create_resource_set_file(self, slots, uid, sandbox):
         """
         This method takes as input a CU slots and creates the necessary
-        resource set file. This resource set file is then used by jsrun to 
+        resource set file. This resource set file is then used by jsrun to
         place and execute tasks on nodes.
 
         An example of a resource file is:
@@ -92,7 +92,7 @@ class JSRUN(LaunchMethod):
 
         rs_name = '%s/%s.rs' % (sandbox, uid)
         with open(rs_name, 'w') as fout:
-            fout.write(rs_str)      
+            fout.write(rs_str)
 
         return rs_name
 
@@ -120,14 +120,30 @@ class JSRUN(LaunchMethod):
         env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
         env_string = ' '.join(['-E "%s"' % var for var in env_list])
 
+        # from https://www.olcf.ornl.gov/ \
+        #             wp-content/uploads/2018/11/multi-gpu-workshop.pdf
+        #
+        # CUDA with    MPI, use jsrun --smpiargs="-gpu"
+        # CUDA without MPI, use jsrun --smpiargs="off"
+        #
+        # We only set this for CUDA tasks
+        if 'cuda' in cud.get('gpu_thread_type', '').lower():
+            if 'mpi' in cud.get('gpu_process_type', '').lower():
+                smpiargs = '--smpiargs="-gpu"'
+            else:
+                smpiargs = '--smpiargs="off"'
+        else:
+            smpiargs = ''
+
         rs_fname = self._create_resource_set_file(slots=slots, uid=uid,
                                                   sandbox=task_sandbox)
 
-        command = '%s --erf_input %s  %s %s' % (self.launch_command, rs_fname, 
-                                                env_string, task_command)
+      # flags = '-n%d -a1 ' % (task_procs)
+        command = '%s --erf_input %s %s %s %s' % (self.launch_command, rs_fname,
+                                                  smpiargs, env_string, task_command)
 
-        with open('./commands.log', 'a') as fout:
-            fout.write('%s\n' % command)
+      # with open('./commands.log', 'a') as fout:
+      #     fout.write('%s\n' % command)
 
         return command, None
 
