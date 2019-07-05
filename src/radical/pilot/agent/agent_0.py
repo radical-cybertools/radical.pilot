@@ -521,7 +521,7 @@ class Agent_0(rpu.Worker):
         # we have, terminate.
         if self._runtime:
             if time.time() >= self._starttime + (int(self._runtime) * 60):
-                self._log.info('reached runtime limit (%ss).', self._runtime*60)
+                self._log.info('runtime limit (%ss).', self._runtime * 60)
                 self._final_cause = 'timeout'
                 self.stop()
                 return False  # we are done
