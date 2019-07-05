@@ -151,18 +151,12 @@ class ComputePilot(object):
 
         if target not in [rps.FAILED, rps.CANCELED]:
 
-
-            try:
-                state_diff = rps._pilot_state_value(target) - \
-                             rps._pilot_state_value(current)
-                assert(state_diff), 'invalid state transition'
-
-            except Exception:
-                self._log.exception('%s: invalid state transition %s -> %s',
-                        self.uid, current, target)
-                raise
-
-            # FIXME
+            # ensure valid state transition
+            state_diff = rps._pilot_state_value(target) - \
+                         rps._pilot_state_value(current)
+            if state_diff != 1:
+                raise RuntimeError('%s: invalid state transition %s -> %s',
+                                   self.uid, current, target)
 
         self._state = target
 
@@ -170,14 +164,12 @@ class ComputePilot(object):
         self._pilot_dict = copy.deepcopy(pilot_dict)
 
         # invoke pilot specific callbacks
-        # FIXME: this iteration needs to be thread-locked!
+        # FIXME: this iteration needs to be thread-locked
         for cb_name, cb_val in self._callbacks[rpc.PILOT_STATE].iteritems():
 
             cb      = cb_val['cb']
             cb_data = cb_val['cb_data']
 
-            print ' ~~~ call pcbs: %s -> %s : %s [%s]' \
-                    % (self.uid, self.state, cb_name, cb_data)
             self._log.debug('%s calls cb %s', self.uid, cb)
 
             if cb_data: cb([self], cb_data)
@@ -534,7 +526,6 @@ class ComputePilot(object):
         except Exception:
             pass
 
-      # print 'pilot: cancel'
         self._pmgr.cancel_pilots(self.uid)
 
 
