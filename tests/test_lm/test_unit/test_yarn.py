@@ -21,7 +21,7 @@ except ImportError:
 def test_configure(mocked_init, mocked_raise_on):
 
     component = Yarn(name=None, cfg=None, session=None)
-    component._log = ru.get_logger('dummy')
+    component._log = ru.Logger('dummy')
     component._cfg = {'lrms_info':{'lm_info':{'launch_command':'yarn'}}}
     component._configure()
     assert('yarn' == component.launch_command)
@@ -34,14 +34,14 @@ def test_configure(mocked_init, mocked_raise_on):
 @mock.patch.object(Yarn, '__init__',   return_value=None)
 @mock.patch.object(Yarn, '_configure', return_value=None)
 @mock.patch('radical.utils.raise_on')
-def test_construct_command(mocked_init, 
+def test_construct_command(mocked_init,
                            mocked_configure,
                            mocked_raise_on):
 
     test_cases = setUp('lm', 'yarn')
     component  = Yarn(cfg=None, session=None, name=None)
 
-    component._log           = ru.get_logger('dummy')
+    component._log           = ru.Logger('dummy')
     component.launch_command = 'yarn'
     component.name           = "YARN"
 
