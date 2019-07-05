@@ -91,7 +91,7 @@ class MPIRun(LaunchMethod):
                 for var in env_list:
                     env_string += '-x "%s" ' % var
 
-        # Cheyenne is the only machine that requires mpirun_mpt.  We then 
+        # Cheyenne is the only machine that requires mpirun_mpt.  We then
         # have to set MPI_SHEPHERD=true
         if '_mpt' in self.name:
             if not cu.get['description'].get('environment'):
@@ -103,9 +103,11 @@ class MPIRun(LaunchMethod):
         core_list = list()
         save_list = list()
         for node in slots['nodes']:
+
             for cpu_proc in node['core_map']:
                 host_list.append(node['name'])
                 core_list.append(cpu_proc[0])
+
             for gpu_proc in node['gpu_map']:
                 host_list.append(node['name'])
                 core_list.append(gpu_proc[0])
@@ -142,7 +144,7 @@ class MPIRun(LaunchMethod):
 
         command = ("%s %s -np %d %s %s %s %s" %
                    (self.ccmrun_command, self.launch_command, np,
-                    self.dplace_command, hosts_string, env_string, 
+                    self.dplace_command, hosts_string, env_string,
                     task_command)).strip()
 
         return command, None
