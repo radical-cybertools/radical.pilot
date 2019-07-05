@@ -45,9 +45,6 @@ def test_ordered_scheduler():
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-        if len(sys.argv) > 2: N = int(sys.argv[2])
-        else                : N = 8
-
         n_pipes  = 2
         n_stages = 5
         n_tasks  = 4

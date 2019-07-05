@@ -262,17 +262,26 @@
     },
 
     "ncar.cheyenne": {
-	"project"      : "URTG0014",
-	"queue"        : "regular",
-	"schema"       : "local",
-	"cores"        : 72
+	    "project"  : "URTG0014",
+	    "queue"    : "regular",
+	    "schema"   : "local",
+	    "cores"    : 72
     },
 
-    "ornl.summit" : {
+    "ornl.summit"  : {
         "project"  : "BIP178",
         "queue"    : "batch",
         "schema"   : "local",
-        "cores"    : 4200
+        "cores"    : 84,
+        "gpus"     : 12
+    },
+
+    "local.summit" : {
+        "project"  : "BIP178",
+        "queue"    : "batch",
+        "schema"   : "local",
+        "cores"    : 84,
+        "gpus"     : 12
     },
 
     "ornl.summit_prte" : {
@@ -352,7 +361,7 @@
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 64
-    }, 
+    },
 
     "fub.allegro"   : {
         "project"  : null,
@@ -367,7 +376,7 @@
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 16
-    }, 
+    },
 
     "lumc.gb-ui"   : {
         "project"  : null,
@@ -388,7 +397,7 @@
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 8
-    }, 
+    },
 
     "radical.two" : {
         "project"  : null,
