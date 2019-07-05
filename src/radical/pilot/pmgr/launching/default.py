@@ -1175,8 +1175,8 @@ class Default(PMGRLaunchingComponent):
                 self._log.debug('supplement %s: %s', key, val)
                 jd[key] = val
 
-        if 'RADICAL_PILOT_PROFILE' in os.environ :
-            jd.environment['RADICAL_PILOT_PROFILE'] = 'TRUE'
+        if self._prof.enabled:
+            jd.environment['RADICAL_PROFILE'] = 'TRUE'
 
         # for condor backends and the like which do not have shared FSs, we add
         # additional staging directives so that the backend system binds the
@@ -1191,7 +1191,7 @@ class Default(PMGRLaunchingComponent):
                 'site:%s/%s.log.tgz < %s.log.tgz' % (pilot_sandbox, pid, pid)
             ])
 
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
+            if self._prof.enabled:
                 jd.file_transfer.extend([
                     'site:%s/%s.prof.tgz > %s.prof.tgz' % (pilot_sandbox, pid, pid),
                     'site:%s/%s.prof.tgz < %s.prof.tgz' % (pilot_sandbox, pid, pid)
