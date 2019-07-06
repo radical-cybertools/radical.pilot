@@ -1,8 +1,34 @@
 
   - For a list of bug fixes, see
-    https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aclosed+sort%3Aupdated-desc
+    https://github.com/radical-cybertools/radical.pilot/ \
+            issues?q=is%3Aissue+is%3Aclosed+sort%3Aupdated-desc
   - For a list of open issues and known problems, see
-    https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
+    https://github.com/radical-cybertools/radical.pilot/ \
+            issues?q=is%3Aissue+is%3Aopen+
+
+
+0.70.0  Release                                                       2019-07-07
+--------------------------------------------------------------------------------
+
+  - support summitdev, summit (JSRUN, PRTE, RS, ERF, LSF, SMT)
+  - support tiger @ princeton (JSRUN)
+  - implement NOOP scheduler
+  - backport application communicators from v2
+  - ensure session close on some tests
+  - pep8, travis, coverage
+  - fix profile settings for several LMs
+  - increasing test coverage
+  - fix issue #1827
+  - fix issue #1790
+  - fix issue ##1759
+  - fix HOMBRE scheduler
+  - remove cprof support
+  - unify mpirun / mpirun_ccmrun
+  - unify mpirun / mpirun_dplace
+  - unify mpirun / mpirun_dplace
+  - unify mpirun / mpirun_dplace
+  - unify mpirun / mpirun_mpt
+  - unify mpirun / mpirun_rsh
 
 
 0.63.0  Release                                                       2019-06-25
@@ -1032,5 +1058,4 @@ API Changes:
 
 
 --------------------------------------------------------------------------------
-
 
