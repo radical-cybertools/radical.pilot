@@ -13,6 +13,7 @@ import os
 import sys
 import glob
 import shutil
+
 import subprocess as sp
 
 name     = 'radical.pilot'
@@ -81,10 +82,10 @@ def get_version(mod_root):
 
         if  p.returncode   !=  0  or \
             version_detail == '@' or \
-            'git-error' in version_detail or \
+            'git-error'      in version_detail or \
             'not-a-git-repo' in version_detail or \
             'not-found'      in version_detail or \
-            'fatal'          in version_detail :
+            'fatal'          in version_detail    :
             version = version_base
         elif '@' not in version_base:
             version = '%s-%s' % (version_base, version_detail)
@@ -105,13 +106,13 @@ def get_version(mod_root):
         if '--record'    in sys.argv or \
            'bdist_egg'   in sys.argv or \
            'bdist_wheel' in sys.argv    :
-          # pip install stage 2 or easy_install stage 1
-          #
-          # pip install will untar the sdist in a tmp tree.  In that tmp
-          # tree, we won't be able to derive git version tags -- so we pack the
-          # formerly derived version as ./VERSION
+            # pip install stage 2 or easy_install stage 1
+            #
+            # pip install will untar the sdist in a tmp tree.  In that tmp
+            # tree, we won't be able to derive git version tags -- so we pack
+            # the formerly derived version as ./VERSION
             shutil.move("VERSION", "VERSION.bak")            # backup version
-            shutil.copy("%s/VERSION" % path, "VERSION")      # use full version instead
+            shutil.copy("%s/VERSION" % path, "VERSION")      # use full version
             os.system  ("python setup.py sdist")             # build sdist
             shutil.copy('dist/%s' % sdist_name,
                         '%s/%s'   % (mod_root, sdist_name))  # copy into tree
@@ -122,7 +123,7 @@ def get_version(mod_root):
 
         return version_base, version_detail, sdist_name
 
-    except Exception as e :
+    except Exception as e:
         raise RuntimeError('Could not extract/set version: %s' % e)
 
 
@@ -138,6 +139,7 @@ version, version_detail, sdist_name = get_version(mod_root)
 
 
 # ------------------------------------------------------------------------------
+#
 class our_test(Command):
     user_options = []
     def initialize_options(self): pass
@@ -230,8 +232,8 @@ setup_args = {
     'cmdclass'           : {
         'test'           : our_test,
                            },
-    'install_requires'   : ['radical.saga>=0.60',
-                            'radical.utils>=0.60',
+    'install_requires'   : ['radical.utils>=0.60',
+                            'radical.saga>=0.60',
                             'pymongo',
                             'python-hostlist',
                             'netifaces',
@@ -251,14 +253,18 @@ setup_args = {
   # 'upload_sphinx'      : {
   #     'upload-dir'     : 'docs/build/html',
   # },
+    # This copies the contents of the examples/ dir under
+    # sys.prefix/share/$name
+    # It needs the MANIFEST.in entries to work.
     'data_files'         : df,
 }
 
 # ------------------------------------------------------------------------------
-
+#
 setup(**setup_args)
 
 os.system('rm -rf src/%s.egg-info' % name)
+
 
 # ------------------------------------------------------------------------------
 
