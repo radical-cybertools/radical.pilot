@@ -10,17 +10,16 @@
 0.70.0  Release                                                       2019-07-07
 --------------------------------------------------------------------------------
 
-  - support summitdev, summit (JSRUN, PRTE, RS, ERF, LSF, SMT)
+  - support summitdev, summit @ ORNL (JSRUN, PRTE, RS, ERF, LSF, SMT)
   - support tiger @ princeton (JSRUN)
   - implement NOOP scheduler
   - backport application communicators from v2
   - ensure session close on some tests
-  - pep8, travis, coverage
+  - continous integration: pep8, travis, increasing test coverage
   - fix profile settings for several LMs
-  - increasing test coverage
   - fix issue #1827
   - fix issue #1790
-  - fix issue ##1759
+  - fix issue #1759
   - fix HOMBRE scheduler
   - remove cprof support
   - unify mpirun / mpirun_ccmrun
