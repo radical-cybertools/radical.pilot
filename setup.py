@@ -159,16 +159,21 @@ def read(fname):
         return ''
 
 
-df = list()
-# df.append(('share/%s'                       % name, ['docs/source/events.md']))
-df.append(('share/%s/examples'              % name, glob.glob('examples/[01]*.py')))
-df.append(('share/%s/examples'              % name, glob.glob('examples/hello*')))
-df.append(('share/%s/examples'              % name, glob.glob('examples/*.json')))
-df.append(('share/%s/examples/docs'         % name, glob.glob('examples/docs/*')))
-df.append(('share/%s/examples/misc'         % name, glob.glob('examples/misc/*')))
-df.append(('share/%s/examples/kmeans'       % name, glob.glob('examples/kmeans/*')))
-df.append(('share/%s/examples/mandelbrot'   % name, glob.glob('examples/mandelbrot/*')))
-df.append(('share/%s/examples/data_staging' % name, glob.glob('examples/data_staging/*')))
+# ------------------------------------------------------------------------------
+#
+# This copies the contents like examples/ dir under sys.prefix/share/$name
+# It needs the MANIFEST.in entries to work.
+base = 'share/%s' % name
+df = [('%s/'                      % base, ['docs/source/events.md']),
+      ('%s/examples'              % base, glob.glob('examples/[01]*.py')),
+      ('%s/examples'              % base, glob.glob('examples/hello*')),
+      ('%s/examples'              % base, glob.glob('examples/*.json')),
+      ('%s/examples/docs'         % base, glob.glob('examples/docs/*')),
+      ('%s/examples/misc'         % base, glob.glob('examples/misc/*')),
+      ('%s/examples/kmeans'       % base, glob.glob('examples/kmeans/*')),
+      ('%s/examples/mandelbrot'   % base, glob.glob('examples/mandelbrot/*')),
+      ('%s/examples/data_staging' % base, glob.glob('examples/data_staging/*')),
+]
 
 
 # -------------------------------------------------------------------------------
@@ -222,7 +227,7 @@ setup_args = {
                             'bin/radical-pilot-agent',
                             'bin/radical-pilot-agent-statepush'
                            ],
-    'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz',
+    'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.md',
                                  'VERSION', 'SDIST', sdist_name]},
     'cmdclass'           : {
         'test'           : our_test,

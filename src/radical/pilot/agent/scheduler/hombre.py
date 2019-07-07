@@ -33,6 +33,9 @@ class Hombre(AgentSchedulingComponent):
 
         AgentSchedulingComponent.__init__(self, cfg, session)
 
+        # homogeneous workloads are always uniform
+        self._uniform_wl = True
+
 
     # --------------------------------------------------------------------------
     #
