@@ -54,9 +54,6 @@ from .base import AgentSchedulingComponent
 #        assumptions.
 #
 # ------------------------------------------------------------------------------
-
-
-# ------------------------------------------------------------------------------
 #
 class Continuous(AgentSchedulingComponent):
     '''
@@ -193,19 +190,8 @@ class Continuous(AgentSchedulingComponent):
             nodes = unit['slots']['nodes']
             self._tag_history[tag] = [node['uid'] for node in nodes]
 
-        # We should check if the unit uses GPUs and set up correctly
-        # which device to use based on the scheduling decision
-        unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = None
-        if unit['description']['cpu_process_type'] not in [rpc.MPI] and \
-           unit['description']['gpu_process_type'] not in [rpc.MPI]:
-            gpu_maps = list()
-            for slot in unit['slots']['nodes']:
-                if slot['gpu_map'] not in gpu_maps:
-                    gpu_maps.append(slot['gpu_map'])
-            if len(gpu_maps) == 1:
-                # uniform GPU requirements
-                unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = \
-                        ','.join(gpu_map[0] for gpu_map in gpu_maps[0])
+        # translate gpu maps into `CUDA_VISIBLE_DEVICES` env
+        self._handle_cuda(unit)
 
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=uid)
