@@ -160,11 +160,7 @@ def read(*rnames):
 
 # ------------------------------------------------------------------------------
 #
-<<<<<<< HEAD
 class RunTwine(Command):
-=======
-class our_test(Command):
->>>>>>> devel
     user_options = []
     def initialize_options (self) : pass
     def finalize_options   (self) : pass
