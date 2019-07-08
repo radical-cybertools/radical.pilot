@@ -217,14 +217,14 @@ class AgentSchedulingComponent(rpu.Component):
         self._uid  = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
                                     ru.ID_CUSTOM)
 
-        rpu.Component.__init__(self, cfg, session)
-
-
         tmp = os.environ.get('RP_UNIFORM_WORKLOAD', '').lower()
         if tmp in ['true', 'yes', '1']:
             self._uniform_wl = True
         else:
             self._uniform_wl = False
+
+        rpu.Component.__init__(self, cfg, session)
+
 
 
     # --------------------------------------------------------------------------
