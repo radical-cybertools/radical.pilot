@@ -2,8 +2,6 @@
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
-import os
 import subprocess    as sp
 import radical.utils as ru
 
@@ -55,8 +53,8 @@ class MPIRunRSH(LaunchMethod):
         task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
-        if not 'task_slots' in opaque_slots:
-            raise RuntimeError('insufficient information to launch via %s: %s' \
+        if 'task_slots' not in opaque_slots:
+            raise RuntimeError('insufficient information to launch via %s: %s'
                     % (self.name, opaque_slots))
 
         task_slots = opaque_slots['task_slots']
@@ -69,6 +67,7 @@ class MPIRunRSH(LaunchMethod):
 
         # Extract all the hosts from the slots
         hosts = [slot.split(':')[0] for slot in task_slots]
+        hosts_string = ','.join(hosts)
 
 
         env_string = ''

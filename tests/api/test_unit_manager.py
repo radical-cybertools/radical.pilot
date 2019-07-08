@@ -73,7 +73,7 @@ class TestUnitManager(unittest.TestCase):
         cpd.sandbox = "/tmp/rp.sandbox.unittests"
         cpd.cleanup = True
 
-        p1 = pm.submit_pilots(pilot_descriptions=cpd)
+        p1 = pm.submit_pilots(descriptions=cpd)
 
         um = rp.UnitManager(session=session, scheduler='round_robin')
         assert um.list_pilots() == [], "Wrong list of pilots"
@@ -96,7 +96,7 @@ class TestUnitManager(unittest.TestCase):
             cpd.runtime = 1
             cpd.sandbox = "/tmp/rp.sandbox.unittests"
             cpd.cleanup = True
-            p = pm.submit_pilots(pilot_descriptions=cpd)
+            p = pm.submit_pilots(descriptions=cpd)
             um.add_pilots(p)
             pilot_list.append(p)
 

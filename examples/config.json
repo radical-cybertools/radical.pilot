@@ -268,11 +268,12 @@
 	    "cores"    : 72
     },
 
-    "local.summit" : {
+    "ornl.summit"  : {
         "project"  : "BIP178",
         "queue"    : "batch",
         "schema"   : "local",
-        "cores"    : 84
+        "cores"    : 84,
+        "gpus"     : 12
     },
 
     "ornl.summit_prte" : {

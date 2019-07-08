@@ -2,6 +2,7 @@
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os
 
 import radical.utils as ru
 
@@ -105,7 +106,6 @@ class JSRUN(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_env     = cud.get('environment') or dict()
         task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
         task_sandbox = ru.Url(cu['unit_sandbox']).path
@@ -117,8 +117,15 @@ class JSRUN(LaunchMethod):
         if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
         else          : task_command = task_exec
 
-        env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
-        env_string = ' '.join(['-E "%s"' % var for var in env_list])
+        env_string = ''
+      # task_env   = cud.get('environment') or dict()
+      # env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
+      # env_string = ' '.join(['-E "%s"' % var for var in env_list])
+      #
+      # # jsrun fails if an -E export is not set
+      # for var in env_list:
+      #     if var not in os.environ:
+      #         os.environ[var] = ''
 
         # from https://www.olcf.ornl.gov/ \
         #             wp-content/uploads/2018/11/multi-gpu-workshop.pdf
