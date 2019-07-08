@@ -280,7 +280,7 @@
         "project"  : "BIP178",
         "queue"    : "batch",
         "schema"   : "local",
-        "cores"    : 4200
+        "cores"    : 84
     },
 
     "ornl.titan" : {

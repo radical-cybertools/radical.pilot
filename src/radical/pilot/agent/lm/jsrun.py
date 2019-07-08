@@ -127,11 +127,6 @@ class JSRUN(LaunchMethod):
       #     if var not in os.environ:
       #         os.environ[var] = ''
 
-        # jsrun fails if an -E export is not set
-        for var in env_list:
-            if var not in os.environ:
-                os.environ[var] = ''
-
         # from https://www.olcf.ornl.gov/ \
         #             wp-content/uploads/2018/11/multi-gpu-workshop.pdf
         #

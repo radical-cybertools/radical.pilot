@@ -506,6 +506,20 @@ class AgentSchedulingComponent(rpu.Component):
             self._prof.prof('schedule_fail', uid=unit['uid'])
             return False
 
+        # We should check if the unit requires GPUs and set up correctly
+        # which device to use based on the scheduling decision
+        unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = None
+        if unit['description']['cpu_process_type'] not in [rpc.MPI] and \
+           unit['description']['gpu_process_type'] not in [rpc.MPI]:
+            gpu_maps = list()
+            for slot in unit['slots']:
+                if slot['gpu_map'] not in gpu_maps:
+                    gpu_maps.append(slot['gpu_map'])
+            if len(gpu_maps) == 1:
+                # uniform GPU requirements
+                unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = \
+                        ','.join(gpu_map[0] for gpu_map in gpu_maps[0])
+
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=unit['uid'])
 

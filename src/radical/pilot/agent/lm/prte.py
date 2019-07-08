@@ -151,7 +151,7 @@ class PRTE(LaunchMethod):
                 # swallowed, the next `prun` call will trigger
                 # termination anyway.
                 os.kill(os.getpid())
-                raise RuntimeError('PRTE DVM dies')
+                raise RuntimeError('PRTE DVM died')
 
             logger.info('prte stopped (%d)' % dvm_process.returncode)
         # ----------------------------------------------------------------------
@@ -250,7 +250,6 @@ class PRTE(LaunchMethod):
                 env_string += '-x "%s" ' % var
 
         map_flag  = ' -np %d --cpus-per-proc %d' % (n_procs, n_threads)
-        map_flag += ' --report-bindings'
       # map_flag += ' --bind-to hwthread:overload-allowed --use-hwthread-cpus'
       # map_flag += ' --oversubscribe'
 
