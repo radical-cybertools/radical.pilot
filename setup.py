@@ -95,7 +95,7 @@ def get_version(mod_root):
             'git-error'      in version_detail or \
             'not-a-git-repo' in version_detail or \
             'not-found'      in version_detail or \
-            'fatal'          in version_detail :
+            'fatal'          in version_detail    :
             version = version_base
         elif '@' not in version_base:
             version = '%s-%s' % (version_base, version_detail)
@@ -116,14 +116,14 @@ def get_version(mod_root):
         if '--record'    in sys.argv or \
            'bdist_egg'   in sys.argv or \
            'bdist_wheel' in sys.argv    :
-          # pip install stage 2 or easy_install stage 1
-          #
-          # pip install will untar the sdist in a tmp tree.  In that tmp
-          # tree, we won't be able to derive git version tags -- so we pack the
-          # formerly derived version as ./VERSION
-            shutil.move('VERSION', 'VERSION.bak')            # backup version
-            shutil.copy('%s/VERSION' % path, 'VERSION')      # use full version
-            os.system  ('python setup.py sdist')             # build sdist
+            # pip install stage 2 or easy_install stage 1
+            #
+            # pip install will untar the sdist in a tmp tree.  In that tmp
+            # tree, we won't be able to derive git version tags -- so we pack
+            # the formerly derived version as ./VERSION
+            shutil.move("VERSION", "VERSION.bak")            # backup version
+            shutil.copy("%s/VERSION" % path, "VERSION")      # use full version
+            os.system  ("python setup.py sdist")             # build sdist
             shutil.copy('dist/%s' % sdist_name,
                         '%s/%s'   % (mod_root, sdist_name))  # copy into tree
             shutil.move('VERSION.bak', 'VERSION')            # restore version
@@ -160,7 +160,11 @@ def read(*rnames):
 
 # ------------------------------------------------------------------------------
 #
+<<<<<<< HEAD
 class RunTwine(Command):
+=======
+class our_test(Command):
+>>>>>>> devel
     user_options = []
     def initialize_options (self) : pass
     def finalize_options   (self) : pass
@@ -177,16 +181,19 @@ if  sys.hexversion < 0x02060000 or sys.hexversion >= 0x03000000:
 
 # ------------------------------------------------------------------------------
 #
-df = list()
-# df.append(('share/%s'                       % name, ['docs/source/events.md']))
-df.append(('share/%s/examples'              % name, glob.glob('examples/[01]*.py')))
-df.append(('share/%s/examples'              % name, glob.glob('examples/hello*')))
-df.append(('share/%s/examples'              % name, glob.glob('examples/*.json')))
-df.append(('share/%s/examples/docs'         % name, glob.glob('examples/docs/*')))
-df.append(('share/%s/examples/misc'         % name, glob.glob('examples/misc/*')))
-df.append(('share/%s/examples/kmeans'       % name, glob.glob('examples/kmeans/*')))
-df.append(('share/%s/examples/mandelbrot'   % name, glob.glob('examples/mandelbrot/*')))
-df.append(('share/%s/examples/data_staging' % name, glob.glob('examples/data_staging/*')))
+# This copies the contents like examples/ dir under sys.prefix/share/$name
+# It needs the MANIFEST.in entries to work.
+base = 'share/%s' % name
+df = [('%s/'                      % base, ['docs/source/events.md']),
+      ('%s/examples'              % base, glob.glob('examples/[01]*.py')),
+      ('%s/examples'              % base, glob.glob('examples/hello*')),
+      ('%s/examples'              % base, glob.glob('examples/*.json')),
+      ('%s/examples/docs'         % base, glob.glob('examples/docs/*')),
+      ('%s/examples/misc'         % base, glob.glob('examples/misc/*')),
+      ('%s/examples/kmeans'       % base, glob.glob('examples/kmeans/*')),
+      ('%s/examples/mandelbrot'   % base, glob.glob('examples/mandelbrot/*')),
+      ('%s/examples/data_staging' % base, glob.glob('examples/data_staging/*')),
+]
 
 
 # ------------------------------------------------------------------------------
@@ -241,10 +248,10 @@ setup_args = {
                             'bin/radical-pilot-agent-statepush'
                            ],
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.c',
-                                 'VERSION', 'CHANGES.md', 'SDIST', sdist_name]},
+                                 '*.md', 'VERSION', 'SDIST', sdist_name]},
   # 'setup_requires'     : ['pytest-runner'],
-    'install_requires'   : ['radical.saga>=0.60',
-                            'radical.utils>=0.60',
+    'install_requires'   : ['radical.utils>=0.60',
+                            'radical.saga>=0.60',
                             'pymongo',
                             'python-hostlist',
                             'netifaces',
@@ -261,6 +268,17 @@ setup_args = {
                            ],
     'test_suite'         : '%s.tests' % name,
     'zip_safe'           : False,
+  # 'build_sphinx'       : {
+  #     'source-dir'     : 'docs/',
+  #     'build-dir'      : 'docs/build',
+  #     'all_files'      : 1,
+  # },
+  # 'upload_sphinx'      : {
+  #     'upload-dir'     : 'docs/build/html',
+  # },
+    # This copies the contents of the examples/ dir under
+    # sys.prefix/share/$name
+    # It needs the MANIFEST.in entries to work.
     'data_files'         : df,
     'cmdclass'           : {'upload': RunTwine},
 }
