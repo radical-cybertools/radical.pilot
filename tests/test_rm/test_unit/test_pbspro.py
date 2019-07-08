@@ -25,7 +25,7 @@ def test_configure(mocked_init, mocked_raise_on, mocked_parse_pbspro_vnodes):
     os.environ['NUM_PES'] = '1'
     os.environ['PBS_JOBID'] = '482125'
 
-    component = PBSPro()
+    component = PBSPro(cfg=None, session=None)
     component.name = 'PBSPro'
     component._log = ru.Logger('dummy')
     component._cfg = {}
@@ -44,7 +44,7 @@ def test_configure(mocked_init, mocked_raise_on, mocked_parse_pbspro_vnodes):
     os.environ['NUM_PES'] = '1'
     os.environ['PBS_JOBID'] = '482125'
 
-    component = PBSPro()
+    component = PBSPro(cfg=None, session=None)
     component.name = 'PBSPro'
     component._log = ru.Logger('dummy')
     component._cfg = {'cores_per_node': 4,
@@ -75,7 +75,7 @@ def test_configure_error(mocked_init, mocked_raise_on, mocked_parse_pbspro_vnode
     os.environ['NUM_PES'] = '1'
     os.environ['PBS_JOBID'] = '482125'
 
-    component = PBSPro()
+    component = PBSPro(cfg=None, session=None)
     component.name = 'PBSPro'
     component._log = ru.Logger('dummy')
     component._cfg = {}
@@ -132,7 +132,7 @@ def test_configure_error(mocked_init, mocked_raise_on, mocked_parse_pbspro_vnode
 def test_parse_pbspro_vnodes(mocked_init, mocked_raise_on, mocked_configure, mocked_subproc):
     # Test 1 no config file JOB_ID
     os.environ['PBS_JOBID'] = '482125'
-    component = PBSPro()
+    component = PBSPro(cfg=None, session=None)
     component.name = 'PBSPro'
     component._log = ru.Logger('dummy')
     component._parse_pbspro_vnodes()
@@ -147,7 +147,7 @@ def test_parse_pbspro_vnodes_error(mocked_init, mocked_raise_on, mocked_configur
     # Test 1 check JOB_ID
     if 'PBS_JOBID' in os.environ:
         del os.environ['PBS_JOBID']
-    component = PBSPro()
+    component = PBSPro(cfg=None, session=None)
     component._cfg = {}
     component.name = 'PBSPro'
     component._log = ru.Logger('dummy')
