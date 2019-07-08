@@ -33,6 +33,9 @@ class Hombre(AgentSchedulingComponent):
 
         AgentSchedulingComponent.__init__(self, cfg, session)
 
+        # homogeneous workloads are always uniform
+        self._uniform_wl = True
+
 
     # --------------------------------------------------------------------------
     #
@@ -161,7 +164,10 @@ class Hombre(AgentSchedulingComponent):
             while slot['ncblocks'] < ncblocks:
                 if node['cblocks']:
                     cblock = node['cblocks'].pop(0)
-                    slot['nodes'].append([nname, nuid, [cblock], []])
+                    slot['nodes'].append({'name'    : nname,
+                                          'uid'     : nuid,
+                                          'core_map': [cblock],
+                                          'gpu_map' : []})
                     slot['ncblocks'] += 1
                 else:
                     nok = False
@@ -170,7 +176,10 @@ class Hombre(AgentSchedulingComponent):
             while slot['ngblocks'] < ngblocks:
                 if node['gblocks']:
                     gblock = node['gblocks'].pop(0)
-                    slot['nodes'].append([nname, nuid, [], [gblock]])
+                    slot['nodes'].append({'name'    : nname,
+                                          'uid'     : nuid,
+                                          'core_map': [],
+                                          'gpu_map' : [gblock]})
                     slot['ngblocks'] += 1
                 else:
                     nok = False

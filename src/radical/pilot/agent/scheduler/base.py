@@ -186,7 +186,8 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 #        https://github.com/radical-cybertools/radical.pilot/blob/feature/ \
 #                           events/docs/source/events.md \
 #                           #agentschedulingcomponent-component
-#
+
+
 # ------------------------------------------------------------------------------
 #
 class AgentSchedulingComponent(rpu.Component):
@@ -216,14 +217,14 @@ class AgentSchedulingComponent(rpu.Component):
         self._uid  = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
                                     ru.ID_CUSTOM)
 
-        rpu.Component.__init__(self, cfg, session)
-
-
         tmp = os.environ.get('RP_UNIFORM_WORKLOAD', '').lower()
         if tmp in ['true', 'yes', '1']:
             self._uniform_wl = True
         else:
             self._uniform_wl = False
+
+        rpu.Component.__init__(self, cfg, session)
+
 
 
     # --------------------------------------------------------------------------
@@ -506,6 +507,9 @@ class AgentSchedulingComponent(rpu.Component):
             self._prof.prof('schedule_fail', uid=unit['uid'])
             return False
 
+        # translate gpu maps into `CUDA_VISIBLE_DEVICES` env
+        self._handle_cuda(unit)
+
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=unit['uid'])
 
@@ -519,6 +523,42 @@ class AgentSchedulingComponent(rpu.Component):
 
         # True signals success
         return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _handle_cuda(self, unit):
+
+        # FIXME: this code should probably live elsewhere, not in this
+        #        performance critical scheduler base class
+        #
+        # Check if unit requires GPUs.  If so, set CUDA_VISIBLE_DEVICES to the
+        # list of assigned  GPU IDs.  We only handle uniform GPU setting for
+        # now, and will isse a warning on non-uniform ones.
+        # The default setting is ``
+        #
+        unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = ''
+        self._log.debug('=== %s', pprint.pformat(unit['slots']))
+
+        gpu_maps = list()
+        for node in unit['slots']['nodes']:
+            if node['gpu_map'] not in gpu_maps:
+                gpu_maps.append(node['gpu_map'])
+
+        if not gpu_maps:
+            # no gpu maps, nothing to do
+            pass
+
+        elif len(gpu_maps) > 1:
+            self._log.warn('cannot set CUDA_VISIBLE_DEVICES for non-uniform'
+                           'GPU schedule (%s)' % gpu_maps)
+
+        else:
+            gpu_map = gpu_maps[0]
+            if gpu_map:
+                # uniform, non-zero gpu map
+                unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = \
+                            ','.join(str(gpu_set[0]) for gpu_set in gpu_map)
 
 
     # --------------------------------------------------------------------------
