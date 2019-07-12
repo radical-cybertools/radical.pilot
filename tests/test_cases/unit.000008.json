@@ -16,7 +16,6 @@
                 "gpus_per_node" : 1,
                 "task_offsets"  : [1],
                 "lm_info"       : {
-                                   # for LM ORTE
                                    "spark_home"     : "/", 
                                    "master_ip"      : "test_ip", 
                                    "lm_detail"      : "spark://test_ip:7077", 
