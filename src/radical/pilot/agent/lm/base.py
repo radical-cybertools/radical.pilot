@@ -76,7 +76,6 @@ class LaunchMethod(object):
     #
     def __init__(self, name, cfg, session):
 
-
         self.name     = name
         self._cfg     = cfg
         self._session = session
