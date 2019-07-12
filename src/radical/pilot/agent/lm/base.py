@@ -76,6 +76,7 @@ class LaunchMethod(object):
     #
     def __init__(self, name, cfg, session):
 
+        # pylint: disable=protected-access
         self.name     = name
         self._cfg     = cfg
         self._session = session
@@ -86,6 +87,7 @@ class LaunchMethod(object):
         self.env_removables = []
 
         self._configure()
+        # pylint: enable=protected-access
 
 
     # --------------------------------------------------------------------------
@@ -167,9 +169,11 @@ class LaunchMethod(object):
             return impl(name, cfg, session)
 
         except KeyError:
+            # pylint: disable=protected-access
             session._log.exception("LM '%s' unknown or defunct" % name)
 
         except Exception as e:
+            # pylint: disable=protected-access
             session._log.exception("LM cannot be used: %s!" % e)
 
 
@@ -388,7 +392,7 @@ class LaunchMethod(object):
                     flavor  = self.MPI_FLAVOR_OMPI
                     break
 
-                if '(open mpi):' in line.lower():
+                if '(open mpi)' in line.lower():
                     version = line.split(')', 1)[1].strip()
                     flavor  = self.MPI_FLAVOR_OMPI
                     break
