@@ -276,7 +276,7 @@
     },
 
     "ornl.summit"  : {
-        "project"  : "BIP178",
+        "project"  : "GEO111",
         "queue"    : "batch",
         "schema"   : "local",
         "cores"    : 84,
@@ -284,7 +284,7 @@
     },
 
     "ornl.summit_prte" : {
-        "project"  : "BIP178",
+        "project"  : "GEO111",
         "queue"    : "batch",
         "schema"   : "local",
         "cores"    : 84
