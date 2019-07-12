@@ -76,18 +76,17 @@ class LaunchMethod(object):
     #
     def __init__(self, name, cfg, session):
 
-        # pylint: disable=protected-access
+
         self.name     = name
         self._cfg     = cfg
         self._session = session
-        self._log     = self._session._log
+        self._log     = self._session._log    # pylint: disable=protected-access
         self._log.debug('create LM: %s', type(self))
 
         # A per-launch_method list of env vars to remove from the CU env
         self.env_removables = []
 
         self._configure()
-        # pylint: enable=protected-access
 
 
     # --------------------------------------------------------------------------
