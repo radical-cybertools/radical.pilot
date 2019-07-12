@@ -217,14 +217,14 @@ class AgentSchedulingComponent(rpu.Component):
         self._uid  = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
                                     ru.ID_CUSTOM)
 
-        rpu.Component.__init__(self, cfg, session)
-
-
         tmp = os.environ.get('RP_UNIFORM_WORKLOAD', '').lower()
         if tmp in ['true', 'yes', '1']:
             self._uniform_wl = True
         else:
             self._uniform_wl = False
+
+        rpu.Component.__init__(self, cfg, session)
+
 
 
     # --------------------------------------------------------------------------
@@ -507,7 +507,29 @@ class AgentSchedulingComponent(rpu.Component):
             self._prof.prof('schedule_fail', uid=unit['uid'])
             return False
 
-        # FIXME: the code below should probably live elsewhere, not in this
+        # translate gpu maps into `CUDA_VISIBLE_DEVICES` env
+        self._handle_cuda(unit)
+
+        # got an allocation, we can go off and launch the process
+        self._prof.prof('schedule_ok', uid=unit['uid'])
+
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("after  allocate   %s: %s", unit['uid'],
+                            self.slot_status())
+          # self._log.debug("%s [%s/%s] : %s", unit['uid'],
+          #                 unit['description']['cpu_processes'],
+          #                 unit['description']['gpu_processes'],
+          #                 pprint.pformat(unit['slots']))
+
+        # True signals success
+        return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _handle_cuda(self, unit):
+
+        # FIXME: this code should probably live elsewhere, not in this
         #        performance critical scheduler base class
         #
         # Check if unit requires GPUs.  If so, set CUDA_VISIBLE_DEVICES to the
@@ -532,26 +554,11 @@ class AgentSchedulingComponent(rpu.Component):
                            'GPU schedule (%s)' % gpu_maps)
 
         else:
-            gpu_map = gpu_maps.pop()
+            gpu_map = gpu_maps[0]
             if gpu_map:
                 # uniform, non-zero gpu map
                 unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = \
-                            ','.join(gpu for gpu in gpu_map)
-
-
-        # got an allocation, we can go off and launch the process
-        self._prof.prof('schedule_ok', uid=unit['uid'])
-
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  allocate   %s: %s", unit['uid'],
-                            self.slot_status())
-          # self._log.debug("%s [%s/%s] : %s", unit['uid'],
-          #                 unit['description']['cpu_processes'],
-          #                 unit['description']['gpu_processes'],
-          #                 pprint.pformat(unit['slots']))
-
-        # True signals success
-        return True
+                            ','.join(str(gpu_set[0]) for gpu_set in gpu_map)
 
 
     # --------------------------------------------------------------------------

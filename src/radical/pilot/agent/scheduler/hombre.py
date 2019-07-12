@@ -33,6 +33,9 @@ class Hombre(AgentSchedulingComponent):
 
         AgentSchedulingComponent.__init__(self, cfg, session)
 
+        # homogeneous workloads are always uniform
+        self._uniform_wl = True
+
 
     # --------------------------------------------------------------------------
     #
@@ -56,6 +59,9 @@ class Hombre(AgentSchedulingComponent):
         #   we'll prevent that behavior by allocating one additional CPU core
         #   for each set of requested GPU processes.
         self._oversubscribe = self._cfg.get('oversubscribe', True)
+
+        if not self._oversubscribe:
+            raise ValueError('HOMBRE needs oversubscription enabled')
 
         # NOTE: We delay the actual configuration until we received the first
         #       unit to schedule - at that point we can slice and dice the
@@ -120,7 +126,7 @@ class Hombre(AgentSchedulingComponent):
         ngblocks = cud['gpu_processes']
         gblocks  = list()
         gidx     = 0
-        while gidx + gblock < self.gpn:
+        while gidx + gblock <= self.gpn:
             gblocks.append(range(gidx,gidx + gblock))
             gidx += gblock
 
@@ -149,6 +155,7 @@ class Hombre(AgentSchedulingComponent):
         slot   = next_slot()
         while nidx < nnodes:
 
+
             if  slot['ncblocks'] == ncblocks and \
                 slot['ngblocks'] == ngblocks :
                 slot = next_slot(slot)
@@ -156,7 +163,7 @@ class Hombre(AgentSchedulingComponent):
             node  = self.nodes[nidx]
             nuid  = node['uid']
             nname = node['name']
-            nok   = True
+            ok    = True
 
             while slot['ncblocks'] < ncblocks:
                 if node['cblocks']:
@@ -167,23 +174,31 @@ class Hombre(AgentSchedulingComponent):
                                           'gpu_map' : []})
                     slot['ncblocks'] += 1
                 else:
-                    nok = False
+                    ok = False
                     break
 
             while slot['ngblocks'] < ngblocks:
                 if node['gblocks']:
+
+                    # move the process onto core `0` (oversubscribed)
+                    # enabled)
                     gblock = node['gblocks'].pop(0)
                     slot['nodes'].append({'name'    : nname,
                                           'uid'     : nuid,
-                                          'core_map': [],
+                                          'core_map': [[0]],
                                           'gpu_map' : [gblock]})
                     slot['ngblocks'] += 1
                 else:
-                    nok = False
+                    ok = False
                     break
 
-            if not nok:
-                nidx += 1
+            if ok:
+                self.free.append(slot)
+                slot = next_slot()
+                continue
+
+            nidx += 1
+
 
         if  slot['ncblocks'] == ncblocks and \
             slot['ngblocks'] == ngblocks :

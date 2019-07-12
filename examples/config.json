@@ -163,6 +163,13 @@
         "cores"    : 56
     },
 
+    "xsede.frontera" : {
+        "project"  : "FTA-Jha",
+        "queue"    : "development",
+        "schema"   : "local",
+        "cores"    : 64
+    },
+
     "xsede.stampede" : {
         "project"  : "TG-MCB090174",
         "queue"    : "development",
@@ -268,11 +275,12 @@
 	    "cores"    : 72
     },
 
-    "ornl.summit" : {
+    "ornl.summit"  : {
         "project"  : "BIP178",
         "queue"    : "batch",
         "schema"   : "local",
-        "cores"    : 84
+        "cores"    : 84,
+        "gpus"     : 12
     },
 
     "ornl.summit_prte" : {

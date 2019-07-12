@@ -106,7 +106,6 @@ class JSRUN(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_env     = cud.get('environment') or dict()
         task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
         task_sandbox = ru.Url(cu['unit_sandbox']).path
@@ -119,6 +118,7 @@ class JSRUN(LaunchMethod):
         else          : task_command = task_exec
 
         env_string = ''
+      # task_env   = cud.get('environment') or dict()
       # env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
       # env_string = ' '.join(['-E "%s"' % var for var in env_list])
       #
@@ -147,7 +147,8 @@ class JSRUN(LaunchMethod):
 
       # flags = '-n%d -a1 ' % (task_procs)
         command = '%s --erf_input %s %s %s %s' % (self.launch_command, rs_fname,
-                                                  smpiargs, env_string, task_command)
+                                                  smpiargs, env_string,
+                                                  task_command)
 
       # with open('./commands.log', 'a') as fout:
       #     fout.write('%s\n' % command)
