@@ -276,7 +276,7 @@
     },
 
     "ornl.summit"  : {
-        "project"  : "GEO111",
+        "project"  : "CSC343",
         "queue"    : "batch",
         "schema"   : "local",
         "cores"    : 84,
@@ -284,7 +284,7 @@
     },
 
     "ornl.summit_prte" : {
-        "project"  : "GEO111",
+        "project"  : "CSC343",
         "queue"    : "batch",
         "schema"   : "local",
         "cores"    : 84
