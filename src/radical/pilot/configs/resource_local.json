@@ -234,7 +234,7 @@
         "gpus_per_node"               : 1,
         "lrms"                        : "FORK",
         "agent_type"                  : "multicore",
-        "agent_scheduler"             : "HOMBRE",
+        "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "SHELLFS",
         "agent_launch_method"         : "PRTE",
         "task_launch_method"          : "PRTE",
@@ -244,10 +244,10 @@
       # "virtenv"                     : "$HOME/radical/radical.pilot.merge/ve/",
         "python_dist"                 : "default",
         "pre_bootstrap_0"             : [
-            "export PRTE_HOME=$HOME/radical//prte/install/",
-            "export PATH=$PRTE_HOME/bin/:$PATH",
-            "export LD_LIBRARY_PATH=$PRTE_HOME/lib/:$LD_LIBRARY_PATH",
-            "export PKG_CONFIG_PATH=$PRTE_HOME/share/pkgconfig/:$PKG_CONFIG_PATH"
+            "export PRRTE_PREFIX=$HOME/radical/prte/install/",
+            "export PATH=$PRRTE_PREFIX/bin/:$PATH",
+            "export LD_LIBRARY_PATH=$PRRTE_PREFIX/lib/:$LD_LIBRARY_PATH",
+            "export PKG_CONFIG_PATH=$PRRTE_PREFIX/share/pkgconfig/:$PKG_CONFIG_PATH"
         ],
         "cores_per_node"              : 8,
         "gpus_per_node"               : 1

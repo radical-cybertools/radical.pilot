@@ -45,8 +45,8 @@ class LSF_SUMMIT(LRMS):
         self.name            = type(self).__name__
         self._cfg            = cfg
         self._session        = session
-        self._log            = self._session.get_logger()
-        self._prof           = self._session.get_profiler()
+        self._log            = self._session._log
+        self._prof           = self._session._prof
         self.requested_cores = self._cfg['cores']
 
         self._log.info("Configuring LRMS %s.", self.name)
