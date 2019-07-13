@@ -273,6 +273,12 @@ class Continuous(AgentSchedulingComponent):
         When `partial` is set to `True`, this method is allowed to return
         a *partial* match, so to find less cores, gpus, and local_fs then
         requested (but the call will never return more than requested).
+
+        FIXME: SMT handling: we should assume that hardware threads of the same
+               physical core cannot host different executables, so HW threads
+               can only account for thread placement, not process placement.
+               This might best be realized by internally handling SMT as minimal
+               thread count and using physical core IDs for process placement.
         '''
 
         # list of core and gpu ids available in this node.
@@ -292,6 +298,9 @@ class Continuous(AgentSchedulingComponent):
         alloc_gpus  = 0
         alloc_lfs   = 0
         alloc_mem   = 0
+
+        # we need at least one core per gpu process
+        requested_cores = max(requested_gpus, requested_cores)
 
         if partial:
             # For partial requests the check simplifies: we just check if we
@@ -495,7 +504,7 @@ class Continuous(AgentSchedulingComponent):
                                                     gpu_chunk=gpu_chunk,
                                                     lfs_chunk=lfs_chunk,
                                                     mem_chunk=mem_chunk)
-            if len(cores) == total_cores and \
+            if len(cores) >= total_cores and \
                len(gpus)  == total_gpus:
 
                 # we found the needed resources - break out of search loop
