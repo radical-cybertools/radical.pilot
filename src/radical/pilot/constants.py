@@ -46,6 +46,20 @@ LOG_PUBSUB                     = 'log_pubsub'
 #
 FREE = 0
 BUSY = 1
+DOWN = 2
+
+
+# -----------------------------------------------------------------------------
+#
+# definitions of metrics
+#
+UNIT_STATE           = 'UNIT_STATE'
+WAIT_QUEUE_SIZE      = 'WAIT_QUEUE_SIZE'
+UMGR_METRICS         = [UNIT_STATE, 
+                        WAIT_QUEUE_SIZE]
+
+PILOT_STATE          = 'PILOT_STATE'
+PMGR_METRICS         = [PILOT_STATE]
 
 
 # ------------------------------------------------------------------------------

@@ -11,9 +11,7 @@ import radical.utils as _ru
 
 # ------------------------------------------------------------------------------
 # constants and types
-from .types      import *
 from .states     import *
-from .logentry   import * 
 from .constants  import *
 from .exceptions import *
 
@@ -26,7 +24,7 @@ from .context                   import Context
 from .unit_manager              import UnitManager
 from .compute_unit              import ComputeUnit
 from .compute_unit_description  import ComputeUnitDescription
-from .compute_unit_description  import POSIX, MPI, OpenMP
+from .compute_unit_description  import POSIX, MPI, OpenMP, CUDA
 
 from .pilot_manager             import PilotManager
 from .compute_pilot             import ComputePilot

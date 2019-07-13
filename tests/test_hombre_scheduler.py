@@ -1,8 +1,6 @@
 
 
 import os
-import copy
-import pprint
 import pytest
 
 import radical.utils           as ru
@@ -73,9 +71,9 @@ def cud_mpi():
 # ------------------------------------------------------------------------------
 # Cleanup any folders and files to leave the system state
 # as prior to the test
-def tearDown():
+def tearDown(session):
 
-    pass
+    session.close()
 
 
 # ------------------------------------------------------------------------------
@@ -91,6 +89,7 @@ def test_nonmpi_unit_withhombre_scheduler(mocked_init,
     cfg, session = setUp()
 
     component = Hombre(cfg=dict(), session=session)
+    component._log                 = ru.Logger('radical.pilot.test')
     component._configured          = False
     component._cfg                 = cfg
     component._lrms_info           = cfg['lrms_info']
@@ -102,12 +101,12 @@ def test_nonmpi_unit_withhombre_scheduler(mocked_init,
 
     component.nodes = list()
     for node in component._lrms_node_list:
-        component.nodes.append({'uid'  : node[0], 
+        component.nodes.append({'uid'  : node[0],
                                 'name' : node[1]})
 
     # populate component attributes
     component._configure()
-    component._oversubscribe = True
+    component._oversubscribe = False
 
     # we expect these slots to be available
     all_slots = list()
@@ -115,39 +114,54 @@ def test_nonmpi_unit_withhombre_scheduler(mocked_init,
         all_slots.append({'lm_info'        : 'INFO',
                           'cores_per_node' : 4,
                           'gpus_per_node'  : 2,
-                          'nodes'          : [[n, str(n), [[0, 1]], [[0]]]]
+                          'ncblocks'       : 1,
+                          'ngblocks'       : 1,
+                          'nodes'          : [{'name': n,
+                                               'uid' : str(n),
+                                               'core_map' : [[0, 1]],
+                                               'gpu_map'  : []},
+                                              {'name': n,
+                                               'uid' : str(n),
+                                               'core_map' : [[0]],
+                                               'gpu_map'  : [[0]]}
+                                             ]
                          })
         all_slots.append({'lm_info'        : 'INFO',
                           'cores_per_node' : 4,
                           'gpus_per_node'  : 2,
-                          'nodes'          : [[n, str(n), [[2, 3]], [[1]]]]
+                          'ncblocks'       : 1,
+                          'ngblocks'       : 1,
+                          'nodes'          : [{'name': n,
+                                               'uid' : str(n),
+                                               'core_map' : [[2, 3]],
+                                               'gpu_map'  : []},
+                                              {'name': n,
+                                               'uid' : str(n),
+                                               'core_map' : [[0]],
+                                               'gpu_map'  : [[1]]}
+                                             ]
                          })
 
     # Allocate first CUD -- should land on second node
     cud  = cud_nonmpi()
     slot = component._allocate_slot(cud)
-    chk  = all_slots[-1]
-    print '---------------'
+    chk = all_slots[-1]
 
     assert(slot == chk)
 
     # Allocate second CUD -- should also land on second node
     cud  = cud_nonmpi()
     slot = component._allocate_slot(cud)
-    assert slot == all_slots[-2]
+    chk = all_slots[-2]
+
+    assert(slot == chk)
 
     # Allocate third CUD -- should land on first node
     cud  = cud_nonmpi()
     slot = component._allocate_slot(cud)
-    assert slot == all_slots[-3]
+    chk = all_slots[-3]
 
-  # print '---------------'
-  # print 'free'
-  # pprint.pprint(component.free)
-  # print 'found'
-  # pprint.pprint(slot)
-  # print 'expect'
-  # pprint.pprint(chk)
+    assert(slot == chk)
 
     # Allocate fourth CUD -- should also land on tecond node
     cud  = cud_nonmpi()
@@ -175,7 +189,7 @@ def test_nonmpi_unit_withhombre_scheduler(mocked_init,
     newslot = component._allocate_slot(cud)
     assert(newslot == slot)
 
-    tearDown()
+    tearDown(session)
 
 
 # ------------------------------------------------------------------------------
@@ -191,6 +205,7 @@ def test_mpi_unit_withhombre_scheduler(mocked_init,
     cfg, session = setUp()
 
     component = Hombre(cfg=dict(), session=session)
+    component._log                 = ru.Logger('radical.pilot.test')
     component._configured          = False
     component._cfg                 = cfg
     component._lrms_info           = cfg['lrms_info']
@@ -202,7 +217,7 @@ def test_mpi_unit_withhombre_scheduler(mocked_init,
 
     component.nodes = list()
     for node in component._lrms_node_list:
-        component.nodes.append({'uid'  : node[0], 
+        component.nodes.append({'uid'  : node[0],
                                 'name' : node[1]})
 
     # populate component attributes
@@ -227,16 +242,8 @@ def test_mpi_unit_withhombre_scheduler(mocked_init,
     cud  = cud_mpi()
     slot = component._allocate_slot(cud)
     chk  = all_slots[-1]
-    assert(slot == chk)
 
-  # print '---------------'
-  # print 'free'
-  # pprint.pprint(component.free)
-  # print 'found'
-  # pprint.pprint(slot)
-  # print 'expect'
-  # pprint.pprint(chk)
-  # print '---------------'
+    assert(slot == chk)
 
     # Allocate second CUD -- should land on first node
     cud  = cud_mpi()
@@ -263,7 +270,7 @@ def test_mpi_unit_withhombre_scheduler(mocked_init,
     newslot = component._allocate_slot(cud)
     assert(newslot == slot)
 
-    tearDown()
+    tearDown(session)
 
 
 # ------------------------------------------------------------------------------

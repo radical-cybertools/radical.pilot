@@ -1,0 +1,52 @@
+
+{
+    "unit": {
+        "uid":         "unit.000003",
+        "description": {"executable"    : "/bin/sleep",
+                        "arguments"     : ["10"],
+                        "cpu_processes" : 1,
+                        "cpu_threads"   : 4
+                       }
+    },
+
+    "setup" : {
+        "lm" : {
+            "slots": {
+                "cores_per_node": 16,
+                "gpus_per_node" : 1,
+                "task_offsets"   : [4],
+                "lm_info"       : {
+                                   # for LM ORTE
+                                   "dvm_uri" : "dvm_uri"
+                                  },
+                "lfs_per_node"  : 0,
+                "nodes"         : [{"name"    : "node1",
+                                    "uid"     : "node1",
+                                    "core_map": [[0,1,2,3]],
+                                    "gpu_map" : [],
+                                    "lfs"     : {"size": 0,
+                                                 "path": null}
+                }]
+            },
+            "unit_sandbox": "./"
+        }
+    },
+
+    "results": {
+        "lm": {
+            "fork"  : ["/bin/sleep \"10\" ", null],
+            "orte"  : ["orterun  --hnp \"dvm_uri\" -np 1 --bind-to none -host node1 -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" ", null],
+            "aprun" : ["aprun -n 1 -N 1 -L node1 -d 4 -cc 0,1,2,3 /bin/sleep \"10\"  ", null],
+            "mpirun": ["mpirun -np 1  -host node1  /bin/sleep \"10\"", null],
+            "ibrun" : ["ibrun -n 1 -o 4 /bin/sleep \"10\" ", null],
+            "ssh"   : ["/bin/sleep \"10\" ","ssh node1 PATH=test_path 1"],
+            "rsh"   : ["/bin/sleep \"10\" ","rsh node1 PATH=test_path 1"],
+            "spark" : "RuntimeError",
+            "jsrun"  : ["jsrun --erf_input rs_layout_cu_000003  -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" /bin/sleep \"10\" ",null]
+        },
+        "resource_file": {
+            "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0,4,8,12}}\n"]
+        }
+    }
+}
+

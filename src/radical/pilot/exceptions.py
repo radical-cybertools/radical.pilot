@@ -1,4 +1,3 @@
-#pylint: disable=C0301, C0103, W0212
 
 """
 .. module:: radical.pilot.exceptions
@@ -10,6 +9,7 @@
 
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
+
 
 # ------------------------------------------------------------------------------
 #
@@ -76,6 +76,7 @@ class DatabaseError (PilotException) :
     """
     def __init__ (self, msg, obj=None) :
         PilotException.__init__(self, msg, obj)
+
 
 # ------------------------------------------------------------------------------
 #
@@ -166,6 +167,7 @@ class NoSuccess(PilotException) :
     def __init__(self, msg, obj=None) :
         PilotException.__init__(self, msg, obj)
 
+
 # ------------------------------------------------------------------------------
 #
 class NotImplemented(PilotException):
@@ -174,3 +176,6 @@ class NotImplemented(PilotException):
     """
     def __init__(self, msg, obj=None):
         PilotException.__init__(self, msg, obj)
+
+
+# ------------------------------------------------------------------------------

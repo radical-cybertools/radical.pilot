@@ -1,27 +1,74 @@
 
-  - For a list of bug fixes, see 
-    https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aclosed+sort%3Aupdated-desc
+  - For a list of bug fixes, see
+    https://github.com/radical-cybertools/radical.pilot/ \
+            issues?q=is%3Aissue+is%3Aclosed+sort%3Aupdated-desc
   - For a list of open issues and known problems, see
-    https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
+    https://github.com/radical-cybertools/radical.pilot/ \
+            issues?q=is%3Aissue+is%3Aopen+
+
+
+0.70.0  Release                                                       2019-07-07
+--------------------------------------------------------------------------------
+
+  - support summitdev, summit @ ORNL (JSRUN, PRTE, RS, ERF, LSF, SMT)
+  - support tiger @ princeton (JSRUN)
+  - implement NOOP scheduler
+  - backport application communicators from v2
+  - ensure session close on some tests
+  - continous integration: pep8, travis, increasing test coverage
+  - fix profile settings for several LMs
+  - fix issue #1827
+  - fix issue #1790
+  - fix issue #1759
+  - fix HOMBRE scheduler
+  - remove cprof support
+  - unify mpirun / mpirun_ccmrun
+  - unify mpirun / mpirun_dplace
+  - unify mpirun / mpirun_dplace
+  - unify mpirun / mpirun_dplace
+  - unify mpirun / mpirun_mpt
+  - unify mpirun / mpirun_rsh
+
+
+0.63.0  Release                                                       2019-06-25
+--------------------------------------------------------------------------------
+
+  - support for summit (experimental, jsrun + ERF)
+  - PRRTE support (experimental, summit only)
+  - many changes to the test setup (pytest, pylint, flake8, coverage, travis)
+  - support for Tiger (adds SRUN launch method)
+  - support NOOP scheduler
+  - support application level communication
+  - support ordered scheduling of tasks
+  - partial code cleanup (coding guidelines)
+  - simplifying MPI base launch methods
+  - support for resource specific SMT settings
+  - resource specific ranges of cores/threads can now be blocked from use
+  - ORTE support is doscontinued
+  - fixes in hombre scheduler
+  - improvements on GPU support
+  - fix in continuous scheduler which caused underutilization on heterogeneous
+    tasks
+  - fixed: #1758, #1764, #1792, #1790, #1827, #187
 
 
 0.62.0  Release                                                       2019-06-08
 --------------------------------------------------------------------------------
 
-  - add unit test 
-  - trigger tests 
+  - add unit test
+  - trigger tests
   - remove obsolete fifo scheduler (use the ordered scheduler instead)
-  - add ordered scheduler 
-  - add tiger support 
-  - add ssh access to cheyenne 
+  - add ordered scheduler
+  - add tiger support
+  - add ssh access to cheyenne
   - cleanup examples
   - fix dplace support
   - support app specified unit sandboxes
-  - fix pilot statepush over tunnels 
+  - fix pilot statepush over tunnels
   - fix titan ve creation, add new static ve
   - fix for cheyenne
 
- 
+
 0.61.0  Release                                                       2019-05-07
 --------------------------------------------------------------------------------
 
@@ -42,12 +89,12 @@
 0.60.0  Release                                                       2019-04-10
 --------------------------------------------------------------------------------
 
-  - add issue template 
+  - add issue template
   - rename RP_PILOT_SBOX to RP_PILOT_STAGING and expose to tasks
   - fix bridges default partition (#1816)
-  - fix #1826 
-  - fix off-by-one error on unit state check 
-  - ignore failing DB disconnect 
+  - fix #1826
+  - fix off-by-one error on unit state check
+  - ignore failing DB disconnect
   - follow rename of saga-python to radical.saga
 
 
@@ -142,16 +189,16 @@
 --------------------------------------------------------------------------------
 
   - fix examples
-  - fix issue #1715 (#1716) 
+  - fix issue #1715 (#1716)
   - remove Stampede's resource configs. issue #1711
-  - supermic does not like `curl -1` (#1723) 
+  - supermic does not like `curl -1` (#1723)
 
 
 0.50.8  Release                                                       2018-08-03
 --------------------------------------------------------------------------------
 
   - make sure that CUD values are not None (#1688)
-  - don't limit pymongo version anymore (#1687) 
+  - don't limit pymongo version anymore (#1687)
 
 
 0.50.7  Release                                                       2018-08-01
@@ -169,10 +216,10 @@
 0.50.5  Release                                                       2018-07-30
 --------------------------------------------------------------------------------
 
-  - fix default values for process and thread types (#1681) 
-  - fix outdated links in ompi deploy script 
-  - fix/issue 1671 (#1680) 
-  - fix scheduler config checks (#1677) 
+  - fix default values for process and thread types (#1681)
+  - fix outdated links in ompi deploy script
+  - fix/issue 1671 (#1680)
+  - fix scheduler config checks (#1677)
 
 
 0.50.4  Release                                                       2018-07-13
@@ -264,22 +311,22 @@
 0.47.4 Release                                                        2018-03-20
 --------------------------------------------------------------------------------
 
-  - fifo agent scheduler (#1537) 
-  - hombre agent scheduler (#1536) 
-  - Fix/issue 1466 (#1544) 
-  - Fix/issue 1501 (#1541) 
-  - switch to new OMPI deployment on titan (#1529) 
-  - add agent configuration doc (#1540) 
+  - fifo agent scheduler (#1537)
+  - hombre agent scheduler (#1536)
+  - Fix/issue 1466 (#1544)
+  - Fix/issue 1501 (#1541)
+  - switch to new OMPI deployment on titan (#1529)
+  - add agent configuration doc (#1540)
 
 
 0.47.3 Release                                                        2018-03-20
 --------------------------------------------------------------------------------
 
-  - add resource limit test 
-  - add tmp cheyenne config 
-  - api rendering proposal for partitions 
+  - add resource limit test
+  - add tmp cheyenne config
+  - api rendering proposal for partitions
   - fix bootstrap sequence (BW)
-  - tighten bootstrap process, add documentation 
+  - tighten bootstrap process, add documentation
 
 
 0.47.2 Release                                                        2018-02-28
@@ -287,11 +334,11 @@
 
   - fix issue 1538
   - fix issue 1554
-  - expose profiler to LM hooks (#1522) 
-  - fix bin names (#1549) 
-  - fix event docs, add an event for symmetry (#1527) 
+  - expose profiler to LM hooks (#1522)
+  - fix bin names (#1549)
+  - fix event docs, add an event for symmetry (#1527)
   - name attribute has been changed to uid, fixes issue #1518
-  - make use of flags consistent between RP and RS (#1547) 
+  - make use of flags consistent between RP and RS (#1547)
   - add support for recursive data staging (#1513. #1514)  (JD, VB, GC)
   - change staging flags to integers (inherited from RS)
   - add support for bulk data transfer (#1512) (IP, SM)
@@ -300,53 +347,53 @@
 0.47 Release                                                          2017-11-19
 --------------------------------------------------------------------------------
 
-  - Correctly added 'lm_info.cores_per_node' SLURM 
-  - Torque RM now respects config settings for cpn 
-  - Update events.md 
-  - add SIGUSR2 for clean termination on SGE 
-  - add information about partial event orders 
-  - add issue demonstrators 
-  - add some notes on cpython issue demonstrators 
+  - Correctly added 'lm_info.cores_per_node' SLURM
+  - Torque RM now respects config settings for cpn
+  - Update events.md
+  - add SIGUSR2 for clean termination on SGE
+  - add information about partial event orders
+  - add issue demonstrators
+  - add some notes on cpython issue demonstrators
   - add xsede.supermic_orte configuration
-  - add xsede.supermic_ortelib configuration 
-  - apply RU's managed process to termination stress test 
-  - attempt to localize aprun units 
-  - better hops for titan 
-  - better integration of CU script and app profs 
-  - catch up with config changes for local testing 
-  - centralize URL derivation for pilot job service endpoints, hops, and sandboxes 
-  - clarify use of namespace vs. full qualified URL in the context of RP file staging 
-  - clean up config management, inheritance 
-  - don't fetch json twice 
-  - ensure that profiles are flushed and packed correctly 
-  - fail missing pilots on termination 
+  - add xsede.supermic_ortelib configuration
+  - apply RU's managed process to termination stress test
+  - attempt to localize aprun units
+  - better hops for titan
+  - better integration of CU script and app profs
+  - catch up with config changes for local testing
+  - centralize URL derivation for pilot job service endpoints, hops, and sandboxes
+  - clarify use of namespace vs. full qualified URL in the context of RP file staging
+  - clean up config management, inheritance
+  - don't fetch json twice
+  - ensure that profiles are flushed and packed correctly
+  - fail missing pilots on termination
   - fix AGENT_ACTIVE profile timing
-  - fix close-session purge mode 
+  - fix close-session purge mode
   - fix cray agent config, avoid termination race
-  - fix duplicated transition events 
-  - fix osg config 
-  - fix #1283 
-  - fixing error from bootstrapper + aprun parsing error 
+  - fix duplicated transition events
+  - fix osg config
+  - fix #1283
+  - fixing error from bootstrapper + aprun parsing error
   - force profile flush earlier
-  - get cpn for ibrun 
-  - implement session.list_resources() per #1419 
-  - make sure a canceled pilot stays canceled 
+  - get cpn for ibrun
+  - implement session.list_resources() per #1419
+  - make sure a canceled pilot stays canceled
   - make cb return codes consistent
-  - make sure profs are flushed on termination 
-  - make sure the umgr only pulls units its interested in 
-  - profile mkdir 
-  - publish resource_details (incl. lm_info) again 
-  - re-add a profile flag to advance() 
-  - remove old controllers 
-  - remove old files 
-  - remove uid clashes for sub-agent components and components in general 
-  - setup number of cores per node on stampede2 
-  - smaller default pilot size for supermic 
-  - switch to ibrun for comet_ssh 
-  - track unit drops 
-  - use js hop for untar 
-  - using new process class 
-  - GPU/CPU pinning test is now complete, needs some env settings in the launchers 
+  - make sure profs are flushed on termination
+  - make sure the umgr only pulls units its interested in
+  - profile mkdir
+  - publish resource_details (incl. lm_info) again
+  - re-add a profile flag to advance()
+  - remove old controllers
+  - remove old files
+  - remove uid clashes for sub-agent components and components in general
+  - setup number of cores per node on stampede2
+  - smaller default pilot size for supermic
+  - switch to ibrun for comet_ssh
+  - track unit drops
+  - use js hop for untar
+  - using new process class
+  - GPU/CPU pinning test is now complete, needs some env settings in the launchers
 
 
 0.46.2 Release                                                        2017-09-02
@@ -390,37 +437,37 @@ Version 0.46                                                          2017-08-11
           those resources for experiments by removing the comment markers from
           the respective resource configs.
 
-  - Adapt to new orte-submit interface. 
-  - Add orte-cffi dependency to bootstrapper. 
-  - Agent based staging directives. 
+  - Adapt to new orte-submit interface.
+  - Add orte-cffi dependency to bootstrapper.
+  - Agent based staging directives.
   - Fixes to various resource configs
-  - Change orte-submit to orterun. 
-  - Conditional importing of executors. Fixes #926. 
-  - Config entries for orte lib on Titan. 
-  - Corrected environment export in executing POPEN 
+  - Change orte-submit to orterun.
+  - Conditional importing of executors. Fixes #926.
+  - Config entries for orte lib on Titan.
+  - Corrected environment export in executing POPEN
   - Extend virtenv lock timeout, use private rp_installs by default
-  - Fix non-mpi execution analogous to #975. 
-  - Fix/issue 1226 (#1232) 
-  - Fresh orte installation for bw. 
+  - Fix non-mpi execution analogous to #975.
+  - Fix/issue 1226 (#1232)
+  - Fresh orte installation for bw.
   - support more OSG sites
-  - Initial version of ORTE lib interface. 
-  - Make cprofiling of scheduler conditional. 
-  - Make list of cprofile subscribers configurable. 
-  - Move env safekeeping until after the pre bootstrap. 
-  - Record OSG site name in mongodb. 
-  - Remove bash'isms from shell script. 
+  - Initial version of ORTE lib interface.
+  - Make cprofiling of scheduler conditional.
+  - Make list of cprofile subscribers configurable.
+  - Move env safekeeping until after the pre bootstrap.
+  - Record OSG site name in mongodb.
+  - Remove bash'isms from shell script.
   - pylint motivated cleanups
-  - Resolving issue #1211. 
-  - Resource and example config for Shark at LUMC. 
-  - SGE changes for non-homogeneous nodes. 
+  - Resolving issue #1211.
+  - Resource and example config for Shark at LUMC.
+  - SGE changes for non-homogeneous nodes.
   - Use ru.which
-  - add allegro.json config file for FUB allegro cluster 
-  - add rsh launch method 
-  - switch to gsissh on wrangler 
-  - use new ompi installation on comet (#1228) 
-  - add a simple/stupid ompi deployment helper 
-  - updated Config for Stampede and YARN 
-  - fix state transition to UNSCHEDDULED to avoid repetition 
+  - add allegro.json config file for FUB allegro cluster
+  - add rsh launch method
+  - switch to gsissh on wrangler
+  - use new ompi installation on comet (#1228)
+  - add a simple/stupid ompi deployment helper
+  - updated Config for Stampede and YARN
+  - fix state transition to UNSCHEDDULED to avoid repetition
     and invalid state ordering
 
 
@@ -428,25 +475,25 @@ Version 0.46                                                          2017-08-11
 --------------------------------------------------------------------------------
 
   - add an agent config for cray/aprun all on mom node
-  - add anaconda config for examples 
-  - gsissh as default for wrangler, stampede, supermic 
+  - add anaconda config for examples
+  - gsissh as default for wrangler, stampede, supermic
   - add conf for spark n wrangler, comet
-  - add docs to the cu env inject 
+  - add docs to the cu env inject
   - expose spark's master url
-  - fix CU env setting (stampede) 
-  - configuration for spark and anaconda 
+  - fix CU env setting (stampede)
+  - configuration for spark and anaconda
   - resource config entries for titan
-  - disable PYTHONHOME setting in titan_aprun 
-  - dynamic configuration of spark_env 
-  - fix for gordon config 
-  - hardcode the netiface version until it is fixed upstream. 
-  - implement NON_FATAL for staging directives. 
-  - make resource config available to agent 
-  - rename scripts 
-  - update installation.rst 
-  - analytics backport 
-  - use profiler from RU 
-  - when calling a unit state callback, missed states also trigger callbacks 
+  - disable PYTHONHOME setting in titan_aprun
+  - dynamic configuration of spark_env
+  - fix for gordon config
+  - hardcode the netiface version until it is fixed upstream.
+  - implement NON_FATAL for staging directives.
+  - make resource config available to agent
+  - rename scripts
+  - update installation.rst
+  - analytics backport
+  - use profiler from RU
+  - when calling a unit state callback, missed states also trigger callbacks
 
 
 0.43.1 Release                                                        2016-09-09
@@ -458,58 +505,58 @@ Version 0.46                                                          2017-08-11
 0.43 Release                                                          2016-09-08
 --------------------------------------------------------------------------------
 
-  - Add aec_handover for orte. 
-  - add a local confiuration for bw 
-  - add early binding eample for osg 
+  - Add aec_handover for orte.
+  - add a local confiuration for bw
+  - add early binding eample for osg
   - add greenfield config (only works for single-node runs at the moment)
-  - add PYTHONPATH to the vars we reset for CU envs 
-  - allow overloading of agent config 
-  - fix #1071 
-  - fix synapse example 
-  - avoid profiling of empty state transitions 
-  - Check of YARN start-all script. Raising Runtime error in case of error. 
-  - disable hwm altogether 
-  - drop clones *before* push 
-  - enable scheduling time measurements. 
-  - First commit for multinode YARN cluster 
-  - fix getip 
-  - fix iface detection 
-  - fix reordering of states for some update sequences 
-  - fix unit cancellation 
-  - improve ve create script 
-  - make orte-submit aware of non-mpi CUs 
-  - move env preservation to an earlier point, to avoid pre-exec stuff 
-  - Python distribution mandatory to all confs 
-  - Remove temp agent config directory. 
-  - Resolving #1107 
-  - Schedule behind the real unit and support multicore. 
-  - SchedulerContinuous -> AgentSchedulingComponent. 
-  - Take ccmrun out of bootstrap_2. 
-  - Tempfile is not a tempfile so requires explicit removal. 
-  - resolve #1001 
-  - Unbreak CCM. 
-  - use high water mark for ZMQ to avoid message drops on high loads 
+  - add PYTHONPATH to the vars we reset for CU envs
+  - allow overloading of agent config
+  - fix #1071
+  - fix synapse example
+  - avoid profiling of empty state transitions
+  - Check of YARN start-all script. Raising Runtime error in case of error.
+  - disable hwm altogether
+  - drop clones *before* push
+  - enable scheduling time measurements.
+  - First commit for multinode YARN cluster
+  - fix getip
+  - fix iface detection
+  - fix reordering of states for some update sequences
+  - fix unit cancellation
+  - improve ve create script
+  - make orte-submit aware of non-mpi CUs
+  - move env preservation to an earlier point, to avoid pre-exec stuff
+  - Python distribution mandatory to all confs
+  - Remove temp agent config directory.
+  - Resolving #1107
+  - Schedule behind the real unit and support multicore.
+  - SchedulerContinuous -> AgentSchedulingComponent.
+  - Take ccmrun out of bootstrap_2.
+  - Tempfile is not a tempfile so requires explicit removal.
+  - resolve #1001
+  - Unbreak CCM.
+  - use high water mark for ZMQ to avoid message drops on high loads
 
 
 0.42 Release                                                          2016-08-09
 --------------------------------------------------------------------------------
 
-  - change examples to use 2 cores on localhost 
+  - change examples to use 2 cores on localhost
   - Iterate documentation
-  - Manual cherry pick fix for getip. 
+  - Manual cherry pick fix for getip.
 
 
 0.41 Release                                                          2016-07-15
 --------------------------------------------------------------------------------
 
-  - address some of error messages and type checks 
-  - add scheduler documentation simplify interpretation of BF oversubscription fix a log message 
-  - fix logging problem reported by Ming and Vivek 
-  - global default url, sync profile/logfile/db fetching tools 
-  - make staging path resilient against cwd changes 
+  - address some of error messages and type checks
+  - add scheduler documentation simplify interpretation of BF oversubscription fix a log message
+  - fix logging problem reported by Ming and Vivek
+  - global default url, sync profile/logfile/db fetching tools
+  - make staging path resilient against cwd changes
   - Switch SSH and ORTE for Comet
-  - sync session cleanup tool with rpu 
-  - update allocation IDs 
+  - sync session cleanup tool with rpu
+  - update allocation IDs
 
 
 0.40.4 Release                                                        2016-05-18
@@ -619,21 +666,21 @@ Version 0.46                                                          2017-08-11
   - use hostlist to avoid mpirun* limitations
   - support default callbacks on units and pilots
   - use a config for examples
-  - add lrms shutdown hook for ORTE LM 
+  - add lrms shutdown hook for ORTE LM
   - various updates to examples and documentation
-  - create logfile and profile tarballs on the fly 
+  - create logfile and profile tarballs on the fly
   - export some RP env vars to units
   - Fix a mongodb race
-  - internally unregister pilot cbs on shutdown 
-  - move agent.stop to finally clause, to correctly react on signals 
-  - remove RADICAL_DEBUG, use proper logger in queue, pubsub 
-  - small changes to getting_started 
-  - add APRUN entry for ARCHER. 
-  - Updated APRUN config for ARCHER. Thanks Vivek! 
-  - Use designated termination procedure for ORTE. 
-  - Use statically compiled and linked OMPI/ORTE. 
+  - internally unregister pilot cbs on shutdown
+  - move agent.stop to finally clause, to correctly react on signals
+  - remove RADICAL_DEBUG, use proper logger in queue, pubsub
+  - small changes to getting_started
+  - add APRUN entry for ARCHER.
+  - Updated APRUN config for ARCHER. Thanks Vivek!
+  - Use designated termination procedure for ORTE.
+  - Use statically compiled and linked OMPI/ORTE.
   - Wait for its component children on termination
-  - make localhost (ForkLRMS) behave like a resource with an inifnite number of cores 
+  - make localhost (ForkLRMS) behave like a resource with an inifnite number of cores
 
 
 0.36 Release                                                          2015-10-08
@@ -654,39 +701,39 @@ Version 0.46                                                          2017-08-11
   - add various profiling analysis tools
   - add support for profile fetching from remote pilot sandbox
   - synchronize and recombine profiles from different pilots
-  - add a simple tool to run a recorded session. 
+  - add a simple tool to run a recorded session.
   - add several utility classes: component, queue, pubsub
   - clean configuration passing from module to agent.
   - clean tunneling support
   - support different data frame formats for profiling
   - use agent infrastructure (LRMS, LM) for spawning sub-agents
-  - allow LM to specify env vars to be unset. 
-  - allow agent on mom node to use tunnel. 
+  - allow LM to specify env vars to be unset.
+  - allow agent on mom node to use tunnel.
   - fix logging to avoid log leakage from lower layers
   - avoid some file system bottlenecks
   - several resource specific configuration fixes (mostly stampede, archer, bw)
   - backport stdout/stderr/log retrieval
-  - better logging of clone/drops, better error handling for configs 
+  - better logging of clone/drops, better error handling for configs
   - fix, improve profiling of CU execution
   - make profile an object
   - use ZMQ pubsub and queues for agent/sub-agent communication
-  - decouple launch methods from scheduler for most LMs 
+  - decouple launch methods from scheduler for most LMs
     NOTE: RUNJOB remains coupled!
-  - detect disappearing orte-dvm when exit code is zero 
+  - detect disappearing orte-dvm when exit code is zero
   - perform node allocation for sub-agents
-  - introduce a barrier on agent startup 
+  - introduce a barrier on agent startup
   - fix some errors on shell spanwer (quoting, monotoring delays)
-  - make localhost layout configurable via cpn 
-  - make setup.py report a decent error when being used with python3 
-  - support nodename lookup on Cray 
-  - only mkdir in input staging controller when we intent to stage data 
+  - make localhost layout configurable via cpn
+  - make setup.py report a decent error when being used with python3
+  - support nodename lookup on Cray
+  - only mkdir in input staging controller when we intent to stage data
   - protect agent cb invokation by lock
-  - (re)add command line for profile fetching 
+  - (re)add command line for profile fetching
   - cleanup of data staging, with better support for different schemas
     (incl. GlobusOnline)
   - work toward better OSG support
-  - Use netifaces for ip address mangling. 
-  - Use ORTE from the 2.x branch. 
+  - Use netifaces for ip address mangling.
+  - Use ORTE from the 2.x branch.
   - remove Url class
 
 
@@ -742,7 +789,7 @@ Version 0.46                                                          2017-08-11
 --------------------------------------------------------------------------------
 
   - This release contains a very large set of commits, and covers a fundamental
-    overhaul of the RP agent (amongst others).  It also includes: 
+    overhaul of the RP agent (amongst others).  It also includes:
     - support for agent profiling
     - removes a number of state race conditions
     - support for new backends (ORTE, CCM)
@@ -765,18 +812,18 @@ Version 0.46                                                          2017-08-11
 0.24 Release                                                          2015-03-30
 --------------------------------------------------------------------------------
 
-  - More support for URLs in StagingDirectives (#489). 
-  - Create parent directories of staged files. 
-  - Only process entries for Output FTW, fixes #490. 
-  - SuperMUC config change. 
-  - switch from bson to json for session dumps 
-  - fixes #451 
-  - update resources.rst 
-  - remove superfluous \n 
-  - fix #438 
-  - add documentation on resource config changes, closes #421 
-  - .ssh/authorized_keys2 is deprecated since 2011 
-  - improved intra-node SSH FAQ item 
+  - More support for URLs in StagingDirectives (#489).
+  - Create parent directories of staged files.
+  - Only process entries for Output FTW, fixes #490.
+  - SuperMUC config change.
+  - switch from bson to json for session dumps
+  - fixes #451
+  - update resources.rst
+  - remove superfluous \n
+  - fix #438
+  - add documentation on resource config changes, closes #421
+  - .ssh/authorized_keys2 is deprecated since 2011
+  - improved intra-node SSH FAQ item
 
 
 0.23 Release                                                          2014-12-13
@@ -892,8 +939,8 @@ New Features
 
   - Experimental pilot-agent for Cray systems
   - New multi-core agent with MPI support
-  - New ResourceConfig mechanism does not reuquire the user to add 
-  resource configurations explicitly. Resources can be configured 
+  - New ResourceConfig mechanism does not reuquire the user to add
+  resource configurations explicitly. Resources can be configured
   programatically on API-level.
 
 API Changes:
@@ -906,7 +953,7 @@ API Changes:
 0.13 Release                                                        May 19. 2014
 --------------------------------------------------------------------------------
 
-  - ExTASY demo release 
+  - ExTASY demo release
   - Support for project / allocation
   - Updated / simplified resource files
   - Refactored bootstrap mechnism
@@ -917,7 +964,7 @@ API Changes:
 
   - Updated resource files
   - Updated state model
-  - Closed tickets: 
+  - Closed tickets:
     - https://github.com/radical-cybertools/radical.pilot/issues?milestone=12&state=closed
 
 
@@ -958,7 +1005,7 @@ API Changes:
 0.7 Release                                                        Feb. 25. 2014
 --------------------------------------------------------------------------------
 
-  - Added support for callbacks 
+  - Added support for callbacks
   - Added support for input file transfer !
   - Closed tickets:
     - https://github.com/radical-cybertools/radical.pilot/issues?milestone=8&state=closed
@@ -980,32 +1027,32 @@ API Changes:
     - https://github.com/saga-project/saga-pilot/issues?milestone=7&page=1&state=closed
 
 
-0.4 Release 
+0.4 Release
 --------------------------------------------------------------------------------
 
   - Tutorial 1 release (Github only)
   - Consistent naming (sagapilot instead of sinon)
 
 
-0.1.3 Release 
+0.1.3 Release
 --------------------------------------------------------------------------------
 
-  - Github only release: 
-  pip install --upgrade -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot 
+  - Github only release:
+  pip install --upgrade -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot
 
   - Added logging
-  - Added security context handling 
-  - Closed tickets: 
+  - Added security context handling
+  - Closed tickets:
     - https://github.com/saga-project/saga-pilot/issues?milestone=3&state=closed
 
 
-0.1.2 Release 
+0.1.2 Release
 --------------------------------------------------------------------------------
 
-  - Github only release: 
-  pip install --upgrade -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot 
+  - Github only release:
+  pip install --upgrade -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot
 
-  - Closed tickets: 
+  - Closed tickets:
     - https://github.com/saga-project/saga-pilot/issues?milestone=4&state=closed
 
 

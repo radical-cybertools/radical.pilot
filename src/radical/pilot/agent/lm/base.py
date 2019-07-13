@@ -5,7 +5,6 @@ __license__   = "MIT"
 
 import os
 import fractions
-import tempfile
 import collections
 
 import radical.utils as ru
@@ -14,7 +13,6 @@ import radical.utils as ru
 # 'enum' for launch method types
 LM_NAME_APRUN         = 'APRUN'
 LM_NAME_CCMRUN        = 'CCMRUN'
-LM_NAME_DPLACE        = 'DPLACE'
 LM_NAME_FORK          = 'FORK'
 LM_NAME_IBRUN         = 'IBRUN'
 LM_NAME_MPIEXEC       = 'MPIEXEC'
@@ -23,14 +21,25 @@ LM_NAME_MPIRUN_MPT    = 'MPIRUN_MPT'
 LM_NAME_MPIRUN_CCMRUN = 'MPIRUN_CCMRUN'
 LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
+LM_NAME_JSRUN         = 'JSRUN'
+LM_NAME_PRTE          = 'PRTE'
 LM_NAME_ORTE          = 'ORTE'
 LM_NAME_ORTE_LIB      = 'ORTE_LIB'
-LM_NAME_POE           = 'POE'
-LM_NAME_RUNJOB        = 'RUNJOB'
 LM_NAME_RSH           = 'RSH'
 LM_NAME_SSH           = 'SSH'
 LM_NAME_YARN          = 'YARN'
 LM_NAME_SPARK         = 'SPARK'
+LM_NAME_SRUN          = 'SRUN'
+
+# deprecated
+# LM_NAME_POE           = 'POE'
+# LM_NAME_DPLACE        = 'DPLACE'
+# LM_NAME_RUNJOB        = 'RUNJOB'
+
+# deprecated
+# LM_NAME_POE           = 'POE'
+# LM_NAME_DPLACE        = 'DPLACE'
+# LM_NAME_RUNJOB        = 'RUNJOB'
 
 
 # ==============================================================================
@@ -38,13 +47,25 @@ LM_NAME_SPARK         = 'SPARK'
 class LaunchMethod(object):
 
     # List of environment variables that designated Launch Methods should export
-    # FIXME: we should find out what env vars are changed or added by 
+    # FIXME: we should find out what env vars are changed or added by
     #        cud.pre_exec, and then should also export those.  That would make
     #        our launch script ore complicated though...
     EXPORT_ENV_VARIABLES = [
         'LD_LIBRARY_PATH',
         'PATH',
         'PYTHONPATH',
+        'OMP_NUM_THREADS',
+        'CUDA_VISIBLE_DEVICES',
+        'RP_AGENT_ID',
+        'RP_GTOD',
+        'RP_PILOT_ID',
+        'RP_PILOT_STAGING',
+        'RP_PROF',
+        'RP_SESSION_ID',
+        'RP_SPAWNER_ID',
+        'RP_TMP',
+        'RP_UNIT_ID',
+        'RP_UNIT_NAME',
     ]
 
     MPI_FLAVOR_OMPI    = 'OMPI'
@@ -53,27 +74,18 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, name, cfg, session):
 
-        self.name     = type(self).__name__
+        self.name     = name
         self._cfg     = cfg
         self._session = session
         self._log     = self._session._log
         self._log.debug('create LM: %s', type(self))
 
-        # A per-launch_method list of environment to remove from the CU environment
+        # A per-launch_method list of env vars to remove from the CU env
         self.env_removables = []
 
-        self.launch_command = None
-        
         self._configure()
-
-        # TODO: This doesn't make too much sense for LM's that use multiple
-        #       commands, perhaps this needs to move to per LM __init__.
-        if self.launch_command is None:
-            raise RuntimeError("Launch command not found for LaunchMethod '%s'" % self.name)
-
-        self._log.debug('launch_command: %s', self.launch_command)
 
 
     # --------------------------------------------------------------------------
@@ -85,7 +97,7 @@ class LaunchMethod(object):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
-            raise TypeError("LaunchMethod factory only available to base class!")
+            raise TypeError("LM create() only available to base class!")
 
         # In case of undefined LM just return None
         if not name:
@@ -93,53 +105,72 @@ class LaunchMethod(object):
 
         from .aprun          import APRun
         from .ccmrun         import CCMRun
-        from .dplace         import DPlace
         from .fork           import Fork
         from .ibrun          import IBRun
         from .mpiexec        import MPIExec
         from .mpirun         import MPIRun
-        from .mpirun_mpt     import MPIRun_MPT
-        from .mpirun_ccmrun  import MPIRunCCMRun
-        from .mpirun_dplace  import MPIRunDPlace
-        from .mpirun_rsh     import MPIRunRSH
+        from .jsrun          import JSRUN
+        from .prte           import PRTE
         from .orte           import ORTE
         from .orte_lib       import ORTELib
-        from .poe            import POE
-        from .runjob         import Runjob
         from .rsh            import RSH
         from .ssh            import SSH
         from .yarn           import Yarn
         from .spark          import Spark
+        from .srun           import Srun
+
+      # # deprecated
+      # from .mpirun_ccmrun  import MPIRunCCMRun
+      # from .mpirun_dplace  import MPIRunDPlace
+      # from .mpirun_mpt     import MPIRun_MPT
+      # from .mpirun_rsh     import MPIRunRSH
+      # from .dplace         import DPlace
+      # from .poe            import POE
+      # from .runjob         import Runjob
+
+      # # deprecated
+      # from .mpirun_ccmrun  import MPIRunCCMRun
+      # from .mpirun_dplace  import MPIRunDPlace
+      # from .mpirun_mpt     import MPIRun_MPT
+      # from .mpirun_rsh     import MPIRunRSH
+      # from .dplace         import DPlace
+      # from .poe            import POE
+      # from .runjob         import Runjob
 
         try:
             impl = {
                 LM_NAME_APRUN         : APRun,
                 LM_NAME_CCMRUN        : CCMRun,
-                LM_NAME_DPLACE        : DPlace,
                 LM_NAME_FORK          : Fork,
                 LM_NAME_IBRUN         : IBRun,
                 LM_NAME_MPIEXEC       : MPIExec,
                 LM_NAME_MPIRUN        : MPIRun,
-                LM_NAME_MPIRUN_MPT    : MPIRun_MPT,
-                LM_NAME_MPIRUN_CCMRUN : MPIRunCCMRun,
-                LM_NAME_MPIRUN_DPLACE : MPIRunDPlace,
-                LM_NAME_MPIRUN_RSH    : MPIRunRSH,
+                LM_NAME_MPIRUN_CCMRUN : MPIRun,
+                LM_NAME_MPIRUN_RSH    : MPIRun,
+                LM_NAME_MPIRUN_MPT    : MPIRun,
+                LM_NAME_MPIRUN_DPLACE : MPIRun,
+                LM_NAME_JSRUN         : JSRUN,
+                LM_NAME_PRTE          : PRTE,
                 LM_NAME_ORTE          : ORTE,
                 LM_NAME_ORTE_LIB      : ORTELib,
-                LM_NAME_POE           : POE,
-                LM_NAME_RUNJOB        : Runjob,
                 LM_NAME_RSH           : RSH,
                 LM_NAME_SSH           : SSH,
                 LM_NAME_YARN          : Yarn,
-                LM_NAME_SPARK         : Spark
+                LM_NAME_SPARK         : Spark,
+                LM_NAME_SRUN          : Srun,
+
+              # # deprecated
+              # LM_NAME_DPLACE        : DPlace,
+              # LM_NAME_POE           : POE,
+              # LM_NAME_RUNJOB        : Runjob,
             }[name]
-            return impl(cfg, session)
+            return impl(name, cfg, session)
 
         except KeyError:
-            session._log.exception("LaunchMethod '%s' unknown or defunct" % name)
+            session._log.exception("LM '%s' unknown or defunct" % name)
 
         except Exception as e:
-            session._log.exception("LaunchMethod cannot be used: %s!" % e)
+            session._log.exception("LM cannot be used: %s!" % e)
 
 
     # --------------------------------------------------------------------------
@@ -155,25 +186,27 @@ class LaunchMethod(object):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
-            raise TypeError("LaunchMethod config hook only available to base class!")
+            raise TypeError("LM config hook only available to base class!")
 
         from .fork           import Fork
+        from .prte           import PRTE
         from .orte           import ORTE
         from .yarn           import Yarn
         from .spark          import Spark
 
         impl = {
             LM_NAME_FORK          : Fork,
+            LM_NAME_PRTE          : PRTE,
             LM_NAME_ORTE          : ORTE,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
         }.get(name)
 
         if not impl:
-            logger.info('no LRMS config hook defined for LaunchMethod %s' % name)
+            logger.info('no config hook defined for LaunchMethod %s' % name)
             return None
 
-        logger.info('call LRMS config hook for LaunchMethod %s: %s' % (name, impl))
+        logger.info('LRMS config hook for LM %s: %s' % (name, impl))
         return impl.lrms_config_hook(name, cfg, lrms, logger, profiler)
 
 
@@ -188,68 +221,71 @@ class LaunchMethod(object):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
-            raise TypeError("LaunchMethod shutdown hook only available to base class!")
+            raise TypeError("LM shutdown hook only available to base class!")
 
+        from .prte           import PRTE
         from .orte           import ORTE
         from .yarn           import Yarn
         from .spark          import Spark
 
         impl = {
+            LM_NAME_PRTE          : PRTE,
             LM_NAME_ORTE          : ORTE,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
         }.get(name)
 
         if not impl:
-            logger.info('no LRMS shutdown hook defined for LaunchMethod %s' % name)
+            logger.info('no shutdown hook defined for LaunchMethod %s' % name)
             return None
 
-        logger.info('call LRMS shutdown hook for LaunchMethod %s: %s' % (name, impl))
-        return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info, logger, profiler)
+        logger.info('LRMS shutdown hook for LM %s: %s' % (name, impl))
+        return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info,
+                                       logger, profiler)
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        raise NotImplementedError("_configure() not implemented for LaunchMethod: %s." % self.name)
+
+        raise NotImplementedError("incomplete LM %s" % self.name)
 
 
     # --------------------------------------------------------------------------
     #
     def construct_command(self, cu, launch_script_hop):
-        raise NotImplementedError("construct_command() not implemented for LaunchMethod: %s." % self.name)
+
+        raise NotImplementedError("incomplete LM %s" % self.name)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def _create_hostfile(cls, all_hosts, separator=' ', impaired=False):
+    def _create_hostfile(cls, uid, all_hosts, separator=' ', impaired=False):
 
         # Open appropriately named temporary file
-        handle, filename = tempfile.mkstemp(prefix='rp_hostfile', dir=os.getcwd())
+        # NOTE: we make an assumption about the unit sandbox here
+        filename = '%s/%s.hosts' % (uid, uid)
+        handle   = open(filename, 'w')
 
         if not impaired:
-            #
             # Write "hostN x\nhostM y\n" entries
-            #
-
             # Create a {'host1': x, 'host2': y} dict
             counter = collections.Counter(all_hosts)
+
             # Convert it into an ordered dict,
             # which hopefully resembles the original ordering
-            count_dict = collections.OrderedDict(sorted(counter.items(), key=lambda t: t[0]))
+            count_dict = collections.OrderedDict(sorted(counter.items(),
+                                                 key=lambda t: t[0]))
 
             for (host, count) in count_dict.iteritems():
                 os.write(handle, '%s%s%d\n' % (host, separator, count))
 
         else:
-            #
             # Write "hostN\nhostM\n" entries
-            #
             for host in all_hosts:
                 os.write(handle, '%s\n' % host)
 
-        # No longer need to write
         os.close(handle)
 
         # Return the filename, caller is responsible for cleaning up
@@ -275,10 +311,11 @@ class LaunchMethod(object):
             count_dict[host] /= host_gcd
 
         # Recreate a list of hosts based on the normalized dict
-        hosts = []
-        [hosts.extend([host] * count)
-                for (host, count) in count_dict.iteritems()]
-        # Esthetically sort the list, as we lost ordering by moving to a dict/set
+        hosts = list()
+        for (host, count) in count_dict.iteritems():
+            hosts.extend([host] * count)
+
+        # sort the list for readbility
         hosts.sort()
 
         return hosts
@@ -307,10 +344,11 @@ class LaunchMethod(object):
                     continue
 
                 arg = arg.replace('"', '\\"')    # Escape all double quotes
-                if arg[0] == arg[-1] == "'" :    # If a string is between outer single quotes,
+                if arg[0] == arg[-1] == "'" :    # between outer single quotes?
                     arg_string += '%s ' % arg    # ... pass it as is.
+
                 else:
-                    arg_string += '"%s" ' % arg  # Otherwise return between double quotes.
+                    arg_string += '"%s" ' % arg  # else return double quoted
 
         return arg_string
 
@@ -325,13 +363,13 @@ class LaunchMethod(object):
         version = None
         flavor  = self.MPI_FLAVOR_UNKNOWN
 
-        out, err, ret = ru.sh_callout('%s -v' % exe)
+        out, _, ret = ru.sh_callout('%s -v' % exe)
 
         if ret:
-            out, err, ret = ru.sh_callout('%s --version' % exe)
+            out, _, ret = ru.sh_callout('%s --version' % exe)
 
         if ret:
-            out, err, ret = ru.sh_callout('%s -info' % exe)
+            out, _, ret = ru.sh_callout('%s -info' % exe)
 
         if not ret:
             for line in out.splitlines():
@@ -361,8 +399,6 @@ class LaunchMethod(object):
         self._log.debug('mpi version: %s [%s]', version, flavor)
 
         return version, flavor
-
-
 
 
 # ------------------------------------------------------------------------------

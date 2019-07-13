@@ -10,35 +10,11 @@ from pymongo import MongoClient
 import radical.pilot as rp
 
 
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to the MongoDB website:
-# http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
-if DBURL is None:
-    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
-
-DBNAME = os.getenv("RADICAL_PILOT_TEST_DBNAME", 'test')
-if DBNAME is None:
-    print "ERROR: RADICAL_PILOT_TEST_DBNAME (MongoDB database name) is not defined."
-    sys.exit(1)
-
 
 # -----------------------------------------------------------------------------
 #
 class Test_PilotManager(unittest.TestCase):
     # silence deprecation warnings under py3
-
-    def setUp(self):
-        # clean up fragments from previous tests
-        client = MongoClient(DBURL)
-        client.drop_database(DBNAME)
-
-    def tearDown(self):
-        # clean up after ourselves
-        client = MongoClient(DBURL)
-        client.drop_database(DBNAME)
 
     def failUnless(self, expr):
         # St00pid speling.
@@ -53,7 +29,7 @@ class Test_PilotManager(unittest.TestCase):
     def test__pilotmanager_create(self):
         """ Test if pilot manager creation works as expected.
         """
-        session = rp.Session(database_url=DBURL, database_name=DBNAME)
+        session = rp.Session()
 
         assert session.list_pilot_managers() == [], "Wrong number of pilot managers"
 
@@ -70,7 +46,7 @@ class Test_PilotManager(unittest.TestCase):
     def test__pilotmanager_reconnect(self):
         """ Test if pilot manager re-connect works as expected.
         """
-        session = rp.Session(database_url=DBURL, database_name=DBNAME)
+        session = rp.Session()
 
         pm = rp.PilotManager(session=session)
         assert session.list_pilot_managers() == [pm.uid], "Wrong list of pilot managers"
@@ -88,7 +64,7 @@ class Test_PilotManager(unittest.TestCase):
     def test__pilotmanager_list_pilots(self):
         """ Test if listing pilots works as expected.
         """
-        session = rp.Session(database_url=DBURL, database_name=DBNAME)
+        session = rp.Session()
 
         pm1 = rp.PilotManager(session=session)
         assert len(pm1.list_pilots()) == 0, "Wrong number of pilots returned."
@@ -104,8 +80,8 @@ class Test_PilotManager(unittest.TestCase):
             cpd.sandbox = "/tmp/rp.sandbox.unittests"
             cpd.cleanup = True
 
-            pm1.submit_pilots(pilot_descriptions=cpd)
-            pm2.submit_pilots(pilot_descriptions=cpd)
+            pm1.submit_pilots(descriptions=cpd)
+            pm2.submit_pilots(descriptions=cpd)
 
         assert len(pm1.list_pilots()) == 2, "Wrong number of pilots returned."
         assert len(pm2.list_pilots()) == 2, "Wrong number of pilots returned."
@@ -117,7 +93,7 @@ class Test_PilotManager(unittest.TestCase):
     def test__pilotmanager_list_pilots_after_reconnect(self):
         """ Test if listing pilots after a reconnect works as expected.
         """
-        session = rp.Session(database_url=DBURL, database_name=DBNAME)
+        session = rp.Session()
 
         pm1 = rp.PilotManager(session=session)
         assert len(pm1.list_pilots()) == 0, "Wrong number of pilots returned."
@@ -133,8 +109,8 @@ class Test_PilotManager(unittest.TestCase):
             cpd.sandbox = "/tmp/rp.sandbox.unittests"
             cpd.cleanup = True
 
-            pm1.submit_pilots(pilot_descriptions=cpd)
-            pm2.submit_pilots(pilot_descriptions=cpd)
+            pm1.submit_pilots(descriptions=cpd)
+            pm2.submit_pilots(descriptions=cpd)
 
         assert len(pm1.list_pilots()) == 2, "Wrong number of pilots returned."
         assert len(pm2.list_pilots()) == 2, "Wrong number of pilots returned."
@@ -150,7 +126,7 @@ class Test_PilotManager(unittest.TestCase):
     # -------------------------------------------------------------------------
     #
     def test__pilotmanager_get_pilots(self):
-        session = rp.Session(database_url=DBURL, database_name=DBNAME)
+        session = rp.Session()
 
         pm1 = rp.PilotManager(session=session)
         assert len(pm1.list_pilots()) == 0, "Wrong number of pilots returned."
@@ -169,10 +145,10 @@ class Test_PilotManager(unittest.TestCase):
             cpd.sandbox = "/tmp/rp.sandbox.unittests"
             cpd.cleanup = True
 
-            pilot_pm1 = pm1.submit_pilots(pilot_descriptions=cpd)
+            pilot_pm1 = pm1.submit_pilots(descriptions=cpd)
             pm1_pilot_uids.append(pilot_pm1.uid)
 
-            pilot_pm2 = pm2.submit_pilots(pilot_descriptions=cpd)
+            pilot_pm2 = pm2.submit_pilots(descriptions=cpd)
             pm2_pilot_uids.append(pilot_pm2.uid)
 
         for i in pm1.list_pilots():
@@ -195,7 +171,7 @@ class Test_PilotManager(unittest.TestCase):
     def test__pilotmanager_wait(self):
         """Test if wait() waits until all (2) pilots have reached 'DONE' state.
         """
-        session = rp.Session(database_url=DBURL, database_name=DBNAME)
+        session = rp.Session()
 
         pmgr = rp.PilotManager(session=session)
 

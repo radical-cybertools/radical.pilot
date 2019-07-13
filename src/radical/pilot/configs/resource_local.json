@@ -196,18 +196,59 @@
         "gpus_per_node"               : 1,
         "lrms"                        : "FORK",
         "agent_type"                  : "multicore",
-        "agent_scheduler"             : "CONTINUOUS",
+        "agent_scheduler"             : "HOMBRE",
         "agent_spawner"               : "SHELLFS",
         "agent_launch_method"         : "ORTE",
         "task_launch_method"          : "ORTE",
         "mpi_launch_method"           : "ORTE",
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
+     #  "virtenv"                     : "$HOME/radical/radical.pilot.merge/ve/",
         "python_dist"                 : "default",
-        "pre_bootstrap_0"             : ["export OMPI=/home/merzky/radical/ompi/installed/2017_09_18_539f71d",
-                                         "export PATH=$OMPI/bin/:$PATH",
-                                         "export LD_LIBRARY_PATH=$OMPI/lib/:$LD_LIBRARY_PATH",
-                                         "export PKG_CONFIG_PATH=$OMPI/share/pkgconfig/:$PKG_CONFIG_PATH"],
+        "pre_bootstrap_0"             : [
+            "export OMPI_HOME=$HOME/radical/ompi/src/openmpi-3.0.2/install/",
+            "export PATH=$OMPI_HOME/bin/:$PATH",
+            "export LD_LIBRARY_PATH=$OMPI_HOME/lib/:$LD_LIBRARY_PATH",
+            "export PKG_CONFIG_PATH=$OMPI_HOME/share/pkgconfig/:$PKG_CONFIG_PATH"
+        ],
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1
+    },
+
+    "localhost_prte": {
+        "description"                 : "Your local machine.",
+        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
+        "schemas"                     : ["local", "ssh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "ssh://localhost/",
+            "filesystem_endpoint"     : "sftp://localhost/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_remote_workdir"      : "$HOME",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1,
+        "lrms"                        : "FORK",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "SHELLFS",
+        "agent_launch_method"         : "PRTE",
+        "task_launch_method"          : "PRTE",
+        "mpi_launch_method"           : "PRTE",
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+      # "virtenv"                     : "$HOME/radical/radical.pilot.merge/ve/",
+        "python_dist"                 : "default",
+        "pre_bootstrap_0"             : [
+            "export PRRTE_PREFIX=$HOME/radical/prte/install/",
+            "export PATH=$PRRTE_PREFIX/bin/:$PATH",
+            "export LD_LIBRARY_PATH=$PRRTE_PREFIX/lib/:$LD_LIBRARY_PATH",
+            "export PKG_CONFIG_PATH=$PRRTE_PREFIX/share/pkgconfig/:$PKG_CONFIG_PATH"
+        ],
         "cores_per_node"              : 8,
         "gpus_per_node"               : 1
     },

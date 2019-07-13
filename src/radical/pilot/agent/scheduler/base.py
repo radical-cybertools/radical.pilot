@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 
+import os
 import logging
 import pprint
 import threading
@@ -20,13 +21,16 @@ from ... import constants as rpc
 #
 SCHEDULER_NAME_CONTINUOUS_ORDERED = "CONTINUOUS_ORDERED"
 SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
-SCHEDULER_NAME_SCATTERED          = "SCATTERED"
 SCHEDULER_NAME_HOMBRE             = "HOMBRE"
+SCHEDULER_NAME_SPARK              = "SPARK"
 SCHEDULER_NAME_TORUS              = "TORUS"
 SCHEDULER_NAME_YARN               = "YARN"
-SCHEDULER_NAME_SPARK              = "SPARK"
+SCHEDULER_NAME_NOOP               = "NOOP"
 
+# SCHEDULER_NAME_CONTINUOUS_SUMMIT  = "CONTINUOUS_SUMMIT"
 # SCHEDULER_NAME_CONTINUOUS_FIFO    = "CONTINUOUS_FIFO"
+# SCHEDULER_NAME_SCATTERED          = "SCATTERED"
+
 
 # ------------------------------------------------------------------------------
 #
@@ -182,7 +186,8 @@ SCHEDULER_NAME_SPARK              = "SPARK"
 #        https://github.com/radical-cybertools/radical.pilot/blob/feature/ \
 #                           events/docs/source/events.md \
 #                           #agentschedulingcomponent-component
-#
+
+
 # ------------------------------------------------------------------------------
 #
 class AgentSchedulingComponent(rpu.Component):
@@ -212,7 +217,14 @@ class AgentSchedulingComponent(rpu.Component):
         self._uid  = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
                                     ru.ID_CUSTOM)
 
+        tmp = os.environ.get('RP_UNIFORM_WORKLOAD', '').lower()
+        if tmp in ['true', 'yes', '1']:
+            self._uniform_wl = True
+        else:
+            self._uniform_wl = False
+
         rpu.Component.__init__(self, cfg, session)
+
 
 
     # --------------------------------------------------------------------------
@@ -290,7 +302,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         # configure the scheduler instance
         self._configure()
-
         self._log.debug("slot status after  init      : %s", self.slot_status())
 
 
@@ -309,25 +320,30 @@ class AgentSchedulingComponent(rpu.Component):
 
         from .continuous_ordered import ContinuousOrdered
         from .continuous         import Continuous
-        from .scattered          import Scattered
         from .hombre             import Hombre
         from .torus              import Torus
         from .yarn               import Yarn
         from .spark              import Spark
+        from .noop               import Noop
 
+      # from .continuous_summit  import ContinuousSummit
       # from .continuous_fifo    import ContinuousFifo
+      # from .scattered          import Scattered
 
         try:
             impl = {
+
                 SCHEDULER_NAME_CONTINUOUS_ORDERED : ContinuousOrdered,
                 SCHEDULER_NAME_CONTINUOUS         : Continuous,
-                SCHEDULER_NAME_SCATTERED          : Scattered,
                 SCHEDULER_NAME_HOMBRE             : Hombre,
                 SCHEDULER_NAME_TORUS              : Torus,
                 SCHEDULER_NAME_YARN               : Yarn,
-                SCHEDULER_NAME_SPARK              : Spark
+                SCHEDULER_NAME_SPARK              : Spark,
+                SCHEDULER_NAME_NOOP               : Noop,
 
+              # SCHEDULER_NAME_CONTINUOUS_SUMMIT  : ContinuousSummit,
               # SCHEDULER_NAME_CONTINUOUS_FIFO    : ContinuousFifo,
+              # SCHEDULER_NAME_SCATTERED          : Scattered,
 
             }[name]
 
@@ -407,40 +423,19 @@ class AgentSchedulingComponent(rpu.Component):
         Returns a multi-line string corresponding to the status of the node list
         '''
 
+        glyphs = {rpc.FREE : '-',
+                  rpc.BUSY : '#',
+                  rpc.DOWN : '!'}
         ret = "|"
         for node in self.nodes:
             for core in node['cores']:
-                if core == rpc.FREE:
-                    ret += '-'
-                else:
-                    ret += '#'
+                ret += glyphs[core]
             ret += ':'
             for gpu in node['gpus']:
-                if gpu == rpc.FREE:
-                    ret += '-'
-                else:
-                    ret += '#'
+                ret += glyphs[gpu]
             ret += '|'
 
         return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _configure(self):
-        raise NotImplementedError("_configure() missing for %s" % self.uid)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _allocate_slot(self, cud):
-        raise NotImplementedError("_allocate_slot() missing for %s" % self.uid)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _release_slot(self, slots):
-        raise NotImplementedError("_release_slot() missing for %s" % self.uid)
 
 
     # --------------------------------------------------------------------------
@@ -494,9 +489,9 @@ class AgentSchedulingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _try_allocation(self, unit):
-        """
+        '''
         attempt to allocate cores/gpus for a specific unit.
-        """
+        '''
 
         # needs to be locked as we try to acquire slots here, but slots are
         # freed in a different thread.  But we keep the lock duration short...
@@ -512,6 +507,9 @@ class AgentSchedulingComponent(rpu.Component):
             self._prof.prof('schedule_fail', uid=unit['uid'])
             return False
 
+        # translate gpu maps into `CUDA_VISIBLE_DEVICES` env
+        self._handle_cuda(unit)
+
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=unit['uid'])
 
@@ -525,6 +523,67 @@ class AgentSchedulingComponent(rpu.Component):
 
         # True signals success
         return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _handle_cuda(self, unit):
+
+        # Check if unit requires GPUs.  If so, set CUDA_VISIBLE_DEVICES to the
+        # list of assigned  GPU IDs.  We only handle uniform GPU setting for
+        # now, and will isse a warning on non-uniform ones.
+        #
+        # The default setting is ``
+        #
+        # FIXME: This code should probably live elsewhere, not in this
+        #        performance critical scheduler base class
+        #
+        # FIXME: The specification for `CUDA_VISIBLE_DEVICES` is actually LM
+        #        dependent.  Assume the scheduler assigns the second GPU.
+        #        Manually, one would set `CVD=1`.  That also holds for launch
+        #        methods like `fork` which leave GPU indexes unaltered.  Other
+        #        launch methods like `jsrun` mask the system GPUs and only the
+        #        second GPU is visible, at all, to the task.  To CUDA the system
+        #        now seems to have only one GPU, and we need to be set `CVD=0`.
+        #
+        #        In other words, CVD sometimes needs to be set to the physical
+        #        GPU IDs, and at other times to the logical GPU IDs (IDs as
+        #        visible to the task).  This also implies that this code should
+        #        actually live within the launch method.  On the upside, the LM
+        #        should also be able to handle heterogeneus tasks.
+        #
+        #        For now, we hardcode the CVD ID mode to `logical`, thus
+        #        assuming that unassigned GPUs are masked away, as for example
+        #        with `jsrun`.
+        cvd_id_mode = 'logical'
+
+        unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = ''
+        gpu_maps = list()
+        for node in unit['slots']['nodes']:
+            if node['gpu_map'] not in gpu_maps:
+                gpu_maps.append(node['gpu_map'])
+
+        if not gpu_maps:
+            # no gpu maps, nothing to do
+            pass
+
+        elif len(gpu_maps) > 1:
+            # FIXME: this does not actually check for uniformity
+            self._log.warn('cannot set CUDA_VISIBLE_DEVICES for non-uniform'
+                           'GPU schedule (%s)' % gpu_maps)
+
+        else:
+            gpu_map = gpu_maps[0]
+            if gpu_map:
+                # uniform, non-zero gpu map
+                if cvd_id_mode == 'physical':
+                    unit['description']['environment']['CUDA_VISIBLE_DEVICES']\
+                            = ','.join(str(gpu_set[0]) for gpu_set in gpu_map)
+                elif cvd_id_mode == 'logical':
+                    unit['description']['environment']['CUDA_VISIBLE_DEVICES']\
+                            = ','.join(str(x) for x in range(len(gpu_map)))
+                else:
+                    raise ValueError('invalid CVD mode %s' % cvd_id_mode)
 
 
     # --------------------------------------------------------------------------
@@ -575,14 +634,16 @@ class AgentSchedulingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def unschedule_cb(self, topic, msg):
-        """
+        '''
         release (for whatever reason) all slots allocated to this unit
-        """
+        '''
 
         unit = msg
 
-        if not unit['slots']:
-            # Nothing to do -- how come?
+        slots = unit.get('slots')
+
+        if not slots:
+            # Nothing to do
             self._log.error("cannot unschedule: %s (no slots)" % unit)
             return True
 
@@ -594,7 +655,7 @@ class AgentSchedulingComponent(rpu.Component):
         # in a different thread....
         with self._slot_lock:
             self._prof.prof('unschedule_start', uid=unit['uid'])
-            self._release_slot(unit['slots'])
+            self._release_slot(slots)
             self._prof.prof('unschedule_stop',  uid=unit['uid'])
 
         # notify the scheduling thread, ie. trigger an attempt to use the freed
@@ -638,12 +699,16 @@ class AgentSchedulingComponent(rpu.Component):
             if self._try_allocation(unit):
 
                 # allocated unit -- advance it
-                self.advance(unit, rps.AGENT_EXECUTING_PENDING, 
+                self.advance(unit, rps.AGENT_EXECUTING_PENDING,
                              publish=True, push=True)
 
                 # remove it from the wait queue
                 with self._wait_lock:
                     self._wait_pool.remove(unit)
+
+            else:
+                if self._uniform_wl:
+                    break
 
         # return True to keep the cb registered
         return True

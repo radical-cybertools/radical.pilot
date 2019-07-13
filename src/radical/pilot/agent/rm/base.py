@@ -4,22 +4,21 @@ __license__   = "MIT"
 
 
 import os
-
 import radical.utils as ru
-
 
 # 'enum' for resource manager types
 RM_NAME_FORK        = 'FORK'
 RM_NAME_CCM         = 'CCM'
 RM_NAME_LOADLEVELER = 'LOADLEVELER'
 RM_NAME_LSF         = 'LSF'
+RM_NAME_LSF_SUMMIT  = 'LSF_SUMMIT'
 RM_NAME_PBSPRO      = 'PBSPRO'
 RM_NAME_SGE         = 'SGE'
 RM_NAME_SLURM       = 'SLURM'
 RM_NAME_TORQUE      = 'TORQUE'
 RM_NAME_YARN        = 'YARN'
 RM_NAME_SPARK       = 'SPARK'
-
+RM_NAME_DEBUG       = 'DEBUG'
 
 # ==============================================================================
 #
@@ -62,7 +61,7 @@ class LRMS(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):        
+    def __init__(self, cfg, session):
 
         self.name            = type(self).__name__
         self._cfg            = cfg
@@ -82,6 +81,7 @@ class LRMS(object):
         self.gpus_per_node   = 0
         self.lfs_per_node    = 0
         self.mem_per_node    = 0
+        self.smt             = int(os.environ.get('RADICAL_SAGA_SMT', 1))
 
         # The LRMS will possibly need to reserve nodes for the agent, according
         # to the agent layout.  We dig out the respective requirements from the
@@ -207,16 +207,18 @@ class LRMS(object):
     @classmethod
     def create(cls, name, cfg, session):
 
-        from .ccm         import CCM        
-        from .fork        import Fork       
+        from .ccm         import CCM
+        from .fork        import Fork
         from .loadleveler import LoadLeveler
-        from .lsf         import LSF        
-        from .pbspro      import PBSPro     
-        from .sge         import SGE        
-        from .slurm       import Slurm      
-        from .torque      import Torque     
-        from .yarn        import Yarn      
-        from .spark       import Spark       
+        from .lsf         import LSF
+        from .lsf_summit  import LSF_SUMMIT
+        from .pbspro      import PBSPro
+        from .sge         import SGE
+        from .slurm       import Slurm
+        from .torque      import Torque
+        from .yarn        import Yarn
+        from .spark       import Spark
+        from .debug       import Debug
 
         # Make sure that we are the base-class!
         if cls != LRMS:
@@ -228,12 +230,14 @@ class LRMS(object):
                 RM_NAME_CCM         : CCM,
                 RM_NAME_LOADLEVELER : LoadLeveler,
                 RM_NAME_LSF         : LSF,
+                RM_NAME_LSF_SUMMIT  : LSF_SUMMIT,
                 RM_NAME_PBSPRO      : PBSPro,
                 RM_NAME_SGE         : SGE,
                 RM_NAME_SLURM       : Slurm,
                 RM_NAME_TORQUE      : Torque,
                 RM_NAME_YARN        : Yarn,
-                RM_NAME_SPARK       : Spark
+                RM_NAME_SPARK       : Spark,
+                RM_NAME_DEBUG       : Debug
             }[name]
             return impl(cfg, session)
 

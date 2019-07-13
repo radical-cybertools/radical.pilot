@@ -1,0 +1,8 @@
+cpu_index_using: physical
+rank: 0: { host: 1; cpu: {0, 4, 8, 12}; gpu: {0}}
+rank: 1: { host: 1; cpu: {16, 20, 24, 28}; gpu: {1}}
+rank: 2: { host: 1; cpu: {32, 36, 40, 44}; gpu: {2}}
+rank: 3: { host: 1; cpu: {48, 52, 56, 60}; gpu: {3}}
+rank: 4: { host: 1; cpu: {64, 68, 72, 76}; gpu: {4}}
+rank: 5: { host: 1; cpu: {88, 92, 96, 100}; gpu: {5}}
+

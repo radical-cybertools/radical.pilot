@@ -646,6 +646,7 @@ class Default(PMGRLaunchingComponent):
             # a url that was the result of a hop or a local lrms.
             if js_url.scheme not in ['ssh', 'gsissh']:
                 js_url.scheme = 'fork'
+                js_url.host   = 'localhost'
 
         with self._cache_lock:
             if  js_url in self._saga_js_cache:
@@ -774,6 +775,7 @@ class Default(PMGRLaunchingComponent):
         number_cores    = pilot['description']['cores']
         number_gpus     = pilot['description']['gpus']
         runtime         = pilot['description']['runtime']
+        app_comm        = pilot['description']['app_comm']
         queue           = pilot['description']['queue']
         project         = pilot['description']['project']
         cleanup         = pilot['description']['cleanup']
@@ -1048,6 +1050,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['spawner']            = agent_spawner
         agent_cfg['scheduler']          = agent_scheduler
         agent_cfg['runtime']            = runtime
+        agent_cfg['app_comm']           = app_comm
         agent_cfg['dburl']              = str(database_url)
         agent_cfg['session_id']         = sid
         agent_cfg['pilot_id']           = pid
@@ -1172,8 +1175,8 @@ class Default(PMGRLaunchingComponent):
                 self._log.debug('supplement %s: %s', key, val)
                 jd[key] = val
 
-        if 'RADICAL_PILOT_PROFILE' in os.environ :
-            jd.environment['RADICAL_PILOT_PROFILE'] = 'TRUE'
+        if self._prof.enabled:
+            jd.environment['RADICAL_PROFILE'] = 'TRUE'
 
         # for condor backends and the like which do not have shared FSs, we add
         # additional staging directives so that the backend system binds the
@@ -1188,7 +1191,7 @@ class Default(PMGRLaunchingComponent):
                 'site:%s/%s.log.tgz < %s.log.tgz' % (pilot_sandbox, pid, pid)
             ])
 
-            if 'RADICAL_PILOT_PROFILE' in os.environ:
+            if self._prof.enabled:
                 jd.file_transfer.extend([
                     'site:%s/%s.prof.tgz > %s.prof.tgz' % (pilot_sandbox, pid, pid),
                     'site:%s/%s.prof.tgz < %s.prof.tgz' % (pilot_sandbox, pid, pid)

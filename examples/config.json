@@ -20,13 +20,6 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 2
-    },
-
-    "local.localhost_orte" : {
-        "project"  : null,
-        "queue"    : null,
-        "schema"   : null,
         "cores"    : 64
     },
 
@@ -34,7 +27,14 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 2
+        "cores"    : 64
+    },
+
+    "local.localhost_prte" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 64
     },
 
     "local.localhost_anaconda" : {
@@ -152,7 +152,7 @@
     "princeton.tiger_cpu" : {
         "project"  : "geo",
         "queue"    : "cpu",
-        "schema"   : "local",
+        "schema"   : "ssh",
         "cores"    : 40
     },
 
@@ -161,6 +161,13 @@
         "queue"    : "gpu",
         "schema"   : "local",
         "cores"    : 56
+    },
+
+    "xsede.frontera" : {
+        "project"  : "FTA-Jha",
+        "queue"    : "development",
+        "schema"   : "local",
+        "cores"    : 64
     },
 
     "xsede.stampede" : {
@@ -262,10 +269,25 @@
     },
 
     "ncar.cheyenne": {
-	"project"      : "URTG0014",
-	"queue"        : "regular",
-	"schema"       : "local",
-	"cores"        : 72
+	    "project"  : "URTG0014",
+	    "queue"    : "regular",
+	    "schema"   : "local",
+	    "cores"    : 72
+    },
+
+    "ornl.summit"  : {
+        "project"  : "CSC343",
+        "queue"    : "batch",
+        "schema"   : "local",
+        "cores"    : 84,
+        "gpus"     : 12
+    },
+
+    "ornl.summit_prte" : {
+        "project"  : "CSC343",
+        "queue"    : "batch",
+        "schema"   : "local",
+        "cores"    : 84
     },
 
     "ornl.titan" : {
@@ -338,7 +360,7 @@
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 64
-    }, 
+    },
 
     "fub.allegro"   : {
         "project"  : null,
@@ -353,7 +375,7 @@
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 16
-    }, 
+    },
 
     "lumc.gb-ui"   : {
         "project"  : null,
@@ -374,7 +396,7 @@
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 8
-    }, 
+    },
 
     "radical.two" : {
         "project"  : null,

@@ -10,34 +10,10 @@ from pymongo import MongoClient
 import radical.pilot as rp
 
 
-# DBURL defines the MongoDB server URL and has the format mongodb://host:port.
-# For the installation of a MongoDB server, refer to the MongoDB website:
-# http://docs.mongodb.org/manual/installation/
-DBURL = os.getenv("RADICAL_PILOT_DBURL")
-if DBURL is None:
-    print "ERROR: RADICAL_PILOT_DBURL (MongoDB server URL) is not defined."
-    sys.exit(1)
-
-DBNAME = os.getenv("RADICAL_PILOT_TEST_DBNAME", 'test')
-if DBNAME is None:
-    print "ERROR: RADICAL_PILOT_TEST_DBNAME (MongoDB database name) is not defined."
-    sys.exit(1)
-
-
 # -----------------------------------------------------------------------------
 #
 class TestUnitManager(unittest.TestCase):
     # silence deprecation warnings under py3
-
-    def setUp(self):
-        # clean up fragments from previous tests
-        client = MongoClient(DBURL)
-        client.drop_database(DBNAME)
-
-    def tearDown(self):
-        # clean up after ourselves
-        client = MongoClient(DBURL)
-        client.drop_database(DBNAME)
 
     def failUnless(self, expr):
         # St00pid speling.
@@ -53,7 +29,7 @@ class TestUnitManager(unittest.TestCase):
     def test__unitmanager_create(self):
         """ Test if unit manager creation works as expected.
         """
-        session = rp.Session(database_url=DBURL, database_name=DBNAME)
+        session = rp.Session()
         assert session.list_unit_managers() == [], "Wrong number of unit managers"
 
         um1 = rp.UnitManager(session=session, scheduler='round_robin')
@@ -69,7 +45,7 @@ class TestUnitManager(unittest.TestCase):
     def test__unitmanager_reconnect(self):
         """ Test if unit manager reconnection works as expected.
         """
-        session = rp.Session(database_url=DBURL, database_name=DBNAME)
+        session = rp.Session()
 
         um = rp.UnitManager(session=session, scheduler='round_robin')
         assert session.list_unit_managers() == [um.uid], "Wrong list of unit managers"
@@ -86,7 +62,7 @@ class TestUnitManager(unittest.TestCase):
     def test__unitmanager_pilot_assoc(self):
         """ Test if unit manager <-> pilot association works as expected.
         """
-        session = rp.Session(database_url=DBURL, database_name=DBNAME)
+        session = rp.Session()
 
         pm = rp.PilotManager(session=session)
 
@@ -97,7 +73,7 @@ class TestUnitManager(unittest.TestCase):
         cpd.sandbox = "/tmp/rp.sandbox.unittests"
         cpd.cleanup = True
 
-        p1 = pm.submit_pilots(pilot_descriptions=cpd)
+        p1 = pm.submit_pilots(descriptions=cpd)
 
         um = rp.UnitManager(session=session, scheduler='round_robin')
         assert um.list_pilots() == [], "Wrong list of pilots"
@@ -120,7 +96,7 @@ class TestUnitManager(unittest.TestCase):
             cpd.runtime = 1
             cpd.sandbox = "/tmp/rp.sandbox.unittests"
             cpd.cleanup = True
-            p = pm.submit_pilots(pilot_descriptions=cpd)
+            p = pm.submit_pilots(descriptions=cpd)
             um.add_pilots(p)
             pilot_list.append(p)
 
