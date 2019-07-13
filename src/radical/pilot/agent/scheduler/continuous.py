@@ -299,6 +299,9 @@ class Continuous(AgentSchedulingComponent):
         alloc_lfs   = 0
         alloc_mem   = 0
 
+        # we need at least one core per gpu process
+        requested_cores = max(requested_gpus, requested_cores)
+
         if partial:
             # For partial requests the check simplifies: we just check if we
             # have either, some cores *or* gpus, to serve the
@@ -501,7 +504,7 @@ class Continuous(AgentSchedulingComponent):
                                                     gpu_chunk=gpu_chunk,
                                                     lfs_chunk=lfs_chunk,
                                                     mem_chunk=mem_chunk)
-            if len(cores) == total_cores and \
+            if len(cores) >= total_cores and \
                len(gpus)  == total_gpus:
 
                 # we found the needed resources - break out of search loop
