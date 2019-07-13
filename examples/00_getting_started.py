@@ -56,12 +56,12 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {'resource'      : resource,
-                   'runtime'       : 60,  # pilot runtime (min)
+                   'runtime'       : 15,  # pilot runtime (min)
                    'exit_on_error' : True,
                    'project'       : config[resource]['project'],
                    'queue'         : config[resource]['queue'],
                    'access_schema' : config[resource]['schema'],
-                   'cores'         : config[resource]['cores'],
+                   'cores'         : 1024 + (42 * 4)
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
@@ -77,7 +77,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 128  # number of units to run
+        n = 512  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()

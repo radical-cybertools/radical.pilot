@@ -41,13 +41,14 @@ _pilot_state_values = {
         CANCELED               :  5}
 _pilot_state_inv   = {v: k for k, v in _pilot_state_values.iteritems()}
 _pilot_state_inv_full = dict()
-for s,v in _pilot_state_values.iteritems():
+for st,v in _pilot_state_values.iteritems():
     if v in _pilot_state_inv_full:
         if not isinstance(_pilot_state_inv_full[v], list):
             _pilot_state_inv_full[v] = [_pilot_state_inv_full[v]]
-        _pilot_state_inv_full[v].append(s)
+        _pilot_state_inv_full[v].append(st)
     else:
-        _pilot_state_inv_full[v] = s
+        _pilot_state_inv_full[v] = st
+
 
 def _pilot_state_value(s):
     return _pilot_state_values[s] 
@@ -82,7 +83,7 @@ def _pilot_state_progress(pid, current, target):
 
     # dig out all intermediate states, skip current
     passed = list()
-    for i in range(cur+1,tgt):
+    for i in range(cur + 1,tgt):
         passed.append(_pilot_state_inv[i])
 
     # append target state to trigger notification of transition
@@ -151,13 +152,14 @@ _unit_state_values = {
         CANCELED                     : 15}
 _unit_state_inv = {v: k for k, v in _unit_state_values.iteritems()}
 _unit_state_inv_full = dict()
-for s,v in _unit_state_values.iteritems():
+for st,v in _unit_state_values.iteritems():
     if v in _unit_state_inv_full:
         if not isinstance(_unit_state_inv_full[v], list):
             _unit_state_inv_full[v] = [_unit_state_inv_full[v]]
-        _unit_state_inv_full[v].append(s)
+        _unit_state_inv_full[v].append(st)
     else:
-        _unit_state_inv_full[v] = s
+        _unit_state_inv_full[v] = st
+
 
 def _unit_state_value(s):
     return _unit_state_values[s] 
@@ -186,13 +188,13 @@ def _unit_state_progress(uid, current, target):
 
     unit_state_progress(UMGR_SCHEDULING, NEW)
     --> [UMGR_SCHEDULING, []]
-    
+
     unit_state_progress(NEW, NEW)
     --> [NEW, []]
-    
+
     unit_state_progress(NEW, UMGR_SCHEDULING_PENDING)
     --> [UMGR_SCHEDULING_PENDING, [UMGR_SCHEDULING_PENDING]]
-    
+
     unit_state_progress(NEW, UMGR_SCHEDULING)
     --> [UMGR_SCHEDULING, [UMGR_SCHEDULING_PENDING, UMGR_SCHEDULING]]
 
@@ -219,7 +221,7 @@ def _unit_state_progress(uid, current, target):
 
     # dig out all intermediate states, skip current
     passed = list()
-    for i in range(cur+1,tgt):
+    for i in range(cur + 1,tgt):
         passed.append(_unit_state_inv[i])
 
     # append target state to trigger notification of transition
@@ -257,7 +259,7 @@ if 'RP_ENABLE_OLD_DEFINES' in os.environ:
     PENDING_ACTIVE         = PMGR_ACTIVE_PENDING
     ACTIVE_PENDING         = PMGR_ACTIVE_PENDING
     ACTIVE                 = PMGR_ACTIVE
-    
+
     # compute unit states
     UNSCHEDULED            = UMGR_SCHEDULING_PENDING
     SCHEDULING             = UMGR_SCHEDULING

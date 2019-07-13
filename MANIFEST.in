@@ -1,3 +1,8 @@
-include *.py *.json *.sh MANIFEST.in README.md CHANGES.md LICENSE.md VERSION
+
+include *.py *.json *.md *.sh
+include MANIFEST.in README.md CHANGES.md LICENSE.md VERSION
+
+recursive-include docs     *.md
 recursive-include src      *.sh *.json
 recursive-include examples *.py *.json
+
