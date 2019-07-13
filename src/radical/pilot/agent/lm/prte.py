@@ -63,7 +63,7 @@ class PRTE(LaunchMethod):
             for node in lrms.node_list:
                 fout.write('%s slots=%d\n' % (node[0], lrms.cores_per_node * lrms.smt))
 
-        pre   = os.environ['PRRTE_DIR']
+        pre   = os.environ['PRRTE_PREFIX']
         prte += ' --prefix %s'     % pre
         prte += ' --report-uri %s' % furi
         prte += ' --hostfile %s'   % fhosts
