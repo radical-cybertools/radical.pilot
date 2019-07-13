@@ -54,6 +54,18 @@ class LaunchMethod(object):
         'LD_LIBRARY_PATH',
         'PATH',
         'PYTHONPATH',
+        'OMP_NUM_THREADS',
+        'CUDA_VISIBLE_DEVICES',
+        'RP_AGENT_ID',
+        'RP_GTOD',
+        'RP_PILOT_ID',
+        'RP_PILOT_STAGING',
+        'RP_PROF',
+        'RP_SESSION_ID',
+        'RP_SPAWNER_ID',
+        'RP_TMP',
+        'RP_UNIT_ID',
+        'RP_UNIT_NAME',
     ]
 
     MPI_FLAVOR_OMPI    = 'OMPI'

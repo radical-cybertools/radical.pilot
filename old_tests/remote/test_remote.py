@@ -55,7 +55,7 @@ class TestRemoteSubmission(unittest.TestCase):
         cpd.runtime = 15
         cpd.sandbox = self.test_workdir
 
-        pilot = pm.submit_pilots(pilot_descriptions=cpd)
+        pilot = pm.submit_pilots(descriptions=cpd)
 
         um = rp.UnitManager(session=session, scheduler='round_robin')
         um.add_pilots(pilot)
@@ -106,7 +106,7 @@ class TestRemoteSubmission(unittest.TestCase):
         cpd.runtime           = 2
         cpd.sandbox           = self.test_workdir
 
-        pilot = pm.submit_pilots(pilot_descriptions=cpd)
+        pilot = pm.submit_pilots(descriptions=cpd)
 
         assert pilot is not None
         #assert cu.start_time is None
@@ -145,7 +145,7 @@ class TestRemoteSubmission(unittest.TestCase):
         cpd.runtime           = 2
         cpd.sandbox           = self.test_workdir
 
-        pilot = pm.submit_pilots(pilot_descriptions=cpd)
+        pilot = pm.submit_pilots(descriptions=cpd)
 
         assert pilot is not None
         #assert cu.start_time is None

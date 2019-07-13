@@ -106,7 +106,7 @@ def test_nonmpi_unit_withhombre_scheduler(mocked_init,
 
     # populate component attributes
     component._configure()
-    component._oversubscribe = True
+    component._oversubscribe = False
 
     # we expect these slots to be available
     all_slots = list()
@@ -114,39 +114,54 @@ def test_nonmpi_unit_withhombre_scheduler(mocked_init,
         all_slots.append({'lm_info'        : 'INFO',
                           'cores_per_node' : 4,
                           'gpus_per_node'  : 2,
-                          'nodes'          : [[n, str(n), [[0, 1]], [[0]]]]
+                          'ncblocks'       : 1,
+                          'ngblocks'       : 1,
+                          'nodes'          : [{'name': n,
+                                               'uid' : str(n),
+                                               'core_map' : [[0, 1]],
+                                               'gpu_map'  : []},
+                                              {'name': n,
+                                               'uid' : str(n),
+                                               'core_map' : [[0]],
+                                               'gpu_map'  : [[0]]}
+                                             ]
                          })
         all_slots.append({'lm_info'        : 'INFO',
                           'cores_per_node' : 4,
                           'gpus_per_node'  : 2,
-                          'nodes'          : [[n, str(n), [[2, 3]], [[1]]]]
+                          'ncblocks'       : 1,
+                          'ngblocks'       : 1,
+                          'nodes'          : [{'name': n,
+                                               'uid' : str(n),
+                                               'core_map' : [[2, 3]],
+                                               'gpu_map'  : []},
+                                              {'name': n,
+                                               'uid' : str(n),
+                                               'core_map' : [[0]],
+                                               'gpu_map'  : [[1]]}
+                                             ]
                          })
 
     # Allocate first CUD -- should land on second node
     cud  = cud_nonmpi()
     slot = component._allocate_slot(cud)
-    chk  = all_slots[-1]
-    print '---------------'
+    chk = all_slots[-1]
 
     assert(slot == chk)
 
     # Allocate second CUD -- should also land on second node
     cud  = cud_nonmpi()
     slot = component._allocate_slot(cud)
-    assert slot == all_slots[-2]
+    chk = all_slots[-2]
+
+    assert(slot == chk)
 
     # Allocate third CUD -- should land on first node
     cud  = cud_nonmpi()
     slot = component._allocate_slot(cud)
-    assert slot == all_slots[-3]
+    chk = all_slots[-3]
 
-  # print '---------------'
-  # print 'free'
-  # pprint.pprint(component.free)
-  # print 'found'
-  # pprint.pprint(slot)
-  # print 'expect'
-  # pprint.pprint(chk)
+    assert(slot == chk)
 
     # Allocate fourth CUD -- should also land on tecond node
     cud  = cud_nonmpi()
@@ -227,16 +242,8 @@ def test_mpi_unit_withhombre_scheduler(mocked_init,
     cud  = cud_mpi()
     slot = component._allocate_slot(cud)
     chk  = all_slots[-1]
-    assert(slot == chk)
 
-  # print '---------------'
-  # print 'free'
-  # pprint.pprint(component.free)
-  # print 'found'
-  # pprint.pprint(slot)
-  # print 'expect'
-  # pprint.pprint(chk)
-  # print '---------------'
+    assert(slot == chk)
 
     # Allocate second CUD -- should land on first node
     cud  = cud_mpi()

@@ -37,15 +37,19 @@
     },
 
     "results": {
-        "lm": { "ibrun" : ["ibrun -n 2 -o 16 /bin/sleep \"10\" ",null],
-                "ssh"   : "RuntimeError",
-                "spark" : "RuntimeError",
-                "orte"  : "RuntimeError",
-                "rsh"   : "RuntimeError",
-                "jsrun"  : ["jsrun --erf_input rs_layout_cu_000007  -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" /bin/sleep \"10\" ",null]
+        "lm": { "ibrun"  : ["ibrun -n 2 -o 16 /bin/sleep \"10\" ",null],
+                "ssh"    : "RuntimeError",
+                "spark"  : "RuntimeError",
+                "orte"   : "RuntimeError",
+                "rsh"    : "RuntimeError",
+                "jsrun"  : ["jsrun --erf_input rs_layout_cu_000007  -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" /bin/sleep \"10\" ",null],
+                "prte"   : "RuntimeError"
         },
         "resource_file": {
-            "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0,4}}\n","rank: 1: { host: node2; cpu: {0,4}}\n"]
+            "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0,1}}\n","rank: 1: { host: node2; cpu: {0,1}}\n"]
+        },
+        "resource_filename": {
+            "jsrun": "rs_layout_cu_000007"
         }
     }
 }
