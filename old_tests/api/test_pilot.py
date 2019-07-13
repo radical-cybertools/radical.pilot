@@ -38,7 +38,7 @@ class TestPilot(unittest.TestCase):
             cpd.sandbox = "/tmp/rp.sandbox.unittests"
             cpd.cleanup = True
 
-            pilot = pm.submit_pilots(pilot_descriptions=cpd)
+            pilot = pm.submit_pilots(descriptions=cpd)
 
             assert pilot is not None
             assert pilot.start_time is None
@@ -77,7 +77,7 @@ class TestPilot(unittest.TestCase):
             cpd.sandbox = "/non-/existing/directory..."
             cpd.cleanup = True
 
-            pilot = pm.submit_pilots(pilot_descriptions=cpd)
+            pilot = pm.submit_pilots(descriptions=cpd)
             pilot.wait(timeout=300)
             assert pilot.state == rp.FAILED, "State is '%s' instead of 'Failed'." % pilot.state
 
@@ -88,7 +88,7 @@ class TestPilot(unittest.TestCase):
             cpd.sandbox = "/tmp/rp.sandbox.unittests"
             cpd.cleanup = True
 
-            pilot = pm.submit_pilots(pilot_descriptions=cpd)
+            pilot = pm.submit_pilots(descriptions=cpd)
             pilot.wait(timeout=300)
             assert pilot.state == rp.FAILED, ("state should be %s and not %s" % (rp.FAILED, pilot.state))
 
@@ -112,7 +112,7 @@ class TestPilot(unittest.TestCase):
             cpd.sandbox = "/tmp/rp.sandbox.unittests"
             cpd.cleanup = True
 
-            pilot = pm.submit_pilots(pilot_descriptions=cpd)
+            pilot = pm.submit_pilots(descriptions=cpd)
 
             assert pilot is not None
             assert pilot.start_time is None
