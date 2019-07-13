@@ -4,7 +4,7 @@
 
 from radical.pilot.agent.lm.base import LaunchMethod
 
-import radical.pilot as rp
+import radical.utils as ru
 import pytest
 
 try:
@@ -15,84 +15,46 @@ except ImportError:
 
 # ------------------------------------------------------------------------------
 #
-@mock.patch.object(LaunchMethod, '_configure', return_value=None)
-def test_init(mocked_configure):
-    session = rp.Session()
-    lm = LaunchMethod(name='test', cfg={}, session=session)
-    assert lm.name     == 'test'
-    assert lm._cfg     == {}
-    assert lm._session == session
-    assert lm._log     == session._log
-
-
-# ------------------------------------------------------------------------------
-#
-@mock.patch.object(LaunchMethod, '_configure', return_value=None)
-def test_create(mocked_configure):
-    session = rp.Session()
-
-    from radical.pilot.agent.lm.aprun          import APRun
-    from radical.pilot.agent.lm.ccmrun         import CCMRun
-    from radical.pilot.agent.lm.fork           import Fork
-    from radical.pilot.agent.lm.ibrun          import IBRun
-    from radical.pilot.agent.lm.mpiexec        import MPIExec
-    from radical.pilot.agent.lm.mpirun         import MPIRun
-    from radical.pilot.agent.lm.orte           import ORTE
-    from radical.pilot.agent.lm.orte_lib       import ORTELib
-    from radical.pilot.agent.lm.rsh            import RSH
-    from radical.pilot.agent.lm.ssh            import SSH
-    from radical.pilot.agent.lm.yarn           import Yarn
-    from radical.pilot.agent.lm.spark          import Spark
-
-    LM_NAME_APRUN         = 'APRUN'
-    LM_NAME_CCMRUN        = 'CCMRUN'
-    LM_NAME_FORK          = 'FORK'
-    LM_NAME_IBRUN         = 'IBRUN'
-    LM_NAME_MPIEXEC       = 'MPIEXEC'
-    LM_NAME_MPIRUN        = 'MPIRUN'
-    LM_NAME_MPIRUN_MPT    = 'MPIRUN_MPT'
-    LM_NAME_MPIRUN_CCMRUN = 'MPIRUN_CCMRUN'
-    LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
-    LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
-    LM_NAME_ORTE          = 'ORTE'
-    LM_NAME_ORTE_LIB      = 'ORTE_LIB'
-    LM_NAME_RSH           = 'RSH'
-    LM_NAME_SSH           = 'SSH'
-    LM_NAME_YARN          = 'YARN'
-    LM_NAME_SPARK         = 'SPARK'
-
-    lm_types = {
-                LM_NAME_APRUN         : APRun,
-                LM_NAME_CCMRUN        : CCMRun,
-                LM_NAME_FORK          : Fork,
-                LM_NAME_IBRUN         : IBRun,
-                LM_NAME_MPIEXEC       : MPIExec,
-                LM_NAME_MPIRUN        : MPIRun,
-                LM_NAME_MPIRUN_CCMRUN : MPIRun,
-                LM_NAME_MPIRUN_RSH    : MPIRun,
-                LM_NAME_MPIRUN_MPT    : MPIRun,
-                LM_NAME_MPIRUN_DPLACE : MPIRun,
-                LM_NAME_ORTE          : ORTE,
-                LM_NAME_ORTE_LIB      : ORTELib,
-                LM_NAME_RSH           : RSH,
-                LM_NAME_SSH           : SSH,
-                LM_NAME_YARN          : Yarn,
-                LM_NAME_SPARK         : Spark
-            }
-
-    for key,val in lm_types.iteritems():
-
-        lm = LaunchMethod.create(name=key, cfg={}, session=session)
-        assert isinstance(lm, val), '%s -/- %s' % (lm, val)
+# @mock.patch.object(LaunchMethod, '_configure', return_value=None)
+# def test_init(mocked_configure):
+#     session = mock.Mock()
+#     session._log = mock.Mock()
+#     lm = LaunchMethod(name='test', cfg={}, session=session)
+#     assert lm.name     == 'test'
+#     assert lm._cfg     == {}
+#     assert lm._session == session
+#     assert lm._log     == session._log
 
 
 # ------------------------------------------------------------------------------
 #
 def test_configure():
 
-    session = rp.Session()
+    session = mock.Mock()
+    session._log = mock.Mock()
     with pytest.raises(NotImplementedError):
-        _ = LaunchMethod(name='test', cfg={}, session=session)
+        LaunchMethod(name='test', cfg={}, session=session)
+# ------------------------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------------
+#
+@mock.patch.object(LaunchMethod,'__init__',return_value=None)
+def test_get_mpi_info(mocked_init):
+
+    lm = LaunchMethod(name=None, cfg={}, session=None)
+    lm._log = mock.Mock()
+    ru.sh_callout = mock.Mock()
+    ru.sh_callout.side_effect = [['test',1,0]]
+    version, flavor = lm._get_mpi_info('mpirun')
+    if version is None:
+        assert True
+    else:
+        assert False
+    assert flavor == 'unknown'
+
+    ru.sh_callout.side_effect = [['test',1,1],['mpirun (Open MPI) 2.1.2\n\n\
+                                  Report bugs to http://www.open-mpi.org/community/help/\n',3,0]]
+    version, flavor = lm._get_mpi_info('mpirun')
+    assert version == '2.1.2'
+    assert flavor == 'OMPI'

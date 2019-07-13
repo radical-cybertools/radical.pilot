@@ -354,7 +354,7 @@ class Agent_0(rpu.Worker):
                 #        out for the moment, which will make this unable to
                 #        work with a number of launch methods.  Can the
                 #        offset computation be moved to the LRMS?
-                bs_name = "%s/bootstrap_2.sh" % (self._pwd, sa)
+                bs_name = "%s/bootstrap_2.sh" % (self._pwd)
                 ls_name = "%s/%s.sh" % (self._pwd, sa)
                 slots = {
                     'cpu_processes' : 1,
@@ -391,7 +391,13 @@ class Agent_0(rpu.Worker):
                     # note that 'exec' only makes sense if we don't add any
                     # commands (such as post-processing) after it.
                     ls.write('#!/bin/sh\n\n')
-                    ls.write('exec %s\n' % cmd)
+                    for k,v in agent_cmd['description'].get('environment', {}).iteritems():
+                        ls.write('export "%s"="%s"\n' % (k, v))
+                    ls.write('\n')
+                    for pe_cmd in agent_cmd['description'].get('pre_exec', []):
+                        ls.write('%s\n' % pe_cmd)
+                    ls.write('\n')
+                    ls.write('exec %s\n\n' % cmd)
                     st = os.stat(ls_name)
                     os.chmod(ls_name, st.st_mode | stat.S_IEXEC)
 
@@ -515,7 +521,7 @@ class Agent_0(rpu.Worker):
         # we have, terminate.
         if self._runtime:
             if time.time() >= self._starttime + (int(self._runtime) * 60):
-                self._log.info('reached runtime limit (%ss).', self._runtime*60)
+                self._log.info('runtime limit (%ss).', self._runtime * 60)
                 self._final_cause = 'timeout'
                 self.stop()
                 return False  # we are done

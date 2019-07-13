@@ -143,11 +143,11 @@ class LSF_SUMMIT(LRMS):
 
                 self._log.info("lrms config hook succeeded (%s)" % lm)
 
-        # For now assume that all nodes have equal amount of cores and gpus
-        cores_avail = (len(self.node_list) + len(self.agent_nodes)) \
-                    * self.cores_per_socket * self.sockets_per_node
-        gpus_avail  = (len(self.node_list) + len(self.agent_nodes)) \
-                    * self.gpus_per_socket * self.sockets_per_node
+      # # For now assume that all nodes have equal amount of cores and gpus
+      # cores_avail = (len(self.node_list) + len(self.agent_nodes)) \
+      #             * self.cores_per_socket * self.sockets_per_node
+      # gpus_avail  = (len(self.node_list) + len(self.agent_nodes)) \
+      #             * self.gpus_per_socket * self.sockets_per_node
 
 
         # NOTE: self.lrms_info is what scheduler and launch method can
@@ -222,7 +222,8 @@ class LSF_SUMMIT(LRMS):
         # same core count for all nodes
         assert(len(set(lsf_nodes.values())) == 1)
         lsf_cores_per_node = lsf_nodes.values()[0]
-        self._log.debug('found %d nodes with %d cores', len(lsf_nodes), lsf_cores_per_node)
+        self._log.debug('found %d nodes with %d cores', len(lsf_nodes),
+                                                        lsf_cores_per_node)
 
         # We cannot inspect gpu and socket numbers yet (TODO), so pull those
         # from the configuration
@@ -253,13 +254,16 @@ class LSF_SUMMIT(LRMS):
         # need an integer index later on for resource set specifications.
         # (LSF starts node indexes at 1, not 0)
 
+        node_names     = sorted(lsf_nodes.keys())
         self.node_list = [[n, str(i + 1)] for i, n
-                                          in enumerate(sorted(lsf_nodes.keys()))]
+                                          in  enumerate(node_names)]
         self._log.debug('node list: %s', pprint.pformat(self.node_list))
 
         self.sockets_per_node = lsf_sockets_per_node
         self.cores_per_socket = lsf_cores_per_socket
         self.gpus_per_socket  = lsf_gpus_per_socket
+        self.cores_per_node   = lsf_cores_per_socket * lsf_sockets_per_node
+        self.gpus_per_node    = lsf_gpus_per_socket * lsf_sockets_per_node
         self.lfs_per_node     = lsf_lfs_per_node
         self.mem_per_node     = lsf_mem_per_node
 
