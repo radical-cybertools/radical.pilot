@@ -20,20 +20,15 @@ import copy
 import glob
 import threading
 
-
+import radical.utils                as ru
 import radical.saga                 as rs
 import radical.saga.utils.pty_shell as rsup
 
-import radical.utils        as ru
-
 from . import utils         as rpu
-from . import states        as rps
-from . import constants     as rpc
 
 from .resource_config import ResourceConfig
 from .db              import DBSession
-
-from .utils import version_detail as rp_version_detail
+from .utils           import version_detail as rp_version_detail
 
 
 # ------------------------------------------------------------------------------
@@ -253,10 +248,11 @@ class Session(rs.Session):
             # from here on we should be able to close the session again
             self._log.info("New Session created: %s." % self.uid)
 
-        except Exception:
+        except Exception as e:
             self._rep.error(">>err\n")
             self._log.exception('session create failed [%s]', self._dburl)
-            raise RuntimeError("session create failed")
+            raise RuntimeError('session create failed [%s]: %s'
+                              % (self._dburl, e))
 
         # the session must not carry bridge and component handles across forks
         ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
@@ -649,8 +645,10 @@ class Session(rs.Session):
         log files end up in a separate directory with the name of `session.uid`.
         """
 
-        return ru.Reporter(name=name, ns='radical.pilot', targets=['stdout'],
-                           path=self._logdir)
+        if not self._reporter:
+            self._reporter = ru.Reporter(name=name, ns='radical.pilot',
+                                         targets=['stdout'], path=self._logdir)
+        return self._reporter
 
 
     # --------------------------------------------------------------------------
@@ -846,6 +844,7 @@ class Session(rs.Session):
             self._log.debug('add  rcfg for %s', resource_config.label)
             self._resource_configs[resource_config.label] = resource_config.as_dict()
 
+
     # -------------------------------------------------------------------------
     #
     def get_resource_config(self, resource, schema=None):
@@ -952,21 +951,38 @@ class Session(rs.Session):
                 fs_url = rs.Url(rcfg['filesystem_endpoint'])
 
                 # Get the sandbox from either the pilot_desc or resource conf
-                sandbox_raw = pilot['description'].get('sandbox')
-                if not sandbox_raw:
-                    sandbox_raw = rcfg.get('default_remote_workdir', "$PWD")
+                sandbox = pilot['description'].get('sandbox')
+                if not sandbox:
+                    sandbox = rcfg.get('default_remote_workdir', "$PWD")
 
-                # If the sandbox contains expandables, we need to resolve those
-                # remotely.
+                # expand local placeholders from the pilot description
+                if '%' in sandbox:
+                    # expand from pilot description
+                    expand = dict()
+                    for k,v in pilot['description'].iteritems():
+                        if v is None:
+                            v = ''
+                        expand['pd.%s' % k] = v
+                        if isinstance(v, basestring):
+                            expand['pd.%s' % k.upper()] = v.upper()
+                            expand['pd.%s' % k.lower()] = v.lower()
+                        else:
+                            expand['pd.%s' % k.upper()] = v
+                            expand['pd.%s' % k.lower()] = v
+                    sandbox = sandbox % expand
+
+
+                # If the sandbox contains expandables, resolve those remotely.
                 #
-                # NOTE: Note that this will only work for (gsi)ssh or shell
-                #       based access mechanisms
-                if '$' not in sandbox_raw and '`' not in sandbox_raw:
-                    # no need to expand further
-                    sandbox_base = sandbox_raw
+                # NOTE: this will only work for (gsi)ssh or similar
+                #       shell based access schemes.
+                if '$' in sandbox or \
+                   '`' in sandbox :
 
-                else:
-                    js_url = rs.Url(rcfg['job_manager_endpoint'])
+                    js_url = rcfg['job_manager_endpoint']
+                    js_url = rcfg.get('job_manager_hop', js_url)
+                    js_url = rs.Url(js_url)
+
                     elems  = js_url.schema.split('+')
 
                     if   'ssh'    in elems: js_url.schema = 'ssh'
@@ -981,16 +997,18 @@ class Session(rs.Session):
                     self._log.debug("rsup.PTYShell('%s')", js_url)
                     shell = rsup.PTYShell(js_url, self)
 
-                    ret, out, err = shell.run_sync(' echo "WORKDIR: %s"' % sandbox_raw)
-                    if ret == 0 and 'WORKDIR:' in out:
-                        sandbox_base = out.split(":")[1].strip()
-                        self._log.debug("sandbox base %s: '%s'", js_url, sandbox_base)
-                    else:
-                        raise RuntimeError("Couldn't get remote working directory.")
+                    ret, out, err = shell.run_sync(' echo "WORKDIR: %s"'
+                                                  % sandbox)
+                    if ret or 'WORKDIR:' not in out:
+                        raise RuntimeError("Couldn't get remote workdir.")
 
-                # at this point we have determined the remote 'pwd' - the global sandbox
-                # is relative to it.
-                fs_url.path = "%s/radical.pilot.sandbox" % sandbox_base
+                    sandbox = out.split(":")[1].strip()
+                    self._log.debug("sandbox base %s: %s", js_url, sandbox)
+
+
+                # At this point we have determined the remote 'pwd'.
+                # The global sandbox is relative to it.
+                fs_url.path = "%s/radical.pilot.sandbox" % sandbox
 
                 # before returning, keep the URL string in cache
                 self._cache['resource_sandbox'][resource] = fs_url
