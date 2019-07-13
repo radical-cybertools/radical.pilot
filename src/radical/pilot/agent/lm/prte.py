@@ -39,7 +39,7 @@ class PRTE(LaunchMethod):
             raise Exception("Couldn't find prte")
 
         # Now that we found the prte, get PRUN version
-        out, err, ret = ru.sh_callout('prte_info | grep "Open RTE"', shell=True)
+        out, _, _ = ru.sh_callout('prte_info | grep "Open RTE"', shell=True)
         prte_info = dict()
         for line in out.split('\n'):
 
@@ -54,19 +54,34 @@ class PRTE(LaunchMethod):
         logger.info("Found Open RTE: %s [%s]",
                     prte_info.get('version'), prte_info.get('version_detail'))
 
+
+        # write hosts file
+        furi   = '%s/prrte.uri'   % os.getcwd()
+        fhosts = '%s/prrte.hosts' % os.getcwd()
+
+        with open(fhosts, 'w') as fout:
+            for node in lrms.node_list:
+                fout.write('%s slots=%d\n' % (node[0], lrms.cores_per_node * lrms.smt))
+
+        pre   = os.environ['PRRTE_PREFIX']
+        prte += ' --prefix %s'     % pre
+        prte += ' --report-uri %s' % furi
+        prte += ' --hostfile %s'   % fhosts
+      # prte += ' --mca plm_rsh_no_tree_spawn 1'
+
         # Use (g)stdbuf to disable buffering.
         # We need this to get the "DVM ready",
         # without waiting for prte to complete.
         # The command seems to be generally available on our Cray's,
-        # if not, we can code some home-coooked pty stuff.
+        # if not, we can code some home-coooked pty stuff (TODO)
         stdbuf_cmd =  ru.which(['stdbuf', 'gstdbuf'])
         if not stdbuf_cmd:
             raise Exception("Couldn't find (g)stdbuf")
         stdbuf_arg = "-oL"
 
         # Base command = (g)stdbuf <args> + prte + prte-args + debug_args
-        prte_args = '--report-uri -'
-        cmdline   = '%s %s %s %s ' % (stdbuf_cmd, stdbuf_arg, prte, prte_args)
+        cmdline   = '%s %s %s ' % (stdbuf_cmd, stdbuf_arg, prte)
+      # cmdline   = prte
 
         # Additional (debug) arguments to prte
         verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
@@ -81,41 +96,38 @@ class PRTE(LaunchMethod):
 
         # Split up the debug strings into args and add them to the cmdline
         cmdline += ' '.join(debug_strings)
+        cmdline  = cmdline.strip()
 
         vm_size = len(lrms.node_list)
-        logger.info("Start prte on %d nodes ['%s']", vm_size, ' '.join(cmdline))
+        logger.info("Start prte on %d nodes [%s]", vm_size, cmdline)
         profiler.prof(event='dvm_start', uid=cfg['pilot_id'])
 
         dvm_uri     = None
-        dvm_process = mp.Popen(cmdline.split(), stdout=mp.PIPE, stderr=mp.STDOUT)
+        dvm_process = mp.Popen(cmdline.split(), stdout=mp.PIPE,
+                               stderr=mp.STDOUT)
 
-        while True:
+        for _ in range(100):
 
-            line = dvm_process.stdout.readline()
+            time.sleep(0.1)
+            try:
+                with open(furi, 'r') as fin:
+                    for line in fin.readlines():
+                        if '://' in line:
+                            dvm_uri = line.strip()
+                            break
 
-            if '://' in line:
+            except Exception as e:
+                logger.debug('DVM check: %s' % e)
+                time.sleep(0.5)
 
-                dvm_uri = line.strip()
-                logger.info("prte uri: %s" % dvm_uri)
-
-            elif 'DVM ready' in line:
-                if not dvm_uri:
-                    raise Exception("VMURI not found!")
-
-                logger.info("prte startup successful!")
-                profiler.prof(event='dvm_ok', uid=cfg['pilot_id'])
+            if dvm_uri:
                 break
 
-            else:
+        if not dvm_uri:
+            raise Exception("VMURI not found!")
 
-                # Check if the process is still around,
-                # and log output in debug mode.
-                if dvm_process.poll() is None:
-                    logger.debug("PRUN: %s", line)
-                else:
-                    # Process is gone: fatal!
-                    raise Exception("prun process disappeared")
-                    profiler.prof(event='dvm_fail', uid=cfg['pilot_id'])
+        logger.info("prte startup successful: [%s]", dvm_uri)
+        profiler.prof(event='dvm_ok', uid=cfg['pilot_id'])
 
 
         # ----------------------------------------------------------------------
@@ -139,6 +151,7 @@ class PRTE(LaunchMethod):
                 # swallowed, the next `prun` call will trigger
                 # termination anyway.
                 os.kill(os.getpid())
+                raise RuntimeError('PRTE DVM died')
 
             logger.info('prte stopped (%d)' % dvm_process.returncode)
         # ----------------------------------------------------------------------
@@ -185,14 +198,15 @@ class PRTE(LaunchMethod):
     #
     def _configure(self):
 
-        self.launch_command = ru.which('prun')
+        # ensure that `prun` is in the path (`which` will raise otherwise)
+        ru.which('prun')
+        self.launch_command = 'prun'
 
 
     # --------------------------------------------------------------------------
     #
     def construct_command(self, cu, launch_script_hop):
 
-        import time
         time.sleep(0.1)
 
         slots        = cu['slots']
@@ -210,7 +224,6 @@ class PRTE(LaunchMethod):
         if not n_threads: n_threads = 1
 
       # import pprint
-      # self._log.debug('=== prep %s', pprint.pformat(cu))
         self._log.debug('prep %s', cu['uid'])
 
         if 'lm_info' not in slots:
@@ -236,50 +249,45 @@ class PRTE(LaunchMethod):
             for var in env_list:
                 env_string += '-x "%s" ' % var
 
+        map_flag  = ' -np %d --cpus-per-proc %d' % (n_procs, n_threads)
+      # map_flag += ' --bind-to hwthread:overload-allowed --use-hwthread-cpus'
+      # map_flag += ' --oversubscribe'
+
         if 'nodes' not in slots:
             # this task is unscheduled - we leave it to PRRTE/PMI-X to
-            # correctly place the task.  Just count procs and threads.
-
-            map_flag  = ' --bind-to none -use-hwthread-cpus --oversubscribe'
-            map_flag += ' -n %d --cpus-per-proc %d' % (n_procs, n_threads)
+            # correctly place the task
+            pass
 
         else:
-            # enact the scheduler's placement
-            hosts_string = ''
-            depths       = set()
-            for node in slots['nodes']:
-                self._log.debug('=== %s' % node)
+            # FIXME: ensure correct binding for procs and threads via slotfile
 
-                # add all cpu and gpu process slots to the node list.
-                for cpu_slot in node['core_map']: hosts_string += '%s,' % node['name']
-                for gpu_slot in node['gpu_map' ]: hosts_string += '%s,' % node['name']
-                for cpu_slot in node['core_map']: depths.add(len(cpu_slot))
+            # enact the scheduler's host placement.  For now, we leave socket,
+            # core and thread placement to the prted, and just add all cpu and
+            # gpu process slots to the host list.
+            hosts = ''
+
+            for node in slots['nodes']:
+
+                # for each cpu and gpu slot, add the respective node name
+                for _ in node['core_map']: hosts += '%s,' % node['name']
+                for _ in node['gpu_map' ]: hosts += '%s,' % node['name']
 
             # remove trailing ','
-            hosts_string = hosts_string.rstrip(',')
-
-            # FIXME: ensure correct binding for procs and threads
-          # assert(len(depths) == 1), depths
-          # depth = depths.pop()
-          # if depth > 1: map_flag = '--bind-to none --map-by ppr:%d:core' % depth
-          # else        : map_flag = '--bind-to none'
-            map_flag  = ' --bind-to none -use-hwthread-cpus --oversubscribe'
-            map_flag += ' -n %d --cpus-per-proc %d' % (n_procs, n_threads)
-            map_flag += ' -host %s' % hosts_string
-
+            map_flag += ' -host %s' % hosts.rstrip(',')
 
         # Additional (debug) arguments to prun
+        debug_string = ''
         if self._verbose:
-            debug_strings = ['-display-devel-map',
-                             '-display-allocation',
-                             '--debug-devel',
-                            ]
-        else:
-            debug_strings = []
-        debug_string = ' '.join(debug_strings)
+            debug_string = ' '.join([
+                                     # '-display-devel-map',
+                                     # '-display-allocation',
+                                     # '--debug-devel',
+                                       '--report-bindings',
+                                    ])
 
-        command = '%s %s --hnp "%s" %s %s %s' % (self.launch_command,
-                  debug_string, dvm_uri, map_flag, env_string, task_command)
+        env_string = ''  # FIXME
+        command = '%s --hnp "%s" %s %s %s %s' % (self.launch_command,
+                  dvm_uri, map_flag, debug_string, env_string, task_command)
 
         return command, None
 

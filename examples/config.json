@@ -170,6 +170,13 @@
         "cores"    : 56
     },
 
+    "xsede.frontera" : {
+        "project"  : "FTA-Jha",
+        "queue"    : "development",
+        "schema"   : "local",
+        "cores"    : 64
+    },
+
     "xsede.stampede" : {
         "project"  : "TG-MCB090174",
         "queue"    : "development",
@@ -283,15 +290,7 @@
     },
 
     "ornl.summit"  : {
-        "project"  : "BIP178",
-        "queue"    : "batch",
-        "schema"   : "local",
-        "cores"    : 84,
-        "gpus"     : 12
-    },
-
-    "local.summit" : {
-        "project"  : "BIP178",
+        "project"  : "CSC343",
         "queue"    : "batch",
         "schema"   : "local",
         "cores"    : 84,
@@ -299,10 +298,10 @@
     },
 
     "ornl.summit_prte" : {
-        "project"  : "BIP178",
+        "project"  : "CSC343",
         "queue"    : "batch",
         "schema"   : "local",
-        "cores"    : 4200
+        "cores"    : 84
     },
 
     "ornl.titan" : {
