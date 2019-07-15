@@ -3,6 +3,7 @@ import glob
 import shutil
 import radical.pilot as rp
 from radical.pilot.agent import rm as rpa_rm
+from radical.pilot.agent.rm.pbspro import PBSPro
 
 try:
     import mock
@@ -30,9 +31,13 @@ def tearDown():
     for fold in rp:
         shutil.rmtree(fold)
 
-    os.unlink('radical.saga.api.log')
-    os.unlink('radical.saga.log')
-    os.unlink('radical.utils.log')
+    try:
+        os.unlink('radical.saga.api.log')
+        os.unlink('radical.saga.log')
+        os.unlink('radical.utils.log')
+    except:
+        pass
+
 
 # ------------------------------------------------------------------------------
 #
@@ -59,7 +64,6 @@ def test_rm_fork():
     tearDown()
 
 
-from radical.pilot.agent.rm.pbspro import PBSPro
 @mock.patch.object(PBSPro, '_parse_pbspro_vnodes', return_value=['nodes1', 'nodes2'])
 def test_rm_pbspro(mocked_parse_pbspro_vnodes):
 
@@ -76,12 +80,19 @@ def test_rm_pbspro(mocked_parse_pbspro_vnodes):
 
     lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
 
+    assert lrms.lrms_info == {'name': 'PBSPro', 
+            'mem_per_node': 0, 
+            'lm_info': {}, 
+            'cores_per_node': 4, 
+            'agent_nodes': {},
+            'lfs_per_node': {'path': None, 'size': 0}, 
+            'node_list': [['nodes1', 'nodes1'], ['nodes2', 'nodes2']],
+            'gpus_per_node': 0}
+
     lrms.stop()
     session.close()
     tearDown()
 
-
-# ------------------------------------------------------------------------------
 
 @mock.patch('hostlist.expand_hostlist', return_value=['nodes1', 'nodes1'])
 def test_rm_torque(mocked_expand_hoslist):
@@ -97,9 +108,19 @@ def test_rm_torque(mocked_expand_hoslist):
 
     lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
 
+    assert lrms.lrms_info == {'name': 'Torque', 
+            'mem_per_node': 0, 
+            'lm_info': {}, 
+            'cores_per_node': 24, 
+            'agent_nodes': {},
+            'lfs_per_node': {'path': None, 'size': 0}, 
+            'node_list': [['nodes1', 'nodes1']],
+            'gpus_per_node': 0}
+
     lrms.stop()
     session.close()
     tearDown()
+
 
 def test_rm_lsf_summit():
 
@@ -110,10 +131,23 @@ def test_rm_lsf_summit():
     os.environ['LSB_DJOB_HOSTFILE'] = 'tests/test_cases/rm/nodelist.lsf'
 
     lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
+    assert lrms.lrms_info == {'mem_per_node': 0, 
+            'cores_per_node': 20,
+            'lfs_per_node': {'path': None, 'size': 0}, 
+            'node_list': [['nodes1', '1'], ['nodes2', '2']], 
+            'gpus_per_socket': 3, 
+            'name': 'LSF_SUMMIT', 
+            'lm_info': {}, 
+            'smt': 1, 
+            'cores_per_socket': 10,
+            'sockets_per_node': 2, 
+            'agent_nodes': {}, 
+            'gpus_per_node': 6}
 
     lrms.stop()
     session.close()
     tearDown()
+
 
 @mock.patch('hostlist.expand_hostlist', return_value=['nodes1', 'nodes2'])
 def test_rm_slurm(mocked_expand_hostlist):
@@ -127,6 +161,15 @@ def test_rm_slurm(mocked_expand_hostlist):
     os.environ['SLURM_NNODES'] = '2'
     os.environ['SLURM_CPUS_ON_NODE'] = '24'
     lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
+
+    assert lrms.lrms_info == {'name': 'Slurm', 
+            'mem_per_node': 0, 
+            'lm_info': {'cores_per_node': 24}, 
+            'cores_per_node': 24, 
+            'agent_nodes': {}, 
+            'lfs_per_node': {'path': None, 'size': 0}, 
+            'node_list': [['nodes1', 'nodes1'], ['nodes2', 'nodes2']], 
+            'gpus_per_node': 0}
 
     lrms.stop()
     session.close()
