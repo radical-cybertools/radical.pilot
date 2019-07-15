@@ -23,16 +23,20 @@ def setUp(resource):
 #
 def tearDown():
 
-    cur_dir       = os.path.dirname(os.path.abspath(__file__))
+    #cur_dir       = os.path.dirname(os.path.abspath(__file__))
+    cur_dir = os.getcwd()
     rp = glob.glob('%s/rp.session.*' % cur_dir)
 
     for fold in rp:
         shutil.rmtree(fold)
 
+    os.unlink('radical.saga.api.log')
+    os.unlink('radical.saga.log')
+    os.unlink('radical.utils.log')
 
 # ------------------------------------------------------------------------------
 #
-def test_rm_create_fork():
+def test_rm_fork():
 
     cfg, session = setUp('local.localhost')
     cfg['cores'] = 1
@@ -51,12 +55,13 @@ def test_rm_create_fork():
                               'name'            : 'Fork',
                               'node_list'       : [['localhost', 'localhost_0']]}
     lrms.stop()
+    session.close()
     tearDown()
 
 
 from radical.pilot.agent.rm.pbspro import PBSPro
 @mock.patch.object(PBSPro, '_parse_pbspro_vnodes', return_value=['nodes1', 'nodes2'])
-def test_rm_create_pbspro(mocked_parse_pbspro_vnodes):
+def test_rm_pbspro(mocked_parse_pbspro_vnodes):
 
     cfg, session = setUp('epsrc.archer_aprun')
     cfg['cores'] = 1
@@ -72,8 +77,59 @@ def test_rm_create_pbspro(mocked_parse_pbspro_vnodes):
     lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
 
     lrms.stop()
+    session.close()
     tearDown()
 
 
 # ------------------------------------------------------------------------------
+
+@mock.patch('hostlist.expand_hostlist', return_value=['nodes1', 'nodes1'])
+def test_rm_torque(mocked_expand_hoslist):
+
+    cfg, session = setUp('nersc.hopper_aprun')
+    cfg['cores'] = 1
+    cfg['gpus'] = 0
+
+    os.environ['PBS_NODEFILE'] = 'tests/test_cases/rm/nodelist.torque'
+    os.environ['PBS_NCPUS'] = '2'
+    os.environ['PBS_NUM_PPN'] = '4'
+    os.environ['PBS_NUM_NODES'] = '2'
+
+    lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
+
+    lrms.stop()
+    session.close()
+    tearDown()
+
+def test_rm_lsf_summit():
+
+    cfg, session = setUp('ornl.summit')
+    cfg['cores'] = 1
+    cfg['gpus'] = 0
+
+    os.environ['LSB_DJOB_HOSTFILE'] = 'tests/test_cases/rm/nodelist.lsf'
+
+    lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
+
+    lrms.stop()
+    session.close()
+    tearDown()
+
+@mock.patch('hostlist.expand_hostlist', return_value=['nodes1', 'nodes2'])
+def test_rm_slurm(mocked_expand_hostlist):
+
+    cfg, session = setUp('xsede.wrangler_ssh')
+    cfg['cores'] = 1
+    cfg['gpus'] = 0
+
+    os.environ['SLURM_NODELIST'] = 'nodes-[1-2]'
+    os.environ['SLURM_NPROCS'] = '48'
+    os.environ['SLURM_NNODES'] = '2'
+    os.environ['SLURM_CPUS_ON_NODE'] = '24'
+    lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
+
+    lrms.stop()
+    session.close()
+    tearDown()
+
 
