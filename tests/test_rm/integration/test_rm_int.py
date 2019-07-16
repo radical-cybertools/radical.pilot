@@ -22,9 +22,11 @@ def setUp(resource):
 
 # ------------------------------------------------------------------------------
 #
-def tearDown():
+def tearDown(lrms, session):
 
-    #cur_dir       = os.path.dirname(os.path.abspath(__file__))
+    lrms.stop()
+    session.close()
+
     cur_dir = os.getcwd()
     rp = glob.glob('%s/rp.session.*' % cur_dir)
 
@@ -59,9 +61,7 @@ def test_rm_fork():
                               'mem_per_node'    : 0,
                               'name'            : 'Fork',
                               'node_list'       : [['localhost', 'localhost_0']]}
-    lrms.stop()
-    session.close()
-    tearDown()
+    tearDown(lrms, session)
 
 
 #@mock.patch.object(PBSPro, '_parse_pbspro_vnodes', return_value=['nodes1', 'nodes2'])
@@ -90,9 +90,7 @@ def test_rm_pbspro(mocked_parse_pbspro_vnodes):
             'node_list': [['vnode1', 'vnode1'], ['vnode2', 'vnode2']],
             'gpus_per_node': 0}
 
-    lrms.stop()
-    session.close()
-    tearDown()
+    tearDown(lrms, session)
 
 
 @mock.patch('hostlist.expand_hostlist', return_value=['nodes1', 'nodes1'])
@@ -118,9 +116,7 @@ def test_rm_torque(mocked_expand_hoslist):
             'node_list': [['nodes1', 'nodes1']],
             'gpus_per_node': 0}
 
-    lrms.stop()
-    session.close()
-    tearDown()
+    tearDown(lrms, session)
 
 
 def test_rm_lsf_summit():
@@ -145,9 +141,7 @@ def test_rm_lsf_summit():
             'agent_nodes': {}, 
             'gpus_per_node': 6}
 
-    lrms.stop()
-    session.close()
-    tearDown()
+    tearDown(lrms, session)
 
 
 @mock.patch('hostlist.expand_hostlist', return_value=['nodes1', 'nodes2'])
@@ -172,8 +166,6 @@ def test_rm_slurm(mocked_expand_hostlist):
             'node_list': [['nodes1', 'nodes1'], ['nodes2', 'nodes2']], 
             'gpus_per_node': 0}
 
-    lrms.stop()
-    session.close()
-    tearDown()
+    tearDown(lrms, session)
 
 
