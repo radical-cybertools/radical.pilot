@@ -64,7 +64,8 @@ def test_rm_fork():
     tearDown()
 
 
-@mock.patch.object(PBSPro, '_parse_pbspro_vnodes', return_value=['nodes1', 'nodes2'])
+#@mock.patch.object(PBSPro, '_parse_pbspro_vnodes', return_value=['nodes1', 'nodes2'])
+@mock.patch('subprocess.check_output', return_value='exec_vnode = (vnode1:cpu=3)+(vnode2:cpu=2)')
 def test_rm_pbspro(mocked_parse_pbspro_vnodes):
 
     cfg, session = setUp('epsrc.archer_aprun')
@@ -86,7 +87,7 @@ def test_rm_pbspro(mocked_parse_pbspro_vnodes):
             'cores_per_node': 4, 
             'agent_nodes': {},
             'lfs_per_node': {'path': None, 'size': 0}, 
-            'node_list': [['nodes1', 'nodes1'], ['nodes2', 'nodes2']],
+            'node_list': [['vnode1', 'vnode1'], ['vnode2', 'vnode2']],
             'gpus_per_node': 0}
 
     lrms.stop()
