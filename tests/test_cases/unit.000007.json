@@ -42,7 +42,7 @@
                 "spark"  : "RuntimeError",
                 # "orte"   : "RuntimeError",
                 "rsh"    : "RuntimeError",
-                "jsrun"  : ["jsrun --erf_input rs_layout_cu_000007  -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" /bin/sleep \"10\" ",null],
+                "jsrun"  : ["jsrun --erf_input rs_layout_cu_000007   /bin/sleep \"10\" ",null],
                 "prte"   : "RuntimeError"
         },
         "resource_file": {
