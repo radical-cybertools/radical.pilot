@@ -28,6 +28,7 @@
         "lm": {
             "spark"  : ["/spark-submit    test.py", null],
             "ibrun"  : "RuntimeError",
+            # "orte"   : "RuntimeError",
             "prte"   : "RuntimeError"
         }
     }

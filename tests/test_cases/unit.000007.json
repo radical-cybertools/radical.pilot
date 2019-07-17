@@ -40,6 +40,7 @@
         "lm": { "ibrun"  : ["ibrun -n 2 -o 16 /bin/sleep \"10\" ",null],
                 "ssh"    : "RuntimeError",
                 "spark"  : "RuntimeError",
+                # "orte"   : "RuntimeError",
                 "rsh"    : "RuntimeError",
                 "jsrun"  : ["jsrun --erf_input rs_layout_cu_000007  -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" /bin/sleep \"10\" ",null],
                 "prte"   : "RuntimeError"
