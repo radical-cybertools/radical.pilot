@@ -111,8 +111,6 @@ class LaunchMethod(object):
         from .mpirun         import MPIRun
         from .jsrun          import JSRUN
         from .prte           import PRTE
-        from .orte           import ORTE
-        from .orte_lib       import ORTELib
         from .rsh            import RSH
         from .ssh            import SSH
         from .yarn           import Yarn
@@ -120,6 +118,8 @@ class LaunchMethod(object):
         from .srun           import Srun
 
       # # deprecated
+      # from .orte           import ORTE
+      # from .orte_lib       import ORTELib
       # from .mpirun_ccmrun  import MPIRunCCMRun
       # from .mpirun_dplace  import MPIRunDPlace
       # from .mpirun_mpt     import MPIRun_MPT
@@ -127,8 +127,6 @@ class LaunchMethod(object):
       # from .dplace         import DPlace
       # from .poe            import POE
       # from .runjob         import Runjob
-
-      # # deprecated
       # from .mpirun_ccmrun  import MPIRunCCMRun
       # from .mpirun_dplace  import MPIRunDPlace
       # from .mpirun_mpt     import MPIRun_MPT
@@ -151,8 +149,6 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_DPLACE : MPIRun,
                 LM_NAME_JSRUN         : JSRUN,
                 LM_NAME_PRTE          : PRTE,
-                LM_NAME_ORTE          : ORTE,
-                LM_NAME_ORTE_LIB      : ORTELib,
                 LM_NAME_RSH           : RSH,
                 LM_NAME_SSH           : SSH,
                 LM_NAME_YARN          : Yarn,
@@ -160,6 +156,8 @@ class LaunchMethod(object):
                 LM_NAME_SRUN          : Srun,
 
               # # deprecated
+              # LM_NAME_ORTE          : ORTE,
+              # LM_NAME_ORTE_LIB      : ORTELib,
               # LM_NAME_DPLACE        : DPlace,
               # LM_NAME_POE           : POE,
               # LM_NAME_RUNJOB        : Runjob,
@@ -192,16 +190,21 @@ class LaunchMethod(object):
 
         from .fork           import Fork
         from .prte           import PRTE
-        from .orte           import ORTE
         from .yarn           import Yarn
         from .spark          import Spark
+
+        # # deprecated
+        # from .orte           import ORTE
 
         impl = {
             LM_NAME_FORK          : Fork,
             LM_NAME_PRTE          : PRTE,
-            LM_NAME_ORTE          : ORTE,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
+
+            # # deprecated
+            # LM_NAME_ORTE          : ORTE,
+
         }.get(name)
 
         if not impl:
@@ -226,15 +229,19 @@ class LaunchMethod(object):
             raise TypeError("LM shutdown hook only available to base class!")
 
         from .prte           import PRTE
-        from .orte           import ORTE
         from .yarn           import Yarn
         from .spark          import Spark
 
+        # # deprecated
+        # from .orte           import ORTE
+
         impl = {
             LM_NAME_PRTE          : PRTE,
-            LM_NAME_ORTE          : ORTE,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
+
+            # # deprecated
+            # LM_NAME_ORTE          : ORTE,
         }.get(name)
 
         if not impl:
