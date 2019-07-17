@@ -79,7 +79,7 @@ class LaunchMethod(object):
         self.name     = name
         self._cfg     = cfg
         self._session = session
-        self._log     = self._session._log
+        self._log     = self._session._log    # pylint: disable=protected-access
         self._log.debug('create LM: %s', type(self))
 
         # A per-launch_method list of env vars to remove from the CU env
@@ -167,9 +167,11 @@ class LaunchMethod(object):
             return impl(name, cfg, session)
 
         except KeyError:
+            # pylint: disable=protected-access
             session._log.exception("LM '%s' unknown or defunct" % name)
 
         except Exception as e:
+            # pylint: disable=protected-access
             session._log.exception("LM cannot be used: %s!" % e)
 
 
@@ -388,7 +390,7 @@ class LaunchMethod(object):
                     flavor  = self.MPI_FLAVOR_OMPI
                     break
 
-                if '(open mpi):' in line.lower():
+                if '(open mpi)' in line.lower():
                     version = line.split(')', 1)[1].strip()
                     flavor  = self.MPI_FLAVOR_OMPI
                     break
