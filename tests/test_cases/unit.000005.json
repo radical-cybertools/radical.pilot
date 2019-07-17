@@ -7,6 +7,7 @@
                         "gpu_processes"    : 1,
                         "cpu_processes"    : 1,
                         "cpu_process_type" : "MPI",
+                        "gpu_process_type" : "MPI",
                         "gpu_thread_type"  : "CUDA"
                        }
     },
@@ -37,14 +38,14 @@
     "results": {
         "lm": {
             "fork"    : ["/bin/sleep \"10\" ", null],
-            "orte"    : ["orterun  --hnp \"dvm_uri\" -np 2 --bind-to none -host node1,node1 -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" ", null],
+            # "orte"    : ["orterun  --hnp \"dvm_uri\" -np 2 --bind-to none -host node1,node1 -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" ", null],
             "aprun"   : ["aprun -n 2 -N 2 -L node1 -d 1 -cc 0:0 /bin/sleep \"10\"  ", null],
             "mpirun"  : ["mpirun -np 2  -host node1,node1  /bin/sleep \"10\"", null],
             "ibrun"   : ["ibrun -n 1 -o 0 /bin/sleep \"10\" ", null],
             "ssh"     : ["/bin/sleep \"10\" ","ssh node1 PATH=test_path 1"],
-            "jsrun"   : ["jsrun --erf_input rs_layout_cu_000005 --smpiargs=\"-gpu\" -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" /bin/sleep \"10\" ", null],
+            "jsrun"   : ["jsrun --erf_input rs_layout_cu_000005 --smpiargs=\"-gpu\"  /bin/sleep \"10\" ", null],
             "mpiexec" : ["mpiexec -H node1,node1 -np 2   /bin/sleep \"10\" ", null],
-            "prte"    : ["prun  --hnp \"dvm_uri\"  --bind-to none -use-hwthread-cpus --oversubscribe -n 2 --cpus-per-proc 1 -host node1,node1 -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" ", null]
+            "prte"    : ["prun --hnp \"dvm_uri\"  -np 2 --cpus-per-proc 1 -host node1,node1   /bin/sleep \"10\" ", null]
         },
         "resource_file": {
             "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0}; gpu: {0}}\n"]
