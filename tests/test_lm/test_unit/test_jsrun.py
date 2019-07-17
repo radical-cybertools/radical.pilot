@@ -25,7 +25,7 @@ def tearDown():
 @mock.patch.object(JSRUN, '__init__', return_value=None)
 @mock.patch.object(JSRUN, '_configure',return_value='jsrun')
 @mock.patch('radical.utils.raise_on')
-def test_create_resource_set_file(mocked_init, mocked_method, mocked_raise_on):
+def test_create_resource_set_file(mocked_init, mocked_configure, mocked_raise_on):
 
     test_cases = setUp('lm', 'jsrun')
     component    = JSRUN(name=None, cfg=None, session=None)
