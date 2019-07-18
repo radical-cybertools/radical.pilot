@@ -108,7 +108,7 @@ if __name__ == '__main__':
 
         pilot.wait(state=rp.PMGR_ACTIVE)
         print 'killme %s' % os.getpid()
-        time.sleep(10)
+        os.kill(os.getpid())
 
 
     except Exception as e:
