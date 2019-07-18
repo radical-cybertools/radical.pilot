@@ -37,7 +37,7 @@ def fetch_tasks(bulk_size):
     # TODO: auth
     data  = requests.get(address + "queue_manager", json=payload, verify=False)
     tasks = data.json()
-    
+
     return tasks
 
 
@@ -46,7 +46,7 @@ def fetch_tasks(bulk_size):
 def push_tasks(bulk_id, unit):
     '''
     Once a bulk of tasks has been executed, push the resulting jsons back to the
-    QCArchive service endpoint.  The results are read from 
+    QCArchive service endpoint.  The results are read from
     the unit's `stdout` file, which the executor needs to fetch back to
     localhost.
 
@@ -77,7 +77,7 @@ def push_tasks(bulk_id, unit):
 
     if data_nok:
         payload = {"meta": {"name"     : bulk_id,
-                            "operation": 'shutdown'}, 
+                            "operation": 'shutdown'},
                    "data" : data_nok}
         r = requests.put(address + "queue_manager", json=payload, verify=False)
         print '%s nok: %s' % (bulk_id, r)
@@ -136,7 +136,7 @@ try:
             cud.name             = tid
             cud.metadata         = {'fout' : fout}
             cud.input_staging    = [fin]
-            cud.output_staging   = {'source': 'unit:///STDOUT', 
+            cud.output_staging   = {'source': 'unit:///STDOUT',
                                     'target': '%s' % fout,
                                     'action': rp.TRANSFER}
             cud.gpu_processes    = 0
