@@ -12,6 +12,52 @@ except ImportError:
 
 @mock.patch.object(Continuous, '__init__', return_value=None)
 @mock.patch('radical.pilot.agent.scheduler.base.AgentSchedulingComponent')
+def test_configure(mocked_init, mocked_agent):
+    '''
+    Test 1 check configuration setup
+    '''
+    component = Continuous()
+    component.__oversubscribe = True
+    component._cfg = {}
+    component._lrms_cores_per_node = 4
+    component._lrms_gpus_per_node = 2
+    component._lrms_lfs_per_node = 128
+    component._lrms_mem_per_node = 128
+    assert component._lrms_cores_per_node == 4
+    assert component._lrms_gpus_per_node == 2
+    assert component._lrms_lfs_per_node == 128
+    assert component._lrms_mem_per_node == 128
+
+    if component.__oversubscribe:
+        component._configure()
+
+
+@mock.patch.object(Continuous, '__init__', return_value=None)
+@mock.patch('radical.pilot.agent.scheduler.base.AgentSchedulingComponent')
+def test_configure_err(mocked_init, mocked_agent):
+    '''
+    Test 2 check configuration setup `oversubscribe`
+    is set to False (which is the default for now)
+    '''
+    component = Continuous()
+    component._cfg = {}
+    component.__oversubscribe = True
+    component._lrms_cores_per_node = 2
+    component._lrms_gpus_per_node = 8
+    component._lrms_lfs_per_node = 128
+    component._lrms_mem_per_node = 128
+    assert component._lrms_cores_per_node == 2
+    assert component._lrms_gpus_per_node == 8
+    assert component._lrms_lfs_per_node == 128
+    assert component._lrms_mem_per_node == 128
+
+    if not component.__oversubscribe:
+        with pytest.raises(RuntimeError):
+            component._configure()
+
+
+@mock.patch.object(Continuous, '__init__', return_value=None)
+@mock.patch('radical.pilot.agent.scheduler.base.AgentSchedulingComponent')
 def test_pass_find_resources(mocked_init, mocked_agent):
     '''
     Test 1 check functionality
