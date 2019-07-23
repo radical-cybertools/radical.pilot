@@ -121,3 +121,40 @@ def test_pass_find_resources_err(mocked_init, mocked_agent):
                                   component.core_chunk,
                                   component.lfs_chunk, component.gpu_chunk,
                                   component.mem_chunk)
+
+
+# ------------------------------------------------------------------------------
+#
+@mock.patch.object(Continuous, '__init__', return_value=None)
+def test_get_node_maps(mocked_init):
+
+    '''
+    Test 1 unittest for the structure of
+    the returned cores and gpus map
+    '''
+    component = Continuous()
+    cores = [0, 0, 0, 0, 0, 0, 0, 0,
+             0, 0, 0, 0, 0, 0, 0, 0]
+    gpus = [1, 1, 1]
+    tpp = 16
+    expected_map = ([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
+                    [[1], [1], [1]])
+    assert  component._get_node_maps(cores, gpus, tpp) == expected_map
+
+
+@mock.patch.object(Continuous, '__init__', return_value=None)
+def test_get_node_maps_err(mocked_init):
+
+    '''
+    Test 2 unittest for raising error if make sure the
+    core sets can host the requested number of threads
+    '''
+    component = Continuous()
+    cores = [0, 0, 0, 0, 0, 0, 0, 0,
+             0, 0, 0, 0, 0, 0, 0, 0]
+    gpus = [1, 1, 1]
+    expected_map = ([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
+                    [[1], [1], [1]])
+    tpp = 24
+    with pytest.raises(Exception):
+        assert component._get_node_maps(cores, gpus, tpp) == expected_map
