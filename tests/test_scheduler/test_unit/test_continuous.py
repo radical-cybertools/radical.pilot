@@ -129,7 +129,7 @@ def test_pass_find_resources_err(mocked_init, mocked_agent):
 def test_get_node_maps(mocked_init):
 
     '''
-    Test 1 unittest for the structure of
+    Test 1 unit_test for the structure of
     the returned cores and gpus map
     '''
     component = Continuous()
@@ -146,7 +146,7 @@ def test_get_node_maps(mocked_init):
 def test_get_node_maps_err(mocked_init):
 
     '''
-    Test 2 unittest for raising error if make sure the
+    Test 2 unit_test for raising error if make sure the
     core sets can host the requested number of threads
     '''
     component = Continuous()
