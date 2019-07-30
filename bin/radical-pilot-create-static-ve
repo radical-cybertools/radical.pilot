@@ -4,7 +4,7 @@ script="$0"
 prefix="$1"
 arg="$2"
 
-echo 
+echo
 echo "script : $script"
 echo "prefix : $prefix"
 echo "arg    : $arg"
@@ -26,7 +26,7 @@ help(){
 
     err="$1"
     ret=0
-    
+
     if ! test -z "$err"
     then
         ret=1
@@ -62,7 +62,7 @@ progress(){
 
 if test "$prefix" = "-h"
 then
-    help 
+    help
 fi
 
 if test -z "$prefix"
@@ -111,6 +111,12 @@ fi
 mkdir -p "$prefix"
 cd $prefix
 
+# for conda environments, install virtualenv in the env
+if ! test -z "$CONDA_DEFAULT_ENV"
+then
+    conda install -y virtualenv | progress 2>&1
+fi
+
 echo -n "install virtualenv "
 
 VIRTENV_CMD="$(which virtualenv 2>/dev/null)"
@@ -139,7 +145,7 @@ do
 done
 
 # install the radical stack (utils, saga, pilot) into a separate tree
-# ($prefix/rp_install(, so that any local install can use the ve *w/o* 
+# ($prefix/rp_install(, so that any local install can use the ve *w/o*
 # the radical stack, by re-routing PYTHONPATH
 python_version=`$PYTHON -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
 ve_mod_prefix=` $PYTHON -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
