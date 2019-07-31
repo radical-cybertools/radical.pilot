@@ -114,14 +114,24 @@ cd $prefix
 # for conda environments, install virtualenv in the env
 if ! test -z "$CONDA_DEFAULT_ENV"
 then
-    conda install -y virtualenv | progress 2>&1
+    # conda developers did not think this through... :-(
+    CONDA="$(which conda 2>/dev/null | head -n 1)"
+    test -z "$CONDA$_CONDA_EXE" || CONDA="$_CONDA_EXE"
+    test -z "$CONDA$CONDA_EXE"  || CONDA="$CONDA_EXE"
+    if test -z "$CONDA"
+    then
+        echo "conda is not functional"
+        exit 1
+    fi
+    echo -n "install conda virtualenv "
+    test -z "$CONDA" || "$CONDA" install -y virtualenv 2>&1 | progress
 fi
 
-echo -n "install virtualenv "
 
 VIRTENV_CMD="$(which virtualenv 2>/dev/null)"
 if test -z "$VIRTENV_CMD"
 then
+    echo -n "install fallback virtualenv "
     VIRTENV_TGZ="virtualenv-1.9.tar.gz"
     VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/$VIRTENV_TGZ"
     curl -k -L -O "$VIRTENV_TGZ_URL" 2>&1 | progress
