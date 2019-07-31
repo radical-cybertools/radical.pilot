@@ -116,8 +116,8 @@ if ! test -z "$CONDA_DEFAULT_ENV"
 then
     # conda developers did not think this through... :-(
     CONDA="$(which conda 2>/dev/null | head -n 1)"
-    test -z "$CONDA$_CONDA_EXE" || CONDA="$_CONDA_EXE"
-    test -z "$CONDA$CONDA_EXE"  || CONDA="$CONDA_EXE"
+    test -z "$CONDA" && CONDA="$_CONDA_EXE"
+    test -z "$CONDA" && CONDA="$CONDA_EXE"
     if test -z "$CONDA"
     then
         echo "conda is not functional"
