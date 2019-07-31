@@ -124,7 +124,7 @@ then
         exit 1
     fi
     echo -n "install conda virtualenv "
-    test -z "$CONDA" || "$CONDA" install -y virtualenv 2>&1 | progress
+    "$CONDA" install -y virtualenv 2>&1 | progress || exit 1
 fi
 
 
