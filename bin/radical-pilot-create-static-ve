@@ -131,7 +131,7 @@ fi
 VIRTENV_CMD="$(which virtualenv 2>/dev/null)"
 if test -z "$VIRTENV_CMD"
 then
-    echo -n "install fallback virtualenv "
+    echo -n "install private virtualenv "
     VIRTENV_TGZ="virtualenv-1.9.tar.gz"
     VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/$VIRTENV_TGZ"
     curl -k -L -O "$VIRTENV_TGZ_URL" 2>&1 | progress
