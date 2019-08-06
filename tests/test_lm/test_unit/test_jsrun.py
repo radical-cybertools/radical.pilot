@@ -1,17 +1,16 @@
+# pylint: disable=protected-access, unused-argument
 
 import os
-import json
 import glob
-from pprint import pprint
 import radical.utils as ru
 from test_common                  import setUp
 from radical.pilot.agent.lm.jsrun import JSRUN
-
 
 try:
     import mock
 except ImportError:
     from unittest import mock
+
 
 # ------------------------------------------------------------------------------
 #
@@ -24,14 +23,14 @@ def tearDown():
 # ------------------------------------------------------------------------------
 #
 @mock.patch.object(JSRUN, '__init__', return_value=None)
-@mock.patch.object(JSRUN, '_configure',retunr_value='jsrun')
+@mock.patch.object(JSRUN, '_configure',return_value='jsrun')
 @mock.patch('radical.utils.raise_on')
-def test_create_resource_set_file(mocked_init, mocked_method, mocked_raise_on):
+def test_create_resource_set_file(mocked_init, mocked_configure, mocked_raise_on):
 
     test_cases = setUp('lm', 'jsrun')
-    component    = JSRUN(cfg=None, session=None)
+    component    = JSRUN(name=None, cfg=None, session=None)
 
-    for unit, _, resource_file in test_cases:
+    for unit, _, resource_file, _ in test_cases:
 
         slot         = unit['slots']
         uid          = unit['uid']
@@ -48,22 +47,17 @@ def test_create_resource_set_file(mocked_init, mocked_method, mocked_raise_on):
 #
 @mock.patch.object(JSRUN, '__init__', return_value=None)
 @mock.patch.object(JSRUN, '_configure', return_value='jsrun')
-@mock.patch.object(JSRUN, '_create_resource_set_file',
-                          return_value='rs_layout_cu_000000')
 @mock.patch('radical.utils.raise_on')
-def test_construct_command(mocked_init, mocked_configure,
-                           mocked_create_resource_set_file, mocked_raise_on):
+def test_construct_command(mocked_init, mocked_configure, mocked_raise_on):
 
     test_cases = setUp('lm', 'jsrun')
-    
-    component = JSRUN(cfg=None, session=None)
-    component._log  = ru.get_logger('dummy')
+
+    component = JSRUN(name=None, cfg=None, session=None)
+    component._create_resource_set_file = mock.Mock()
+    component._log  = ru.Logger('dummy')
     component.launch_command = 'jsrun'
-    for unit, result,_ in test_cases:
+    for unit, result, _ , resource_filename  in test_cases:
+        component._create_resource_set_file.return_value = resource_filename
         command, hop = component.construct_command(unit, None)
         assert([command, hop] == result)
-
-
-
 # ------------------------------------------------------------------------------
-

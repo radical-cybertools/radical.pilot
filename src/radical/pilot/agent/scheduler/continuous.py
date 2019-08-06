@@ -3,19 +3,11 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 
-import os
-import inspect
 import logging
 import pprint
 
-
-import threading     as mt
-
-import radical.utils as ru
-
 from ...   import constants as rpc
 from .base import AgentSchedulingComponent
-
 
 
 # ------------------------------------------------------------------------------
@@ -62,9 +54,6 @@ from .base import AgentSchedulingComponent
 #        assumptions.
 #
 # ------------------------------------------------------------------------------
-
-
-# ------------------------------------------------------------------------------
 #
 class Continuous(AgentSchedulingComponent):
     '''
@@ -72,15 +61,15 @@ class Continuous(AgentSchedulingComponent):
     a compute units onto consecutive cores, gpus and nodes in the cluster.
     '''
 
-
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, session):
 
         AgentSchedulingComponent.__init__(self, cfg, session)
 
-        self._tag_history = dict()
-
+        self._tag_history   = dict()
+        self._scattered     = None
+        self._oversubscribe = None
 
 
     # --------------------------------------------------------------------------
@@ -201,6 +190,9 @@ class Continuous(AgentSchedulingComponent):
             nodes = unit['slots']['nodes']
             self._tag_history[tag] = [node['uid'] for node in nodes]
 
+        # translate gpu maps into `CUDA_VISIBLE_DEVICES` env
+        self._handle_cuda(unit)
+
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=uid)
 
@@ -226,7 +218,6 @@ class Continuous(AgentSchedulingComponent):
         on the same node).
         '''
 
-        uid = unit['uid']
         cud = unit['description']
 
         # single_node allocation is enforced for non-message passing tasks
@@ -282,6 +273,12 @@ class Continuous(AgentSchedulingComponent):
         When `partial` is set to `True`, this method is allowed to return
         a *partial* match, so to find less cores, gpus, and local_fs then
         requested (but the call will never return more than requested).
+
+        FIXME: SMT handling: we should assume that hardware threads of the same
+               physical core cannot host different executables, so HW threads
+               can only account for thread placement, not process placement.
+               This might best be realized by internally handling SMT as minimal
+               thread count and using physical core IDs for process placement.
         '''
 
         # list of core and gpu ids available in this node.
@@ -301,6 +298,9 @@ class Continuous(AgentSchedulingComponent):
         alloc_gpus  = 0
         alloc_lfs   = 0
         alloc_mem   = 0
+
+        # we need at least one core per gpu process
+        requested_cores = max(requested_gpus, requested_cores)
 
         if partial:
             # For partial requests the check simplifies: we just check if we
@@ -351,6 +351,13 @@ class Continuous(AgentSchedulingComponent):
 
         self._log.debug('alc : %s %s %s %s', alloc_cores, alloc_gpus, lfs, mem)
 
+        if requested_gpus:
+            for idx, state in enumerate(node['gpus']):
+                if state == rpc.FREE:        # use if free
+                    gpus.append(idx)
+                if alloc_gpus == len(gpus):  # break if enough
+                    break
+
         # now dig out the core and gpu IDs.
         if requested_cores:
             for idx, state in enumerate(node['cores']):
@@ -359,12 +366,21 @@ class Continuous(AgentSchedulingComponent):
                 if alloc_cores == len(cores):   # break if enough
                     break
 
-        if requested_gpus:
-            for idx, state in enumerate(node['gpus']):
-                if state == rpc.FREE:        # use if free
-                    gpus.append(idx)
-                if alloc_gpus == len(gpus):  # break if enough
-                    break
+        # if we found a gpu, we need at least one core in order to place
+        # the process which uses that GPU.
+        if gpus and not cores:
+            gpus = list()
+
+        # make sure we have full chunks
+        if cores:
+            n_core_chunks = len(cores) / core_chunk
+            n_cores = n_core_chunks * core_chunk
+            cores = cores[:n_cores]
+
+        if gpus:
+            n_gpu_chunks = len(gpus) / gpu_chunk
+            n_gpus = n_gpu_chunks * gpu_chunk
+            gpus = gpus[:n_gpus]
 
         return cores, gpus, lfs, mem
 
@@ -379,30 +395,36 @@ class Continuous(AgentSchedulingComponent):
         single-threaded.
         For more details, see top level comment of `base.py`.
         """
+        self._log.debug('=== 5 found %s cores, %s gpus, %d tpp',
+                            cores, gpus, threads_per_proc)
+        self._log.debug('=== 5 found %s cores, %s gpus, %d tpp',
+                            len(cores), len(gpus), threads_per_proc)
 
         core_map = list()
         gpu_map  = list()
 
-        # make sure the core sets can host the requested number of threads
-        assert(not len(cores) % threads_per_proc)
-        n_procs =  len(cores) / threads_per_proc
+        if cores:
+            # make sure the core sets can host the requested number of threads
+            assert(not len(cores) % threads_per_proc)
+            n_procs =  len(cores) / threads_per_proc
 
-        idx = 0
-        for p in range(n_procs):
-            p_map = list()
-            for t in range(threads_per_proc):
-                p_map.append(cores[idx])
-                idx += 1
-            core_map.append(p_map)
+            idx = 0
+            for _ in range(n_procs):
+                p_map = list()
+                for _ in range(threads_per_proc):
+                    p_map.append(cores[idx])
+                    idx += 1
+                core_map.append(p_map)
 
-        if idx != len(cores):
-            self._log.debug('%s -- %s -- %s -- %s',
-                            idx, len(cores), cores, n_procs)
-        assert(idx == len(cores))
+            if idx != len(cores):
+                self._log.debug('%s -- %s -- %s -- %s',
+                                idx, len(cores), cores, n_procs)
+            assert(idx == len(cores))
 
-        # gpu procs are considered single threaded right now (FIXME)
-        for g in gpus:
-            gpu_map.append([g])
+        if gpus:
+            # gpu procs are considered single threaded right now (FIXME)
+            for g in gpus:
+                gpu_map.append([g])
 
         return core_map, gpu_map
 
@@ -424,6 +446,7 @@ class Continuous(AgentSchedulingComponent):
         # dig out the allocation request details
         lfs_chunk   = cud['lfs_per_process']
         core_chunk  = cud['cpu_threads']
+        gpu_chunk   = cud['gpu_threads']
         mem_chunk   = cud['mem_per_process']
         total_cores = cud['cpu_processes'] * core_chunk
         total_gpus  = cud['gpu_processes']
@@ -437,11 +460,14 @@ class Continuous(AgentSchedulingComponent):
            total_mem   > self._lrms_mem_per_node:
 
             txt  = 'Non-mpi unit %s does not fit onto node \n' % uid
-            txt += '   cores: %s >? %s \n' % (total_cores, self._lrms_cores_per_node)
-            txt += '   gpus : %s >? %s \n' % (total_gpus,  self._lrms_gpus_per_node)
-            txt += '   lfs  : %s >? %s \n' % (total_lfs,   self._lrms_lfs_per_node)
-            txt += '   mem  : %s >? %s'    % (total_mem,   self._lrms_mem_per_node)
+            txt += 'cpus: %s >? %s\n' % (total_cores, self._lrms_cores_per_node)
+            txt += 'gpus: %s >? %s\n' % (total_gpus,  self._lrms_gpus_per_node)
+            txt += 'lfs : %s >? %s\n' % (total_lfs,   self._lrms_lfs_per_node)
+            txt += 'mem : %s >? %s'   % (total_mem,   self._lrms_mem_per_node)
             raise ValueError(txt)
+
+        if not core_chunk: core_chunk = 1
+        if not gpu_chunk:  gpu_chunk  = 1
 
         # ok, we can go ahead and try to find a matching node
         node_name = None
@@ -467,16 +493,18 @@ class Continuous(AgentSchedulingComponent):
 
             # attempt to find the required number of cores and gpus on this
             # node - do not allow partial matches.
-            cores, gpus, lfs, mem = self._find_resources(node=node,
+            cores, gpus, lfs, mem = self._find_resources(
+                                                    node=node,
                                                     requested_cores=total_cores,
                                                     requested_gpus=total_gpus,
                                                     requested_lfs=total_lfs,
                                                     requested_mem=total_mem,
                                                     partial=False,
-                                                    lfs_chunk=lfs_chunk,
                                                     core_chunk=core_chunk,
+                                                    gpu_chunk=gpu_chunk,
+                                                    lfs_chunk=lfs_chunk,
                                                     mem_chunk=mem_chunk)
-            if len(cores) == total_cores and \
+            if len(cores) >= total_cores and \
                len(gpus)  == total_gpus:
 
                 # we found the needed resources - break out of search loop
@@ -537,19 +565,21 @@ class Continuous(AgentSchedulingComponent):
         spawn the requested number of threads on the respective node.
         """
 
-        uid = unit['uid']
         cud = unit['description']
 
         # dig out the allocation request details
         requested_procs  = cud['cpu_processes']
         threads_per_proc = cud['cpu_threads']
         requested_gpus   = cud['gpu_processes']
+        gpu_chunk        = cud['gpu_threads']
         lfs_per_process  = cud['lfs_per_process']
         mem_per_process  = cud['mem_per_process']
 
         # make sure that processes are at least single-threaded
         if not threads_per_proc:
             threads_per_proc = 1
+
+        if not gpu_chunk:  gpu_chunk  = 1
 
         # cores needed for all threads and processes
         requested_cores = requested_procs * threads_per_proc
@@ -650,6 +680,7 @@ class Continuous(AgentSchedulingComponent):
                                                     requested_mem=find_mem,
                                                     core_chunk=threads_per_proc,
                                                     partial=partial,
+                                                    gpu_chunk=gpu_chunk,
                                                     lfs_chunk=lfs_per_process,
                                                     mem_chunk=mem_per_process)
 

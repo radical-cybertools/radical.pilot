@@ -46,8 +46,10 @@ class Agent_0(rpu.Worker):
         assert(agent_name == 'agent_0'), 'expect agent_0, not subagent'
         print 'startup agent %s' % agent_name
 
+        self._pwd = os.getcwd()
+
         # load config, create session, init rpu.Worker
-        agent_cfg  = '%s/%s.cfg' % (os.getcwd(), agent_name)
+        agent_cfg  = '%s/%s.cfg' % (self._pwd, agent_name)
         cfg        = ru.read_json_str(agent_cfg)
 
         cfg['agent_name'] = agent_name
@@ -61,7 +63,7 @@ class Agent_0(rpu.Worker):
         self._lrms        = None
 
         # this better be on a shared FS!
-        cfg['workdir']    = os.getcwd()
+        cfg['workdir']    = self._pwd
 
         # sanity check on config settings
         if 'cores'               not in cfg: raise ValueError('Missing number of cores')
@@ -103,7 +105,7 @@ class Agent_0(rpu.Worker):
         # communication channels and components/workers specified in the
         # config -- we merge that information into our own config.
         # We don't want the session to start components though, so remove them
-        # from the config copy.        
+        # from the config copy.
         session_cfg = copy.deepcopy(cfg)
         session_cfg['components'] = dict()
         session = rp_Session(cfg=session_cfg, uid=self._sid)
@@ -173,7 +175,7 @@ class Agent_0(rpu.Worker):
                  'state'            : rps.PMGR_ACTIVE,
                  'resource_details' : {
                      'lm_info'      : self._lrms.lm_info.get('version_info'),
-                     'lm_detail'    : self._lrms.lm_info.get('lm_detail'), 
+                     'lm_detail'    : self._lrms.lm_info.get('lm_detail'),
                      'rm_info'      : self._lrms.lrms_info},
                  '$set'             : ['resource_details']}
         self.advance(pilot, publish=True, push=False)
@@ -310,6 +312,7 @@ class Agent_0(rpu.Worker):
         # FIXME: we need a watcher cb to watch sub-agent state
 
         self._log.debug('start_sub_agents')
+      # self._log.debug('%s' % pprint.pformat(self._cfg['lrms_info']))
 
         if not self._cfg.get('agents'):
             self._log.debug('start_sub_agents noop')
@@ -330,7 +333,7 @@ class Agent_0(rpu.Worker):
             if target == 'local':
 
                 # start agent locally
-                cmdline = '/bin/sh -l %s/bootstrap_2.sh %s' % (os.getcwd(), sa)
+                cmdline = '/bin/sh -l %s/bootstrap_2.sh %s' % (self._pwd, sa)
 
             elif target == 'node':
 
@@ -351,29 +354,36 @@ class Agent_0(rpu.Worker):
                 #        out for the moment, which will make this unable to
                 #        work with a number of launch methods.  Can the
                 #        offset computation be moved to the LRMS?
-                ls_name = "%s/%s.sh" % (os.getcwd(), sa)
-                slots   = copy.deepcopy(self._cfg['lrms_info'])
-                slots['cpu_processes'] = 1
-                slots['cpu_threads'  ] = 1
-                slots['gpu_processes'] = 0
-                slots['gpu_threads'  ] = 0
-                slots['nodes'        ] = [{'name'    : node[0],
-                                           'uid'     : node[1],
-                                           'core_map': [[0]],
-                                           'gpu_map' : [],
-                                           'lfs'     : {'path': '/tmp', 'size': 0}
-                                          }]
+                bs_name = "%s/bootstrap_2.sh" % (self._pwd)
+                ls_name = "%s/%s.sh" % (self._pwd, sa)
+                slots = {
+                    'cpu_processes' : 1,
+                    'cpu_threads'   : 1,
+                    'gpu_processes' : 0,
+                    'gpu_threads'   : 0,
+                  # 'nodes'         : [[node[0], node[1], [[0]], []]],
+                    'nodes'         : [{'name'    : node[0],
+                                        'uid'     : node[1],
+                                        'core_map': [[0]],
+                                        'gpu_map' : [],
+                                        'lfs'     : {'path': '/tmp', 'size': 0}
+                                      }],
+                    'cores_per_node': self._cfg['lrms_info']['cores_per_node'],
+                    'gpus_per_node' : self._cfg['lrms_info']['gpus_per_node'],
+                    'lm_info'       : self._cfg['lrms_info']['lm_info'],
+                }
                 agent_cmd = {
-                        'uid'          : sa,
-                        'slots'        : slots,
-                        'unit_sandbox' : os.getcwd(),
-                        'description'  : {
-                            'cpu_processes' : 1,
-                            'executable'    : "/bin/sh",
-                            'mpi'           : False,
-                            'arguments'     : ["%s/bootstrap_2.sh" % os.getcwd(), sa]
-                            }
-                        }
+                    'uid'           : sa,
+                    'slots'         : slots,
+                    'unit_sandbox'  : self._pwd,
+                    'description'   : {'cpu_processes'    : 1,
+                                       'gpu_process_type' : 'posix',
+                                       'gpu_thread_type'  : 'posix',
+                                       'executable'       : "/bin/sh",
+                                       'mpi'              : False,
+                                       'arguments'        : [bs_name, sa]
+                                      }
+                }
                 cmd, hop = agent_lm.construct_command(agent_cmd,
                         launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "%s"' % ls_name)
 
@@ -381,7 +391,13 @@ class Agent_0(rpu.Worker):
                     # note that 'exec' only makes sense if we don't add any
                     # commands (such as post-processing) after it.
                     ls.write('#!/bin/sh\n\n')
-                    ls.write('exec %s\n' % cmd)
+                    for k,v in agent_cmd['description'].get('environment', {}).iteritems():
+                        ls.write('export "%s"="%s"\n' % (k, v))
+                    ls.write('\n')
+                    for pe_cmd in agent_cmd['description'].get('pre_exec', []):
+                        ls.write('%s\n' % pe_cmd)
+                    ls.write('\n')
+                    ls.write('exec %s\n\n' % cmd)
                     st = os.stat(ls_name)
                     os.chmod(ls_name, st.st_mode | stat.S_IEXEC)
 
@@ -505,7 +521,7 @@ class Agent_0(rpu.Worker):
         # we have, terminate.
         if self._runtime:
             if time.time() >= self._starttime + (int(self._runtime) * 60):
-                self._log.info('reached runtime limit (%ss).', self._runtime*60)
+                self._log.info('runtime limit (%ss).', self._runtime * 60)
                 self._final_cause = 'timeout'
                 self.stop()
                 return False  # we are done

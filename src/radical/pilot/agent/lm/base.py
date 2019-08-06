@@ -36,6 +36,11 @@ LM_NAME_SRUN          = 'SRUN'
 # LM_NAME_DPLACE        = 'DPLACE'
 # LM_NAME_RUNJOB        = 'RUNJOB'
 
+# deprecated
+# LM_NAME_POE           = 'POE'
+# LM_NAME_DPLACE        = 'DPLACE'
+# LM_NAME_RUNJOB        = 'RUNJOB'
+
 
 # ==============================================================================
 #
@@ -49,6 +54,18 @@ class LaunchMethod(object):
         'LD_LIBRARY_PATH',
         'PATH',
         'PYTHONPATH',
+        'OMP_NUM_THREADS',
+        'CUDA_VISIBLE_DEVICES',
+        'RP_AGENT_ID',
+        'RP_GTOD',
+        'RP_PILOT_ID',
+        'RP_PILOT_STAGING',
+        'RP_PROF',
+        'RP_SESSION_ID',
+        'RP_SPAWNER_ID',
+        'RP_TMP',
+        'RP_UNIT_ID',
+        'RP_UNIT_NAME',
     ]
 
     MPI_FLAVOR_OMPI    = 'OMPI'
@@ -62,21 +79,13 @@ class LaunchMethod(object):
         self.name     = name
         self._cfg     = cfg
         self._session = session
-        self._log     = self._session._log
+        self._log     = self._session._log    # pylint: disable=protected-access
         self._log.debug('create LM: %s', type(self))
 
         # A per-launch_method list of env vars to remove from the CU env
         self.env_removables = []
 
         self._configure()
-
-        # TODO: This doesn't make too much sense for LM's that use multiple
-        #       commands, perhaps this needs to move to per LM __init__.
-        if self.launch_command is None:
-            raise RuntimeError("Launcher not found for LaunchMethod '%s'"
-                              % self.name)
-
-        self._log.debug('launch_command: %s', self.launch_command)
 
 
     # --------------------------------------------------------------------------
@@ -102,8 +111,6 @@ class LaunchMethod(object):
         from .mpirun         import MPIRun
         from .jsrun          import JSRUN
         from .prte           import PRTE
-        from .orte           import ORTE
-        from .orte_lib       import ORTELib
         from .rsh            import RSH
         from .ssh            import SSH
         from .yarn           import Yarn
@@ -111,6 +118,15 @@ class LaunchMethod(object):
         from .srun           import Srun
 
       # # deprecated
+      # from .orte           import ORTE
+      # from .orte_lib       import ORTELib
+      # from .mpirun_ccmrun  import MPIRunCCMRun
+      # from .mpirun_dplace  import MPIRunDPlace
+      # from .mpirun_mpt     import MPIRun_MPT
+      # from .mpirun_rsh     import MPIRunRSH
+      # from .dplace         import DPlace
+      # from .poe            import POE
+      # from .runjob         import Runjob
       # from .mpirun_ccmrun  import MPIRunCCMRun
       # from .mpirun_dplace  import MPIRunDPlace
       # from .mpirun_mpt     import MPIRun_MPT
@@ -133,8 +149,6 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_DPLACE : MPIRun,
                 LM_NAME_JSRUN         : JSRUN,
                 LM_NAME_PRTE          : PRTE,
-                LM_NAME_ORTE          : ORTE,
-                LM_NAME_ORTE_LIB      : ORTELib,
                 LM_NAME_RSH           : RSH,
                 LM_NAME_SSH           : SSH,
                 LM_NAME_YARN          : Yarn,
@@ -142,6 +156,8 @@ class LaunchMethod(object):
                 LM_NAME_SRUN          : Srun,
 
               # # deprecated
+              # LM_NAME_ORTE          : ORTE,
+              # LM_NAME_ORTE_LIB      : ORTELib,
               # LM_NAME_DPLACE        : DPlace,
               # LM_NAME_POE           : POE,
               # LM_NAME_RUNJOB        : Runjob,
@@ -149,9 +165,11 @@ class LaunchMethod(object):
             return impl(name, cfg, session)
 
         except KeyError:
+            # pylint: disable=protected-access
             session._log.exception("LM '%s' unknown or defunct" % name)
 
         except Exception as e:
+            # pylint: disable=protected-access
             session._log.exception("LM cannot be used: %s!" % e)
 
 
@@ -172,23 +190,28 @@ class LaunchMethod(object):
 
         from .fork           import Fork
         from .prte           import PRTE
-        from .orte           import ORTE
         from .yarn           import Yarn
         from .spark          import Spark
+
+        # # deprecated
+        # from .orte           import ORTE
 
         impl = {
             LM_NAME_FORK          : Fork,
             LM_NAME_PRTE          : PRTE,
-            LM_NAME_ORTE          : ORTE,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
+
+            # # deprecated
+            # LM_NAME_ORTE          : ORTE,
+
         }.get(name)
 
         if not impl:
             logger.info('no config hook defined for LaunchMethod %s' % name)
             return None
 
-        logger.info('LRMS config hook for LaunchMethod %s: %s' % (name, impl))
+        logger.info('LRMS config hook for LM %s: %s' % (name, impl))
         return impl.lrms_config_hook(name, cfg, lrms, logger, profiler)
 
 
@@ -206,15 +229,19 @@ class LaunchMethod(object):
             raise TypeError("LM shutdown hook only available to base class!")
 
         from .prte           import PRTE
-        from .orte           import ORTE
         from .yarn           import Yarn
         from .spark          import Spark
 
+        # # deprecated
+        # from .orte           import ORTE
+
         impl = {
             LM_NAME_PRTE          : PRTE,
-            LM_NAME_ORTE          : ORTE,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
+
+            # # deprecated
+            # LM_NAME_ORTE          : ORTE,
         }.get(name)
 
         if not impl:
@@ -326,9 +353,9 @@ class LaunchMethod(object):
                     continue
 
                 arg = arg.replace('"', '\\"')    # Escape all double quotes
-
                 if arg[0] == arg[-1] == "'" :    # between outer single quotes?
                     arg_string += '%s ' % arg    # ... pass it as is.
+
                 else:
                     arg_string += '"%s" ' % arg  # else return double quoted
 
@@ -370,7 +397,7 @@ class LaunchMethod(object):
                     flavor  = self.MPI_FLAVOR_OMPI
                     break
 
-                if '(open mpi):' in line.lower():
+                if '(open mpi)' in line.lower():
                     version = line.split(')', 1)[1].strip()
                     flavor  = self.MPI_FLAVOR_OMPI
                     break

@@ -20,20 +20,15 @@ import copy
 import glob
 import threading
 
-
+import radical.utils                as ru
 import radical.saga                 as rs
 import radical.saga.utils.pty_shell as rsup
 
-import radical.utils        as ru
-
 from . import utils         as rpu
-from . import states        as rps
-from . import constants     as rpc
 
 from .resource_config import ResourceConfig
 from .db              import DBSession
-
-from .utils import version_detail as rp_version_detail
+from .utils           import version_detail as rp_version_detail
 
 
 # ------------------------------------------------------------------------------
@@ -253,10 +248,12 @@ class Session(rs.Session):
             # from here on we should be able to close the session again
             self._log.info("New Session created: %s." % self.uid)
 
-        except Exception:
+        except Exception as e:
             self._rep.error(">>err\n")
-            self._log.exception('session create failed [%s]', self._dburl)
-            raise RuntimeError("session create failed")
+            self._log.exception('session create failed')
+            raise RuntimeError('Could not create new session '
+                               '(database URL (%s) incorrect?): %s'
+                               % (dburl, e))
 
         # the session must not carry bridge and component handles across forks
         ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
@@ -649,8 +646,10 @@ class Session(rs.Session):
         log files end up in a separate directory with the name of `session.uid`.
         """
 
-        return ru.Reporter(name=name, ns='radical.pilot', targets=['stdout'],
-                           path=self._logdir)
+        if not self._reporter:
+            self._reporter = ru.Reporter(name=name, ns='radical.pilot',
+                                         targets=['stdout'], path=self._logdir)
+        return self._reporter
 
 
     # --------------------------------------------------------------------------
@@ -839,12 +838,18 @@ class Session(rs.Session):
             rcs = ResourceConfig.from_file(resource_config)
 
             for rc in rcs:
-                self._log.info("load resource configurations for %s" % rc)
+                self._log.info('load rcfg for %s' % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict()
+                self._log.debug('add  rcfg for %s (%s)',
+                        rc, self._resource_configs[rc].get('cores_per_node'))
 
         else:
-            self._log.debug('add  rcfg for %s', resource_config.label)
+            self._log.debug('load rcfg for %s', resource_config.label)
             self._resource_configs[resource_config.label] = resource_config.as_dict()
+            self._log.debug('add  rcfg for %s (%s)',
+                    resource_config.label,
+                    self._resource_configs[resource_config.label].get('cores_per_node'))
+
 
     # -------------------------------------------------------------------------
     #
@@ -956,6 +961,25 @@ class Session(rs.Session):
                 if not sandbox_raw:
                     sandbox_raw = rcfg.get('default_remote_workdir', "$PWD")
 
+
+                # we may need to replace pat elements with data from the pilot
+                # description
+                if '%' in sandbox_raw:
+                    # expand from pilot description
+                    expand = dict()
+                    for k,v in pilot['description'].iteritems():
+                        if v is None:
+                            v = ''
+                        expand['pd.%s' % k] = v
+                        if isinstance(v, basestring):
+                            expand['pd.%s' % k.upper()] = v.upper()
+                            expand['pd.%s' % k.lower()] = v.lower()
+                        else:
+                            expand['pd.%s' % k.upper()] = v
+                            expand['pd.%s' % k.lower()] = v
+                    sandbox_raw = sandbox_raw % expand
+
+
                 # If the sandbox contains expandables, we need to resolve those
                 # remotely.
                 #
@@ -967,13 +991,17 @@ class Session(rs.Session):
 
                 else:
                     js_url = rs.Url(rcfg['job_manager_endpoint'])
+
+                    js_url = rcfg['job_manager_endpoint']
+                    js_url = rcfg.get('job_manager_hop', js_url)
+                    js_url = rs.Url(js_url)
+
                     elems  = js_url.schema.split('+')
 
                     if   'ssh'    in elems: js_url.schema = 'ssh'
                     elif 'gsissh' in elems: js_url.schema = 'gsissh'
                     elif 'fork'   in elems: js_url.schema = 'fork'
-                    elif len(elems) == 1  : js_url.schema = 'fork'
-                    else: raise Exception("invalid schema: %s" % js_url.schema)
+                    else:                   js_url.schema = 'fork'
 
                     if js_url.schema == 'fork':
                         js_url.hostname = 'localhost'
@@ -981,15 +1009,16 @@ class Session(rs.Session):
                     self._log.debug("rsup.PTYShell('%s')", js_url)
                     shell = rsup.PTYShell(js_url, self)
 
-                    ret, out, err = shell.run_sync(' echo "WORKDIR: %s"' % sandbox_raw)
-                    if ret == 0 and 'WORKDIR:' in out:
-                        sandbox_base = out.split(":")[1].strip()
-                        self._log.debug("sandbox base %s: '%s'", js_url, sandbox_base)
-                    else:
-                        raise RuntimeError("Couldn't get remote working directory.")
+                    ret, out, err = shell.run_sync(' echo "WORKDIR: %s"'
+                                                                  % sandbox_raw)
+                    if ret != 0 or 'WORKDIR:' not in out:
+                        raise RuntimeError("Couldn't get remote workdir")
 
-                # at this point we have determined the remote 'pwd' - the global sandbox
-                # is relative to it.
+                    sandbox_base = out.split(":")[1].strip()
+                    self._log.debug("sandbox %s: '%s'", js_url, sandbox_base)
+
+                # at this point we have determined the remote 'pwd' - the
+                # global sandbox is relative to it.
                 fs_url.path = "%s/radical.pilot.sandbox" % sandbox_base
 
                 # before returning, keep the URL string in cache

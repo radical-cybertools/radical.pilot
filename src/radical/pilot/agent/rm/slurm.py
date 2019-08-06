@@ -93,6 +93,13 @@ class Slurm(LRMS):
 
         self.lm_info['cores_per_node'] = self.cores_per_node
 
+      # # once we are done, we remove all `SLURM_*` and `SBATCH_*` env variables
+      # # as to not confuse srun executions
+      # for k in list(os.environ.keys()):
+      #     if k.startswith('SLURM_') or k.startswith('SBATCH_'):
+      #         print 'unset %s' % k
+      #         del(os.environ[k])
+
 
 # ------------------------------------------------------------------------------
 
