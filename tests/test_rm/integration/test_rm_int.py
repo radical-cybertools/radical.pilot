@@ -1,3 +1,4 @@
+import re
 import os
 import glob
 import shutil
@@ -30,8 +31,8 @@ def tearDown(lrms, session):
     cur_dir = os.getcwd()
     rp = glob.glob('%s/rp.session.*' % cur_dir)
 
-    for fold in rp:
-        shutil.rmtree(fold)
+    #for fold in rp:
+    #    shutil.rmtree(fold)
 
     try:
         os.unlink('radical.saga.api.log')
@@ -144,19 +145,35 @@ def test_rm_lsf_summit():
     tearDown(lrms, session)
 
 
-@mock.patch('hostlist.expand_hostlist', return_value=['nodes1', 'nodes2'])
-def test_rm_slurm(mocked_expand_hostlist):
+def test_rm_slurm(resource='xsede.wrangler_ssh'):
 
-    cfg, session = setUp('xsede.wrangler_ssh')
+    cfg, session = setUp(resource)
     cfg['cores'] = 1
     cfg['gpus'] = 0
 
-    os.environ['SLURM_NODELIST'] = 'nodes-[1-2]'
-    os.environ['SLURM_NPROCS'] = '48'
-    os.environ['SLURM_NNODES'] = '2'
-    os.environ['SLURM_CPUS_ON_NODE'] = '24'
     lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
 
+    assert 'SLURM_NODELIST' in os.environ
+    assert 'SLURM_NPROCS' in os.environ
+    assert 'SLURM_NNODES' in os.environ
+    assert 'SLURM_CPUS_ON_NODE' in os.environ
+
+    node_list = lrms.lrms_info['node_list']
+    # comet-03-03 at sdsc
+    # r342 at psc
+    # c456-041 at tacc (wrangler, stampede2, frontera)
+    # tiger-h26c2n22 at princeton
+    hostname_templates = [
+            "[a-zA-Z]+-[0-9]{2}-[0-9]{2}",
+            "[a-zA-Z0-9]{4}",
+            "[a-zA-Z]{1}[0-9]{3}-[0-9]{3}",
+            "[a-zA-Z]{5}-[a-zA-Z0-9]{8}"]
+
+    res = None
+    for expr in hostname_templates:
+        res = res or re.match(expr,node_list[0][0])
+    assert res
+    '''
     assert lrms.lrms_info == {'name': 'Slurm', 
             'mem_per_node': 0, 
             'lm_info': {'cores_per_node': 24}, 
@@ -165,6 +182,7 @@ def test_rm_slurm(mocked_expand_hostlist):
             'lfs_per_node': {'path': None, 'size': 0}, 
             'node_list': [['nodes1', 'nodes1'], ['nodes2', 'nodes2']], 
             'gpus_per_node': 0}
+    '''
 
     tearDown(lrms, session)
 
