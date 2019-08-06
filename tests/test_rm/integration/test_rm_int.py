@@ -18,9 +18,13 @@ def setUp(resource):
 
     session      = mock.Mock()
     session._log = mock.Mock()
+
+    # e.g. xsede.comet_ssh
+    r_groupname, r_name = resource.split('.')
     pilot_resource_dir = 'src/radical/pilot/configs'
-    cfg          = ru.read_json(os.path.join(pilot_resource_dir,
-        'resource_{}.json'.format(resource.split('.')[0])))
+    cfg_all      = ru.read_json(os.path.join(pilot_resource_dir,
+        'resource_{}.json'.format(r_groupname)))
+    cfg          = cfg_all[r_name]
 
     return cfg, session
 
