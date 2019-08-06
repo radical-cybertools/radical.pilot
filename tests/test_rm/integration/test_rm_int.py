@@ -3,6 +3,7 @@ import os
 import glob
 import shutil
 import radical.pilot as rp
+import radical.utils as ru
 from radical.pilot.agent import rm as rpa_rm
 from radical.pilot.agent.rm.pbspro import PBSPro
 
@@ -15,8 +16,11 @@ except ImportError:
 #
 def setUp(resource):
 
-    session      = rp.Session()
-    cfg          = session.get_resource_config(resource=resource)
+    session      = mock.Mock()
+    session._log = mock.Mock()
+    pilot_resource_dir = 'src/radical/pilot/configs'
+    cfg          = ru.read_json(os.path.join(pilot_resource_dir,
+        'resource_{}.json'.format(resource.split('.')[0])))
 
     return cfg, session
 
@@ -65,23 +69,33 @@ def test_rm_fork():
     tearDown(lrms, session)
 
 
-#@mock.patch.object(PBSPro, '_parse_pbspro_vnodes', return_value=['nodes1', 'nodes2'])
-@mock.patch('subprocess.check_output', return_value='exec_vnode = (vnode1:cpu=3)+(vnode2:cpu=2)')
-def test_rm_pbspro(mocked_parse_pbspro_vnodes):
+def test_rm_pbspro(resource='ncar.cheyenne'):
 
-    cfg, session = setUp('epsrc.archer_aprun')
+    cfg, session = setUp(resource)
     cfg['cores'] = 1
     cfg['gpus'] = 0
 
-    os.environ['PBS_NODEFILE'] = 'tests/test_cases/rm/nodelist.pbs'
-    os.environ['SAGA_PPN'] = '0'
-    os.environ['NODE_COUNT'] = '2'
-    os.environ['NUM_PPN'] = '4'
-    os.environ['NUM_PES'] = '1'
-    os.environ['PBS_JOBID'] = '482125'
+    assert 'PBS_NODEFILE' in os.environ
+    assert 'SAGA_PPN' in os.environ
+    assert 'NODE_COUNT' in os.environ
+    assert 'NUM_PPN' in os.environ
+    assert 'NUM_PES' in os.environ
+    assert 'PBS_JOBID' in os.environ
 
     lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
 
+    node_list = lrms.lrms_info['node_list']
+    # cheyenne at NCAR
+    hostname_templates = [
+            "cheyenne[0-9]{3}"]
+
+    res = None
+    for expr in hostname_templates:
+        res = res or re.match(expr,node_list[0][0])
+    assert res
+
+
+    """
     assert lrms.lrms_info == {'name': 'PBSPro', 
             'mem_per_node': 0, 
             'lm_info': {}, 
@@ -90,24 +104,35 @@ def test_rm_pbspro(mocked_parse_pbspro_vnodes):
             'lfs_per_node': {'path': None, 'size': 0}, 
             'node_list': [['vnode1', 'vnode1'], ['vnode2', 'vnode2']],
             'gpus_per_node': 0}
+    """
 
     tearDown(lrms, session)
 
 
-@mock.patch('hostlist.expand_hostlist', return_value=['nodes1', 'nodes1'])
-def test_rm_torque(mocked_expand_hoslist):
+def test_rm_torque(resource='xsede.supermic_ssh'):
 
-    cfg, session = setUp('nersc.hopper_aprun')
+    cfg, session = setUp(resource)
     cfg['cores'] = 1
     cfg['gpus'] = 0
 
-    os.environ['PBS_NODEFILE'] = 'tests/test_cases/rm/nodelist.torque'
-    os.environ['PBS_NCPUS'] = '2'
-    os.environ['PBS_NUM_PPN'] = '4'
-    os.environ['PBS_NUM_NODES'] = '2'
+    assert 'PBS_NODEFILE' in os.environ
+    assert 'PBS_NCPUS' in os.environ
+    assert 'PBS_NUM_PPN' in os.environ
+    assert 'PBS_NUM_NODES' in os.environ
 
     lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
 
+    node_list = lrms.lrms_info['node_list']
+    # qb373 at supermic
+    hostname_templates = [
+            "[a-zA-Z0-9]{5}"]
+
+    res = None
+    for expr in hostname_templates:
+        res = res or re.match(expr,node_list[0][0])
+    assert res
+
+    """
     assert lrms.lrms_info == {'name': 'Torque', 
             'mem_per_node': 0, 
             'lm_info': {}, 
@@ -116,13 +141,14 @@ def test_rm_torque(mocked_expand_hoslist):
             'lfs_per_node': {'path': None, 'size': 0}, 
             'node_list': [['nodes1', 'nodes1']],
             'gpus_per_node': 0}
+    """
 
     tearDown(lrms, session)
 
 
-def test_rm_lsf_summit():
+def test_rm_lsf_summit(resource='ornl.summit'):
 
-    cfg, session = setUp('ornl.summit')
+    cfg, session = setUp(resource)
     cfg['cores'] = 1
     cfg['gpus'] = 0
 
