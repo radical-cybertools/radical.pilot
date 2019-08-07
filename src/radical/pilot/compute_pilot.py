@@ -128,7 +128,7 @@ class ComputePilot(object):
         if self.state == rps.FAILED and self._exit_on_error:
             self._log.error("[Callback]: pilot '%s' failed (exit on error)", self.uid)
             # FIXME: how to tell main?  Where are we in the first place?
-          # ru.cancel_main_thread('int')
+            ru.cancel_main_thread('int')
             raise RuntimeError('pilot %s failed - fatal!' % self.uid)
           # sys.exit()
 
