@@ -20,6 +20,7 @@ from ... import constants as rpc
 # 'enum' for RPs's pilot scheduler types
 #
 SCHEDULER_NAME_CONTINUOUS_ORDERED = "CONTINUOUS_ORDERED"
+SCHEDULER_NAME_CONTINUOUS_COLO    = "CONTINUOUS_COLO"
 SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
 SCHEDULER_NAME_HOMBRE             = "HOMBRE"
 SCHEDULER_NAME_SPARK              = "SPARK"
@@ -319,6 +320,7 @@ class AgentSchedulingComponent(rpu.Component):
         name = cfg['scheduler']
 
         from .continuous_ordered import ContinuousOrdered
+        from .continuous_colo    import ContinuousColo
         from .continuous         import Continuous
         from .hombre             import Hombre
         from .torus              import Torus
@@ -334,6 +336,7 @@ class AgentSchedulingComponent(rpu.Component):
             impl = {
 
                 SCHEDULER_NAME_CONTINUOUS_ORDERED : ContinuousOrdered,
+                SCHEDULER_NAME_CONTINUOUS_COLO    : ContinuousColo,
                 SCHEDULER_NAME_CONTINUOUS         : Continuous,
                 SCHEDULER_NAME_HOMBRE             : Hombre,
                 SCHEDULER_NAME_TORUS              : Torus,
