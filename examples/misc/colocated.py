@@ -37,28 +37,22 @@ if __name__ == '__main__':
         pd_init = {'resource'      : resource,
                    'runtime'       : 60,  # pilot runtime (min)
                    'exit_on_error' : True,
-                   'project'       : config[resource]['project'],
-                   'queue'         : config[resource]['queue'],
-                   'access_schema' : config[resource]['schema'],
-                   'cores'         : config[resource]['cores']
+                   'cores'         : 32
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
         pmgr  = rp.PilotManager(session=session)
         pilot = pmgr.submit_pilots(pdesc)
 
-        report.header('submit pipelines')
+        report.header('submit bags of tasks')
 
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
-
-        if len(sys.argv) > 2: N = int(sys.argv[2])
-        else                : N = 8
 
         # run N bags of tasks, where each bag contains M tasks of different
         # sizes.  All tasks within the same bag are to get scheduled on the
         # same node (colocated)
 
-        n_bags    = 10
+        n_bags    = 2
         bag_size  = 3
         task_size = [5, 1, 4]
 
@@ -66,18 +60,18 @@ if __name__ == '__main__':
 
         cuds = list()
         for b in range(n_bags):
-            for _ in range(bag_size):
-                for s,tid in enumerate(range(task_size)):
-                    cud = rp.ComputeUnitDescription()
-                    cud.executable       = '%s/colocated_task.sh' % pwd
-                    cud.arguments        = [b, bag_size, tid]
-                    cud.cpu_processes    = 1
-                    cud.tags             = {'colocate': {'bag' : b,
-                                                         'size': bag_size}}
-                    cud.name             =  'b%03d-t%03d' % (b, tid)
-                    print cud.name
-                    cuds.append(cud)
-                    report.progress()
+            for tid,s in enumerate(task_size):
+                cud = rp.ComputeUnitDescription()
+                cud.executable       = '%s/colocated_task.sh' % pwd
+                cud.arguments        = [b, bag_size, tid]
+                cud.cpu_processes    = s
+                cud.cpu_process_type = rp.MPI
+                cud.tags             = {'colocate': {'bag' : b,
+                                                     'size': bag_size}}
+                cud.name             =  'b%03d-t%03d' % (b, tid)
+                print cud.name
+                cuds.append(cud)
+                report.progress()
 
         random.shuffle(cuds)
 

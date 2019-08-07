@@ -3,12 +3,12 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import copy
+import pprint
 import threading as mt
 
 from .continuous import Continuous
 
 from ... import states    as rps
-from ... import constants as rpc
 from ... import compute_unit_description as rpcud
 
 
@@ -57,8 +57,8 @@ class ContinuousColo(Continuous):
         self._unordered = list()       # IDs of units which are not colocated
         self._bags      = dict()       # nothing has run, yet
 
-        self._bag_init  = {'size'    : 0,
-                           'uids'    : list()}
+        self._bag_init  = {'size' : 0,
+                           'uids' : list()}
 
 
     # --------------------------------------------------------------------------
@@ -94,6 +94,7 @@ class ContinuousColo(Continuous):
                 size  = colo_tag['size']
 
               # self._log.debug('tags %s: %s : %d', uid, bag, size)
+
                 # initiate bag if needed
                 if bag not in self._bags:
                     self._bags[bag]         = copy.deepcopy(self._bag_init)
@@ -101,7 +102,7 @@ class ContinuousColo(Continuous):
 
                 else:
                     assert(size == self._bags[bag]['size']), \
-                           'inconsistent order size'
+                           'inconsistent bag size'
 
                 # add unit to order
                 self._bags[bag]['uids'].append(uid)
@@ -123,7 +124,7 @@ class ContinuousColo(Continuous):
         because we run out of resources to place those units.
         '''
 
-      # self._log.debug('try schedule')
+        self._log.debug('try schedule')
         scheduled = list()  # list of scheduled units
 
         # FIXME: this lock is very aggressive, it should not be held over
@@ -156,16 +157,23 @@ class ContinuousColo(Continuous):
             to_delete = list()
             for bag in self._bags:
 
-                # if bag is complete, try to schedule it
-                if self._bags[bag]['size'] == len(self._bags[bag]['units']):
+                self._log.debug('try bag %s', bag)
 
+                if self._bags[bag]['size'] < len(self._bags[bag]['uids']):
+                    raise RuntimeError('inconsistent bag assembly')
+
+                # if bag is complete, try to schedule it
+                if self._bags[bag]['size'] == len(self._bags[bag]['uids']):
+
+                    self._log.debug('try bag %s (full)', bag)
                     if self._try_schedule_bag(bag):
 
+                        self._log.debug('try bag %s (placed)', bag)
                         # scheduling works - push units out and erase all traces
                         # of the bag (delayed until after iteration)
-                        for unit in self._bags['bag']['units']:
+                        for uid in self._bags[bag]['uids']:
 
-                            scheduled.append(unit)
+                            scheduled.append(self._units[uid])
 
                         to_delete.append(bag)
 
@@ -186,7 +194,7 @@ class ContinuousColo(Continuous):
 
     # --------------------------------------------------------------------------
     #
-    def try_schedule_bag(self, bag):
+    def _try_schedule_bag(self, bag):
         '''
         This methods assembles the requiremets of all tasks in a bag into
         a single pseudo-unit.  We ask the cont scheduler to schedule that
@@ -195,7 +203,9 @@ class ContinuousColo(Continuous):
         success.
         '''
 
-        tasks  = self._bags[bag]['units']
+        self._log.debug('try schedule bag %s ', bag)
+
+        tasks  = [self._units[uid] for uid in self._bags[bag]['uids']]
         pseudo = copy.deepcopy(tasks[0])
 
         pseudo['uid'] = 'pseudo.'
@@ -211,12 +221,17 @@ class ContinuousColo(Continuous):
         descr['gpu_processes']    = 0
         descr['gpu_threads']      = 1
 
+        self._log.debug('try schedule uids  %s ', self._bags[bag]['uids'])
+      # self._log.debug('try schedule tasks  %s ', pprint.pformat(tasks))
+
         for task in tasks:
             td = task['description']
             pseudo['uid'] += task['uid']
 
             descr['cpu_processes'] += td['cpu_processes'] * td['cpu_threads']
             descr['gpu_processes'] += td['gpu_processes']
+
+      # self._log.debug('try schedule pseudo %s ', pprint.pformat(pseudo))
 
         if not Continuous._try_allocation(self, pseudo):
 
@@ -225,7 +240,31 @@ class ContinuousColo(Continuous):
 
         # we got an allocation for the pseudo task, not dissassemble the slots
         # and assign back to the individual tasks in the bag
-        # FIXME
+        slots = copy.deepcopy(pseudo['slots'])
+        cpus  = copy.deepcopy(pseudo['slots']['nodes'][0]['core_map'])
+        gpus  = copy.deepcopy(pseudo['slots']['nodes'][0]['gpu_map'])
+
+        slots['nodes'][0]['core_map'] = list()
+        slots['nodes'][0]['gpu_map']  = list()
+
+        for task in tasks:
+
+            tslots = copy.deepcopy(slots)
+            descr  = task['description']
+
+            for _ in range(descr['cpu_processes']):
+                block = list()
+                for _ in range(descr['cpu_threads']):
+                    block.append(cpus.pop(0)[0])
+                tslots['nodes'][0]['core_map'].append(block)
+
+            for _ in range(descr['gpu_processes']):
+
+                block = list()
+                block.append(gpus.pop(0)[0])
+                tslots['nodes'][0]['gpu_map'].append(block)
+
+            task['slots'] = tslots
 
         return True
 
