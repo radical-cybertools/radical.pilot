@@ -4,29 +4,15 @@
 # a functional pilot agent, without any component redundency.
 
 {
+    "staging_area"         : "staging_area",
+    "staging_schema"       : "staging",
+    "max_io_loglength"     : 1024,
+    "bulk_collection_size" :    1,
+    "bulk_collection_time" :  0.1,
+    "db_poll_sleeptime"    :  5.0,
+  # "network_interface"    : "ipogif0",
 
-    # max number of updates to put into a db bulk
-    "bulk_collection_size" :  1024,
-
-    # max time period to collect db notifications into bulks (seconds)
-    "bulk_collection_time" : 1.0,
-
-    # time to sleep between database polls (seconds)
-    "db_poll_sleeptime"    : 2.0,
-
-    # agent_0 must always have target 'local' at this point
-    # mode 'shared'   : local node is also used for CUs
-    # mode 'reserved' : local node is reserved for the agent
-    # FIXME: mode is unused
-    "target" : "local",
-    "mode"   : "shared",
-
-    # Bridges usually run in the main agent
-    #
-    # Bridges can be configured to stall for a certain batch of messages,
-    # releasing them then as bulks of a certain size.  Default for both
-    # stall_hwm and batch_size is 1 (no stalling, no bulking).
-    #
+    "target"  : "local",
     "bridges" : {
         "agent_staging_input_queue"  : { "log_level" : "error",
                                          "stall_hwm" : 1,
@@ -63,14 +49,42 @@
         "agent_1": {
             "target": "node",
             "components": {
+                "AgentSchedulingComponent"    : {"count" : 1},
+                "AgentStagingInputComponent"  : {"count" : 1},
+                "AgentStagingOutputComponent" : {"count" : 1},
                 "AgentExecutingComponent"     : {"count" : 1}
             }
-  #     },
-  #     "agent_2": {
-  #         "target": "node",
-  #         "components": {
-  #             "AgentExecutingComponent"     : {"count" : 1}
-  #         }
+      # },
+      # "agent_2": {
+      #     "target": "node",
+      #     "components": {
+      #         "AgentStagingOutputComponent" : {"count" : 1},
+      #         "AgentExecutingComponent"     : {"count" : 1}
+      #     }
+      # },
+      # "agent_3": {
+      #     "target": "node",
+      #     "components": {
+      #         "AgentExecutingComponent"     : {"count" : 1}
+      #     }
+      # },
+      # "agent_4": {
+      #     "target": "node",
+      #     "components": {
+      #         "AgentExecutingComponent"     : {"count" : 1}
+      #     }
+      # },
+      # "agent_5": {
+      #     "target": "node",
+      #     "components": {
+      #         "AgentExecutingComponent"     : {"count" : 1}
+      #     }
+      # },
+      # "agent_6": {
+      #     "target": "node",
+      #     "components": {
+      #         "AgentExecutingComponent"     : {"count" : 1}
+      #     }
         }
     }
 }
