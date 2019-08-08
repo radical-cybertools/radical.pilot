@@ -67,6 +67,7 @@ class PRTE(LaunchMethod):
         prte += ' --prefix %s'     % pre
         prte += ' --report-uri %s' % furi
         prte += ' --hostfile %s'   % fhosts
+        prte += ' --pmca orte_state_base_verbose 1 '  # prte profiling
       # prte += ' --mca plm_rsh_no_tree_spawn 1'
 
         # Use (g)stdbuf to disable buffering.
@@ -276,14 +277,14 @@ class PRTE(LaunchMethod):
             map_flag += ' -host %s' % hosts.rstrip(',')
 
         # Additional (debug) arguments to prun
-        debug_string = ''
+        debug_string = '-verbose'
         if self._verbose:
-            debug_string = ' '.join([
-                                     # '-display-devel-map',
-                                     # '-display-allocation',
-                                     # '--debug-devel',
-                                       '--report-bindings',
-                                    ])
+            debug_string += ' '.join([
+                                      # '-display-devel-map',
+                                      # '-display-allocation',
+                                      # '--debug-devel',
+                                        '--report-bindings',
+                                     ])
 
         env_string = ''  # FIXME
         command = '%s --hnp "%s" %s %s %s %s' % (self.launch_command,

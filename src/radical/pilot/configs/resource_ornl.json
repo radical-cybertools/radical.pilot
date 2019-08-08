@@ -331,8 +331,8 @@
                                          "module load   py-pip/10.0.1-py2",
                                          "module load   py-setuptools/40.2.0-py2",
                                          "module load   zeromq/4.2.5",
-                                         "module use    /gpfs/alpine/stf010/world-shared/naughton/olcf/summit/modulefiles",
-                                         "module load   prrte/master",
+                                         "module use    /sw/summit/ums/ompix/gcc/6.4.0/modules",
+                                         "module load   prrte/1.0.0_devtiming",
                                          "export PRRTE_PREFIX=$PRRTE_DIR"
                                         ],
         "pre_bootstrap_1"             : [
@@ -345,8 +345,8 @@
                                          "module load   py-pip/10.0.1-py2",
                                          "module load   py-setuptools/40.2.0-py2",
                                          "module load   zeromq/4.2.5",
-                                         "module use    /gpfs/alpine/stf010/world-shared/naughton/olcf/summit/modulefiles",
-                                         "module load   prrte/master",
+                                         "module use    /sw/summit/ums/ompix/gcc/6.4.0/modules",
+                                         "module load   prrte/1.0.0_devtiming",
                                          "export PRRTE_PREFIX=$PRRTE_DIR"
                                         ],
         "valid_roots"                 : ["$MEMBERWORK/"],
