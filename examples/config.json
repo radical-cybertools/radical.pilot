@@ -279,15 +279,14 @@
         "project"  : "CSC343",
         "queue"    : "batch",
         "schema"   : "local",
-        "cores"    : 84,
-        "gpus"     : 12
+        "cores"    : 168
     },
 
     "ornl.summit_prte" : {
         "project"  : "CSC343",
         "queue"    : "batch",
         "schema"   : "local",
-        "cores"    : 84
+        "cores"    : 168
     },
 
     "ornl.titan" : {
