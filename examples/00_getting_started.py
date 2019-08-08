@@ -60,8 +60,8 @@ if __name__ == '__main__':
                    'exit_on_error' : True,
                    'project'       : config[resource]['project'],
                    'queue'         : config[resource]['queue'],
-                   'access_schema' : 'ssh',#config[resource]['schema'],
-                   'cores'         : 24#1024 + (42 * 4)
+                   'access_schema' : config[resource]['schema'],
+                   'cores'         : config[resource]['cores'],
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
