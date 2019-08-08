@@ -1,3 +1,4 @@
+
 {
     "staging_area"         : "staging_area",
     "staging_schema"       : "staging",
@@ -33,7 +34,7 @@
     "components": {
         "UpdateWorker"                : {"count" : 1}
     },
-    
+
     "agents": {
         "agent_1": {
             "target": "node",
@@ -43,6 +44,13 @@
                 "AgentStagingOutputComponent" : {"count" : 1},
                 "AgentExecutingComponent"     : {"count" : 1}
             }
+      # },
+      # "agent_2": {
+      #     "target": "node",
+      #     "components": {
+      #         "AgentExecutingComponent"     : {"count" : 1}
+      #     }
         }
     }
 }
+
