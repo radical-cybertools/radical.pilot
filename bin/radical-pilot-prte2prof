@@ -45,9 +45,6 @@ def usage(msg):
 #
 def handle_line(prof, line, pid, idmap):
 
-  # if '33357,24' in line:
-  #     print line
-
     line = line.replace('[',      '|') \
                .replace(']',      '|') \
                .replace(' AT ',   '|') \
@@ -59,13 +56,10 @@ def handle_line(prof, line, pid, idmap):
         if e:
             elems.append(e)
 
-  # if '33357,24' in line:
-  #     print elems[5]
-
     if elems[5] == 'ACTIVATE JOB' in line:
-        elems.insert(6, pid)
       # if '33357,24' in line:
-      #     print '0:', elems[2:]
+      #     print '0%s' % elems[2:]
+        elems.insert(7, pid)
 
         if len(elems) == 9:
             sys.stdout.write('#')
@@ -117,12 +111,13 @@ def handle_line(prof, line, pid, idmap):
 #
 def handle_file(prof, fname, pid ,idmap):
 
-#   print '    %-40s' % os.path.basename(fname),
+  # print '    %-40s' % os.path.basename(fname),
     with open(fname, 'r') as fin:
         for line in fin.readlines():
             if ' ACTIVATE ' in line:
                 handle_line(prof, line.strip(), pid, idmap)
-#   print
+  # print
+  # print idmap
 
 
 # ------------------------------------------------------------------------------
