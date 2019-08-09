@@ -164,7 +164,7 @@ class Default(AgentStagingOutputComponent):
                     if line[0] == '[' and line.endswith('EXECUTING'):
                         elems = line.replace('[', '').replace(']', '').split()
                         tid   = elems[2]
-                        self._log('PRTE IDMAP: %s:%s' % (tid, uid))
+                        self._log.info('PRTE IDMAP: %s:%s' % (tid, uid))
 
                 unit['stderr'] += rpu.tail(txt)
 

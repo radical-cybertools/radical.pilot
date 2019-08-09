@@ -36,14 +36,21 @@ def usage(msg):
 
     ''' % sys.argv[0]
 
+    if msg:
+        sys.exit(1)
+
 
 # ------------------------------------------------------------------------------
 #
-def handle_line(prof, line, idmap):
+def handle_line(prof, line, pid, idmap):
 
-    line = line.replace('[',    '|') \
-               .replace(']',    '|') \
-               .replace(' AT ', '|')
+  # if '33357,24' in line:
+  #     print line
+
+    line = line.replace('[',      '|') \
+               .replace(']',      '|') \
+               .replace(' AT ',   '|') \
+               .replace(' NULL ', '|')
 
     elems = list()
     for e in line.split('|'):
@@ -51,37 +58,69 @@ def handle_line(prof, line, idmap):
         if e:
             elems.append(e)
 
-    if elems[4] == 'ACTIVATE JOB' in line:
-        elems.insert(4, '')  # process id for task
-        sys.stdout.write('+')
+  # if '33357,24' in line:
+  #     print elems[5]
 
-    elif elems[4] == 'ACTIVATE PROC' in line:
-        sys.stdout.write('-')
+    if elems[5] == 'ACTIVATE JOB' in line:
+        elems.insert(7, pid)
+      # if '33357,24' in line:
+      #     print '0:', elems[2:]
+
+        if len(elems) == 9:
+            elems.insert(7, '')
+            sys.stdout.write('#')
+        else:
+            sys.stdout.write('+')
+
+    elif elems[5] == 'ACTIVATE PROC' in line:
+        if 'STATE COMMUNICATION FAILURE' in line:
+            elems[3] = elems[7]
+            elems[7] = ''
+            sys.stdout.write('?')
+        else:
+            sys.stdout.write('-')
+
+    while len(elems) < 10:
+        elems.append('?')
 
     sys.stdout.flush()
 
-    node, dvm, dvmd, tstamp, _, tid, pid, event, _ = elems
+ #  print elems[2:]
+    #   ... DEBUG   : prte output: [batch3:80017] [[33357,0],0] [1565343424.463101] ACTIVATE JOB [33357,0] STATE PENDING ALLOCATION AT ../../../../../../../source/prrte-dev/orte/tools/prte/prte.c:497
+    # ['... DEBUG   : prte output:', 'batch3:80017', '33357,0', ',0', '1565343424.463101', 'ACTIVATE JOB', '33357,0', 'STATE PENDING ALLOCATION', '../../../../../../../source/prrte-dev/orte/tools/prte/prte.c:497']
+    # _     '2019-08-09 05:37:34,815: agent_0             : MainProcess : DVMWatcher     : DEBUG   : prte output:',
+    # node  'batch3:80017',
+    # dvm   '33357,0',
+    # dvmd  ',0'
+    # time  '1565343424.463101',
+    # _     'ACTIVATE JOB',
+    # tid   '33357,0',
+    # proc  '',
+    # event 'STATE PENDING ALLOCATION',
+    #       '../../../../../../../source/prrte-dev/orte/tools/prte/prte.c:497']
+    _, node, dvm, dvmd, tstamp, _, tid, proc, event, _ = elems
 
     dvm    = ('%s%s' % (dvm, dvmd)).replace(',', '.')
     event  = event.replace(' ', '_').lower()
     tstamp = float(tstamp)
 
-    uid = idmap[tid]
+    uid    = idmap.get(tid, pid)
+    uid    = uid.replace(',', '.')
 
     prof.prof('prte_%s' % event, uid=uid, state='AGENT_EXECUTING',
-              timestamp=tstamp, comp='prte.dvm.%s' % dvm, tid='prte',
-              msg='%s:%s'  % (node, pid))
+              timestamp=tstamp, comp='prte.dvm', tid=dvm, msg=node)
 
 
 # ------------------------------------------------------------------------------
 #
-def handle_file(prof, fname, idmap):
+def handle_file(prof, fname, pid ,idmap):
 
-    print '    %-20s' % fname,
+#   print '    %-40s' % os.path.basename(fname),
     with open(fname, 'r') as fin:
         for line in fin.readlines():
             if ' ACTIVATE ' in line:
-                handle_line(prof, line.strip(), idmap)
+                handle_line(prof, line.strip(), pid, idmap)
+#   print
 
 
 # ------------------------------------------------------------------------------
@@ -90,9 +129,9 @@ def map_ids(fname, idmap):
 
     with open(fname, 'r') as fin:
         for line in fin.readlines():
-            if 'PRTE IDMAP' in line:
+            if 'PRTE IDMAP:' in line:
                 elems = line.split()
-                uid, tid   = elems[-1].split(':',1)
+                tid, uid   = elems[-1].split(':',1)
                 idmap[tid] = uid
 
 
@@ -100,22 +139,43 @@ def map_ids(fname, idmap):
 #
 def handle_dir(prof, dname):
 
+    pid   = os.path.basename(dname)
     idmap = dict()
+
     for fname in glob.glob('%s/agent_*.staging.output.*.child.log' % dname):
+        print fname
         map_ids(fname, idmap)
 
-    for fname in glob.glob('%s/*.log'):
-        handle_file(prof, fname, idmap)
+    for fname in glob.glob('%s/*.log' % dname):
+        handle_file(prof, fname, pid, idmap)
 
+  # prof.prof('event', uid='uid', state='state',
+  #           timestamp=0.0, comp='comp', tid='tid',
+  #           msg='msg')
+
+  # print idmap
+    print
+    print
 
 # ------------------------------------------------------------------------------
 #
 def main():
 
-    prof = ru.Profiler('radical.prte')
+    if len(sys.argv) not in [2, 3]:
+        usage('wrong argument number')
+
+    sid = sys.argv[1]
+
+    if len(sys.argv) == 4:
+        pname = sys.argv[2]
+    else:
+        pname = 'radical.prte'
+
+
+    prof = ru.Profiler('pname')
 
     # iterate through all `pilot.*` subdirs in the session tree
-    for entry in glob.glob('%s/pilot.*'):
+    for entry in glob.glob('%s/pilot.*' % sid):
         if os.path.isdir(entry):
             print
             print '--> %s' %  entry

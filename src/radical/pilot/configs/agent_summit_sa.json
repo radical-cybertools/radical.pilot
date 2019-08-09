@@ -43,49 +43,49 @@
         "AgentSchedulingComponent"    : {"count" : 1},
         "AgentExecutingComponent"     : {"count" : 1},
         "AgentStagingOutputComponent" : {"count" : 1}
-    },
-
-    "agents": {
-        "agent_1": {
-            "target": "node",
-            "components": {
-                "AgentSchedulingComponent"    : {"count" : 1},
-                "AgentStagingInputComponent"  : {"count" : 1},
-                "AgentStagingOutputComponent" : {"count" : 1},
-                "AgentExecutingComponent"     : {"count" : 1}
-            }
-      # },
-      # "agent_2": {
-      #     "target": "node",
-      #     "components": {
-      #         "AgentStagingOutputComponent" : {"count" : 1},
-      #         "AgentExecutingComponent"     : {"count" : 1}
-      #     }
-      # },
-      # "agent_3": {
-      #     "target": "node",
-      #     "components": {
-      #         "AgentExecutingComponent"     : {"count" : 1}
-      #     }
-      # },
-      # "agent_4": {
-      #     "target": "node",
-      #     "components": {
-      #         "AgentExecutingComponent"     : {"count" : 1}
-      #     }
-      # },
-      # "agent_5": {
-      #     "target": "node",
-      #     "components": {
-      #         "AgentExecutingComponent"     : {"count" : 1}
-      #     }
-      # },
-      # "agent_6": {
-      #     "target": "node",
-      #     "components": {
-      #         "AgentExecutingComponent"     : {"count" : 1}
-      #     }
-        }
+  # },
+  #
+  # "agents": {
+  #     "agent_1": {
+  #         "target": "node",
+  #         "components": {
+  #             "AgentSchedulingComponent"    : {"count" : 1},
+  #             "AgentStagingInputComponent"  : {"count" : 1},
+  #             "AgentStagingOutputComponent" : {"count" : 1},
+  #             "AgentExecutingComponent"     : {"count" : 1}
+  #         }
+  #   # },
+  #   # "agent_2": {
+  #   #     "target": "node",
+  #   #     "components": {
+  #   #         "AgentStagingOutputComponent" : {"count" : 1},
+  #   #         "AgentExecutingComponent"     : {"count" : 1}
+  #   #     }
+  #   # },
+  #   # "agent_3": {
+  #   #     "target": "node",
+  #   #     "components": {
+  #   #         "AgentExecutingComponent"     : {"count" : 1}
+  #   #     }
+  #   # },
+  #   # "agent_4": {
+  #   #     "target": "node",
+  #   #     "components": {
+  #   #         "AgentExecutingComponent"     : {"count" : 1}
+  #   #     }
+  #   # },
+  #   # "agent_5": {
+  #   #     "target": "node",
+  #   #     "components": {
+  #   #         "AgentExecutingComponent"     : {"count" : 1}
+  #   #     }
+  #   # },
+  #   # "agent_6": {
+  #   #     "target": "node",
+  #   #     "components": {
+  #   #         "AgentExecutingComponent"     : {"count" : 1}
+  #   #     }
+  #     }
     }
 }
 
