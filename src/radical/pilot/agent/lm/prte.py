@@ -109,7 +109,7 @@ class PRTE(LaunchMethod):
 
         for _ in range(100):
 
-            time.sleep(0.1)
+            time.sleep(0.5)
             try:
                 with open(furi, 'r') as fin:
                     for line in fin.readlines():
@@ -128,6 +128,7 @@ class PRTE(LaunchMethod):
             raise Exception("VMURI not found!")
 
         logger.info("prte startup successful: [%s]", dvm_uri)
+        time.sleep(30)  # FIXME
         profiler.prof(event='dvm_ok', uid=cfg['pilot_id'])
 
 
@@ -208,6 +209,7 @@ class PRTE(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
+        import time
         time.sleep(0.1)
 
         slots        = cu['slots']
