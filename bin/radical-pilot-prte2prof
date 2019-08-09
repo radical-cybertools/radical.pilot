@@ -103,7 +103,7 @@ def handle_line(prof, line, pid, idmap):
 
     dvm    = ('%s%s' % (dvm, dvmd)).replace(',', '.')
     event  = event.replace(' ', '_').lower()
-    event  = event.replace('prte_state_', 'prte_').lower()
+    event  = event.replace('state_', '')
     tstamp = float(tstamp)
 
     uid    = idmap.get(tid, pid)
