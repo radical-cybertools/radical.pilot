@@ -19,7 +19,8 @@ def usage(msg):
     This script will parse all logfiles in the session tree and search for PRTE
     profile entries.  It will parse those line, map the PRTE task IDs to RP IDs,
     and write RU formatted profile entries to the given profile (default:
-    `radical.prte.prof`).
+    `radical.prte.prof`).  Note that the parsed profile entries will be
+    appended if the given profile exists.
 
     The PRTE task ID to RP ID mapping is depends on the availability of the
     tasks STDERR: PRTE  will write a line line below to the task's stderr:
@@ -166,13 +167,16 @@ def main():
 
     sid = sys.argv[1]
 
+    if not os.path.isdir(sid):
+        usage('no such dir: %s' % sid)
+
     if len(sys.argv) == 4:
         pname = sys.argv[2]
     else:
         pname = 'radical.prte'
 
 
-    prof = ru.Profiler('pname')
+    prof = ru.Profiler(pname, path=sid)
 
     # iterate through all `pilot.*` subdirs in the session tree
     for entry in glob.glob('%s/pilot.*' % sid):
