@@ -7,8 +7,8 @@
     "staging_area"         : "staging_area",
     "staging_schema"       : "staging",
     "max_io_loglength"     : 1024,
-    "bulk_collection_size" :    1,
-    "bulk_collection_time" :  0.1,
+    "bulk_collection_size" : 1024,
+    "bulk_collection_time" :  5.0,
     "db_poll_sleeptime"    :  5.0,
   # "network_interface"    : "ipogif0",
 
