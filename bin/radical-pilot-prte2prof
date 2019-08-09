@@ -63,13 +63,13 @@ def handle_line(prof, line, pid, idmap):
   #     print elems[5]
 
     if elems[5] == 'ACTIVATE JOB' in line:
-        elems.insert(7, pid)
+        elems.insert(6, pid)
       # if '33357,24' in line:
       #     print '0:', elems[2:]
 
         if len(elems) == 9:
-            elems.insert(7, '')
             sys.stdout.write('#')
+            elems.insert(7, elems[2])
         else:
             sys.stdout.write('+')
 
