@@ -1,17 +1,49 @@
 #!/usr/bin/env python
 
+import os
 import sys
+import glob
 
 import radical.utils as ru
 
 
 # ------------------------------------------------------------------------------
 #
-def handle_line(line):
+def usage(msg):
 
-    line  = line.replace('[',    '|')
-    line  = line.replace(']',    '|')
-    line  = line.replace(' AT ', '|')
+    if msg:
+        print '    Error: %s' % msg
+
+    print '''    Usage: %s <session_dir> [profile]
+
+    This script will parse all logfiles in the session tree and search for PRTE
+    profile entries.  It will parse those line, map the PRTE task IDs to RP IDs,
+    and write RU formatted profile entries to the given profile (default:
+    `radical.prte.prof`).
+
+    The PRTE task ID to RP ID mapping is depends on the availability of the
+    tasks STDERR: PRTE  will write a line line below to the task's stderr:
+
+        [batch3:122527] JOB [3673,4] EXECUTING
+
+    We parse that line and thus obtain the respective PRTE task ID.  The
+    `agent.staging.output` default implementation will do that parsing and will
+    write the ID mapping to `<x>.prte2pid.log`, where `<x>` is the runtime ID
+    of the parsing output component.  This script will search the specified
+    session directory for file that match that name and extract the mapping from
+    those files.   This script will raise an error if a PRTE profile line cannot
+    be mapped to an RP ID.
+
+    ''' % sys.argv[0]
+
+
+# ------------------------------------------------------------------------------
+#
+def handle_line(prof, line, idmap):
+
+    line = line.replace('[',    '|') \
+               .replace(']',    '|') \
+               .replace(' AT ', '|')
 
     elems = list()
     for e in line.split('|'):
@@ -19,39 +51,82 @@ def handle_line(line):
         if e:
             elems.append(e)
 
-    if 'ACTIVATE JOB' in line:
-        pid = None
-        batch, dvm, dvmd, tstamp, mode, tid,      event, msg = elems
+    if elems[4] == 'ACTIVATE JOB' in line:
+        elems.insert(4, '')  # process id for task
         sys.stdout.write('+')
-        sys.stdout.flush()
 
-    elif 'ACTIVATE PROC' in line:
-        batch, dvm, dvmd, tstamp, mode, tid, pid, event, msg = elems
+    elif elems[4] == 'ACTIVATE PROC' in line:
         sys.stdout.write('-')
-        sys.stdout.flush()
+
+    sys.stdout.flush()
+
+    node, dvm, dvmd, tstamp, _, tid, pid, event, _ = elems
 
     dvm    = ('%s%s' % (dvm, dvmd)).replace(',', '.')
     event  = event.replace(' ', '_').lower()
     tstamp = float(tstamp)
 
-    prof.prof('prte_%s' % event, uid=tid, state='AGENT_EXECUTING',
-              timestamp=tstamp, comp='prte.dvm.%s' % dvm, tid='prte')
+    uid = idmap[tid]
+
+    prof.prof('prte_%s' % event, uid=uid, state='AGENT_EXECUTING',
+              timestamp=tstamp, comp='prte.dvm.%s' % dvm, tid='prte',
+              msg='%s:%s'  % (node, pid))
+
+
+# ------------------------------------------------------------------------------
+#
+def handle_file(prof, fname, idmap):
+
+    print '    %-20s' % fname,
+    with open(fname, 'r') as fin:
+        for line in fin.readlines():
+            if ' ACTIVATE ' in line:
+                handle_line(prof, line.strip(), idmap)
+
+
+# ------------------------------------------------------------------------------
+#
+def map_ids(fname, idmap):
+
+    with open(fname, 'r') as fin:
+        for line in fin.readlines():
+            if 'PRTE IDMAP' in line:
+                elems = line.split()
+                uid, tid   = elems[-1].split(':',1)
+                idmap[tid] = uid
+
+
+# ------------------------------------------------------------------------------
+#
+def handle_dir(prof, dname):
+
+    idmap = dict()
+    for fname in glob.glob('%s/agent_*.staging.output.*.child.log' % dname):
+        map_ids(fname, idmap)
+
+    for fname in glob.glob('%s/*.log'):
+        handle_file(prof, fname, idmap)
+
+
+# ------------------------------------------------------------------------------
+#
+def main():
+
+    prof = ru.Profiler('radical.prte')
+
+    # iterate through all `pilot.*` subdirs in the session tree
+    for entry in glob.glob('%s/pilot.*'):
+        if os.path.isdir(entry):
+            print
+            print '--> %s' %  entry
+            handle_dir(prof, entry)
 
 
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
-    prof = ru.Profiler('radical.prte')
-
-    # first map unit IDs to PRTE IDs
-    for fname in sys.argv:
-        print '%-20s' % fname,
-        with open(fname, 'r') as fin:
-            for line in fin.readlines():
-                if ' ACTIVATE ' in line:
-                    handle_line(line.strip())
-        print
+    main()
 
 
 # ------------------------------------------------------------------------------
