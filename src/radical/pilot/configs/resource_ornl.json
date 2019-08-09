@@ -283,7 +283,8 @@
                                          "module load   py-virtualenv/16.0.0-py2",
                                          "module load   py-pip/10.0.1-py2",
                                          "module load   py-setuptools/40.2.0-py2",
-                                         "module load   zeromq/4.2.5"
+                                         "module load   zeromq/4.2.5",
+                                         "ulimit -u 65536"
                                         ],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/bip178",
@@ -341,9 +342,8 @@
                                          "module load   zeromq/4.2.5",
                                          "module use    /sw/summit/ums/ompix/gcc/6.4.0/modules",
                                          "module load   prrte/1.0.0_devtiming",
-                                         "export PRRTE_PREFIX=$PRRTE_DIR"
-
-
+                                         "export PRRTE_PREFIX=$PRRTE_DIR",
+                                         "ulimit -u 65536"
                                         ],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/bip178",
