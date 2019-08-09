@@ -1,0 +1,58 @@
+#!/usr/bin/env python
+
+import sys
+
+import radical.utils as ru
+
+
+# ------------------------------------------------------------------------------
+#
+def handle_line(line):
+
+    line  = line.replace('[',    '|')
+    line  = line.replace(']',    '|')
+    line  = line.replace(' AT ', '|')
+
+    elems = list()
+    for e in line.split('|'):
+        e = e.strip()
+        if e:
+            elems.append(e)
+
+    if 'ACTIVATE JOB' in line:
+        pid = None
+        batch, dvm, dvmd, tstamp, mode, tid,      event, msg = elems
+        sys.stdout.write('+')
+        sys.stdout.flush()
+
+    elif 'ACTIVATE PROC' in line:
+        batch, dvm, dvmd, tstamp, mode, tid, pid, event, msg = elems
+        sys.stdout.write('-')
+        sys.stdout.flush()
+
+    dvm    = ('%s%s' % (dvm, dvmd)).replace(',', '.')
+    event  = event.replace(' ', '_').lower()
+    tstamp = float(tstamp)
+
+    prof.prof('prte_%s' % event, uid=tid, state='AGENT_EXECUTING',
+              timestamp=tstamp, comp='prte.dvm.%s' % dvm, tid='prte')
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__':
+
+    prof = ru.Profiler('radical.prte')
+
+    # first map unit IDs to PRTE IDs
+    for fname in sys.argv:
+        print '%-20s' % fname,
+        with open(fname, 'r') as fin:
+            for line in fin.readlines():
+                if ' ACTIVATE ' in line:
+                    handle_line(line.strip())
+        print
+
+
+# ------------------------------------------------------------------------------
+
