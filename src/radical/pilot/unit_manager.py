@@ -498,7 +498,7 @@ class UnitManager(rpu.Component):
     def _call_unit_callbacks(self, unit_obj, state):
 
         with self._cb_lock:
-            for cb_name, cb_val in self._callbacks[rpc.UNIT_STATE].iteritems():
+            for cb_name, cb_val in self._callbacks[rpc.UNIT_STATE].items():
 
                 self._log.debug('%s calls state cb %s for %s', 
                                 self.uid, cb_name, unit_obj.uid)
@@ -601,7 +601,7 @@ class UnitManager(rpu.Component):
         self.is_valid()
 
         with self._pilots_lock:
-            return self._pilots.keys()
+            return list(self._pilots.keys())
 
 
     # --------------------------------------------------------------------------
@@ -617,7 +617,7 @@ class UnitManager(rpu.Component):
         self.is_valid()
 
         with self._pilots_lock:
-            return self._pilots.values()
+            return list(self._pilots.values())
 
 
     # --------------------------------------------------------------------------
@@ -683,7 +683,7 @@ class UnitManager(rpu.Component):
         self.is_valid()
 
         with self._pilots_lock:
-            return self._units.keys()
+            return list(self._units.keys())
 
 
     # --------------------------------------------------------------------------
@@ -773,7 +773,7 @@ class UnitManager(rpu.Component):
 
         if not uids:
             with self._units_lock:
-                ret = self._units.values()
+                ret = list(self._units.values())
             return ret
 
         ret_list = True
@@ -835,7 +835,7 @@ class UnitManager(rpu.Component):
         if not uids:
             with self._units_lock:
                 uids = list()
-                for uid,unit in self._units.iteritems():
+                for uid,unit in self._units.items():
                     if unit.state not in rps.FINAL:
                         uids.append(uid)
 
@@ -948,7 +948,7 @@ class UnitManager(rpu.Component):
 
         if not uids:
             with self._units_lock:
-                uids  = self._units.keys()
+                uids  = list(self._units.keys())
         else:
             if not isinstance(uids, list):
                 uids = [uids]
@@ -1052,7 +1052,7 @@ class UnitManager(rpu.Component):
                 if cb:
                     to_delete = [cb.__name__]
                 else:
-                    to_delete = self._callbacks[metric].keys()
+                    to_delete = list(self._callbacks[metric].keys())
 
                 for cb_name in to_delete:
 

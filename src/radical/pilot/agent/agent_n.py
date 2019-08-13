@@ -36,7 +36,7 @@ class Agent_n(rpu.Worker):
     def __init__(self, agent_name):
 
         assert(agent_name != 'agent_0'), 'expect subagent, not agent_0'
-        print "startup agent %s" % agent_name
+        print("startup agent %s" % agent_name)
 
         # load config, create session and controller, init rpu.Worker
         agent_cfg  = "%s/%s.cfg" % (os.getcwd(), agent_name)

@@ -330,13 +330,13 @@ class Session(rs.Session):
                 return True
 
             if self._valid:
-                for _,umgr in self._umgrs.iteritems():
+                for _,umgr in self._umgrs.items():
                     if not umgr.is_valid(term):
                         self._valid = False
                         break
 
             if self._valid:
-                for _,pmgr in self._pmgrs.iteritems():
+                for _,pmgr in self._pmgrs.items():
                     if not pmgr.is_valid(term):
                         self._valid = False
                         break
@@ -466,12 +466,12 @@ class Session(rs.Session):
             # cleanup implies terminate
             terminate = True
 
-        for umgr_uid,umgr in self._umgrs.iteritems():
+        for umgr_uid,umgr in self._umgrs.items():
             self._log.debug("session %s closes umgr   %s", self._uid, umgr_uid)
             umgr.close()
             self._log.debug("session %s closed umgr   %s", self._uid, umgr_uid)
 
-        for pmgr_uid,pmgr in self._pmgrs.iteritems():
+        for pmgr_uid,pmgr in self._pmgrs.items():
             self._log.debug("session %s closes pmgr   %s", self._uid, pmgr_uid)
             pmgr.close(terminate=terminate)
             self._log.debug("session %s closed pmgr   %s", self._uid, pmgr_uid)
@@ -707,7 +707,7 @@ class Session(rs.Session):
         """
 
         self.is_valid()
-        return self._pmgrs.keys()
+        return list(self._pmgrs.keys())
 
 
     # --------------------------------------------------------------------------
@@ -733,7 +733,7 @@ class Session(rs.Session):
             return_scalar = True
 
         if pmgr_uids: pmgrs = [self._pmgrs[uid] for uid in pmgr_uids]
-        else        : pmgrs =  self._pmgrs.values()
+        else        : pmgrs =  list(self._pmgrs.values())
 
         if return_scalar: return pmgrs[0]
         else            : return pmgrs
@@ -761,7 +761,7 @@ class Session(rs.Session):
         """
 
         self.is_valid()
-        return self._umgrs.keys()
+        return list(self._umgrs.keys())
 
 
     # --------------------------------------------------------------------------
@@ -787,7 +787,7 @@ class Session(rs.Session):
             return_scalar = True
 
         if umgr_uids: umgrs = [self._umgrs[uid] for uid in umgr_uids]
-        else        : umgrs =  self._umgrs.values()
+        else        : umgrs =  list(self._umgrs.values())
 
         if return_scalar: return umgrs[0]
         else            : return umgrs
@@ -832,7 +832,7 @@ class Session(rs.Session):
 
         self.is_valid()
 
-        if isinstance(resource_config, basestring):
+        if isinstance(resource_config, str):
 
             # let exceptions fall through
             rcs = ResourceConfig.from_file(resource_config)
@@ -971,11 +971,11 @@ class Session(rs.Session):
                 if '%' in sandbox:
                     # expand from pilot description
                     expand = dict()
-                    for k,v in pilot['description'].iteritems():
+                    for k,v in pilot['description'].items():
                         if v is None:
                             v = ''
                         expand['pd.%s' % k] = v
-                        if isinstance(v, basestring):
+                        if isinstance(v, str):
                             expand['pd.%s' % k.upper()] = v.upper()
                             expand['pd.%s' % k.lower()] = v.lower()
                         else:
@@ -1162,23 +1162,23 @@ class Session(rs.Session):
 
         title = 'autopilot: %s' % titles[random.randint(0, len(titles) - 1)]
 
-        print '----------------------------------------------------'
-        print 'autopilot'
+        print('----------------------------------------------------')
+        print('autopilot')
 
         for issue in repo.issues(labels=labels, state='open'):
             if issue.title == title:
                 reply = 'excuse: %s' % excuse()
                 issue.create_comment(reply)
-                print '  resolve: %s' % reply
+                print('  resolve: %s' % reply)
                 return
 
         # issue not found - create
         body  = 'problem: %s' % excuse()
         issue = repo.create_issue(title=title, body=body, labels=[labels],
                                   assignee=user)
-        print '  issue  : %s' % title
-        print '  problem: %s' % body
-        print '----------------------------------------------------'
+        print('  issue  : %s' % title)
+        print('  problem: %s' % body)
+        print('----------------------------------------------------')
 
 
 # -----------------------------------------------------------------------------

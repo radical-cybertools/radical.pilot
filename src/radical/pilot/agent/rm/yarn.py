@@ -7,7 +7,7 @@ import os
 import subprocess
 import multiprocessing
 
-from base import LRMS
+from .base import LRMS
 
 
 # ==============================================================================

@@ -161,7 +161,7 @@ class ComputeUnit(object):
                 setattr(self, "_%s" % key, val)
 
         # invoke unit specific callbacks
-        for cb_name, cb_val in self._callbacks[rpc.UNIT_STATE].iteritems():
+        for cb_name, cb_val in self._callbacks[rpc.UNIT_STATE].items():
 
             cb      = cb_val['cb']
             cb_data = cb_val['cb_data']

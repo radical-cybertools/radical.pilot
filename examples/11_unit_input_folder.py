@@ -88,10 +88,10 @@ if __name__ == '__main__':
         cu.input_staging = ['make_folders.py']
         umgr.submit_units([cu])
 
-        print "Creating dummy folder"
+        print("Creating dummy folder")
 
         folder_cus =  umgr.wait_units()
-        print 'Dummy folder created'
+        print('Dummy folder created')
 
 
         report.info('create %d unit description(s)\n\t' % n)

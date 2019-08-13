@@ -7,7 +7,7 @@ import os
 import copy
 import stat
 import time
-import Queue
+import queue
 import tempfile
 import threading
 import traceback
@@ -56,7 +56,7 @@ class ABDS(AgentExecutingComponent):
         self._cancel_lock    = threading.RLock()
         self._cus_to_cancel  = list()
         self._cus_to_watch   = list()
-        self._watch_queue    = Queue.Queue ()
+        self._watch_queue    = queue.Queue ()
 
         self._pilot_id = self._cfg['pilot_id']
 
@@ -154,7 +154,7 @@ class ABDS(AgentExecutingComponent):
 
         # Remove the configured set of environment variables from the
         # environment that we pass to Popen.
-        for e in new_env.keys():
+        for e in list(new_env.keys()):
             env_removables = list()
             if self._mpi_launcher : env_removables += self._mpi_launcher.env_removables
             if self._task_launcher: env_removables += self._task_launcher.env_removables
@@ -243,7 +243,7 @@ class ABDS(AgentExecutingComponent):
             # Create string for environment variable setting
             env_string  = ''
             if cu['description']['environment']:
-                for key,val in cu['description']['environment'].iteritems():
+                for key,val in cu['description']['environment'].items():
                     env_string += 'export %s="%s"\n' % (key, val)
             env_string += 'export RP_SESSION_ID="%s"\n'   % self._cfg['session_id']
             env_string += 'export RP_PILOT_ID="%s"\n'     % self._cfg['pilot_id']
@@ -258,7 +258,7 @@ class ABDS(AgentExecutingComponent):
                 env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
 
             # also add any env vars requested for export by the resource config
-            for k,v in self._env_cu_export.iteritems():
+            for k,v in self._env_cu_export.items():
                 env_string += "export %s=%s\n" % (k,v)
 
             env_string += '''
@@ -275,7 +275,7 @@ prof(){
 
             # also add any env vars requested in the unit description
             if cu['description']['environment']:
-                for key,val in cu['description']['environment'].iteritems():
+                for key,val in cu['description']['environment'].items():
                     env_string += 'export %s=%s\n' % (key, val)
 
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
@@ -407,7 +407,7 @@ prof(){
                     while len(cus) < MAX_QUEUE_BULKSIZE :
                         cus.append (self._watch_queue.get_nowait())
 
-                except Queue.Empty:
+                except queue.Empty:
 
                     # nothing found -- no problem, see if any CUs finished
                     pass

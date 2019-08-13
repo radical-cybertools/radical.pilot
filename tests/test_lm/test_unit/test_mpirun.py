@@ -1,7 +1,7 @@
 
 # pylint: disable=protected-access, unused-argument
 
-from   test_common                   import setUp
+from   .test_common                   import setUp
 from   radical.pilot.agent.lm.mpirun import MPIRun
 
 import radical.utils as ru

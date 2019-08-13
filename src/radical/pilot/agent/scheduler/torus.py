@@ -185,7 +185,8 @@ class Torus(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _release_slot(self, (corner, shape)):
+    def _release_slot(self, xxx_todo_changeme):
+        (corner, shape) = xxx_todo_changeme
         self._free_cores(self._lrms.torus_block, corner, shape)
 
 

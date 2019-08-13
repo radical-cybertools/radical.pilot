@@ -5,7 +5,7 @@ __license__   = "MIT"
 
 import os
 import time
-import Queue
+import queue
 import tempfile
 import threading
 import traceback
@@ -90,7 +90,7 @@ class Shell(AgentExecutingComponent):
         # TODO: test that this actually works
         # Remove the configured set of environment variables from the
         # environment that we pass to Popen.
-        for e in os.environ.keys():
+        for e in list(os.environ.keys()):
             env_removables = list()
             if self._mpi_launcher : env_removables += self._mpi_launcher.env_removables
             if self._task_launcher: env_removables += self._task_launcher.env_removables
@@ -212,7 +212,7 @@ class Shell(AgentExecutingComponent):
 
             with self._registry_lock :
                 # inverse registry for quick lookups:
-                inv_registry = {v: k for k, v in self._registry.items()}
+                inv_registry = {v: k for k, v in list(self._registry.items())}
 
                 for cu_uid in self._cus_to_cancel:
                     pid = inv_registry.get(cu_uid)
@@ -333,7 +333,7 @@ prof(){
 '''
 
         # also add any env vars requested for export by the resource config
-        for k,v in self._env_cu_export.iteritems():
+        for k,v in self._env_cu_export.items():
             env += "export %s=%s\n" % (k,v)
 
         # also add any env vars requested in hte unit description
@@ -440,7 +440,7 @@ prof(){
             raise RuntimeError("failed to run unit '%s': (%s)(%s)" % \
                                (run_cmd, ret, out))
 
-        lines = filter (None, out.split ("\n"))
+        lines = [_f for _f in out.split ("\n") if _f]
 
         self._log.debug (lines)
 

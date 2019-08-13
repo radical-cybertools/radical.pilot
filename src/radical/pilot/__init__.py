@@ -41,11 +41,11 @@ from .utils                     import sdist_name, sdist_path
 
 # ------------------------------------------------------------------------------
 # make submodules available -- mostly for internal use
-import utils
-import worker
-import umgr
-import pmgr
-import agent
+from . import utils
+from . import worker
+from . import umgr
+from . import pmgr
+from . import agent
 
 
 # ------------------------------------------------------------------------------

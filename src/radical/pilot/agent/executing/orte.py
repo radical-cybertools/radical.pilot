@@ -7,7 +7,7 @@ import os
 import copy
 import time
 import errno
-import Queue
+import queue
 import tempfile
 import threading
 import traceback
@@ -82,7 +82,7 @@ class ORTE(AgentExecutingComponent):
 
         self._cancel_lock    = threading.RLock()
         self._cus_to_cancel  = list()
-        self._watch_queue    = Queue.Queue ()
+        self._watch_queue    = queue.Queue ()
 
         self._pilot_id = self._cfg['pilot_id']
 
@@ -154,7 +154,7 @@ class ORTE(AgentExecutingComponent):
 
         # Remove the configured set of environment variables from the
         # environment that we pass to Popen.
-        for e in new_env.keys():
+        for e in list(new_env.keys()):
             env_removables = list()
             if self._task_launcher:
                 env_removables += self._task_launcher.env_removables
@@ -405,13 +405,13 @@ class ORTE(AgentExecutingComponent):
 
         # Set pre-populated environment variables
         if self._cu_environment:
-            for key,val in self._cu_environment.iteritems():
+            for key,val in self._cu_environment.items():
                 arg_list.append(ffi.new("char[]", "-x"))
                 arg_list.append(ffi.new("char[]", "%s=%s" % (key, val)))
 
         # Set environment variables specified for this CU
         if cu['description']['environment']:
-            for key,val in cu['description']['environment'].iteritems():
+            for key,val in cu['description']['environment'].items():
                 arg_list.append(ffi.new("char[]", "-x"))
                 arg_list.append(ffi.new("char[]", "%s=%s" % (key, val)))
 

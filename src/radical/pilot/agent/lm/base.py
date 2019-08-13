@@ -8,6 +8,7 @@ import fractions
 import collections
 
 import radical.utils as ru
+from functools import reduce
 
 
 # 'enum' for launch method types
@@ -284,10 +285,10 @@ class LaunchMethod(object):
 
             # Convert it into an ordered dict,
             # which hopefully resembles the original ordering
-            count_dict = collections.OrderedDict(sorted(counter.items(),
+            count_dict = collections.OrderedDict(sorted(list(counter.items()),
                                                  key=lambda t: t[0]))
 
-            for (host, count) in count_dict.iteritems():
+            for (host, count) in list(count_dict.items()):
                 os.write(handle, '%s%s%d\n' % (host, separator, count))
 
         else:
@@ -321,7 +322,7 @@ class LaunchMethod(object):
 
         # Recreate a list of hosts based on the normalized dict
         hosts = list()
-        for (host, count) in count_dict.iteritems():
+        for (host, count) in list(count_dict.items()):
             hosts.extend([host] * count)
 
         # sort the list for readbility
