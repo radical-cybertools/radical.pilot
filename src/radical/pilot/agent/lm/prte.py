@@ -67,7 +67,8 @@ class PRTE(LaunchMethod):
         prte += ' --prefix %s'     % pre
         prte += ' --report-uri %s' % furi
         prte += ' --hostfile %s'   % fhosts
-        prte += ' --pmca orte_state_base_verbose 1 '  # prte profiling
+        prte += ' --pmca orte_state_base_verbose 1'  # prte profiling
+        prte += ' --pmca plm_rsh_num_concurrent %d' % len(lrms.node_list)
       # prte += ' --mca plm_rsh_no_tree_spawn 1'
 
         # Use (g)stdbuf to disable buffering.
