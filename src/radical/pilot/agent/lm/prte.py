@@ -56,24 +56,34 @@ class PRTE(LaunchMethod):
 
 
         # write hosts file
-        furi   = '%s/prrte.uri'   % os.getcwd()
-        fhosts = '%s/prrte.hosts' % os.getcwd()
+        furi    = '%s/prrte.uri'   % os.getcwd()
+        fhosts  = '%s/prrte.hosts' % os.getcwd()
+        vm_size = len(lrms.node_list)
 
         with open(fhosts, 'w') as fout:
             for node in lrms.node_list:
-                fout.write('%s slots=%d\n' % (node[0], lrms.cores_per_node * lrms.smt))
+                fout.write('%s slots=%d\n' % (node[0],
+                                              lrms.cores_per_node * lrms.smt))
 
         pre   = os.environ['PRRTE_PREFIX']
         prte += ' --prefix %s'     % pre
         prte += ' --report-uri %s' % furi
         prte += ' --hostfile %s'   % fhosts
         prte += ' --pmca orte_state_base_verbose 1'  # prte profiling
-        prte += ' --pmca plm_rsh_num_concurrent %d' % len(lrms.node_list)
-      # prte += ' --mca plm_rsh_no_tree_spawn 1'
 
-        # Use (g)stdbuf to disable buffering.
-        # We need this to get the "DVM ready",
-        # without waiting for prte to complete.
+
+        # we apply two temporary tweaks on Summit which should not be needed in
+        # the long run:
+        #
+        # avoid 64 node limit (ssh connection limit)
+        prte += ' --mca plm_rsh_no_tree_spawn 1'
+
+        # ensure 1 ssh per dvm
+        prte += ' --pmca plm_rsh_num_concurrent %d' % vm_size
+
+        # Use (g)stdbuf to disable buffering.  We need this to get the
+        # "DVM ready" message to ensure DVM startup completion
+        #
         # The command seems to be generally available on our Cray's,
         # if not, we can code some home-coooked pty stuff (TODO)
         stdbuf_cmd =  ru.which(['stdbuf', 'gstdbuf'])
@@ -100,7 +110,6 @@ class PRTE(LaunchMethod):
         cmdline += ' '.join(debug_strings)
         cmdline  = cmdline.strip()
 
-        vm_size = len(lrms.node_list)
         logger.info("Start prte on %d nodes [%s]", vm_size, cmdline)
         profiler.prof(event='dvm_start', uid=cfg['pilot_id'])
 
