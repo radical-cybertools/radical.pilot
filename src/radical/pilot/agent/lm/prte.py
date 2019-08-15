@@ -76,7 +76,7 @@ class PRTE(LaunchMethod):
         # the long run:
         #
         # avoid 64 node limit (ssh connection limit)
-        prte += ' --mca plm_rsh_no_tree_spawn 1'
+        prte += ' --pmca plm_rsh_no_tree_spawn 1'
 
         # ensure 1 ssh per dvm
         prte += ' --pmca plm_rsh_num_concurrent %d' % vm_size
@@ -100,8 +100,8 @@ class PRTE(LaunchMethod):
         if verbose:
             debug_strings = [
                              '--debug-devel',
-                             '--mca odls_base_verbose 100',
-                             '--mca rml_base_verbose 100'
+                             '--pmca odls_base_verbose 100',
+                             '--pmca rml_base_verbose 100'
                             ]
         else:
             debug_strings = []
@@ -116,31 +116,6 @@ class PRTE(LaunchMethod):
         dvm_uri     = None
         dvm_process = mp.Popen(cmdline.split(), stdout=mp.PIPE,
                                stderr=mp.STDOUT)
-
-        for _ in range(100):
-
-            time.sleep(0.5)
-            try:
-                with open(furi, 'r') as fin:
-                    for line in fin.readlines():
-                        if '://' in line:
-                            dvm_uri = line.strip()
-                            break
-
-            except Exception as e:
-                logger.debug('DVM check: %s' % e)
-                time.sleep(0.5)
-
-            if dvm_uri:
-                break
-
-        if not dvm_uri:
-            raise Exception("VMURI not found!")
-
-        logger.info("prte startup successful: [%s]", dvm_uri)
-        time.sleep(30)  # FIXME
-        profiler.prof(event='dvm_ok', uid=cfg['pilot_id'])
-
 
         # ----------------------------------------------------------------------
         def _watch_dvm():
@@ -170,6 +145,31 @@ class PRTE(LaunchMethod):
 
         dvm_watcher = ru.Thread(target=_watch_dvm, name="DVMWatcher")
         dvm_watcher.start()
+
+        for _ in range(100):
+
+            time.sleep(0.5)
+            try:
+                with open(furi, 'r') as fin:
+                    for line in fin.readlines():
+                        if '://' in line:
+                            dvm_uri = line.strip()
+                            break
+
+            except Exception as e:
+                logger.debug('DVM check: uri file missing: %s...' % str(e)[:24])
+                time.sleep(0.5)
+
+            if dvm_uri:
+                break
+
+        if not dvm_uri:
+            raise Exception("VMURI not found!")
+
+        logger.info("prte startup successful: [%s]", dvm_uri)
+        time.sleep(30)  # FIXME
+        profiler.prof(event='dvm_ok', uid=cfg['pilot_id'])
+
 
         lm_info = {'dvm_uri'     : dvm_uri,
                    'version_info': prte_info}
