@@ -39,3 +39,13 @@ def test_lm_mpirun(resource='xsede.bridges'):
     assert('mpirun' == component.launch_command)
     assert('mpi_flavor' in component)
 
+def test_lm_jsrun(resource='ornl.summit'):
+
+    cfg, session = setUp(resource)
+
+    component = rpa_lm.LaunchMethod.create(name=cfg['agent_launch_method'], cfg=cfg, session=session)
+
+    # /sw/summit/xalt/1.1.3/bin/jsrun
+    assert('jsrun' == os.path.basename(component.launch_command))
+
+
