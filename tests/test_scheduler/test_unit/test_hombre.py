@@ -1,8 +1,6 @@
 # pylint: disable=protected-access, unused-argument
 # pylint: disable=no-value-for-parameter
 import pytest
-import radical.utils as ru
-import radical.pilot
 from radical.pilot.agent.scheduler.hombre import Hombre
 
 try:
