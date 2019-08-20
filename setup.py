@@ -84,6 +84,7 @@ def get_version(mod_root):
             'branch=`git branch | grep -e "^*" | cut -f 2- -d " "` 2>/dev/null ; '
             'echo $tag@$branch' % src_root)
         version_detail = out.strip()
+        version_detail = version_detail.decode()
         version_detail = version_detail.replace('detached from ', 'detached-')
 
         # remove all non-alphanumeric (and then some) chars
@@ -139,8 +140,8 @@ def get_version(mod_root):
 
 # ------------------------------------------------------------------------------
 # check python version. we need >= 2.7, <3.x
-if  sys.hexversion < 0x02070000 or sys.hexversion >= 0x03000000:
-    raise RuntimeError('%s requires Python 2.x (2.7 or higher)' % name)
+if  sys.hexversion <= 0x03050000:
+    raise RuntimeError('%s requires Python 3.5 or higher' % name)
 
 
 # ------------------------------------------------------------------------------
@@ -171,8 +172,8 @@ class RunTwine(Command):
 
 # ------------------------------------------------------------------------------
 #
-if  sys.hexversion < 0x02060000 or sys.hexversion >= 0x03000000:
-    raise RuntimeError('SETUP ERROR: %s requires Python 2.6 or higher' % name)
+if  sys.hexversion <= 0x03050000:
+    raise RuntimeError('SETUP ERROR: %s requires Python 3.5 or higher' % name)
 
 
 # ------------------------------------------------------------------------------

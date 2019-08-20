@@ -9,7 +9,7 @@ import errno
 import pprint
 import msgpack
 
-import Queue           as pyq
+from . import Queue           as pyq
 import setproctitle    as spt
 import multiprocessing as mp
 

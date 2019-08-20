@@ -7,7 +7,7 @@ import radical.saga  as rs
 import radical.utils as ru
 
 from   radical.pilot.states  import *
-from   db_utils              import *
+from   .db_utils              import *
 
 rs.fs = rs.filesystem
 

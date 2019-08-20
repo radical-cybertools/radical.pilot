@@ -290,7 +290,7 @@ class Backfilling(UMGRSchedulingComponent):
 
             scheduled   = list()   # units we want to advance
             unscheduled = dict()   # this will be the new wait pool
-            for uid, unit in self._wait_pool.iteritems():
+            for uid, unit in self._wait_pool.items():
 
                 if not pids:
                     # no more useful pilots -- move remaining units into
@@ -336,9 +336,9 @@ class Backfilling(UMGRSchedulingComponent):
           #         len(unscheduled), len(pids))
 
             # all unscheduled units *are* the new wait pool
-            self._log.debug(' 1 > waits: %s', self._wait_pool.keys())
+            self._log.debug(' 1 > waits: %s', list(self._wait_pool.keys()))
             self._wait_pool = unscheduled
-            self._log.debug(' 2 > waits: %s', self._wait_pool.keys())
+            self._log.debug(' 2 > waits: %s', list(self._wait_pool.keys()))
 
         # advance scheduled units
         if scheduled:
@@ -347,7 +347,7 @@ class Backfilling(UMGRSchedulingComponent):
 
 
         self._log.debug('\nafter schedule:')
-        self._log.debug('waits:    %s', self._wait_pool.keys())
+        self._log.debug('waits:    %s', list(self._wait_pool.keys()))
       # for pid in self._pilots:
       #     print 'pilot %s' % pid
       #     pprint.pprint(self._pilots[pid]['info'])

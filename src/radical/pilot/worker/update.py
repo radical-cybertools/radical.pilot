@@ -231,7 +231,7 @@ class Update(rpu.Worker):
             update_dict['$set']  = dict()
             update_dict['$push'] = dict()
 
-            for key,val in thing.iteritems():
+            for key,val in thing.items():
                 # we never set _id, states (to avoid index clash, duplicated ops)
                 if key not in ['_id', 'states']:
                     update_dict['$set'][key] = val

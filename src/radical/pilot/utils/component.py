@@ -132,7 +132,7 @@ class Component(ru.Process):
 
         # start all bridges which don't yet have an address
         bridges = list()
-        for bname,bcfg in bspec.iteritems():
+        for bname,bcfg in bspec.items():
 
             addr_in  = bcfg.get('addr_in')
             addr_out = bcfg.get('addr_out')
@@ -222,7 +222,7 @@ class Component(ru.Process):
 
         # start components
         components = list()
-        for cname,ccfg in cspec.iteritems():
+        for cname,ccfg in cspec.items():
 
             cnum = ccfg.get('count', 1)
 
@@ -1239,7 +1239,7 @@ class Component(ru.Process):
 
             # We now can push bulks of things to the workers
 
-            for state,things in buckets.iteritems():
+            for state,things in buckets.items():
 
                 assert(state in states), 'inconsistent state'
                 assert(state in self._workers), 'no worker for state %s' % state
@@ -1380,7 +1380,7 @@ class Component(ru.Process):
             # the push target depends on the state of things, so we need to sort
             # the things into buckets by state before pushing them
             # now we can push the buckets as bulks
-            for _state,_things in buckets.iteritems():
+            for _state,_things in buckets.items():
 
                 ts = time.time()
                 if _state in rps.FINAL:
@@ -1430,7 +1430,7 @@ class Component(ru.Process):
 
         if pubsub not in self._publishers:
             self._log.warn("can't route '%s' notification: %s" % (pubsub,
-                self._publishers.keys()))
+                list(self._publishers.keys())))
             return
 
           # raise RuntimeError("can't route '%s' notification: %s" % (pubsub,

@@ -103,13 +103,13 @@ class Default(PMGRLaunchingComponent):
         #        and set the pilot states to CANCELED.  This will confluct with
         #        disconnect/reconnect semantics.
         with self._pilots_lock:
-            pids = self._pilots.keys()
+            pids = list(self._pilots.keys())
 
         self._cancel_pilots(pids)
         self._kill_pilots(pids)
 
         with self._cache_lock:
-            for url,js in self._saga_js_cache.iteritems():
+            for url,js in self._saga_js_cache.items():
                 self._log.debug('close  js to %s', url)
                 js.close()
                 self._log.debug('closed js to %s', url)
@@ -376,9 +376,9 @@ class Default(PMGRLaunchingComponent):
         with self._pilots_lock:
             self._log.debug('killing pilots: %s', 
                               [p['pilot'].get('cancel_requested', 0) 
-                               for p in self._pilots.values()])
+                               for p in list(self._pilots.values())])
             last_cancel = max([p['pilot'].get('cancel_requested', 0) 
-                               for p in self._pilots.values()])
+                               for p in list(self._pilots.values())])
 
         self._log.debug('killing pilots: last cancel: %s', last_cancel)
 
@@ -852,7 +852,7 @@ class Default(PMGRLaunchingComponent):
             # use dict as is
             agent_cfg = agent_config
 
-        elif isinstance(agent_config, basestring):
+        elif isinstance(agent_config, str):
             try:
                 # interpret as a config name
                 agent_cfg_file = os.path.join(self._conf_dir, "agent_%s.json" % agent_config)
@@ -1170,7 +1170,7 @@ class Default(PMGRLaunchingComponent):
         jd.environment           = dict()
 
         # we set any saga_jd_supplement keys which are not already set above
-        for key, val in saga_jd_supplement.iteritems():
+        for key, val in saga_jd_supplement.items():
             if not jd[key]:
                 self._log.debug('supplement %s: %s', key, val)
                 jd[key] = val
