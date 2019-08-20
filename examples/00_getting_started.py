@@ -6,6 +6,7 @@ __license__   = 'MIT'
 import os
 import sys
 import time
+import random
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -61,7 +62,8 @@ if __name__ == '__main__':
                    'project'       : config[resource]['project'],
                    'queue'         : config[resource]['queue'],
                    'access_schema' : config[resource]['schema'],
-                   'cores'         : config[resource]['cores'],
+                   'cores'         : 32,
+                   'gpus'          : 8
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
@@ -86,8 +88,9 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = '/bin/date'
-            cud.gpu_processes    = 0
+            cud.executable       = '/bin/sleep'
+            cud.arguments        = ['%d' % random.randint(1,5)]
+            cud.gpu_processes    = random.randint(0,1)
             cud.cpu_processes    = 1
             cud.cpu_threads      = 1
             cud.cpu_process_type = rp.POSIX
