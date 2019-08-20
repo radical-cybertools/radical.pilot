@@ -444,11 +444,14 @@ class AgentSchedulingComponent(rpu.Component):
 
         raise NotImplementedError('_allocate_slot needs to be implemented.')
 
+
     # --------------------------------------------------------------------------
     #
     def _release_slot(self, slots):
 
         raise NotImplementedError('_release_slot needs to be implemented.')
+
+
     # --------------------------------------------------------------------------
     #
     def _schedule_units(self, units):
