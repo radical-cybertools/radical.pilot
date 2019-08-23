@@ -2,8 +2,77 @@
 import os
 import glob
 
-import radical.utils               as ru
-from   radical.pilot import states as rps
+import radical.utils as ru
+
+from ..       import states as rps
+from .session import fetch_json
+
+
+# ------------------------------------------------------------------------------
+#
+# pilot and unit activities: core hours are derived by multiplying the
+# respective time durations with pilot size / unit size.  The 'idle' utilization
+# and the 'agent' utilization are derived separately.
+#
+# Note that durations should add up to the `x_total` generations to ensure
+# accounting for the complete unit/pilot utilization.
+#
+PILOT_DURATIONS = {
+        'p_total'     : [{ru.EVENT: 'bootstrap_0_start'},
+                         {ru.EVENT: 'bootstrap_0_stop' }],
+
+        'p_boot'      : [{ru.EVENT: 'bootstrap_0_start'},
+                         {ru.EVENT: 'sync_rel'         }],
+        'p_setup_1'   : [{ru.EVENT: 'sync_rel'         },
+                         {ru.STATE: rps.PMGR_ACTIVE    }],  # FIXME
+        'p_rte'       : [{ru.STATE: rps.PMGR_ACTIVE    },   # FIXME
+                         {ru.STATE: rps.PMGR_ACTIVE    }],  # FIXME
+        'p_setup_2'   : [{ru.STATE: rps.PMGR_ACTIVE    },   # FIXME
+                         {ru.STATE: rps.PMGR_ACTIVE    }],  # FIXME
+        'p_uexec'     : [{ru.STATE: rps.PMGR_ACTIVE    },   # FIXME
+                         {ru.EVENT: 'cmd'              }],
+        'p_term'      : [{ru.EVENT: 'cmd'              },
+                         {ru.EVENT: 'bootstrap_0_stop' }]}
+
+UNIT_DURATIONS = {
+        'u_total'     : [{ru.EVENT: 'schedule_ok'      },
+                         {ru.EVENT: 'unschedule_stop'  }],
+
+        'u_equeue'    : [{ru.EVENT: 'schedule_ok'      },
+                         {ru.STATE: rps.AGENT_EXECUTING}],
+        'u_eprep'     : [{ru.STATE: rps.AGENT_EXECUTING},
+                         {ru.EVENT: 'exec_start'       }],
+        'u_exec_rp'   : [{ru.EVENT: 'exec_start'       },
+                         {ru.EVENT: 'cu_start'         }],
+        'u_exec_cu'   : [{ru.EVENT: 'cu_start'         },
+                         {ru.EVENT: 'cu_exec_start'    }],
+        'u_exec_rte'  : [{ru.EVENT: 'cu_exec_start'    },   # FIXME
+                         {ru.EVENT: 'cu_exec_start'    }],  # FIXME
+        'u_exec_app'  : [{ru.EVENT: 'cu_exec_start'    },
+                         {ru.EVENT: 'cu_exec_stop'     }],
+        # FIXME: separate contributions
+        'u_unschedule': [{ru.EVENT: 'cu_exec_stop'     },
+                         {ru.EVENT: 'unschedule_stop'  }]}
+
+DERIVED_DURATIONS = ['p_agent', 'p_idle', 'p_setup']
+
+# These are all keys from above, minus those which are subsumed in derived
+# durations, plus those very derived durations
+ORDERED_KEYS      = [
+                     'p_boot',
+                     'p_setup',
+                     'p_rte',
+                     'u_equeue',
+                     'u_eprep',
+                     'u_exec_rp',
+                     'u_exec_cu',
+                     'u_exec_rte',
+                     'u_exec_app',
+                     'u_unschedule',
+                     'p_idle',
+                     'p_term',
+                     'p_agent',
+                    ]
 
 
 # ------------------------------------------------------------------------------
@@ -58,7 +127,7 @@ def get_hostmap_deprecated(profiles):
 
 
 # ------------------------------------------------------------------------------
-# 
+#
 def get_session_profile(sid, src=None):
 
     if not src:
@@ -74,8 +143,8 @@ def get_session_profile(sid, src=None):
         profiles = fetch_profiles(sid=sid, skip_existing=True)
 
     #  filter out some frequent, but uninteresting events
-    efilter = {ru.EVENT : ['publish', 'work start', 'work done'], 
-               ru.MSG   : ['update unit state', 'unit update pushed', 
+    efilter = {ru.EVENT : ['publish', 'work start', 'work done'],
+               ru.MSG   : ['update unit state', 'unit update pushed',
                             'bulked', 'bulk size']
               }
 
@@ -92,7 +161,7 @@ def get_session_profile(sid, src=None):
 
 
 # ------------------------------------------------------------------------------
-# 
+#
 def get_session_description(sid, src=None, dburl=None):
     """
     This will return a description which is usable for radical.analytics
@@ -109,8 +178,6 @@ def get_session_description(sid, src=None, dburl=None):
     a database.  The dburl value defaults to `RADICAL_PILOT_DBURL`.
     """
 
-    from radical.pilot import states as rps
-    from .session      import fetch_json
 
     if not src:
         src = "%s/%s" % (os.getcwd(), sid)
