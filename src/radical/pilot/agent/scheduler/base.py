@@ -440,6 +440,20 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _allocate_slot(self, cud):
+
+        raise NotImplementedError('_allocate_slot needs to be implemented.')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _release_slot(self, slots):
+
+        raise NotImplementedError('_release_slot needs to be implemented.')
+
+
+    # --------------------------------------------------------------------------
+    #
     def _schedule_units(self, units):
         '''
         This is the main callback of the component, which is calledfor any
