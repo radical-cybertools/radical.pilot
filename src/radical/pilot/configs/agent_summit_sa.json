@@ -39,7 +39,7 @@
         # the update worker must live in agent_0, since only that agent is
         # sure to have connectivity toward the DB.
       # "AgentStagingInputComponent"  : {"count" : 1},
-      # "AgentSchedulingComponent"    : {"count" : 1},
+        "AgentSchedulingComponent"    : {"count" : 1},
       # "AgentExecutingComponent"     : {"count" : 1},
       # "AgentStagingOutputComponent" : {"count" : 1},
         "UpdateWorker"                : {"count" : 1}
@@ -49,30 +49,34 @@
         "agent_1": {
             "target": "node",
             "components": {
-                "AgentSchedulingComponent"    : {"count" : 1},
                 "AgentStagingInputComponent"  : {"count" : 1},
                 "AgentStagingOutputComponent" : {"count" : 1},
                 "AgentExecutingComponent"     : {"count" : 1}
             }
-      # },
-      # "agent_2": {
-      #     "target": "node",
-      #     "components": {
-      #         "AgentStagingOutputComponent" : {"count" : 1},
-      #         "AgentExecutingComponent"     : {"count" : 1}
-      #     }
-      # },
-      # "agent_3": {
-      #     "target": "node",
-      #     "components": {
-      #         "AgentExecutingComponent"     : {"count" : 1}
-      #     }
-      # },
-      # "agent_4": {
-      #     "target": "node",
-      #     "components": {
-      #         "AgentExecutingComponent"     : {"count" : 1}
-      #     }
+        },
+        "agent_2": {
+            "target": "node",
+            "components": {
+                "AgentStagingInputComponent"  : {"count" : 1},
+                "AgentStagingOutputComponent" : {"count" : 1},
+                "AgentExecutingComponent"     : {"count" : 1}
+            }
+        },
+        "agent_3": {
+            "target": "node",
+            "components": {
+                "AgentStagingInputComponent"  : {"count" : 1},
+                "AgentStagingOutputComponent" : {"count" : 1},
+                "AgentExecutingComponent"     : {"count" : 1}
+            }
+        },
+        "agent_4": {
+            "target": "node",
+            "components": {
+                "AgentStagingInputComponent"  : {"count" : 1},
+                "AgentStagingOutputComponent" : {"count" : 1},
+                "AgentExecutingComponent"     : {"count" : 1}
+            }
       # },
       # "agent_5": {
       #     "target": "node",

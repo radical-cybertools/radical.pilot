@@ -59,7 +59,7 @@ PILOT_DURATIONS = {
 }
 
 
-UNIT_DURATIONS_FORK = {
+UNIT_DURATIONS_DEFAULT = {
         'consume' : {
             'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
                              {ru.STATE: rps.AGENT_EXECUTING      }],
@@ -89,8 +89,8 @@ UNIT_DURATIONS_PRTE = {
             'exec_rp'     : [{ru.EVENT: 'exec_start'             },
                              {ru.EVENT: 'cu_start'               }],
             'exec_sh'     : [{ru.EVENT: 'cu_start'               },
-                             {ru.EVENT: 'prte_init_complete'     }],
-            'prte_phase_1': [{ru.EVENT: 'prte_init_complete'     },
+                             {ru.EVENT: 'cu_exec_start'          }],
+            'prte_phase_1': [{ru.EVENT: 'cu_exec_start'          },
                              {ru.EVENT: 'prte_sending_launch_msg'}],
             'prte_phase_2': [{ru.EVENT: 'prte_sending_launch_msg'},
                              {ru.EVENT: 'app_start'              }],
@@ -539,9 +539,11 @@ def get_consumed_resources(session):
     for pilot in session.get(etype='pilot'):
 
         if pilot.cfg['task_launch_method'] == 'PRTE':
+            print 'using prte configuration'
             unit_durations = UNIT_DURATIONS_PRTE
         else:
-            unit_durations = UNIT_DURATIONS_FORK
+            print 'using default configuration'
+            unit_durations = UNIT_DURATIONS_DEFAULT
 
         p_min = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][0])[ 0]
         p_max = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][1])[-1]
@@ -792,17 +794,25 @@ def _get_unit_consumption(session, unit):
     if pilot.cfg['task_launch_method'] == 'PRTE':
         unit_durations = UNIT_DURATIONS_PRTE
     else:
-        unit_durations = UNIT_DURATIONS_FORK
+        unit_durations = UNIT_DURATIONS_DEFAULT
 
     ret = dict()
+    print
     for metric in unit_durations['consume']:
 
         boxes = list()
         t0, t1 = get_duration(unit, unit_durations['consume'][metric])
 
+
         if t0 is not None:
+            print '%s: %-15s : %10.3f - %10.3f = %10.3f' \
+                % (unit.uid, metric, t1, t0, t1 - t0)
             for r in resources:
                 boxes.append([t0, t1, r[0], r[1]])
+
+        else:
+            print '%s: %-15s : -------------- ' % (unit.uid, metric)
+            unit_durations['consume'][metric]
 
         ret[metric] = {uid: boxes}
 
@@ -810,3 +820,4 @@ def _get_unit_consumption(session, unit):
 
 
 # ------------------------------------------------------------------------------
+
