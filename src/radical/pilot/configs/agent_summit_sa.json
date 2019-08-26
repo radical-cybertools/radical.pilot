@@ -51,32 +51,32 @@
             "components": {
                 "AgentStagingInputComponent"  : {"count" : 1},
                 "AgentStagingOutputComponent" : {"count" : 1},
-                "AgentExecutingComponent"     : {"count" : 4}
+                "AgentExecutingComponent"     : {"count" : 1}
             }
-      # },
-      # "agent_2": {
-      #     "target": "node",
-      #     "components": {
-      #         "AgentStagingInputComponent"  : {"count" : 1},
-      #         "AgentStagingOutputComponent" : {"count" : 1},
-      #         "AgentExecutingComponent"     : {"count" : 4}
-      #     }
-      # },
-      # "agent_3": {
-      #     "target": "node",
-      #     "components": {
-      #         "AgentStagingInputComponent"  : {"count" : 1},
-      #         "AgentStagingOutputComponent" : {"count" : 1},
-      #         "AgentExecutingComponent"     : {"count" : 4}
-      #     }
-      # },
-      # "agent_4": {
-      #     "target": "node",
-      #     "components": {
-      #         "AgentStagingInputComponent"  : {"count" : 1},
-      #         "AgentStagingOutputComponent" : {"count" : 1},
-      #         "AgentExecutingComponent"     : {"count" : 4}
-      #     }
+        },
+        "agent_2": {
+            "target": "node",
+            "components": {
+                "AgentStagingInputComponent"  : {"count" : 1},
+                "AgentStagingOutputComponent" : {"count" : 1},
+                "AgentExecutingComponent"     : {"count" : 1}
+            }
+        },
+        "agent_3": {
+            "target": "node",
+            "components": {
+                "AgentStagingInputComponent"  : {"count" : 1},
+                "AgentStagingOutputComponent" : {"count" : 1},
+                "AgentExecutingComponent"     : {"count" : 1}
+            }
+        },
+        "agent_4": {
+            "target": "node",
+            "components": {
+                "AgentStagingInputComponent"  : {"count" : 1},
+                "AgentStagingOutputComponent" : {"count" : 1},
+                "AgentExecutingComponent"     : {"count" : 1}
+            }
       # },
       # "agent_5": {
       #     "target": "node",

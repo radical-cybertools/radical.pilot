@@ -51,9 +51,9 @@ class LaunchMethod(object):
     #        cud.pre_exec, and then should also export those.  That would make
     #        our launch script ore complicated though...
     EXPORT_ENV_VARIABLES = [
-        'LD_LIBRARY_PATH',
-        'PATH',
-        'PYTHONPATH',
+      # 'LD_LIBRARY_PATH',
+      # 'PATH',
+      # 'PYTHONPATH',
         'OMP_NUM_THREADS',
         'CUDA_VISIBLE_DEVICES',
         'RP_AGENT_ID',

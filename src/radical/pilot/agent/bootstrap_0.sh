@@ -1739,9 +1739,9 @@ export PYTHONPATH=$PYTHONPATH
 
 # run agent in debug mode
 # FIXME: make option again?
-export RADICAL_VERBOSE=DEBUG
-export RADICAL_UTIL_VERBOSE=DEBUG
-export RADICAL_PILOT_VERBOSE=DEBUG
+export RADICAL_VERBOSE=ERROR
+export RADICAL_UTIL_VERBOSE=ERROR
+export RADICAL_PILOT_VERBOSE=ERROR
 
 # the agent will *always* use the dburl from the config file, not from the env
 # FIXME: can we better define preference in the session ctor?

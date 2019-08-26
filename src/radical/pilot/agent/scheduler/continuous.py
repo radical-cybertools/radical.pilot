@@ -71,6 +71,8 @@ class Continuous(AgentSchedulingComponent):
         self._scattered     = None
         self._oversubscribe = None
 
+        self.old_index = 0
+
 
     # --------------------------------------------------------------------------
     #
@@ -650,7 +652,14 @@ class Continuous(AgentSchedulingComponent):
       # self._log.debug('req2: %s %s %s %s', requested_cores, requested_gpus,
       #                                      requested_lfs, requested_mem)
         # start the search
-        for node in self.nodes:
+
+        search_nodes = nodes[self.old_index:] + nodes[:self.old_index]
+        old_index -= 1
+        for node in search_nodes:
+
+            self.old_index += 1
+            if self.old_index >= len(nodes):
+                self.old_index = 0
 
           # self._log.debug('req3: %s %s %s %s', requested_cores, requested_gpus,
           #                                      requested_lfs, requested_mem)

@@ -422,6 +422,7 @@ class AgentSchedulingComponent(rpu.Component):
         '''
         Returns a multi-line string corresponding to the status of the node list
         '''
+        return '-'
 
         glyphs = {rpc.FREE : '-',
                   rpc.BUSY : '#',
@@ -684,6 +685,17 @@ class AgentSchedulingComponent(rpu.Component):
         return True
 
 
+    def get_unit_tuple(self, unit):
+        d = unit['description']
+        return [d.get('cpu_processes', 1), d.get('cpu_threads'), d.get('gpu_processes', 0)]
+    
+    
+    def cmp_unit_tuple(self,  a, b):
+        if a[0] >= b[0] and a[1] >= b[1] and a[2] >= b[2]:
+            return False
+        return True
+
+
     # --------------------------------------------------------------------------
     #
     def schedule_cb(self, topic, msg):
@@ -708,7 +720,17 @@ class AgentSchedulingComponent(rpu.Component):
         # cycle through wait queue, and see if we get anything placed now.  We
         # cycle over a copy of the list, so that we can modify the list on the
         # fly,without locking the whole loop.  However, this is costly, too.
+        last_size = None
         for unit in self._wait_pool[:]:
+
+            this_size = self.get_unit_tuple(unit)
+            if last_size == None:
+                last_size = this_size
+            else:
+                if self.cmp_unit_tuple(this_size, last_size):
+                    self._prof.prof('schedule_skip', uid=unit['uid'])
+                    continue
+
 
             if self._try_allocation(unit):
 

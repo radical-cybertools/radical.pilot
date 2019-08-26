@@ -61,7 +61,7 @@ if __name__ == '__main__':
                    'project'       : config[resource]['project'],
                    'queue'         : config[resource]['queue'],
                    'access_schema' : config[resource]['schema'],
-                   'cores'         : config[resource]['cores'],
+                   'cores'         : 4 * 41 * 10
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
@@ -88,8 +88,8 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
             cud.executable       = '/bin/date'
             cud.gpu_processes    = 0
-            cud.cpu_processes    = 1
-            cud.cpu_threads      = 1
+            cud.cpu_processes    = 20
+            cud.cpu_threads      = 4
             cud.cpu_process_type = rp.POSIX
             cud.cpu_thread_type  = rp.POSIX
             cuds.append(cud)
