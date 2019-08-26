@@ -223,7 +223,11 @@ class AgentSchedulingComponent(rpu.Component):
         else:
             self._uniform_wl = False
 
+        self._too_large = None
+      # print 'reset (new)'
+
         rpu.Component.__init__(self, cfg, session)
+
 
 
 
@@ -681,6 +685,9 @@ class AgentSchedulingComponent(rpu.Component):
             self._log.debug("after  unschedule %s: %s", unit['uid'],
                             self.slot_status())
 
+      # print 'reset (free)'
+        self._too_large = None
+
         # return True to keep the cb registered
         return True
 
@@ -688,12 +695,14 @@ class AgentSchedulingComponent(rpu.Component):
     def get_unit_tuple(self, unit):
         d = unit['description']
         return [d.get('cpu_processes', 1), d.get('cpu_threads'), d.get('gpu_processes', 0)]
-    
-    
-    def cmp_unit_tuple(self,  a, b):
-        if a[0] >= b[0] and a[1] >= b[1] and a[2] >= b[2]:
-            return False
-        return True
+
+
+    def small_enough(self,  this_size, too_large):
+        if this_size[0] < too_large[0] or \
+           this_size[1] < too_large[1] or \
+           this_size[2] < too_large[2]:
+            return True
+        return False
 
 
     # --------------------------------------------------------------------------
@@ -720,16 +729,21 @@ class AgentSchedulingComponent(rpu.Component):
         # cycle through wait queue, and see if we get anything placed now.  We
         # cycle over a copy of the list, so that we can modify the list on the
         # fly,without locking the whole loop.  However, this is costly, too.
-        last_size = None
+      # self._too_large = None
         for unit in self._wait_pool[:]:
 
             this_size = self.get_unit_tuple(unit)
-            if last_size == None:
-                last_size = this_size
-            else:
-                if self.cmp_unit_tuple(this_size, last_size):
+          # print
+          # print 'last : %s' % self._too_large
+          # print 'this : %s [%s]' % (this_size, unit['uid'])
+            if self._too_large is not None:
+              # print 'small" %s' % self.small_enough(this_size, self._too_large)
+                if not self.small_enough(this_size, self._too_large):
+                  # print 'skip'
                     self._prof.prof('schedule_skip', uid=unit['uid'])
                     continue
+
+          # print 'try'
 
 
             if self._try_allocation(unit):
@@ -743,6 +757,7 @@ class AgentSchedulingComponent(rpu.Component):
                     self._wait_pool.remove(unit)
 
             else:
+                self._too_large = this_size
                 if self._uniform_wl:
                     break
 

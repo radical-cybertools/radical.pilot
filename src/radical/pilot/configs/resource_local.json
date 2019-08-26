@@ -28,7 +28,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "cores_per_node"              : 12,
+        "cores_per_node"              : 10,
         "gpus_per_node"               : 1,
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 1024,

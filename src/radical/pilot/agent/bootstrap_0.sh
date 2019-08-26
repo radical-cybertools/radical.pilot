@@ -227,7 +227,7 @@ timeout()
         kill $PID_2 2>&1 > /dev/null
     }
     trap timetrap USR1
-    
+
     rm -f $RET
     ($COMMAND;       echo "$?" >> $RET; /bin/kill -s USR1 $$) & PID_1=$!
     (sleep $TIMEOUT; echo "1"  >> $RET; /bin/kill -s USR1 $$) & PID_2=$!
@@ -406,7 +406,7 @@ rehash()
     #       channel for some reason, so does not need the cert bundle.
     #       see https://github.com/pypa/pip/issues/2130
     #       ca-cert bundle from http://curl.haxx.se/docs/caextract.html
-    
+
     # NOTE: Condor does not support staging into some arbitrary
     #       directory, so we may find the dists in pwd
     CA_CERT_GZ="$SESSION_SANDBOX/cacert.pem.gz"
@@ -915,7 +915,7 @@ virtenv_create()
     if test "$python_dist" = "default"
     then
 
-        # by default, we download an older 1.9.x version of virtualenv as this 
+        # by default, we download an older 1.9.x version of virtualenv as this
         # seems to work more reliable than newer versions, on some machines.
         # Only on machines where the system virtenv seems to be more stable or
         # where 1.9 is known to fail, we use the system ve.
@@ -1025,7 +1025,7 @@ virtenv_create()
     else
         echo "Setuptools will not be updated"
     fi
-    
+
     # NOTE: new releases of pip deprecate options we depend upon.  While the pip
     #       developers discuss if those options will get un-deprecated again,
     #       fact is that there are released pip versions around which do not
@@ -1429,7 +1429,7 @@ echo "# -------------------------------------------------------------------"
 #    -w   execute commands before bootstrapping phase 2: the worker
 #    -x   exit cleanup - delete pilot sandbox, virtualenv etc. after completion
 #    -y   runtime limit
-# 
+#
 while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
     case $OPTION in
         a)  SESSION_SANDBOX="$OPTARG"  ;;
@@ -1469,7 +1469,7 @@ export _OLD_VIRTUAL_PS1
 
 # derive some var names from given args
 if test -z "$SESSION_SANDBOX"
-then  
+then
     SESSION_SANDBOX="$PILOT_SANDBOX/.."
 fi
 
@@ -1557,10 +1557,10 @@ get_tunnel(){
 
     if test -z "$BIND_ADDRESS"
     then
-        BIND_ADDRESS=$(ip addr 
-                     | grep 'state UP' -A2 
-                     | grep 'inet' 
-                     | awk '{print $2}' 
+        BIND_ADDRESS=$(ip addr
+                     | grep 'state UP' -A2
+                     | grep 'inet'
+                     | awk '{print $2}'
                      | cut -f1 -d'/')
       # BIND_ADDRESS="127.0.0.1"
     fi
@@ -1739,9 +1739,9 @@ export PYTHONPATH=$PYTHONPATH
 
 # run agent in debug mode
 # FIXME: make option again?
-export RADICAL_VERBOSE=ERROR
-export RADICAL_UTIL_VERBOSE=ERROR
-export RADICAL_PILOT_VERBOSE=ERROR
+export RADICAL_VERBOSE=DEBUG
+export RADICAL_UTIL_VERBOSE=DEBUG
+export RADICAL_PILOT_VERBOSE=DEBUG
 
 # the agent will *always* use the dburl from the config file, not from the env
 # FIXME: can we better define preference in the session ctor?
@@ -1796,16 +1796,16 @@ profile_event 'sync_rel' 'agent_0 start'
 # # I am ashamed that we have to resort to this -- lets hope it's temporary...
 # cat > packer.sh <<EOT
 # #!/bin/sh
-# 
+#
 # PROFILES_TARBALL="$PILOT_ID.prof.tgz"
 # LOGFILES_TARBALL="$PILOT_ID.log.tgz"
-# 
+#
 # echo "start packing profiles / logfiles [\$(date)]"
 # while ! test -e exit.signal
 # do
-#     
+#
 #     if test -z "\$(ls *.prof )"
-#     then 
+#     then
 #         echo "skip  packing profiles [\$(date)]"
 #     else
 #         echo "check packing profiles [\$(date)]"
@@ -1815,8 +1815,8 @@ profile_event 'sync_rel' 'agent_0 start'
 #         mv       "\$PROFILES_TARBALL.tmp" "\$PROFILES_TARBALL"
 #         rm -rf prof/
 #     fi
-# 
-# 
+#
+#
 #     # we always have a least the cfg file
 #     if true
 #     then
@@ -1827,7 +1827,7 @@ profile_event 'sync_rel' 'agent_0 start'
 #         mv       "\$LOGFILES_TARBALL.tmp" "\$LOGFILES_TARBALL"
 #         rm -rf log/
 #     fi
-# 
+#
 #     ls -l *.tgz
 #     sleep 10
 # done
@@ -1852,7 +1852,7 @@ while true
 do
     sleep 3
     if kill -0 $AGENT_PID 2>/dev/null
-    then 
+    then
         if test -e "./killme.signal"
         then
             profile_event 'killme' "`date --rfc-3339=ns | cut -c -23`"
@@ -1866,7 +1866,7 @@ do
             echo "send SIGKILL to $AGENT_PID ($$)"
             kill  -9 $AGENT_PID
         fi
-    else 
+    else
         profile_event 'agent_gone' "`date --rfc-3339=ns | cut -c -23`"
         echo "agent $AGENT_PID is gone"
         break
