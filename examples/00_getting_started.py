@@ -58,7 +58,7 @@ if __name__ == '__main__':
         pd_init = {'resource'      : resource,
                    'runtime'       : 30,  # pilot runtime (min)
                    'exit_on_error' : True,
-                   'cores'         : 100
+                   'cores'         : 4 * 41 * 14,
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
@@ -74,7 +74,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 512  # number of units to run
+        n = 1  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -85,9 +85,9 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
             cud.executable       = '/bin/date'
             cud.gpu_processes    = 0
-            cud.cpu_processes    = 8
-            cud.cpu_threads      = 1
-            cud.cpu_process_type = rp.POSIX
+            cud.cpu_processes    = 90
+            cud.cpu_threads      = 4
+            cud.cpu_process_type = rp.MPI
             cud.cpu_thread_type  = rp.POSIX
             cuds.append(cud)
             report.progress()

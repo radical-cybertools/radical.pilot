@@ -428,6 +428,8 @@ class AgentSchedulingComponent(rpu.Component):
         '''
         return '-'
 
+        return '-'
+
         glyphs = {rpc.FREE : '-',
                   rpc.BUSY : '#',
                   rpc.DOWN : '!'}
