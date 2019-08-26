@@ -802,7 +802,7 @@ def _get_unit_consumption(session, unit):
         unit_durations = UNIT_DURATIONS_DEFAULT
 
     ret = dict()
-    print
+  # print
     for metric in unit_durations['consume']:
 
         boxes = list()
@@ -810,31 +810,30 @@ def _get_unit_consumption(session, unit):
 
 
         if t0 is not None:
-            print '%s: %-15s : %10.3f - %10.3f = %10.3f' \
-                % (unit.uid, metric, t1, t0, t1 - t0)
+          # print '%s: %-15s : %10.3f - %10.3f = %10.3f' \
+          #     % (unit.uid, metric, t1, t0, t1 - t0)
             for r in resources:
                 boxes.append([t0, t1, r[0], r[1]])
 
         else:
             pass
-            print '%s: %-15s : -------------- ' % (unit.uid, metric)
-            dur = unit_durations['consume'][metric]
-            print dur
-
-            for e in dur:
-                if ru.STATE in e and ru.EVENT not in e:
-                    e[ru.EVENT] = 'state'
-
-            t0 = unit.timestamps(event=dur[0])
-            t1 = unit.timestamps(event=dur[1])
-            print t0
-            print t1
-            import pprint
-            import sys
-            for e in unit.events:
-                print '\t'.join([str(x) for x in e])
-
-            sys.exit()
+          # print '%s: %-15s : -------------- ' % (unit.uid, metric)
+          # dur = unit_durations['consume'][metric]
+          # print dur
+          #
+          # for e in dur:
+          #     if ru.STATE in e and ru.EVENT not in e:
+          #         e[ru.EVENT] = 'state'
+          #
+          # t0 = unit.timestamps(event=dur[0])
+          # t1 = unit.timestamps(event=dur[1])
+          # print t0
+          # print t1
+          # import sys
+          # for e in unit.events:
+          #     print '\t'.join([str(x) for x in e])
+          #
+          # sys.exit()
 
         ret[metric] = {uid: boxes}
 
