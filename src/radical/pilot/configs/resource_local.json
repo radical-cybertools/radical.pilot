@@ -245,7 +245,7 @@
       # "virtenv"                     : "$HOME/radical/radical.pilot.merge/ve/",
         "python_dist"                 : "default",
         "pre_bootstrap_0"             : [
-            "export PRRTE_PREFIX=$HOME/radical/prte/install/",
+            "export PRRTE_PREFIX=$HOME/radical/prte/install.tn/",
             "export PATH=$PRRTE_PREFIX/bin/:$PATH",
             "export LD_LIBRARY_PATH=$PRRTE_PREFIX/lib/:$LD_LIBRARY_PATH",
             "export PKG_CONFIG_PATH=$PRRTE_PREFIX/share/pkgconfig/:$PKG_CONFIG_PATH"

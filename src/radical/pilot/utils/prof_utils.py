@@ -68,10 +68,10 @@ UNIT_DURATIONS_FORK = {
             'exec_rp'     : [{ru.EVENT: 'exec_start'             },
                              {ru.EVENT: 'cu_start'               }],
             'exec_sh'     : [{ru.EVENT: 'cu_start'               },
-                             {ru.EVENT: 'cu_exec_start'          }],
-            'exec_app'    : [{ru.EVENT: 'cu_exec_start'          },
-                             {ru.EVENT: 'cu_exec_stop'           }],
-            'term_sh'     : [{ru.EVENT: 'cu_exec_stop'           },
+                             {ru.EVENT: 'app_start'              }],
+            'exec_app'    : [{ru.EVENT: 'app_start'              },
+                             {ru.EVENT: 'app_stop'               }],
+            'term_sh'     : [{ru.EVENT: 'app_stop'               },
                              {ru.EVENT: 'cu_stop'                }],
             'term_rp'     : [{ru.EVENT: 'cu_stop'                },
                              {ru.EVENT: 'exec_stop'              }],
@@ -89,20 +89,16 @@ UNIT_DURATIONS_PRTE = {
             'exec_rp'     : [{ru.EVENT: 'exec_start'             },
                              {ru.EVENT: 'cu_start'               }],
             'exec_sh'     : [{ru.EVENT: 'cu_start'               },
-                             {ru.EVENT: 'cu_exec_start'          }],
-            'exec_prte'   : [{ru.EVENT: 'cu_exec_start'          },
                              {ru.EVENT: 'prte_init_complete'     }],
             'prte_phase_1': [{ru.EVENT: 'prte_init_complete'     },
                              {ru.EVENT: 'prte_sending_launch_msg'}],
             'prte_phase_2': [{ru.EVENT: 'prte_sending_launch_msg'},
-                             {ru.EVENT: 'prte_running'           }],
-            'exec_app'    : [{ru.EVENT: 'prte_running'           },
-                             {ru.EVENT: 'prte_iof_complete'      }],
-            'prte_phase_3': [{ru.EVENT: 'prte_iof_complete'      },
+                             {ru.EVENT: 'app_start'              }],
+            'exec_app'    : [{ru.EVENT: 'app_start'              },
+                             {ru.EVENT: 'app_stop'               }],
+            'prte_phase_3': [{ru.EVENT: 'app_stop'               },
                              {ru.EVENT: 'prte_notify_completed'  }],
-            'term_prte'   : [{ru.EVENT: 'prte_notify_completed'  },
-                             {ru.EVENT: 'cu_exec_stop'           }],
-            'term_sh'     : [{ru.EVENT: 'cu_exec_stop'           },
+            'term_sh'     : [{ru.EVENT: 'prte_notify_completed'  },
                              {ru.EVENT: 'cu_stop'                }],
             'term_rp'     : [{ru.EVENT: 'cu_stop'                },
                              {ru.EVENT: 'exec_stop'              }],
@@ -572,6 +568,9 @@ def get_consumed_resources(session):
 
         for unit in session.get(etype='unit'):
 
+            if 'slots' not in unit.cfg:
+                continue
+
             snodes = unit.cfg['slots']['nodes']
             u_min  = unit.timestamps(event=unit_durations['consume']['exec_queue'][0])[ 0]
             u_max  = unit.timestamps(event=unit_durations['consume']['unschedule'][1])[-1]
@@ -767,6 +766,9 @@ def _get_unit_consumption(session, unit):
     nodes, anodes, pnodes = _get_nodes(pilot)
 
     # Units consume only those resources they are scheduled on.
+    if 'slots' not in unit.cfg:
+        return dict()
+
     snodes    = unit.cfg['slots']['nodes']
     resources = list()
     for snode in snodes:
