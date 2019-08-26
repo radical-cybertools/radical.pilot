@@ -32,7 +32,6 @@ PILOT_DURATIONS = {
         # workload management (accounted for in the unit consumption metrics),
         # or the pilot is starving for workload.
         #
-        # FIXME: determine idle times
         'consume' : {
             'boot'      : [{ru.EVENT: 'bootstrap_0_start'},
                            {ru.EVENT: 'sync_rel'         }],
@@ -63,15 +62,15 @@ UNIT_DURATIONS_DEFAULT = {
         'consume' : {
             'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
                              {ru.STATE: rps.AGENT_EXECUTING      }],
-            'eprep'       : [{ru.STATE: rps.AGENT_EXECUTING      },
+            'exec_prep'   : [{ru.STATE: rps.AGENT_EXECUTING      },
                              {ru.EVENT: 'exec_start'             }],
             'exec_rp'     : [{ru.EVENT: 'exec_start'             },
                              {ru.EVENT: 'cu_start'               }],
             'exec_sh'     : [{ru.EVENT: 'cu_start'               },
-                             {ru.EVENT: 'app_start'              }],
-            'exec_app'    : [{ru.EVENT: 'app_start'              },
-                             {ru.EVENT: 'app_stop'               }],
-            'term_sh'     : [{ru.EVENT: 'app_stop'               },
+                             {ru.EVENT: 'cmd_start'              }],
+            'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
+                             {ru.EVENT: 'cmd_stop'               }],
+            'term_sh'     : [{ru.EVENT: 'cmd_stop'               },
                              {ru.EVENT: 'cu_stop'                }],
             'term_rp'     : [{ru.EVENT: 'cu_stop'                },
                              {ru.EVENT: 'exec_stop'              }],
@@ -84,19 +83,19 @@ UNIT_DURATIONS_PRTE = {
         'consume' : {
             'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
                              {ru.STATE: rps.AGENT_EXECUTING      }],
-            'eprep'       : [{ru.STATE: rps.AGENT_EXECUTING      },
+            'exec_prep'   : [{ru.STATE: rps.AGENT_EXECUTING      },
                              {ru.EVENT: 'exec_start'             }],
             'exec_rp'     : [{ru.EVENT: 'exec_start'             },
                              {ru.EVENT: 'cu_start'               }],
             'exec_sh'     : [{ru.EVENT: 'cu_start'               },
                              {ru.EVENT: 'cu_exec_start'          }],
             'prte_phase_1': [{ru.EVENT: 'cu_exec_start'          },
-                             {ru.EVENT: 'prte_sending_launch_msg'}],
-            'prte_phase_2': [{ru.EVENT: 'prte_sending_launch_msg'},
-                             {ru.EVENT: 'app_start'              }],
-            'exec_app'    : [{ru.EVENT: 'app_start'              },
-                             {ru.EVENT: 'app_stop'               }],
-            'prte_phase_3': [{ru.EVENT: 'app_stop'               },
+                             {ru.EVENT: 'prte_init_complete'     }],
+            'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
+                             {ru.EVENT: 'cmd_start'              }],
+            'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
+                             {ru.EVENT: 'cmd_stop'               }],
+            'prte_phase_3': [{ru.EVENT: 'cmd_stop'               },
                              {ru.EVENT: 'prte_notify_completed'  }],
             'term_sh'     : [{ru.EVENT: 'prte_notify_completed'  },
                              {ru.EVENT: 'cu_stop'                }],
@@ -107,25 +106,32 @@ UNIT_DURATIONS_PRTE = {
         }
 }
 
-DERIVED_DURATIONS = ['p_agent', 'p_idle', 'p_setup']
-
-# These are all keys from above, minus those which are subsumed in derived
-# durations, plus those very derived durations
-ORDERED_KEYS      = [
-                     'p_boot',
-                     'p_setup',
-                     'p_rte',
-                     'u_equeue',
-                     'u_eprep',
-                     'u_exec_rp',
-                     'u_exec_cu',
-                     'u_exec_rte',
-                     'u_exec_app',
-                     'u_unschedule',
-                     'p_idle',
-                     'p_term',
-                     'p_agent',
-                    ]
+UNIT_DURATIONS_PRTE = {
+        'consume' : {
+            'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
+                             {ru.STATE: rps.AGENT_EXECUTING      }],
+            'exec_prep'   : [{ru.STATE: rps.AGENT_EXECUTING      },
+                             {ru.EVENT: 'exec_start'             }],
+            'exec_rp'     : [{ru.EVENT: 'exec_start'             },
+                             {ru.EVENT: 'cu_start'               }],
+            'exec_sh'     : [{ru.EVENT: 'cu_start'               },
+                             {ru.EVENT: 'cu_exec_start'          }],
+            'prte_phase_1': [{ru.EVENT: 'cu_exec_start'          },
+                             {ru.EVENT: 'prte_init_complete'     }],
+            'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
+                             {ru.EVENT: 'prte_sending_launch_msg'}],
+            'exec_cmd'    : [{ru.EVENT: 'prte_sending_launch_msg'},
+                             {ru.EVENT: 'prte_iof_complete'      }],
+            'prte_phase_3': [{ru.EVENT: 'prte_iof_complete'      },
+                             {ru.EVENT: 'prte_notify_completed'  }],
+            'term_sh'     : [{ru.EVENT: 'prte_notify_completed'  },
+                             {ru.EVENT: 'cu_stop'                }],
+            'term_rp'     : [{ru.EVENT: 'cu_stop'                },
+                             {ru.EVENT: 'exec_stop'              }],
+            'unschedule'  : [{ru.EVENT: 'exec_stop'              },
+                             {ru.EVENT: 'unschedule_stop'        }]
+        }
+}
 
 
 # ------------------------------------------------------------------------------
@@ -230,7 +236,6 @@ def get_session_description(sid, src=None, dburl=None):
     if `dburl` is given, its value is used to fetch session information from
     a database.  The dburl value defaults to `RADICAL_PILOT_DBURL`.
     """
-
 
     if not src:
         src = "%s/%s" % (os.getcwd(), sid)
@@ -811,8 +816,25 @@ def _get_unit_consumption(session, unit):
                 boxes.append([t0, t1, r[0], r[1]])
 
         else:
+            pass
             print '%s: %-15s : -------------- ' % (unit.uid, metric)
-            unit_durations['consume'][metric]
+            dur = unit_durations['consume'][metric]
+            print dur
+
+            for e in dur:
+                if ru.STATE in e and ru.EVENT not in e:
+                    e[ru.EVENT] = 'state'
+
+            t0 = unit.timestamps(event=dur[0])
+            t1 = unit.timestamps(event=dur[1])
+            print t0
+            print t1
+            import pprint
+            import sys
+            for e in unit.events:
+                print '\t'.join([str(x) for x in e])
+
+            sys.exit()
 
         ret[metric] = {uid: boxes}
 
