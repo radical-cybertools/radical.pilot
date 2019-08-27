@@ -478,16 +478,18 @@ class AgentSchedulingComponent(rpu.Component):
         # advance state, publish state change, do not push unit out.
         self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
 
-      # # sort units by size
-      # def _sort(a,b):
-      #     da = a['description']
-      #     db = b['description']
-      #     va = da['cpu_processes'] * da['cpu_threads'] + da['gpu_processes']
-      #     vb = db['cpu_processes'] * db['cpu_threads'] + db['gpu_processes']
-      #     return cmp(vb, va)
-      # units.sort(_sort)
-
+        # make sure we have a unit size estimate
         for unit in units:
+            self.set_tuple_size(unit)
+
+        # try largest units first
+        to_wait = list()
+        for unit in sorted(units, key=lambda x: x['tuple_size'][0]):
+
+            if not self.small_enough(unit):
+                self._prof.prof('schedule_skip', uid=unit['uid'])
+                continue
+
 
             # we got a new unit to schedule.  Either we can place it
             # straight away and move it to execution, or we have to
@@ -498,13 +500,14 @@ class AgentSchedulingComponent(rpu.Component):
                 # component.
                 self.advance(unit, rps.AGENT_EXECUTING_PENDING,
                              publish=True, push=True)
+
             else:
                 # no resources available, put in wait queue
-                with self._wait_lock:
-                    self._wait_pool.append(unit)
+                self.update_too_large(unit)
+                to_wait.append(unit)
 
-      # # also sort the wait pool
-      # self._wait_pool.sort(_sort)
+        with self._wait_lock:
+            self._wait_pool.extend(to_wait)
 
 
     # --------------------------------------------------------------------------
@@ -659,9 +662,9 @@ class AgentSchedulingComponent(rpu.Component):
         release (for whatever reason) all slots allocated to this unit
         '''
 
-        unit = msg
-
+        unit  = msg
         slots = unit.get('slots')
+        self._prof.prof('unschedule_start', uid=unit['uid'])
 
         if not slots:
             # Nothing to do
@@ -675,9 +678,9 @@ class AgentSchedulingComponent(rpu.Component):
         # needs to be locked as we try to release slots, but slots are acquired
         # in a different thread....
         with self._slot_lock:
-            self._prof.prof('unschedule_start', uid=unit['uid'])
             self._release_slot(slots)
-            self._prof.prof('unschedule_stop',  uid=unit['uid'])
+
+        self._prof.prof('unschedule_stop',  uid=unit['uid'])
 
         # notify the scheduling thread, ie. trigger an attempt to use the freed
         # slots for units waiting in the wait pool.
@@ -687,23 +690,66 @@ class AgentSchedulingComponent(rpu.Component):
             self._log.debug("after  unschedule %s: %s", unit['uid'],
                             self.slot_status())
 
-      # print 'reset (free)'
-        self._too_large = None
-
         # return True to keep the cb registered
         return True
 
 
-    def get_unit_tuple(self, unit):
+    # --------------------------------------------------------------------------
+    #
+    def set_tuple_size(self, unit):
+        '''
+        if we get resources freed, we dig through the list of waiting tasks to
+        see which we can schedule.  When failing to schedule a task, it makes in
+        general no sense to keep trying to scheduler tasks of the same size or
+        larger: it is costly and useless.  So we remember the last unsuccessful
+        schedule, and skip any scheduling attempts for larger tasks until we get
+        new resources.
+
+        Task size is measured by the `tuple_size` defined here, which is a tuple
+        for number of required cores and required gpus.  Either one must be
+        smaller to trigger a schedule attempt.
+
+        Note that this is not precise: a task with 10 procs * 4 threads might
+        get scheduled where a task with 4 procs and 10 threads might not.  We
+        err on the side of performance here - if that is unwanted, thread size
+        should become a separate tuple element.
+
+        ATTENTION: this mechanism should not be used for schedulers which may
+                   fail to place a unit for other reasons than just size, e.g.,
+                   the co-locating scheduler or ordered scheduler.  Those MUST
+                   reset `self._too_large` after a failed scheduling attempt.
+        '''
+
         d = unit['description']
-        return [d.get('cpu_processes', 1), d.get('cpu_threads'), d.get('gpu_processes', 0)]
+        unit['tuple_size'] = [d.get('cpu_processes', 1) *
+                              d.get('cpu_threads',   1),
+                              d.get('gpu_processes', 0)]
 
 
-    def small_enough(self,  this_size, too_large):
-        if this_size[0] < too_large[0] or \
-           this_size[1] < too_large[1] or \
-           this_size[2] < too_large[2]:
+    # --------------------------------------------------------------------------
+    #
+    def update_too_large(self, unit):
+
+        tuple_size = unit['tuple_size']
+        if not self._too_large:
+            self._too_large = tuple_size
+
+        else:
+            self._too_large[0] = min(self._too_large[0], tuple_size[0])
+            self._too_large[1] = min(self._too_large[1], tuple_size[1])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def small_enough(self, unit):
+
+        if not self._too_large:
             return True
+
+        if unit['tuple_size'][0] < self._too_large[0] or \
+           unit['tuple_size'][1] < self._too_large[1]:
+            return True
+
         return False
 
 
@@ -724,29 +770,29 @@ class AgentSchedulingComponent(rpu.Component):
 
         unit = msg
 
+        # we have new resources, so can re-attempt to schedule large tasks
+        self._too_large = None
+
+
       # if self._log.isEnabledFor(logging.DEBUG):
       #     self._log.debug("before schedule   %s: %s", unit['uid'],
       #                     self.slot_status())
 
         # cycle through wait queue, and see if we get anything placed now.  We
         # cycle over a copy of the list, so that we can modify the list on the
-        # fly,without locking the whole loop.  However, this is costly, too.
-      # self._too_large = None
-        for unit in self._wait_pool[:]:
+        # fly, without locking the whole loop.  However, this is costly, too.
+        #
+        # Optimization: sort the poolcopy by inverse tuple size to place larger
+        # tasks first and backfill with smaller tasks.  We only look at cores
+        # right now - this needs fixing for GPU dominated loads.
+        with self._wait_lock:
+            pool = self._wait_pool[:]
 
-            this_size = self.get_unit_tuple(unit)
-          # print
-          # print 'last : %s' % self._too_large
-          # print 'this : %s [%s]' % (this_size, unit['uid'])
-            if self._too_large is not None:
-              # print 'small" %s' % self.small_enough(this_size, self._too_large)
-                if not self.small_enough(this_size, self._too_large):
-                  # print 'skip'
-                    self._prof.prof('schedule_skip', uid=unit['uid'])
-                    continue
+        for unit in sorted(pool, key=lambda x: x['tuple_size'][0]):
 
-          # print 'try'
-
+            if not self.small_enough(unit):
+                self._prof.prof('schedule_skip', uid=unit['uid'])
+                continue
 
             if self._try_allocation(unit):
 
@@ -759,7 +805,7 @@ class AgentSchedulingComponent(rpu.Component):
                     self._wait_pool.remove(unit)
 
             else:
-                self._too_large = this_size
+                self.update_too_large(unit)
                 if self._uniform_wl:
                     break
 

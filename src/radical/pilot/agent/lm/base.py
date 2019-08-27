@@ -41,6 +41,8 @@ LM_NAME_SRUN          = 'SRUN'
 # LM_NAME_DPLACE        = 'DPLACE'
 # LM_NAME_RUNJOB        = 'RUNJOB'
 
+PWD = os.getcwd()
+
 
 # ==============================================================================
 #
@@ -274,7 +276,7 @@ class LaunchMethod(object):
 
         # Open appropriately named temporary file
         # NOTE: we make an assumption about the unit sandbox here
-        filename = '%s/%s.hosts' % (uid, uid)
+        filename = '%s/%s/%s.hosts' % (PWD, uid, uid)
         with open(filename, 'w') as fout:
 
             if not impaired:
