@@ -39,8 +39,8 @@ PILOT_DURATIONS = {
                            {ru.STATE: rps.PMGR_ACTIVE    }],
             'ignore'    : [{ru.STATE: rps.PMGR_ACTIVE    },
                            {ru.EVENT: 'cmd'              }],
-          # 'term'      : [{ru.EVENT: 'cmd'              },
-          #                {ru.EVENT: 'bootstrap_0_stop' }]
+            'term'      : [{ru.EVENT: 'cmd'              },
+                           {ru.EVENT: 'bootstrap_0_stop' }]
         },
 
 
@@ -67,27 +67,6 @@ UNIT_DURATIONS_DEFAULT = {
             'exec_rp'     : [{ru.EVENT: 'exec_start'             },
                              {ru.EVENT: 'cu_start'               }],
             'exec_sh'     : [{ru.EVENT: 'cu_start'               },
-                             {ru.EVENT: 'cmd_start'              }],
-            'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
-                             {ru.EVENT: 'cmd_stop'               }],
-            'term_sh'     : [{ru.EVENT: 'cmd_stop'               },
-                             {ru.EVENT: 'cu_stop'                }],
-            'term_rp'     : [{ru.EVENT: 'cu_stop'                },
-                             {ru.EVENT: 'exec_stop'              }],
-            'unschedule'  : [{ru.EVENT: 'exec_stop'              },
-                             {ru.EVENT: 'unschedule_stop'        }]
-        }
-}
-
-UNIT_DURATIONS_DEFAULT = {
-        'consume' : {
-            'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
-                             {ru.STATE: rps.AGENT_EXECUTING      }],
-            'exec_prep'   : [{ru.STATE: rps.AGENT_EXECUTING      },
-                             {ru.EVENT: 'exec_start'             }],
-            'exec_rp'     : [{ru.EVENT: 'exec_start'             },
-                             {ru.EVENT: 'cu_start'               }],
-            'exec_sh'     : [{ru.EVENT: 'cu_start'               },
                              {ru.EVENT: 'cu_start'               }],
             'exec_cmd'    : [{ru.EVENT: 'cu_start'               },
                              {ru.EVENT: 'cu_stop'                }],
@@ -97,33 +76,14 @@ UNIT_DURATIONS_DEFAULT = {
                              {ru.EVENT: 'exec_stop'              }],
             'unschedule'  : [{ru.EVENT: 'exec_stop'              },
                              {ru.EVENT: 'unschedule_stop'        }]
-        }
-}
 
-UNIT_DURATIONS_PRTE = {
-        'consume' : {
-            'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
-                             {ru.STATE: rps.AGENT_EXECUTING      }],
-            'exec_prep'   : [{ru.STATE: rps.AGENT_EXECUTING      },
-                             {ru.EVENT: 'exec_start'             }],
-            'exec_rp'     : [{ru.EVENT: 'exec_start'             },
-                             {ru.EVENT: 'cu_start'               }],
-            'exec_sh'     : [{ru.EVENT: 'cu_start'               },
-                             {ru.EVENT: 'cu_exec_start'          }],
-            'prte_phase_1': [{ru.EVENT: 'cu_exec_start'          },
-                             {ru.EVENT: 'prte_init_complete'     }],
-            'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
-                             {ru.EVENT: 'cmd_start'              }],
-            'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
-                             {ru.EVENT: 'cmd_stop'               }],
-            'prte_phase_3': [{ru.EVENT: 'cmd_stop'               },
-                             {ru.EVENT: 'prte_notify_completed'  }],
-            'term_sh'     : [{ru.EVENT: 'prte_notify_completed'  },
-                             {ru.EVENT: 'cu_stop'                }],
-            'term_rp'     : [{ru.EVENT: 'cu_stop'                },
-                             {ru.EVENT: 'exec_stop'              }],
-            'unschedule'  : [{ru.EVENT: 'exec_stop'              },
-                             {ru.EVENT: 'unschedule_stop'        }]
+          # # if we have cmd_start / cmd_stop:
+          # 'exec_sh'     : [{ru.EVENT: 'cu_start'               },
+          #                  {ru.EVENT: 'cmd_start'              }],
+          # 'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
+          #                  {ru.EVENT: 'cmd_stop'               }],
+          # 'term_sh'     : [{ru.EVENT: 'cmd_stop'               },
+          #                  {ru.EVENT: 'cu_stop'                }],
         }
 }
 
@@ -151,6 +111,14 @@ UNIT_DURATIONS_PRTE = {
                              {ru.EVENT: 'exec_stop'              }],
             'unschedule'  : [{ru.EVENT: 'exec_stop'              },
                              {ru.EVENT: 'unschedule_stop'        }]
+
+          # # if we have cmd_start / cmd_stop:
+          # 'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
+          #                  {ru.EVENT: 'cmd_start'              }],
+          # 'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
+          #                  {ru.EVENT: 'cmd_stop'               }],
+          # 'prte_phase_3': [{ru.EVENT: 'cmd_stop'               },
+          #                  {ru.EVENT: 'prte_notify_completed'  }],
         }
 }
 
@@ -572,14 +540,13 @@ def get_consumed_resources(session):
 
         if pilot.cfg['task_launch_method'] == 'PRTE':
             print '\nusing prte configuration'
-            unit_durations = UNIT_DURATIONS_DEFAULT
+            unit_durations = UNIT_DURATIONS_PRTE
         else:
             print '\nusing default configuration'
             unit_durations = UNIT_DURATIONS_DEFAULT
 
         p_min = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][0])[ 0]
-        p_max = pilot.events[-1][ru.TIME]
-      # p_max = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][1])[-1]
+        p_max = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][1])[-1]
 
         pid = pilot.uid
         cpn = pilot.cfg['resource_details']['rm_info']['cores_per_node']
@@ -825,12 +792,12 @@ def _get_unit_consumption(session, unit):
     # we heuristically switch between PRTE event traces and normal (fork) event
     # traces
     if pilot.cfg['task_launch_method'] == 'PRTE':
-        unit_durations = UNIT_DURATIONS_DEFAULT
+        unit_durations = UNIT_DURATIONS_PRTE
     else:
         unit_durations = UNIT_DURATIONS_DEFAULT
 
     ret = dict()
-    print
+  # print
     for metric in unit_durations['consume']:
 
         boxes = list()
@@ -838,30 +805,30 @@ def _get_unit_consumption(session, unit):
 
 
         if t0 is not None:
-            print '%s: %-15s : %10.3f - %10.3f = %10.3f' \
-                % (unit.uid, metric, t1, t0, t1 - t0)
+          # print '%s: %-15s : %10.3f - %10.3f = %10.3f' \
+          #     % (unit.uid, metric, t1, t0, t1 - t0)
             for r in resources:
                 boxes.append([t0, t1, r[0], r[1]])
 
         else:
             pass
-            print '%s: %-15s : -------------- ' % (unit.uid, metric)
-            dur = unit_durations['consume'][metric]
-            print dur
-
-            for e in dur:
-                if ru.STATE in e and ru.EVENT not in e:
-                    e[ru.EVENT] = 'state'
-
-            t0 = unit.timestamps(event=dur[0])
-            t1 = unit.timestamps(event=dur[1])
-            print t0
-            print t1
-            import sys
-            for e in unit.events:
-                print '\t'.join([str(x) for x in e])
-
-            sys.exit()
+          # print '%s: %-15s : -------------- ' % (unit.uid, metric)
+          # dur = unit_durations['consume'][metric]
+          # print dur
+          #
+          # for e in dur:
+          #     if ru.STATE in e and ru.EVENT not in e:
+          #         e[ru.EVENT] = 'state'
+          #
+          # t0 = unit.timestamps(event=dur[0])
+          # t1 = unit.timestamps(event=dur[1])
+          # print t0
+          # print t1
+          # import sys
+          # for e in unit.events:
+          #     print '\t'.join([str(x) for x in e])
+          #
+          # sys.exit()
 
         ret[metric] = {uid: boxes}
 
