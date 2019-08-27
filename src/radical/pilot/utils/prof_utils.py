@@ -79,6 +79,27 @@ UNIT_DURATIONS_DEFAULT = {
         }
 }
 
+UNIT_DURATIONS_DEFAULT = {
+        'consume' : {
+            'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
+                             {ru.STATE: rps.AGENT_EXECUTING      }],
+            'exec_prep'   : [{ru.STATE: rps.AGENT_EXECUTING      },
+                             {ru.EVENT: 'exec_start'             }],
+            'exec_rp'     : [{ru.EVENT: 'exec_start'             },
+                             {ru.EVENT: 'cu_start'               }],
+            'exec_sh'     : [{ru.EVENT: 'cu_start'               },
+                             {ru.EVENT: 'cu_start'              }],
+            'exec_cmd'    : [{ru.EVENT: 'cu_start'              },
+                             {ru.EVENT: 'cu_stop'               }],
+            'term_sh'     : [{ru.EVENT: 'cu_stop'               },
+                             {ru.EVENT: 'cu_stop'                }],
+            'term_rp'     : [{ru.EVENT: 'cu_stop'                },
+                             {ru.EVENT: 'exec_stop'              }],
+            'unschedule'  : [{ru.EVENT: 'exec_stop'              },
+                             {ru.EVENT: 'unschedule_stop'        }]
+        }
+}
+
 UNIT_DURATIONS_PRTE = {
         'consume' : {
             'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
@@ -544,10 +565,10 @@ def get_consumed_resources(session):
     for pilot in session.get(etype='pilot'):
 
         if pilot.cfg['task_launch_method'] == 'PRTE':
-            print 'using prte configuration'
+            print '\nusing prte configuration'
             unit_durations = UNIT_DURATIONS_PRTE
         else:
-            print 'using default configuration'
+            print '\nusing default configuration'
             unit_durations = UNIT_DURATIONS_DEFAULT
 
         p_min = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][0])[ 0]
