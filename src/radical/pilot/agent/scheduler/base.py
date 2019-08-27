@@ -484,7 +484,8 @@ class AgentSchedulingComponent(rpu.Component):
 
         # try largest units first
         to_wait = list()
-        for unit in sorted(units, key=lambda x: x['tuple_size'][0]):
+        for unit in sorted(units, key=lambda x: x['tuple_size'][0],
+                                  reverse=True):
 
             if not self.small_enough(unit):
                 self._prof.prof('schedule_skip', uid=unit['uid'])
@@ -788,7 +789,8 @@ class AgentSchedulingComponent(rpu.Component):
         with self._wait_lock:
             pool = self._wait_pool[:]
 
-        for unit in sorted(pool, key=lambda x: x['tuple_size'][0]):
+        for unit in sorted(pool, key=lambda x: x['tuple_size'][0],
+                                 reverse=True):
 
             if not self.small_enough(unit):
                 self._prof.prof('schedule_skip', uid=unit['uid'])

@@ -39,8 +39,8 @@ PILOT_DURATIONS = {
                            {ru.STATE: rps.PMGR_ACTIVE    }],
             'ignore'    : [{ru.STATE: rps.PMGR_ACTIVE    },
                            {ru.EVENT: 'cmd'              }],
-            'term'      : [{ru.EVENT: 'cmd'              },
-                           {ru.EVENT: 'bootstrap_0_stop' }]
+          # 'term'      : [{ru.EVENT: 'cmd'              },
+          #                {ru.EVENT: 'bootstrap_0_stop' }]
         },
 
 
@@ -88,10 +88,10 @@ UNIT_DURATIONS_DEFAULT = {
             'exec_rp'     : [{ru.EVENT: 'exec_start'             },
                              {ru.EVENT: 'cu_start'               }],
             'exec_sh'     : [{ru.EVENT: 'cu_start'               },
-                             {ru.EVENT: 'cu_start'              }],
-            'exec_cmd'    : [{ru.EVENT: 'cu_start'              },
-                             {ru.EVENT: 'cu_stop'               }],
-            'term_sh'     : [{ru.EVENT: 'cu_stop'               },
+                             {ru.EVENT: 'cu_start'               }],
+            'exec_cmd'    : [{ru.EVENT: 'cu_start'               },
+                             {ru.EVENT: 'cu_stop'                }],
+            'term_sh'     : [{ru.EVENT: 'cu_stop'                },
                              {ru.EVENT: 'cu_stop'                }],
             'term_rp'     : [{ru.EVENT: 'cu_stop'                },
                              {ru.EVENT: 'exec_stop'              }],
@@ -263,8 +263,10 @@ def get_session_description(sid, src=None, dburl=None):
 
     if os.path.isfile('%s/%s.json' % (src, sid)):
         json = ru.read_json('%s/%s.json' % (src, sid))
+        print 'From %s' % '%s/%s.json' % (src, sid)
     else:
         ftmp = fetch_json(sid=sid, dburl=dburl, tgt=src, skip_existing=True)
+        print 'from %s' % ftmp
         json = ru.read_json(ftmp)
 
     # make sure we have uids
@@ -326,6 +328,7 @@ def get_session_description(sid, src=None, dburl=None):
     for pilot in sorted(json['pilot'], key=lambda k: k['uid']):
         uid  = pilot['uid']
         pmgr = pilot['pmgr']
+        print pilot['resource_details']
         pilot['cfg']['resource_details'] = pilot['resource_details']
         tree[pmgr]['children'].append(uid)
         tree[uid] = {'uid'        : uid,
@@ -449,7 +452,7 @@ def cluster_resources(resources):
 def _get_pilot_provision(session, pilot):
 
   # import pprint
-  # pprint.pprint(pilot.cfg['resource_details'])
+  # pprint.pprint(pilot.cfg)  # ['resource_details'])
   # pprint.pprint(pilot.description)
 
     pid   = pilot.uid
@@ -464,10 +467,13 @@ def _get_pilot_provision(session, pilot):
         boxes  = list()
         t0, t1 = get_duration(pilot, PILOT_DURATIONS['provide'][metric])
 
-        if t0 is not None:
-            for node in nodes:
-                r0, r1 = get_node_index(nodes, node, cpn, gpn)
-                boxes.append([t0, t1, r0, r1])
+        if t0 is None:
+            t0 = pilot.events[ 0][ru.TIME]
+            t1 = pilot.events[-1][ru.TIME]
+
+        for node in nodes:
+            r0, r1 = get_node_index(nodes, node, cpn, gpn)
+            boxes.append([t0, t1, r0, r1])
 
         ret['total'] = {pid: boxes}
 
@@ -566,13 +572,14 @@ def get_consumed_resources(session):
 
         if pilot.cfg['task_launch_method'] == 'PRTE':
             print '\nusing prte configuration'
-            unit_durations = UNIT_DURATIONS_PRTE
+            unit_durations = UNIT_DURATIONS_DEFAULT
         else:
             print '\nusing default configuration'
             unit_durations = UNIT_DURATIONS_DEFAULT
 
         p_min = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][0])[ 0]
-        p_max = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][1])[-1]
+        p_max = pilot.events[-1][ru.TIME]
+      # p_max = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][1])[-1]
 
         pid = pilot.uid
         cpn = pilot.cfg['resource_details']['rm_info']['cores_per_node']
@@ -818,12 +825,12 @@ def _get_unit_consumption(session, unit):
     # we heuristically switch between PRTE event traces and normal (fork) event
     # traces
     if pilot.cfg['task_launch_method'] == 'PRTE':
-        unit_durations = UNIT_DURATIONS_PRTE
+        unit_durations = UNIT_DURATIONS_DEFAULT
     else:
         unit_durations = UNIT_DURATIONS_DEFAULT
 
     ret = dict()
-  # print
+    print
     for metric in unit_durations['consume']:
 
         boxes = list()
@@ -831,30 +838,30 @@ def _get_unit_consumption(session, unit):
 
 
         if t0 is not None:
-          # print '%s: %-15s : %10.3f - %10.3f = %10.3f' \
-          #     % (unit.uid, metric, t1, t0, t1 - t0)
+            print '%s: %-15s : %10.3f - %10.3f = %10.3f' \
+                % (unit.uid, metric, t1, t0, t1 - t0)
             for r in resources:
                 boxes.append([t0, t1, r[0], r[1]])
 
         else:
             pass
-          # print '%s: %-15s : -------------- ' % (unit.uid, metric)
-          # dur = unit_durations['consume'][metric]
-          # print dur
-          #
-          # for e in dur:
-          #     if ru.STATE in e and ru.EVENT not in e:
-          #         e[ru.EVENT] = 'state'
-          #
-          # t0 = unit.timestamps(event=dur[0])
-          # t1 = unit.timestamps(event=dur[1])
-          # print t0
-          # print t1
-          # import sys
-          # for e in unit.events:
-          #     print '\t'.join([str(x) for x in e])
-          #
-          # sys.exit()
+            print '%s: %-15s : -------------- ' % (unit.uid, metric)
+            dur = unit_durations['consume'][metric]
+            print dur
+
+            for e in dur:
+                if ru.STATE in e and ru.EVENT not in e:
+                    e[ru.EVENT] = 'state'
+
+            t0 = unit.timestamps(event=dur[0])
+            t1 = unit.timestamps(event=dur[1])
+            print t0
+            print t1
+            import sys
+            for e in unit.events:
+                print '\t'.join([str(x) for x in e])
+
+            sys.exit()
 
         ret[metric] = {uid: boxes}
 
