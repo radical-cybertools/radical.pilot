@@ -9,6 +9,8 @@ import radical.utils as ru
 from ..       import states as rps
 from .session import fetch_json
 
+_debug = os.environ.get('RP_PROF_DEBUG')
+
 
 # ------------------------------------------------------------------------------
 #
@@ -570,6 +572,8 @@ def get_consumed_resources(session):
         for unit in session.get(etype='unit'):
 
             if 'slots' not in unit.cfg:
+                print 'no slots for %s' % unit.uid
+                pprint.pprint(unit.description)
                 continue
 
             snodes = unit.cfg['slots']['nodes']
@@ -795,8 +799,10 @@ def _get_unit_consumption(session, unit):
     else:
         unit_durations = UNIT_DURATIONS_DEFAULT
 
+    if _debug:
+        print
+
     ret = dict()
-  # print
     for metric in unit_durations['consume']:
 
         boxes = list()
@@ -804,30 +810,31 @@ def _get_unit_consumption(session, unit):
 
 
         if t0 is not None:
-          # print '%s: %-15s : %10.3f - %10.3f = %10.3f' \
-          #     % (unit.uid, metric, t1, t0, t1 - t0)
+            if _debug:
+                print '%s: %-15s : %10.3f - %10.3f = %10.3f' \
+                    % (unit.uid, metric, t1, t0, t1 - t0)
             for r in resources:
                 boxes.append([t0, t1, r[0], r[1]])
 
         else:
-            pass
-          # print '%s: %-15s : -------------- ' % (unit.uid, metric)
-          # dur = unit_durations['consume'][metric]
-          # print dur
-          #
-          # for e in dur:
-          #     if ru.STATE in e and ru.EVENT not in e:
-          #         e[ru.EVENT] = 'state'
-          #
-          # t0 = unit.timestamps(event=dur[0])
-          # t1 = unit.timestamps(event=dur[1])
-          # print t0
-          # print t1
-          # import sys
-          # for e in unit.events:
-          #     print '\t'.join([str(x) for x in e])
-          #
-          # sys.exit()
+            if _debug:
+                print '%s: %-15s : -------------- ' % (unit.uid, metric)
+                dur = unit_durations['consume'][metric]
+                print dur
+
+                for e in dur:
+                    if ru.STATE in e and ru.EVENT not in e:
+                        e[ru.EVENT] = 'state'
+
+                t0 = unit.timestamps(event=dur[0])
+                t1 = unit.timestamps(event=dur[1])
+                print t0
+                print t1
+                import sys
+                for e in unit.events:
+                    print '\t'.join([str(x) for x in e])
+
+                sys.exit()
 
         ret[metric] = {uid: boxes}
 
