@@ -233,10 +233,8 @@ def get_session_description(sid, src=None, dburl=None):
 
     if os.path.isfile('%s/%s.json' % (src, sid)):
         json = ru.read_json('%s/%s.json' % (src, sid))
-        print 'From %s' % '%s/%s.json' % (src, sid)
     else:
         ftmp = fetch_json(sid=sid, dburl=dburl, tgt=src, skip_existing=True)
-        print 'from %s' % ftmp
         json = ru.read_json(ftmp)
 
     # make sure we have uids
@@ -572,8 +570,6 @@ def get_consumed_resources(session):
         for unit in session.get(etype='unit'):
 
             if 'slots' not in unit.cfg:
-                print 'no slots for %s' % unit.uid
-                pprint.pprint(unit.description)
                 continue
 
             snodes = unit.cfg['slots']['nodes']
@@ -603,7 +599,7 @@ def get_consumed_resources(session):
                         if t_max is None or t_max < u_max: t_max = u_max
                         resources[idx] = [t_min, t_max]
 
-        # now sift through resources and finnd buckets of pairs with same t_min
+        # now sift through resources and find buckets of pairs with same t_min
         # or same t_max
         bucket_min  = dict()
         bucket_max  = dict()
@@ -628,14 +624,14 @@ def get_consumed_resources(session):
                     bucket_max[t_max] = list()
                 bucket_max[t_max].append(idx)
 
-        boxes_cold  = list()
+        boxes_warm  = list()
         boxes_drain = list()
         boxes_idle  = list()
 
         # now cluster all lists and add the respective boxes
         for t_min in bucket_min:
             for r in cluster_resources(bucket_min[t_min]):
-                boxes_cold.append([p_min, t_min, r[0], r[1]])
+                boxes_warm.append([p_min, t_min, r[0], r[1]])
 
         for t_max in bucket_max:
             for r in cluster_resources(bucket_max[t_max]):
@@ -644,11 +640,11 @@ def get_consumed_resources(session):
         for r in cluster_resources(bucket_none):
             boxes_idle.append([p_min, p_max, r[0], r[1]])
 
-        if 'cold'  not in consumed: consumed['cold']  = dict()
+        if 'warm'  not in consumed: consumed['warm']  = dict()
         if 'drain' not in consumed: consumed['drain'] = dict()
         if 'idle'  not in consumed: consumed['idle']  = dict()
 
-        consumed['cold'][pid]  = boxes_cold
+        consumed['warm'][pid]  = boxes_warm
         consumed['drain'][pid] = boxes_drain
         consumed['idle'][pid]  = boxes_idle
 
@@ -810,6 +806,7 @@ def _get_unit_consumption(session, unit):
 
 
         if t0 is not None:
+
             if _debug:
                 print '%s: %-15s : %10.3f - %10.3f = %10.3f' \
                     % (unit.uid, metric, t1, t0, t1 - t0)
@@ -830,7 +827,6 @@ def _get_unit_consumption(session, unit):
                 t1 = unit.timestamps(event=dur[1])
                 print t0
                 print t1
-                import sys
                 for e in unit.events:
                     print '\t'.join([str(x) for x in e])
 
