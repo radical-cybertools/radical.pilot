@@ -165,6 +165,7 @@ class Continuous(AgentSchedulingComponent):
             self._cfg['task_launch_method'] == 'JSRUN':
                     self._lrms_cores_per_node -= 1
 
+
     # --------------------------------------------------------------------------
     #
     def _try_allocation(self, unit):
