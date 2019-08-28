@@ -426,7 +426,6 @@ class AgentSchedulingComponent(rpu.Component):
         '''
         Returns a multi-line string corresponding to the status of the node list
         '''
-        return '-'
 
         return '-'
 
@@ -488,6 +487,8 @@ class AgentSchedulingComponent(rpu.Component):
                                   reverse=True):
 
             if not self.small_enough(unit):
+                to_wait.append(unit)
+              # self._log.debug("waitpool =        %s (+ %s)", len(self._wait_pool), unit['uid'])
                 self._prof.prof('schedule_skip', uid=unit['uid'])
                 continue
 
@@ -499,6 +500,7 @@ class AgentSchedulingComponent(rpu.Component):
                 # we could schedule the unit - advance its state, notify worls
                 # about the state change, and push the unit out toward the next
                 # component.
+              # self._log.debug("waitpool =        %s (= %s)", len(self._wait_pool), unit['uid'])
                 self.advance(unit, rps.AGENT_EXECUTING_PENDING,
                              publish=True, push=True)
 
@@ -509,6 +511,8 @@ class AgentSchedulingComponent(rpu.Component):
 
         with self._wait_lock:
             self._wait_pool.extend(to_wait)
+          # for unit in to_wait:
+          #     self._log.debug("waitpool 0        %s (+ %s)", len(self._wait_pool), unit['uid'])
 
 
     # --------------------------------------------------------------------------
@@ -769,15 +773,14 @@ class AgentSchedulingComponent(rpu.Component):
         #
         # FIXME: optimization
 
-        unit = msg
+        freed_unit = msg
 
         # we have new resources, so can re-attempt to schedule large tasks
         self._too_large = None
 
 
-      # if self._log.isEnabledFor(logging.DEBUG):
-      #     self._log.debug("before schedule   %s: %s", unit['uid'],
-      #                     self.slot_status())
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug("before schedule   %s: %s", freed_unit['uid'], self.slot_status())
 
         # cycle through wait queue, and see if we get anything placed now.  We
         # cycle over a copy of the list, so that we can modify the list on the
@@ -786,11 +789,11 @@ class AgentSchedulingComponent(rpu.Component):
         # Optimization: sort the poolcopy by inverse tuple size to place larger
         # tasks first and backfill with smaller tasks.  We only look at cores
         # right now - this needs fixing for GPU dominated loads.
+      # self._log.debug("waitpool 1        %s (# %s)", len(self._wait_pool), freed_unit['uid'])
         with self._wait_lock:
             pool = self._wait_pool[:]
 
-        for unit in sorted(pool, key=lambda x: x['tuple_size'][0],
-                                 reverse=True):
+        for unit in sorted(pool, key=lambda x: x['tuple_size'][0], reverse=True):
 
             if not self.small_enough(unit):
                 self._prof.prof('schedule_skip', uid=unit['uid'])
@@ -805,6 +808,8 @@ class AgentSchedulingComponent(rpu.Component):
                 # remove it from the wait queue
                 with self._wait_lock:
                     self._wait_pool.remove(unit)
+             #  self._log.debug("waitpool 2        %s (- %s)",
+             #          len(self._wait_pool), unit['uid'])
 
             else:
                 self.update_too_large(unit)
@@ -812,6 +817,7 @@ class AgentSchedulingComponent(rpu.Component):
                     break
 
         # return True to keep the cb registered
+      # self._log.debug("waitpool 2        %s", len(self._wait_pool))
         return True
 
 
