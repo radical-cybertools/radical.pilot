@@ -132,7 +132,8 @@ class Continuous(AgentSchedulingComponent):
                           'mem'    :              self._lrms_mem_per_node}
 
             # summit
-            if self._lrms_cores_per_node > 40:
+            if  self._lrms_cores_per_node > 40 and \
+                self._cfg['task_launch_method'] == 'JSRUN':
 
                 # Summit cannot address the last core of the second socket at
                 # the moment, so we mark it as `DOWN` and the scheduler skips
@@ -157,6 +158,10 @@ class Continuous(AgentSchedulingComponent):
                         node_entry['cores'][idx] = rpc.DOWN
 
             self.nodes.append(node_entry)
+
+        if  self._lrms_cores_per_node > 40 and \
+            self._cfg['task_launch_method'] == 'JSRUN':
+                    self._lrms_cores_per_node -= 1
 
 
     # --------------------------------------------------------------------------
