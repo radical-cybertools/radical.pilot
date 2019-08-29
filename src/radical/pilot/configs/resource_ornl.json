@@ -311,7 +311,7 @@
         "lfs_per_node"                : "/tmp",
         "agent_type"                  : "multicore",
         "agent_config"                : "summit_sa",
-        "agent_scheduler"             : "CONTINUOUS",
+        "agent_scheduler"             : "HOMBRE",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "PRTE",
