@@ -161,9 +161,9 @@ class Continuous(AgentSchedulingComponent):
 
             self.nodes.append(node_entry)
 
-        if  self._lrms_cores_per_node > 40 and \
-            self._cfg['task_launch_method'] == 'JSRUN':
-                    self._lrms_cores_per_node -= 1
+        if self._lrms_cores_per_node > 40 and \
+           self._cfg['task_launch_method'] == 'JSRUN':
+            self._lrms_cores_per_node -= 1
 
 
     # --------------------------------------------------------------------------
@@ -175,14 +175,9 @@ class Continuous(AgentSchedulingComponent):
 
         uid = unit['uid']
 
-        # needs to be locked as we try to acquire slots here, but slots are
-        # freed in a different thread.  But we keep the lock duration short...
-        with self._slot_lock:
+        self._prof.prof('schedule_try', uid=uid)
+        unit['slots'] = self._allocate_slot(unit)
 
-            self._prof.prof('schedule_try', uid=uid)
-            unit['slots'] = self._allocate_slot(unit)
-
-        # the lock is freed here
         if not unit['slots']:
 
             # signal the unit remains unhandled (False signals that failure)
@@ -203,13 +198,11 @@ class Continuous(AgentSchedulingComponent):
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=uid)
 
-        if self._log.isEnabledFor(logging.DEBUG):
-          # self._log.debug("after  allocate   %s: %s", uid,
-          #                 self.slot_status())
-            self._log.debug("%s [%s/%s] : %s", uid,
-                            unit['description']['cpu_processes'],
-                            unit['description']['gpu_processes'],
-                            pprint.pformat(unit['slots']))
+      # self.slot_status('after  allocate   %s' % uid)
+      # self._log.debug("%s [%s/%s] : %s", uid,
+      #                 unit['description']['cpu_processes'],
+      #                 unit['description']['gpu_processes'],
+      #                 pprint.pformat(unit['slots']))
 
         # True signals success
         return True
