@@ -1,8 +1,6 @@
 
 import os
-import sys
 import glob
-import pprint
 
 import radical.utils as ru
 
@@ -42,7 +40,7 @@ PILOT_DURATIONS = {
             'ignore'    : [{ru.STATE: rps.PMGR_ACTIVE    },
                            {ru.EVENT: 'cmd'              }],
             'term'      : [{ru.EVENT: 'cmd'              },
-                           {ru.EVENT: 'bootstrap_0_stop' }]
+                           {ru.EVENT: 'bootstrap_0_stop' }],
         },
 
 
@@ -193,10 +191,19 @@ def get_session_profile(sid, src=None):
         profiles = fetch_profiles(sid=sid, skip_existing=True)
 
     #  filter out some frequent, but uninteresting events
-    efilter = {ru.EVENT : ['publish', 'work start', 'work done'],
-               ru.MSG   : ['update unit state', 'unit update pushed',
-                            'bulked', 'bulk size']
-              }
+    efilter = {ru.EVENT: [
+                        # 'get',
+                          'publish',
+                          'schedule_skip',
+                          'schedule_fail',
+                          'staging_stderr_start',
+                          'staging_stderr_stop',
+                          'staging_stdout_start',
+                          'staging_stdout_stop',
+                          'staging_uprof_start',
+                          'staging_uprof_stop',
+                          'update_pushed',
+                         ]}
 
     profiles          = ru.read_profiles(profiles, sid, efilter=efilter)
     profile, accuracy = ru.combine_profiles(profiles)
@@ -546,6 +553,7 @@ def get_consumed_resources(session):
 
         p_min = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][0])[ 0]
         p_max = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][1])[-1]
+      # p_max = pilot.events[-1][ru.TIME]
 
         pid = pilot.uid
         cpn = pilot.cfg['resource_details']['rm_info']['cores_per_node']
@@ -569,12 +577,12 @@ def get_consumed_resources(session):
 
         for unit in session.get(etype='unit'):
 
-            if 'slots' not in unit.cfg:
+            try:
+                snodes = unit.cfg['slots']['nodes']
+                u_min  = unit.timestamps(event=unit_durations['consume']['exec_queue'][0])[ 0]
+                u_max  = unit.timestamps(event=unit_durations['consume']['unschedule'][1])[-1]
+            except:
                 continue
-
-            snodes = unit.cfg['slots']['nodes']
-            u_min  = unit.timestamps(event=unit_durations['consume']['exec_queue'][0])[ 0]
-            u_max  = unit.timestamps(event=unit_durations['consume']['unschedule'][1])[-1]
 
             for snode in snodes:
 
