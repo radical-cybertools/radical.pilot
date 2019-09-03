@@ -105,7 +105,7 @@ class Component(ru.Process):
 
     # FIXME:
     #  - make state transitions more formal
-   
+
 
     # --------------------------------------------------------------------------
     #
@@ -116,8 +116,8 @@ class Component(ru.Process):
         defined under `cfg['bridges']`.  If that is the case, we check
         if those bridges have endpoints documented.  If so, we assume they are
         running, and that's fine.  If not, we start them and add the respective
-        enspoint information to the config.  
-        
+        enspoint information to the config.
+
         This method will return a list of created bridge instances.  It is up to
         the callee to watch those bridges for health and to terminate them as
         needed.
@@ -144,7 +144,7 @@ class Component(ru.Process):
 
             # bridge needs starting
             log.info('create bridge %s', bname)
-            
+
             bcfg_clone = copy.deepcopy(bcfg)
 
             # The type of bridge (queue or pubsub) is derived from the name.
@@ -183,7 +183,7 @@ class Component(ru.Process):
 
         This method will return a list of created component instances.  It is up
         to the callee to watch those components for health and to terminate them
-        as needed.  
+        as needed.
         '''
 
         # ----------------------------------------------------------------------
@@ -241,7 +241,7 @@ class Component(ru.Process):
                 tmp_cfg['number']     = i
                 tmp_cfg['owner']      = cfg.get('uid', session.uid)
 
-                # avoid recursion - but keep bridge information around.  
+                # avoid recursion - but keep bridge information around.
                 tmp_cfg['agents']     = dict()
                 tmp_cfg['components'] = dict()
 
@@ -415,7 +415,7 @@ class Component(ru.Process):
         """
 
         self.is_valid()
-        
+
         # FIXME: We do not check for types of things to cancel - the UIDs are
         #        supposed to be unique.  That abstraction however breaks as we
         #        currently have no abstract 'cancel' command, but instead use
@@ -539,20 +539,20 @@ class Component(ru.Process):
             # the parent or child process (remember, this is *after* fork, the
             # cfg is already passed on).
             if self._ru_is_parent and not self._ru_spawned:
-                self._bridges = Component.start_bridges(self._cfg, 
-                                                        self._session, 
+                self._bridges = Component.start_bridges(self._cfg,
+                                                        self._session,
                                                         self._log)
 
             # only one side will start sub-components: either the child, if it
             # exists, and only otherwise the parent
             if self._ru_is_parent and not self._ru_spawned:
-                self._components = Component.start_components(self._cfg, 
-                                                              self._session, 
+                self._components = Component.start_components(self._cfg,
+                                                              self._session,
                                                               self._log)
-            
+
             elif self._ru_is_child:
-                self._components = Component.start_components(self._cfg, 
-                                                              self._session, 
+                self._components = Component.start_components(self._cfg,
+                                                              self._session,
                                                               self._log)
 
             # bridges should now be available and known - assert!
@@ -898,7 +898,7 @@ class Component(ru.Process):
         Idle callbacks are invoked at regular intervals -- they are guaranteed
         to *not* be called more frequently than 'timer' seconds, no promise is
         made on a minimal call frequency.  The intent for these callbacks is to
-        run lightweight work in semi-regular intervals.  
+        run lightweight work in semi-regular intervals.
         """
 
         self.is_valid()
@@ -1134,7 +1134,7 @@ class Component(ru.Process):
         q = rpu_Pubsub(self._session, pubsub, rpu_PUBSUB_SUB, self._cfg, addr=addr)
         q.subscribe(pubsub)
 
-        subscriber = Subscriber(name=name, l=self._log, q=q, 
+        subscriber = Subscriber(name=name, l=self._log, q=q,
                                 cb=cb, cb_data=cb_data, cb_lock=self._cb_lock)
 
         with self._cb_lock:
@@ -1215,7 +1215,7 @@ class Component(ru.Process):
             # FIXME: a simple, 1-thing caching mechanism would likely
             #        remove the req/res overhead completely (for any
             #        non-trivial worker).
-            things = input.get_nowait(1000) # timeout in microseconds
+            things = input.get_nowait(1000)  # timeout in microseconds
 
             if not things:
                 return True
@@ -1223,17 +1223,17 @@ class Component(ru.Process):
             if not isinstance(things, list):
                 things = [things]
 
-            # the worker target depends on the state of things, so we 
-            # need to sort the things into buckets by state before 
+            # the worker target depends on the state of things, so we
+            # need to sort the things into buckets by state before
             # pushing them
             buckets = dict()
             for thing in things:
-                
+
                 state = thing['state']
                 uid   = thing['uid']
-                self._prof.prof('get', uid=uid, state=state)
+              # self._prof.prof('get', uid=uid, state=state)
 
-                if not state in buckets:
+                if state not in buckets:
                     buckets[state] = list()
                 buckets[state].append(thing)
 
@@ -1333,7 +1333,7 @@ class Component(ru.Process):
                 self._prof.prof('advance', uid=uid, state=_state,
                                 timestamp=timestamp)
 
-            if not _state in buckets:
+            if _state not in buckets:
                 buckets[_state] = list()
             buckets[_state].append(thing)
 
@@ -1342,7 +1342,7 @@ class Component(ru.Process):
 
             to_publish = list()
 
-            # If '$all' is set, we update the complete thing_dict.  
+            # If '$all' is set, we update the complete thing_dict.
             # Things in final state are also published in full.
             # If '$set' is set, we also publish all keys listed in there.
             # In all other cases, we only send 'uid', 'type' and 'state'.
@@ -1364,9 +1364,9 @@ class Component(ru.Process):
 
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
             ts = time.time()
-            for thing in things:
-                self._prof.prof('publish', uid=thing['uid'], 
-                                state=thing['state'], timestamp=ts)
+          # for thing in things:
+          #     self._prof.prof('publish', uid=thing['uid'],
+          #                     state=thing['state'], timestamp=ts)
 
         # never carry $all across component boundaries!
         else:
@@ -1385,26 +1385,26 @@ class Component(ru.Process):
                 ts = time.time()
                 if _state in rps.FINAL:
                     # things in final state are dropped
-                    for thing in _things:
-                        self._log.debug('final %s [%s]', thing['uid'], _state)
-                        self._prof.prof('drop', uid=thing['uid'], state=_state,
-                                        timestamp=ts)
+                  # for thing in _things:
+                  #     self._log.debug('final %s [%s]', thing['uid'], _state)
+                  #   # self._prof.prof('drop', uid=thing['uid'], state=_state,
+                  #   #                 timestamp=ts)
                     continue
 
                 if _state not in self._outputs:
                     # unknown target state -- error
                     for thing in _things:
-                        self._log.debug("lost  %s [%s]", thing['uid'], _state)
-                        self._prof.prof('lost', uid=thing['uid'], state=_state,
-                                        timestamp=ts)
+                        self._log.error("lost  %s [%s]", thing['uid'], _state)
+                  #     self._prof.prof('lost', uid=thing['uid'], state=_state,
+                  #                     timestamp=ts)
                     continue
 
                 if not self._outputs[_state]:
-                    # empty output -- drop thing
-                    for thing in _things:
-                        self._log.debug('drop  %s [%s]', thing['uid'], _state)
-                        self._prof.prof('drop', uid=thing['uid'], state=_state,
-                                        timestamp=ts)
+                  # # empty output -- drop thing
+                  # for thing in _things:
+                  #     self._log.debug('drop  %s [%s]', thing['uid'], _state)
+                  #     self._prof.prof('drop', uid=thing['uid'], state=_state,
+                  #                     timestamp=ts)
                     continue
 
                 output = self._outputs[_state]
@@ -1413,10 +1413,10 @@ class Component(ru.Process):
                 self._log.debug('put bulk %s: %s', _state, len(_things))
                 output.put(_things)
 
-                ts = time.time()
-                for thing in _things:
-                    self._prof.prof('put', uid=thing['uid'], state=_state,
-                                    msg=output.name, timestamp=ts)
+              # ts = time.time()
+              # for thing in _things:
+              #     self._prof.prof('put', uid=thing['uid'], state=_state,
+              #                     msg=output.name, timestamp=ts)
 
 
     # --------------------------------------------------------------------------

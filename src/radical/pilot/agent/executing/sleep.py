@@ -25,7 +25,7 @@ from ...  import constants as rpc
 from .base import AgentExecutingComponent
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Sleep(AgentExecutingComponent) :
 
@@ -34,8 +34,6 @@ class Sleep(AgentExecutingComponent) :
     def __init__(self, cfg, session):
 
         AgentExecutingComponent.__init__ (self, cfg, session)
-
-        self._terminate = mt.Event()
 
 
     # --------------------------------------------------------------------------
@@ -52,56 +50,83 @@ class Sleep(AgentExecutingComponent) :
 
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
 
-        self._delay      = 0.1
+        self._terminate  = mt.Event()
         self._tasks_lock = mt.RLock()
         self._tasks      = list()
+        self._delay      = 0.1
 
-        self._t = mt.Timer(self._delay, self._timed)
-        self._t.start()
+        self._timed = mt.Thread(target=self._timed)
+        self._timed.start()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize_child(self):
+
+        self._terminate.set()
+        self._timed.join()
 
 
     # --------------------------------------------------------------------------
     #
     def work(self, units):
 
+        import pprint
+
         if not isinstance(units, list):
             units = [units]
 
-        self._log.debug(' === +%6d', len(units))
         self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
 
         now = time.time()
         for t in units:
-            assert(t['description']['executable'].endswith('sleep'))
+          # assert(t['description']['executable'].endswith('sleep'))
             t['to_finish'] = now + float(t['description']['arguments'][0])
+          # self._log.debug(' === %s: %8.1f = %8.1f + %8.1f', t['to_finish'],
+          #         now, float(t['description']['arguments'][0]))
 
         for t in units:
-            self._prof.prof('app_stop', uid=t['uid'])
+            uid = t['uid']
+            self._prof.prof('exec_start',    uid=uid)
+            self._prof.prof('exec_ok',       uid=uid)
+            self._prof.prof('cu_start',      uid=uid)
+            self._prof.prof('cu_cd_done',    uid=uid)
+            self._prof.prof('cu_exec_start', uid=uid)
+            self._prof.prof('app_start',     uid=uid)
 
         with self._tasks_lock:
             self._tasks.extend(units)
+          # self._log.debug(' ==== +%6d = %6d', len(units), len(self._tasks))
 
 
     # --------------------------------------------------------------------------
     #
     def _timed(self):
 
+        while not self._terminate.is_set():
 
-        with self._tasks_lock:
-            self._log.debug(' === =%6d', len(self._tasks))
-            now = time.time()
-            to_finish   = [t for t in self._tasks if t['to_finish'] >= now]
-            self._tasks = [t for t in self._tasks if t['to_finish'] <  now]
+            time.sleep(self._delay)
 
-        for t in to_finish:
-            self._prof.prof('app_stop', uid=t['uid'])
+            with self._tasks_lock:
+                now = time.time()
+                to_finish   = [t for t in self._tasks if t['to_finish'] <= now]
+                self._tasks = [t for t in self._tasks if t['to_finish'] >  now]
 
-        self._log.debug(' === -%6d', len(to_finish))
-        self.advance(to_finish, rps.AGENT_STAGING_OUTPUT_PENDING,
-                                publish=True, push=True)
+            for t in to_finish:
+                uid = t['uid']
+                t['target_state'] = 'DONE'
+                self._prof.prof('app_stop',         uid=uid)
+                self._prof.prof('cu_exec_stop',     uid=uid)
+                self._prof.prof('cu_stop',          uid=uid)
+                self._prof.prof('exec_stop',        uid=uid)
+                self._prof.prof('unschedule_start', uid=uid)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
+              # self._log.debug(' === %s: %8.1f > %8.1f', uid, t['to_finish'], now)
 
-        self._t = mt.Timer(self._delay, self._timed)
-        self._t.start()
+            self.advance(to_finish, rps.AGENT_STAGING_OUTPUT_PENDING,
+                                    publish=True, push=True)
+
+          # self._log.debug(' ==== +%6d = %6d', len(to_finish), len(self._tasks))
 
 
 # ------------------------------------------------------------------------------

@@ -5,9 +5,7 @@ __license__ = "MIT"
 
 import queue
 import logging
-import pprint
 
-import threading          as mt
 import multiprocessing    as mp
 
 import radical.utils      as ru
@@ -260,7 +258,7 @@ class AgentSchedulingComponent(rpu.Component):
                               % self._lrms_info['name'])
 
         # create and initialize the wait pool
-        self._waitlist = list()      # pool of waiting units
+        self._waitpool = dict()  # pool of waiting units (binned by size)
 
         # the scheduler algorithms have two inputs: tasks to be scheduled, and
         # slots becoming available (after tasks complete).
@@ -416,6 +414,8 @@ class AgentSchedulingComponent(rpu.Component):
         Returns a multi-line string corresponding to the status of the node list
         '''
 
+        return ''
+
         if not self._log.isEnabledFor(logging.DEBUG):
             return
 
@@ -474,7 +474,7 @@ class AgentSchedulingComponent(rpu.Component):
         # advance state, publish state change, do not push unit out.
         self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
 
-        self._log.debug(' === sched put %d', len(units))
+      # self._log.debug(' === sched put %d', len(units))
         self._queue_sched.put(units)
 
 
@@ -488,19 +488,19 @@ class AgentSchedulingComponent(rpu.Component):
         unit  = msg
         uid   = unit['uid']
         slots = unit.get('slots')
-        self._prof.prof('unschedule_start', uid=uid)
+        ts    = unit.get('tuple_size')
 
         if not slots:
             # Nothing to do
             self._log.error('cannot unschedule: %s (no slots)', uid)
             return True
 
-        data = {'uid'  : uid,
-                'slots': slots}
+        data = {'uid'       : uid,
+                'slots'     : slots,
+                'tuple_size': ts}
         self._queue_unsched.put(data)
 
         # return True to keep the cb registered
-      # self._log.debug("waitpool 2        %s", len(self._waitlist))
         return True
 
 
@@ -567,22 +567,38 @@ class AgentSchedulingComponent(rpu.Component):
             if True:  # if any_resources
                 self._schedule_incoming()
 
-            new_resources = False
+            to_unschedule = list()
             try:
                 while not self._proc_term.is_set():
-
                     data = self._queue_unsched.get(timeout=0.001)
-
-                    self._release_slot(data['slots'])
-                    self._prof.prof('unschedule_stop', uid=data['uid'])
-
-                    # new resources, re-attempt to schedule larger tasks
-                    new_resources   = True
-                    self._too_large = None
+                    to_unschedule.append(data)
 
             except queue.Empty:
                 # no more unschedule requests
                 pass
+
+            to_release = to_unschedule
+          # to_release = list()
+          # for unit in to_unschedule:
+          #
+          #     ts = tuple(unit['tuple_size'])
+          #     if self._waitpool.get(ts):
+          #
+          #         replacer = self._waitpool[ts].pop()
+          #         replacer['slots'] = unit['slots']
+          #         self._prof.prof('unschedule_stop', uid=unit['uid'])
+          #         self._prof.prof('schedule_fast',   uid=replacer['uid'])
+          #         self.advance(replacer, rps.AGENT_EXECUTING_PENDING,
+          #                      publish=True, push=True)
+          #     else:
+          #         to_release.append(unit)
+
+            if to_release:
+                new_resources = True
+                self._too_large = None
+                for unit in to_release:
+                    self._release_slot(unit['slots'])
+                    self._prof.prof('unschedule_stop', uid=unit['uid'])
 
 
     # --------------------------------------------------------------------------
@@ -613,78 +629,51 @@ class AgentSchedulingComponent(rpu.Component):
         self.slot_status("before schedule incoming [%d]" % len(units))
 
         # handle largest units first
-        new_waitlist = list()
-        try_schedule = True
+        to_wait = list()
         for unit in sorted(units, key=lambda x: x['tuple_size'][0],
                                   reverse=True):
 
-            # we got a new unit to schedule.  Either we can place it
-            # straight away and move it to execution, or we have to
+            # Either we can place the unit straight away, or we have to
             # put it in the wait pool.
-            if try_schedule and self._try_allocation(unit):
+            if self._try_allocation(unit):
+                self.advance(unit, rps.AGENT_EXECUTING_PENDING, publish=True,
+                                                                push=True)
+            else:
+                to_wait.append(unit)
 
-                # we could schedule the unit - advance its state, notify worls
-                # about the state change, and push the unit out toward the next
-                # component.
-                self.advance(unit, rps.AGENT_EXECUTING_PENDING,
-                             publish=True, push=True)
-                continue
-
-            if try_schedule:
-                try_schedule = False  # skip larger tasks
-                self._prof.prof('schedule_abort', uid=unit['uid'])
-
-            self._prof.prof('schedule_skip', uid=unit['uid'])
-            new_waitlist.append(unit)
-
-        self._waitlist.extend(new_waitlist)
+        for unit in to_wait:
+            ts = tuple(unit['tuple_size'])
+            ts = 'ts'
+            if ts not in self._waitpool:
+                self._waitpool[ts] = list()
+            self._waitpool[ts].append(unit)
 
 
     # --------------------------------------------------------------------------
     #
     def _schedule_waitlist(self):
 
-        # if waitlist:
-        #     for task in sorted(waitlist):
-        #         if task <= max_task:
-        #             if try_schedule:
-        #                 advance
-        #                 continue
-        #             max_task = max(max_task, size(task))
-        #         break  # larger tasks won't work
-        #
-
-        if not self._waitlist:
-            return
-
         self.slot_status("before schedule waitlist")
 
         # cycle through waitlist, and see if we get anything placed now.
         #
-        # sort the poolcopy by inverse tuple size to place larger
-        # tasks first and backfill with smaller tasks.  We only look at cores
-        # right now - this needs fixing for GPU dominated loads.
+        # sort by inverse tuple size to place larger tasks first and backfill
+        # with smaller tasks.  We only look at cores right now - this needs
+        # fixing for GPU dominated loads.
 
-        new_waitlist = list()
-        try_schedule = True
+        new_waitpool = dict()
+        for ts in sorted(self._waitpool, reverse=True):
 
-        self._waitlist.sort(key=lambda x: x['tuple_size'][0], reverse=True)
-        for unit in self._waitlist:
+            new_waitpool[ts] = list()
+            for unit in self._waitpool[ts]:
 
-            if try_schedule and self._try_allocation(unit):
+                if self._try_allocation(unit):
+                    self.advance(unit, rps.AGENT_EXECUTING_PENDING,
+                                       publish=True, push=True)
+                else:
+                    new_waitpool[ts].append(unit)
 
-                # allocated unit -- advance it
-                self.advance(unit, rps.AGENT_EXECUTING_PENDING,
-                             publish=True, push=True)
-                continue
-
-            if try_schedule:
-                try_schedule = False  # skip larger tasks
-                self._prof.prof('schedule_abort')
-
-            new_waitlist.append(unit)
-
-        self._waitlist = new_waitlist
+        self._waitpool = new_waitpool
 
 
     # --------------------------------------------------------------------------
@@ -703,7 +692,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         self._prof.prof('schedule_try', uid=uid)
 
-        slots = self._allocate_slot(unit['description'])
+        slots = self._allocate_slot(unit)
         if not slots:
 
             # schedule failure
@@ -712,10 +701,19 @@ class AgentSchedulingComponent(rpu.Component):
             return False
 
         unit['slots'] = slots
+        self._prof.prof('schedule_ok', uid=uid)
         self.slot_status("after  allocate   %s:" % uid)
 
         # translate gpu maps into `CUDA_VISIBLE_DEVICES` env
         self._handle_cuda(unit)
+
+      # FIXME
+      # # allocation worked!  If the unit was tagged, store the node IDs for
+      # # this tag, so that later units can reuse that information
+      # tag = unit['description'].get('tag')
+      # if tag:
+      #     nodes = unit['slots']['nodes']
+      #     self._tag_history[tag] = [node['uid'] for node in nodes]
 
         return True
 
@@ -853,23 +851,24 @@ class AgentSchedulingComponent(rpu.Component):
         '''
 
         d = unit['description']
-        unit['tuple_size'] = [d.get('cpu_processes', 1) *
-                              d.get('cpu_threads',   1),
-                              d.get('gpu_processes', 0)]
+        unit['tuple_size'] = tuple([d.get('cpu_processes', 1) *
+                                    d.get('cpu_threads',   1),
+                                    d.get('gpu_processes', 0),
+                                    d.get('cpu_process_type')])
 
 
     # --------------------------------------------------------------------------
     #
     def _update_too_large(self, unit):
 
-        tuple_size = unit['tuple_size']
+        ts = unit['tuple_size']
 
         if not self._too_large:
-            self._too_large = tuple_size
+            self._too_large = list(ts)
 
         else:
-            self._too_large[0] = min(self._too_large[0], tuple_size[0])
-            self._too_large[1] = min(self._too_large[1], tuple_size[1])
+            self._too_large[0] = min(self._too_large[0], ts[0])
+            self._too_large[1] = min(self._too_large[1], ts[1])
 
 
     # --------------------------------------------------------------------------

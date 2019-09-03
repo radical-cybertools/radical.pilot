@@ -70,6 +70,7 @@ class Continuous(AgentSchedulingComponent):
         self._tag_history   = dict()
         self._scattered     = None
         self._oversubscribe = None
+        self._node_offset   = 0
 
       # self.old_index = 0
 
@@ -168,44 +169,53 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _try_allocation(self, unit):
-        """
-        attempt to allocate cores/gpus for a specific unit.
-        """
+    def _iterate_nodes(self):
+        # note that the first index is yielded twice, so that the respecitve
+        # node can function as first and last node in an allocation.
 
-        uid = unit['uid']
+        self._log.debug('iteration from %d', self._node_offset)
+        iterator_count = 0
 
-        self._prof.prof('schedule_try', uid=uid)
-        unit['slots'] = self._allocate_slot(unit)
-
-        if not unit['slots']:
-
-            # signal the unit remains unhandled (False signals that failure)
-            self._prof.prof('schedule_fail', uid=uid)
-            return False
+        while iterator_count <= len(self.nodes):
+            yield self.nodes[self._node_offset]
+            iterator_count    += 1
+            self._node_offset += 1
+            self._node_offset  = self._node_offset % len(self.nodes)
 
 
-        # allocation worked!  If the unit was tagged, store the node IDs for
-        # this tag, so that later units can reuse that information
-        tag = unit['description'].get('tag')
-        if tag:
-            nodes = unit['slots']['nodes']
-            self._tag_history[tag] = [node['uid'] for node in nodes]
-
-        # translate gpu maps into `CUDA_VISIBLE_DEVICES` env
-        self._handle_cuda(unit)
-
-        # got an allocation, we can go off and launch the process
-        self._prof.prof('schedule_ok', uid=uid)
-
-      # self.slot_status('after  allocate   %s' % uid)
-      # self._log.debug("%s [%s/%s] : %s", uid,
-      #                 unit['description']['cpu_processes'],
-      #                 unit['description']['gpu_processes'],
-      #                 pprint.pformat(unit['slots']))
-
-        # True signals success
-        return True
+  # # --------------------------------------------------------------------------
+  # #
+  # def _try_allocation(self, unit):
+  #     """
+  #     attempt to allocate cores/gpus for a specific unit.
+  #     """
+  #
+  #     uid = unit['uid']
+  #
+  #     self._prof.prof('schedule_try', uid=uid)
+  #     unit['slots'] = self._allocate_slot(unit)
+  #
+  #     if not unit['slots']:
+  #
+  #         # signal the unit remains unhandled (False signals that failure)
+  #       # self._prof.prof('schedule_fail', uid=uid)
+  #         return False
+  #
+  #
+  #     # translate gpu maps into `CUDA_VISIBLE_DEVICES` env
+  #     self._handle_cuda(unit)
+  #
+  #     # got an allocation, we can go off and launch the process
+  #     self._prof.prof('schedule_ok', uid=uid)
+  #
+  #   # self.slot_status('after  allocate   %s' % uid)
+  #   # self._log.debug("%s [%s/%s] : %s", uid,
+  #   #                 unit['description']['cpu_processes'],
+  #   #                 unit['description']['gpu_processes'],
+  #   #                 pprint.pformat(unit['slots']))
+  #
+  #     # True signals success
+  #     return True
 
 
     # --------------------------------------------------------------------------
@@ -488,7 +498,7 @@ class Continuous(AgentSchedulingComponent):
       # self._log.debug('-------------------------')
       # self._log.debug('find_resources %s (non-mpi)', uid)
 
-        for node in self.nodes:  # FIXME optimization: iteration start
+        for node in self._iterate_nodes():
 
             # Check if a unit is tagged to use this node.  This means we check
             #   - if a tag exists
@@ -663,7 +673,7 @@ class Continuous(AgentSchedulingComponent):
 
       # search_nodes = self.nodes[self.old_index:] + self.nodes[:self.old_index]
       # self.old_index -= 1
-        for node in self.nodes:
+        for node in self._iterate_nodes():
 
           # self.old_index += 1
           # if self.old_index >= len(self.nodes):

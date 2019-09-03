@@ -58,7 +58,7 @@ if __name__ == '__main__':
         pd_init = {'resource'      : resource,
                    'runtime'       : 30,  # pilot runtime (min)
                    'exit_on_error' : True,
-                   'cores'         : 1024 * 2,
+                   'cores'         : 1024,
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
@@ -74,7 +74,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 1024 * 16  # number of units to run
+        n = 1024  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -84,7 +84,7 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable       = '/home/merzky/radical/radical.pilot.2/examples/hello_rp.sh'
-            cud.arguments        = {'1'}
+            cud.arguments        = ['1']
             cud.gpu_processes    = 0
             cud.cpu_processes    = 1
             cud.cpu_threads      = 1

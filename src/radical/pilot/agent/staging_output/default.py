@@ -131,7 +131,7 @@ class Default(AgentStagingOutputComponent):
         self._prof.prof('staging_stdout_start', uid=uid)
 
         # TODO: disable this at scale?
-        if os.path.isfile(unit['stdout_file']):
+        if 'stdout_file' in unit and os.path.isfile(unit['stdout_file']):
             with open(unit['stdout_file'], 'r') as stdout_f:
                 try:
                     txt = unicode(stdout_f.read(), "utf-8")
@@ -144,7 +144,7 @@ class Default(AgentStagingOutputComponent):
         self._prof.prof('staging_stderr_start', uid=uid)
 
         # TODO: disable this at scale?
-        if os.path.isfile(unit['stderr_file']):
+        if  'stderr_file' in unit and os.path.isfile(unit['stderr_file']):
             with open(unit['stderr_file'], 'r') as stderr_f:
                 try:
                     txt = unicode(stderr_f.read(), "utf-8")
