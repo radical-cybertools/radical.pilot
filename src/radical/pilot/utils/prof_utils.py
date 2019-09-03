@@ -746,11 +746,6 @@ def _get_unit_consumption(session, unit):
     uid = unit.uid
     pid = unit.cfg['pilot']
 
-    with open ('events.dat', 'w') as fout:
-        for e in unit.events:
-            fout.write('%14.2f : %-25s [%s]\n' % (e[ru.TIME], e[ru.EVENT],
-                e[ru.STATE]))
-
     if not pid:
         return dict()
 
