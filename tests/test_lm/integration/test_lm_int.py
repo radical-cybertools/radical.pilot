@@ -43,9 +43,16 @@ def test_lm_jsrun(resource='ornl.summit'):
 
     cfg, session = setUp(resource)
 
-    component = rpa_lm.LaunchMethod.create(name=cfg['agent_launch_method'], cfg=cfg, session=session)
+    component = rpa_lm.LaunchMethod.create(name=cfg['task_launch_method'], cfg=cfg, session=session)
 
     # /sw/summit/xalt/1.1.3/bin/jsrun
     assert('jsrun' == os.path.basename(component.launch_command))
 
+def test_lm_prte(resource='ornl.summit_prte'):
 
+    cfg, session = setUp(resource)
+
+    component = rpa_lm.LaunchMethod.create(name=cfg['task_launch_method'], cfg=cfg, session=session)
+
+    # /sw/summit/ums/ompix/gcc/6.4.0/install/prrte-dev-withtimings/bin/prun
+    assert('prun' == os.path.basename(component.launch_command))
