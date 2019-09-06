@@ -3,7 +3,7 @@
 # specified for an agent.  It contains the minimal set of settings required for
 # a functional pilot agent, without any component redundency.
 
-# we should call this `pilot_config` instead of `agent_config`, since it 
+# we should call this `pilot_config` instead of `agent_config`, since it
 # *contains* the agent layout for a pilot.
 
 {
@@ -51,59 +51,59 @@
     #
     # Bridges can be configured to stall for a certain batch of messages,
     # releasing them then as bulks of a certain size.  Default for both
-    # stall_hwm and batch_size is 1 (no stalling).  
+    # stall_hwm and batch_size is 1 (no stalling).
     #
     "bridges" : {
         "agent_staging_input_queue" : {
-            "log_level" : "error",
+            "log_level" : "debug",
             "stall_hwm" : 1,
             "bulk_size" : 0
         },
         "agent_scheduling_queue" : {
-            "log_level" : "error",
+            "log_level" : "debug",
             "stall_hwm" : 1,
             "bulk_size" : 0
         },
         "agent_executing_queue" : {
-            "log_level" : "error",
+            "log_level" : "debug",
             "stall_hwm" : 1,
             "bulk_size" : 0
         },
         "agent_staging_output_queue" : {
-            "log_level" : "error",
+            "log_level" : "debug",
             "stall_hwm" : 1,
             "bulk_size" : 0
         },
 
         "agent_unschedule_pubsub" : {
-            "log_level" : "error",
+            "log_level" : "debug",
             "stall_hwm" : 1,
             "bulk_size" : 0
         },
         "agent_schedule_pubsub" : {
-            "log_level" : "error",
+            "log_level" : "debug",
             "stall_hwm" : 1,
             "bulk_size" : 0
         },
         "log_pubsub" : {
-            "log_level" : "error",
+            "log_level" : "debug",
             "stall_hwm" : 1,
             "bulk_size" : 0
         },
         "state_pubsub" : {
-            "log_level" : "error",
+            "log_level" : "debug",
             "stall_hwm" : 1,
             "bulk_size" : 0
         },
         "control_pubsub" : {
-            "log_level" : "error",
+            "log_level" : "debug",
             "stall_hwm" : 1,
             "bulk_size" : 0
         }
     },
 
     "components" : {
-        # the update worker must live in agent_0, since only that agent is 
+        # the update worker must live in agent_0, since only that agent is
         # sure to have connectivity toward the DB.
         "UpdateWorker"                : {"count" : 1},
         "AgentStagingInputComponent"  : {"count" : 1},

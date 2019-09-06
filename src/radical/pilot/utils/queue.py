@@ -84,7 +84,7 @@ def _uninterruptible(f, *args, **kwargs):
 #
 #   qsize
 #   empty
-#   full 
+#   full
 #   put(msg, block, timeout)
 #   put_nowait
 #   get(block, timeout)
@@ -108,11 +108,11 @@ class Queue(ru.Process):
         This Queue type sets up an zmq channel of this kind:
 
             input \            / output
-                   -- bridge -- 
+                   -- bridge --
             input /            \ output
 
         ie. any number of inputs can 'zmq.push()' to a bridge (which
-        'zmq.pull()'s), and any number of outputs can 'zmq.request()' 
+        'zmq.pull()'s), and any number of outputs can 'zmq.request()'
         messages from the bridge (which 'zmq.response()'s).
 
         The bridge is the entity which 'bind()'s network interfaces, both input
@@ -133,8 +133,8 @@ class Queue(ru.Process):
 
         self._uid = "%s.%s" % (self._qname.replace('_', '.'), self._role)
         self._uid = ru.generate_id(self._uid)
-        self._log = self._session._get_logger(name=self._uid, 
-                         level=self._cfg.get('log_level'))
+        self._log = self._session._get_logger(name=self._uid, level='DEBUG')
+                       # level=self._cfg.get('log_level'))
 
         super(Queue, self).__init__(name=self._uid, log=self._log)
 
@@ -251,19 +251,19 @@ class Queue(ru.Process):
 
 
     # --------------------------------------------------------------------------
-    # 
+    #
     def ru_initialize_child(self):
 
         assert(self._role == QUEUE_BRIDGE), 'only bridges can be started'
 
         self._uid = self._uid + '.child'
-        self._log = self._session._get_logger(name=self._uid, 
+        self._log = self._session._get_logger(name=self._uid,
                          level=self._cfg.get('log_level'))
 
         spt.setproctitle('rp.%s' % self._uid)
         self._log.info('start bridge %s on %s', self._uid, self._addr)
 
-        # FIXME: should we cache messages coming in at the pull/push 
+        # FIXME: should we cache messages coming in at the pull/push
         #        side, so as not to block the push end?
 
         self._ctx = zmq.Context()
@@ -280,8 +280,8 @@ class Queue(ru.Process):
         self._out.bind(self._addr)
 
         # communicate the bridge ports to the parent process
-        _addr_in  = self._in.getsockopt( zmq.LAST_ENDPOINT)
-        _addr_out = self._out.getsockopt(zmq.LAST_ENDPOINT)
+        _addr_in  = ru.to_string(self._in.getsockopt( zmq.LAST_ENDPOINT))
+        _addr_out = ru.to_string(self._out.getsockopt(zmq.LAST_ENDPOINT))
 
         self._pqueue.put([_addr_in, _addr_out])
 
@@ -293,7 +293,7 @@ class Queue(ru.Process):
 
 
     # --------------------------------------------------------------------------
-    # 
+    #
     def ru_finalize_common(self):
 
         if self._q   : self._q   .close()
@@ -303,7 +303,7 @@ class Queue(ru.Process):
 
 
     # --------------------------------------------------------------------------
-    # 
+    #
     def work_cb(self):
 
         # We wait for an incoming message.  When one is received,
@@ -337,7 +337,7 @@ class Queue(ru.Process):
         while len(msgs) < hwm:
             data = None
             while self.is_alive(strict=False):
-                if _uninterruptible(self._in.poll, flags=zmq.POLLIN, 
+                if _uninterruptible(self._in.poll, flags=zmq.POLLIN,
                                    timeout=1000):
                     data = _uninterruptible(self._in.recv)
                     break
@@ -345,10 +345,10 @@ class Queue(ru.Process):
                 if not self.is_alive(strict=False):
                     self._log.warn('not alive anymore?')
                     return False
-            msg = msgpack.unpackb(data) 
-            if isinstance(msg, list): 
+            msg = msgpack.unpackb(data, raw=False)
+            if isinstance(msg, list):
                 msgs += msg
-            else: 
+            else:
                 msgs.append(msg)
             self._log.debug('stall %s/%s', len(msgs), hwm)
         self._log.debug('hwm   %s/%s', len(msgs), hwm)
@@ -370,7 +370,7 @@ class Queue(ru.Process):
             if self._out in events:
 
                 req  = _uninterruptible(self._out.recv)
-                data = msgpack.packb(bulks.pop(0)) 
+                data = msgpack.packb(bulks.pop(0))
                 _uninterruptible(self._out.send, data)
 
                 # go to next message/bulk (break while loop)
@@ -388,7 +388,7 @@ class Queue(ru.Process):
 
       # if self._debug:
       #     self._log.debug("-> %s", pprint.pformat(msg))
-        data = msgpack.packb(msg) 
+        data = msgpack.packb(msg)
         _uninterruptible(self._q.send, data)
 
 
@@ -402,7 +402,7 @@ class Queue(ru.Process):
         _uninterruptible(self._q.send, 'request')
 
         data = _uninterruptible(self._q.recv)
-        msg  = msgpack.unpackb(data) 
+        msg  = msgpack.unpackb(data, raw=False)
       # if self._debug:
       #     self._log.debug("<- %s", pprint.pformat(msg))
         return msg
@@ -410,16 +410,16 @@ class Queue(ru.Process):
 
     # --------------------------------------------------------------------------
     #
-    def get_nowait(self, timeout=None): # timeout in ms
+    def get_nowait(self, timeout=None):  # timeout in ms
 
         if not self._role == QUEUE_OUTPUT:
             raise RuntimeError("queue %s (%s) can't get_nowait()" % (self._qname, self._role))
 
-        with self._lock: # need to protect self._requested
+        with self._lock:  # need to protect self._requested
 
             if not self._requested:
                 # we can only send the request once per recieval
-                _uninterruptible(self._q.send, 'request')
+                _uninterruptible(self._q.send, b'request')
                 self._requested = True
 
           # try:
@@ -434,7 +434,7 @@ class Queue(ru.Process):
 
             if _uninterruptible(self._q.poll, flags=zmq.POLLIN, timeout=timeout):
                 data = _uninterruptible(self._q.recv)
-                msg  = msgpack.unpackb(data) 
+                msg  = msgpack.unpackb(data, raw=False)
                 self._requested = False
               # if self._debug:
               #     self._log.debug("<< %s", pprint.pformat(msg))

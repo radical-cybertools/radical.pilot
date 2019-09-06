@@ -48,7 +48,7 @@ class Default(AgentStagingOutputComponent):
 
         self._pwd = os.getcwd()
 
-        self.register_input(rps.AGENT_STAGING_OUTPUT_PENDING, 
+        self.register_input(rps.AGENT_STAGING_OUTPUT_PENDING,
                             rpc.AGENT_STAGING_OUTPUT_QUEUE, self.work)
 
         # we don't need an output queue -- units are picked up via mongodb
@@ -69,7 +69,7 @@ class Default(AgentStagingOutputComponent):
         # we first filter out any units which don't need any input staging, and
         # advance them again as a bulk.  We work over the others one by one, and
         # advance them individually, to avoid stalling from slow staging ops.
-        
+
         no_staging_units = list()
         staging_units    = list()
 
@@ -80,7 +80,7 @@ class Default(AgentStagingOutputComponent):
             # From here on, any state update will hand control over to the umgr
             # again.  The next unit update should thus push *all* unit details,
             # not only state.
-            unit['$all']    = True 
+            unit['$all']    = True
             unit['control'] = 'umgr_pending'
 
             # we always dig for stdout/stderr
@@ -165,7 +165,7 @@ class Default(AgentStagingOutputComponent):
                     for line in txt.split("\n"):
                         if line:
                             ts, event, comp, tid, _uid, state, msg = line.split(',')
-                            self._prof.prof(timestamp=float(ts), event=event,
+                            self._prof.prof(ts=float(ts), event=event,
                                             comp=comp, tid=tid, uid=_uid,
                                             state=state, msg=msg)
             except Exception as e:
@@ -210,12 +210,12 @@ class Default(AgentStagingOutputComponent):
         resource_sandbox.host   = 'localhost'
 
         src_context = {'pwd'      : str(unit_sandbox),       # !!!
-                       'unit'     : str(unit_sandbox), 
-                       'pilot'    : str(pilot_sandbox), 
+                       'unit'     : str(unit_sandbox),
+                       'pilot'    : str(pilot_sandbox),
                        'resource' : str(resource_sandbox)}
         tgt_context = {'pwd'      : str(unit_sandbox),       # !!!
-                       'unit'     : str(unit_sandbox), 
-                       'pilot'    : str(pilot_sandbox), 
+                       'unit'     : str(unit_sandbox),
+                       'pilot'    : str(pilot_sandbox),
                        'resource' : str(resource_sandbox)}
 
         # we can now handle the actionable staging directives
@@ -273,22 +273,22 @@ class Default(AgentStagingOutputComponent):
                     self._log.debug("mkdir %s", tgtdir)
                     rpu.rec_makedir(tgtdir)
 
-            if   action == rpc.COPY: 
+            if   action == rpc.COPY:
                 try:
                     shutil.copytree(src.path, tgt.path)
-                except OSError as exc: 
+                except OSError as exc:
                     if exc.errno == errno.ENOTDIR:
                         shutil.copy(src.path, tgt.path)
-                    else: 
+                    else:
                         raise
-                
+
             elif action == rpc.LINK:
                 # Fix issue/1513 if link source is file and target is folder
                 # should support POSIX standard where link is created
                 # with the same name as the source
                 if os.path.isfile(src.path) and os.path.isdir(tgt.path):
-                    os.symlink(src.path, 
-                               os.path.join(tgt.path, 
+                    os.symlink(src.path,
+                               os.path.join(tgt.path,
                                             os.path.basename(src.path)))
                 else:  # default behavior
                     os.symlink(src.path, tgt.path)

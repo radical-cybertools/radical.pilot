@@ -47,7 +47,7 @@ class ABDS(AgentExecutingComponent):
         self.register_input(rps.AGENT_EXECUTING_PENDING,
                             rpc.AGENT_EXECUTING_QUEUE, self.work)
 
-        self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING, 
+        self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
                              rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
@@ -441,7 +441,7 @@ prof(){
         action = 0
 
         for cu in self._cus_to_watch:
-            
+
             sandbox = '%s/%s' % (self._pwd, cu['uid'])
 
             #-------------------------------------------------------------------
@@ -460,13 +460,13 @@ prof(){
                     if report_line.find('RUNNING') != -1:
                         self._log.debug(report_contents)
                         line = report_line.split(',')
-                        timestamp = (int(line[3].split('=')[1])/1000)
+                        ts   = (int(line[3].split('=')[1])/1000)
                         action += 1
                         proc = cu['proc']
                         self._log.debug('Proc Print {0}'.format(proc))
                         del(cu['proc'])  # proc is not json serializable
-                        self.advance(cu, rps.AGENT_EXECUTING, publish=True, 
-                                     push=False,timestamp=timestamp)
+                        self.advance(cu, rps.AGENT_EXECUTING, publish=True,
+                                     push=False,ts=ts)
                         cu['proc']    = proc
 
                         # FIXME: Ioannis, what is this supposed to do?
