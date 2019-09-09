@@ -200,7 +200,7 @@ class ORTE(AgentExecutingComponent):
             if not launcher:
                 raise RuntimeError("no launcher")
 
-            self._log.debug("Launching unit with %s (%s).", 
+            self._log.debug("Launching unit with %s (%s).",
                             launcher.name, launcher.launch_command)
 
             assert(cu['slots']), 'unit unscheduled'
@@ -241,7 +241,7 @@ class ORTE(AgentExecutingComponent):
             self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             cu['target_state'] = rps.FAILED
-            self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, 
+            self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING,
                          publish=True, push=True)
 
         else:
@@ -273,12 +273,12 @@ class ORTE(AgentExecutingComponent):
             cu['target_state'] = rps.FAILED
 
         else:
-            # unit finished cleanly.  We always move to stageout, even if there 
+            # unit finished cleanly.  We always move to stageout, even if there
             # are no staging directives -- at the very least, we'll upload
             # stdout/stderr
             cu['target_state'] = rps.DONE
 
-        self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, 
+        self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING,
                      publish=True, push=True)
 
 
@@ -325,9 +325,7 @@ class ORTE(AgentExecutingComponent):
     #
     def spawn(self, launcher, cu):
 
-        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
-        #       class definition.
-        sandbox = '%s/%s' % (self._pwd, cu['uid'])
+        sandbox = cu['unit_sandbox']
 
         if False:
             cu_tmpdir = '%s/%s' % (self.tmpdir, cu['uid'])
@@ -438,7 +436,7 @@ class ORTE(AgentExecutingComponent):
         arg_list.append(ffi.new("char[]", str("%s; exit $RETVAL"
                                             % str(task_command))))
 
-        self._log.debug("Launching unit %s via %s %s", cu['uid'], 
+        self._log.debug("Launching unit %s via %s %s", cu['uid'],
                         orte_command, task_command)
 
         # NULL termination, required by ORTE
@@ -461,8 +459,8 @@ class ORTE(AgentExecutingComponent):
         with self.task_map_lock:
 
             self._prof.prof('exec_start', uid=cu['uid'])
-            rc = orte_lib.orte_submit_job(argv, index, orte_lib.launch_cb, 
-                                          self._myhandle, orte_lib.finish_cb, 
+            rc = orte_lib.orte_submit_job(argv, index, orte_lib.launch_cb,
+                                          self._myhandle, orte_lib.finish_cb,
                                           self._myhandle)
             if rc:
                 raise Exception("submit job failed with error: %d" % rc)
