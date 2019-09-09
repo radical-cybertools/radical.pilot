@@ -373,14 +373,14 @@ class Continuous(AgentSchedulingComponent):
 
         # make sure we have full chunks
         if cores:
-            n_core_chunks = len(cores) / core_chunk
-            n_cores = n_core_chunks * core_chunk
-            cores = cores[:n_cores]
+            n_core_chunks = int(len(cores) / core_chunk)
+            n_cores       = n_core_chunks * core_chunk
+            cores         = cores[:n_cores]
 
         if gpus:
-            n_gpu_chunks = len(gpus) / gpu_chunk
-            n_gpus = n_gpu_chunks * gpu_chunk
-            gpus = gpus[:n_gpus]
+            n_gpu_chunks = int(len(gpus) / gpu_chunk)
+            n_gpus       = n_gpu_chunks * gpu_chunk
+            gpus         = gpus[:n_gpus]
 
         return cores, gpus, lfs, mem
 
@@ -405,8 +405,8 @@ class Continuous(AgentSchedulingComponent):
 
         if cores:
             # make sure the core sets can host the requested number of threads
-            assert(not len(cores) % threads_per_proc)
-            n_procs =  len(cores) / threads_per_proc
+            assert(not    len(cores) % threads_per_proc)
+            n_procs = int(len(cores) / threads_per_proc)
 
             idx = 0
             for _ in range(n_procs):

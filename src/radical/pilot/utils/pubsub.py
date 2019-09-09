@@ -207,8 +207,8 @@ class Pubsub(ru.Process):
         assert(self._role == PUBSUB_BRIDGE), 'only bridges can be started'
 
         self._uid = self._uid + '.child'
-        self._log = self._session._get_logger(name=self._uid,
-                         level=self._cfg.get('log_level'))
+        self._log = self._session._get_logger(name=self._uid, level='DEBUG')
+                       # level=self._cfg.get('log_level'))
 
         spt.setproctitle('rp.%s' % self._uid)
         self._log.info('start bridge %s on %s', self._uid, self._addr)

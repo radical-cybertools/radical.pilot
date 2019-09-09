@@ -60,8 +60,8 @@ class UnitManager(rpu.Component):
 
     The unit manager can issue notification on unit state changes.  Whenever
     state notification arrives, any callback registered for that notification is
-    fired.  
-    
+    fired.
+
     NOTE: State notifications can arrive out of order wrt the unit state model!
     """
 
@@ -74,7 +74,7 @@ class UnitManager(rpu.Component):
         **Arguments:**
             * session [:class:`radical.pilot.Session`]:
               The session instance to use.
-            * scheduler (`string`): 
+            * scheduler (`string`):
               The name of the scheduler plug-in to use.
 
         **Returns:**
@@ -122,12 +122,12 @@ class UnitManager(rpu.Component):
 
         # The output queue is used to forward submitted units to the
         # scheduling component.
-        self.register_output(rps.UMGR_SCHEDULING_PENDING, 
+        self.register_output(rps.UMGR_SCHEDULING_PENDING,
                              rpc.UMGR_SCHEDULING_QUEUE)
 
         # the umgr will also collect units from the agent again, for output
         # staging and finalization
-        self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING, 
+        self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING,
                              rpc.UMGR_STAGING_OUTPUT_QUEUE)
 
         # register the state notification pull cb
@@ -151,7 +151,7 @@ class UnitManager(rpu.Component):
 
 
     # --------------------------------------------------------------------------
-    # 
+    #
     def initialize_common(self):
 
         # the manager must not carry bridge and component handles across forks
@@ -162,13 +162,13 @@ class UnitManager(rpu.Component):
     #
     def _atfork_prepare(self): pass
     def _atfork_parent(self) : pass
-    def _atfork_child(self)  : 
+    def _atfork_child(self)  :
         self._bridges    = dict()
         self._components = dict()
 
 
     # --------------------------------------------------------------------------
-    # 
+    #
     def finalize_parent(self):
 
         # terminate umgr components
@@ -278,7 +278,7 @@ class UnitManager(rpu.Component):
         # FIXME: should is_valid be used?  Either way, `self._closed` is not an
         #        `mt.Event`!
         if self._closed:
-            self._log.debug('umgr closed, ignore pilot state (%s: %s)', 
+            self._log.debug('umgr closed, ignore pilot state (%s: %s)',
                             pilot.uid, pilot.state)
             return True
 
@@ -305,7 +305,7 @@ class UnitManager(rpu.Component):
 
             # update the units to avoid pulling them again next time.
             # NOTE:  this needs not locking with the unit pulling in the
-            #        _unit_pull_cb, as that will only pull umgr_pending 
+            #        _unit_pull_cb, as that will only pull umgr_pending
             #        units.
             uids = [unit['uid'] for unit in units]
 
@@ -373,7 +373,7 @@ class UnitManager(rpu.Component):
         # under umgr control, and push them into the respective queues
         # FIXME: this should also be based on a tailed cursor
         # FIXME: Unfortunately, 'find_and_modify' is not bulkable, so we have
-        #        to use 'find'.  To avoid finding the same units over and over 
+        #        to use 'find'.  To avoid finding the same units over and over
         #        again, we update the 'control' field *before* running the next
         #        find -- so we do it right here.
         unit_cursor = self.session._dbs._c.find({'type'    : 'unit',
@@ -500,7 +500,7 @@ class UnitManager(rpu.Component):
         with self._cb_lock:
             for cb_name, cb_val in self._callbacks[rpc.UNIT_STATE].items():
 
-                self._log.debug('%s calls state cb %s for %s', 
+                self._log.debug('%s calls state cb %s for %s',
                                 self.uid, cb_name, unit_obj.uid)
 
                 cb      = cb_val['cb']
@@ -556,6 +556,7 @@ class UnitManager(rpu.Component):
               :class:`radical.pilot.ComputePilot`]: The pilot objects that will be
               added to the unit manager.
         """
+
 
         self.is_valid()
 
@@ -664,7 +665,7 @@ class UnitManager(rpu.Component):
 
         # publish to the command channel for the scheduler to pick up
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'remove_pilots',
-                                          'arg' : {'pids'  : pilot_ids, 
+                                          'arg' : {'pids'  : pilot_ids,
                                                    'umgr'  : self.uid}})
         self._rep.ok('>>ok\n')
 
@@ -748,7 +749,7 @@ class UnitManager(rpu.Component):
 
         # Only after the insert can we hand the units over to the next
         # components (ie. advance state).
-        self.advance(unit_docs, rps.UMGR_SCHEDULING_PENDING, 
+        self.advance(unit_docs, rps.UMGR_SCHEDULING_PENDING,
                      publish=True, push=True)
         self._rep.ok('>>ok\n')
 
@@ -931,7 +932,7 @@ class UnitManager(rpu.Component):
         immediately set to `CANCELED`, even if some RP component may still
         operate on the units.  Specifically, other state transitions, including
         other final states (`DONE`, `FAILED`) can occur *after* cancellation.
-        This is a side effect of an optimization: we consider this 
+        This is a side effect of an optimization: we consider this
         acceptable tradeoff in the sense "Oh, that unit was DONE at point of
         cancellation -- ok, we can use the results, sure!".
 
@@ -975,7 +976,7 @@ class UnitManager(rpu.Component):
             self.advance(unit_docs, state=rps.CANCELED, publish=True, push=True)
 
         # we *always* issue the cancellation command to the local components
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units', 
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units',
                                           'arg' : {'uids' : uids,
                                                    'umgr' : self.uid}})
 
@@ -1026,7 +1027,7 @@ class UnitManager(rpu.Component):
 
         with self._cb_lock:
             cb_name = cb.__name__
-            self._callbacks[metric][cb_name] = {'cb'      : cb, 
+            self._callbacks[metric][cb_name] = {'cb'      : cb,
                                                 'cb_data' : cb_data}
 
 
