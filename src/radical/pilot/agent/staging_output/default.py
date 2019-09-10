@@ -153,6 +153,21 @@ class Default(AgentStagingOutputComponent):
 
                 unit['stderr'] += rpu.tail(txt)
 
+            # to help with ID mapping, also parse for PRTE output:
+            # [batch3:122527] JOB [3673,4] EXECUTING
+            with open(unit['stderr_file'], 'r') as stderr_f:
+
+                for line in stderr_f.readlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if line[0] == '[' and line.endswith('EXECUTING'):
+                        elems = line.replace('[', '').replace(']', '').split()
+                        tid   = elems[2]
+                        self._log.info('PRTE IDMAP: %s:%s' % (tid, uid))
+
+                unit['stderr'] += rpu.tail(txt)
+
         self._prof.prof('staging_stderr_stop', uid=uid)
         self._prof.prof('staging_uprof_start', uid=uid)
 
