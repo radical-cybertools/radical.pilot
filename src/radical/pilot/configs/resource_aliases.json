@@ -8,7 +8,6 @@
         "nersc.edison"                      : "nersc.edison_orte",
         "xsede.stampede"                    : "xsede.stampede_ssh",
         "xsede.wrangler"                    : "xsede.wrangler_ssh",
-        "xsede.trestles"                    : "xsede.trestles_ssh",
         "xsede.comet"                       : "xsede.comet_orte",
         "xsede.supermic"                    : "xsede.supermic_ssh",
         "yale.grace"                        : "yale.grace_ssh"
