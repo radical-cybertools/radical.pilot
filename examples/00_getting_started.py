@@ -79,7 +79,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 512  # number of units to run
+        n = 1  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -88,11 +88,8 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = '/bin/sleep'
-            cud.arguments        = ['%d' % random.randint(1,5)]
-            cud.gpu_processes    = random.randint(0,1)
+            cud.executable       = '/bin/date'
             cud.cpu_processes    = 1
-            cud.cpu_threads      = 1
             cud.cpu_process_type = rp.POSIX
             cud.cpu_thread_type  = rp.POSIX
             cuds.append(cud)
