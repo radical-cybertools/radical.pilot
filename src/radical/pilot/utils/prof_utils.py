@@ -1,8 +1,6 @@
 
 import os
-import sys
 import glob
-import pprint
 
 import radical.utils as ru
 
@@ -42,7 +40,7 @@ PILOT_DURATIONS = {
             'ignore'    : [{ru.STATE: rps.PMGR_ACTIVE    },
                            {ru.EVENT: 'cmd'              }],
             'term'      : [{ru.EVENT: 'cmd'              },
-                           {ru.EVENT: 'bootstrap_0_stop' }]
+                           {ru.EVENT: 'bootstrap_0_stop' }],
         },
 
 
@@ -101,26 +99,26 @@ UNIT_DURATIONS_PRTE = {
                              {ru.EVENT: 'cu_exec_start'          }],
             'prte_phase_1': [{ru.EVENT: 'cu_exec_start'          },
                              {ru.EVENT: 'prte_init_complete'     }],
-            'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
-                             {ru.EVENT: 'prte_sending_launch_msg'}],
-            'exec_cmd'    : [{ru.EVENT: 'prte_sending_launch_msg'},
-                             {ru.EVENT: 'prte_iof_complete'      }],
-            'prte_phase_3': [{ru.EVENT: 'prte_iof_complete'      },
-                             {ru.EVENT: 'prte_notify_completed'  }],
+          # 'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
+          #                  {ru.EVENT: 'prte_sending_launch_msg'}],
+          # 'exec_cmd'    : [{ru.EVENT: 'prte_sending_launch_msg'},
+          #                  {ru.EVENT: 'prte_iof_complete'      }],
+          # 'prte_phase_3': [{ru.EVENT: 'prte_iof_complete'      },
+          #                  {ru.EVENT: 'prte_notify_completed'  }],
             'term_sh'     : [{ru.EVENT: 'prte_notify_completed'  },
                              {ru.EVENT: 'cu_stop'                }],
             'term_rp'     : [{ru.EVENT: 'cu_stop'                },
                              {ru.EVENT: 'exec_stop'              }],
             'unschedule'  : [{ru.EVENT: 'exec_stop'              },
-                             {ru.EVENT: 'unschedule_stop'        }]
+                             {ru.EVENT: 'unschedule_stop'        }],
 
-          # # if we have cmd_start / cmd_stop:
-          # 'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
-          #                  {ru.EVENT: 'cmd_start'              }],
-          # 'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
-          #                  {ru.EVENT: 'cmd_stop'               }],
-          # 'prte_phase_3': [{ru.EVENT: 'cmd_stop'               },
-          #                  {ru.EVENT: 'prte_notify_completed'  }],
+            # if we have cmd_start / cmd_stop:
+            'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
+                             {ru.EVENT: 'app_start'              }],
+            'exec_cmd'    : [{ru.EVENT: 'app_start'              },
+                             {ru.EVENT: 'app_stop'               }],
+            'prte_phase_3': [{ru.EVENT: 'app_stop'               },
+                             {ru.EVENT: 'prte_notify_completed'  }],
         }
 }
 
@@ -193,10 +191,19 @@ def get_session_profile(sid, src=None):
         profiles = fetch_profiles(sid=sid, skip_existing=True)
 
     #  filter out some frequent, but uninteresting events
-    efilter = {ru.EVENT : ['publish', 'work start', 'work done'],
-               ru.MSG   : ['update unit state', 'unit update pushed',
-                            'bulked', 'bulk size']
-              }
+    efilter = {ru.EVENT: [
+                        # 'get',
+                          'publish',
+                          'schedule_skip',
+                          'schedule_fail',
+                          'staging_stderr_start',
+                          'staging_stderr_stop',
+                          'staging_stdout_start',
+                          'staging_stdout_stop',
+                          'staging_uprof_start',
+                          'staging_uprof_stop',
+                          'update_pushed',
+                         ]}
 
     profiles          = ru.read_profiles(profiles, sid, efilter=efilter)
     profile, accuracy = ru.combine_profiles(profiles)
@@ -546,6 +553,7 @@ def get_consumed_resources(session):
 
         p_min = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][0])[ 0]
         p_max = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][1])[-1]
+      # p_max = pilot.events[-1][ru.TIME]
 
         pid = pilot.uid
         cpn = pilot.cfg['resource_details']['rm_info']['cores_per_node']
@@ -569,12 +577,12 @@ def get_consumed_resources(session):
 
         for unit in session.get(etype='unit'):
 
-            if 'slots' not in unit.cfg:
+            try:
+                snodes = unit.cfg['slots']['nodes']
+                u_min  = unit.timestamps(event=unit_durations['consume']['exec_queue'][0])[ 0]
+                u_max  = unit.timestamps(event=unit_durations['consume']['unschedule'][1])[-1]
+            except:
                 continue
-
-            snodes = unit.cfg['slots']['nodes']
-            u_min  = unit.timestamps(event=unit_durations['consume']['exec_queue'][0])[ 0]
-            u_max  = unit.timestamps(event=unit_durations['consume']['unschedule'][1])[-1]
 
             for snode in snodes:
 
@@ -825,7 +833,7 @@ def _get_unit_consumption(session, unit):
                 for e in unit.events:
                     print '\t'.join([str(x) for x in e])
 
-                sys.exit()
+              # sys.exit()
 
         ret[metric] = {uid: boxes}
 

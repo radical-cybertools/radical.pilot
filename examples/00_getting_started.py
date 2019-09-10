@@ -58,7 +58,10 @@ if __name__ == '__main__':
         pd_init = {'resource'      : resource,
                    'runtime'       : 30,  # pilot runtime (min)
                    'exit_on_error' : True,
-                   'cores'         : 1024,
+                   'project'       : config[resource]['project'],
+                   'queue'         : config[resource]['queue'],
+                   'access_schema' : config[resource]['schema'],
+                   'cores'         : config[resource]['cores'],
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
@@ -83,13 +86,8 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = '/home/merzky/radical/radical.pilot.2/examples/hello_rp.sh'
-            cud.arguments        = ['1']
-            cud.gpu_processes    = 0
-            cud.cpu_processes    = 1
-            cud.cpu_threads      = 1
-            cud.cpu_process_type = rp.MPI
-            cud.cpu_thread_type  = rp.POSIX
+            cud.executable    = '/bin/date'
+            cud.cpu_processes = 1
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')

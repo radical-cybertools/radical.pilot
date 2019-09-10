@@ -215,12 +215,9 @@ class AgentSchedulingComponent(rpu.Component):
         self.nodes = None
         self._uid  = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
                                     ru.ID_CUSTOM)
-
         self._too_large = None
-      # print 'reset (new)'
 
         rpu.Component.__init__(self, cfg, session)
-
 
 
 
@@ -412,8 +409,6 @@ class AgentSchedulingComponent(rpu.Component):
         '''
         Returns a multi-line string corresponding to the status of the node list
         '''
-
-        return ''
 
         if not self._log.isEnabledFor(logging.DEBUG):
             return
