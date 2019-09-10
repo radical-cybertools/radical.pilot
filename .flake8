@@ -30,4 +30,6 @@ ignore          =
      # Complex methods
      C901,
      # Do not use bare 'except'
-     E722 
+     E722,
+     # allow line breaks after binary operators
+     W504

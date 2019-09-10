@@ -15,11 +15,11 @@
         "cores"    : 64
     },
 
-    "local.localhost_anaconda" : {
+    "local.localhost_funcs" : {
         "project"  : null,
         "queue"    : null,
-        "schema"   : null,
-        "cores"    : 2
+        "schema"   : "ssh",
+        "cores"    : 64
     },
 
     "local.devel" : {
@@ -100,6 +100,13 @@
     },
 
     "xsede.comet_ssh"  : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "compute",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+    "xsede.comet_ssh_funcs"  : {
         "project"  : "TG-MCB090174",
         "queue"    : "compute",
         "schema"   : "gsissh",
