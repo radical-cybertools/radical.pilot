@@ -105,6 +105,8 @@ class PilotManager(rpu.Component):
         else:
             self._reconnect = False
             self._uid       = ru.generate_id('pmgr')
+            self._uid       = ru.generate_id('pmgr.%(item_counter)04d',
+                                            ru.ID_CUSTOM, namespace=session.uid)
 
         cfg['owner'] = self.uid
         rpu.Component.__init__(self, cfg, session)
