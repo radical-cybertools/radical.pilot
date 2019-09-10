@@ -877,12 +877,6 @@ class Component(ru.Process):
         for state in states:
             self._log.debug('TERM : %s unregister output %s', self.uid, state)
 
-            if state not in self._inputs:
-
-                self._log.warn('input %s is not registered', state)
-              # raise ValueError('input %s is not registered' % state)
-                continue
-
             if not state in self._outputs:
                 self._log.warn('state %s has no output registered',  state)
               # raise ValueError('state %s has no output registered' % state)

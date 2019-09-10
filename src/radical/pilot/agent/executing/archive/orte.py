@@ -12,11 +12,11 @@ import tempfile
 import threading
 import traceback
 
-from orte_cffi import ffi, lib as orte_lib
+from orte_cffi import ffi, lib as orte_lib                                # noca
 
-from ....  import pilot as rp
-from ...  import states    as rps
-from ...  import constants as rpc
+from ....  import pilot     as rp
+from ...   import states    as rps
+from ...   import constants as rpc
 from .base import AgentExecutingComponent
 
 
@@ -200,7 +200,7 @@ class ORTE(AgentExecutingComponent):
             if not launcher:
                 raise RuntimeError("no launcher")
 
-            self._log.debug("Launching unit with %s (%s).", 
+            self._log.debug("Launching unit with %s (%s).",
                             launcher.name, launcher.launch_command)
 
             assert(cu['slots']), 'unit unscheduled'
@@ -241,7 +241,7 @@ class ORTE(AgentExecutingComponent):
             self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             cu['target_state'] = rps.FAILED
-            self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, 
+            self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING,
                          publish=True, push=True)
 
         else:
@@ -273,12 +273,12 @@ class ORTE(AgentExecutingComponent):
             cu['target_state'] = rps.FAILED
 
         else:
-            # unit finished cleanly.  We always move to stageout, even if there 
+            # unit finished cleanly.  We always move to stageout, even if there
             # are no staging directives -- at the very least, we'll upload
             # stdout/stderr
             cu['target_state'] = rps.DONE
 
-        self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, 
+        self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING,
                      publish=True, push=True)
 
 
@@ -325,16 +325,9 @@ class ORTE(AgentExecutingComponent):
     #
     def spawn(self, launcher, cu):
 
-        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
-        #       class definition.
+        # make sure the unit sandbox exists
         sandbox = '%s/%s' % (self._pwd, cu['uid'])
-
-        if False:
-            cu_tmpdir = '%s/%s' % (self.tmpdir, cu['uid'])
-        else:
-            cu_tmpdir = sandbox
-
-        rec_makedir(cu_tmpdir)
+        rec_makedir(sandbox)
 
         # TODO: pre_exec
         # # Before the Big Bang there was nothing
@@ -347,11 +340,11 @@ class ORTE(AgentExecutingComponent):
         #     launch_script.write("# Pre-exec commands\n")
         #     if self._prof.enabled:
         #         launch_script.write("echo cu_pre_start `%s` >> %s/%s.prof\n"\
-        #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
+        #                           % (cu['gtod'], sandbox, cu['uid']))
         #     launch_script.write(pre)
         #     if self._prof.enabled:
         #         launch_script.write("echo cu_pre_stop `%s` >> %s/%s.prof\n" \
-        #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
+        #                           % (cu['gtod'], sandbox, cu['uid']))
 
         # TODO: post_exec
         # # After the universe dies the infrared death, there will be nothing
@@ -363,11 +356,11 @@ class ORTE(AgentExecutingComponent):
         #     launch_script.write("# Post-exec commands\n")
         #     if self._prof.enabled:
         #         launch_script.write("echo cu_post_start `%s` >> %s/%s.prof\n"
-        #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
+        #                           % (cu['gtod'], sandbox, cu['uid']))
         #     launch_script.write('%s\n' % post)
         #     if self._prof.enabled:
         #         launch_script.write("echo cu_post_stop  `%s` >> %s/%s.prof\n"
-        #                           % (cu['gtod'], cu_tmpdir, cu['uid']))
+        #                           % (cu['gtod'], sandbox, cu['uid']))
 
 
         # The actual command line, constructed per launch-method
@@ -387,7 +380,7 @@ class ORTE(AgentExecutingComponent):
 
         # Set the working directory
         arg_list.append(ffi.new("char[]", "--wdir"))
-        arg_list.append(ffi.new("char[]", str(cu_tmpdir)))
+        arg_list.append(ffi.new("char[]", str(sandbox)))
 
         # Set RP environment variables
         rp_envs = [
@@ -417,7 +410,7 @@ class ORTE(AgentExecutingComponent):
 
         # Let the orted write stdout and stderr to rank-based output files
         arg_list.append(ffi.new("char[]", "--output-filename"))
-        arg_list.append(ffi.new("char[]", "%s:nojobid,nocopy" % str(cu_tmpdir)))
+        arg_list.append(ffi.new("char[]", "%s:nojobid,nocopy" % str(sandbox)))
 
         # Save retval of actual CU application (in case we have post-exec)
         task_command += "; RETVAL=$?"
@@ -427,18 +420,18 @@ class ORTE(AgentExecutingComponent):
         arg_list.append(ffi.new("char[]", "-c"))
         if self._prof.enabled:
             task_command = "echo script cu_start `%s` >> %s/%s.prof; " \
-                         % (self.gtod, cu_tmpdir, cu['uid']) \
+                         % (self.gtod, sandbox, cu['uid']) \
                          + "echo script cu_cd_done `%s` >> %s/%s.prof; " \
-                         % (self.gtod, cu_tmpdir, cu['uid']) \
+                         % (self.gtod, sandbox, cu['uid']) \
                          + "echo script cu_exec_start `%s` >> %s/%s.prof; " \
-                         % (self.gtod, cu_tmpdir, cu['uid']) \
+                         % (self.gtod, sandbox, cu['uid']) \
                          + task_command \
                          + "; echo script cu_exec_stop `%s` >> %s/%s.prof" \
-                         % (self.gtod, cu_tmpdir, cu['uid'])
+                         % (self.gtod, sandbox, cu['uid'])
         arg_list.append(ffi.new("char[]", str("%s; exit $RETVAL"
                                             % str(task_command))))
 
-        self._log.debug("Launching unit %s via %s %s", cu['uid'], 
+        self._log.debug("Launching unit %s via %s %s", cu['uid'],
                         orte_command, task_command)
 
         # NULL termination, required by ORTE
@@ -453,16 +446,16 @@ class ORTE(AgentExecutingComponent):
         # prepare stdout/stderr
         # TODO: when mpi==True && cores>1 there will be multiple files that need
         #       to be concatenated.
-        cu['stdout_file'] = os.path.join(cu_tmpdir, 'rank.0/stdout')
-        cu['stderr_file'] = os.path.join(cu_tmpdir, 'rank.0/stderr')
+        cu['stdout_file'] = os.path.join(sandbox, 'rank.0/stdout')
+        cu['stderr_file'] = os.path.join(sandbox, 'rank.0/stderr')
 
         # Submit to the DVM!
         index = ffi.new("int *")
         with self.task_map_lock:
 
             self._prof.prof('exec_start', uid=cu['uid'])
-            rc = orte_lib.orte_submit_job(argv, index, orte_lib.launch_cb, 
-                                          self._myhandle, orte_lib.finish_cb, 
+            rc = orte_lib.orte_submit_job(argv, index, orte_lib.launch_cb,
+                                          self._myhandle, orte_lib.finish_cb,
                                           self._myhandle)
             if rc:
                 raise Exception("submit job failed with error: %d" % rc)

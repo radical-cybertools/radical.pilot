@@ -193,8 +193,8 @@ def get_session_description(sid, src=None, dburl=None):
 
     for unit in sorted(json['unit'], key=lambda k: k['uid']):
         uid  = unit['uid']
-        pid  = unit['umgr']
-        umgr = unit['pilot']
+        pid  = unit['pilot']
+        umgr = unit['umgr']
         tree[pid ]['children'].append(uid)
         tree[umgr]['children'].append(uid)
         tree[uid] = {'uid'         : uid,

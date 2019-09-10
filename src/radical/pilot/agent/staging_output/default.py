@@ -131,7 +131,7 @@ class Default(AgentStagingOutputComponent):
         self._prof.prof('staging_stdout_start', uid=uid)
 
         # TODO: disable this at scale?
-        if os.path.isfile(unit['stdout_file']):
+        if unit.get('stdout_file') and os.path.isfile(unit['stdout_file']):
             with open(unit['stdout_file'], 'r') as stdout_f:
                 try:
                     txt = ru.to_string(stdout_f.read())
@@ -144,7 +144,7 @@ class Default(AgentStagingOutputComponent):
         self._prof.prof('staging_stderr_start', uid=uid)
 
         # TODO: disable this at scale?
-        if os.path.isfile(unit['stderr_file']):
+        if unit.get('stderr_file') and os.path.isfile(unit['stderr_file']):
             with open(unit['stderr_file'], 'r') as stderr_f:
                 try:
                     txt = ru.to_string(stderr_f.read())
@@ -157,7 +157,6 @@ class Default(AgentStagingOutputComponent):
         self._prof.prof('staging_uprof_start', uid=uid)
 
         unit_prof = "%s/%s.prof" % (sandbox, uid)
-
         if os.path.isfile(unit_prof):
             try:
                 with open(unit_prof, 'r') as prof_f:
