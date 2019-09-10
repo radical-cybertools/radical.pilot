@@ -250,10 +250,9 @@ class Session(rs.Session):
 
         except Exception as e:
             self._rep.error(">>err\n")
-            self._log.exception('session create failed')
-            raise RuntimeError('Could not create new session '
-                               '(database URL (%s) incorrect?): %s'
-                               % (dburl, e))
+            self._log.exception('session create failed [%s]', self._dburl)
+            raise RuntimeError('session create failed [%s]: %s'
+                              % (self._dburl, e))
 
         # the session must not carry bridge and component handles across forks
         ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
@@ -840,15 +839,10 @@ class Session(rs.Session):
             for rc in rcs:
                 self._log.info('load rcfg for %s' % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict()
-                self._log.debug('add  rcfg for %s (%s)',
-                        rc, self._resource_configs[rc].get('cores_per_node'))
 
         else:
             self._log.debug('load rcfg for %s', resource_config.label)
             self._resource_configs[resource_config.label] = resource_config.as_dict()
-            self._log.debug('add  rcfg for %s (%s)',
-                    resource_config.label,
-                    self._resource_configs[resource_config.label].get('cores_per_node'))
 
 
     # -------------------------------------------------------------------------
@@ -983,15 +977,13 @@ class Session(rs.Session):
                 # If the sandbox contains expandables, we need to resolve those
                 # remotely.
                 #
-                # NOTE: Note that this will only work for (gsi)ssh or shell
+                # NOTE: this will only work for (gsi)ssh or similar shell
                 #       based access mechanisms
-                if '$' not in sandbox_raw and '`' not in sandbox_raw:
+                if '$' not in sandbox_raw:
                     # no need to expand further
                     sandbox_base = sandbox_raw
 
                 else:
-                    js_url = rs.Url(rcfg['job_manager_endpoint'])
-
                     js_url = rcfg['job_manager_endpoint']
                     js_url = rcfg.get('job_manager_hop', js_url)
                     js_url = rs.Url(js_url)
@@ -1001,7 +993,8 @@ class Session(rs.Session):
                     if   'ssh'    in elems: js_url.schema = 'ssh'
                     elif 'gsissh' in elems: js_url.schema = 'gsissh'
                     elif 'fork'   in elems: js_url.schema = 'fork'
-                    else:                   js_url.schema = 'fork'
+                    elif len(elems) == 1  : js_url.schema = 'fork'
+                    else: raise Exception("invalid schema: %s" % js_url.schema)
 
                     if js_url.schema == 'fork':
                         js_url.hostname = 'localhost'
@@ -1011,11 +1004,11 @@ class Session(rs.Session):
 
                     ret, out, err = shell.run_sync(' echo "WORKDIR: %s"'
                                                                   % sandbox_raw)
-                    if ret != 0 or 'WORKDIR:' not in out:
-                        raise RuntimeError("Couldn't get remote workdir")
+                    if ret or 'WORKDIR:' not in out:
+                        raise RuntimeError("Couldn't get remote workdir.")
 
                     sandbox_base = out.split(":")[1].strip()
-                    self._log.debug("sandbox %s: '%s'", js_url, sandbox_base)
+                    self._log.debug("sandbox base %s: %s", js_url, sandbox_base)
 
                 # at this point we have determined the remote 'pwd' - the
                 # global sandbox is relative to it.
