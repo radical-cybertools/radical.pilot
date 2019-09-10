@@ -73,10 +73,10 @@ class Default(PMGRLaunchingComponent):
         self._cache_lock    = threading.RLock()  # lock for cache
 
         self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
-        self._root_dir      = "%s/../../"   % self._mod_dir  
-        self._conf_dir      = "%s/configs/" % self._root_dir 
+        self._root_dir      = "%s/../../"   % self._mod_dir
+        self._conf_dir      = "%s/configs/" % self._root_dir
 
-        self.register_input(rps.PMGR_LAUNCHING_PENDING, 
+        self.register_input(rps.PMGR_LAUNCHING_PENDING,
                             rpc.PMGR_LAUNCHING_QUEUE, self.work)
 
         # FIXME: make interval configurable
@@ -227,7 +227,7 @@ class Default(PMGRLaunchingComponent):
 
             self._prof.prof('staging_in_stop', uid=pid, msg=did)
 
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'pilot_staging_input_result', 
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'pilot_staging_input_result',
                                           'arg' : {'pilot' : pilot,
                                                    'sds'   : sds}})
 
@@ -254,8 +254,6 @@ class Default(PMGRLaunchingComponent):
         # we don't want to lock our members all the time.  For that reason we
         # use a copy of the pilots_tocheck list and iterate over that, and only
         # lock other members when they are manipulated.
-
-        ru.raise_on('pilot_watcher_cb')
 
         tc = rs.job.Container()
         with self._pilots_lock, self._check_lock:
@@ -336,7 +334,7 @@ class Default(PMGRLaunchingComponent):
         the request to get enacted, nor for it to arrive, but just send it.
         '''
 
-        if not pids or not self._pilots: 
+        if not pids or not self._pilots:
             # nothing to do
             return
 
@@ -368,16 +366,16 @@ class Default(PMGRLaunchingComponent):
 
         self._log.debug('killing pilots: %s', pids)
 
-        if not pids or not self._pilots: 
+        if not pids or not self._pilots:
             # nothing to do
             return
 
         # find the most recent cancellation request
         with self._pilots_lock:
-            self._log.debug('killing pilots: %s', 
-                              [p['pilot'].get('cancel_requested', 0) 
+            self._log.debug('killing pilots: %s',
+                              [p['pilot'].get('cancel_requested', 0)
                                for p in list(self._pilots.values())])
-            last_cancel = max([p['pilot'].get('cancel_requested', 0) 
+            last_cancel = max([p['pilot'].get('cancel_requested', 0)
                                for p in list(self._pilots.values())])
 
         self._log.debug('killing pilots: last cancel: %s', last_cancel)
@@ -503,13 +501,13 @@ class Default(PMGRLaunchingComponent):
 
         We expect `_prepare_pilot(resource, pilot)` to return a dict with:
 
-            { 
+            {
               'js' : saga.job.Description,
-              'ft' : [ 
+              'ft' : [
                 { 'src' : string  # absolute source file name
                   'tgt' : string  # relative target file name
                   'rem' : bool    # shall we remove src?
-                }, 
+                },
                 ... ]
             }
 
@@ -590,7 +588,7 @@ class Default(PMGRLaunchingComponent):
                 os.makedirs('%s/%s' % (tmp_dir, tgt_dir))
 
             if src == '/dev/null' :
-                # we want an empty file -- touch it (tar will refuse to 
+                # we want an empty file -- touch it (tar will refuse to
                 # handle a symlink to /dev/null)
                 open('%s/%s' % (tmp_dir, tgt), 'a').close()
             else:
@@ -676,7 +674,7 @@ class Default(PMGRLaunchingComponent):
                 js = rs.job.Service(js_ep, session=self._session)
                 self._saga_js_cache[js_ep] = js
 
-        # now that the scripts are in place and configured, 
+        # now that the scripts are in place and configured,
         # we can launch the agent
         jc = rs.job.Container()
 
@@ -929,7 +927,7 @@ class Default(PMGRLaunchingComponent):
         #   create  : use    if ve exists, otherwise create, then use
         #   use     : use    if ve exists, otherwise error,  then exit
         #   recreate: delete if ve exists, otherwise create, then use
-        #      
+        #
         # examples   :
         #   virtenv@v0.20
         #   virtenv@devel
@@ -986,7 +984,7 @@ class Default(PMGRLaunchingComponent):
                 # we cannot clean the sandbox from within the agent, as the hop
                 # staging would then fail, and we'd get nothing back.
                 # FIXME: cleanup needs to be done by the pmgr.launcher, or
-                #        someone else, really, after fetching all logs and 
+                #        someone else, really, after fetching all logs and
                 #        profiles.
                 cleanup = 'luv'
 
@@ -1085,7 +1083,7 @@ class Default(PMGRLaunchingComponent):
         self._log.debug(pprint.pformat(agent_cfg))
         ru.write_json(agent_cfg, cfg_tmp_file)
 
-        ret['ft'].append({'src' : cfg_tmp_file, 
+        ret['ft'].append({'src' : cfg_tmp_file,
                           'tgt' : '%s/%s' % (pilot_sandbox, agent_cfg_name),
                           'rem' : True})  # purge the tmp file after packing
 
@@ -1111,7 +1109,7 @@ class Default(PMGRLaunchingComponent):
 
                 for sdist in sdist_paths:
                     base = os.path.basename(sdist)
-                    ret['ft'].append({'src' : sdist, 
+                    ret['ft'].append({'src' : sdist,
                                       'tgt' : '%s/%s' % (session_sandbox, base),
                                       'rem' : False})
 
@@ -1120,7 +1118,7 @@ class Default(PMGRLaunchingComponent):
                                   % (self._root_dir, BOOTSTRAPPER_0))
                 self._log.debug("use bootstrapper %s", bootstrapper_path)
 
-                ret['ft'].append({'src' : bootstrapper_path, 
+                ret['ft'].append({'src' : bootstrapper_path,
                                   'tgt' : '%s/%s' % (session_sandbox, BOOTSTRAPPER_0),
                                   'rem' : False})
 
@@ -1133,7 +1131,7 @@ class Default(PMGRLaunchingComponent):
                     cc_path = os.path.abspath("%s/agent/%s" % (self._root_dir, cc_name))
                     self._log.debug("use CAs %s", cc_path)
 
-                    ret['ft'].append({'src' : cc_path, 
+                    ret['ft'].append({'src' : cc_path,
                                       'tgt' : '%s/%s' % (session_sandbox, cc_name),
                                       'rem' : False})
 
