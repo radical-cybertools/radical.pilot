@@ -169,7 +169,10 @@ class PRTE(LaunchMethod):
             raise Exception("VMURI not found!")
 
         logger.info("prte startup successful: [%s]", dvm_uri)
-        time.sleep(120)  # FIXME
+
+        # in some cases, the DVM seems to need some additional time to settle.
+        # FIXME: this should not be needed, really
+        time.sleep(10)
         profiler.prof(event='dvm_ok', uid=cfg['pilot_id'])
 
 

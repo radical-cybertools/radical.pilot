@@ -233,7 +233,7 @@
         "cores_per_node"              : 8,
         "gpus_per_node"               : 1,
         "lrms"                        : "FORK",
-        "agent_type"                  : "summit_sa",
+        "agent_type"                  : "default",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "SHELLFS",

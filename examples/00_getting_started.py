@@ -58,7 +58,10 @@ if __name__ == '__main__':
         pd_init = {'resource'      : resource,
                    'runtime'       : 30,  # pilot runtime (min)
                    'exit_on_error' : True,
-                   'cores'         : 4 * 41 * 14,
+                   'project'       : config[resource]['project'],
+                   'queue'         : config[resource]['queue'],
+                   'access_schema' : config[resource]['schema'],
+                   'cores'         : config[resource]['cores'],
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
@@ -84,10 +87,8 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable       = '/bin/date'
-            cud.gpu_processes    = 0
-            cud.cpu_processes    = 90
-            cud.cpu_threads      = 4
-            cud.cpu_process_type = rp.MPI
+            cud.cpu_processes    = 1
+            cud.cpu_process_type = rp.POSIX
             cud.cpu_thread_type  = rp.POSIX
             cuds.append(cud)
             report.progress()

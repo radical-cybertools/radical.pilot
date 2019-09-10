@@ -1,5 +1,5 @@
 #!/bin/sh
-# test the correct startup of mixed OpenMP / MPI / CPU / GPU tasks
+# demonstrate the correct startup of mixed OpenMP / MPI / CPU / GPU tasks
 
 # basic information
 ARG=$1
