@@ -4,7 +4,7 @@ script="$0"
 prefix="$1"
 arg="$2"
 
-echo 
+echo
 echo "script : $script"
 echo "prefix : $prefix"
 echo "arg    : $arg"
@@ -26,7 +26,7 @@ help(){
 
     err="$1"
     ret=0
-    
+
     if ! test -z "$err"
     then
         ret=1
@@ -62,7 +62,7 @@ progress(){
 
 if test "$prefix" = "-h"
 then
-    help 
+    help
 fi
 
 if test -z "$prefix"
@@ -111,11 +111,27 @@ fi
 mkdir -p "$prefix"
 cd $prefix
 
-echo -n "install virtualenv "
+# for conda environments, install virtualenv in the env
+if ! test -z "$CONDA_DEFAULT_ENV"
+then
+    # conda developers did not think this through... :-(
+    CONDA="$(which conda 2>/dev/null | head -n 1)"
+    test -z "$CONDA" && CONDA="$_CONDA_EXE"
+    test -z "$CONDA" && CONDA="$CONDA_EXE"
+    if test -z "$CONDA"
+    then
+        echo "conda is not functional"
+        exit 1
+    fi
+    echo -n "install conda virtualenv "
+    "$CONDA" install -y virtualenv 2>&1 | progress || exit 1
+fi
+
 
 VIRTENV_CMD="$(which virtualenv 2>/dev/null)"
 if test -z "$VIRTENV_CMD"
 then
+    echo -n "install private virtualenv "
     VIRTENV_TGZ="virtualenv-1.9.tar.gz"
     VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/$VIRTENV_TGZ"
     curl -k -L -O "$VIRTENV_TGZ_URL" 2>&1 | progress
@@ -139,7 +155,7 @@ do
 done
 
 # install the radical stack (utils, saga, pilot) into a separate tree
-# ($prefix/rp_install(, so that any local install can use the ve *w/o* 
+# ($prefix/rp_install(, so that any local install can use the ve *w/o*
 # the radical stack, by re-routing PYTHONPATH
 python_version=`$PYTHON -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
 ve_mod_prefix=` $PYTHON -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`

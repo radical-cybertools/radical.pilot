@@ -27,6 +27,13 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
+        "cores"    : 2
+    },
+
+    "local.localhost_anaconda" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
         "cores"    : 64
     },
 
@@ -37,11 +44,11 @@
         "cores"    : 64
     },
 
-    "local.localhost_anaconda" : {
+    "local.localhost_funcs" : {
         "project"  : null,
         "queue"    : null,
-        "schema"   : null,
-        "cores"    : 2
+        "schema"   : "ssh",
+        "cores"    : 64
     },
 
     "local.devel" : {
@@ -219,6 +226,13 @@
         "cores"    : 64
     },
 
+    "xsede.comet_ssh_funcs"  : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "compute",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
     "xsede.comet_ortelib"  : {
         "project"  : "TG-MCB090174",
         "queue"    : "debug",
@@ -279,15 +293,14 @@
         "project"  : "CSC343",
         "queue"    : "batch",
         "schema"   : "local",
-        "cores"    : 84,
-        "gpus"     : 12
+        "cores"    : 168
     },
 
     "ornl.summit_prte" : {
         "project"  : "CSC343",
         "queue"    : "batch",
         "schema"   : "local",
-        "cores"    : 84
+        "cores"    : 168
     },
 
     "ornl.titan" : {

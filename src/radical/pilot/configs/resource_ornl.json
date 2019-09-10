@@ -289,7 +289,8 @@
                                          "module load   zeromq/4.2.5",
                                          "module use    /gpfs/alpine/stf010/world-shared/naughton/olcf/summit/modulefiles",
                                          "module load   prrte/master",
-                                         "export PRRTE_PREFIX=$PRRTE_DIR"
+                                         "export PRRTE_PREFIX=$PRRTE_DIR",
+                                         "ulimit -u 65536"
                                         ],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/bip178",
@@ -347,7 +348,8 @@
                                          "module load   zeromq/4.2.5",
                                          "module use    /gpfs/alpine/stf010/world-shared/naughton/olcf/summit/modulefiles",
                                          "module load   prrte/master",
-                                         "export PRRTE_PREFIX=$PRRTE_DIR"
+                                         "export PRRTE_PREFIX=$PRRTE_DIR",
+                                         "ulimit -u 65536"
                                         ],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/bip178",
