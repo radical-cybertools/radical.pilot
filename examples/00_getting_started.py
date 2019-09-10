@@ -5,8 +5,6 @@ __license__   = 'MIT'
 
 import os
 import sys
-import time
-import random
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -62,8 +60,8 @@ if __name__ == '__main__':
                    'project'       : config[resource]['project'],
                    'queue'         : config[resource]['queue'],
                    'access_schema' : config[resource]['schema'],
-                   'cores'         : 32,
-                   'gpus'          : 8
+                   'cores'         : config[resource]['cores'],
+                   'gpus'          : config[resource]['gpus'],
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
