@@ -41,12 +41,19 @@
                                          "stall_hwm" : 1,
                                          "bulk_size" : 1},
 
-        "agent_unschedule_pubsub"    : {"log_level" : "error"},
-        "agent_schedule_pubsub"      : {"log_level" : "error"},
+        "funcs_wrk_queue"            : { "log_level" : "debug",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 0},
+        "funcs_res_queue"            : { "log_level" : "debug",
+                                         "stall_hwm" : 1,
+                                         "bulk_size" : 0},
 
-        "control_pubsub"             : {"log_level" : "error"},
-        "state_pubsub"               : {"log_level" : "error"},
-        "log_pubsub"                 : {"log_level" : "error"}
+        "agent_unschedule_pubsub"    : { "log_level" : "error"},
+        "agent_schedule_pubsub"      : { "log_level" : "error"},
+
+        "control_pubsub"             : { "log_level" : "error"},
+        "state_pubsub"               : { "log_level" : "error"},
+        "log_pubsub"                 : { "log_level" : "error"}
     },
 
     "components" : {
