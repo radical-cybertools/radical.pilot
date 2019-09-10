@@ -69,7 +69,9 @@ class PRTE(LaunchMethod):
         prte += ' --prefix %s'     % pre
         prte += ' --report-uri %s' % furi
         prte += ' --hostfile %s'   % fhosts
-        prte += ' --pmca orte_state_base_verbose 1'  # prte profiling
+
+        if profiler.enabled:
+            prte += ' --pmca orte_state_base_verbose 1'  # prte profiling
 
 
         # we apply two temporary tweaks on Summit which should not be needed in
@@ -289,12 +291,13 @@ class PRTE(LaunchMethod):
             map_flag += ' -host %s' % hosts.rstrip(',')
 
         # Additional (debug) arguments to prun
-        debug_string = '-verbose'
+        debug_string = ''
         if self._verbose:
             debug_string += ' '.join([
+                                        '-verbose',
+                                      # '--debug-devel',
                                       # '-display-devel-map',
                                       # '-display-allocation',
-                                      # '--debug-devel',
                                         '--report-bindings',
                                      ])
 
