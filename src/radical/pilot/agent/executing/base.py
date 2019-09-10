@@ -15,8 +15,11 @@ EXECUTING_NAME_POPEN   = "POPEN"
 EXECUTING_NAME_SHELL   = "SHELL"
 EXECUTING_NAME_SHELLFS = "SHELLFS"
 EXECUTING_NAME_ABDS    = "ABDS"
-EXECUTING_NAME_ORTE    = "ORTE"
 EXECUTING_NAME_FUNCS   = "FUNCS"
+
+# archived
+#
+# EXECUTING_NAME_ORTE    = "ORTE"
 
 
 # ==============================================================================
@@ -61,17 +64,14 @@ class AgentExecutingComponent(rpu.Component):
         from .abds     import ABDS
         from .funcs    import FUNCS
 
-        try:
-            from .orte     import ORTE
-        except:
-            pass
+      # from .orte     import ORTE
 
         if   name == EXECUTING_NAME_POPEN  : impl = Popen  (cfg, session)
         elif name == EXECUTING_NAME_SHELL  : impl = Shell  (cfg, session)
         elif name == EXECUTING_NAME_SHELLFS: impl = ShellFS(cfg, session)
         elif name == EXECUTING_NAME_ABDS   : impl = ABDS   (cfg, session)
-        elif name == EXECUTING_NAME_ORTE   : impl = ORTE   (cfg, session)
         elif name == EXECUTING_NAME_FUNCS  : impl = FUNCS  (cfg, session)
+      # elif name == EXECUTING_NAME_ORTE   : impl = ORTE   (cfg, session)
         else: raise ValueError("invalid AgentExecutingComponent '%s'" % name)
 
         return impl
