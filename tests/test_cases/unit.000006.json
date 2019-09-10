@@ -36,15 +36,18 @@
     "results": {
         "lm": {
             "fork"  : ["/bin/sleep \"10\" ", null],
-            "orte"  : ["orterun  --hnp \"dvm_uri\" -np 2 --bind-to none -host node1,node1 -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" ", null],
+            # "orte"  : ["orterun  --hnp \"dvm_uri\" -np 2 --bind-to none -host node1,node1 -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" ", null],
             "aprun" : ["aprun -n 2 -N 2 -L node1 -d 2 -cc 0,1:2,3 /bin/sleep \"10\"  ", null],
             "mpirun": ["mpirun -np 2  -host node1,node1  /bin/sleep \"10\"", null],
             "ibrun" : ["ibrun -n 2 -o 2 /bin/sleep \"10\" ", null],
             "ssh"   : ["/bin/sleep \"10\" ","ssh node1 PATH=test_path 1"],
-            "jsrun"  : ["jsrun --erf_input rs_layout_cu_000006  -E \"LD_LIBRARY_PATH\" -E \"PATH\" -E \"PYTHONPATH\" /bin/sleep \"10\" ",null]
+            "jsrun"  : ["jsrun --erf_input rs_layout_cu_000006   /bin/sleep \"10\" ",null]
         },
         "resource_file": {
-            "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0,4}}\n","rank: 1: { host: node1; cpu: {8,12}}\n"]
+            "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0,1}}\n","rank: 1: { host: node1; cpu: {2,3}}\n"]
+        },
+        "resource_filename": {
+            "jsrun": "rs_layout_cu_000006"
         }
     }
 }
