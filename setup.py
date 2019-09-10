@@ -238,6 +238,7 @@ setup_args = {
                             'bin/radical-pilot-fetch-logfiles',
                             'bin/radical-pilot-fetch-json',
                             'bin/radical-pilot-inspect',
+                            'bin/radical-pilot-prte2prof',
                             'bin/radical-pilot-run-session',
                             'bin/radical-pilot-stats',
                             'bin/radical-pilot-stats.plot',
