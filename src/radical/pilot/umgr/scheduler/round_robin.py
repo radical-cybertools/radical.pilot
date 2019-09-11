@@ -108,11 +108,7 @@ class RoundRobin(UMGRSchedulingComponent):
 
                     pilot = self._pilots[pid]['pilot']
 
-                    # make sure we have a sandbox defined, too
-                    if not unit.get('unit_sandbox'):
-                        pilot = self._pilots[pid]['pilot']
-                        self._session._get_unit_sandbox(unit, pilot)
-
+                    self._assign_pilot(unit, pilot)
                     self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING,
                                  publish=True, push=True)
 

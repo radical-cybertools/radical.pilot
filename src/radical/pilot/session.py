@@ -1081,20 +1081,33 @@ class Session(rs.Session):
     #
     def _get_unit_sandbox(self, unit, pilot):
 
-        # don't cache unit sandboxes, they are just lookups or a string concats
+        # If a sandbox is specified in the unit description, then interpret
+        # relative paths as relativet to the pilot sandbox.
 
         self.is_valid()
 
+        # unit sandboxes are cached in the unit dict
         unit_sandbox = unit.get('unit_sandbox')
+        if unit_sandbox:
+            return unit_sandbox
 
+        # specified in description?
         if not unit_sandbox:
-            unit_sandbox = unit['description'].get('sandbox')
+            sandbox  = unit['description'].get('sandbox')
+            if sandbox:
+                unit_sandbox = ru.Url(self._get_pilot_sandbox(pilot))
+                if sandbox[0] == '/':
+                    unit_sandbox.path = unit_sandbox
+                else:
+                    unit_sandbox.path += '/%s/' % sandbox
 
-            if not unit_sandbox:
-                pilot_sandbox = self._get_pilot_sandbox(pilot)
-                unit_sandbox  = "%s/%s/" % (pilot_sandbox, unit['uid'])
+        # default
+        if not unit_sandbox:
+            unit_sandbox = ru.Url(self._get_pilot_sandbox(pilot))
+            unit_sandbox.path += "/%s/" % unit['uid']
 
-            unit['unit_sandbox'] = unit_sandbox
+        # cache
+        unit['unit_sandbox'] = str(unit_sandbox)
 
         return unit_sandbox
 
