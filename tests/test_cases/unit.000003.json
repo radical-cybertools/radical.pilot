@@ -39,8 +39,8 @@
             "aprun"   : ["aprun -n 1 -N 1 -L node1 -d 4 -cc 0,1,2,3 /bin/sleep \"10\"  ", null],
             "mpirun"  : ["mpirun -np 1  -host node1  /bin/sleep \"10\"", null],
             "ibrun"   : ["ibrun -n 1 -o 4 /bin/sleep \"10\" ", null],
-            "ssh"     : ["/bin/sleep \"10\" ","ssh node1 PATH=test_path 1"],
-            "rsh"     : ["/bin/sleep \"10\" ","rsh node1 PATH=test_path 1"],
+            "ssh"     : ["/bin/sleep \"10\" ","ssh node1 LD_LIBRARY_PATH=/usr/local/lib/ PATH=test_path 1"],
+            "rsh"     : ["/bin/sleep \"10\" ","rsh node1 LD_LIBRARY_PATH=/usr/local/lib/ PATH=test_path 1"],
             "spark"   : "RuntimeError",
             "jsrun"   : ["jsrun --erf_input rs_layout_cu_000003   /bin/sleep \"10\" ",null],
             "mpiexec" : ["mpiexec -H node1 -np 1   /bin/sleep \"10\" ", null]

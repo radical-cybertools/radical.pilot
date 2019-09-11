@@ -7,7 +7,7 @@
         "mandatory_args"              : [],
         "local"                       :
         {
-            "job_manager_endpoint"    : "slurm://localhost/",
+            "job_manager_endpoint"    : "slurm://tigercpu.princeton.edu/",
             "job_manager_hop"         : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
@@ -51,7 +51,7 @@
         "mandatory_args"              : [],
         "local"                      :
         {
-            "job_manager_endpoint"    : "slurm://localhost/",
+            "job_manager_endpoint"    : "slurm://tigercpu.princeton.edu/",
             "job_manager_hop"         : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
