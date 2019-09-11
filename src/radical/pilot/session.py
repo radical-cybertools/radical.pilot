@@ -250,10 +250,9 @@ class Session(rs.Session):
 
         except Exception as e:
             self._rep.error(">>err\n")
-            self._log.exception('session create failed')
-            raise RuntimeError('Could not create new session '
-                               '(database URL (%s) incorrect?): %s'
-                               % (dburl, e))
+            self._log.exception('session create failed [%s]', self._dburl)
+            raise RuntimeError('session create failed [%s]: %s'
+                              % (self._dburl, e))
 
         # the session must not carry bridge and component handles across forks
         ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
@@ -585,7 +584,6 @@ class Session(rs.Session):
         else        : return None
 
 
-
     # --------------------------------------------------------------------------
     #
     @property
@@ -703,7 +701,8 @@ class Session(rs.Session):
         instances associated with this session.
 
         **Returns:**
-            * A list of :class:`radical.pilot.PilotManager` uids (`list` of `strings`).
+            * A list of :class:`radical.pilot.PilotManager` uids
+              (`list` of `strings`).
         """
 
         self.is_valid()
@@ -838,16 +837,13 @@ class Session(rs.Session):
             rcs = ResourceConfig.from_file(resource_config)
 
             for rc in rcs:
-                self._log.info("Loaded resource configurations for %s" % rc)
+                self._log.info('load rcfg for %s' % rc)
                 self._resource_configs[rc] = rcs[rc].as_dict()
-                self._log.debug('add  rcfg for %s (%s)',
-                        rc, self._resource_configs[rc].get('cores_per_node'))
 
         else:
+            self._log.debug('load rcfg for %s', resource_config.label)
             self._resource_configs[resource_config.label] = resource_config.as_dict()
-            self._log.debug('Add  rcfg for %s (%s)',
-                    resource_config.label,
-                    self._resource_configs[resource_config.label].get('cores_per_node'))
+
 
     # -------------------------------------------------------------------------
     #
@@ -859,7 +855,7 @@ class Session(rs.Session):
         self.is_valid()
 
         if  resource in self._resource_aliases:
-            self._log.warning("using alias '%s' for deprecated resource key '%s'" \
+            self._log.warning("using alias '%s' for deprecated resource '%s'"
                               % (self._resource_aliases[resource], resource))
             resource = self._resource_aliases[resource]
 
@@ -867,8 +863,6 @@ class Session(rs.Session):
             raise RuntimeError("Resource '%s' is not known." % resource)
 
         resource_cfg = copy.deepcopy(self._resource_configs[resource])
-        self._log.debug('get rcfg 1 for %s (%s)',  resource,
-                        resource_cfg.get('cores_per_node'))
 
         if  not schema:
             if 'schemas' in resource_cfg:
@@ -883,9 +877,6 @@ class Session(rs.Session):
                 # merge schema specific resource keys into the
                 # resource config
                 resource_cfg[key] = resource_cfg[schema][key]
-
-        self._log.debug('get rcfg 2 for %s (%s)',  resource,
-                        resource_cfg.get('cores_per_node'))
 
         return resource_cfg
 
@@ -960,15 +951,14 @@ class Session(rs.Session):
                 fs_url = rs.Url(rcfg['filesystem_endpoint'])
 
                 # Get the sandbox from either the pilot_desc or resource conf
-                sandbox = pilot['description'].get('sandbox')
-                if not sandbox:
-                    sandbox = rcfg.get('default_remote_workdir', "$PWD")
+                sandbox_raw = pilot['description'].get('sandbox')
+                if not sandbox_raw:
+                    sandbox_raw = rcfg.get('default_remote_workdir', "$PWD")
 
-                # If the sandbox contains expandables, resolve those remotely.
-                # NOTE: Note that this will only work for (gsi)ssh or
-                #       shell based access schemes.
 
-                if '%' in sandbox:
+                # we may need to replace pat elements with data from the pilot
+                # description
+                if '%' in sandbox_raw:
                     # expand from pilot description
                     expand = dict()
                     for k,v in pilot['description'].iteritems():
@@ -981,12 +971,19 @@ class Session(rs.Session):
                         else:
                             expand['pd.%s' % k.upper()] = v
                             expand['pd.%s' % k.lower()] = v
-                    sandbox = sandbox % expand
+                    sandbox_raw = sandbox_raw % expand
 
 
-                if '$' in sandbox or \
-                   '`' in sandbox :
+                # If the sandbox contains expandables, we need to resolve those
+                # remotely.
+                #
+                # NOTE: this will only work for (gsi)ssh or similar shell
+                #       based access mechanisms
+                if '$' not in sandbox_raw:
+                    # no need to expand further
+                    sandbox_base = sandbox_raw
 
+                else:
                     js_url = rcfg['job_manager_endpoint']
                     js_url = rcfg.get('job_manager_hop', js_url)
                     js_url = rs.Url(js_url)
@@ -996,7 +993,8 @@ class Session(rs.Session):
                     if   'ssh'    in elems: js_url.schema = 'ssh'
                     elif 'gsissh' in elems: js_url.schema = 'gsissh'
                     elif 'fork'   in elems: js_url.schema = 'fork'
-                    else:                   js_url.schema = 'fork'
+                    elif len(elems) == 1  : js_url.schema = 'fork'
+                    else: raise Exception("invalid schema: %s" % js_url.schema)
 
                     if js_url.schema == 'fork':
                         js_url.hostname = 'localhost'
@@ -1005,16 +1003,16 @@ class Session(rs.Session):
                     shell = rsup.PTYShell(js_url, self)
 
                     ret, out, err = shell.run_sync(' echo "WORKDIR: %s"'
-                            % sandbox)
-                    if ret == 0 and 'WORKDIR:' in out:
-                        sandbox = out.split(":")[1].strip()
-                        self._log.debug("sandbox base %s: '%s'", js_url, sandbox)
-                    else:
+                                                                  % sandbox_raw)
+                    if ret or 'WORKDIR:' not in out:
                         raise RuntimeError("Couldn't get remote workdir.")
 
-                # At this point we have determined the remote 'pwd'.
-                # The global sandbox is relative to it.
-                fs_url.path = "%s/radical.pilot.sandbox" % sandbox
+                    sandbox_base = out.split(":")[1].strip()
+                    self._log.debug("sandbox base %s: %s", js_url, sandbox_base)
+
+                # at this point we have determined the remote 'pwd' - the
+                # global sandbox is relative to it.
+                fs_url.path = "%s/radical.pilot.sandbox" % sandbox_base
 
                 # before returning, keep the URL string in cache
                 self._cache['resource_sandbox'][resource] = fs_url
@@ -1181,5 +1179,5 @@ class Session(rs.Session):
         print '----------------------------------------------------'
 
 
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 

@@ -5,7 +5,6 @@ __license__   = 'MIT'
 
 import os
 import sys
-import time
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -77,7 +76,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 1  # number of units to run
+        n = 128  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -88,8 +87,6 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
             cud.executable       = '/bin/date'
             cud.cpu_processes    = 1
-            cud.cpu_process_type = rp.POSIX
-            cud.cpu_thread_type  = rp.POSIX
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
