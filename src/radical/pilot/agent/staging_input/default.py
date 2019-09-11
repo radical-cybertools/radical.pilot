@@ -96,10 +96,7 @@ class Default(AgentStagingInputComponent):
     #
     def _handle_unit(self, unit, actionables):
 
-        uid = unit['uid']
-
-        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
-        #       class definition.
+        uid     = unit['uid']
         sandbox = unit['unit_sandbox']
 
         # By definition, this compoentn lives on the pilot's target resource.

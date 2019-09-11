@@ -217,10 +217,8 @@ class Popen(AgentExecutingComponent) :
     #
     def spawn(self, launcher, cu):
 
-        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
-        #       class definition.
         descr   = cu['description']
-        sandbox = '%s/%s' % (self._pwd, cu['uid'])
+        sandbox = cu['unit_sandbox']
 
         # make sure the sandbox exists
         self._prof.prof('exec_mkdir', uid=cu['uid'])
