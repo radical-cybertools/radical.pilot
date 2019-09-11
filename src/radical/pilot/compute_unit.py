@@ -67,7 +67,9 @@ class ComputeUnit(object):
 
         # initialize state
         self._session          = self._umgr.session
-        self._uid              = ru.generate_id('unit.%(counter)06d', ru.ID_CUSTOM)
+        self._uid              = ru.generate_id('unit.%(item_counter)06d',
+                                                ru.ID_CUSTOM,
+                                                namespace=self._session.uid)
         self._state            = rps.NEW
         self._log              = umgr._log
         self._exit_code        = None

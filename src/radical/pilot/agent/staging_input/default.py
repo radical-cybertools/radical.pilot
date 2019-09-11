@@ -48,7 +48,7 @@ class Default(AgentStagingInputComponent):
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
                             rpc.AGENT_STAGING_INPUT_QUEUE, self.work)
 
-        self.register_output(rps.AGENT_SCHEDULING_PENDING, 
+        self.register_output(rps.AGENT_SCHEDULING_PENDING,
                              rpc.AGENT_SCHEDULING_QUEUE)
 
 
@@ -66,7 +66,7 @@ class Default(AgentStagingInputComponent):
         # we first filter out any units which don't need any input staging, and
         # advance them again as a bulk.  We work over the others one by one, and
         # advance them individually, to avoid stalling from slow staging ops.
-        
+
         no_staging_units = list()
         staging_units    = list()
 
@@ -130,12 +130,12 @@ class Default(AgentStagingInputComponent):
         resource_sandbox.host   = 'localhost'
 
         src_context = {'pwd'      : str(unit_sandbox),       # !!!
-                       'unit'     : str(unit_sandbox), 
-                       'pilot'    : str(pilot_sandbox), 
+                       'unit'     : str(unit_sandbox),
+                       'pilot'    : str(pilot_sandbox),
                        'resource' : str(resource_sandbox)}
         tgt_context = {'pwd'      : str(unit_sandbox),       # !!!
-                       'unit'     : str(unit_sandbox), 
-                       'pilot'    : str(pilot_sandbox), 
+                       'unit'     : str(unit_sandbox),
+                       'pilot'    : str(pilot_sandbox),
                        'resource' : str(resource_sandbox)}
 
 
@@ -194,22 +194,22 @@ class Default(AgentStagingInputComponent):
                     self._log.debug("mkdir %s", tgtdir)
                     rpu.rec_makedir(tgtdir)
 
-            if action == rpc.COPY: 
+            if action == rpc.COPY:
                 try:
                     shutil.copytree(src.path, tgt.path)
-                except OSError as exc: 
+                except OSError as exc:
                     if exc.errno == errno.ENOTDIR:
                         shutil.copy(src.path, tgt.path)
-                    else: 
+                    else:
                         raise
-                        
+
             elif action == rpc.LINK:
 
                 # Fix issue/1513 if link source is file and target is folder.
                 # should support POSIX standard where link is created
                 # with the same name as the source
                 if os.path.isfile(src.path) and os.path.isdir(tgt.path):
-                    os.symlink(src.path, 
+                    os.symlink(src.path,
                                '%s/%s' % (tgt.path, os.path.basename(src.path)))
 
                 else: # default behavior

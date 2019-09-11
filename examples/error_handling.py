@@ -8,10 +8,10 @@ import random
 
 import radical.pilot as rp
 
-# READ: The RADICAL-Pilot documentation: 
+# READ: The RADICAL-Pilot documentation:
 #   http://radicalpilot.readthedocs.org/en/latest
 #
-# Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
+# Try running this example with RADICAL_PILOT_VERBOSE=debug set if
 # you want to see what happens behind the scences!
 
 
@@ -52,7 +52,7 @@ def pilot_state_cb(pilots, state=None):
     return True
 
 
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #
 def unit_state_cb(units, state=None):
     """ this callback is invoked on all unit state changes """
@@ -62,7 +62,7 @@ def unit_state_cb(units, state=None):
 
     # The principle for unit state callbacks is exactly the same as for the
     # pilot state callbacks -- only that they are invoked by the unit manager on
-    # changes of compute unit states.  
+    # changes of compute unit states.
     #
     # The example below does not really create any ComputeUnits, we only include
     # the callback here for documentation on the principles of error handling.
@@ -87,12 +87,12 @@ def unit_state_cb(units, state=None):
 #
 if __name__ == "__main__":
 
-    # This example shows how simple error handling can be implemented 
+    # This example shows how simple error handling can be implemented
     # synchronously using blocking wait() calls.
     #
     # The code launches a pilot with 128 cores on 'localhost'. Unless localhost
     # has 128 or more cores available, this is bound to fail. This example shows
-    # how this error can be caught and handled. 
+    # how this error can be caught and handled.
 
     # we can optionally pass session name to RP
     if len(sys.argv) > 1:
@@ -116,7 +116,7 @@ if __name__ == "__main__":
         pmgr = rp.PilotManager(session=session)
 
         # Register our callbacks with the managers. The callbacks will get
-        # called every time any of the pilots or units change their state 
+        # called every time any of the pilots or units change their state
         # -- in particular also on failing ones.
         umgr.register_callback(unit_state_cb)
         pmgr.register_callback(pilot_state_cb)

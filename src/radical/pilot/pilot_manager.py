@@ -104,7 +104,8 @@ class PilotManager(rpu.Component):
         assert(cfg['db_poll_sleeptime']), 'db_poll_sleeptime not configured'
 
         # initialize the base class (with no intent to fork)
-        self._uid    = ru.generate_id('pmgr')
+        self._uid    = ru.generate_id('pmgr.%(item_counter)04d', ru.ID_CUSTOM,
+                                      namespace=session.uid)
         cfg['owner'] = self.uid
         rpu.Component.__init__(self, cfg, session)
         self.start(spawn=False)
@@ -342,8 +343,8 @@ class PilotManager(rpu.Component):
                     self.advance(pilot_dict, s, publish=publish, push=False)
 
                 if s in [rps.PMGR_ACTIVE]:
-                    self._log.info('pilot %s is %s: %s [%s]',
-                            pid, s, pilot_dict.get('lm_info'),
+                    self._log.info('pilot %s is %s: %s [%s]', pid, s,
+                                    pilot_dict.get('lm_info'),
                                     pilot_dict.get('lm_detail'))
 
             return True
