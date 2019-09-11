@@ -125,7 +125,7 @@ class Default(AgentStagingOutputComponent):
     #
     def _handle_unit_stdio(self, unit):
 
-        sandbox = ru.Url(unit['unit_sandbox']).path
+        sandbox = unit['unit_sandbox']
         uid     = unit['uid']
 
         self._prof.prof('staging_stdout_start', uid=uid)
@@ -195,10 +195,6 @@ class Default(AgentStagingOutputComponent):
         ru.raise_on('work unit')
 
         uid = unit['uid']
-
-        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
-        #       class definition.
-        sandbox = ru.Url(unit['unit_sandbox']).path
 
         # By definition, this compoentn lives on the pilot's target resource.
         # As such, we *know* that all staging ops which would refer to the
@@ -283,7 +279,7 @@ class Default(AgentStagingOutputComponent):
             # for local ops (copy, link, move)
             if flags & rpc.CREATE_PARENTS and action != rpc.TRANSFER:
                 tgtdir = os.path.dirname(tgt.path)
-                if tgtdir != sandbox:
+                if tgtdir != unit_sandbox.path:
                     self._log.debug("mkdir %s", tgtdir)
                     rpu.rec_makedir(tgtdir)
 
