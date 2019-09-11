@@ -108,7 +108,7 @@ class JSRUN(LaunchMethod):
         task_exec    = cud['executable']
         task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
-        task_sandbox = ru.Url(cu['unit_sandbox']).path
+        task_sandbox = cu['unit_sandbox_path']
 
         assert(slots), 'missing slots for %s' % uid
 

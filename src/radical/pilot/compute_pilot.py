@@ -90,6 +90,7 @@ class ComputePilot(object):
         self._pilot_jsurl      = ru.Url()
         self._pilot_jshop      = ru.Url()
         self._resource_sandbox = ru.Url()
+        self._session_sandbox  = ru.Url()
         self._pilot_sandbox    = ru.Url()
         self._client_sandbox   = ru.Url()
 

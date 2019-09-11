@@ -221,7 +221,7 @@ class Popen(AgentExecutingComponent) :
     def spawn(self, launcher, cu):
 
         descr   = cu['description']
-        sandbox = cu['unit_sandbox']
+        sandbox = cu['unit_sandbox_path']
 
         # make sure the sandbox exists
         self._prof.prof('exec_mkdir', uid=cu['uid'])

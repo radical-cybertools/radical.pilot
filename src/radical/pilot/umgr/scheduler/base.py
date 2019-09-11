@@ -269,9 +269,9 @@ class UMGRSchedulingComponent(rpu.Component):
                     # advance them now
                     early_units = self._early.get(pid)
                     if early_units:
-                        # make sure we he unit sandboxes defined
+
                         for unit in early_units:
-                            self._session._get_unit_sandbox(unit, pilot)
+                            self._assign_pilot(unit, pilot)
 
                         self.advance(early_units, rps.UMGR_STAGING_INPUT_PENDING,
                                      publish=True, push=True)
@@ -348,6 +348,8 @@ class UMGRSchedulingComponent(rpu.Component):
         unit['pilot_sandbox'   ] = str(self._session._get_pilot_sandbox(pilot))
         unit['unit_sandbox'    ] = str(self._session._get_unit_sandbox(unit, pilot))
 
+        unit['unit_sandbox_path'] = ru.Url(unit['unit_sandbox']).path
+
         with self._units_lock:
             if pid not in self._units:
                 self._units[pid] = list()
@@ -417,13 +419,10 @@ class UMGRSchedulingComponent(rpu.Component):
                     # the unit to data staging
                     pilot = self._pilots.get(pid, {}).get('pilot')
                     if pilot:
-                        # make sure we have a sandbox defined, too
-                        if not unit.get('unit_sandbox'):
-                            pilot = self._pilots[pid]['pilot']
-                            self._session._get_unit_sandbox(unit, pilot)
-
+                        self._assign_pilot(unit, pilot)
                         self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING,
                                      publish=True, push=True)
+
                     else:
                         # otherwise keep in `self._early` until we learn about
                         # the pilot
