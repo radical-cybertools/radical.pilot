@@ -844,6 +844,7 @@ class Default(PMGRLaunchingComponent):
         pilot['pilot_sandbox']    = str(pilot_sandbox)    % expand
         pilot['client_sandbox']   = str(client_sandbox)
 
+        # from here on we need only paths
         resource_sandbox = resource_sandbox.path % expand
         session_sandbox  = session_sandbox .path % expand
         pilot_sandbox    = pilot_sandbox   .path % expand
