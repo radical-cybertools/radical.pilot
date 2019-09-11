@@ -42,6 +42,8 @@ LM_NAME_SRUN          = 'SRUN'
 # LM_NAME_DPLACE        = 'DPLACE'
 # LM_NAME_RUNJOB        = 'RUNJOB'
 
+PWD = os.getcwd()
+
 
 # ==============================================================================
 #
@@ -271,32 +273,31 @@ class LaunchMethod(object):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def _create_hostfile(cls, uid, all_hosts, separator=' ', impaired=False):
+    def _create_hostfile(cls, sandbox, uid, all_hosts, separator=' ',
+                         impaired=False):
 
         # Open appropriately named temporary file
         # NOTE: we make an assumption about the unit sandbox here
-        filename = '%s/%s.hosts' % (uid, uid)
-        handle   = open(filename, 'w')
+        filename = '%s/%s.hosts' % (sandbox, uid)
+        with open(filename, 'w') as fout:
 
-        if not impaired:
-            # Write "hostN x\nhostM y\n" entries
-            # Create a {'host1': x, 'host2': y} dict
-            counter = collections.Counter(all_hosts)
+            if not impaired:
+                # Write "hostN x\nhostM y\n" entries
+                # Create a {'host1': x, 'host2': y} dict
+                counter = collections.Counter(all_hosts)
 
-            # Convert it into an ordered dict,
-            # which hopefully resembles the original ordering
-            count_dict = collections.OrderedDict(sorted(list(counter.items()),
-                                                 key=lambda t: t[0]))
+                # Convert it into an ordered dict,
+                # which hopefully resembles the original ordering
+                count_dict = collections.OrderedDict(sorted(counter.items(),
+                                                     key=lambda t: t[0]))
 
-            for (host, count) in list(count_dict.items()):
-                os.write(handle, '%s%s%d\n' % (host, separator, count))
+                for (host, count) in count_dict.iteritems():
+                    fout.write('%s%s%d\n' % (host, separator, count))
 
-        else:
-            # Write "hostN\nhostM\n" entries
-            for host in all_hosts:
-                os.write(handle, '%s\n' % host)
-
-        os.close(handle)
+            else:
+                # Write "hostN\nhostM\n" entries
+                for host in all_hosts:
+                    fout.write('%s\n' % host)
 
         # Return the filename, caller is responsible for cleaning up
         return filename

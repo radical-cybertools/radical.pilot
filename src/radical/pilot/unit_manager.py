@@ -111,7 +111,8 @@ class UnitManager(rpu.Component):
         assert(cfg['db_poll_sleeptime']), 'db_poll_sleeptime not configured'
 
         # initialize the base class (with no intent to fork)
-        self._uid    = ru.generate_id('umgr')
+        self._uid    = ru.generate_id('umgr.%(item_counter)04d', ru.ID_CUSTOM,
+                                      namespace=session.uid)
         cfg['owner'] = self.uid
         rpu.Component.__init__(self, cfg, session)
         self.start(spawn=False)
