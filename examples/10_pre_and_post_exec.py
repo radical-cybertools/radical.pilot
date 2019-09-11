@@ -20,12 +20,12 @@ import radical.utils as ru
 # ------------------------------------------------------------------------------
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
     # we use a reporter class for nicer output
-    report = ru.LogReporter(name='radical.pilot', level=verbose)
+    report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
@@ -56,14 +56,14 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {
-                'resource'      : resource,
-                'runtime'       : 15,  # pilot runtime (min)
-                'exit_on_error' : True,
-                'project'       : config[resource]['project'],
-                'queue'         : config[resource]['queue'],
-                'access_schema' : config[resource]['schema'],
-                'cores'         : config[resource]['cores'],
-                }
+                   'resource'      : resource,
+                   'runtime'       : 15,  # pilot runtime (min)
+                   'exit_on_error' : True,
+                   'project'       : config[resource]['project'],
+                   'queue'         : config[resource]['queue'],
+                   'access_schema' : config[resource]['schema'],
+                   'cores'         : config[resource]['cores'],
+                  }
         pdesc = rp.ComputePilotDescription(pd_init)
 
         # Launch the pilot.
@@ -76,7 +76,7 @@ if __name__ == '__main__':
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-        # Create a workload of ComputeUnits. 
+        # Create a workload of ComputeUnits.
         # Each compute unit runs a specific `echo` command
 
         n = 128   # number of units to run
@@ -101,16 +101,17 @@ if __name__ == '__main__':
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
 
-        # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+        # Wait for all compute units to reach a final state
+        # (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
-    
+
         report.info('\n')
         for unit in units:
-            report.plain('  * %s: %s, exit: %3s, out: %s\n' \
-                    % (unit.uid, unit.state[:4], 
+            report.plain('  * %s: %s, exit: %3s, out: %s\n'
+                    % (unit.uid, unit.state[:4],
                         unit.exit_code, unit.stdout.strip()[:35]))
-    
+
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
@@ -133,5 +134,5 @@ if __name__ == '__main__':
     report.header()
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
