@@ -37,9 +37,9 @@ class Shell(AgentExecutingComponent):
 
         from .... import pilot as rp
 
-        self._pwd = os.getcwd() 
+        self._pwd = os.getcwd()
 
-        self.register_input(rps.EXECUTING_PENDING, 
+        self.register_input(rps.EXECUTING_PENDING,
                             rpc.AGENT_EXECUTING_QUEUE, self.work)
 
         self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
@@ -304,9 +304,9 @@ class Shell(AgentExecutingComponent):
         post  = ""
         io    = ""
         cmd   = ""
-        descr = cu['description']
 
-        sandbox  = '%s/%s' % (self._pwd, cu['uid'])
+        descr   = cu['description']
+        sandbox = cu['unit_sandbox']
 
         env  += "# CU environment\n"
         env  += "export RP_SESSION_ID=%s\n"     % self._cfg['session_id']
@@ -417,8 +417,7 @@ prof(){
     #
     def spawn(self, launcher, cu):
 
-        uid     = cu['uid']
-        sandbox = '%s/%s' % (self._pwd, uid)
+        sandbox = cu['sandbox']
 
         # prep stdout/err so that we can append w/o checking for None
         cu['stdout'] = ''

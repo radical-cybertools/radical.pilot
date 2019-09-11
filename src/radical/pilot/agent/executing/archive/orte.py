@@ -325,9 +325,14 @@ class ORTE(AgentExecutingComponent):
     #
     def spawn(self, launcher, cu):
 
-        # make sure the unit sandbox exists
-        sandbox = '%s/%s' % (self._pwd, cu['uid'])
-        rec_makedir(sandbox)
+        sandbox = cu['unit_sandbox']
+
+        if False:
+            cu_tmpdir = '%s/%s' % (self.tmpdir, cu['uid'])
+        else:
+            cu_tmpdir = sandbox
+
+        rec_makedir(cu_tmpdir)
 
         # TODO: pre_exec
         # # Before the Big Bang there was nothing
