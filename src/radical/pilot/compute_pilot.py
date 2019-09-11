@@ -76,7 +76,6 @@ class ComputePilot(object):
         # pilot failures can trigger app termination
         self._exit_on_error = self._descr.get('exit_on_error')
 
-
         for m in rpc.PMGR_METRICS:
             self._callbacks[m] = dict()
 
@@ -99,8 +98,27 @@ class ComputePilot(object):
         self._pilot_jsurl, self._pilot_jshop \
                                = self._session._get_jsurl           (pilot)
         self._resource_sandbox = self._session._get_resource_sandbox(pilot)
+        self._session_sandbox  = self._session._get_session_sandbox (pilot)
         self._pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
         self._client_sandbox   = self._session._get_client_sandbox()
+
+        # we need to expand plaaceholders in the sandboxes
+        # FIXME: this code is a duplication from the pilot launcher code
+        expand = dict()
+        for k,v in pilot['description'].iteritems():
+            if v is None:
+                v = ''
+            expand['pd.%s' % k] = v
+            if isinstance(v, basestring):
+                expand['pd.%s' % k.upper()] = v.upper()
+                expand['pd.%s' % k.lower()] = v.lower()
+            else:
+                expand['pd.%s' % k.upper()] = v
+                expand['pd.%s' % k.lower()] = v
+
+        self._resource_sandbox.path  = self._resource_sandbox.path % expand
+        self._session_sandbox .path  = self._session_sandbox .path % expand
+        self._pilot_sandbox   .path  = self._pilot_sandbox   .path % expand
 
 
     # --------------------------------------------------------------------------
@@ -155,9 +173,15 @@ class ComputePilot(object):
 
         if target not in [rps.FAILED, rps.CANCELED]:
 
-            cur_state_val = rps._pilot_state_value(current)
-            tgt_state_val = rps._pilot_state_value(target)
-            assert(tgt_state_val - cur_state_val), 'invalid state transition'
+            try:
+                cur_state_val = rps._pilot_state_value(current)
+                tgt_state_val = rps._pilot_state_value(target)
+                assert(tgt_state_val - cur_state_val), 'invalid state transition'
+
+            except:
+                self._log.error('%s: invalid state transition %s -> %s',
+                        self.uid, current, target)
+                raise
 
         self._state = target
 
@@ -197,6 +221,7 @@ class ComputePilot(object):
                'stderr':           self.stderr,
                'resource':         self.resource,
                'resource_sandbox': str(self._resource_sandbox),
+               'session_sandbox':  str(self._session_sandbox),
                'pilot_sandbox':    str(self._pilot_sandbox),
                'client_sandbox':   str(self._client_sandbox),
                'js_url':           str(self._pilot_jsurl),
@@ -379,6 +404,10 @@ class ComputePilot(object):
     def resource_sandbox(self):
         return self._resource_sandbox
 
+
+    @property
+    def session_sandbox(self):
+        return self._session_sandbox
 
     @property
     def client_sandbox(self):
