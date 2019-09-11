@@ -1105,16 +1105,22 @@ class Session(rs.Session):
     #
     def _get_unit_sandbox(self, unit, pilot):
 
+        # don't cache unit sandboxes, they are just lookups or a string concats
+
         self.is_valid()
 
-        # we don't cache unit sandboxes, they are just a string concats.
-        pilot_sandbox = self._get_pilot_sandbox(pilot)
-        unit_sandbox  = unit['description'].get('sandbox')
+        unit_sandbox = unit.get('unit_sandbox')
 
         if not unit_sandbox:
-            unit_sandbox = unit['uid']
+            unit_sandbox = unit['description'].get('sandbox')
 
-        return "%s/%s/" % (pilot_sandbox, unit_sandbox)
+            if not unit_sandbox:
+                pilot_sandbox = self._get_pilot_sandbox(pilot)
+                unit_sandbox  = "%s/%s/" % (pilot_sandbox, unit['uid'])
+
+            unit['unit_sandbox'] = unit_sandbox
+
+        return unit_sandbox
 
 
     # --------------------------------------------------------------------------
