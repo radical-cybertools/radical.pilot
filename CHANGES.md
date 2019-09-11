@@ -7,6 +7,37 @@
             issues?q=is%3Aissue+is%3Aopen+
 
 
+0.72.0  Release                                                       2019-09-11
+--------------------------------------------------------------------------------
+
+  - implement function executor
+  - implement / improve PRTE launch method
+  - PRTE profiling support (experimental)
+  - agent scheduler optimizations
+  - summit related configuration and fixes
+  - initial frontera support
+  - archive ORTE
+  - increase bootstrap timeouts
+  - consolidate MPI related launch methods
+  - unit testing and linting
+  - archive ORTE, issue #1915
+  - fix `get_mpi_info` for Open MPI
+  - base classes to raise notimplemented. issue #1920
+  - remove outdated resources
+  - ensure that pilot env reaches func executor
+  - ensureID uniqueness across processes
+  - fix inconsistencies in unit sandbox handling
+  - fix gpu placement alg
+  - fix issue #1910
+  - fix torque nodefile name and path
+  - add metric definitions in RA support
+  - make DB comm bulkier
+  - expand resource configs with pilot description keys
+  - better tiger support
+  - add NOOP scheduler
+  - add debug executor
+
+
 0.70.3  Hotfix Release                                                2019-08-02
 --------------------------------------------------------------------------------
 

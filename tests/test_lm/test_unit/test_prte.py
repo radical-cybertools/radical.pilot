@@ -18,7 +18,7 @@ except ImportError:
 #
 @mock.patch.object(PRTE, '__init__', return_value=None)
 @mock.patch.object(PRTE, '_configure', return_value='prun')
-def test_construct_command(mocked_init, mocked_configure, mocked_raise_on):
+def test_construct_command(mocked_init, mocked_configure):
 
     test_cases = setUp('lm', 'prte')
 
