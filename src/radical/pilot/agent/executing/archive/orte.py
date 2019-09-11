@@ -325,7 +325,7 @@ class ORTE(AgentExecutingComponent):
     #
     def spawn(self, launcher, cu):
 
-        sandbox = cu['unit_sandbox']
+        sandbox = cu['unit_sandbox_path']
 
         if False:
             cu_tmpdir = '%s/%s' % (self.tmpdir, cu['uid'])

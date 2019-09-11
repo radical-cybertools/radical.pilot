@@ -303,7 +303,7 @@ class ShellFS(AgentExecutingComponent):
         cmd   = ""
 
         descr   = cu['description']
-        sandbox = cu['unit_sandbox']
+        sandbox = cu['unit_sandbox_path']
 
         env  += "# CU environment\n"
         env  += "export RP_SESSION_ID=%s\n"     % self._cfg['session_id']

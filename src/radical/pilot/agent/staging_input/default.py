@@ -96,8 +96,7 @@ class Default(AgentStagingInputComponent):
     #
     def _handle_unit(self, unit, actionables):
 
-        uid     = unit['uid']
-        sandbox = unit['unit_sandbox']
+        uid = unit['uid']
 
         # By definition, this compoentn lives on the pilot's target resource.
         # As such, we *know* that all staging ops which would refer to the
@@ -183,7 +182,7 @@ class Default(AgentStagingInputComponent):
             # for local ops (copy, link, move)
             if flags & rpc.CREATE_PARENTS and action != rpc.TRANSFER:
                 tgtdir = os.path.dirname(tgt.path)
-                if tgtdir != sandbox:
+                if tgtdir != unit_sandbox.path:
                     self._log.debug("mkdir %s", tgtdir)
                     rpu.rec_makedir(tgtdir)
 
@@ -205,7 +204,7 @@ class Default(AgentStagingInputComponent):
                     os.symlink(src.path,
                                '%s/%s' % (tgt.path, os.path.basename(src.path)))
 
-                else: # default behavior
+                else:
                     os.symlink(src.path, tgt.path)
 
             elif action == rpc.MOVE:

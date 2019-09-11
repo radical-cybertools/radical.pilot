@@ -62,7 +62,7 @@ class Srun(LaunchMethod):
         task_env     = cud.get('environment') or dict()
         task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
-        sbox         = ru.Url(cu['unit_sandbox']).path
+        sbox         = cu['unit_sandbox_path']
 
         # Construct the executable and arguments
         if task_argstr: task_cmd = "%s %s" % (task_exec, task_argstr)

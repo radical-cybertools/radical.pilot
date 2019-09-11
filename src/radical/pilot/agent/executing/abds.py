@@ -223,7 +223,7 @@ class ABDS(AgentExecutingComponent):
 
         self._prof.prof('spawn', msg='unit spawn', uid=cu['uid'])
 
-        sandbox = cu['unit_sandbox']
+        sandbox = cu['unit_sandbox_path']
 
         # make sure the sandbox exists
         rpu.rec_makedir(sandbox)
