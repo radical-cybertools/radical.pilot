@@ -169,7 +169,10 @@ class PRTE(LaunchMethod):
             raise Exception("VMURI not found!")
 
         logger.info("prte startup successful: [%s]", dvm_uri)
-        time.sleep(30)  # FIXME
+
+        # in some cases, the DVM seems to need some additional time to settle.
+        # FIXME: this should not be needed, really
+        time.sleep(10)
         profiler.prof(event='dvm_ok', uid=cfg['pilot_id'])
 
 
@@ -222,7 +225,7 @@ class PRTE(LaunchMethod):
     def construct_command(self, cu, launch_script_hop):
 
         import time
-        time.sleep(0.02)
+        time.sleep(0.1)
 
         slots        = cu['slots']
         cud          = cu['description']
@@ -265,9 +268,8 @@ class PRTE(LaunchMethod):
                 env_string += '-x "%s" ' % var
 
         map_flag  = ' -np %d --cpus-per-proc %d' % (n_procs, n_threads)
-        map_flag += ' --report-bindings'
         map_flag += ' --bind-to hwthread:overload-allowed --use-hwthread-cpus'
-      # map_flag += ' --oversubscribe'
+        map_flag += ' --oversubscribe'
 
         if 'nodes' not in slots:
             # this task is unscheduled - we leave it to PRRTE/PMI-X to
@@ -302,7 +304,7 @@ class PRTE(LaunchMethod):
                                         '--report-bindings',
                                      ])
 
-        env_string = ''  # FIXME
+      # env_string = ''  # FIXME
         command = '%s --hnp "%s" %s %s %s %s' % (self.launch_command,
                   dvm_uri, map_flag, debug_string, env_string, task_command)
 
