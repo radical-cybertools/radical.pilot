@@ -33,7 +33,7 @@ class ShellFS(AgentExecutingComponent):
 
         from .... import pilot as rp
 
-        self._pwd = os.getcwd() 
+        self._pwd = os.getcwd()
         self._tmp = self._pwd   # keep temporary files in $PWD for now (slow)
 
         self.register_input(rps.AGENT_EXECUTING_PENDING,
@@ -233,7 +233,7 @@ class ShellFS(AgentExecutingComponent):
 
         # launch the new unit
         try:
-            mpi = cu['description'].get('mpi', False) 
+            mpi = cu['description'].get('mpi', False)
             if mpi: launcher = self._mpi_launcher
             else  : launcher = self._task_launcher
 
@@ -301,9 +301,9 @@ class ShellFS(AgentExecutingComponent):
         post  = ""
         io    = ""
         cmd   = ""
-        descr = cu['description']
 
-        sandbox  = '%s/%s' % (self._pwd, cu['uid'])
+        descr   = cu['description']
+        sandbox = cu['unit_sandbox']
 
         env  += "# CU environment\n"
         env  += "export RP_SESSION_ID=%s\n"     % self._cfg['session_id']
@@ -414,7 +414,7 @@ prof(){
     def spawn(self, launcher, cu):
 
         uid     = cu['uid']
-        sandbox = '%s/%s' % (self._pwd, uid)
+        sandbox = cu['sandbox']
 
         try:
             os.makedirs(sandbox)
