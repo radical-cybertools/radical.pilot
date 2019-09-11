@@ -294,6 +294,13 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _configure(self):
+
+        raise NotImplementedError('deriving classes must implement this')
+
+
+    # --------------------------------------------------------------------------
+    #
     # This class-method creates the appropriate instance for the scheduler.
     #
     @classmethod

@@ -92,14 +92,14 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable     = '/usr/bin/ls'
-            cud.arguments      = ['-all']
+            cud.executable     = 'ls'
+            cud.arguments      = ['-la']
 
             # Move multiple files to a CU by using a tarball
-            cud.input_staging  = [{'source': 'client:///input.dat', 
+            cud.input_staging  = [{'source': 'client:///input.dat',
                                    'target': 'unit:///input.dat',
                                    'action': rp.TARBALL},
-                                  {'source': 'client:///input2.dat', 
+                                  {'source': 'client:///input2.dat',
                                    'target': 'unit:///input2.dat',
                                    'action': rp.TARBALL}]
 
@@ -115,13 +115,13 @@ if __name__ == '__main__':
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
-    
+
         report.info('\n')
         for unit in units:
             report.plain('  * %s: %s, exit: %3s, out: %s\n' \
-                    % (unit.uid, unit.state[:4], 
+                    % (unit.uid, unit.state[:4],
                         unit.exit_code, unit.stdout.strip()[:35]))
-    
+
         # delete the sample input files
         os.system('rm input.dat')
 

@@ -125,7 +125,7 @@ class Default(AgentStagingOutputComponent):
     #
     def _handle_unit_stdio(self, unit):
 
-        sandbox = unit['unit_sandbox']
+        sandbox = unit['unit_sandbox_path']
         uid     = unit['uid']
 
         self._prof.prof('staging_stdout_start', uid=uid)
