@@ -724,9 +724,6 @@ class UnitManager(rpu.Component):
             if not ud.executable:
                 raise ValueError('compute unit executable must be defined')
 
-            if ud.sandbox and ud.sandbox[0] == '/':
-                raise ValueError('compute unit sandbox must be relative.')
-
             unit = ComputeUnit(umgr=self, descr=ud)
             units.append(unit)
 
