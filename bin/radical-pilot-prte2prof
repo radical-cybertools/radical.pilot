@@ -93,18 +93,22 @@ def handle_line(prof, line, pid, idmap):
     # proc  '',
     # event 'STATE PENDING ALLOCATION',
     #       '../../../../../../../source/prrte-dev/orte/tools/prte/prte.c:497']
-    _, node, dvm, dvmd, tstamp, _, tid, proc, event, _ = elems
+    try:
+        _, node, dvm, dvmd, tstamp, _, tid, proc, event, _ = elems
 
-    dvm    = ('%s%s' % (dvm, dvmd)).replace(',', '.')
-    event  = event.replace(' ', '_').lower()
-    event  = event.replace('state_', '')
-    tstamp = float(tstamp)
+        dvm    = ('%s%s' % (dvm, dvmd)).replace(',', '.')
+        event  = event.replace(' ', '_').lower()
+        event  = event.replace('state_', '')
+        tstamp = float(tstamp)
 
-    uid    = idmap.get(tid, pid)
-    uid    = uid.replace(',', '.')
+        uid    = idmap.get(tid, pid)
+        uid    = uid.replace(',', '.')
 
-    prof.prof('prte_%s' % event, uid=uid, state='AGENT_EXECUTING',
-              timestamp=tstamp, comp='prte.dvm', tid=dvm, msg=node)
+        prof.prof('prte_%s' % event, uid=uid, state='AGENT_EXECUTING',
+                  timestamp=tstamp, comp='prte.dvm', tid=dvm, msg=node)
+    except Exception as e:
+        print 'skip line: %s' % str(e)
+        print line
 
 
 # ------------------------------------------------------------------------------
