@@ -289,12 +289,12 @@ class Default(UMGRStagingInputComponent):
         self._prof.prof("create_sandbox_start", uid=uid)
 
         src_context = {'pwd'      : os.getcwd(),                # !!!
-                       'unit'     : unit['unit_sandbox'], 
-                       'pilot'    : unit['pilot_sandbox'], 
+                       'unit'     : unit['unit_sandbox'],
+                       'pilot'    : unit['pilot_sandbox'],
                        'resource' : unit['resource_sandbox']}
         tgt_context = {'pwd'      : unit['unit_sandbox'],       # !!!
-                       'unit'     : unit['unit_sandbox'], 
-                       'pilot'    : unit['pilot_sandbox'], 
+                       'unit'     : unit['unit_sandbox'],
+                       'pilot'    : unit['pilot_sandbox'],
                        'resource' : unit['resource_sandbox']}
 
         # we have actionable staging directives, and thus we need a unit
@@ -308,7 +308,7 @@ class Default(UMGRStagingInputComponent):
         self._log.debug('key %s / %s', key, tmp)
 
         if key not in self._fs_cache:
-            self._fs_cache[key] = rs.filesystem.Directory(tmp, 
+            self._fs_cache[key] = rs.filesystem.Directory(tmp,
                                              session=self._session)
 
         saga_dir = self._fs_cache[key]
@@ -353,7 +353,7 @@ class Default(UMGRStagingInputComponent):
                     tar_src  = ru.Url('file://localhost/%s' % tar_path)
                     tar_tgt  = ru.Url('unit:////%s.tar'     % uid)
                     tar_did  = ru.generate_id('sd')
-                    tar_sd   = {'action' : rpc.TRANSFER, 
+                    tar_sd   = {'action' : rpc.TRANSFER,
                                 'flags'  : rpc.DEFAULT_FLAGS,
                                 'uid'    : tar_did,
                                 'source' : str(tar_src),
@@ -371,7 +371,7 @@ class Default(UMGRStagingInputComponent):
         if tar_file:
             tar_file.close()
 
-        # work on the filtered TRANSFER actionables 
+        # work on the filtered TRANSFER actionables
         for sd in new_actionables:
 
             action = sd['action']
