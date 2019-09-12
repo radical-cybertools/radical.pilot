@@ -325,7 +325,7 @@ class AgentSchedulingComponent(rpu.Component):
         name = cfg['scheduler']
 
         from .continuous_ordered import ContinuousOrdered
-        from .continuous         import Continuous
+        from .continuous_2       import Continuous
         from .hombre             import Hombre
         from .torus              import Torus
         from .yarn               import Yarn
@@ -446,7 +446,7 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _allocate_slot(self, cud):
+    def _allocate_slot(self, unit):
 
         raise NotImplementedError('_allocate_slot needs to be implemented.')
 
@@ -496,7 +496,8 @@ class AgentSchedulingComponent(rpu.Component):
                 # about the state change, and push the unit out toward the next
                 # component.
                 self.advance(unit, rps.AGENT_EXECUTING_PENDING,
-                             publish=True, push=True)
+                                   publish=True, push=True)
+
             else:
                 # no resources available, put in wait queue
                 with self._wait_lock:
@@ -513,33 +514,41 @@ class AgentSchedulingComponent(rpu.Component):
         attempt to allocate cores/gpus for a specific unit.
         '''
 
+        uid = unit['uid']
+
         # needs to be locked as we try to acquire slots here, but slots are
         # freed in a different thread.  But we keep the lock duration short...
         with self._slot_lock:
 
-            self._prof.prof('schedule_try', uid=unit['uid'])
-            unit['slots'] = self._allocate_slot(unit['description'])
+            self._prof.prof('schedule_try', uid=uid)
 
-        # the lock is freed here
-        if not unit['slots']:
+            # attempt to place the task
+            slots = self._alloc(unit)
 
-            # signal the unit remains unhandled (Fales signals that failure)
-            self._prof.prof('schedule_fail', uid=unit['uid'])
-            return False
+            if not slots:
+                # signal the unit remains unhandled (False signals that failure)
+                self._prof.prof('schedule_fail', uid=uid)
+                return False
 
-        # translate gpu maps into `CUDA_VISIBLE_DEVICES` env
-        self._handle_cuda(unit)
+            # the task was placed, we need to reflect the allocation in the
+            # nodelist state (BUSY) and pass placement to the task, to have
+            # it enacted by the executor
+            self._change_slot_states(slots, rpc.BUSY)
+            unit['slots'] = slots
+
+      # # translate gpu maps into `CUDA_VISIBLE_DEVICES` env
+      # self._handle_cuda(unit)
 
         # got an allocation, we can go off and launch the process
-        self._prof.prof('schedule_ok', uid=unit['uid'])
+        self._prof.prof('schedule_ok', uid=uid)
 
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  allocate   %s: %s", unit['uid'],
-                            self.slot_status())
-          # self._log.debug("%s [%s/%s] : %s", unit['uid'],
-          #                 unit['description']['cpu_processes'],
-          #                 unit['description']['gpu_processes'],
-          #                 pprint.pformat(unit['slots']))
+      # if self._log.isEnabledFor(logging.DEBUG):
+      #     self._log.debug("after  allocate   %s: %s", uid,
+      #                     self.slot_status())
+      #     self._log.debug("%s [%s/%s] : %s", uid,
+      #                     unit['description']['cpu_processes'],
+      #                     unit['description']['gpu_processes'],
+      #                     pprint.pformat(unit['slots']))
 
         # True signals success
         return True
@@ -604,6 +613,13 @@ class AgentSchedulingComponent(rpu.Component):
                             = ','.join(str(x) for x in range(len(gpu_map)))
                 else:
                     raise ValueError('invalid CVD mode %s' % cvd_id_mode)
+
+
+        # specify the node lfs path that the unit needs to use.
+        # NOTE : This assumes that the LFS path is the same across all nodes.
+        # FIXME: this does not belong to the cuda handling
+        unit['description']['environment']['RP_LFS_PATH'] = \
+                                                 self._lrms_lfs_per_node['path']
 
 
     # --------------------------------------------------------------------------
