@@ -81,6 +81,7 @@ class Continuous(AgentSchedulingComponent):
 
         self._tag_history   = dict()
         self._scattered     = None
+        self._node_offset   = 0
 
 
     # --------------------------------------------------------------------------
@@ -141,15 +142,31 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _release_slot(self, slots):
+    def _iterate_nodes(self):
+        # note that the first index is yielded twice, so that the respecitve
+        # node can function as first and last node in an allocation.
+
+        self._log.debug('iteration from %d', self._node_offset)
+        iterator_count = 0
+
+        while iterator_count <= len(self.nodes):
+            yield self.nodes[self._node_offset]
+            iterator_count    += 1
+            self._node_offset += 1
+            self._node_offset  = self._node_offset % len(self.nodes)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def unschedule_unit(self, unit):
         '''
         This method is called when previously aquired resources are not needed
         anymore.  `slots` are the resource slots as previously returned by
-        `_allocate_slots()`.
+        `_schedule_unit()`.
         '''
 
         # reflect the request in the nodelist state (set to `FREE`)
-        self._change_slot_states(slots, rpc.FREE)
+        self._change_slot_states(unit['slots'], rpc.FREE)
 
 
     # --------------------------------------------------------------------------
@@ -258,7 +275,7 @@ class Continuous(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     #
-    def _alloc(self, unit):
+    def _schedule_unit(self, unit):
         '''
         Find an available set of slots, potentially across node boundaries (in
         the MPI case).  By default, we only allow for partial allocations on the
@@ -349,7 +366,7 @@ class Continuous(AgentSchedulingComponent):
         rem_slots = req_slots
 
         # start the search
-        for node in self.nodes:
+        for node in self._iterate_nodes():
 
             node_uid  = node['uid']
             node_name = node['name']
