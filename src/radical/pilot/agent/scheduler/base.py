@@ -254,7 +254,7 @@ class AgentSchedulingComponent(rpu.Component):
                               % self._lrms_info['name'])
 
         # create and initialize the wait pool
-        self._waitpool = dict()  # pool of waiting units (binned by size)
+        self._waitpool = list()  # pool of waiting units
 
         # the scheduler algorithms have two inputs: tasks to be scheduled, and
         # slots becoming available (after tasks complete).
@@ -565,28 +565,12 @@ class AgentSchedulingComponent(rpu.Component):
                 # no more unschedule requests
                 pass
 
-            to_release = to_unschedule
-          # to_release = list()
-          # for unit in to_unschedule:
-          #
-          #     ts = tuple(unit['tuple_size'])
-          #     if self._waitpool.get(ts):
-          #
-          #         replacer = self._waitpool[ts].pop()
-          #         replacer['slots'] = unit['slots']
-          #         self._prof.prof('unschedule_stop', uid=unit['uid'])
-          #         self._prof.prof('schedule_fast',   uid=replacer['uid'])
-          #         self.advance(replacer, rps.AGENT_EXECUTING_PENDING,
-          #                      publish=True, push=True)
-          #     else:
-          #         to_release.append(unit)
-
-            if to_release:
+            if to_unschedule:
 
                 new_resources   = True
                 self._too_large = None
 
-                for unit in to_release:
+                for unit in to_unschedule:
                     self.unschedule_unit(unit)
                     self._prof.prof('unschedule_stop', uid=unit['uid'])
 
@@ -637,11 +621,7 @@ class AgentSchedulingComponent(rpu.Component):
                 to_wait.append(unit)
 
         for unit in to_wait:
-            ts = tuple(unit['tuple_size'])
-            ts = 'ts'
-            if ts not in self._waitpool:
-                self._waitpool[ts] = list()
-            self._waitpool[ts].append(unit)
+            self._waitpool.append(unit)
 
 
     # --------------------------------------------------------------------------
@@ -657,18 +637,16 @@ class AgentSchedulingComponent(rpu.Component):
         # fixing for GPU dominated loads.
 
         active = False
-        retain = dict()
-        for ts in sorted(self._waitpool, reverse=True):
+        retain = list()
+        for unit in sorted(self._waitpool, key=lambda x:x['tuple_size'],
+                                           reverse=True):
 
-            retain[ts] = list()
-            for unit in self._waitpool[ts]:
-
-                if self._try_allocation(unit):
-                    active = True
-                    self.advance(unit, rps.AGENT_EXECUTING_PENDING,
-                                       publish=True, push=True)
-                else:
-                    retain[ts].append(unit)
+            if self._try_allocation(unit):
+                active = True
+                self.advance(unit, rps.AGENT_EXECUTING_PENDING,
+                                   publish=True, push=True)
+            else:
+                retain.append(unit)
 
         if active:
             self.slot_status("after schedule waitlist")
