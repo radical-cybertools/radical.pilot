@@ -66,7 +66,7 @@ class MPIRun(LaunchMethod):
         slots        = cu['slots']
         uid          = cu['uid']
         cud          = cu['description']
-        sandbox      = cu['unit_sandbox']
+        sandbox      = cu['unit_sandbox_path']
         task_exec    = cud['executable']
         task_threads = cud.get('cpu_threads', 1)
         task_env     = cud.get('environment') or dict()

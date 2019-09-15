@@ -319,7 +319,7 @@ class Yarn(LaunchMethod):
     def construct_command(self, cu, launch_script_hop):
 
         slots        = cu['slots']
-        work_dir     = cu['workdir']
+        work_dir     = cu['unit_sandbox_path']
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cpu_processes'] * cud['cpu_threads']

@@ -231,7 +231,6 @@ class ABDS(AgentExecutingComponent):
         # prep stdout/err so that we can append w/o checking for None
         cu['stdout']  = ''
         cu['stderr']  = ''
-        cu['workdir'] = sandbox
 
         launch_script_name = '%s/%s.sh' % (sandbox, cu['uid'])
 
