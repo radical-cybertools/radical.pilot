@@ -1103,9 +1103,9 @@ class Component(ru.Process):
                 try:
                     topic, msg = self._q.get_nowait(500)  # timout in ms
                 except Exception:
-                    self._log.exception('get_nowait failed')
                     if not self._ru_term.is_set():
                         # abort during termination
+                        self._log.exception('get_nowait failed')
                         return False
 
                 if topic and msg:
