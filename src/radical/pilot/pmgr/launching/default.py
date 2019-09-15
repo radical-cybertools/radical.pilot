@@ -548,11 +548,11 @@ class Default(PMGRLaunchingComponent):
         #        entries, so that the expansion is only done on the first PD.
         expand = dict()
         pd     = pilots[0]['description']
-        for k,v in pd.iteritems():
+        for k,v in pd.items():
             if v is None:
                 v = ''
             expand['pd.%s' % k] = v
-            if isinstance(v, basestring):
+            if isinstance(v, str):
                 expand['pd.%s' % k.upper()] = v.upper()
                 expand['pd.%s' % k.lower()] = v.lower()
             else:
@@ -560,7 +560,7 @@ class Default(PMGRLaunchingComponent):
                 expand['pd.%s' % k.lower()] = v
 
         for k in rcfg:
-            if isinstance(rcfg[k], basestring):
+            if isinstance(rcfg[k], str):
                 orig     = rcfg[k]
                 rcfg[k]  = rcfg[k] % expand
                 expanded = rcfg[k]

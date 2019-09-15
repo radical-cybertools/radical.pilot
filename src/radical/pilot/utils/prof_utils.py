@@ -545,10 +545,10 @@ def get_consumed_resources(session):
     for pilot in session.get(etype='pilot'):
 
         if pilot.cfg['task_launch_method'] == 'PRTE':
-            print '\nusing prte configuration'
+            print('\nusing prte configuration')
             unit_durations = UNIT_DURATIONS_PRTE
         else:
-            print '\nusing default configuration'
+            print('\nusing default configuration')
             unit_durations = UNIT_DURATIONS_DEFAULT
 
         p_min = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][0])[ 0]
@@ -804,7 +804,7 @@ def _get_unit_consumption(session, unit):
         unit_durations = UNIT_DURATIONS_DEFAULT
 
     if _debug:
-        print
+        print()
 
     ret = dict()
     for metric in unit_durations['consume']:
@@ -816,16 +816,16 @@ def _get_unit_consumption(session, unit):
         if t0 is not None:
 
             if _debug:
-                print '%s: %-15s : %10.3f - %10.3f = %10.3f' \
-                    % (unit.uid, metric, t1, t0, t1 - t0)
+                print('%s: %-15s : %10.3f - %10.3f = %10.3f' \
+                    % (unit.uid, metric, t1, t0, t1 - t0))
             for r in resources:
                 boxes.append([t0, t1, r[0], r[1]])
 
         else:
             if _debug:
-                print '%s: %-15s : -------------- ' % (unit.uid, metric)
+                print('%s: %-15s : -------------- ' % (unit.uid, metric))
                 dur = unit_durations['consume'][metric]
-                print dur
+                print(dur)
 
                 for e in dur:
                     if ru.STATE in e and ru.EVENT not in e:
@@ -833,10 +833,10 @@ def _get_unit_consumption(session, unit):
 
                 t0 = unit.timestamps(event=dur[0])
                 t1 = unit.timestamps(event=dur[1])
-                print t0
-                print t1
+                print(t0)
+                print(t1)
                 for e in unit.events:
-                    print '\t'.join([str(x) for x in e])
+                    print('\t'.join([str(x) for x in e]))
 
               # sys.exit()
 

@@ -291,7 +291,7 @@ class LaunchMethod(object):
                 count_dict = collections.OrderedDict(sorted(counter.items(),
                                                      key=lambda t: t[0]))
 
-                for (host, count) in count_dict.iteritems():
+                for (host, count) in count_dict.items():
                     fout.write('%s%s%d\n' % (host, separator, count))
 
             else:

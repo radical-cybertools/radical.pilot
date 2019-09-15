@@ -106,11 +106,11 @@ class ComputePilot(object):
         # we need to expand plaaceholders in the sandboxes
         # FIXME: this code is a duplication from the pilot launcher code
         expand = dict()
-        for k,v in pilot['description'].iteritems():
+        for k,v in pilot['description'].items():
             if v is None:
                 v = ''
             expand['pd.%s' % k] = v
-            if isinstance(v, basestring):
+            if isinstance(v, str):
                 expand['pd.%s' % k.upper()] = v.upper()
                 expand['pd.%s' % k.lower()] = v.lower()
             else:

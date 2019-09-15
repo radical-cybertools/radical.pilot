@@ -162,7 +162,7 @@ class FUNCS(AgentExecutingComponent) :
 
             # also add any env vars requested in the unit description
             if descr.get('environment', []):
-                for key,val in descr['environment'].iteritems():
+                for key,val in descr['environment'].items():
                     fout.write('export "%s=%s"\n' % (key, val))
 
             fout.write('\n%s\n\n' % launch_cmd)
