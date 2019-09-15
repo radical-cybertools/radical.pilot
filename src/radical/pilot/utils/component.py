@@ -25,7 +25,7 @@ from .pubsub     import PUBSUB_SUB     as rpu_PUBSUB_SUB
 from .pubsub     import PUBSUB_BRIDGE  as rpu_PUBSUB_BRIDGE
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Component(ru.Process):
     """
@@ -158,7 +158,6 @@ class Component(ru.Process):
                 raise ValueError('unknown bridge type for %s' % bname)
 
             # bridge addresses are URLs
-            log.debug(' === %s', bridge.addr_in)
             bcfg['addr_in']  = str(bridge.addr_in)
             bcfg['addr_out'] = str(bridge.addr_out)
 
@@ -511,8 +510,8 @@ class Component(ru.Process):
             # get debugging, logging, profiling set up
           # self._dh   = ru.DebugHelper(name=self.uid)
             self._prof = self._session._get_profiler(name=self.uid)
-            self._log  = self._session._get_logger  (name=self.uid,
-                                                     level=self._debug)
+          # self._log  = self._session._get_logger  (name=self.uid,
+          #                                          level=self._debug)
 
             # make sure that the Process base class uses the same logger
             # FIXME: do same for profiler?
@@ -1109,7 +1108,8 @@ class Component(ru.Process):
                 topic, msg = None, None
                 try:
                     topic, msg = self._q.get_nowait(500)  # timout in ms
-                except Exception as e:
+                except Exception:
+                    self._log.exception('get_nowait failed')
                     if not self._ru_term.is_set():
                         # abort during termination
                         return False
@@ -1119,7 +1119,7 @@ class Component(ru.Process):
                         msg = [msg]
                     for m in msg:
                         with self._cb_lock:
-                            if self._cb_data != None:
+                            if self._cb_data is not None:
                                 ret = cb(topic=topic, msg=m, cb_data=self._cb_data)
                             else:
                                 ret = self._cb(topic=topic, msg=m)
@@ -1127,6 +1127,7 @@ class Component(ru.Process):
                         if not ret:
                             return False
                 return True
+
             def ru_finalize_common(self):
                 self._q.stop()
         # ----------------------------------------------------------------------
@@ -1229,9 +1230,6 @@ class Component(ru.Process):
             # pushing them
             buckets = dict()
             for thing in things:
-                self._log.debug('=== %s', type(thing))
-                self._log.debug('=== %s', pprint.pformat(thing))
-
                 state = thing['state']
                 uid   = thing['uid']
                 self._prof.prof('get', uid=uid, state=state)
@@ -1445,7 +1443,7 @@ class Component(ru.Process):
 
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Worker(Component):
     """
