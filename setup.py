@@ -238,11 +238,13 @@ setup_args = {
                             'bin/radical-pilot-fetch-logfiles',
                             'bin/radical-pilot-fetch-json',
                             'bin/radical-pilot-inspect',
+                            'bin/radical-pilot-prte2prof',
                             'bin/radical-pilot-run-session',
                             'bin/radical-pilot-stats',
                             'bin/radical-pilot-stats.plot',
                             'bin/radical-pilot-version',
                             'bin/radical-pilot-agent',
+                            'bin/radical-pilot-agent-funcs',
                             'bin/radical-pilot-agent-statepush'
                            ],
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.c',

@@ -223,17 +223,15 @@ class ABDS(AgentExecutingComponent):
 
         self._prof.prof('spawn', msg='unit spawn', uid=cu['uid'])
 
-        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
-        #       class definition.
-        sandbox = '%s/%s' % (self._pwd, cu['uid'])
+        sandbox = cu['unit_sandbox_path']
 
         # make sure the sandbox exists
         rpu.rec_makedir(sandbox)
 
         # prep stdout/err so that we can append w/o checking for None
-        cu['stdout'] = ''
-        cu['stderr'] = ''
-        cu['workdir']=sandbox
+        cu['stdout']  = ''
+        cu['stderr']  = ''
+        cu['workdir'] = sandbox
 
         launch_script_name = '%s/%s.sh' % (sandbox, cu['uid'])
 

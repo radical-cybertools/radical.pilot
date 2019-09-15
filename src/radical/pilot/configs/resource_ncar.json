@@ -1,30 +1,5 @@
 
 {
-    "yellowstone_ssh": {
-        "description"                 : "The Yellowstone IBM iDataPlex cluster at UCAR (https://www2.cisl.ucar.edu/resources/yellowstone).",
-        "notes"                       : "We only support one concurrent CU per node currently.",
-        "schemas"                     : ["ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "lsf+ssh://yellowstone.ucar.edu/",
-            "filesystem_endpoint"     : "sftp://yellowstone.ucar.edu/"
-        },
-        "default_queue"               : "premium",
-        "lrms"                        : "LSF",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "POE",
-        "forward_tunnel_endpoint"     : "yslogin6",
-        "pre_bootstrap_0"             : ["module purge", "module load ncarenv", "module load ncarbinlibs", "module load python"],
-        "valid_roots"                 : ["/glade/u", "/glade/p", "/glade/scratch"],
-        "rp_version"                  : "installed",
-        "virtenv"                     : "/glade/u/home/marksant/pilotve",
-        "virtenv_mode"                : "use",
-        "python_dist"                 : "default"
-    },
-
     "cheyenne": {
         "description"                 : "An SGI ICE XA Cluster located at the National Center for Atmospheric Research (NCAR), (https://www2.cisl.ucar.edu/resources/computational-systems/cheyenne)",
         "notes"                       : "Requires the use of a token from an USB on every connection.",
@@ -55,7 +30,7 @@
         "valid_roots"                 : ["/glade/scratch","/glade/p/work","/glade/u/home"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "use",
-        "virtenv"                     : "/glade/scratch/vivekb/radical.pilot.sandbox/ve.rp.cheyenne.2019.02.07",    
+        "virtenv"                     : "/glade/scratch/vivekb/radical.pilot.sandbox/ve.rp.cheyenne.2019.02.07",
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system"

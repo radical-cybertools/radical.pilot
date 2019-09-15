@@ -164,8 +164,6 @@ class Popen(AgentExecutingComponent) :
 
         self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        ru.raise_on('work bulk')
-
         for unit in units:
             self._handle_unit(unit)
 
@@ -174,7 +172,6 @@ class Popen(AgentExecutingComponent) :
     #
     def _handle_unit(self, cu):
 
-        ru.raise_on('work unit')
       # import pprint
       # self._log.info('handle cu: %s', pprint.pformat(cu))
 
@@ -220,10 +217,8 @@ class Popen(AgentExecutingComponent) :
     #
     def spawn(self, launcher, cu):
 
-        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
-        #       class definition.
         descr   = cu['description']
-        sandbox = '%s/%s' % (self._pwd, cu['uid'])
+        sandbox = cu['unit_sandbox_path']
 
         # make sure the sandbox exists
         self._prof.prof('exec_mkdir', uid=cu['uid'])

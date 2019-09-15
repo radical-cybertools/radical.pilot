@@ -98,7 +98,7 @@ class MPIExec(LaunchMethod):
         arg_max = 4096
 
         # This is the command w/o the host string
-        command_stub = "%s %%s %s %s" % (self.launch_command, 
+        command_stub = "%s %%s %s %s" % (self.launch_command,
                                          env_string, task_command)
 
         # cluster hosts by number of slots
@@ -111,7 +111,7 @@ class MPIExec(LaunchMethod):
 
             # Create a hostfile from the list of hosts.  We create that in the
             # unit sandbox
-            fname = '%s/mpi_hostfile' % cu['unit_sandbox']
+            fname = '%s/mpi_hostfile' % cu['unit_sandbox_path']
             with open(fname, 'w') as f:
                 for node,nslots in list(host_slots.items()):
                     f.write('%20s \tslots=%s\n' % (node, nslots))

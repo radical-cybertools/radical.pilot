@@ -24,7 +24,7 @@ from .context                   import Context
 from .unit_manager              import UnitManager
 from .compute_unit              import ComputeUnit
 from .compute_unit_description  import ComputeUnitDescription
-from .compute_unit_description  import POSIX, MPI, OpenMP, CUDA
+from .compute_unit_description  import POSIX, MPI, OpenMP, CUDA, FUNC
 
 from .pilot_manager             import PilotManager
 from .compute_pilot             import ComputePilot

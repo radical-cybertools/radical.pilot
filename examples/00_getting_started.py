@@ -5,7 +5,6 @@ __license__   = 'MIT'
 
 import os
 import sys
-import time
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -56,7 +55,7 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {'resource'      : resource,
-                   'runtime'       : 15,  # pilot runtime (min)
+                   'runtime'       : 30,  # pilot runtime (min)
                    'exit_on_error' : True,
                    'project'       : config[resource]['project'],
                    'queue'         : config[resource]['queue'],
@@ -77,7 +76,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 512  # number of units to run
+        n = 128  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -86,12 +85,8 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = '/bin/date'
-            cud.gpu_processes    = 0
-            cud.cpu_processes    = 1
-            cud.cpu_threads      = 1
-            cud.cpu_process_type = rp.POSIX
-            cud.cpu_thread_type  = rp.POSIX
+            cud.executable    = '/bin/date'
+            cud.cpu_processes = 1
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')

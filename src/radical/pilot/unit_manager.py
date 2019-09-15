@@ -111,7 +111,8 @@ class UnitManager(rpu.Component):
         assert(cfg['db_poll_sleeptime']), 'db_poll_sleeptime not configured'
 
         # initialize the base class (with no intent to fork)
-        self._uid    = ru.generate_id('umgr')
+        self._uid    = ru.generate_id('umgr.%(item_counter)04d', ru.ID_CUSTOM,
+                                      namespace=session.uid)
         cfg['owner'] = self.uid
         rpu.Component.__init__(self, cfg, session)
         self.start(spawn=False)
@@ -723,9 +724,6 @@ class UnitManager(rpu.Component):
 
             if not ud.executable:
                 raise ValueError('compute unit executable must be defined')
-
-            if ud.sandbox and ud.sandbox[0] == '/':
-                raise ValueError('compute unit sandbox must be relative.')
 
             unit = ComputeUnit(umgr=self, descr=ud)
             units.append(unit)

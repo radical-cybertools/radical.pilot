@@ -66,6 +66,7 @@ class MPIRun(LaunchMethod):
         slots        = cu['slots']
         uid          = cu['uid']
         cud          = cu['description']
+        sandbox      = cu['unit_sandbox']
         task_exec    = cud['executable']
         task_threads = cud.get('cpu_threads', 1)
         task_env     = cud.get('environment') or dict()
@@ -127,7 +128,8 @@ class MPIRun(LaunchMethod):
         if len(host_list) > 42:
 
             # Create a hostfile from the list of hosts
-            hostfile = self._create_hostfile(uid, host_list, impaired=True)
+            hostfile = self._create_hostfile(sandbox, uid, host_list,
+                                             impaired=True)
             hosts_string = '-hostfile %s' % hostfile
 
         else:

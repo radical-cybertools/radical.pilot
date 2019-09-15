@@ -64,8 +64,6 @@ class Default(AgentStagingOutputComponent):
 
         self.advance(units, rps.AGENT_STAGING_OUTPUT, publish=True, push=False)
 
-        ru.raise_on('work bulk')
-
         # we first filter out any units which don't need any input staging, and
         # advance them again as a bulk.  We work over the others one by one, and
         # advance them individually, to avoid stalling from slow staging ops.
@@ -125,13 +123,13 @@ class Default(AgentStagingOutputComponent):
     #
     def _handle_unit_stdio(self, unit):
 
-        sandbox = ru.Url(unit['unit_sandbox']).path
+        sandbox = unit['unit_sandbox_path']
         uid     = unit['uid']
 
         self._prof.prof('staging_stdout_start', uid=uid)
 
         # TODO: disable this at scale?
-        if os.path.isfile(unit['stdout_file']):
+        if unit.get('stdout_file') and os.path.isfile(unit['stdout_file']):
             with open(unit['stdout_file'], 'r') as stdout_f:
                 try:
                     txt = ru.to_string(stdout_f.read())
@@ -144,7 +142,7 @@ class Default(AgentStagingOutputComponent):
         self._prof.prof('staging_stderr_start', uid=uid)
 
         # TODO: disable this at scale?
-        if os.path.isfile(unit['stderr_file']):
+        if unit.get('stderr_file') and os.path.isfile(unit['stderr_file']):
             with open(unit['stderr_file'], 'r') as stderr_f:
                 try:
                     txt = ru.to_string(stderr_f.read())
@@ -153,11 +151,25 @@ class Default(AgentStagingOutputComponent):
 
                 unit['stderr'] += rpu.tail(txt)
 
+            # to help with ID mapping, also parse for PRTE output:
+            # [batch3:122527] JOB [3673,4] EXECUTING
+            with open(unit['stderr_file'], 'r') as stderr_f:
+
+                for line in stderr_f.readlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if line[0] == '[' and line.endswith('EXECUTING'):
+                        elems = line.replace('[', '').replace(']', '').split()
+                        tid   = elems[2]
+                        self._log.info('PRTE IDMAP: %s:%s' % (tid, uid))
+
+                unit['stderr'] += rpu.tail(txt)
+
         self._prof.prof('staging_stderr_stop', uid=uid)
         self._prof.prof('staging_uprof_start', uid=uid)
 
         unit_prof = "%s/%s.prof" % (sandbox, uid)
-
         if os.path.isfile(unit_prof):
             try:
                 with open(unit_prof, 'r') as prof_f:
@@ -178,13 +190,7 @@ class Default(AgentStagingOutputComponent):
     #
     def _handle_unit_staging(self, unit, actionables):
 
-        ru.raise_on('work unit')
-
         uid = unit['uid']
-
-        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
-        #       class definition.
-        sandbox = ru.Url(unit['unit_sandbox']).path
 
         # By definition, this compoentn lives on the pilot's target resource.
         # As such, we *know* that all staging ops which would refer to the
@@ -269,7 +275,7 @@ class Default(AgentStagingOutputComponent):
             # for local ops (copy, link, move)
             if flags & rpc.CREATE_PARENTS and action != rpc.TRANSFER:
                 tgtdir = os.path.dirname(tgt.path)
-                if tgtdir != sandbox:
+                if tgtdir != unit_sandbox.path:
                     self._log.debug("mkdir %s", tgtdir)
                     rpu.rec_makedir(tgtdir)
 
