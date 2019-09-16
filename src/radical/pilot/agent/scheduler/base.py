@@ -1,6 +1,6 @@
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
-__license__ = "MIT"
+__license__   = "MIT"
 
 
 import time
@@ -625,7 +625,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         if not units:
             # no activity, resources remain
-            self._prof.prof('tmp_sched_break')
             return False, True
 
         self.slot_status("before schedule incoming [%d]" % len(units))
@@ -682,8 +681,6 @@ class AgentSchedulingComponent(rpu.Component):
                 self.unschedule_unit(unit)
                 self._prof.prof('unschedule_stop', uid=unit['uid'])
 
-        self._prof.prof('tmp_unsched_stop',
-                        msg='%d,%d' % (len(self._waitpool), len(to_unschedule)))
 
         # if we unscheduled things we were active and got new resources
         if to_unschedule:
