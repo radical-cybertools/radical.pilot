@@ -550,9 +550,6 @@ class AgentSchedulingComponent(rpu.Component):
 
             active = ''  # see if we do anything in this iteration
 
-            self._prof.prof('tmp_loop_start',
-                            msg='%d,%d' % (len(self._waitpool), int(resources)))
-
             # if we have new resources, try to place waiting tasks
             if resources:
                 a, r = self._schedule_waitlist()
@@ -572,20 +569,12 @@ class AgentSchedulingComponent(rpu.Component):
             if not active:
                 time.sleep(0.1)  # FIXME: configurable
 
-            self._prof.prof('tmp_loop_stop', msg=active)
-
 
     # --------------------------------------------------------------------------
     #
     def _schedule_waitlist(self):
 
         self.slot_status("before schedule waitlist")
-        self._prof.prof('tmp_wait_start')
-
-        if not self._waitpool:
-            # no activity, resources remain
-            self._prof.prof('tmp_wait_break')
-            return False, True
 
         # cycle through waitlist, and see if we get anything placed now.
         #
@@ -606,8 +595,6 @@ class AgentSchedulingComponent(rpu.Component):
         # we have resources left when new waitpool is empty
         resources = not bool(unscheduled)
 
-        self._prof.prof('tmp_wait_stop', msg='%d,%d' % (len(self._waitpool),
-                                                        len(unscheduled)))
 
         self._waitpool = unscheduled
 
@@ -618,7 +605,6 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def _schedule_incoming(self):
 
-        self._prof.prof('tmp_sched_start')
         # fetch all units from the queue
         units = list()
         try:
@@ -664,9 +650,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         self._waitpool.extend(to_wait)
 
-        self._prof.prof('tmp_sched_stop',
-                        msg='%d,%d,%d' % (len(self._waitpool), len(units), len(to_wait)))
-
         # we performed some activity (worked on units)
         active = True
 
@@ -679,8 +662,6 @@ class AgentSchedulingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _unschedule_completed(self):
-
-        self._prof.prof('tmp_unsched_start')
 
         to_unschedule = list()
         try:
