@@ -71,8 +71,6 @@ class Sleep(AgentExecutingComponent) :
     #
     def work(self, units):
 
-        import pprint
-
         if not isinstance(units, list):
             units = [units]
 
@@ -82,8 +80,6 @@ class Sleep(AgentExecutingComponent) :
         for t in units:
           # assert(t['description']['executable'].endswith('sleep'))
             t['to_finish'] = now + float(t['description']['arguments'][0])
-          # self._log.debug(' === %s: %8.1f = %8.1f + %8.1f', t['to_finish'],
-          #         now, float(t['description']['arguments'][0]))
 
         for t in units:
             uid = t['uid']
@@ -96,7 +92,6 @@ class Sleep(AgentExecutingComponent) :
 
         with self._tasks_lock:
             self._tasks.extend(units)
-          # self._log.debug(' ==== +%6d = %6d', len(units), len(self._tasks))
 
 
     # --------------------------------------------------------------------------
@@ -121,12 +116,9 @@ class Sleep(AgentExecutingComponent) :
                 self._prof.prof('exec_stop',        uid=uid)
                 self._prof.prof('unschedule_start', uid=uid)
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
-              # self._log.debug(' === %s: %8.1f > %8.1f', uid, t['to_finish'], now)
 
             self.advance(to_finish, rps.AGENT_STAGING_OUTPUT_PENDING,
                                     publish=True, push=True)
-
-          # self._log.debug(' ==== +%6d = %6d', len(to_finish), len(self._tasks))
 
 
 # ------------------------------------------------------------------------------
