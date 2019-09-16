@@ -105,21 +105,17 @@ class RoundRobin(UMGRSchedulingComponent):
                         self._log.error('got unit %s for unknown pilot %s', uid, pid)
                         self.advance(unit, rps.FAILED, publish=True, push=True)
                         continue
-                    
+
                     pilot = self._pilots[pid]['pilot']
 
-                    # make sure we have a sandbox defined, too
-                    if not unit.get('sandbox'):
-                        pilot = self._pilots[pid]['pilot']
-                        unit['sandbox'] = self._session._get_unit_sandbox(unit, pilot)
-
-                    self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING, 
+                    self._assign_pilot(unit, pilot)
+                    self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING,
                                  publish=True, push=True)
 
                 else:
                     # not yet scheduled - put in wait pool
                     unscheduled.append(unit)
-                        
+
         self._schedule_units(unscheduled)
 
 
@@ -164,7 +160,7 @@ class RoundRobin(UMGRSchedulingComponent):
 
             # advance all units
             self.advance(units_fail, rps.FAILED, publish=True, push=False)
-            self.advance(units_ok,   rps.UMGR_STAGING_INPUT_PENDING, 
+            self.advance(units_ok,   rps.UMGR_STAGING_INPUT_PENDING,
                          publish=True, push=True)
 
 

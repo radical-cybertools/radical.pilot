@@ -162,12 +162,12 @@ class Default(PMGRLaunchingComponent):
         pid = pilot['uid']
 
         # NOTE: no unit sandboxes defined!
-        src_context = {'pwd'      : pilot['client_sandbox'],
-                       'pilot'    : pilot['pilot_sandbox'],
-                       'resource' : pilot['resource_sandbox']}
-        tgt_context = {'pwd'      : pilot['pilot_sandbox'],
-                       'pilot'    : pilot['pilot_sandbox'],
-                       'resource' : pilot['resource_sandbox']}
+        src_context = {'pwd'     : pilot['client_sandbox'],
+                       'pilot'   : pilot['pilot_sandbox'],
+                       'resource': pilot['resource_sandbox']}
+        tgt_context = {'pwd'     : pilot['pilot_sandbox'],
+                       'pilot'   : pilot['pilot_sandbox'],
+                       'resource': pilot['resource_sandbox']}
 
         # Iterate over all directives
         for sd in sds:
@@ -209,7 +209,7 @@ class Default(PMGRLaunchingComponent):
             tmp.path = '/'
             key = str(tmp)
 
-            self._log.debug ("rs.file.Directory ('%s')", key)
+            self._log.debug("rs.file.Directory ('%s')", key)
 
             with self._cache_lock:
                 if key in self._saga_fs_cache:
@@ -225,9 +225,9 @@ class Default(PMGRLaunchingComponent):
 
             self._prof.prof('staging_in_stop', uid=pid, msg=did)
 
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'pilot_staging_input_result',
-                                          'arg' : {'pilot' : pilot,
-                                                   'sds'   : sds}})
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'pilot_staging_input_result',
+                                          'arg': {'pilot': pilot,
+                                                  'sds'  : sds}})
 
 
     # --------------------------------------------------------------------------
@@ -500,11 +500,11 @@ class Default(PMGRLaunchingComponent):
         We expect `_prepare_pilot(resource, pilot)` to return a dict with:
 
             {
-              'js' : saga.job.Description,
-              'ft' : [
-                { 'src' : string  # absolute source file name
-                  'tgt' : string  # relative target file name
-                  'rem' : bool    # shall we remove src?
+              'js': saga.job.Description,
+              'ft': [
+                { 'src': string  # absolute source file name
+                  'tgt': string  # relative target file name
+                  'rem': bool    # shall we remove src?
                 },
                 ... ]
             }
@@ -536,6 +536,35 @@ class Default(PMGRLaunchingComponent):
         rcfg = self._session.get_resource_config(resource, schema)
         sid  = self._session.uid
 
+        # ----------------------------------------------------------------------
+        # the rcfg can contain keys with string expansion placeholders where
+        # values from the pilot description need filling in.  A prominent
+        # example is `%(pd.project)s`, where the pilot description's `PROJECT`
+        # value needs to be filled in (here in lowercase).
+        #
+        # FIXME: right now we assume all pilot descriptions to contain similar
+        #        entries, so that the expansion is only done on the first PD.
+        expand = dict()
+        pd     = pilots[0]['description']
+        for k,v in pd.iteritems():
+            if v is None:
+                v = ''
+            expand['pd.%s' % k] = v
+            if isinstance(v, basestring):
+                expand['pd.%s' % k.upper()] = v.upper()
+                expand['pd.%s' % k.lower()] = v.lower()
+            else:
+                expand['pd.%s' % k.upper()] = v
+                expand['pd.%s' % k.lower()] = v
+
+        for k in rcfg:
+            if isinstance(rcfg[k], basestring):
+                orig     = rcfg[k]
+                rcfg[k]  = rcfg[k] % expand
+                expanded = rcfg[k]
+                if orig != expanded:
+                    self._log.debug('RCFG:\n%s\n%s', orig, expanded)
+
         # we create a fake session_sandbox with all pilot_sandboxes in /tmp, and
         # then tar it up.  Once we untar that tarball on the target machine, we
         # should have all sandboxes and all files required to bootstrap the
@@ -552,12 +581,14 @@ class Default(PMGRLaunchingComponent):
         # that the bulk is consistent wrt. to the schema.
         # FIXME: if it is not, it needs to be splitted into schema-specific
         # sub-bulks
-        schema = pilots[0]['description'].get('access_schema')
+        schema = pd.get('access_schema')
         for pilot in pilots[1:]:
             assert(schema == pilot['description'].get('access_schema')), \
                     'inconsistent scheme on launch / staging'
 
+        # get and expand sandboxes
         session_sandbox = self._session._get_session_sandbox(pilots[0]).path
+        session_sandbox = session_sandbox % expand
 
 
         # we will create the session sandbox before we untar, so we can use that
@@ -568,7 +599,7 @@ class Default(PMGRLaunchingComponent):
         ft_list = list()  # files to stage
         jd_list = list()  # jobs  to submit
         for pilot in pilots:
-            info = self._prepare_pilot(resource, rcfg, pilot)
+            info = self._prepare_pilot(resource, rcfg, pilot, expand)
             ft_list += info['ft']
             jd_list.append(info['jd'])
             self._prof.prof('staging_in_start', uid=pilot['uid'])
@@ -585,7 +616,7 @@ class Default(PMGRLaunchingComponent):
             if not os.path.isdir('%s/%s' % (tmp_dir, tgt_dir)):
                 os.makedirs('%s/%s' % (tmp_dir, tgt_dir))
 
-            if src == '/dev/null' :
+            if src == '/dev/null':
                 # we want an empty file -- touch it (tar will refuse to
                 # handle a symlink to /dev/null)
                 open('%s/%s' % (tmp_dir, tgt), 'a').close()
@@ -610,7 +641,7 @@ class Default(PMGRLaunchingComponent):
         fs_endpoint = rcfg['filesystem_endpoint']
         fs_url      = rs.Url(fs_endpoint)
 
-        self._log.debug ("rs.file.Directory ('%s')", fs_url)
+        self._log.debug("rs.file.Directory ('%s')", fs_url)
 
         with self._cache_lock:
             if fs_url in self._saga_fs_cache:
@@ -650,7 +681,7 @@ class Default(PMGRLaunchingComponent):
                 js_tmp  = rs.job.Service(js_url, session=self._session)
                 self._saga_js_cache[js_url] = js_tmp
 
-     ## cmd = "tar zmxvf %s/%s -C / ; rm -f %s" % \
+      # cmd = "tar zmxvf %s/%s -C / ; rm -f %s" % \
         cmd = "tar zmxvf %s/%s -C %s" % \
                 (session_sandbox, tar_name, session_sandbox)
         j = js_tmp.run_job(cmd)
@@ -692,7 +723,7 @@ class Default(PMGRLaunchingComponent):
             # do a quick error check
             if j.state == rs.FAILED:
                 self._log.error('%s: %s : %s : %s', j.id, j.state, j.stderr, j.stdout)
-                raise RuntimeError ("SAGA Job state is FAILED. (%s)" % jd.name)
+                raise RuntimeError("SAGA Job state is FAILED. (%s)" % jd.name)
 
             pilot = None
             pid   = jd.name
@@ -725,36 +756,11 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _prepare_pilot(self, resource, rcfg, pilot):
+    def _prepare_pilot(self, resource, rcfg, pilot, expand):
 
         pid = pilot["uid"]
-        ret = {'ft' : list(),
-               'jd' : None  }
-
-      # # ----------------------------------------------------------------------
-      # # the rcfg can contain keys with string expansion placeholders where
-      # # values from the pilot description need filling in.  A prominent
-      # # example is `%(pd.project)s`, where the pilot description's `PROJECT`
-      # # value needs to be filled in (here in lowercase).
-      # expand = dict()
-      # for k,v in pilot['description'].iteritems():
-      #     if v is None:
-      #         v = ''
-      #     expand['pd.%s' % k] = v
-      #     if isinstance(v, basestring):
-      #         expand['pd.%s' % k.upper()] = v.upper()
-      #         expand['pd.%s' % k.lower()] = v.lower()
-      #     else:
-      #         expand['pd.%s' % k.upper()] = v
-      #         expand['pd.%s' % k.lower()] = v
-      #
-      # for k in rcfg:
-      #     if isinstance(rcfg[k], basestring):
-      #         orig     = rcfg[k]
-      #         rcfg[k]  = rcfg[k] % expand
-      #         expanded = rcfg[k]
-      #         if orig != expanded:
-      #             self._log.debug('RCFG:\n%s\n%s', orig, expanded)
+        ret = {'ft': list(),
+               'jd': None  }
 
         # ----------------------------------------------------------------------
         # Database connection parameters
@@ -823,13 +829,21 @@ class Default(PMGRLaunchingComponent):
                                  % (ma, resource))
 
         # get pilot and global sandbox
-        resource_sandbox = self._session._get_resource_sandbox (pilot).path
-        session_sandbox  = self._session._get_session_sandbox(pilot).path
-        pilot_sandbox    = self._session._get_pilot_sandbox  (pilot).path
+        resource_sandbox = self._session._get_resource_sandbox(pilot)
+        session_sandbox  = self._session._get_session_sandbox (pilot)
+        pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
+        client_sandbox   = self._session._get_client_sandbox  ()
 
-        pilot['resource_sandbox'] = str(self._session._get_resource_sandbox(pilot))
-        pilot['pilot_sandbox']    = str(self._session._get_pilot_sandbox(pilot))
-        pilot['client_sandbox']   = str(self._session._get_client_sandbox())
+        pilot['resource_sandbox'] = str(resource_sandbox) % expand
+        pilot['session_sandbox']  = str(session_sandbox)  % expand
+        pilot['pilot_sandbox']    = str(pilot_sandbox)    % expand
+        pilot['client_sandbox']   = str(client_sandbox)
+
+        # from here on we need only paths
+        resource_sandbox = resource_sandbox.path % expand
+        session_sandbox  = session_sandbox .path % expand
+        pilot_sandbox    = pilot_sandbox   .path % expand
+        client_sandbox   = client_sandbox  # not expanded
 
         # Agent configuration that is not part of the public API.
         # The agent config can either be a config dict, or
@@ -950,8 +964,8 @@ class Default(PMGRLaunchingComponent):
         # above syntax is ignored, and the fallback stage@local
         # is used.
 
-        if  not rp_version.startswith('@') and \
-            not rp_version in ['installed', 'local', 'debug', 'release']:
+        if not rp_version.startswith('@') and \
+               rp_version not in ['installed', 'local', 'debug', 'release']:
             raise ValueError("invalid rp_version '%s'" % rp_version)
 
         if rp_version.startswith('@'):
@@ -969,10 +983,10 @@ class Default(PMGRLaunchingComponent):
         if not task_launch_method : raise RuntimeError("missing task launch method")
 
         # massage some values
-        if not queue :
+        if not queue:
             queue = default_queue
 
-        if  cleanup and isinstance (cleanup, bool) :
+        if  cleanup and isinstance(cleanup, bool):
             #  l : log files
             #  u : unit work dirs
             #  v : virtualenv
@@ -988,8 +1002,8 @@ class Default(PMGRLaunchingComponent):
                 cleanup = 'luv'
 
             # we never cleanup virtenvs which are not private
-            if virtenv_mode is not 'private' :
-                cleanup = cleanup.replace ('v', '')
+            if virtenv_mode != 'private':
+                cleanup = cleanup.replace('v', '')
 
         # add dists to staging files, if needed
         if rp_version in ['local', 'debug']:
@@ -1003,15 +1017,15 @@ class Default(PMGRLaunchingComponent):
         # allocation full nodes, and thus round up
         if cores_per_node:
             cores_per_node = int(cores_per_node)
-            number_cores   = int(cores_per_node
-                           * math.ceil(float(number_cores) / cores_per_node))
+            number_cores   = int(cores_per_node *
+                             math.ceil(float(number_cores) / cores_per_node))
 
         # if gpus_per_node is set (!= None), then we need to
         # allocation full nodes, and thus round up
         if gpus_per_node:
             gpus_per_node = int(gpus_per_node)
-            number_gpus   = int(gpus_per_node
-                           * math.ceil(float(number_gpus) / gpus_per_node))
+            number_gpus   = int(gpus_per_node *
+                            math.ceil(float(number_gpus) / gpus_per_node))
 
         # set mandatory args
         bootstrap_args  = ""
@@ -1038,34 +1052,34 @@ class Default(PMGRLaunchingComponent):
         for arg in pre_bootstrap_1:
             bootstrap_args += " -w '%s'" % arg
 
-        agent_cfg['owner']              = 'agent_0'
-        agent_cfg['cores']              = number_cores
-        agent_cfg['gpus']               = number_gpus
-        agent_cfg['lrms']               = lrms
-        agent_cfg['spawner']            = agent_spawner
-        agent_cfg['scheduler']          = agent_scheduler
-        agent_cfg['runtime']            = runtime
-        agent_cfg['app_comm']           = app_comm
-        agent_cfg['dburl']              = str(database_url)
-        agent_cfg['session_id']         = sid
-        agent_cfg['pilot_id']           = pid
-        agent_cfg['logdir']             = '.'
-        agent_cfg['pilot_sandbox']      = pilot_sandbox
-        agent_cfg['session_sandbox']    = session_sandbox
-        agent_cfg['resource_sandbox']   = resource_sandbox
-        agent_cfg['agent_launch_method']= agent_launch_method
-        agent_cfg['task_launch_method'] = task_launch_method
-        agent_cfg['mpi_launch_method']  = mpi_launch_method
-        agent_cfg['cores_per_node']     = cores_per_node
-        agent_cfg['gpus_per_node']      = gpus_per_node
-        agent_cfg['lfs_path_per_node']  = lfs_path_per_node
-        agent_cfg['lfs_size_per_node']  = lfs_size_per_node
-        agent_cfg['cu_tmp']             = cu_tmp
-        agent_cfg['export_to_cu']       = export_to_cu
-        agent_cfg['cu_pre_exec']        = cu_pre_exec
-        agent_cfg['cu_post_exec']       = cu_post_exec
-        agent_cfg['resource_cfg']       = copy.deepcopy(rcfg)
-        agent_cfg['debug']              = self._log.getEffectiveLevel()
+        agent_cfg['owner']               = 'agent_0'
+        agent_cfg['cores']               = number_cores
+        agent_cfg['gpus']                = number_gpus
+        agent_cfg['lrms']                = lrms
+        agent_cfg['spawner']             = agent_spawner
+        agent_cfg['scheduler']           = agent_scheduler
+        agent_cfg['runtime']             = runtime
+        agent_cfg['app_comm']            = app_comm
+        agent_cfg['dburl']               = str(database_url)
+        agent_cfg['session_id']          = sid
+        agent_cfg['pilot_id']            = pid
+        agent_cfg['logdir']              = '.'
+        agent_cfg['pilot_sandbox']       = pilot_sandbox
+        agent_cfg['session_sandbox']     = session_sandbox
+        agent_cfg['resource_sandbox']    = resource_sandbox
+        agent_cfg['agent_launch_method'] = agent_launch_method
+        agent_cfg['task_launch_method']  = task_launch_method
+        agent_cfg['mpi_launch_method']   = mpi_launch_method
+        agent_cfg['cores_per_node']      = cores_per_node
+        agent_cfg['gpus_per_node']       = gpus_per_node
+        agent_cfg['lfs_path_per_node']   = lfs_path_per_node
+        agent_cfg['lfs_size_per_node']   = lfs_size_per_node
+        agent_cfg['cu_tmp']              = cu_tmp
+        agent_cfg['export_to_cu']        = export_to_cu
+        agent_cfg['cu_pre_exec']         = cu_pre_exec
+        agent_cfg['cu_post_exec']        = cu_post_exec
+        agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
+        agent_cfg['debug']               = self._log.getEffectiveLevel()
 
         # we'll also push the agent config into MongoDB
         pilot['cfg'] = agent_cfg
@@ -1082,21 +1096,21 @@ class Default(PMGRLaunchingComponent):
         self._log.debug(pprint.pformat(agent_cfg))
         ru.write_json(agent_cfg, cfg_tmp_file)
 
-        ret['ft'].append({'src' : cfg_tmp_file,
-                          'tgt' : '%s/%s' % (pilot_sandbox, agent_cfg_name),
-                          'rem' : True})  # purge the tmp file after packing
+        ret['ft'].append({'src': cfg_tmp_file,
+                          'tgt': '%s/%s' % (pilot_sandbox, agent_cfg_name),
+                          'rem': True})  # purge the tmp file after packing
 
         # ----------------------------------------------------------------------
         # we also touch the log and profile tarballs in the target pilot sandbox
-        ret['ft'].append({'src' : '/dev/null',
-                          'tgt' : '%s/%s' % (pilot_sandbox, '%s.log.tgz' % pid),
-                          'rem' : False})  # don't remove /dev/null
+        ret['ft'].append({'src': '/dev/null',
+                          'tgt': '%s/%s' % (pilot_sandbox, '%s.log.tgz' % pid),
+                          'rem': False})  # don't remove /dev/null
         # only stage profiles if we profile
         if self._prof.enabled:
             ret['ft'].append({
-                          'src' : '/dev/null',
-                          'tgt' : '%s/%s' % (pilot_sandbox, '%s.prof.tgz' % pid),
-                          'rem' : False})  # don't remove /dev/null
+                          'src': '/dev/null',
+                          'tgt': '%s/%s' % (pilot_sandbox, '%s.prof.tgz' % pid),
+                          'rem': False})  # don't remove /dev/null
 
         # check if we have a sandbox cached for that resource.  If so, we have
         # nothing to do.  Otherwise we create the sandbox and stage the RP
@@ -1108,18 +1122,18 @@ class Default(PMGRLaunchingComponent):
 
                 for sdist in sdist_paths:
                     base = os.path.basename(sdist)
-                    ret['ft'].append({'src' : sdist,
-                                      'tgt' : '%s/%s' % (session_sandbox, base),
-                                      'rem' : False})
+                    ret['ft'].append({'src': sdist,
+                                      'tgt': '%s/%s' % (session_sandbox, base),
+                                      'rem': False})
 
                 # Copy the bootstrap shell script.
                 bootstrapper_path = os.path.abspath("%s/agent/%s"
                                   % (self._root_dir, BOOTSTRAPPER_0))
                 self._log.debug("use bootstrapper %s", bootstrapper_path)
 
-                ret['ft'].append({'src' : bootstrapper_path,
-                                  'tgt' : '%s/%s' % (session_sandbox, BOOTSTRAPPER_0),
-                                  'rem' : False})
+                ret['ft'].append({'src': bootstrapper_path,
+                                  'tgt': '%s/%s' % (session_sandbox, BOOTSTRAPPER_0),
+                                  'rem': False})
 
                 # Some machines cannot run pip due to outdated CA certs.
                 # For those, we also stage an updated certificate bundle
@@ -1130,9 +1144,9 @@ class Default(PMGRLaunchingComponent):
                     cc_path = os.path.abspath("%s/agent/%s" % (self._root_dir, cc_name))
                     self._log.debug("use CAs %s", cc_path)
 
-                    ret['ft'].append({'src' : cc_path,
-                                      'tgt' : '%s/%s' % (session_sandbox, cc_name),
-                                      'rem' : False})
+                    ret['ft'].append({'src': cc_path,
+                                      'tgt': '%s/%s' % (session_sandbox, cc_name),
+                                      'rem': False})
 
                 self._sandboxes[resource] = True
 

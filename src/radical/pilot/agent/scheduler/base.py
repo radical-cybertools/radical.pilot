@@ -69,11 +69,11 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 #     - make sure that the base class configuration is usable
 #     - do any additional configuration
 #
-#   _allocate_slot(cud):
-#     - given a unit description, find and return a suitable allocation
+#   _schecule_unit(unit):
+#     - given a unit (incl. description), find and return a suitable allocation
 #
-#   _release_slot(slots):
-#     - release the given allocation
+#   unschedule_unit(unit):
+#     - release the allocation held by that unit
 #
 #
 # The scheduler needs (in the general case) three pieces of information:
@@ -214,15 +214,11 @@ class AgentSchedulingComponent(rpu.Component):
     def __init__(self, cfg, session):
 
         self.nodes = None
-        self._lrms = None
         self._uid  = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
                                     ru.ID_CUSTOM)
-
         self._too_large = None
-      # print 'reset (new)'
 
         rpu.Component.__init__(self, cfg, session)
-
 
 
 
@@ -295,6 +291,13 @@ class AgentSchedulingComponent(rpu.Component):
         self._p = mp.Process(target=self._schedule_units)
         self._p.daemon = True
         self._p.start()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _configure(self):
+
+        raise NotImplementedError('deriving classes must implement this')
 
 
     # --------------------------------------------------------------------------
@@ -415,8 +418,6 @@ class AgentSchedulingComponent(rpu.Component):
         Returns a multi-line string corresponding to the status of the node list
         '''
 
-        return ''
-
         if not self._log.isEnabledFor(logging.DEBUG):
             return
 
@@ -440,16 +441,16 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _allocate_slot(self, cud):
+    def schedule_unit(self, unit):
 
-        raise NotImplementedError('_allocate_slot needs to be implemented.')
+        raise NotImplementedError('schedule_unit needs to be implemented.')
 
 
     # --------------------------------------------------------------------------
     #
-    def _release_slot(self, slots):
+    def unschedule_unit(self, unit):
 
-        raise NotImplementedError('_release_slot needs to be implemented.')
+        raise NotImplementedError('unschedule_unit needs to be implemented.')
 
 
     # --------------------------------------------------------------------------
@@ -485,20 +486,7 @@ class AgentSchedulingComponent(rpu.Component):
         release (for whatever reason) all slots allocated to this unit
         '''
 
-        unit  = msg
-        uid   = unit['uid']
-        slots = unit.get('slots')
-        ts    = unit.get('tuple_size')
-
-        if not slots:
-            # Nothing to do
-            self._log.error('cannot unschedule: %s (no slots)', uid)
-            return True
-
-        data = {'uid'       : uid,
-                'slots'     : slots,
-                'tuple_size': ts}
-        self._queue_unsched.put(data)
+        self._queue_unsched.put(msg)
 
         # return True to keep the cb registered
         return True
@@ -657,15 +645,20 @@ class AgentSchedulingComponent(rpu.Component):
         self.slot_status("before schedule incoming [%d]" % len(units))
 
         # handle largest units first
+        # FIXME: this needs lazy-bisect
         to_wait = list()
         for unit in sorted(units, key=lambda x: x['tuple_size'][0],
                                   reverse=True):
 
-            # Either we can place the unit straight away, or we have to
+            # either we can place the unit straight away, or we have to
             # put it in the wait pool.
             if self._try_allocation(unit):
-                self.advance(unit, rps.AGENT_EXECUTING_PENDING, publish=True,
-                                                                push=True)
+
+                # task got scheduled - advance state, notify world about the
+                # state change, and push it out toward the next component.
+                self.advance(unit, rps.AGENT_EXECUTING_PENDING,
+                                   publish=True, push=True)
+
             else:
                 to_wait.append(unit)
 
@@ -692,33 +685,20 @@ class AgentSchedulingComponent(rpu.Component):
         to_unschedule = list()
         try:
             while not self._proc_term.is_set():
-                data = self._queue_unsched.get(timeout=0.001)
-                to_unschedule.append(data)
+                unit = self._queue_unsched.get(timeout=0.001)
+                to_unschedule.append(unit)
 
         except queue.Empty:
             # no more unschedule requests
             pass
 
-      # to_release = list()
-      # for unit in to_unschedule:
-      #
-      #     ts = tuple(unit['tuple_size'])
-      #     if self._waitpool.get(ts):
-      #
-      #         replacer = self._waitpool[ts].pop()
-      #         replacer['slots'] = unit['slots']
-      #         self._prof.prof('unschedule_stop', uid=unit['uid'])
-      #         self._prof.prof('schedule_fast',   uid=replacer['uid'])
-      #         self.advance(replacer, rps.AGENT_EXECUTING_PENDING,
-      #                      publish=True, push=True)
-      #     else:
-      #         to_release.append(unit)
-      # to_unschedule = to_release
-
         if to_unschedule:
+
             self._too_large = None
+            new_resources   = True
+
             for unit in to_unschedule:
-                self._release_slot(unit['slots'])
+                self.unschedule_unit(unit)
                 self._prof.prof('unschedule_stop', uid=unit['uid'])
 
         self._prof.prof('tmp_unsched_stop',
@@ -747,7 +727,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         self._prof.prof('schedule_try', uid=uid)
 
-        slots = self._allocate_slot(unit)
+        slots = self.schedule_unit(unit)
         if not slots:
 
             # schedule failure
@@ -755,83 +735,79 @@ class AgentSchedulingComponent(rpu.Component):
             self._prof.prof('schedule_fail', uid=uid)
             return False
 
+        # the task was placed, we need to reflect the allocation in the
+        # nodelist state (BUSY) and pass placement to the task, to have
+        # it enacted by the executor
+        self._change_slot_states(slots, rpc.BUSY)
         unit['slots'] = slots
+
+      # self._handle_cuda(unit)
+
+        # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=uid)
-        self.slot_status("after  allocate   %s:" % uid)
-
-        # translate gpu maps into `CUDA_VISIBLE_DEVICES` env
-        self._handle_cuda(unit)
-
-      # FIXME
-      # # allocation worked!  If the unit was tagged, store the node IDs for
-      # # this tag, so that later units can reuse that information
-      # tag = unit['description'].get('tag')
-      # if tag:
-      #     nodes = unit['slots']['nodes']
-      #     self._tag_history[tag] = [node['uid'] for node in nodes]
 
         return True
 
 
-    # --------------------------------------------------------------------------
-    #
-    def _handle_cuda(self, unit):
-
-        # Check if unit requires GPUs.  If so, set CUDA_VISIBLE_DEVICES to the
-        # list of assigned  GPU IDs.  We only handle uniform GPU setting for
-        # now, and will isse a warning on non-uniform ones.
-        #
-        # The default setting is ``
-        #
-        # FIXME: This code should probably live elsewhere, not in this
-        #        performance critical scheduler base class
-        #
-        # FIXME: The specification for `CUDA_VISIBLE_DEVICES` is actually LM
-        #        dependent.  Assume the scheduler assigns the second GPU.
-        #        Manually, one would set `CVD=1`.  That also holds for launch
-        #        methods like `fork` which leave GPU indexes unaltered.  Other
-        #        launch methods like `jsrun` mask the system GPUs and only the
-        #        second GPU is visible, at all, to the task.  To CUDA the system
-        #        now seems to have only one GPU, and we need to be set `CVD=0`.
-        #
-        #        In other words, CVD sometimes needs to be set to the physical
-        #        GPU IDs, and at other times to the logical GPU IDs (IDs as
-        #        visible to the task).  This also implies that this code should
-        #        actually live within the launch method.  On the upside, the LM
-        #        should also be able to handle heterogeneus tasks.
-        #
-        #        For now, we hardcode the CVD ID mode to `logical`, thus
-        #        assuming that unassigned GPUs are masked away, as for example
-        #        with `jsrun`.
-        cvd_id_mode = 'logical'
-
-        unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = ''
-        gpu_maps = list()
-        for node in unit['slots']['nodes']:
-            if node['gpu_map'] not in gpu_maps:
-                gpu_maps.append(node['gpu_map'])
-
-        if not gpu_maps:
-            # no gpu maps, nothing to do
-            pass
-
-        elif len(gpu_maps) > 1:
-            # FIXME: this does not actually check for uniformity
-            self._log.warn('cannot set CUDA_VISIBLE_DEVICES for non-uniform'
-                           'GPU schedule (%s)' % gpu_maps)
-
-        else:
-            gpu_map = gpu_maps[0]
-            if gpu_map:
-                # uniform, non-zero gpu map
-                if cvd_id_mode == 'physical':
-                    unit['description']['environment']['CUDA_VISIBLE_DEVICES']\
-                            = ','.join(str(gpu_set[0]) for gpu_set in gpu_map)
-                elif cvd_id_mode == 'logical':
-                    unit['description']['environment']['CUDA_VISIBLE_DEVICES']\
-                            = ','.join(str(x) for x in range(len(gpu_map)))
-                else:
-                    raise ValueError('invalid CVD mode %s' % cvd_id_mode)
+  # # --------------------------------------------------------------------------
+  # #
+  # def _handle_cuda(self, unit):
+  #
+  #     # Check if unit requires GPUs.  If so, set CUDA_VISIBLE_DEVICES to the
+  #     # list of assigned  GPU IDs.  We only handle uniform GPU setting for
+  #     # now, and will isse a warning on non-uniform ones.
+  #     #
+  #     # The default setting is ``
+  #     #
+  #     # FIXME: This code should probably live elsewhere, not in this
+  #     #        performance critical scheduler base class
+  #     #
+  #     # FIXME: The specification for `CUDA_VISIBLE_DEVICES` is actually LM
+  #     #        dependent.  Assume the scheduler assigns the second GPU.
+  #     #        Manually, one would set `CVD=1`.  That also holds for launch
+  #     #        methods like `fork` which leave GPU indexes unaltered.  Other
+  #     #        launch methods like `jsrun` mask the system GPUs and only the
+  #     #        second GPU is visible, at all, to the task.  To CUDA the system
+  #     #        now seems to have only one GPU, and we need to be set `CVD=0`.
+  #     #
+  #     #        In other words, CVD sometimes needs to be set to the physical
+  #     #        GPU IDs, and at other times to the logical GPU IDs (IDs as
+  #     #        visible to the task).  This also implies that this code should
+  #     #        actually live within the launch method.  On the upside, the LM
+  #     #        should also be able to handle heterogeneus tasks.
+  #     #
+  #     #        For now, we hardcode the CVD ID mode to `logical`, thus
+  #     #        assuming that unassigned GPUs are masked away, as for example
+  #     #        with `jsrun`.
+  #     cvd_id_mode = 'logical'
+  #
+  #     unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = ''
+  #     gpu_maps = list()
+  #     for node in unit['slots']['nodes']:
+  #         if node['gpu_map'] not in gpu_maps:
+  #             gpu_maps.append(node['gpu_map'])
+  #
+  #     if not gpu_maps:
+  #         # no gpu maps, nothing to do
+  #         pass
+  #
+  #     elif len(gpu_maps) > 1:
+  #         # FIXME: this does not actually check for uniformity
+  #         self._log.warn('cannot set CUDA_VISIBLE_DEVICES for non-uniform'
+  #                        'GPU schedule (%s)' % gpu_maps)
+  #
+  #     else:
+  #         gpu_map = gpu_maps[0]
+  #         if gpu_map:
+  #             # uniform, non-zero gpu map
+  #             if cvd_id_mode == 'physical':
+  #                 unit['description']['environment']['CUDA_VISIBLE_DEVICES']\
+  #                         = ','.join(str(gpu_set[0]) for gpu_set in gpu_map)
+  #             elif cvd_id_mode == 'logical':
+  #                 unit['description']['environment']['CUDA_VISIBLE_DEVICES']\
+  #                         = ','.join(str(x) for x in range(len(gpu_map)))
+  #             else:
+  #                 raise ValueError('invalid CVD mode %s' % cvd_id_mode)
 
 
     # --------------------------------------------------------------------------

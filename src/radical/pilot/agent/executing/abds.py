@@ -47,7 +47,7 @@ class ABDS(AgentExecutingComponent):
         self.register_input(rps.AGENT_EXECUTING_PENDING,
                             rpc.AGENT_EXECUTING_QUEUE, self.work)
 
-        self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING, 
+        self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
                              rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
@@ -223,17 +223,15 @@ class ABDS(AgentExecutingComponent):
 
         self._prof.prof('spawn', msg='unit spawn', uid=cu['uid'])
 
-        # NOTE: see documentation of cu['sandbox'] semantics in the ComputeUnit
-        #       class definition.
-        sandbox = '%s/%s' % (self._pwd, cu['uid'])
+        sandbox = cu['unit_sandbox_path']
 
         # make sure the sandbox exists
         rpu.rec_makedir(sandbox)
 
         # prep stdout/err so that we can append w/o checking for None
-        cu['stdout'] = ''
-        cu['stderr'] = ''
-        cu['workdir']=sandbox
+        cu['stdout']  = ''
+        cu['stderr']  = ''
+        cu['workdir'] = sandbox
 
         launch_script_name = '%s/%s.sh' % (sandbox, cu['uid'])
 
@@ -441,7 +439,7 @@ prof(){
         action = 0
 
         for cu in self._cus_to_watch:
-            
+
             sandbox = '%s/%s' % (self._pwd, cu['uid'])
 
             #-------------------------------------------------------------------
@@ -465,7 +463,7 @@ prof(){
                         proc = cu['proc']
                         self._log.debug('Proc Print {0}'.format(proc))
                         del(cu['proc'])  # proc is not json serializable
-                        self.advance(cu, rps.AGENT_EXECUTING, publish=True, 
+                        self.advance(cu, rps.AGENT_EXECUTING, publish=True,
                                      push=False,timestamp=timestamp)
                         cu['proc']    = proc
 

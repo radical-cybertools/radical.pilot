@@ -47,6 +47,7 @@ POSIX                  = 'POSIX'   # native threads / application threads
 MPI                    = 'MPI'
 OpenMP                 = 'OpenMP'
 CUDA                   = 'CUDA'
+FUNC                   = 'FUNC'
 
 
 # ------------------------------------------------------------------------------

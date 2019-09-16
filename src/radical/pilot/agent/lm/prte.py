@@ -69,7 +69,9 @@ class PRTE(LaunchMethod):
         prte += ' --prefix %s'     % pre
         prte += ' --report-uri %s' % furi
         prte += ' --hostfile %s'   % fhosts
-        prte += ' --pmca orte_state_base_verbose 1'  # prte profiling
+
+        if profiler.enabled:
+            prte += ' --pmca orte_state_base_verbose 1'  # prte profiling
 
 
         # we apply two temporary tweaks on Summit which should not be needed in
@@ -167,7 +169,10 @@ class PRTE(LaunchMethod):
             raise Exception("VMURI not found!")
 
         logger.info("prte startup successful: [%s]", dvm_uri)
-        time.sleep(120)  # FIXME
+
+        # in some cases, the DVM seems to need some additional time to settle.
+        # FIXME: this should not be needed, really
+        time.sleep(10)
         profiler.prof(event='dvm_ok', uid=cfg['pilot_id'])
 
 
@@ -289,12 +294,13 @@ class PRTE(LaunchMethod):
             map_flag += ' -host %s' % hosts.rstrip(',')
 
         # Additional (debug) arguments to prun
-        debug_string = '-verbose'
+        debug_string = ''
         if self._verbose:
             debug_string += ' '.join([
+                                        '-verbose',
+                                      # '--debug-devel',
                                       # '-display-devel-map',
                                       # '-display-allocation',
-                                      # '--debug-devel',
                                         '--report-bindings',
                                      ])
 
