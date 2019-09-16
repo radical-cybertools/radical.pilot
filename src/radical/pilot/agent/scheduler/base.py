@@ -1,6 +1,6 @@
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
-__license__ = "MIT"
+__license__   = "MIT"
 
 
 import time
@@ -255,7 +255,7 @@ class AgentSchedulingComponent(rpu.Component):
                               % self._lrms_info['name'])
 
         # create and initialize the wait pool
-        self._waitpool = list()  # pool of waiting units
+        self._waitpool = dict()  # pool of waiting units (binned by size)
 
         # the scheduler algorithms have two inputs: tasks to be scheduled, and
         # slots becoming available (after tasks complete).
@@ -473,9 +473,8 @@ class AgentSchedulingComponent(rpu.Component):
         if not isinstance(units, list):
             units = [units]
 
-        # advance state, publish state change, do not push unit out.
+        # advance state, publish state change, and push to scheduler process
         self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
-
         self._queue_sched.put(units)
 
 
@@ -582,21 +581,36 @@ class AgentSchedulingComponent(rpu.Component):
         # with smaller tasks.  We only look at cores right now - this needs
         # fixing for GPU dominated loads.
 
-        self._waitpool.sort(key=lambda x: x['tuple_size'][0], reverse=True)
-        scheduled, unscheduled = ru.lazy_bisect(self._waitpool,
-                                                self._try_allocation)
+        scheduled   = list()
+        unscheduled = dict()
+        for ts in sorted(self._waitpool, reverse=True):
 
-        self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
-                                                             push=True)
+            for unit in self._waitpool[ts]:
 
-        # we performed some action when pool size changed
-        active = len(unscheduled) < len(self._waitpool)
+                if self._try_allocation(unit):
+                    scheduled.append(unit)
 
-        # we have resources left when new waitpool is empty
-        resources = not bool(unscheduled)
+                else:
+                    if ts not in unscheduled:
+                        unscheduled[ts] = list()
+                    unscheduled[ts].append(unit)
 
+        self.advance(scheduled, rps.AGENT_EXECUTING_PENDING,
+                                publish=True, push=True)
+
+        if scheduled:
+            active = True
+            self.slot_status("after schedule waitlist")
+        else:
+            active = False
 
         self._waitpool = unscheduled
+
+        # signal resource shortage if anything remains unscheduled
+        if sum([len(self._waitpool[x]) for x in self._waitpool]):
+            resources = False
+        else:
+            resources = True
 
         return active, resources
 
@@ -625,7 +639,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         if not units:
             # no activity, resources remain
-            self._prof.prof('tmp_sched_break')
             return False, True
 
         self.slot_status("before schedule incoming [%d]" % len(units))
@@ -648,7 +661,16 @@ class AgentSchedulingComponent(rpu.Component):
             else:
                 to_wait.append(unit)
 
-        self._waitpool.extend(to_wait)
+        for unit in to_wait:
+
+            # all units which could not be scheduled get added to the waitpool,
+            # but binned by size, so that we can later lookup units by size if
+            # we happen to have slots for that size available (see
+            # `unschedule_unit()`).
+            ts = tuple(unit['tuple_size'])
+            if ts not in self._waitpool:
+                self._waitpool[ts] = list()
+            self._waitpool[ts].append(unit)
 
         # we performed some activity (worked on units)
         active = True
@@ -673,23 +695,47 @@ class AgentSchedulingComponent(rpu.Component):
             # no more unschedule requests
             pass
 
-        if to_unschedule:
+        to_release = list()
+        for unit in to_unschedule:
 
-            self._too_large = None
-            new_resources   = True
+            # if we find a waiting unit with the same tuple size, don't free the
+            # slots, but just pass them on unchanged to the waiting unit, which
+            # thus replaces the unscheduled unit on the same cores / GPUs
+            # immediately.
+            # This assumes that the  `tuple_size` is good enough to judge
+            # the legality of the resources for the new target unit.
 
-            for unit in to_unschedule:
-                self.unschedule_unit(unit)
-                self._prof.prof('unschedule_stop', uid=unit['uid'])
+            ts = tuple(unit['tuple_size'])
+            if self._waitpool.get(ts):
 
-        self._prof.prof('tmp_unsched_stop',
-                        msg='%d,%d' % (len(self._waitpool), len(to_unschedule)))
+                replace = self._waitpool[ts].pop()
+                replace['slots'] = unit['slots']
 
-        # if we unscheduled things we were active and got new resources
-        if to_unschedule:
-            return True, True
-        else:
+                # unschedule unit A and schedule unit B have the same
+                # timestamp
+                ts = time.time()
+                self._prof.prof('unschedule_stop',  uid=unit['uid'], timestamp=ts)
+                self._prof.prof('schedule_fast', uid=replace['uid'], timestamp=ts)
+                self.advance(replace, rps.AGENT_EXECUTING_PENDING,
+                             publish=True, push=True)
+            else:
+                # no replacement unit found - free the slots, and try to
+                # schedule other units of other sizes.
+                to_release.append(unit)
+
+        if not to_release:
+            # no new resources
             return False, False
+
+        # we have units to unschedule, which will free some resources.  We can
+        # thus try to schedule larger units again, and also inform the caller
+        # about resource availability.
+        self._too_large = None
+        for unit in to_release:
+            self.unschedule_unit(unit)
+            self._prof.prof('unschedule_stop', uid=unit['uid'])
+
+        return True, True
 
 
     # --------------------------------------------------------------------------
