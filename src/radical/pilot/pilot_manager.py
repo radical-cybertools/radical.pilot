@@ -207,17 +207,6 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def is_valid(self, term=True):
-
-        # don't check during termination
-        if self._closed:
-            return True
-
-        return super(PilotManager, self).is_valid(term)
-
-
-    # --------------------------------------------------------------------------
-    #
     def as_dict(self):
         """
         Returns a dictionary representation of the PilotManager object.
@@ -443,8 +432,6 @@ class PilotManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputePilot` UIDs [`string`].
         """
 
-        self.is_valid()
-
         with self._pilots_lock:
             ret = list(self._pilots.keys())
 
@@ -468,8 +455,6 @@ class PilotManager(rpu.Component):
         """
 
         from .compute_pilot import ComputePilot
-
-        self.is_valid()
 
         ret_list = True
         if not isinstance(descriptions, list):
@@ -557,8 +542,6 @@ class PilotManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputePilot` objects.
         """
 
-        self.is_valid()
-
         if not uids:
             with self._pilots_lock:
                 ret = list(self._pilots.values())
@@ -618,8 +601,6 @@ class PilotManager(rpu.Component):
               Timeout in seconds before the call returns regardless of Pilot
               state changes. The default value **None** waits forever.
         """
-
-        self.is_valid()
 
         if not uids:
             with self._pilots_lock:
@@ -717,7 +698,6 @@ class PilotManager(rpu.Component):
             * **uids** [`string` or `list of strings`]: The IDs of the
               compute pilot objects to cancel.
         """
-        self.is_valid()
 
         self._log.debug('in cancel_pilots: %s', ru.get_stacktrace())
 

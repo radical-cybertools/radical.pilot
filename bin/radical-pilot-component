@@ -1,0 +1,37 @@
+#!/usr/bin/env python
+
+__copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+
+import sys
+
+import radical.utils       as ru
+import radical.pilot.utils as rpu
+
+
+# ------------------------------------------------------------------------------
+#
+def main():
+
+    comp = rpu.Component.create(sys.argv[1]))
+    comp.run()
+
+    sys.exit(0)
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+
+    if len(sys.argv) != 2:
+        sys.stderr.write('error: argument error\n'
+                         'usage: %s <cfg_file>\n\n' % sys.argv[0])
+        raise RuntimeError('argument error: %s' % sys.argv)
+
+    ru.daemonize(main=main)
+    sys.exit(0)
+
+
+# ------------------------------------------------------------------------------
+

@@ -55,10 +55,8 @@ class Update(rpu.Worker):
         self._dburl      = self._cfg['dburl']
         self._owner      = self._cfg['owner']
 
-        # TODO: get db handle from a connected session
         _, db, _, _, _   = ru.mongodb_connect(self._dburl)
-        self._mongo_db   = db
-        self._coll       = self._mongo_db[self._session_id]
+        self._coll       = db[self._session_id]
         self._bulk       = self._coll.initialize_ordered_bulk_op()
         self._last       = time.time()        # time of last bulk push
         self._uids       = list()             # list of collected uids

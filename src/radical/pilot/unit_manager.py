@@ -217,17 +217,6 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def is_valid(self, term=True):
-
-        # don't check during termination
-        if self._closed:
-            return True
-
-        return super(UnitManager, self).is_valid(term)
-
-
-    # --------------------------------------------------------------------------
-    #
     def as_dict(self):
         """
         Returns a dictionary representation of the UnitManager object.
@@ -276,8 +265,7 @@ class UnitManager(rpu.Component):
         # we only look into pilot states when the umgr is still active
         # FIXME: note that there is a race in that the umgr can be closed while
         #        we are in the cb.
-        # FIXME: should is_valid be used?  Either way, `self._closed` is not an
-        #        `mt.Event`!
+        # FIXME: `self._closed` is not an `mt.Event`!
         if self._closed:
             self._log.debug('umgr closed, ignore pilot state (%s: %s)',
                             pilot.uid, pilot.state)
@@ -558,9 +546,6 @@ class UnitManager(rpu.Component):
               added to the unit manager.
         """
 
-
-        self.is_valid()
-
         if not isinstance(pilots, list):
             pilots = [pilots]
 
@@ -600,8 +585,6 @@ class UnitManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputePilot` UIDs [`string`].
         """
 
-        self.is_valid()
-
         with self._pilots_lock:
             return list(self._pilots.keys())
 
@@ -615,8 +598,6 @@ class UnitManager(rpu.Component):
         **Returns:**
               * A list of :class:`radical.pilot.ComputePilot` instances.
         """
-
-        self.is_valid()
 
         with self._pilots_lock:
             return list(self._pilots.values())
@@ -645,8 +626,6 @@ class UnitManager(rpu.Component):
 
         if drain:
             raise RuntimeError("'drain' is not yet implemented")
-
-        self.is_valid()
 
         if not isinstance(pilot_ids, list):
             pilot_ids = [pilot_ids]
@@ -682,8 +661,6 @@ class UnitManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputeUnit` UIDs [`string`].
         """
 
-        self.is_valid()
-
         with self._pilots_lock:
             return list(self._units.keys())
 
@@ -705,8 +682,6 @@ class UnitManager(rpu.Component):
         """
 
         from .compute_unit import ComputeUnit
-
-        self.is_valid()
 
         ret_list = True
         if not isinstance(descriptions, list):
@@ -768,8 +743,6 @@ class UnitManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputeUnit` objects.
         """
 
-        self.is_valid()
-
         if not uids:
             with self._units_lock:
                 ret = list(self._units.values())
@@ -828,8 +801,6 @@ class UnitManager(rpu.Component):
               Timeout in seconds before the call returns regardless of Pilot
               state changes. The default value **None** waits forever.
         """
-
-        self.is_valid()
 
         if not uids:
             with self._units_lock:
@@ -903,8 +874,6 @@ class UnitManager(rpu.Component):
 
             to_check = check_again
 
-            self.is_valid()
-
         self._rep.idle(mode='stop')
 
         if to_check: self._rep.warn('>>timeout\n')
@@ -942,8 +911,6 @@ class UnitManager(rpu.Component):
             * **uids** [`string` or `list of strings`]: The IDs of the
               compute units objects to cancel.
         """
-
-        self.is_valid()
 
         if not uids:
             with self._units_lock:

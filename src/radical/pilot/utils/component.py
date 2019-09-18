@@ -27,8 +27,8 @@ from .pubsub     import PUBSUB_BRIDGE  as rpu_PUBSUB_BRIDGE
 
 # ------------------------------------------------------------------------------
 #
-class Component(ru.Process):
-    """
+class Component(object):
+    '''
     This class provides the basic structure for any RP component which operates
     on stateful things.  It provides means to:
 
@@ -44,12 +44,14 @@ class Component(ru.Process):
     ownership over it, and that no other component will change the 'thing's
     state during that time.
 
-    The main event loop of the component -- work_cb() -- is executed as a separate
-    process.  Components inheriting this class should be fully self sufficient,
-    and should specifically attempt not to use shared resources.  That will
-    ensure that multiple instances of the component can coexist for higher
-    overall system throughput.  Should access to shared resources be necessary,
-    it will require some locking mechanism across process boundaries.
+    The main event loop of the component -- `work()` -- is executed on `run()`
+    and will not terminate on its own, unless it encounters a fatal error.
+
+    Components inheriting this class should and should attempt not to use shared
+    resources.  That will ensure that multiple instances of the component can
+    coexist for higher overall system throughput.  Should access to shared
+    resources be necessary, it will require some locking mechanism across
+    process boundaries.
 
     This approach should ensure that
 
@@ -61,26 +63,47 @@ class Component(ru.Process):
         of the component's semantics);
       - the overall system is performant and scalable.
 
-    Inheriting classes may overload the methods:
+    Inheriting classes SHOULD overload the foloowing methods:
 
-        initialize
-        initialize_child
-        finalize
-        finalize_child
+      - `initialize()`:
+        - set up the component state for operation
+        - register input/output/notification channels
+        - register work methods
+        - register callbacks to be invoked on state notification
+        - the component will terminate if this method raises an exception.
 
-    These method should be used to
+      - `work()`
+        - called in the main loop of the component process, on all entities
+          arriving on input channels.  The component will *not* terminate if
+          this method raises an exception.  For termination, `terminate()` must
+          be called.
 
-      - set up the component state for operation
-      - register input/output/notification channels
-      - register work methods
-      - register callbacks to be invoked on state notification
-      - tear down the same on closing
+      - `finalize()`
+        - tear down the component (close threads, unregister resources, etc).
 
     Inheriting classes MUST call the constructor:
 
         class StagingComponent(rpu.Component):
-            def __init__(self, cfg, session):
-                rpu.Component.__init__(self, cfg, session)
+            def __init__(self, cfg):
+                rpu.Component.__init__(self, cfg)
+
+
+    A component thus must be passed a configuration (either as a path pointing
+    to a file name to be opened as `ru.Config`, or as a pre-populated
+    `ru.Config` instance).  That config MUST contain a session ID (`sid`) for
+    the session under which to run this component, and a uid for the component
+    itself which MUST be unique within the scope of the given session.  It MUST
+    further contain information about the session's heartbeat ZMQ pubsub channel
+    (`hb_pub`, `hb_sub`) on which heartbeats are sent and received for lifetime
+    management.  All components and the session will continuously sent
+    heartbeat messages on that channel - missing heartbeats will by default lead
+    to session termination.
+
+    The config MAY contain `bridges` and `component` sections.  If those exist,
+    the component will start the communication bridges and the components
+    specified therin, and is then considered an owner of those components and
+    bridges.  As such, it much watch the HB channel for heartbeats from those
+    components, and must terminate itself if those go AWOL.
 
     Further, the class must implement the registered work methods, with
     a signature of:
@@ -100,11 +123,15 @@ class Component(ru.Process):
     keeps ownership of the 'thing's to advance it asynchronously at a later
     point in time.  That implies that a component can collect ownership over an
     arbitrary number of 'thing's over time, and they can be advanced at the
-    component's descretion.
-    """
+    component's discretion.
 
-    # FIXME:
-    #  - make state transitions more formal
+    The component process is a stand-alone daemon process which runs outsude of
+    Python's multiprocessing domain.  As such, it can freely use Python's
+    multithreading (and it extensively does so by default) - but developers
+    should be aware that spawning additional *processes* in this component is
+    discouraged, as Python's process management is not playing well with it's
+    multithreading implementation.
+    '''
 
 
     # --------------------------------------------------------------------------
@@ -122,6 +149,7 @@ class Component(ru.Process):
         the callee to watch those bridges for health and to terminate them as
         needed.
         '''
+        # TODO: reroute to daemonizer
 
         bspec = cfg.get('bridges', {})
         log.debug('start bridges   : %s', pprint.pformat(bspec))
@@ -186,9 +214,18 @@ class Component(ru.Process):
         as needed.
         '''
 
+        # FIXME: reroute to daemonizer script
+
         # ----------------------------------------------------------------------
+        # TODO:  We keep this static typemap for component startup. We should
+        #        derive that typemap from rp module inspection via an
+        #        `ru.PluginManager`.
+        #
         # NOTE:  I'd rather have this as class data than as stack data, but
         #        python stumbles over circular imports at that point :/
+        #
+        # FIXME: this goes into the daemonizer
+        #
         from .. import worker as rpw
         from .. import pmgr   as rppm
         from .. import umgr   as rpum
@@ -261,8 +298,8 @@ class Component(ru.Process):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
-        """
+    def __init__(self, cfg):
+        '''
         This constructor MUST be called by inheriting classes, as it specifies
         the operation mode of the component: components can spawn a child
         process, or not.
@@ -283,7 +320,7 @@ class Component(ru.Process):
 
         Constructors of inheriting components *may* call start() in their
         constructor.
-        """
+        '''
 
         # NOTE: a fork will not duplicate any threads of the parent process --
         #       but it will duplicate any locks which are shared between the
@@ -344,7 +381,6 @@ class Component(ru.Process):
         super(Component, self).__init__(name=self._uid, log=self._log)
 
         # make sure we bootstrapped ok
-        self.is_valid()
         self._session._to_stop.append(self)
 
 
@@ -356,65 +392,11 @@ class Component(ru.Process):
 
     # --------------------------------------------------------------------------
     #
-    def is_valid(self, term=True):
-        '''
-        Just as the Process' `is_valid()` call, we make sure that the component
-        is still viable, and will raise an exception if not.  Additionally to
-        the health of the component's child process, we also check health of any
-        sub-components and communication bridges.
-        '''
-
-        # TODO: add a time check to avoid checking validity too frequently.
-        #       make frequency configurable.
-
-        if self._ru_terminating:
-            # don't go any further.  Specifically, don't call stop.  Calling
-            # that is up to the thing who inioated termination.
-            return False
-
-        valid = True
-
-        if valid:
-            if not super(Component, self).is_valid():
-                self._log.warn("super %s is invalid" % self.uid)
-                valid = False
-
-        if valid:
-            if not self._session.is_valid(term):
-                self._log.warn("session %s is invalid" % self._session.uid)
-                valid = False
-
-        if valid:
-            for bridge in self._bridges:
-                if not bridge.is_valid(term):
-                    self._log.warn("bridge %s is invalid" % bridge.uid)
-                    valid = False
-                    break
-
-        if valid:
-            for component in self._components:
-                if not component.is_valid(term):
-                    self._log.warn("sub component %s is invalid" % component.uid)
-                    valid = False
-                    break
-
-        if not valid:
-            self._log.warn("component %s is invalid" % self.uid)
-            self.stop()
-          # raise RuntimeError("component %s is invalid" % self.uid)
-
-        return valid
-
-
-    # --------------------------------------------------------------------------
-    #
     def _cancel_monitor_cb(self, topic, msg):
-        """
+        '''
         We listen on the control channel for cancel requests, and append any
         found UIDs to our cancel list.
-        """
-
-        self.is_valid()
+        '''
 
         # FIXME: We do not check for types of things to cancel - the UIDs are
         #        supposed to be unique.  That abstraction however breaks as we
@@ -490,12 +472,12 @@ class Component(ru.Process):
     # --------------------------------------------------------------------------
     #
     def ru_initialize_common(self):
-        """
+        '''
         This private method contains initialization for both parent a child
         process, which gets the component into a proper functional state.
 
         This method must be called *after* fork (this is asserted).
-        """
+        '''
 
         # NOTE: this method somewhat breaks the initialize_child vs.
         #       initialize_parent paradigm, in that it will behave differently
@@ -601,9 +583,9 @@ class Component(ru.Process):
     # --------------------------------------------------------------------------
     #
     def ru_initialize_child(self):
-        """
+        '''
         child initialization of component base class goes here
-        """
+        '''
 
         spt.setproctitle('rp.%s' % self.uid)
 
@@ -731,7 +713,7 @@ class Component(ru.Process):
     # --------------------------------------------------------------------------
     #
     def register_input(self, states, input, worker=None):
-        """
+        '''
         Using this method, the component can be connected to a queue on which
         things are received to be worked upon.  The given set of states (which
         can be a single state or a list of states) will trigger an assert check
@@ -747,9 +729,7 @@ class Component(ru.Process):
 
         Worker invocation is synchronous, ie. the main event loop will only
         check for the next thing once the worker method returns.
-        """
-
-        self.is_valid()
+        '''
 
         if not isinstance(states, list):
             states = [states]
@@ -786,11 +766,9 @@ class Component(ru.Process):
     # --------------------------------------------------------------------------
     #
     def unregister_input(self, states, input, worker):
-        """
+        '''
         This methods is the inverse to the 'register_input()' method.
-        """
-
-        self.is_valid()
+        '''
 
         if not isinstance(states, list):
             states = [states]
@@ -817,7 +795,7 @@ class Component(ru.Process):
     # --------------------------------------------------------------------------
     #
     def register_output(self, states, output=None):
-        """
+        '''
         Using this method, the component can be connected to a queue to which
         things are sent after being worked upon.  The given set of states (which
         can be a single state or a list of states) will trigger an assert check
@@ -829,9 +807,7 @@ class Component(ru.Process):
         mark the drop in the log.  No other component should ever again work on
         such a final thing.  It is the responsibility of the component to make
         sure that the thing is in fact in a final state.
-        """
-
-        self.is_valid()
+        '''
 
         if not isinstance(states, list):
             states = [states]
@@ -864,11 +840,9 @@ class Component(ru.Process):
     # --------------------------------------------------------------------------
     #
     def unregister_output(self, states):
-        """
+        '''
         this removes any outputs registerd for the given states.
-        """
-
-        self.is_valid()
+        '''
 
         if not isinstance(states, list):
             states = [states]
@@ -888,14 +862,12 @@ class Component(ru.Process):
     # --------------------------------------------------------------------------
     #
     def register_timed_cb(self, cb, cb_data=None, timer=None):
-        """
+        '''
         Idle callbacks are invoked at regular intervals -- they are guaranteed
         to *not* be called more frequently than 'timer' seconds, no promise is
         made on a minimal call frequency.  The intent for these callbacks is to
         run lightweight work in semi-regular intervals.
-        """
-
-        self.is_valid()
+        '''
 
         name = "%s.idler.%s" % (self.uid, cb.__name__)
         self._log.debug('START: %s register idler %s', self.uid, name)
@@ -935,7 +907,6 @@ class Component(ru.Process):
 
                 # ------------------------------------------------------------------
                 def work_cb(self):
-                    self.is_valid()
                     if self._timeout and (time.time()-self._last) < self._timeout:
                         # not yet
                         time.sleep(0.1) # FIXME: make configurable
@@ -963,13 +934,11 @@ class Component(ru.Process):
     # --------------------------------------------------------------------------
     #
     def unregister_timed_cb(self, cb):
-        """
+        '''
         This method is reverts the register_timed_cb() above: it
         removes an idler from the component, and will terminate the
         respective thread.
-        """
-
-        self.is_valid()
+        '''
 
         name = "%s.idler.%s" % (self.uid, cb.__name__)
         self._log.debug('TERM : %s unregister idler %s', self.uid, name)
@@ -990,12 +959,10 @@ class Component(ru.Process):
     # --------------------------------------------------------------------------
     #
     def register_publisher(self, pubsub):
-        """
+        '''
         Using this method, the component can registered itself to be a publisher
         of notifications on the given pubsub channel.
-        """
-
-        self.is_valid()
+        '''
 
         if pubsub in self._publishers:
             raise ValueError('publisher for %s already registered' % pubsub)
@@ -1019,11 +986,9 @@ class Component(ru.Process):
     # --------------------------------------------------------------------------
     #
     def unregister_publisher(self, pubsub):
-        """
+        '''
         This removes the registration of a pubsub channel for publishing.
-        """
-
-        self.is_valid()
+        '''
 
         if pubsub not in self._publishers:
             self._log.warn('publisher %s is not registered', pubsub)
@@ -1040,7 +1005,7 @@ class Component(ru.Process):
     # --------------------------------------------------------------------------
     #
     def register_subscriber(self, pubsub, cb, cb_data=None):
-        """
+        '''
         This method is complementary to the register_publisher() above: it
         registers a subscription to a pubsub channel.  If a notification
         is received on thag channel, the registered callback will be
@@ -1055,9 +1020,7 @@ class Component(ru.Process):
         that the callback invocation will also happen in that thread.  It is the
         caller's responsibility to ensure thread safety during callback
         invocation.
-        """
-
-        self.is_valid()
+        '''
 
         name = "%s.subscriber.%s" % (self.uid, cb.__name__)
         self._log.debug('START: %s register subscriber %s', self.uid, name)
@@ -1098,7 +1061,6 @@ class Component(ru.Process):
 
             # ------------------------------------------------------------------
             def work_cb(self):
-                self.is_valid()
                 topic, msg = None, None
                 try:
                     topic, msg = self._q.get_nowait(500)  # timout in ms
@@ -1144,13 +1106,11 @@ class Component(ru.Process):
     # --------------------------------------------------------------------------
     #
     def unregister_subscriber(self, pubsub, cb):
-        """
+        '''
         This method is reverts the register_subscriber() above: it
         removes a subscription from a pubsub channel, and will terminate the
         respective thread.
-        """
-
-        self.is_valid()
+        '''
 
         name = "%s.subscriber.%s" % (self.uid, cb.__name__)
         self._log.debug('TERM : %s unregister subscriber %s', self.uid, name)
@@ -1177,8 +1137,6 @@ class Component(ru.Process):
         disappears.  This will initiate the ru.Process termination sequence.
         '''
 
-        self.is_valid()
-
         with self._cb_lock:
             for tname in self._threads:
                 if not self._threads[tname].is_alive():
@@ -1188,16 +1146,14 @@ class Component(ru.Process):
     # --------------------------------------------------------------------------
     #
     def work_cb(self):
-        """
+        '''
         This is the main routine of the component, as it runs in the component
         process.  It will first initialize the component in the process context.
         Then it will attempt to get new things from all input queues
         (round-robin).  For each thing received, it will route that thing to the
         respective worker method.  Once the thing is worked upon, the next
         attempt on getting a thing is up.
-        """
-
-        self.is_valid()
+        '''
 
         # if no action occurs in this iteration, idle
         if not self._inputs:
@@ -1277,7 +1233,7 @@ class Component(ru.Process):
     #
     def advance(self, things, state=None, publish=True, push=False, ts=None,
                       prof=True):
-        """
+        '''
         Things which have been operated upon are pushed down into the queues
         again, only to be picked up by the next component, according to their
         state model.  This method will update the thing state, and push it into
@@ -1297,9 +1253,7 @@ class Component(ru.Process):
         otherwise, *only the state* is published.
 
         This is evaluated in self.publish.
-        """
-
-        self.is_valid()
+        '''
 
         if not ts:
             ts = time.time()
@@ -1416,11 +1370,9 @@ class Component(ru.Process):
     # --------------------------------------------------------------------------
     #
     def publish(self, pubsub, msg):
-        """
+        '''
         push information into a publication channel
-        """
-
-        self.is_valid()
+        '''
 
         if pubsub not in self._publishers:
             self._log.warn("can't route '%s' notification: %s" % (pubsub,
@@ -1440,12 +1392,12 @@ class Component(ru.Process):
 # ------------------------------------------------------------------------------
 #
 class Worker(Component):
-    """
+    '''
     A Worker is a Component which cannot change the state of the thing it
     handles.  Workers are emplyed as helper classes to mediate between
     components, between components and database, and between components and
     notification channels.
-    """
+    '''
 
     # --------------------------------------------------------------------------
     #

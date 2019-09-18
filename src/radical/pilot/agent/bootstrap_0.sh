@@ -1770,7 +1770,7 @@ then
 fi
 
 # start the master agent instance (zero)
-profile_event 'sync_rel' 'agent_0 start'
+profile_event 'sync_rel' 'agent_0'
 
 
 # # I am ashamed that we have to resort to this -- lets hope it's temporary...

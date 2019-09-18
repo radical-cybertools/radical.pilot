@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+
+__copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+
+import os
+import sys
+import atexit
+import signal
+
+import setproctitle  as spt
+
+import radical.utils as ru
+
+
+def term(uid):
+    sys.stderr.write('bridge %s terminated\n' % uid)
+    sys.stderr.flush()
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+    '''
+    This thin wrapper starts a ZMQ communication bridge.
+    It expects two arguments:
+
+      - fcgf: path to a config file to use
+
+    After startup, it will write the bridge's communication endpoint URLs
+    to the file `$name.url`, in the form:
+
+        SUB: $addr_in
+        PUB: $addr_out
+
+    The `SUB` address is to be used for subscribers, the `PUB` address for
+    publishers -- but the respective RP classes will dig the correct addresses
+    from that file.
+
+        > radical-pilot-bridge command.cfg                [1]
+        > radical-pilot-sub    command foo bar            [2]
+        > radical-pilot-pub    command foo_1 foo_2 bar_1  [3]
+        > radical-pilot-sub    command bar baz pop        [4]
+        > radical-pilot-pub    command bar_2 baz_1 buz_1  [5]
+
+    [1] establishes the pubsub channel 'command'
+    [2] and [4] connect to the command channel, subscribe for certain topics
+    [3] and [5] connect to the command channel, send messages for some topics
+
+    Note that the `buz_1` messages will never be received [5], and that the
+    `pop` subscriber [4] will get no messages for that topic.
+    '''
+
+    if len(sys.argv) != 2:
+        sys.stderr.write('error: argument error\n'
+                         'usage: %s <cfg_file>\n\n' % sys.argv[0])
+        raise RuntimeError('argument error: %s' % sys.argv)
+
+    cfg = ru.read_json(sys.argv[1])
+    uid = cfg['uid']
+
+    ru_def = ru.DefaultConfig()
+    for key, val in cfg.get('ru_def', dict()).iteritems():
+        ru_def[key] = val
+
+    if  os.path.exists(cfg['fpid']) or \
+        os.path.exists(cfg['furl']) :
+        raise RuntimeError('bridge already running: %s' % (uid))
+
+    spt.setproctitle('rp.%s' % uid)
+
+  # ru.pid_watcher(pid=cfg.get('ppid'), uid=uid)
+    atexit.register(term)
+
+    # create the bridge
+    bridge = ru.zmq.Bridge.create(cfg)
+    bridge.start()
+
+    # report pid
+    with open(cfg['fpid'], 'w') as fout:
+        fout.write('%-3s %s\n' % ('PID', os.getpid()))
+
+    # report addresses
+    with open(cfg['furl'], 'w') as fout:
+        fout.write('%-3s %s\n' % (bridge.type_in,  bridge.addr_in ))
+        fout.write('%-3s %s\n' % (bridge.type_out, bridge.addr_out))
+        fout.flush()
+
+    bridge.wait()
+
+
+# ------------------------------------------------------------------------------
+
