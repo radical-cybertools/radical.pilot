@@ -647,7 +647,7 @@ class AgentSchedulingComponent(rpu.Component):
         # FIXME: this needs lazy-bisect
         to_wait = list()
         for unit in sorted(units, key=lambda x: x['tuple_size'][0],
-                                  reverse=True):
+                           reverse=True):
 
             # either we can place the unit straight away, or we have to
             # put it in the wait pool.
@@ -656,17 +656,16 @@ class AgentSchedulingComponent(rpu.Component):
                 # task got scheduled - advance state, notify world about the
                 # state change, and push it out toward the next component.
                 self.advance(unit, rps.AGENT_EXECUTING_PENDING,
-                                   publish=True, push=True)
+                             publish=True, push=True)
 
             else:
                 to_wait.append(unit)
 
         for unit in to_wait:
 
-            # all units which could not be scheduled get added to the waitpool,
+            # all units which could not be scheduled are added to the waitpool,
             # but binned by size, so that we can later lookup units by size if
-            # we happen to have slots for that size available (see
-            # `unschedule_unit()`).
+            # we have slots for that size available (see `unschedule_unit()`).
             ts = tuple(unit['tuple_size'])
             if ts not in self._waitpool:
                 self._waitpool[ts] = list()
@@ -698,13 +697,11 @@ class AgentSchedulingComponent(rpu.Component):
         to_release = list()
         for unit in to_unschedule:
 
-            # if we find a waiting unit with the same tuple size, don't free the
-            # slots, but just pass them on unchanged to the waiting unit, which
-            # thus replaces the unscheduled unit on the same cores / GPUs
-            # immediately.
-            # This assumes that the  `tuple_size` is good enough to judge
-            # the legality of the resources for the new target unit.
-
+            # if we find a waiting unit with the same tuple size, we don't free
+            # the slots, but just pass them on unchanged to the waiting unit.
+            # Thus we replace the unscheduled unit on the same cores / GPUs
+            # immediately. This assumes that the `tuple_size` is good enough to
+            # judge the legality of the resources for the new target unit.
             ts = tuple(unit['tuple_size'])
             if self._waitpool.get(ts):
 
@@ -714,12 +711,15 @@ class AgentSchedulingComponent(rpu.Component):
                 # unschedule unit A and schedule unit B have the same
                 # timestamp
                 ts = time.time()
-                self._prof.prof('unschedule_stop',  uid=unit['uid'], timestamp=ts)
-                self._prof.prof('schedule_fast', uid=replace['uid'], timestamp=ts)
+                self._prof.prof('unschedule_stop', uid=unit['uid'],
+                                timestamp=ts)
+                self._prof.prof('schedule_fast', uid=replace['uid'],
+                                timestamp=ts)
                 self.advance(replace, rps.AGENT_EXECUTING_PENDING,
                              publish=True, push=True)
             else:
-                # no replacement unit found - free the slots, and try to
+
+                # no replacement unit found: free the slots, and try to
                 # schedule other units of other sizes.
                 to_release.append(unit)
 
@@ -727,7 +727,7 @@ class AgentSchedulingComponent(rpu.Component):
             # no new resources
             return False, False
 
-        # we have units to unschedule, which will free some resources.  We can
+        # we have units to unschedule, which will free some resources. We can
         # thus try to schedule larger units again, and also inform the caller
         # about resource availability.
         self._too_large = None
