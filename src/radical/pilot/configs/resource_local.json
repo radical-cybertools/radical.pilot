@@ -20,7 +20,7 @@
         ],
         "default_remote_workdir"      : "$HOME",
         "lrms"                        : "FORK",
-        "agent_config"                : "default_sa",
+        "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "FORK",
