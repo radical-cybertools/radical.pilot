@@ -112,21 +112,18 @@ class Session(rs.Session):
             self._uid = uid
 
         else:
-            if not _primary:
-                raise ValueError('non-primary sessions need a session UID')
-
-            # primary sessions can generate new uids
+            assert(_primary), 'non-primary sessions need a session UID'
             self._uid = ru.generate_id('rp.session',  mode=ru.ID_PRIVATE)
 
-        if not self._cfg.get('session_id'): self._cfg['session_id'] = self._uid
-        if not self._cfg.get('pwd')       : self._cfg['pwd']        = '%s/%s' \
-                                                     % (os.getcwd(), self._uid)
-        self._cfg['owner'] = None
+        self._cfg['session_id'] = self._uid
+
+        if not self._cfg.get('pwd'):
+            self._cfg['pwd'] = '%s/%s' % (os.getcwd(), self._uid)
 
         self._pwd  = self._cfg['pwd']
-        self._prof = self._get_profiler(name=self._cfg['owner'])
-        self._rep  = self._get_reporter(name=self._cfg['owner'])
-        self._log  = self._get_logger  (name=self._cfg['owner'],
+        self._prof = self._get_profiler(name=self._uid)
+        self._rep  = self._get_reporter(name=self._uid)
+        self._log  = self._get_logger  (name=self._uid,
                                        level=self._cfg.get('debug'))
 
         # now we have config and uid - initialize base class (saga session)
@@ -137,65 +134,53 @@ class Session(rs.Session):
 
         self._load_resource_configs()
 
-
-        # --------------------------------------------------------------------
-        # create db connection for primary sessions
         if _primary:
+            self._intialize_primary(dburl)
 
-            # we need a dburl to connect to.
-            if not dburl:
-                dburl = os.environ.get("RADICAL_PILOT_DBURL")
+        # at this point we have a DB connection, logger, etc, and are done
+        self._log.info('radical.pilot version: %s' % rp_version_detail)
+        self._log.info('radical.saga  version: %s' % rs.version_detail)
+        self._log.info('radical.utils version: %s' % ru.version_detail)
 
-            if not dburl:
-                dburl = self._cfg.get('default_dburl')
-
-            if not dburl:
-                dburl = self._cfg.get('dburl')
-
-            if not dburl:
-                raise RuntimeError("no database URL (set RADICAL_PILOT_DBURL)")
+        self._rep.ok('>>ok\n')
 
 
-            dburl = ru.Url(dburl)
-            # if the database url contains a path element, we interpret that as
-            # database name (without the leading slash)
-            if  not dburl.path         or \
-                dburl.path[0]   != '/' or \
-                len(dburl.path) <=  1  :
-                if not uid:
-                    # we fake reconnnect if no DB is available -- but otherwise we
-                    # really really need a db connection...
-                    raise ValueError("incomplete DBURL '%s' no db name!" % dburl)
 
-            self._log.info("using database %s" % dburl)
-            self._rep.info ('<<database   : ')
-            self._rep.plain('[%s]' % dburl)
 
-            # create/connect database handle on primary sessions
-            try:
-                self._dbs = DBSession(sid=self.uid, dburl=str(dburl),
-                                      cfg=self._cfg, logger=self._log)
+    # --------------------------------------------------------------------------
+    def _initialize_primary(self, dburl):
 
-                # from here on we should be able to close the session again
-                self._log.info("New Session created: %s." % self.uid)
 
-                self._cfg['dburl'] = str(dburl)
+        # create db connection - need a dburl to connect to
+        if not dburl: dburl = os.environ.get("RADICAL_PILOT_DBURL")
+        if not dburl: dburl = self._cfg.get('default_dburl')
+        if not dburl: dburl = self._cfg.get('dburl')
+        if not dburl: raise RuntimeError("no db URL (set RADICAL_PILOT_DBURL)")
 
-                py_version_detail = sys.version.replace("\n", " ")
-                self.inject_metadata({'radical_stack':
-                                             {'rp': rp_version_detail,
-                                              'rs': rs.version_detail,
-                                              'ru': ru.version_detail,
-                                              'py': py_version_detail}})
-            except Exception as e:
-                self._rep.error(">>err\n")
-                self._log.exception('session create failed [%s]', dburl)
-                raise RuntimeError('session create failed [%s]: %s'
-                                  % (dburl, e))
+        self._rep.info ('<<database   : ')
+        self._rep.plain('[%s]'    % dburl)
+        self._log.info('dburl %s' % dburl)
 
+        # create/connect database handle on primary sessions
+        try:
+            self._dbs = DBSession(sid=self.uid, dburl=dburl,
+                                  cfg=self._cfg, logger=self._log)
+
+            self._cfg['dburl'] = dburl
+
+            py_version_detail = sys.version.replace("\n", " ")
+            self.inject_metadata({'radical_stack':
+                                         {'rp': rp_version_detail,
+                                          'rs': rs.version_detail,
+                                          'ru': ru.version_detail,
+                                          'py': py_version_detail}})
+        except Exception as e:
+            self._rep.error(">>err\n")
+            self._log.exception('session create failed [%s]', dburl)
+            raise RuntimeError('session create failed [%s]: %s' % (dburl, e))
 
         self._rec = os.environ.get('RADICAL_PILOT_RECORD_SESSION')
-        if self._primary and self._rec:
+        if self._rec:
 
             # append session ID to recording path
             self._rec = "%s/%s" % (self._rec, self._uid)
@@ -206,18 +191,12 @@ class Session(rs.Session):
                           "%s/session.json" % self._rec)
             self._log.info("recording session in %s" % self._rec)
 
-
-        # if bridges and components are specified in the config, start them
+        # a primary session will also start communication bridges and
+        # components.  Secondary sessions will *not* do so - component and
+        # bridge spawning is done by the components themselves.
         ruc = rpu.Component
         self._bridges    = ruc.start_bridges   (self._cfg, self, self._log)
         self._components = ruc.start_components(self._cfg, self, self._log)
-
-        # at this point we have a DB connection, logger, etc, and are done
-        self._log.info('radical.pilot version: %s' % rp_version_detail)
-        self._log.info('radical.saga  version: %s' % rs.version_detail)
-        self._log.info('radical.utils version: %s' % ru.version_detail)
-
-        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------

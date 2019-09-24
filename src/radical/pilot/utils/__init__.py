@@ -35,8 +35,6 @@ if os.uname()[0] == 'Darwin':
 from .db_utils     import *
 from .prof_utils   import *
 from .misc         import *
-from .queue        import *
-from .pubsub       import *
 from .session      import *
 from .component    import *
 from .slot_utils   import *

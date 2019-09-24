@@ -4,11 +4,9 @@ import sys
 import copy
 import time
 import pprint
-import signal
 
 import setproctitle    as spt
 import threading       as mt
-import multiprocessing as mp
 import radical.utils   as ru
 
 from ..          import constants      as rpc
@@ -180,7 +178,8 @@ class Component(object):
                 bridge = rpu_Queue(session, bname, rpu_QUEUE_BRIDGE, bcfg_clone)
 
             elif bname.endswith('pubsub'):
-                bridge = rpu_Pubsub(session, bname, rpu_PUBSUB_BRIDGE, bcfg_clone)
+                bridge = rpu_Pubsub(session, bname, rpu_PUBSUB_BRIDGE,
+                                                    bcfg_clone)
 
             else:
                 raise ValueError('unknown bridge type for %s' % bname)
@@ -255,8 +254,8 @@ class Component(object):
 
         # merge the session's bridge information (preserve) into the given
         # config
-        ru.dict_merge(cfg['bridges'], session._cfg.get('bridges', {}), ru.PRESERVE)
-
+        ru.dict_merge(cfg['bridges'], session._cfg.get('bridges', {}),
+                                                                    ru.PRESERVE)
         # start components
         components = list()
         for cname,ccfg in cspec.items():
@@ -331,7 +330,7 @@ class Component(object):
         #       / self.initialize_parent!
 
         self._cfg     = copy.deepcopy(cfg)
-        self._session = session
+        self._session = ru.Session(cfg=self._cfg, _primary=False)
 
         # we always need an UID
         if not hasattr(self, '_uid'):
@@ -509,8 +508,8 @@ class Component(object):
             # all components need at least be able to talk to a control, log and
             # state pubsub.  We expect those channels to be provided by the
             # session, and the respective addresses to be available in the
-            # session config's `bridges` section.  We merge that information into
-            # our own config, and then check for completeness.
+            # session config's `bridges` section.  We merge that information
+            # into our own config, and then check for completeness.
             #
             # Before doing so we start our own bridges though -- this way we can
             # potentially attach those basic pubsubs to a root component
@@ -537,17 +536,8 @@ class Component(object):
                                                               self._session,
                                                               self._log)
 
-            # bridges should now be available and known - assert!
-            assert('bridges' in self._cfg),                              'missing bridges'
-            assert(rpc.LOG_PUBSUB     in self._cfg['bridges']),          'missing log pubsub'
-            assert(rpc.STATE_PUBSUB   in self._cfg['bridges']),          'missing state pubsub'
-            assert(rpc.CONTROL_PUBSUB in self._cfg['bridges']),          'missing control pubsub'
-            assert(self._cfg['bridges'][rpc.LOG_PUBSUB    ]['addr_in']), 'log pubsub invalid'
-            assert(self._cfg['bridges'][rpc.STATE_PUBSUB  ]['addr_in']), 'state pubsub invalid'
-            assert(self._cfg['bridges'][rpc.CONTROL_PUBSUB]['addr_in']), 'control pubsub invalid'
-
-        except Exception as e:
-            self._log.exception('bridge / component startup incomplete:\n%s' \
+        except Exception:
+            self._log.exception('bridge / component startup incomplete:\n%s'
                     % pprint.pformat(self._cfg))
             raise
 
@@ -564,7 +554,8 @@ class Component(object):
     # --------------------------------------------------------------------------
     #
     def initialize_common(self):
-        pass # can be overloaded
+
+        pass  # can be overloaded
 
 
     # --------------------------------------------------------------------------
@@ -577,7 +568,8 @@ class Component(object):
 
 
     def initialize_parent(self):
-        pass # can be overloaded
+
+        pass  # can be overloaded
 
 
     # --------------------------------------------------------------------------
@@ -607,7 +599,8 @@ class Component(object):
         self._prof.prof('component_init')
 
     def initialize_child(self):
-        pass # can be overloaded
+
+        pass  # can be overloaded
 
 
     # --------------------------------------------------------------------------
@@ -641,32 +634,10 @@ class Component(object):
                 comp.stop()
             self._components = list()
 
-          # #  FIXME: the stuff below caters to unsuccessful or buggy termination
-          # #         routines - but for now all those should be served by the
-          # #         respective unregister routines.
-          #
-          # for name in self._inputs:
-          #     self._inputs[name]['queue'].stop()
-          # self._inputs = dict()
-          #
-          # for name in self._workers.keys()[:]:
-          #     del(self._workers[name])
-          #
-          # for name in self._outputs:
-          #     if self._outputs[name]:
-          #         self._outputs[name].stop()
-          # self._outputs = dict()
-          #
-          # for name in self._publishers:
-          #     self._publishers[name].stop()
-          # self._publishers = dict()
-          #
-          # for name in self._threads:
-          #     self._threads[name].stop()
-          # self._threads = dict()
 
     def finalize_common(self):
-        pass # can be overloaded
+
+        pass  # can be overloaded
 
 
     # --------------------------------------------------------------------------
@@ -677,7 +648,8 @@ class Component(object):
         self.finalize_parent()
 
     def finalize_parent(self):
-        pass # can be overloaded
+
+        pass  # can be overloaded
 
 
     # --------------------------------------------------------------------------
@@ -688,7 +660,8 @@ class Component(object):
         self.finalize_child()
 
     def finalize_child(self):
-        pass # can be overloaded
+
+        pass  # can be overloaded
 
 
     # --------------------------------------------------------------------------
@@ -720,12 +693,12 @@ class Component(object):
         upon thing arrival.
 
         This method will further associate a thing state with a specific worker.
-        Upon thing arrival, the thing state will be used to lookup the respective
-        worker, and the thing will be handed over.  Workers should call
-        self.advance(thing), in order to push the thing toward the next component.
-        If, for some reason, that is not possible before the worker returns, the
-        component will retain ownership of the thing, and should call advance()
-        asynchronously at a later point in time.
+        Upon thing arrival, the thing state will be used to lookup the
+        respective worker, and the thing will be handed over.  Workers should
+        call self.advance(thing), in order to push the thing toward the next
+        component.  If, for some reason, that is not possible before the worker
+        returns, the component will retain ownership of the thing, and should
+        call advance() asynchronously at a later point in time.
 
         Worker invocation is synchronous, ie. the main event loop will only
         check for the next thing once the worker method returns.
@@ -743,7 +716,8 @@ class Component(object):
         addr = self._cfg['bridges'][input]['addr_out']
         self._log.debug("using addr %s for input %s", addr, input)
 
-        q = rpu_Queue(self._session, input, rpu_QUEUE_OUTPUT, self._cfg, addr=addr)
+        q = rpu_Queue(self._session, input, rpu_QUEUE_OUTPUT, self._cfg,
+                                                              addr=addr)
         self._inputs[name] = {'queue'  : q,
                               'states' : states}
 
@@ -753,10 +727,10 @@ class Component(object):
         # be responsible for multiple states
         for state in states:
 
-            self._log.debug('START: %s register input %s: %s', self.uid, state, name)
+            self._log.debug('%s register input %s: %s', self.uid, state, name)
 
             if state in self._workers:
-                self._log.warn("%s replaces worker for %s (%s)" \
+                self._log.warn("%s replaces worker for %s (%s)"
                         % (self.uid, state, self._workers[state]))
             self._workers[state] = worker
 
@@ -777,7 +751,6 @@ class Component(object):
 
         if name not in self._inputs:
             self._log.warn('input %s not registered', name)
-          # raise ValueError('input %s not registered' % name)
             return
 
         self._inputs[name]['queue'].stop()
@@ -785,9 +758,11 @@ class Component(object):
         self._log.debug('unregistered input %s', name)
 
         for state in states:
-            self._log.debug('TERM : %s unregister input %s: %s', self.uid, state, name)
+
+            self._log.debug('%s unregister input %s: %s', self.uid, state, name)
             if state not in self._workers:
-                raise ValueError('worker %s not registered for %s' % worker.__name__, state)
+                self._log.warn('%s input %s unknown', worker.__name__, state)
+
             del(self._workers[state])
             self._log.debug('unregistered worker %s [%s]', worker.__name__, state)
 
@@ -818,7 +793,7 @@ class Component(object):
 
             # we want a *unique* output queue for each state.
             if state in self._outputs:
-                self._log.warn("%s replaces output for %s : %s -> %s" \
+                self._log.warn("%s replaces output for %s : %s -> %s"
                         % (self.uid, state, self._outputs[state], output))
 
             if not output:
@@ -830,10 +805,11 @@ class Component(object):
                 self._log.debug("using addr %s for output %s", addr, output)
 
                 # non-final state, ie. we want a queue to push to
-                q = rpu_Queue(self._session, output, rpu_QUEUE_INPUT, self._cfg, addr=addr)
+                q = rpu_Queue(self._session, output, rpu_QUEUE_INPUT,
+                              self._cfg, addr=addr)
                 self._outputs[state] = q
 
-                self._log.debug('registered output    : %s : %s : %s' \
+                self._log.debug('registered output    : %s : %s : %s'
                      % (state, output, q.name))
 
 
@@ -850,7 +826,7 @@ class Component(object):
         for state in states:
             self._log.debug('TERM : %s unregister output %s', self.uid, state)
 
-            if not state in self._outputs:
+            if state not in self._outputs:
                 self._log.warn('state %s has no output registered',  state)
               # raise ValueError('state %s has no output registered' % state)
                 continue
@@ -876,21 +852,21 @@ class Component(object):
             if name in self._threads:
                 raise ValueError('cb %s already registered' % cb.__name__)
 
-            if timer == None: timer = 0.0  # NOTE: busy idle loop
+            if timer is None: timer = 0.0  # NOTE: busy idle loop
             else            : timer = float(timer)
 
             # create a separate thread per idle cb, and let it be watched by the
             # ru.Process base class
             #
-            # ----------------------------------------------------------------------
-            # NOTE: idle timing is a tricky beast: if we sleep for too long, then we
-            #       have to wait that long on stop() for the thread to get active
-            #       again and terminate/join.  So we always sleep just a little, and
-            #       explicitly check if sufficient time has passed to activate the
-            #       callback.
+            # ------------------------------------------------------------------
+            # NOTE: idle timing is a tricky beast: if we sleep for too long,
+            #       then we have to wait that long on stop() for the thread to
+            #       get active again and terminate/join.  So we always sleep
+            #       just a little, and explicitly check if sufficient time has
+            #       passed to activate the callback.
             class Idler(ru.Thread):
 
-                # ------------------------------------------------------------------
+                # --------------------------------------------------------------
                 def __init__(self, name, log, timer, cb, cb_data, cb_lock):
                     self._name    = name
                     self._log     = log
@@ -905,22 +881,23 @@ class Component(object):
                     # immediately start the thread upon construction
                     self.start()
 
-                # ------------------------------------------------------------------
+                # --------------------------------------------------------------
                 def work_cb(self):
-                    if self._timeout and (time.time()-self._last) < self._timeout:
+                    if self._timeout and \
+                       self._timeout > (time.time() - self._last):
                         # not yet
-                        time.sleep(0.1) # FIXME: make configurable
+                        time.sleep(0.1)  # FIXME: make configurable
                         return True
 
                     with self._cb_lock:
-                        if self._cb_data != None:
+                        if self._cb_data is not None:
                             ret = self._cb(cb_data=self._cb_data)
                         else:
                             ret = self._cb()
                     if self._timeout:
                         self._last = time.time()
                     return ret
-            # ----------------------------------------------------------------------
+            # ------------------------------------------------------------------
 
             idler = Idler(name=name, timer=timer, log=self._log,
                           cb=cb, cb_data=cb_data, cb_lock=self._cb_lock)
@@ -968,7 +945,7 @@ class Component(object):
             raise ValueError('publisher for %s already registered' % pubsub)
 
         # get address for pubsub
-        if not pubsub in self._cfg['bridges']:
+        if pubsub not in self._cfg['bridges']:
             self._log.error('no addr: %s' % pprint.pformat(self._cfg['bridges']))
             raise ValueError('no bridge known for pubsub channel %s' % pubsub)
 
@@ -977,7 +954,8 @@ class Component(object):
         addr = self._cfg['bridges'][pubsub]['addr_in']
         self._log.debug("using addr %s for pubsub %s", addr, pubsub)
 
-        q = rpu_Pubsub(self._session, pubsub, rpu_PUBSUB_PUB, self._cfg, addr=addr)
+        q = rpu_Pubsub(self._session, pubsub, rpu_PUBSUB_PUB, self._cfg,
+                                                              addr=addr)
         self._publishers[pubsub] = q
 
         self._log.debug('registered publisher : %s : %s', pubsub, q.name)
@@ -1026,7 +1004,7 @@ class Component(object):
         self._log.debug('START: %s register subscriber %s', self.uid, name)
 
         # get address for pubsub
-        if not pubsub in self._cfg['bridges']:
+        if pubsub not in self._cfg['bridges']:
             raise ValueError('no bridge known for pubsub channel %s' % pubsub)
 
         addr = self._cfg['bridges'][pubsub]['addr_out']
@@ -1076,7 +1054,8 @@ class Component(object):
                     for m in msg:
                         with self._cb_lock:
                             if self._cb_data is not None:
-                                ret = cb(topic=topic, msg=m, cb_data=self._cb_data)
+                                ret = cb(topic=topic, msg=m,
+                                         cb_data=self._cb_data)
                             else:
                                 ret = self._cb(topic=topic, msg=m)
                         # we abort whenever a callback indicates thus
@@ -1089,7 +1068,8 @@ class Component(object):
         # ----------------------------------------------------------------------
         # create a pubsub subscriber (the pubsub name doubles as topic)
         # FIXME: this should be moved into the thread child_init
-        q = rpu_Pubsub(self._session, pubsub, rpu_PUBSUB_SUB, self._cfg, addr=addr)
+        q = rpu_Pubsub(self._session, pubsub, rpu_PUBSUB_SUB, self._cfg,
+                                                                      addr=addr)
         q.subscribe(pubsub)
 
         subscriber = Subscriber(name=name, l=self._log, q=q,
@@ -1100,7 +1080,7 @@ class Component(object):
 
         self.register_watchable(subscriber)
         self._session._to_stop.append(subscriber)
-        self._log.debug('%s registered %s subscriber %s', self.uid, pubsub, name)
+        self._log.debug('%s registered %s on %s', self.uid, pubsub, name)
 
 
     # --------------------------------------------------------------------------
@@ -1118,7 +1098,6 @@ class Component(object):
         with self._cb_lock:
             if name not in self._threads:
                 self._log.warn('subscriber %s is not registered', cb.__name__)
-              # raise ValueError('%s is not subscribed to %s' % (cb.__name__, pubsub))
                 return
 
             self._threads[name]  # implies join
@@ -1167,7 +1146,7 @@ class Component(object):
             # FIXME: a simple, 1-thing caching mechanism would likely
             #        remove the req/res overhead completely (for any
             #        non-trivial worker).
-            things = input.get_nowait(1000) # timeout in microseconds
+            things = input.get_nowait(1000)  # timeout in microseconds
 
             if not things:
                 return True
@@ -1184,7 +1163,7 @@ class Component(object):
                 uid   = thing['uid']
                 self._prof.prof('get', uid=uid, state=state)
 
-                if not state in buckets:
+                if state not in buckets:
                     buckets[state] = list()
                 buckets[state].append(thing)
 
@@ -1212,16 +1191,16 @@ class Component(object):
                         self._log.debug('got %s (%s)', ttype, uid)
 
                     if to_cancel:
-                        self.advance(to_cancel, rps.CANCELED, publish=True, push=False)
-
+                        self.advance(to_cancel, rps.CANCELED, publish=True,
+                                                              push=False)
                     with self._cb_lock:
                         self._workers[state](things)
 
-                except Exception as e:
+                except Exception:
 
                     # this is not fatal -- only the 'things' fail, not
                     # the component
-                    self._log.exception("worker %s failed", self._workers[state])
+                    self._log.exception("work %s failed", self._workers[state])
                     self.advance(things, rps.FAILED, publish=True, push=False)
 
 
@@ -1261,7 +1240,7 @@ class Component(object):
         if not isinstance(things, list):
             things = [things]
 
-        self._log.debug('advance bulk size: %s [%s, %s]', len(things), push, publish)
+        self._log.debug('advance bulk: %s [%s, %s]', len(things), push, publish)
 
         # assign state, sort things by state
         buckets = dict()
@@ -1281,7 +1260,7 @@ class Component(object):
             if prof:
                 self._prof.prof('advance', uid=uid, state=_state, ts=ts)
 
-            if not _state in buckets:
+            if _state not in buckets:
                 buckets[_state] = list()
             buckets[_state].append(thing)
 
@@ -1375,18 +1354,17 @@ class Component(object):
         '''
 
         if pubsub not in self._publishers:
-            self._log.warn("can't route '%s' notification: %s" % (pubsub,
-                list(self._publishers.keys())))
+            self._log.warn("can't route msg for '%s': %s" % (pubsub,
+                                                 list(self._publishers.keys())))
             return
 
           # raise RuntimeError("can't route '%s' notification: %s" % (pubsub,
           #     self._publishers.keys()))
 
         if not self._publishers[pubsub]:
-            raise RuntimeError("no route for '%s' notification: %s" % (pubsub, msg))
+            raise RuntimeError("no msg route for '%s': %s" % (pubsub, msg))
 
         self._publishers[pubsub].put(pubsub, msg)
-
 
 
 # ------------------------------------------------------------------------------

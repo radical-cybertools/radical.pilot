@@ -22,22 +22,13 @@ DEFAULT_BULK_COLLECTION_SIZE =  100  # seconds
 # ------------------------------------------------------------------------------
 #
 class Update(rpu.Worker):
-    """
+    '''
     An UpdateWorker pushes CU and Pilot state updates to mongodb.  Its instances
     compete for update requests on the update_queue.  Those requests will be
     triplets of collection name, query dict, and update dict.  Update requests
     will be collected into bulks over some time (BULK_COLLECTION_TIME) and
     number (BULK_COLLECTION_SIZE) to reduce number of roundtrips.
-    """
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, cfg, session):
-
-        self._uid = ru.generate_id('update.%(counter)s', ru.ID_CUSTOM)
-
-        rpu.Worker.__init__(self, cfg, session)
-
+    '''
 
     # --------------------------------------------------------------------------
     #
@@ -49,11 +40,14 @@ class Update(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def __init__(self, cfg, session):
+
+        self._uid = ru.generate_id('update.%(counter)s', ru.ID_CUSTOM)
+
+        rpu.Worker.__init__(self, cfg, session)
 
         self._session_id = self._cfg['session_id']
         self._dburl      = self._cfg['dburl']
-        self._owner      = self._cfg['owner']
 
         _, db, _, _, _   = ru.mongodb_connect(self._dburl)
         self._coll       = db[self._session_id]
@@ -147,7 +141,7 @@ class Update(rpu.Worker):
     # --------------------------------------------------------------------------
     #
     def _state_cb(self, topic, msg):
-        """
+        '''
 
         # FIXME: this documentation is not final, nor does it reflect reality!
 
@@ -187,7 +181,7 @@ class Update(rpu.Worker):
         For 'cmd' in ['state', 'state_flush'], only the 'uid' and 'state' fields
         of the given 'thing' are used, all other fields are ignored.  If 'state'
         does not exist, an exception is raised.
-        """
+        '''
 
         try:
             cmd    = msg['cmd']
