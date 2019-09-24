@@ -257,8 +257,8 @@ setup_args = {
                             'netifaces',
                             'setproctitle',
                             'ntplib',
-                            'msgpack-python',
-                            'pyzmq'],
+                            'msgpack-python'
+                           ],
     'extras_require'     : {'autopilot' : ['github3.py']},
     'tests_require'      : ['pytest',
                             'pylint',
