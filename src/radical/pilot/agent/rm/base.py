@@ -205,7 +205,7 @@ class LRMS(object):
     # This class-method creates the appropriate sub-class for the LRMS.
     #
     @classmethod
-    def create(cls, name, cfg, session):
+    def create(cls, name, cfg):
 
         from .ccm         import CCM
         from .fork        import Fork
@@ -239,10 +239,9 @@ class LRMS(object):
                 RM_NAME_SPARK       : Spark,
                 RM_NAME_DEBUG       : Debug
             }[name]
-            return impl(cfg, session)
+            return impl(cfg)
 
         except KeyError:
-            session._log.exception('lrms construction error')
             raise RuntimeError("LRMS type '%s' unknown or defunct" % name)
 
 

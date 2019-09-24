@@ -12,16 +12,6 @@ import radical.utils   as ru
 from ..          import constants      as rpc
 from ..          import states         as rps
 
-from .queue      import Queue          as rpu_Queue
-from .queue      import QUEUE_OUTPUT   as rpu_QUEUE_OUTPUT
-from .queue      import QUEUE_INPUT    as rpu_QUEUE_INPUT
-from .queue      import QUEUE_BRIDGE   as rpu_QUEUE_BRIDGE
-
-from .pubsub     import Pubsub         as rpu_Pubsub
-from .pubsub     import PUBSUB_PUB     as rpu_PUBSUB_PUB
-from .pubsub     import PUBSUB_SUB     as rpu_PUBSUB_SUB
-from .pubsub     import PUBSUB_BRIDGE  as rpu_PUBSUB_BRIDGE
-
 
 # ------------------------------------------------------------------------------
 #
@@ -135,7 +125,7 @@ class Component(object):
     # --------------------------------------------------------------------------
     #
     @staticmethod
-    def start_bridges(cfg, session, log):
+    def start_bridges(cfg, log):
         '''
         Check the given config, and specifically check if any bridges are
         defined under `cfg['bridges']`.  If that is the case, we check
@@ -172,14 +162,15 @@ class Component(object):
             log.info('create bridge %s', bname)
 
             bcfg_clone = copy.deepcopy(bcfg)
+            bcfg_clone['name'] = bname  # needed?
+            bcfg_clone['uid']  = ru.generate_id(bname)
 
             # The type of bridge (queue or pubsub) is derived from the name.
             if bname.endswith('queue'):
-                bridge = rpu_Queue(session, bname, rpu_QUEUE_BRIDGE, bcfg_clone)
+                bridge = ru.zmq.Queue(bcfg_clone)
 
             elif bname.endswith('pubsub'):
-                bridge = rpu_Pubsub(session, bname, rpu_PUBSUB_BRIDGE,
-                                                    bcfg_clone)
+                bridge = ru.zmq.PubSub(bcfg_clone)
 
             else:
                 raise ValueError('unknown bridge type for %s' % bname)
@@ -201,7 +192,7 @@ class Component(object):
     # --------------------------------------------------------------------------
     #
     @staticmethod
-    def start_components(cfg, session, log):
+    def start_components(cfg, log):
         '''
         `start_components()` is very similar to `start_bridges()`, in that it
         interprets a given configuration and creates all listed component
@@ -254,8 +245,9 @@ class Component(object):
 
         # merge the session's bridge information (preserve) into the given
         # config
-        ru.dict_merge(cfg['bridges'], session._cfg.get('bridges', {}),
-                                                                    ru.PRESERVE)
+        # FIXME:
+      # ru.dict_merge(cfg['bridges'], session._cfg.get('bridges', {}),
+      #                                                             ru.PRESERVE)
         # start components
         components = list()
         for cname,ccfg in cspec.items():
@@ -275,7 +267,9 @@ class Component(object):
                 tmp_cfg = copy.deepcopy(cfg)
                 tmp_cfg['cname']      = cname
                 tmp_cfg['number']     = i
-                tmp_cfg['owner']      = cfg.get('uid', session.uid)
+              # tmp_cfg['owner']      = cfg.get('uid', session.uid)
+              # FIXME
+                tmp_cfg['owner']      = cfg.get('uid', 'root')
 
                 # avoid recursion - but keep bridge information around.
                 tmp_cfg['agents']     = dict()
@@ -284,7 +278,7 @@ class Component(object):
                 # merge the component config section (overwrite)
                 ru.dict_merge(tmp_cfg, ccfg, ru.OVERWRITE)
 
-                comp = ctype.create(tmp_cfg, session)
+                comp = ctype.create(tmp_cfg)
                 comp.start()
 
                 log.info('%-30s starts %s',  tmp_cfg['owner'], comp.uid)
@@ -521,19 +515,16 @@ class Component(object):
             # cfg is already passed on).
             if self._ru_is_parent and not self._ru_spawned:
                 self._bridges = Component.start_bridges(self._cfg,
-                                                        self._session,
                                                         self._log)
 
             # only one side will start sub-components: either the child, if it
             # exists, and only otherwise the parent
             if self._ru_is_parent and not self._ru_spawned:
                 self._components = Component.start_components(self._cfg,
-                                                              self._session,
                                                               self._log)
 
             elif self._ru_is_child:
                 self._components = Component.start_components(self._cfg,
-                                                              self._session,
                                                               self._log)
 
         except Exception:
@@ -716,8 +707,7 @@ class Component(object):
         addr = self._cfg['bridges'][input]['addr_out']
         self._log.debug("using addr %s for input %s", addr, input)
 
-        q = rpu_Queue(self._session, input, rpu_QUEUE_OUTPUT, self._cfg,
-                                                              addr=addr)
+        q = ru.zmq.Getter(input, addr)
         self._inputs[name] = {'queue'  : q,
                               'states' : states}
 
@@ -805,8 +795,7 @@ class Component(object):
                 self._log.debug("using addr %s for output %s", addr, output)
 
                 # non-final state, ie. we want a queue to push to
-                q = rpu_Queue(self._session, output, rpu_QUEUE_INPUT,
-                              self._cfg, addr=addr)
+                q = ru.zmq.Putter(output, addr=addr)
                 self._outputs[state] = q
 
                 self._log.debug('registered output    : %s : %s : %s'
@@ -954,8 +943,7 @@ class Component(object):
         addr = self._cfg['bridges'][pubsub]['addr_in']
         self._log.debug("using addr %s for pubsub %s", addr, pubsub)
 
-        q = rpu_Pubsub(self._session, pubsub, rpu_PUBSUB_PUB, self._cfg,
-                                                              addr=addr)
+        q = ru.zmq.Publisher(pubsub, addr=addr)
         self._publishers[pubsub] = q
 
         self._log.debug('registered publisher : %s : %s', pubsub, q.name)
@@ -1068,8 +1056,7 @@ class Component(object):
         # ----------------------------------------------------------------------
         # create a pubsub subscriber (the pubsub name doubles as topic)
         # FIXME: this should be moved into the thread child_init
-        q = rpu_Pubsub(self._session, pubsub, rpu_PUBSUB_SUB, self._cfg,
-                                                                      addr=addr)
+        q = ru.zmq.Subscriber(pubsub, addr=addr)
         q.subscribe(pubsub)
 
         subscriber = Subscriber(name=name, l=self._log, q=q,

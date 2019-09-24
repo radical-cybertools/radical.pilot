@@ -6,7 +6,6 @@
 # we also get the version string at this point.
 #
 import os
-import radical.utils as _ru
 
 
 # ------------------------------------------------------------------------------

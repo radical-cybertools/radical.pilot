@@ -34,12 +34,12 @@ class AgentExecutingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg):
 
         self._uid = ru.generate_id(cfg['owner'] + '.executing.%(counter)s',
                                    ru.ID_CUSTOM)
 
-        rpu.Component.__init__(self, cfg, session)
+        rpu.Component.__init__(self, cfg)
 
         # if so configured, let the CU know what to use as tmp dir
         self._cu_tmp = cfg.get('cu_tmp', os.environ.get('TMP', '/tmp'))
@@ -50,7 +50,7 @@ class AgentExecutingComponent(rpu.Component):
     # This class-method creates the appropriate sub-class for the Spawner
     #
     @classmethod
-    def create(cls, cfg, session):
+    def create(cls, cfg):
 
         name = cfg['spawner']
 
@@ -66,13 +66,20 @@ class AgentExecutingComponent(rpu.Component):
 
       # from .orte     import ORTE
 
-        if   name == EXECUTING_NAME_POPEN  : impl = Popen  (cfg, session)
-        elif name == EXECUTING_NAME_SHELL  : impl = Shell  (cfg, session)
-        elif name == EXECUTING_NAME_SHELLFS: impl = ShellFS(cfg, session)
-        elif name == EXECUTING_NAME_ABDS   : impl = ABDS   (cfg, session)
-        elif name == EXECUTING_NAME_FUNCS  : impl = FUNCS  (cfg, session)
-      # elif name == EXECUTING_NAME_ORTE   : impl = ORTE   (cfg, session)
-        else: raise ValueError("invalid AgentExecutingComponent '%s'" % name)
+        try:
+            impl = {
+                    EXECUTING_NAME_POPEN  : Popen,
+                    EXECUTING_NAME_SHELL  : Shell,
+                    EXECUTING_NAME_SHELLFS: ShellFS,
+                    EXECUTING_NAME_ABDS   : ABDS,
+                    EXECUTING_NAME_FUNCS  : FUNCS,
+                  # EXECUTING_NAME_ORTE   : ORTE,
+                   }[name]
+
+            return impl(cfg)
+
+        except KeyError:
+            raise RuntimeError("AgentExecutingComponent '%s' unknown" % name)
 
         return impl
 

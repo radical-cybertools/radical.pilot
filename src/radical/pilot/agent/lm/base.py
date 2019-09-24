@@ -96,7 +96,7 @@ class LaunchMethod(object):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, cfg, session):
+    def create(cls, name, cfg):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
@@ -165,15 +165,19 @@ class LaunchMethod(object):
               # LM_NAME_POE           : POE,
               # LM_NAME_RUNJOB        : Runjob,
             }[name]
-            return impl(name, cfg, session)
+            return impl(name, cfg)
 
         except KeyError:
             # pylint: disable=protected-access
-            session._log.exception("LM '%s' unknown or defunct" % name)
+            # FIXME
+          # session._log.exception("LM '%s' unknown or defunct" % name)
+            pass
 
         except Exception as e:
             # pylint: disable=protected-access
-            session._log.exception("LM cannot be used: %s!" % e)
+            # FIXME
+          # session._log.exception("LM cannot be used: %s!" % e)
+            pass
 
 
     # --------------------------------------------------------------------------

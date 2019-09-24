@@ -316,7 +316,7 @@ class AgentSchedulingComponent(rpu.Component):
     # This class-method creates the appropriate instance for the scheduler.
     #
     @classmethod
-    def create(cls, cfg, session):
+    def create(cls, cfg):
 
         # make sure that we are the base-class!
         if cls != AgentSchedulingComponent:
@@ -353,7 +353,7 @@ class AgentSchedulingComponent(rpu.Component):
 
             }[name]
 
-            impl = impl(cfg, session)
+            impl = impl(cfg)
             return impl
 
         except KeyError:

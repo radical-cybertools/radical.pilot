@@ -33,9 +33,9 @@ class Update(rpu.Worker):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create(cls, cfg, session):
+    def create(cls, cfg):
 
-        return cls(cfg, session)
+        return cls(cfg)
 
 
     # --------------------------------------------------------------------------

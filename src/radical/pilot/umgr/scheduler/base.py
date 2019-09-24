@@ -98,7 +98,7 @@ class UMGRSchedulingComponent(rpu.Component):
     # This class-method creates the appropriate sub-class for the Scheduler.
     #
     @classmethod
-    def create(cls, cfg, session):
+    def create(cls, cfg):
 
         # Make sure that we are the base-class!
         if cls != UMGRSchedulingComponent:
@@ -115,7 +115,7 @@ class UMGRSchedulingComponent(rpu.Component):
                 SCHEDULER_BACKFILLING : Backfilling
             }[name]
 
-            impl = impl(cfg, session)
+            impl = impl(cfg)
             return impl
 
         except KeyError:

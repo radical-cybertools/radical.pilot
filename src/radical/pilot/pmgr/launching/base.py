@@ -35,7 +35,7 @@ class PMGRLaunchingComponent(rpu.Component):
     # This class-method creates the appropriate sub-class for the Launcher.
     #
     @classmethod
-    def create(cls, cfg, session):
+    def create(cls, cfg):
 
         name = cfg.get('pmgr_launching_component', RP_UL_NAME_DEFAULT)
 
@@ -50,7 +50,7 @@ class PMGRLaunchingComponent(rpu.Component):
                 RP_UL_NAME_DEFAULT: Default
             }[name]
 
-            impl = impl(cfg, session)
+            impl = impl(cfg)
             return impl
 
         except KeyError:

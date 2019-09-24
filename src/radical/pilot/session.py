@@ -15,7 +15,6 @@ import radical.saga.utils.pty_shell as rsup
 
 from .resource_config import ResourceConfig
 from .db              import DBSession
-from .utils           import version_detail as rp_version_detail
 from .                import utils          as rpu
 
 
@@ -89,7 +88,7 @@ class Session(rs.Session):
         else:
             # otherwise we need to load the config
             cfg_name  = os.environ.get('RADICAL_PILOT_SESSION_CFG', 'default')
-            self._cfg = ru.Config("configs/session_%s.json" % cfg_name)
+            self._cfg = ru.Config('radical.pilot', 'session_%s.json' % cfg_name)
 
 
         # cache sandboxes etc.
@@ -135,9 +134,10 @@ class Session(rs.Session):
         self._load_resource_configs()
 
         if _primary:
-            self._intialize_primary(dburl)
+            self._initialize_primary(dburl)
 
         # at this point we have a DB connection, logger, etc, and are done
+        from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s' % rp_version_detail)
         self._log.info('radical.saga  version: %s' % rs.version_detail)
         self._log.info('radical.utils version: %s' % ru.version_detail)
@@ -150,6 +150,8 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     def _initialize_primary(self, dburl):
 
+        # need to import locally to avoid circular imports
+        from . import version_detail as rp_version_detail
 
         # create db connection - need a dburl to connect to
         if not dburl: dburl = os.environ.get("RADICAL_PILOT_DBURL")
@@ -195,8 +197,14 @@ class Session(rs.Session):
         # components.  Secondary sessions will *not* do so - component and
         # bridge spawning is done by the components themselves.
         ruc = rpu.Component
-        self._bridges    = ruc.start_bridges   (self._cfg, self, self._log)
-        self._components = ruc.start_components(self._cfg, self, self._log)
+        try:
+            self._bridges    = ruc.start_bridges   (self._cfg, self._log)
+            self._components = ruc.start_components(self._cfg, self._log)
+
+        except:
+            self._log.exception('oops')
+        finally:
+            print('started')
 
 
     # --------------------------------------------------------------------------
