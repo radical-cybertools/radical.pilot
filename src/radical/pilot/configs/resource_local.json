@@ -20,6 +20,7 @@
         ],
         "default_remote_workdir"      : "$HOME",
         "lrms"                        : "FORK",
+        "agent_config"                : "default_sa",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "FORK",
@@ -31,7 +32,7 @@
         "cores_per_node"              : 8,
         "gpus_per_node"               : 1,
         "lfs_path_per_node"           : "/tmp",
-        "lfs_size_per_node"           : 1024,
+        "lfs_size_per_node"           : 2048,
         "memory_per_node"             : 4096
     },
 

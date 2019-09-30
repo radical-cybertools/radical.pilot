@@ -13,22 +13,22 @@ from .. import utils     as rpu
 from .. import constants as rpc
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 DEFAULT_BULK_COLLECTION_TIME =  1.0  # seconds
 DEFAULT_BULK_COLLECTION_SIZE =  100  # seconds
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Update(rpu.Worker):
-    """
+    '''
     An UpdateWorker pushes CU and Pilot state updates to mongodb.  Its instances
     compete for update requests on the update_queue.  Those requests will be
     triplets of collection name, query dict, and update dict.  Update requests
     will be collected into bulks over some time (BULK_COLLECTION_TIME) and
     number (BULK_COLLECTION_SIZE) to reduce number of roundtrips.
-    """
+    '''
 
     # --------------------------------------------------------------------------
     #
@@ -100,7 +100,7 @@ class Update(rpu.Worker):
         now = time.time()
         age = now - self._last
 
-        # only push if flush is forced, or when collection time or size 
+        # only push if flush is forced, or when collection time or size
         # have been exceeded
         if  not flush \
             and age < self._bct \
@@ -119,15 +119,15 @@ class Update(rpu.Worker):
 
         self._prof.prof('update_pushed', msg='bulk size: %d' % len(self._uids))
 
-        for entry in self._uids:
-
-            uid   = entry[0]
-            state = entry[2]
-
-            if state:
-                self._prof.prof('update_pushed', uid=uid, msg=state)
-            else:
-                self._prof.prof('update_pushed', uid=uid)
+      # for entry in self._uids:
+      #
+      #     uid   = entry[0]
+      #     state = entry[2]
+      #
+      #     if state:
+      #         self._prof.prof('update_pushed', uid=uid, msg=state)
+      #     else:
+      #         self._prof.prof('update_pushed', uid=uid)
 
         # empty bulk, refresh state
         self._last = now
@@ -150,7 +150,7 @@ class Update(rpu.Worker):
     # --------------------------------------------------------------------------
     #
     def _state_cb(self, topic, msg):
-        """
+        '''
 
         # FIXME: this documentation is not final, nor does it reflect reality!
 
@@ -190,7 +190,7 @@ class Update(rpu.Worker):
         For 'cmd' in ['state', 'state_flush'], only the 'uid' and 'state' fields
         of the given 'thing' are used, all other fields are ignored.  If 'state'
         does not exist, an exception is raised.
-        """
+        '''
 
         cmd    = msg['cmd']
         things = msg['arg']
@@ -220,7 +220,7 @@ class Update(rpu.Worker):
                 # we don't push clone states to DB
                 return True
 
-            self._prof.prof('update_request', msg=state, uid=uid)
+          # self._prof.prof('update_request', msg=state, uid=uid)
 
             if not state:
                 # nothing to push
@@ -245,7 +245,7 @@ class Update(rpu.Worker):
 
                 # push the update request onto the bulk
                 self._uids.append([uid, ttype, state])
-                self._bulk.find  ({'uid'  : uid, 
+                self._bulk.find  ({'uid'  : uid,
                                    'type' : ttype}) \
                           .update(update_dict)
 
