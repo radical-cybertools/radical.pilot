@@ -7,7 +7,7 @@
             issues?q=is%3Aissue+is%3Aopen+
 
 
-0.72.1  Hotfix Release                                                2019-09-30
+0.72.2  Hotfix Release                                                2019-09-30
 --------------------------------------------------------------------------------
 
   - fix sandbox setting on absolute paths
