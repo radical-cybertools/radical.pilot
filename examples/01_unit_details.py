@@ -87,7 +87,6 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable = '/bin/date'
-            cud.sandbox = '/tmp/t1/'
             cuds.append(cud)
             report.progress()
 
