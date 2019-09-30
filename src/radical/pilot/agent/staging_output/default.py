@@ -64,8 +64,6 @@ class Default(AgentStagingOutputComponent):
 
         self.advance(units, rps.AGENT_STAGING_OUTPUT, publish=True, push=False)
 
-        ru.raise_on('work bulk')
-
         # we first filter out any units which don't need any input staging, and
         # advance them again as a bulk.  We work over the others one by one, and
         # advance them individually, to avoid stalling from slow staging ops.
@@ -191,8 +189,6 @@ class Default(AgentStagingOutputComponent):
     # --------------------------------------------------------------------------
     #
     def _handle_unit_staging(self, unit, actionables):
-
-        ru.raise_on('work unit')
 
         uid = unit['uid']
 
