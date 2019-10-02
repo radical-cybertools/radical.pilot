@@ -113,8 +113,9 @@ class UnitManager(rpu.Component):
         # initialize the base class (with no intent to fork)
         self._uid    = ru.generate_id('umgr.%(item_counter)04d', ru.ID_CUSTOM,
                                       namespace=session.uid)
-        cfg['owner'] = self.uid
-        rpu.Component.__init__(self, cfg, session)
+        cfg['owner'     ] = self.uid
+        cfg['session_id'] = session.uid
+        rpu.Component.__init__(self, cfg)
         self.start(spawn=False)
         self._log.info('started umgr %s', self._uid)
 

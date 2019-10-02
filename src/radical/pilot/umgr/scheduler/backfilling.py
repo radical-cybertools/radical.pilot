@@ -33,9 +33,9 @@ class Backfilling(UMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg):
 
-        UMGRSchedulingComponent.__init__(self, cfg, session)
+        UMGRSchedulingComponent.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -68,7 +68,7 @@ class Backfilling(UMGRSchedulingComponent):
                 self._pilots[pid]['info'] = {
                         'cores' : cores,
                         'hwm'   : hwm,
-                        'used'  : 0, 
+                        'used'  : 0,
                         'units' : list(), # list of assigned unit IDs
                         'done'  : list(), # list of executed unit IDs
                         }
@@ -146,7 +146,7 @@ class Backfilling(UMGRSchedulingComponent):
         with self._pilots_lock, self._wait_lock:
 
             for unit in units:
-        
+
                 uid   = unit['uid']
                 state = unit['state']
                 pid   = unit.get('pilot', '')
@@ -209,10 +209,10 @@ class Backfilling(UMGRSchedulingComponent):
             for unit in units:
 
                 uid = unit['uid']
-                    
+
                 # not yet scheduled - put in wait pool
                 self._wait_pool[uid] = unit
-                        
+
         self._schedule_units()
 
 
@@ -220,8 +220,8 @@ class Backfilling(UMGRSchedulingComponent):
     #
     def _schedule_units(self):
         """
-        We have a set of units which we can place over a set of pilots.  
-        
+        We have a set of units which we can place over a set of pilots.
+
         The overall objective is to keep pilots busy while load balancing across
         all pilots, even those which might yet to get added.  We achieve that
         via the following algorithm:
@@ -229,7 +229,7 @@ class Backfilling(UMGRSchedulingComponent):
           - for each pilot which is being added, no matter the state:
             - assign sufficient units to the pilot that it can run 'n'
               generations of them, 'n' being a tunable parameter called
-              'RADICAL_PILOT_BACKFILLING_HWM'.  
+              'RADICAL_PILOT_BACKFILLING_HWM'.
 
           - for each unit being completed (goes out of AGENT_EXECUTING state)
             - determine the pilot which executed it
@@ -342,7 +342,7 @@ class Backfilling(UMGRSchedulingComponent):
 
         # advance scheduled units
         if scheduled:
-            self.advance(scheduled, rps.UMGR_STAGING_INPUT_PENDING, 
+            self.advance(scheduled, rps.UMGR_STAGING_INPUT_PENDING,
                          publish=True, push=True)
 
 
@@ -352,7 +352,7 @@ class Backfilling(UMGRSchedulingComponent):
       #     print 'pilot %s' % pid
       #     pprint.pprint(self._pilots[pid]['info'])
       # self._log.debug()
-        
+
 
 # ------------------------------------------------------------------------------
 

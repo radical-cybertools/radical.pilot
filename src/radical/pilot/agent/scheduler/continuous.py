@@ -65,7 +65,7 @@ class Continuous(AgentSchedulingComponent):
     #
     def __init__(self, cfg, session):
 
-        AgentSchedulingComponent.__init__(self, cfg, session)
+        AgentSchedulingComponent.__init__(self, cfg)
 
         self._tag_history   = dict()
         self._scattered     = None

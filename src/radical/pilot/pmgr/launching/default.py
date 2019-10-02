@@ -51,9 +51,9 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg):
 
-        PMGRLaunchingComponent.__init__(self, cfg, session)
+        PMGRLaunchingComponent.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------

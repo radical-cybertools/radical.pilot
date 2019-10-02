@@ -21,12 +21,12 @@ class PMGRLaunchingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg):
 
         self._uid = ru.generate_id(cfg['owner'] + '.launching.%(counter)s',
                                    ru.ID_CUSTOM)
 
-        rpu.Component.__init__(self, cfg, session)
+        rpu.Component.__init__(self, cfg)
 
         self._pmgr = self._owner
 

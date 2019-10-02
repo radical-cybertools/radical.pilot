@@ -27,9 +27,9 @@ class Default(UMGRStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg):
 
-        UMGRStagingOutputComponent.__init__(self, cfg, session)
+        UMGRStagingOutputComponent.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -39,7 +39,7 @@ class Default(UMGRStagingOutputComponent):
         # we keep a cache of SAGA dir handles
         self._cache = dict()
 
-        self.register_input(rps.UMGR_STAGING_OUTPUT_PENDING, 
+        self.register_input(rps.UMGR_STAGING_OUTPUT_PENDING,
                             rpc.UMGR_STAGING_OUTPUT_QUEUE, self.work)
 
         # we don't need an output queue -- units will be final
@@ -112,12 +112,12 @@ class Default(UMGRStagingOutputComponent):
         uid = unit['uid']
 
         src_context = {'pwd'      : unit['unit_sandbox'],       # !!!
-                       'unit'     : unit['unit_sandbox'], 
-                       'pilot'    : unit['pilot_sandbox'], 
+                       'unit'     : unit['unit_sandbox'],
+                       'pilot'    : unit['pilot_sandbox'],
                        'resource' : unit['resource_sandbox']}
         tgt_context = {'pwd'      : os.getcwd(),                # !!!
-                       'unit'     : unit['unit_sandbox'], 
-                       'pilot'    : unit['pilot_sandbox'], 
+                       'unit'     : unit['unit_sandbox'],
+                       'pilot'    : unit['pilot_sandbox'],
                        'resource' : unit['resource_sandbox']}
 
         # url used for cache (sandbox url w/o path)
@@ -126,7 +126,7 @@ class Default(UMGRStagingOutputComponent):
         key      = str(tmp)
 
         if key not in self._cache:
-            self._cache[key] = rs.filesystem.Directory(tmp, 
+            self._cache[key] = rs.filesystem.Directory(tmp,
                     session=self._session)
         saga_dir = self._cache[key]
 

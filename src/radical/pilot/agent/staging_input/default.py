@@ -34,9 +34,9 @@ class Default(AgentStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg):
 
-        AgentStagingInputComponent.__init__(self, cfg, session)
+        AgentStagingInputComponent.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------

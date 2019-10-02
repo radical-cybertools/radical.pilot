@@ -37,9 +37,9 @@ class Default(AgentStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg):
 
-        AgentStagingOutputComponent.__init__(self, cfg, session)
+        AgentStagingOutputComponent.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------

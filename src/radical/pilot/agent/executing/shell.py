@@ -26,9 +26,9 @@ class Shell(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg):
 
-        AgentExecutingComponent.__init__ (self, cfg, session)
+        AgentExecutingComponent.__init__ (self, cfg)
 
 
     # --------------------------------------------------------------------------

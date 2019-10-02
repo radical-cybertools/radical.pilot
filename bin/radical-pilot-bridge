@@ -6,88 +6,134 @@ __license__   = "MIT"
 
 import os
 import sys
-import atexit
-import signal
+import time
 
 import setproctitle  as spt
 
 import radical.utils as ru
 
 
-def term(uid):
-    sys.stderr.write('bridge %s terminated\n' % uid)
-    sys.stderr.flush()
+# ------------------------------------------------------------------------------
+#
+def main():
+    '''
+    This thin wrapper starts a ZMQ communication bridge.
+    It expects a single argument: a path to a config file to use for the
+    bridge's configuration.  The config must contain
+
+      - uid : UID of bridge instance (unique to the hosting session)
+      - name: name of the bridge
+      - kind: type of bridge (`pubsub` or `queue`)
+
+    If the config contains a `heartbeat` section, that section must be formatted
+    as follows:
+
+        {
+          "from"    : "uid",
+          "pub"     : "addr_pub",
+          "sub"     : "addr_sub",
+          "interval": <float>,
+          "timeout" : <float>
+        }
+
+    If that section exists, the process will daemonize and heartbeats are used
+    to manage the bridge lifetime: the lifetime of this bridge is then dependent
+    on receiving heartbeats from the given `uid`: after `timeout` seconds of no
+    heartbeats arriving, the bridge will terminate.  The bridge itself will
+    publish heartbeats every `interval` seconds on the heartbeat channel under
+    its own uid.
+
+    If the heartbeat section is not present in the config file, the components
+    lifetime is expected to be explicitly managed, i.e., that this wrapper
+    process hosting the bridge is terminated externally.
+
+
+    After startup, the bridge's communication endpoint URLs are stored in a
+    file `$uid.cfg`, in the form (shown for pubsub and queue type bridges):
+
+        {
+          "uid": "$bridge.uid",
+          "pub": "$addr_pub",
+          "sub": "$addr_sub"
+        }
+
+        {
+          "uid": "$bridge.uid",
+          "put": "$addr_put",
+          "get": "$addr_get"
+        }
+
+    That config is formed so that any publishers, subscribers, putters or getters
+    can obtain the respective bridge addresses automatically.  This also holds
+    for command line tools like:
+
+        > radical-pilot-bridge command.cfg                [1]
+        > radical-pilot-sub    command foo &              [2]
+        > radical-pilot-pub    command foo bar            [3]
+
+    [1] establishes the pubsub channel 'command'
+    [2] connect to the command channel, subscribe for topic `foo`
+    [3] connect to the command channel, send messages for topic `foo`
+    '''
+
+    fname = sys.argv[1]
+    cfg   = ru.Config(path=fname)
+    for k in ['uid', 'kind', 'session_pwd']:
+        assert(k in cfg), 'missing %s in config %s' % (k, fname)
+
+    log = ru.Logger(name=cfg.uid, ns='radical.pilot', path=cfg.session_pwd)
+
+    uid = cfg.uid
+    spt.setproctitle('rp.%s' % uid)
+
+    ret = ru.daemonize()
+    log.debug('daemonize: %s', ret)
+    if ret:
+        log.debug('daemonize: exit %s', ret)
+        sys.exit(0)
+    else:
+        log.debug('daemonize: continue')
+
+    # create the bridge
+    bridge  = ru.zmq.Bridge.create(cfg)
+    fname   = '%s/%s.cfg' % (cfg.session_pwd, uid)
+    cfg_out = {'uid'          : bridge.uid,
+               bridge.type_in : str(bridge.addr_in),
+               bridge.type_out: str(bridge.addr_out)}
+
+    ru.write_json(cfg_out, fname)
+
+    bridge.start()
+
+    hb_pub = ru.zmq.Publisher('heartbeat', cfg.heartbeat.addr_pub)
+    hb     = ru.Heartbeat(uid=bridge.uid,
+                          timeout = cfg.heartbeat.timeout,
+                          interval= cfg.heartbeat.interval)
+
+    # FIXME: wait for a session heartbeat
+    while True:
+
+        hb.beat()
+        hb_pub.put('heartbeat', msg={'uid' : uid})
+
+        if not bridge.alive:
+            sys.exit(1)
+
+        time.sleep(cfg.heartbeat.interval)
+
 
 
 # ------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
-    '''
-    This thin wrapper starts a ZMQ communication bridge.
-    It expects two arguments:
-
-      - fcgf: path to a config file to use
-
-    After startup, it will write the bridge's communication endpoint URLs
-    to the file `$name.url`, in the form:
-
-        SUB: $addr_in
-        PUB: $addr_out
-
-    The `SUB` address is to be used for subscribers, the `PUB` address for
-    publishers -- but the respective RP classes will dig the correct addresses
-    from that file.
-
-        > radical-pilot-bridge command.cfg                [1]
-        > radical-pilot-sub    command foo bar            [2]
-        > radical-pilot-pub    command foo_1 foo_2 bar_1  [3]
-        > radical-pilot-sub    command bar baz pop        [4]
-        > radical-pilot-pub    command bar_2 baz_1 buz_1  [5]
-
-    [1] establishes the pubsub channel 'command'
-    [2] and [4] connect to the command channel, subscribe for certain topics
-    [3] and [5] connect to the command channel, send messages for some topics
-
-    Note that the `buz_1` messages will never be received [5], and that the
-    `pop` subscriber [4] will get no messages for that topic.
-    '''
 
     if len(sys.argv) != 2:
         sys.stderr.write('error: argument error\n'
                          'usage: %s <cfg_file>\n\n' % sys.argv[0])
         raise RuntimeError('argument error: %s' % sys.argv)
 
-    cfg = ru.read_json(sys.argv[1])
-    uid = cfg['uid']
-
-    ru_def = ru.DefaultConfig()
-    for key, val in cfg.get('ru_def', dict()).iteritems():
-        ru_def[key] = val
-
-    if  os.path.exists(cfg['fpid']) or \
-        os.path.exists(cfg['furl']) :
-        raise RuntimeError('bridge already running: %s' % (uid))
-
-    spt.setproctitle('rp.%s' % uid)
-
-  # ru.pid_watcher(pid=cfg.get('ppid'), uid=uid)
-    atexit.register(term)
-
-    # create the bridge
-    bridge = ru.zmq.Bridge.create(cfg)
-    bridge.start()
-
-    # report pid
-    with open(cfg['fpid'], 'w') as fout:
-        fout.write('%-3s %s\n' % ('PID', os.getpid()))
-
-    # report addresses
-    with open(cfg['furl'], 'w') as fout:
-        fout.write('%-3s %s\n' % (bridge.type_in,  bridge.addr_in ))
-        fout.write('%-3s %s\n' % (bridge.type_out, bridge.addr_out))
-        fout.flush()
-
-    bridge.wait()
+    ru.daemonize(main=main)
+    sys.exit(0)
 
 
 # ------------------------------------------------------------------------------

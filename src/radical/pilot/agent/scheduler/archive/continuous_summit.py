@@ -87,7 +87,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         self.nodes = None
         self._tag_history = dict()
 
-        AgentSchedulingComponent.__init__(self, cfg, session)
+        AgentSchedulingComponent.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
@@ -260,7 +260,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         #                     'uid'     : node_uid,
         #                     'core_map': core_map,
         #                     'gpu_map' : gpu_map,
-        #                     'lfs'     : {'size': lfs, 
+        #                     'lfs'     : {'size': lfs,
         #                                  'path': self._lrms_lfs_per_node['path']
         #                                 }
         #                    }],
@@ -269,7 +269,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         #          'lfs_per_node'   : self._lrms_lfs_per_node,
         #          'lm_info'        : self._lrms_lm_info
         #          }
-        # 
+        #
         # self.nodes = [{
         #                   'name'    : 'node_1',
         #                   'uid'     : xxxx,
@@ -549,7 +549,7 @@ class ContinuousSummit(AgentSchedulingComponent):
                     return [], [], None
 
                 # If we can use this node, then we visit each socket of the node and
-                # determine the number of continuous core_chunks that can be use on the 
+                # determine the number of continuous core_chunks that can be use on the
                 # socket till we either run out of continuous cores or have acquired
                 # the requested number of cores.
                 usable_cores = 0
@@ -588,7 +588,7 @@ class ContinuousSummit(AgentSchedulingComponent):
 
         # Maximum number of processes allocatable on a socket
         if self._cross_socket_threads:
-            max_procs_on_socket = [num_procs['cores'] 
+            max_procs_on_socket = [num_procs['cores']
                                    for _ in range(self._lrms_sockets_per_node)]
             self._log.debug('max_procs_on_socket %s', max_procs_on_socket)
 
@@ -776,7 +776,7 @@ class ContinuousSummit(AgentSchedulingComponent):
                             'uid'     : node_uid,
                             'core_map': core_map,
                             'gpu_map' : gpu_map,
-                            'lfs'     : {'size': lfs, 
+                            'lfs'     : {'size': lfs,
                                          'path': self._lrms_lfs_per_node['path']
                                         }
                            }],
@@ -962,7 +962,7 @@ class ContinuousSummit(AgentSchedulingComponent):
                                    'uid'     : node_uid,
                                    'core_map': core_map,
                                    'gpu_map' : gpu_map,
-                                   'lfs'     : {'size': lfs, 
+                                   'lfs'     : {'size': lfs,
                                                 'path': lfs_path}})
 
             alloced_cores += len(cores)

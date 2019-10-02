@@ -24,7 +24,7 @@ class ShellFS(AgentExecutingComponent):
     #
     def __init__(self, cfg, session):
 
-        AgentExecutingComponent.__init__ (self, cfg, session)
+        AgentExecutingComponent.__init__ (self, cfg)
 
 
     # --------------------------------------------------------------------------

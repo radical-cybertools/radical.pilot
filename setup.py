@@ -227,9 +227,11 @@ setup_args = {
     'packages'           : find_packages('src'),
     'package_dir'        : {'': 'src'},
     'scripts'            : [
+                            'bin/radical-pilot-bridge',
                             'bin/radical-pilot-bson2json',
                             'bin/radical-pilot-cleanup',
                             'bin/radical-pilot-close-session',
+                            'bin/radical-pilot-component',
                             'bin/radical-pilot-create-static-ve',
                             'bin/radical-pilot-deploy-ompi.sh',
                             'bin/radical-pilot-fetch-db',

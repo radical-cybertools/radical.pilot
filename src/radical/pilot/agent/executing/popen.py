@@ -30,9 +30,9 @@ class Popen(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg):
 
-        AgentExecutingComponent.__init__ (self, cfg, session)
+        AgentExecutingComponent.__init__ (self, cfg)
 
         self._watcher   = None
         self._terminate = threading.Event()

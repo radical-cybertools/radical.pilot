@@ -19,9 +19,9 @@ class RoundRobin(UMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg):
 
-        UMGRSchedulingComponent.__init__(self, cfg, session)
+        UMGRSchedulingComponent.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------

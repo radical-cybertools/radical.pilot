@@ -15,6 +15,210 @@ from ..          import states         as rps
 
 # ------------------------------------------------------------------------------
 #
+class ComponentManager(object):
+
+    def __init__(self, session, cfg):
+
+        self._cfg = ru.Config('radical.pilot.cmgr', cfg=cfg)
+        self._sid = self._cfg.session_id
+        self._uid = ru.generate_id('cmgr', ns=self._sid)
+        self._log = session._get_logger(self._uid)
+
+        # every ComponentManager runs a HB pubsub bridge in a separate thread.
+        # That HB channel should be used by all components and bridges created
+        # under this CMGR.
+        bcfg = {'channel'   : 'heartbeat',
+                'type'      : 'pubsub',
+                'uid'       : self._uid,
+                'stall_hwm' : 1,
+                'bulk_size' : 0}
+        self._hb_bridge = ru.zmq.PubSub(bcfg)
+        self._hb_bridge.start()
+
+        self._cfg.heartbeat.addr_pub = str(self._hb_bridge.addr_pub)
+        self._cfg.heartbeat.addr_sub = str(self._hb_bridge.addr_sub)
+
+        # runs a HB monitor on that channel
+        self._hb = ru.Heartbeat(uid=self.uid,
+                                timeout=self._cfg.heartbeat.timeout,
+                                interval=self._cfg.heartbeat.interval,
+                                cb=self._hb_cb,
+                                term_cb=self._hb_term,
+                                log=self._log)
+
+        def hb_sub(topic, msg):
+            self._log.debug('=== hb_sub [%s][%s]', topic, msg)
+            assert(topic == 'heartbeat'), '--%s--' % topic
+            self._hb.beat(uid=msg['uid'])
+
+        ru.zmq.Subscriber(channel='heartbeat', url=self._cfg.heartbeat.addr_sub,
+                          topic='heartbeat', cb=hb_sub, log=self._log)
+
+        # start communication bridges and components.
+        self._bridges    = self._start_bridges()
+        self._components = self._start_components()
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def uid(self):
+        return self._uid
+
+
+    # --------------------------------------------------------------------------
+    #
+    def close(self):
+
+        # we close by simply stopping the heartbeat manager and closing the HB
+        # pubsub bridge - all spawned bridges and components should time out
+        # quickly.
+
+        for comp in self._components:
+            self._log.debug("cmgr %s closes comp   %s", self._uid, comp.uid)
+            comp.stop()
+            comp.join()
+            self._log.debug("cmgr %s closed comp   %s", self._uid, comp.uid)
+
+        for bridge in self._bridges:
+            self._log.debug("cmgr %s closes bridge %s", self._uid, bridge.uid)
+            bridge.stop()
+            bridge.join()
+            self._log.debug("cmgr %s closed bridge %s", self._uid, bridge.uid)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _hb_cb(self):
+
+        # FIXME: check term condition
+        self._hb.beat()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _hb_term(self, uid=None):
+
+        print('hb_term: %s' % uid)
+        return False  # did not recover
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _start_bridges(self):
+        '''
+        check if any bridges are defined under `cfg['bridges']` and start them
+        '''
+
+        uids  = list()
+        for bname, bcfg in self._cfg.get('bridges', {}).items():
+
+            bcfg.uid         = ru.generate_id(bname)
+            bcfg.channel     = bname
+            bcfg.session_uid = self._cfg.session_uid
+            bcfg.session_pwd = self._cfg.session_pwd
+            bcfg.heartbeat   = self._cfg.heartbeat
+
+            fname = '%s/%s.json' % (self._cfg.session_pwd, bcfg.uid)
+            bcfg.write(fname)
+
+            self._log.info('create  bridge %s [%s]', bname, bcfg.uid)
+
+            ret, out, err = ru.sh_callout('radical-pilot-bridge %s' % fname)
+            self._log.debug('=== callout done: %s, %s, %s', ret, out, err)
+
+            uids.append(bcfg.uid)
+            self._log.info('created bridge %s [%s]', bname, bcfg.uid)
+
+        # all bridges should start now, for their heartbeats
+        # to appear.
+        failed = self._hb.wait_startup(uids, timeout=1.0)
+        if failed:
+            raise RuntimeError('could not start all bridges %s' % failed)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def start_components(self):
+        '''
+        `start_components()` is very similar to `start_bridges()`, in that it
+        interprets a given configuration and creates all listed component
+        instances.  Components are, however,  *always* created, independent of
+        any existing instances.
+
+        This method will return a list of created component instances.  It is up
+        to the callee to watch those components for health and to terminate them
+        as needed.
+        '''
+
+        # ----------------------------------------------------------------------
+        # TODO:  We keep this static typemap for component startup. We should
+        #        derive that typemap from rp module inspection via an
+        #        `ru.PluginManager`.
+        #
+        # NOTE:  I'd rather have this as class data than as stack data, but
+        #        python stumbles over circular imports at that point :/
+        #
+        # FIXME: this goes into the daemonizer script
+        #
+        from .. import worker as rpw
+        from .. import pmgr   as rppm
+        from .. import umgr   as rpum
+        from .. import agent  as rpa
+
+        _ctypemap = {rpc.UPDATE_WORKER                  : rpw.Update,
+
+                     rpc.PMGR_LAUNCHING_COMPONENT       : rppm.Launching,
+
+                     rpc.UMGR_STAGING_INPUT_COMPONENT   : rpum.Input,
+                     rpc.UMGR_SCHEDULING_COMPONENT      : rpum.Scheduler,
+                     rpc.UMGR_STAGING_OUTPUT_COMPONENT  : rpum.Output,
+
+                     rpc.AGENT_STAGING_INPUT_COMPONENT  : rpa.Input,
+                     rpc.AGENT_SCHEDULING_COMPONENT     : rpa.Scheduler,
+                     rpc.AGENT_EXECUTING_COMPONENT      : rpa.Executing,
+                     rpc.AGENT_STAGING_OUTPUT_COMPONENT : rpa.Output
+                    }
+        # ----------------------------------------------------------------------
+
+        cspec = self._cfg.get('components', {})
+        self._log.debug('start components: %s', pprint.pformat(cspec))
+
+        # start components
+        for cname,ccfg in cspec.items():
+
+            if cname not in _ctypemap:
+                raise ValueError('unknown component type (%s)' % cname)
+
+            cnum  = ccfg.get('count', 1)
+            ctype = _ctypemap[cname]
+
+            self._log.debug('start %s component(s) %s', cnum, cname)
+
+            for i in range(cnum):
+
+                # for components, we pass on the original cfg (or rather a copy
+                # of that), and merge the component's config section into it
+                tmp_cfg = copy.deepcopy(self._cfg)
+                tmp_cfg['number'] = i
+                tmp_cfg['cname']  = cname
+                tmp_cfg['owner']  = self._uid
+
+                # avoid recursion
+                tmp_cfg['bridges']    = dict()
+                tmp_cfg['components'] = dict()
+
+                # merge the component config section (overwrite)
+                ru.dict_merge(tmp_cfg, ccfg, ru.OVERWRITE)
+
+                comp = ctype.create(tmp_cfg)
+                comp.start()
+
+                self._log.info('%-30s starts %s',  tmp_cfg['owner'], comp.uid)
+
+
+# ------------------------------------------------------------------------------
+#
 class Component(object):
     '''
     This class provides the basic structure for any RP component which operates
@@ -124,173 +328,6 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    @staticmethod
-    def start_bridges(cfg, log):
-        '''
-        Check the given config, and specifically check if any bridges are
-        defined under `cfg['bridges']`.  If that is the case, we check
-        if those bridges have endpoints documented.  If so, we assume they are
-        running, and that's fine.  If not, we start them and add the respective
-        enspoint information to the config.
-
-        This method will return a list of created bridge instances.  It is up to
-        the callee to watch those bridges for health and to terminate them as
-        needed.
-        '''
-        # TODO: reroute to daemonizer
-
-        bspec = cfg.get('bridges', {})
-        log.debug('start bridges   : %s', pprint.pformat(bspec))
-
-        if not bspec:
-            # nothing to do
-            return list()
-
-        # start all bridges which don't yet have an address
-        bridges = list()
-        for bname,bcfg in bspec.items():
-
-            addr_in  = bcfg.get('addr_in')
-            addr_out = bcfg.get('addr_out')
-
-            if addr_in:
-                # bridge is running
-                assert(addr_out), 'addr_out not set, invalid bridge'
-                continue
-
-            # bridge needs starting
-            log.info('create bridge %s', bname)
-
-            bcfg_clone = copy.deepcopy(bcfg)
-            bcfg_clone['name'] = bname  # needed?
-            bcfg_clone['uid']  = ru.generate_id(bname)
-
-            # The type of bridge (queue or pubsub) is derived from the name.
-            if bname.endswith('queue'):
-                bridge = ru.zmq.Queue(bcfg_clone)
-
-            elif bname.endswith('pubsub'):
-                bridge = ru.zmq.PubSub(bcfg_clone)
-
-            else:
-                raise ValueError('unknown bridge type for %s' % bname)
-
-            # bridge addresses are URLs
-            bcfg['addr_in']  = str(bridge.addr_in)
-            bcfg['addr_out'] = str(bridge.addr_out)
-
-            # we keep a handle to the bridge for later shutdown
-            bridges.append(bridge)
-
-            # make bridge address part of the
-            # session config
-            log.info('created bridge %s (%s)', bname, bridge.name)
-
-        return bridges
-
-
-    # --------------------------------------------------------------------------
-    #
-    @staticmethod
-    def start_components(cfg, log):
-        '''
-        `start_components()` is very similar to `start_bridges()`, in that it
-        interprets a given configuration and creates all listed component
-        instances.  Components are, however,  *always* created, independent of
-        any existing instances.
-
-        This method will return a list of created component instances.  It is up
-        to the callee to watch those components for health and to terminate them
-        as needed.
-        '''
-
-        # FIXME: reroute to daemonizer script
-
-        # ----------------------------------------------------------------------
-        # TODO:  We keep this static typemap for component startup. We should
-        #        derive that typemap from rp module inspection via an
-        #        `ru.PluginManager`.
-        #
-        # NOTE:  I'd rather have this as class data than as stack data, but
-        #        python stumbles over circular imports at that point :/
-        #
-        # FIXME: this goes into the daemonizer
-        #
-        from .. import worker as rpw
-        from .. import pmgr   as rppm
-        from .. import umgr   as rpum
-        from .. import agent  as rpa
-
-        _ctypemap = {rpc.UPDATE_WORKER                  : rpw.Update,
-
-                     rpc.PMGR_LAUNCHING_COMPONENT       : rppm.Launching,
-
-                     rpc.UMGR_STAGING_INPUT_COMPONENT   : rpum.Input,
-                     rpc.UMGR_SCHEDULING_COMPONENT      : rpum.Scheduler,
-                     rpc.UMGR_STAGING_OUTPUT_COMPONENT  : rpum.Output,
-
-                     rpc.AGENT_STAGING_INPUT_COMPONENT  : rpa.Input,
-                     rpc.AGENT_SCHEDULING_COMPONENT     : rpa.Scheduler,
-                     rpc.AGENT_EXECUTING_COMPONENT      : rpa.Executing,
-                     rpc.AGENT_STAGING_OUTPUT_COMPONENT : rpa.Output
-                    }
-        # ----------------------------------------------------------------------
-
-        cspec  = cfg.get('components', {})
-        log.debug('start components: %s', pprint.pformat(cspec))
-
-        if not cspec:
-            # nothing to do
-            return list()
-
-        # merge the session's bridge information (preserve) into the given
-        # config
-        # FIXME:
-      # ru.dict_merge(cfg['bridges'], session._cfg.get('bridges', {}),
-      #                                                             ru.PRESERVE)
-        # start components
-        components = list()
-        for cname,ccfg in cspec.items():
-
-            cnum = ccfg.get('count', 1)
-
-            log.debug('start %s component(s) %s', cnum, cname)
-
-            if cname not in _ctypemap:
-                raise ValueError('unknown component type (%s)' % cname)
-
-            ctype = _ctypemap[cname]
-            for i in range(cnum):
-
-                # for components, we pass on the original cfg (or rather a copy
-                # of that), and merge the component's config section into it
-                tmp_cfg = copy.deepcopy(cfg)
-                tmp_cfg['cname']      = cname
-                tmp_cfg['number']     = i
-              # tmp_cfg['owner']      = cfg.get('uid', session.uid)
-              # FIXME
-                tmp_cfg['owner']      = cfg.get('uid', 'root')
-
-                # avoid recursion - but keep bridge information around.
-                tmp_cfg['agents']     = dict()
-                tmp_cfg['components'] = dict()
-
-                # merge the component config section (overwrite)
-                ru.dict_merge(tmp_cfg, ccfg, ru.OVERWRITE)
-
-                comp = ctype.create(tmp_cfg)
-                comp.start()
-
-                log.info('%-30s starts %s',  tmp_cfg['owner'], comp.uid)
-                components.append(comp)
-
-        # components are started -- we return the handles to the callee for
-        # lifetime management
-        return components
-
-
-    # --------------------------------------------------------------------------
-    #
     def __init__(self, cfg):
         '''
         This constructor MUST be called by inheriting classes, as it specifies
@@ -323,8 +360,10 @@ class Component(object):
         #       to create it's own set of locks in self.initialize_child
         #       / self.initialize_parent!
 
+        from ..session   import Session
+
         self._cfg     = copy.deepcopy(cfg)
-        self._session = ru.Session(cfg=self._cfg, _primary=False)
+        self._session = Session(cfg=self._cfg, _primary=False)
 
         # we always need an UID
         if not hasattr(self, '_uid'):
@@ -369,12 +408,6 @@ class Component(object):
         self._out  = None
         self._poll = None
         self._ctx  = None
-
-        # initialize the Process base class for later fork.
-        super(Component, self).__init__(name=self._uid, log=self._log)
-
-        # make sure we bootstrapped ok
-        self._session._to_stop.append(self)
 
 
     # --------------------------------------------------------------------------
@@ -893,7 +926,6 @@ class Component(object):
             self._threads[name] = idler
 
         self.register_watchable(idler)
-        self._session._to_stop.append(idler)
         self._log.debug('%s registered idler %s', self.uid, name)
 
 
@@ -1066,7 +1098,6 @@ class Component(object):
             self._threads[name] = subscriber
 
         self.register_watchable(subscriber)
-        self._session._to_stop.append(subscriber)
         self._log.debug('%s registered %s on %s', self.uid, pubsub, name)
 
 
@@ -1366,9 +1397,9 @@ class Worker(Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session=None):
+    def __init__(self, cfg):
 
-        Component.__init__(self, cfg=cfg, session=session)
+        Component.__init__(self, cfg=cfg)
 
 
 # ------------------------------------------------------------------------------

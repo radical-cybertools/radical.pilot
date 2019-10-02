@@ -36,12 +36,12 @@ class UMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg):
 
         self._uid = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
                                    ru.ID_CUSTOM)
 
-        rpu.Component.__init__(self, cfg, session)
+        rpu.Component.__init__(self, cfg)
 
         self._umgr = self._owner
 

@@ -222,7 +222,7 @@ class AgentSchedulingComponent(rpu.Component):
         else:
             self._uniform_wl = False
 
-        rpu.Component.__init__(self, cfg, session)
+        rpu.Component.__init__(self, cfg)
 
 
 

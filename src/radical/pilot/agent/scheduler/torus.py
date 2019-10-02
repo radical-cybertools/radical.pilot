@@ -37,7 +37,7 @@ class Torus(AgentSchedulingComponent):
         self.nodes            = None
         self._cores_per_node  = None
 
-        AgentSchedulingComponent.__init__(self, cfg, session)
+        AgentSchedulingComponent.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------

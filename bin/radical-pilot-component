@@ -4,18 +4,78 @@ __copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import os
 import sys
 
-import radical.utils       as ru
-import radical.pilot.utils as rpu
+import setproctitle  as spt
+
+import radical.utils as ru
 
 
 # ------------------------------------------------------------------------------
 #
 def main():
+    '''
+    This thin wrapper starts a RCT component
+    It expects a single argument: a path to a config file to use for the
+    component's configuration.  The config must contain
 
-    comp = rpu.Component.create(sys.argv[1]))
-    comp.run()
+      - uid : UID of component instance (unique to the hosting session)
+      - name: name of the component
+      - kind: type of component
+
+    If the config contains a `heartbeat` section, that section must be formatted
+    as follows:
+
+        {
+          "from"    : "uid",
+          "pub"     : "addr_pub",
+          "sub"     : "addr_sub",
+          "interval": <float>,
+          "timeout" : <float>
+        }
+
+    If that section exists, the process will daemonize and heartbeats are used
+    to manage the bridge lifetime: the lifetime of this bridge is then dependent
+    on receiving heartbeats from the given `uid`: after `timeout` seconds of no
+    heartbeats arriving, the bridge will terminate.  The bridge itself will
+    publish heartbeats every `interval` seconds on the heartbeat channel under
+    its own uid.
+
+    If the heartbeat section is not present in the config file, the components
+    lifetime is expected to be explicitly managed, i.e., that this wrapper
+    process hosting the bridge is terminated externally.
+
+    The config file may contain other entries which are passed to the component
+    and are interpreted by the component implementation.
+    '''
+
+    fname = '%s/%s' % (os.getcwd(), sys.argv[1])
+    cfg   = ru.Config(cfg=fname)
+    for k in ['uid', 'name', 'type']:
+        assert(k in cfg), 'missing %s in config %s' % (k, fname)
+
+    uid = cfg.uid
+    spt.setproctitle('rp.%s' % uid)
+
+    if cfg.heartbeat:
+        ru.daemonize()
+
+    comp = rpu.Component.create(cfg)
+
+    comp.start()
+
+    if cfg.heartbeat:
+        hb_pub = ru.zmq.Publisher(cfg.heartbeat.addr_pub)
+        hb     = ru.Heartbeat(cfg.heartbeat, cb=hb_put)
+        while True:
+            if comp.wait(timeout=cfg.heartbeat.interval):
+                sys.exit(1)
+            hb.beat()
+            hb_pub.put('heartbeat', {'uid' : uid})
+
+    else:
+        comp.wait()
 
     sys.exit(0)
 

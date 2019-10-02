@@ -43,9 +43,9 @@ class Default(UMGRStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg):
 
-        UMGRStagingInputComponent.__init__(self, cfg, session)
+        UMGRStagingInputComponent.__init__(self, cfg)
 
 
     # --------------------------------------------------------------------------
