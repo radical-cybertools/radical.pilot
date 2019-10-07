@@ -120,6 +120,20 @@
         "cores"    : 96
     },
 
+    "xede.stampede2_ssh"  : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "debug",
+        "schema"   : "gsissh",
+        "cores"    : 96
+    },
+
+    "xede.stampede2_srun"  : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "debug",
+        "schema"   : "gsissh",
+        "cores"    : 96
+    },
+
     "ncar.cheyenne": {
 	    "project"  : "URTG0014",
 	    "queue"    : "regular",
