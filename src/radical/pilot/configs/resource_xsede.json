@@ -213,7 +213,7 @@
         "cu_pre_exec"                 : ["module restore"]
     },
 
-    "stampede2_ssh": {
+    "stampede2_srun": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["gsissh", "ssh"],
