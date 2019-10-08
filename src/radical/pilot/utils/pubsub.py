@@ -12,6 +12,7 @@ import msgpack
 import Queue           as pyq
 import setproctitle    as spt
 import multiprocessing as mp
+import threading       as mt
 
 import radical.utils   as ru
 
