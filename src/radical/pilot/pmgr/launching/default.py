@@ -631,12 +631,15 @@ class Default(PMGRLaunchingComponent):
         cmd = "cd %s && tar zchf %s *" % (tmp_dir, tar_tgt)
         self._log.debug('cmd: %s', cmd)
         try:
-            out = sp.check_output(["/bin/sh", "-c", cmd], stderr=sp.STDOUT)
+            out, err, ret = ru.sh_callout(cmd, shell=True)
         except Exception:
-            self._log.exception('callout failed: %s', out)
+            self._log.exception('callout failed')
             raise
-        else:
+
+        if ret:
             self._log.debug('out: %s', out)
+            self._log.debug('err: %s', err)
+            raise RuntimeError('callout failed')
 
         # remove all files marked for removal-after-pack
         for ft in ft_list:
