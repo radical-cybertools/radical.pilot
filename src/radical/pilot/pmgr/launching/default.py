@@ -45,7 +45,7 @@ LOCAL_SCHEME   = 'file'
 BOOTSTRAPPER_0 = "bootstrap_0.sh"
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Default(PMGRLaunchingComponent):
 
@@ -228,7 +228,7 @@ class Default(PMGRLaunchingComponent):
 
             fs.copy(src, tgt, flags=flags)
 
-            sd['pmgr_state'] = rps.DONE
+            sd['state'] = rps.DONE
 
             self._prof.prof('staging_in_stop', uid=pid, msg=did)
 
@@ -254,54 +254,63 @@ class Default(PMGRLaunchingComponent):
         # Iterate over all directives
         for sd in sds:
 
-            # TODO: respect flags in directive
+            try:
 
-            action = sd['action']
-            flags  = sd['flags']
-            did    = sd['uid']
-            src    = sd['source']
-            tgt    = sd['target']
+                # TODO: respect flags in directive
 
-            assert(action in [COPY, LINK, MOVE, TRANSFER])
+                action = sd['action']
+                flags  = sd['flags']
+                did    = sd['uid']
+                src    = sd['source']
+                tgt    = sd['target']
 
-            self._prof.prof('staging_out_start', uid=pid, msg=did)
+                self._log.debug('handle output: %s', did)
 
-            src = complete_url(src, src_context, self._log)
-            tgt = complete_url(tgt, tgt_context, self._log)
+                assert(action in [COPY, LINK, MOVE, TRANSFER])
 
-            if action in [COPY, LINK, MOVE]:
-                self._prof.prof('staging_out_fail', uid=pid, msg=did)
-                raise ValueError("invalid action '%s' on pilot level" % action)
+                self._prof.prof('staging_out_start', uid=pid, msg=did)
 
-            self._log.info('transfer %s to %s', src, tgt)
+                src = complete_url(src, src_context, self._log)
+                tgt = complete_url(tgt, tgt_context, self._log)
 
-            # FIXME: make sure that tgt URL points to the right resource
-            # FIXME: honor sd flags if given (recursive...)
-            flags = rsfs.CREATE_PARENTS
+                if action in [COPY, LINK, MOVE]:
+                    self._prof.prof('staging_out_fail', uid=pid, msg=did)
+                    raise ValueError("invalid action '%s' on pilot level" % action)
 
-            if os.path.isdir(src.path):
-                flags |= rsfs.RECURSIVE
+                self._log.info('transfer %s to %s', src, tgt)
 
-            # Define and open the staging directory for the pilot
+                # FIXME: make sure that tgt URL points to the right resource
+                # FIXME: honor sd flags if given (recursive...)
+                flags = rsfs.CREATE_PARENTS
 
-            # url used for cache (sandbox url w/o path)
-            tmp      = rs.Url(pilot['pilot_sandbox'])
-            tmp.path = '/'
-            key = str(tmp)
+                if os.path.isdir(src.path):
+                    flags |= rsfs.RECURSIVE
 
-            self._log.debug("rs.file.Directory ('%s')", key)
+                # Define and open the staging directory for the pilot
 
-            with self._cache_lock:
-                if key in self._saga_fs_cache:
-                    fs = self._saga_fs_cache[key]
+                # url used for cache (sandbox url w/o path)
+                tmp      = rs.Url(pilot['pilot_sandbox'])
+                tmp.path = '/'
+                key = str(tmp)
 
-                else:
-                    fs = rsfs.Directory(key, session=self._session)
-                    self._saga_fs_cache[key] = fs
+                self._log.debug("rs.file.Directory ('%s')", key)
 
-            fs.copy(src, tgt, flags=flags)
+                with self._cache_lock:
+                    if key in self._saga_fs_cache:
+                        fs = self._saga_fs_cache[key]
 
-            sd['pmgr_state'] = rps.DONE
+                    else:
+                        fs = rsfs.Directory(key, session=self._session)
+                        self._saga_fs_cache[key] = fs
+
+                fs.copy(src, tgt, flags=flags)
+
+                sd['state'] = rps.DONE
+
+            except:
+                sd['state'] = rps.FAILED
+
+            self._log.debug('done: %s: %s', sd['uid'], sd['state'])
 
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'pilot_staging_output_result',
                                               'arg': {'pilot': pilot,
