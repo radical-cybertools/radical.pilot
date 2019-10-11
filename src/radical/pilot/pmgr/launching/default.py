@@ -669,9 +669,12 @@ class Default(PMGRLaunchingComponent):
 
         # we need the session sandbox url, but that is (at least in principle)
         # dependent on the schema to use for pilot startup.  So we confirm here
-        # that the bulk is consistent wrt. to the schema.
+        # that the bulk is consistent wrt. to the schema.  Also include
+        # `staging_input` files and place them in the `staging_area`.
+        #
         # FIXME: if it is not, it needs to be splitted into schema-specific
         # sub-bulks
+        #
         schema = pd.get('access_schema')
         for pilot in pilots[1:]:
             assert(schema == pilot['description'].get('access_schema')), \
@@ -681,19 +684,39 @@ class Default(PMGRLaunchingComponent):
         session_sandbox = self._session._get_session_sandbox(pilots[0]).path
         session_sandbox = session_sandbox % expand
 
-
         # we will create the session sandbox before we untar, so we can use that
         # as workdir, and pack all paths relative to that session sandbox.  That
         # implies that we have to recheck that all URLs in fact do point into
         # the session sandbox.
+        #
+        # We also create a file `staging_output.json` for each pilot which
+        # contains the list of files to be tarred up and prepared for output
+        # staging
 
         ft_list = list()  # files to stage
         jd_list = list()  # jobs  to submit
         for pilot in pilots:
+
+            os.makedirs('%s/%s' % (tmp_dir, pilot['uid']))
+
             info = self._prepare_pilot(resource, rcfg, pilot, expand)
             ft_list += info['ft']
             jd_list.append(info['jd'])
             self._prof.prof('staging_in_start', uid=pilot['uid'])
+
+            for fname in ru.to_list(pilot['description'].get('input_staging')):
+                ft_list.append({'src': fname,
+                                'tgt': '%s/staging_area/%s'
+                                     % (pilot['uid'], os.path.basename(fname)),
+                                'rem': False})
+
+            output_staging = pilot['description'].get('output_staging')
+            self._log.debug('=== outputs: %s', output_staging)
+            if output_staging:
+                fname = '%s/%s/staging_output.txt' % (tmp_dir, pilot['uid'])
+                with open(fname, 'w') as fout:
+                    for entry in output_staging:
+                        fout.write('%s\n' % entry)
 
         for ft in ft_list:
             src     = os.path.abspath(ft['src'])
@@ -702,7 +725,9 @@ class Default(PMGRLaunchingComponent):
             tgt_dir = os.path.dirname(tgt)
 
             if tgt_dir.startswith('..'):
-                raise ValueError('staging target %s outside of pilot sandbox' % ft['tgt'])
+              # raise ValueError('staging target %s outside of pilot sandbox: %s' % (ft['tgt'], tgt))
+                tgt = ft['tgt']
+                tgt_dir = os.path.dirname(tgt)
 
             if not os.path.isdir('%s/%s' % (tmp_dir, tgt_dir)):
                 os.makedirs('%s/%s' % (tmp_dir, tgt_dir))
@@ -712,21 +737,24 @@ class Default(PMGRLaunchingComponent):
                 # handle a symlink to /dev/null)
                 open('%s/%s' % (tmp_dir, tgt), 'a').close()
             else:
-                os.symlink(src, '%s/%s' % (tmp_dir, tgt))
+                # use a shell callout to account for wildcard expansion
+                cmd = 'ln -s %s %s/%s' % (os.path.abspath(src), tmp_dir, tgt)
+                out, err, ret = ru.sh_callout(cmd, shell=True)
+                if ret:
+                    self._log.debug('out: %s', out)
+                    self._log.debug('err: %s', err)
+                    raise RuntimeError('callout failed: %s' % cmd)
+
+      # assert(False)
 
         # tar.  If any command fails, this will raise.
         cmd = "cd %s && tar zchf %s *" % (tmp_dir, tar_tgt)
-        self._log.debug('cmd: %s', cmd)
-        try:
-            out, err, ret = ru.sh_callout(cmd, shell=True)
-        except Exception:
-            self._log.exception('callout failed')
-            raise
+        out, err, ret = ru.sh_callout(cmd, shell=True)
 
         if ret:
             self._log.debug('out: %s', out)
             self._log.debug('err: %s', err)
-            raise RuntimeError('callout failed')
+            raise RuntimeError('callout failed: %s' % cmd)
 
         # remove all files marked for removal-after-pack
         for ft in ft_list:

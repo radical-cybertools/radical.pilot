@@ -577,14 +577,19 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def stage_out(self, directives):
+    def stage_out(self):
         '''
-        Stages the content of the staging directive into the pilot's
-        staging area
+        fetch `staging_output.tgz` from the pilot sandbox, and store in $PWD
         '''
 
-        # send the staging request to the pmg launcher
-        return self._pmgr._pilot_staging_output(self.as_dict(), directives)
+        try:
+            self._log.debug('=== stage_out')
+            psbox = self._session.get_fs_dir(self._pilot_sandbox)
+            psbox.copy('staging_output.tgz', self._client_sandbox)
+
+        except Exception:
+            self._log.exception('=== output staging failed')
+            raise
 
 
 # ------------------------------------------------------------------------------
