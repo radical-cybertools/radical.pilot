@@ -13,6 +13,7 @@ import msgpack
 import setproctitle    as spt
 import threading       as mt
 import multiprocessing as mp
+import threading       as mt
 
 import radical.utils   as ru
 
@@ -26,6 +27,7 @@ PUBSUB_PUB    = 'pub'
 PUBSUB_SUB    = 'sub'
 PUBSUB_BRIDGE = 'bridge'
 PUBSUB_ROLES  = [PUBSUB_PUB, PUBSUB_SUB, PUBSUB_BRIDGE]
+PUBSUB_TSTART = 1.0  # time needed to bootstrap a publisher
 
 _USE_MULTIPART   = True   # send [topic, data] as multipart message
 _BRIDGE_TIMEOUT  =     5  # how long to wait for bridge startup
@@ -49,8 +51,6 @@ def _uninterruptible(f, *args, **kwargs):
         cnt += 1
         try:
             return f(*args, **kwargs)
-        except zmq.ContextTerminated as e:
-            return None
         except zmq.ZMQError as e:
             if e.errno == errno.EINTR:
                 if cnt > 10:
@@ -82,17 +82,18 @@ class Pubsub(ru.Process):
         self._role    = role
         self._cfg     = copy.deepcopy(cfg)
         self._addr    = addr
-        self._lock    = mt.RLock()
+        self._lock    = mt.Lock()
+        self._tstart  = time.time()
 
         assert(self._role in PUBSUB_ROLES), 'invalid role %s' % self._role
 
         self._uid = "%s.%s" % (self._channel.replace('_', '.'), self._role)
         self._uid = ru.generate_id(self._uid)
-        self._log = self._session._get_logger(name=self._uid, level='DEBUG')
-                       # level=self._cfg.get('log_level'))
+        self._log = self._session._get_logger(name=self._uid,
+                         level=self._cfg.get('log_level'))
 
         # avoid superfluous logging calls in critical code sections
-        if self._log.getEffectiveLevel() == 10: # logging.DEBUG:
+        if self._log.getEffectiveLevel() == 10:  # logging.DEBUG:
             self._debug = True
         else:
             self._debug = False
@@ -208,8 +209,8 @@ class Pubsub(ru.Process):
         assert(self._role == PUBSUB_BRIDGE), 'only bridges can be started'
 
         self._uid = self._uid + '.child'
-        self._log = self._session._get_logger(name=self._uid, level='DEBUG')
-                       # level=self._cfg.get('log_level'))
+        self._log = self._session._get_logger(name=self._uid,
+                         level=self._cfg.get('log_level'))
 
         spt.setproctitle('rp.%s' % self._uid)
         self._log.info('start bridge %s on %s', self._uid, self._addr)
@@ -227,6 +228,11 @@ class Pubsub(ru.Process):
         self._out.hwm    = _HIGH_WATER_MARK
         self._out.bind(self._addr)
 
+        # start polling for messages
+        self._poll = zmq.Poller()
+        self._poll.register(self._in,  zmq.POLLIN)
+        self._poll.register(self._out, zmq.POLLIN)
+
         # communicate the bridge ports to the parent process
         _addr_in  = ru.to_string(self._in.getsockopt( zmq.LAST_ENDPOINT))
         _addr_out = ru.to_string(self._out.getsockopt(zmq.LAST_ENDPOINT))
@@ -235,11 +241,6 @@ class Pubsub(ru.Process):
         self._pqueue.put([_addr_in, _addr_out])
 
         self._log.info('bound bridge %s to %s : %s', self._uid, _addr_in, _addr_out)
-
-        # start polling for messages
-        self._poll = zmq.Poller()
-        self._poll.register(self._in,  zmq.POLLIN)
-        self._poll.register(self._out, zmq.POLLIN)
 
 
     # --------------------------------------------------------------------------
@@ -257,7 +258,9 @@ class Pubsub(ru.Process):
     #
     def work_cb(self):
 
-        _socks = dict(_uninterruptible(self._poll.poll, timeout=1000)) # timeout in ms
+        self._log.debug('=== work')
+        with self._lock:
+            _socks = dict(_uninterruptible(self._poll.poll, timeout=1000)) # timeout in ms
 
         if self._in in _socks:
 
@@ -271,8 +274,8 @@ class Pubsub(ru.Process):
             else:
                 msg = _uninterruptible(self._in.recv, flags=zmq.NOBLOCK)
                 _uninterruptible(self._out.send, msg)
-          # if self._debug:
-          #     self._log.debug("-> %s", pprint.pformat(msg))
+            if self._debug:
+                self._log.debug("-> %s", pprint.pformat(msg))
 
 
         if self._out in _socks:
@@ -287,8 +290,9 @@ class Pubsub(ru.Process):
             else:
                 msg = _uninterruptible(self._out.recv)
                 _uninterruptible(self._in.send, msg)
-          # if self._debug:
-          #     self._log.debug("<- %s", pprint.pformat(msg))
+
+            if self._debug:
+                self._log.debug("<- %s", pprint.pformat(msg))
 
         return True
 
@@ -299,10 +303,12 @@ class Pubsub(ru.Process):
 
         assert(self._role == PUBSUB_SUB), 'incorrect role on subscribe'
 
-        topic = topic.replace(' ', '_')
+        topic = ru.to_byte(topic.replace(' ', '_'))
 
-      # self._log.debug("~~ %s", topic)
-        _uninterruptible(self._q.setsockopt, zmq.SUBSCRIBE, ru.to_byte(topic))
+        self._log.debug("~~ %s", topic)
+
+        with self._lock:
+            _uninterruptible(self._q.setsockopt, zmq.SUBSCRIBE, topic)
 
 
     # --------------------------------------------------------------------------
@@ -312,17 +318,22 @@ class Pubsub(ru.Process):
         assert(self._role == PUBSUB_PUB), 'incorrect role on put'
         assert(isinstance(msg,dict)),     'invalide message type'
 
-      # self._log.debug("?> %s", pprint.pformat(msg)
+        # ensure the publisher is old enough to not loose messages
+        # see 'slow joiner' in http://zguide.zeromq.org/page:all
+        diff = time.time() - self._tstart
+        if diff < PUBSUB_TSTART:
+            time.sleep(PUBSUB_TSTART - diff)
+
+        self._log.debug("?> %s", pprint.pformat(msg))
 
         topic = ru.to_byte(topic.replace(' ', '_'))
         data  = msgpack.packb(msg)
 
-      # if self._debug:
-      #     self._log.debug("-> %s %s", topic, pprint.pformat(msg))
+        if self._debug:
+            self._log.debug("-> %s %s", topic, pprint.pformat(msg))
 
         if _USE_MULTIPART:
             with self._lock:
-              # self._log.debug("-> %s [%s]", topic, len(data))
                 _uninterruptible(self._q.send_multipart, [topic, data])
 
         else:
@@ -342,14 +353,15 @@ class Pubsub(ru.Process):
                 topic, data = _uninterruptible(self._q.recv_multipart)
 
         else:
-            raw = _uninterruptible(self._q.recv)
+            with self._lock:
+                raw = _uninterruptible(self._q.recv)
             topic, data = raw.split(' ', 1)
 
         msg = msgpack.unpackb(data, raw=False)  # we want non-byte types back
-      # self._log.debug("<- %s [%s]", topic, len(data))
 
-      # if self._debug:
-      #     self._log.debug("<- %s", ([topic, pprint.pformat(msg)]))
+        if self._debug:
+            self._log.debug("<- %s", ([topic, pprint.pformat(msg)]))
+
         return [topic, msg]
 
 
@@ -363,26 +375,17 @@ class Pubsub(ru.Process):
 
             if _USE_MULTIPART:
                 with self._lock:
-                    msg = _uninterruptible(self._q.recv_multipart,
+                    topic, data = _uninterruptible(self._q.recv_multipart,
                                                    flags=zmq.NOBLOCK)
-                    topic = msg[:-1]
-                    data  = msg[-1]
-
-                    if len(topic) != 1:
-                        raise ValueError('unexpected topic: [%s]', topic)
-
-                    topic = topic[0]
-
             else:
                 raw = _uninterruptible(self._q.recv)
                 topic, data = raw.split(' ', 1)
 
             msg = msgpack.unpackb(data, raw=False)
-          # self._log.debug("<- %s [%s]", topic, len(data))
 
+            if self._debug:
+                self._log.debug("<< %s", ([topic, pprint.pformat(msg)]))
 
-          # if self._debug:
-          #     self._log.debug("<< %s", ([topic, pprint.pformat(msg)]))
             return [topic, msg]
 
         else:

@@ -631,8 +631,9 @@ class Default(PMGRLaunchingComponent):
         out, err, ret = ru.sh_callout(cmd, shell=True)
 
         if ret:
-            raise RuntimeError('callout failed: %s', err)
-        self._log.debug('out: %s', out)
+            self._log.debug('out: %s', out)
+            self._log.debug('err: %s', err)
+            raise RuntimeError('callout failed')
 
         # remove all files marked for removal-after-pack
         for ft in ft_list:
