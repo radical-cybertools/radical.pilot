@@ -22,6 +22,7 @@
         "lrms"                        : "FORK",
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
+      # "agent_scheduler"             : "CONTINUOUS_COLO",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "FORK",
         "task_launch_method"          : "FORK",
@@ -32,7 +33,7 @@
         "cores_per_node"              : 8,
         "gpus_per_node"               : 1,
         "lfs_path_per_node"           : "/tmp",
-        "lfs_size_per_node"           : 2048,
+        "lfs_size_per_node"           : 1024,
         "memory_per_node"             : 4096
     },
 
