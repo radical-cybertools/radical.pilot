@@ -552,7 +552,7 @@ class AgentSchedulingComponent(rpu.Component):
         resources = True  # fresh start
         while not self._proc_term.is_set():
 
-          # self._log.debug('=== schedule units (-) %s', resources)
+          # self._log.debug('=== schedule units 0: %s', resources)
 
             active = ''  # see if we do anything in this iteration
 
@@ -561,24 +561,24 @@ class AgentSchedulingComponent(rpu.Component):
                 a, r = self._schedule_waitpool()
                 if not r: resources  = False
                 if     a: active    += 'w'
-              # self._log.debug('=== schedule units w: %s %s', a, r)
+              # self._log.debug('=== schedule units w: %s %s', r, a)
 
             # always try to schedule newly incoming tasks
             a, r = self._schedule_incoming()
             if not r: resources  = False
             if     a: active    += 's'
-          # self._log.debug('=== schedule units i: %s %s', a, r)
+          # self._log.debug('=== schedule units i: %s %s', r, a)
 
             # reclaim resources from completed tasks
             a, r = self._unschedule_completed()
-            if r: resources  = True
-            if a: active    += 'u'
-          # self._log.debug('=== schedule units u: %s %s', a, r)
+            if not r: resources  = False
+            if     a: active    += 'u'
+          # self._log.debug('=== schedule units u: %s %s', r, a)
 
             if not active:
                 time.sleep(0.1)  # FIXME: configurable
 
-          # self._log.debug('=== schedule units (%s) %s', active, resources)
+          # self._log.debug('=== schedule units (%s) %s', resources, active)
 
 
     # --------------------------------------------------------------------------
@@ -662,7 +662,7 @@ class AgentSchedulingComponent(rpu.Component):
         resources = not bool(to_wait)
 
         self.slot_status("after  schedule incoming")
-        return active, resources  # still should have resources left
+        return active, resources
 
 
     # --------------------------------------------------------------------------
