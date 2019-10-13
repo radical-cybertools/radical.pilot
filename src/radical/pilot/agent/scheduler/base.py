@@ -60,7 +60,7 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 #     - the scheduler receives notifications about units which completed
 #       execution, and whose resources can now be used again for other units,
 #     - the above triggers an 'unschedule' (free resources) action and also a
-#       `schedule` action (check waitlist if waiting units can now be placed).
+#       `schedule` action (check waitpool if waiting units can now be placed).
 #
 #
 # A scheduler implementation will derive from this base class, and overload the
@@ -424,6 +424,8 @@ class AgentSchedulingComponent(rpu.Component):
         if not self._log.isEnabledFor(logging.DEBUG):
             return
 
+        if not msg: msg = ''
+
         glyphs = {rpc.FREE : '-',
                   rpc.BUSY : '#',
                   rpc.DOWN : '!'}
@@ -436,8 +438,7 @@ class AgentSchedulingComponent(rpu.Component):
                 ret += glyphs[gpu]
             ret += '|'
 
-        if msg:
-            self._log.debug("%-30s: %s", msg, ret)
+        self._log.debug("status: %-30s: %s", msg, ret)
 
         return ret
 
@@ -507,7 +508,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # The loop alternates between
         #
-        #   - scheduling tasks from a waitlist;
+        #   - scheduling tasks from a waitpool;
         #   - pulling new tasks to schedule; and
         #   - pulling for free slots to use.
         #
@@ -516,9 +517,9 @@ class AgentSchedulingComponent(rpu.Component):
         # while True:
         #
         #   if resources:  # otherwise: why bother?
-        #     if waitlist:
-        #       sort(waitlist)  # largest tasks first
-        #       for task in sorted(waitlist):
+        #     if waitpool:
+        #       sort(waitpool)  # largest tasks first
+        #       for task in sorted(waitpool):
         #         if task >= max_task:
         #           prof schedule_skip
         #         else:
@@ -534,11 +535,11 @@ class AgentSchedulingComponent(rpu.Component):
         #           if try_schedule:
         #             advance
         #             continue
-        #           waitlist.append(task)
+        #           waitpool.append(task)
         #           max_task = max(max_task, size(task))
         #         continue  # next task mght be smaller
         #
-        #   resources = False  # nothing in waitlist fits
+        #   resources = False  # nothing in waitpool fits
         #   for slot in queue_slots.get():
         #     free_slot(slot)
         #     resources = True  # maybe we can place a task now
@@ -551,56 +552,58 @@ class AgentSchedulingComponent(rpu.Component):
         resources = True  # fresh start
         while not self._proc_term.is_set():
 
+          # self._log.debug('=== schedule units (-) %s', resources)
+
             active = ''  # see if we do anything in this iteration
 
             # if we have new resources, try to place waiting tasks
             if resources:
-                a, r = self._schedule_waitlist()
+                a, r = self._schedule_waitpool()
                 if not r: resources  = False
                 if     a: active    += 'w'
+              # self._log.debug('=== schedule units w: %s %s', a, r)
 
             # always try to schedule newly incoming tasks
             a, r = self._schedule_incoming()
             if not r: resources  = False
             if     a: active    += 's'
+          # self._log.debug('=== schedule units i: %s %s', a, r)
 
             # reclaim resources from completed tasks
             a, r = self._unschedule_completed()
             if r: resources  = True
             if a: active    += 'u'
+          # self._log.debug('=== schedule units u: %s %s', a, r)
 
             if not active:
                 time.sleep(0.1)  # FIXME: configurable
 
+          # self._log.debug('=== schedule units (%s) %s', active, resources)
+
 
     # --------------------------------------------------------------------------
     #
-    def _schedule_waitlist(self):
+    def _schedule_waitpool(self):
 
-        self.slot_status("before schedule waitlist")
+        self.slot_status("before schedule waitpool")
 
-        # cycle through waitlist, and see if we get anything placed now.
-        #
         # sort by inverse tuple size to place larger tasks first and backfill
         # with smaller tasks.  We only look at cores right now - this needs
         # fixing for GPU dominated loads.
-
         self._waitpool.sort(key=lambda x: x['tuple_size'][0], reverse=True)
-        scheduled, unscheduled = ru.lazy_bisect(self._waitpool,
-                                                self._try_allocation)
 
+        # cycle through waitpool, and see if we get anything placed now.
+        scheduled, unscheduled = ru.lazy_bisect(self._waitpool,
+                                                self._try_allocation,
+                                                log=self._log)
+        self._waitpool = unscheduled
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
                                                              push=True)
-
-        # we performed some action when pool size changed
-        active = len(unscheduled) < len(self._waitpool)
-
         # we have resources left when new waitpool is empty
+        active    =     bool(scheduled)
         resources = not bool(unscheduled)
 
-
-        self._waitpool = unscheduled
-
+        self.slot_status("after  schedule waitpool")
         return active, resources
 
 
@@ -658,6 +661,7 @@ class AgentSchedulingComponent(rpu.Component):
         # if units remain waiting, we are out of usable resources
         resources = not bool(to_wait)
 
+        self.slot_status("after  schedule incoming")
         return active, resources  # still should have resources left
 
 
