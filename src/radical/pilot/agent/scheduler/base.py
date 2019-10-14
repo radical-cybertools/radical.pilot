@@ -684,10 +684,8 @@ class AgentSchedulingComponent(rpu.Component):
             else:
                 to_wait.append(unit)
 
-        for unit in to_wait:
-
-            # all units which could not be scheduled are added to the waitpool
-            self._waitpool.append(unit)
+        # all units which could not be scheduled are added to the waitpool
+        self._waitpool.extend(to_wait)
 
         # we performed some activity (worked on units)
         active = True
