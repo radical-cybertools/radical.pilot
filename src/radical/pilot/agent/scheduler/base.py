@@ -217,10 +217,7 @@ class AgentSchedulingComponent(rpu.Component):
         self.nodes = None
         self._uid  = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
                                     ru.ID_CUSTOM)
-        self._too_large = None
-
         rpu.Component.__init__(self, cfg, session)
-
 
 
     # --------------------------------------------------------------------------
@@ -259,7 +256,7 @@ class AgentSchedulingComponent(rpu.Component):
         # waitlist to a binned list where tasks are binned by size for faster
         # lookups of replacement units.  And outdated binlist is mostly
         # sufficient, only rebuild when we run dry
-        self._waitpool = list()
+        self._waitpool = dict()  # map uid:task
         self._ts_map   = dict()
         self._ts_valid = False  # set to False to trigger re-binning
 
@@ -466,11 +463,11 @@ class AgentSchedulingComponent(rpu.Component):
         if not self._waitpool:
             return
 
-        for task in self._waitpool:
+        for uid,task in self._waitpool.iteritems():
             ts = task['tuple_size']
             if ts not in self._ts_map:
                 self._ts_map[ts] = set()
-            self._ts_map[ts].add(task)
+            self._ts_map[ts].add(uid)
 
         self._ts_valid = True
 
@@ -580,36 +577,54 @@ class AgentSchedulingComponent(rpu.Component):
         self.register_output(rps.AGENT_EXECUTING_PENDING,
                              rpc.AGENT_EXECUTING_QUEUE)
 
-        resources = True  # fresh start
+        resources = True  # fresh start, all is free
         while not self._proc_term.is_set():
 
-          # self._log.debug('=== schedule units 0: %s', resources)
+            self._log.debug('=== schedule units 0: %s, w: %d', resources,
+                    len(self._waitpool))
 
-            active = ''  # see if we do anything in this iteration
+            active = 0  # see if we do anything in this iteration
 
-            # if we have new resources, try to place waiting tasks
+            # if we have new resources, try to place waiting tasks.
+            r_wait = False
             if resources:
-                a, r = self._schedule_waitpool()
-                if not r: resources  = False
-                if     a: active    += 'w'
-              # self._log.debug('=== schedule units w: %s %s', r, a)
+                r_wait, a = self._schedule_waitpool()
+                active += int(a)
+                self._log.debug('=== schedule units w: %s %s', r_wait, a)
 
             # always try to schedule newly incoming tasks
-            a, r = self._schedule_incoming()
-            if not r: resources  = False
-            if     a: active    += 's'
-          # self._log.debug('=== schedule units i: %s %s', r, a)
+            # running out of resources for incoming could still mean we have
+            # smaller slots for waiting tasks, so ignore `r` for now.
+            r_inc, a = self._schedule_incoming()
+            active += int(a)
+            self._log.debug('=== schedule units i: %s %s', r_inc, a)
+
+            # if we had resources, but could not schedule any incoming not any
+            # waiting, then we effectively ran out of *useful* resources
+            if resources and (r_wait is False and r_inc is False):
+                resources = False
 
             # reclaim resources from completed tasks
-            a, r = self._unschedule_completed()
-            if not r: resources  = False
-            if     a: active    += 'u'
-          # self._log.debug('=== schedule units u: %s %s', r, a)
+            # if tasks got unscheduled (and not replaced), then we have new
+            # space to schedule waiting tasks (unless we have resources from
+            # before)
+            r, a = self._unschedule_completed()
+            if not resources and r:
+                resources = True
+            active += int(a)
+            self._log.debug('=== schedule units c: %s %s', r, a)
 
             if not active:
                 time.sleep(0.1)  # FIXME: configurable
 
-          # self._log.debug('=== schedule units (%s) %s', resources, active)
+            self._log.debug('=== schedule units x: %s %s', resources, active)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _prof_sched_skip(self, task):
+
+        self._prof.prof('schedule_skip', uid=task['uid'])
 
 
     # --------------------------------------------------------------------------
@@ -621,21 +636,31 @@ class AgentSchedulingComponent(rpu.Component):
         # sort by inverse tuple size to place larger tasks first and backfill
         # with smaller tasks.  We only look at cores right now - this needs
         # fixing for GPU dominated loads.
-        self._waitpool.sort(key=lambda x: x['tuple_size'][0], reverse=True)
+        # We define `tuple_size` as
+        #     `(cpu_processes + gpu_processes) * cpu_threads`
+        #
+        tasks = self._waitpool.values()
+        tasks.sort(key=lambda x:
+                (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
+                 reverse=True)
 
         # cycle through waitpool, and see if we get anything placed now.
-        scheduled, unscheduled = ru.lazy_bisect(self._waitpool,
-                                                self._try_allocation,
+        scheduled, unscheduled = ru.lazy_bisect(tasks,
+                                                check=self._try_allocation,
+                                                on_skip=self._prof_sched_skip,
                                                 log=self._log)
-        self._waitpool = unscheduled
+
+        self._waitpool = {task['uid']:task for task in unscheduled}
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
                                                              push=True)
-        # we have resources left when new waitpool is empty
-        active    =     bool(scheduled)
-        resources = not bool(unscheduled)
+        # method counts as `active` if anything was scheduled
+        active = bool(scheduled)
+
+        # if we sccheduled some tasks but not all, we ran out of resources
+        resources = not (bool(unscheduled) and bool(unscheduled))
 
         self.slot_status("after  schedule waitpool")
-        return active, resources
+        return resources, active
 
 
     # --------------------------------------------------------------------------
@@ -661,8 +686,8 @@ class AgentSchedulingComponent(rpu.Component):
             pass
 
         if not units:
-            # no activity, resources remain
-            return False, True
+            # no resource change, no activity
+            return None, False
 
         self.slot_status("before schedule incoming [%d]" % len(units))
 
@@ -685,7 +710,7 @@ class AgentSchedulingComponent(rpu.Component):
                 to_wait.append(unit)
 
         # all units which could not be scheduled are added to the waitpool
-        self._waitpool.extend(to_wait)
+        self._waitpool.update({task['uid']:task for task in to_wait})
 
         # we performed some activity (worked on units)
         active = True
@@ -698,7 +723,7 @@ class AgentSchedulingComponent(rpu.Component):
         self._ts_valid = False
 
         self.slot_status("after  schedule incoming")
-        return active, resources
+        return resources, active
 
 
     # --------------------------------------------------------------------------
@@ -731,31 +756,33 @@ class AgentSchedulingComponent(rpu.Component):
             # immediately. This assumes that the `tuple_size` is good enough to
             # judge the legality of the resources for the new target unit.
 
-            ts = tuple(unit['tuple_size'])
-            if self._ts_map.get(ts):
+         ## ts = tuple(unit['tuple_size'])
+         ## if self._ts_map.get(ts):
+         ##
+         ##     replace = self._waitpool[self._ts_map[ts].pop()]
+         ##     replace['slots'] = unit['slots']
+         ##     placed.append(placed)
+         ##
+         ##     # unschedule unit A and schedule unit B have the same
+         ##     # timestamp
+         ##     ts = time.time()
+         ##     self._prof.prof('unschedule_stop', uid=unit['uid'],
+         ##                     timestamp=ts)
+         ##     self._prof.prof('schedule_fast', uid=replace['uid'],
+         ##                     timestamp=ts)
+         ##     self.advance(replace, rps.AGENT_EXECUTING_PENDING,
+         ##                  publish=True, push=True)
+         ## else:
+         ##
+         ##     # no replacement unit found: free the slots, and try to
+         ##     # schedule other units of other sizes.
+         ##     to_release.append(unit)
 
-                replace = self._ts_map[ts].pop()
-                replace['slots'] = unit['slots']
-                placed.append(placed)
-
-                # unschedule unit A and schedule unit B have the same
-                # timestamp
-                ts = time.time()
-                self._prof.prof('unschedule_stop', uid=unit['uid'],
-                                timestamp=ts)
-                self._prof.prof('schedule_fast', uid=replace['uid'],
-                                timestamp=ts)
-                self.advance(replace, rps.AGENT_EXECUTING_PENDING,
-                             publish=True, push=True)
-            else:
-
-                # no replacement unit found: free the slots, and try to
-                # schedule other units of other sizes.
-                to_release.append(unit)
+            to_release.append(unit)
 
         if not to_release:
             if not to_unschedule:
-                # no new resources, but been active
+                # no new resources, not been active
                 return False, False
             else:
                 # no new resources, but activity
@@ -764,15 +791,14 @@ class AgentSchedulingComponent(rpu.Component):
         # we have units to unschedule, which will free some resources. We can
         # thus try to schedule larger units again, and also inform the caller
         # about resource availability.
-        self._too_large = None
         for unit in to_release:
             self.unschedule_unit(unit)
             self._prof.prof('unschedule_stop', uid=unit['uid'])
 
         # we placed some previously waiting units, and need to remove those from
         # the waitpool
-        self._waitpool = [task for task in self._waitpool
-                               if  task['uid'] not in placed]
+        self._waitpool = {task['uid']:task for task in self._waitpool.values()
+                                           if  task['uid'] not in placed}
 
         # we have new resources, and were active
         return True, True
@@ -786,19 +812,12 @@ class AgentSchedulingComponent(rpu.Component):
         '''
 
         uid = unit['uid']
-
-        # we don't need to try units larger than self._too_large
-        if not self.small_enough(unit):
-            self._prof.prof('schedule_skip', uid=uid)
-            return False
-
         self._prof.prof('schedule_try', uid=uid)
 
         slots = self.schedule_unit(unit)
         if not slots:
 
             # schedule failure
-            self._update_too_large(unit)
             self._prof.prof('schedule_fail', uid=uid)
             return False
 
@@ -926,61 +945,24 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def _set_tuple_size(self, unit):
         '''
-        if we get resources freed, we dig through the list of waiting tasks to
-        see which we can schedule.  When failing to schedule a task, it makes in
-        general no sense to keep trying to scheduler tasks of the same size or
-        larger: it is costly and useless.  So we remember the last unsuccessful
-        schedule, and skip any scheduling attempts for larger tasks until we get
-        new resources.
+        Scheduling, in very general terms, maps resource request to available
+        resources.  While the scheduler may check arbitrary task attributes in
+        order to estimate the resource requirements of the tast, we assume that
+        the most basic attributes (cores, threads, GPUs, MPI/non-MPI) determine
+        the resulting placement decision.  Specifically, we assume that this
+        tuple of attributes result in a placement that is valid for all tasks
+        which have the same attribute tuple.
 
-        Task size is measured by the `tuple_size` defined here, which is a tuple
-        for number of required cores and required gpus.  Either one must be
-        smaller to trigger a schedule attempt.
-
-        Note that this is not precise: a task with 10 procs * 4 threads might
-        get scheduled where a task with 4 procs and 10 threads might not.  We
-        err on the side of performance here - if that is unwanted, thread size
-        should become a separate tuple element.
-
-        ATTENTION: this mechanism should not be used for schedulers which may
-                   fail to place a unit for other reasons than just size, e.g.,
-                   the co-locating scheduler or ordered scheduler.  Those MUST
-                   reset `self._too_large` after a failed scheduling attempt.
+        To speed up that tuple lookup and to simplify some scheduler
+        optimizations, we extract that attribute tuple on task arrival, and will
+        use it for fast task-to-placement lookups.
         '''
 
         d = unit['description']
-        unit['tuple_size'] = tuple([d.get('cpu_processes', 1) *
+        unit['tuple_size'] = tuple([d.get('cpu_processes', 1),
                                     d.get('cpu_threads',   1),
                                     d.get('gpu_processes', 0),
                                     d.get('cpu_process_type')])
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _update_too_large(self, unit):
-
-        ts = unit['tuple_size']
-
-        if not self._too_large:
-            self._too_large = list(ts)
-
-        else:
-            self._too_large[0] = min(self._too_large[0], ts[0])
-            self._too_large[1] = min(self._too_large[1], ts[1])
-
-
-    # --------------------------------------------------------------------------
-    #
-    def small_enough(self, unit):
-
-        if not self._too_large:
-            return True
-
-        if unit['tuple_size'][0] < self._too_large[0] or \
-           unit['tuple_size'][1] < self._too_large[1]:
-            return True
-
-        return False
 
 
 # ------------------------------------------------------------------------------
