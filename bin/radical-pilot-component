@@ -1,24 +1,49 @@
 #!/usr/bin/env python
 
-__copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2014-2019, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os
 import sys
 
 import setproctitle  as spt
-
 import radical.utils as ru
+import radical.pilot as rp
+
+
+# ----------------------------------------------------------------------
+# TODO:  We keep this static typemap for component startup. We should
+#        derive that typemap from rp module inspection via an
+#        `ru.PluginManager`.
+#
+from radical.pilot import worker    as rpw
+from radical.pilot import pmgr      as rppm
+from radical.pilot import umgr      as rpum
+from radical.pilot import agent     as rpa
+from radical.pilot import constants as rpc
+
+_ctypemap = {rpc.UPDATE_WORKER                  : rpw.Update,
+
+             rpc.PMGR_LAUNCHING_COMPONENT       : rppm.Launching,
+
+             rpc.UMGR_STAGING_INPUT_COMPONENT   : rpum.Input,
+             rpc.UMGR_SCHEDULING_COMPONENT      : rpum.Scheduler,
+             rpc.UMGR_STAGING_OUTPUT_COMPONENT  : rpum.Output,
+
+             rpc.AGENT_STAGING_INPUT_COMPONENT  : rpa.Input,
+             rpc.AGENT_SCHEDULING_COMPONENT     : rpa.Scheduler,
+             rpc.AGENT_EXECUTING_COMPONENT      : rpa.Executing,
+             rpc.AGENT_STAGING_OUTPUT_COMPONENT : rpa.Output
+            }
+# ----------------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------------
 #
-def main():
+def main(cfg):
     '''
-    This thin wrapper starts a RCT component
-    It expects a single argument: a path to a config file to use for the
-    component's configuration.  The config must contain
+    This thin wrapper starts a RCT component It expects a single argument:
+    a config to use for the component's configuration.  The config must contain:
 
       - uid : UID of component instance (unique to the hosting session)
       - name: name of the component
@@ -28,11 +53,11 @@ def main():
     as follows:
 
         {
-          "from"    : "uid",
-          "pub"     : "addr_pub",
-          "sub"     : "addr_sub",
-          "interval": <float>,
-          "timeout" : <float>
+          'from'    : 'uid',
+          'pub'     : 'addr_pub',
+          'sub'     : 'addr_sub',
+          'interval': <float>,
+          'timeout' : <float>
         }
 
     If that section exists, the process will daemonize and heartbeats are used
@@ -50,34 +75,40 @@ def main():
     and are interpreted by the component implementation.
     '''
 
-    fname = '%s/%s' % (os.getcwd(), sys.argv[1])
-    cfg   = ru.Config(cfg=fname)
-    for k in ['uid', 'name', 'type']:
-        assert(k in cfg), 'missing %s in config %s' % (k, fname)
+    uid  = cfg.uid
+    kind = cfg.kind
+    log  = ru.Logger(name=cfg.uid, ns='radical.pilot', path=cfg.path)
+    log.debug('==== CLOG 0')
 
-    uid = cfg.uid
     spt.setproctitle('rp.%s' % uid)
 
-    if cfg.heartbeat:
-        ru.daemonize()
+    ctype = _ctypemap[kind]
+    comp  = ctype.create(cfg)
+    hb = ru.Heartbeat(uid=comp.uid,
+                      timeout = cfg.heartbeat.timeout,
+                      interval= cfg.heartbeat.interval)
 
-    comp = rpu.Component.create(cfg)
+    # --------------------------------------------------------------------------
+    # forward session heartbeat to component
+    def hb_sub(topic, msg):
+        log.debug('=== HB_SUB %s: GET %s', uid, msg['uid'])
+        hb.beat(uid=msg['uid'])
+        if msg['uid'] == cfg.cmgr:
+            log.debug('=== hb_pub %s: PUT %s', uid, uid)
+            hb_pub.put('heartbeat', msg={'uid' : uid})
+    # --------------------------------------------------------------------------
 
+    log.debug('==== CLOG 1')
+    hb_pub = ru.zmq.Publisher ('heartbeat', cfg.heartbeat.addr_pub, log=log)
+    hb_sub = ru.zmq.Subscriber('heartbeat', cfg.heartbeat.addr_sub, log=log,
+                         topic='heartbeat', cb=hb_sub)
+    log.debug('==== CLOG 2')
+
+    log.debug('==== CLOG 0')
     comp.start()
+    log.debug('==== CLOG 1')
 
-    if cfg.heartbeat:
-        hb_pub = ru.zmq.Publisher(cfg.heartbeat.addr_pub)
-        hb     = ru.Heartbeat(cfg.heartbeat, cb=hb_put)
-        while True:
-            if comp.wait(timeout=cfg.heartbeat.interval):
-                sys.exit(1)
-            hb.beat()
-            hb_pub.put('heartbeat', {'uid' : uid})
-
-    else:
-        comp.wait()
-
-    sys.exit(0)
+    comp.wait()  # block forever
 
 
 # ------------------------------------------------------------------------------
@@ -89,7 +120,12 @@ if __name__ == "__main__":
                          'usage: %s <cfg_file>\n\n' % sys.argv[0])
         raise RuntimeError('argument error: %s' % sys.argv)
 
-    ru.daemonize(main=main)
+    fname = sys.argv[1]
+    cfg   = ru.Config(path=fname)
+    base  = '%s/%s' % (cfg.path, cfg.uid)
+
+    ru.daemonize(main=main, args=[cfg], stdout='%s.out' % base,
+                                        stderr='%s.err' % base)
     sys.exit(0)
 
 

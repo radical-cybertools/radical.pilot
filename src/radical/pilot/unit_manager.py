@@ -112,7 +112,7 @@ class UnitManager(rpu.Component):
 
         # initialize the base class (with no intent to fork)
         self._uid    = ru.generate_id('umgr.%(item_counter)04d', ru.ID_CUSTOM,
-                                      namespace=session.uid)
+                                      ns=session.uid)
         cfg['owner'     ] = self.uid
         cfg['session_id'] = session.uid
         rpu.Component.__init__(self, cfg)

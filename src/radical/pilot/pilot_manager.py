@@ -67,8 +67,8 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, session):
-        """
+    def __init__(self, session, cfg='default'):
+        '''
         Creates a new PilotManager and attaches is to the session.
 
         **Arguments:**
@@ -77,10 +77,11 @@ class PilotManager(rpu.Component):
 
         **Returns:**
             * A new `PilotManager` object [:class:`radical.pilot.PilotManager`].
-        """
+        '''
 
-        self._bridges     = dict()
-        self._components  = dict()
+        assert(session.primary), 'pmgr needs primary session'
+
+        self._session     = session
         self._pilots      = dict()
         self._pilots_lock = mt.RLock()
         self._callbacks   = dict()
@@ -88,22 +89,33 @@ class PilotManager(rpu.Component):
         self._terminate   = mt.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
+        self._uid         = ru.generate_id('pmgr.%(item_counter)04d',
+                                           ru.ID_CUSTOM, ns=session.uid)
 
         for m in rpc.PMGR_METRICS:
             self._callbacks[m] = dict()
 
-        cfg = ru.read_json("%s/configs/pmgr_%s.json" \
-                % (os.path.dirname(__file__),
-                   os.environ.get('RADICAL_PILOT_PMGR_CFG', 'default')))
+        # NOTE: `name` and `cfg` are overloaded, the user cannot point to
+        #       a predefined config and amed it at the same time.  This might
+        #       be ok for the session, but introduces a minor API inconsistency.
+        #
+        name = None
+        if isinstance(cfg, str):
+            name = cfg
+            cfg  = None
 
-        assert(cfg['db_poll_sleeptime']), 'db_poll_sleeptime not configured'
+        cfg       = ru.Config('radical.pilot.pmgr', name=name, cfg=cfg)
+        cfg.sid   = self._session.uid
+        cfg.base  = self._session.base
+        cfg.path  = self._session.path
+        rpu.Component.__init__(self, cfg, session=self._session)
 
-        # initialize the base class (with no intent to fork)
-        self._uid    = ru.generate_id('pmgr.%(item_counter)04d', ru.ID_CUSTOM,
-                                      namespace=session.uid)
-        cfg['owner'     ] = self.uid
-        cfg['session_id'] = session.uid
-        rpu.Component.__init__(self, cfg)
+        # create pmgr bridges and components, use session cmgr for that
+        print('--------------------------')
+        pprint.pprint(self._cfg)
+        print('--------------------------')
+        self._session.cmgr.start_bridges(self._cfg)
+        self._session.cmgr.start_components(self._cfg)
 
         # only now we have a logger... :/
         self._rep.info('<<create pilot manager')
@@ -494,7 +506,7 @@ class PilotManager(rpu.Component):
                 self._pilots[pilot.uid] = pilot
 
             if self._session._rec:
-                ru.write_json(pd.as_dict(), "%s/%s.batch.%03d.json" \
+                ru.write_json(pd.as_dict(), "%s/%s.batch.%03d.json"
                         % (self._session._rec, pilot.uid, self._rec_id))
 
             if 'resource' in pd and 'cores' in pd:

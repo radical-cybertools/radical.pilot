@@ -5,12 +5,10 @@ __license__   = 'MIT'
 
 import os
 import sys
+import time
 
 import radical.pilot as rp
 import radical.utils as ru
-
-dh = ru.DebugHelper()
-
 
 # ------------------------------------------------------------------------------
 #
@@ -66,6 +64,8 @@ if __name__ == '__main__':
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
+
+        time.sleep(100)
 
         report.header('submit units')
 

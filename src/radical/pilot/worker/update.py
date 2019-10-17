@@ -40,17 +40,14 @@ class Update(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg):
 
         self._uid = ru.generate_id('update.%(counter)s', ru.ID_CUSTOM)
 
-        rpu.Worker.__init__(self, cfg, session)
+        rpu.Worker.__init__(self, cfg)
 
-        self._session_id = self._cfg['session_id']
-        self._dburl      = self._cfg['dburl']
-
-        _, db, _, _, _   = ru.mongodb_connect(self._dburl)
-        self._coll       = db[self._session_id]
+        _, db, _, _, _   = ru.mongodb_connect(self._cfg.dburl)
+        self._coll       = db[self._cfg.sid]
         self._bulk       = self._coll.initialize_ordered_bulk_op()
         self._last       = time.time()        # time of last bulk push
         self._uids       = list()             # list of collected uids
@@ -63,22 +60,6 @@ class Update(rpu.Worker):
 
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
         self.register_timed_cb(self._idle_cb, timer=self._bct)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def stop(self):
-
-        self._session._log.debug('%s stop called', self._uid)
-        super(Update, self).stop()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize_child(self):
-
-        self.unregister_timed_cb(self._idle_cb)
-        self.unregister_subscriber(rpc.STATE_PUBSUB, self._state_cb)
 
 
     # --------------------------------------------------------------------------
@@ -101,9 +82,11 @@ class Update(rpu.Worker):
 
         try:
             res = self._bulk.execute()
+
         except pymongo.errors.OperationFailure as e:
             self._log.exception('bulk exec error: %s' % e.details)
             raise
+
         except Exception as e:
             self._log.exception('mongodb error: %s', e)
             raise
@@ -237,8 +220,8 @@ class Update(rpu.Worker):
 
                     # push the update request onto the bulk
                     self._uids.append([uid, ttype, state])
-                    self._bulk.find  ({'uid'  : uid,
-                                       'type' : ttype}) \
+                    self._bulk.find  ({'uid' : uid,
+                                       'type': ttype}) \
                               .update(update_dict)
 
             with self._lock:

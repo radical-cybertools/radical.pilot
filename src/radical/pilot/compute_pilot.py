@@ -65,7 +65,7 @@ class ComputePilot(object):
         self._prof       = self._session._prof
         self._uid        = ru.generate_id('pilot.%(item_counter)04d',
                                            ru.ID_CUSTOM,
-                                           namespace=self._session.uid)
+                                           ns=self._session.uid)
         self._state      = rps.NEW
         self._log        = pmgr._log
         self._pilot_dict = dict()

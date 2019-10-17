@@ -72,45 +72,44 @@ class Session(rs.Session):
         '''
 
         # NOTE: `name` and `cfg` are overloaded, the user cannot point to
-        #       a predefined config and ammed it at the same time.  This might
+        #       a predefined config and amed it at the same time.  This might
         #       be ok for the session, but introduces a minor API inconsistency.
         name = 'default'
         if isinstance(cfg, str):
             name = cfg
             cfg  = None
 
-        self._dbs    = None
-        self._uid    = None
-        self._closed = False
+        self._dbs     = None
+        self._uid     = None
+        self._closed  = False
+        self._primary = _primary
 
-        self._pmgrs  = dict()  # map IDs to pmgr instances
-        self._umgrs  = dict()  # map IDs to umgr instances
+        self._pmgrs   = dict()  # map IDs to pmgr instances
+        self._umgrs   = dict()  # map IDs to umgr instances
 
-        self._cfg    = ru.Config('radical.pilot.session', name=name, cfg=cfg)
-        self._rcfgs  = ru.Config('radical.pilot.resource')
+        self._cfg     = ru.Config('radical.pilot.session', name=name, cfg=cfg)
+        self._rcfgs   = ru.Config('radical.pilot.resource')
 
         if _primary:
 
             pwd  = os.getcwd()
-            base = self._cfg.query('session_base', pwd)
+            base = self._cfg.query('base', pwd)
 
             if uid:
                 self._uid = uid
             else:
                 self._uid = ru.generate_id('rp.session',  mode=ru.ID_PRIVATE)
 
-            self._cfg.session_id     = self._uid
-            self._cfg.session_base   = base
-            self._cfg.session_pwd    = '%s/%s' % (base, self._uid)
+            self._cfg.sid  = self._uid
+            self._cfg.base = base
+            self._cfg.path = '%s/%s' % (base, self._uid)
             self._cfg.client_sandbox = pwd
 
-            print(self._cfg.session_pwd)
-
         else:
-            for k in ['session_id', 'session_base', 'session_pwd']:
+            for k in ['sid', 'base', 'path']:
                 assert(k in self._cfg), 'non-primary session misses %s' % k
 
-            self._uid = self._cfg.get('session_id')
+            self._uid = self._cfg.get('sid')
 
 
         self._prof = self._get_profiler(name=self._uid)
@@ -180,7 +179,10 @@ class Session(rs.Session):
         # primary sessions have a component manager which also manages
         # heartbeat.  'self._cmgr.close()` should be called during termination
         self._cmgr = rpu.ComponentManager(self, self._cfg)
+        self._cmgr.start_bridges()
+        self._cmgr.start_components()
 
+        self._rec = False
         if self._cfg.record:
 
             # append session ID to recording path
@@ -191,9 +193,6 @@ class Session(rs.Session):
             ru.write_json({'dburl': str(self.dburl)},
                           "%s/session.json" % self._rec)
             self._log.info("recording session in %s" % self._rec)
-
-        # write the resulting config into the session pwd
-        ru._cfg.write('%s/%s' % (self._cfg.session_pwd, self._uid))
 
 
     # --------------------------------------------------------------------------
@@ -312,18 +311,26 @@ class Session(rs.Session):
         return self._uid
 
 
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def base(self):
+        return self._cfg.base
+
+
     # --------------------------------------------------------------------------
     #
     @property
-    def logdir(self):
-        return self._cfg['session_pwd']
+    def path(self):
+        self._log.info('==== path %s', self._cfg.get('path', 'nonono'))
+        return self._cfg.path
 
 
     # --------------------------------------------------------------------------
     #
     @property
     def dburl(self):
-        return self._cfg.get('dburl')
+        return self._cfg.dburl
 
 
     # --------------------------------------------------------------------------
@@ -332,6 +339,21 @@ class Session(rs.Session):
 
         if self._dbs: return self._dbs.get_db()
         else        : return None
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def primary(self):
+        return self._primary
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def cmgr(self):
+        assert(self._primary)
+        return self._cmgr
 
 
     # --------------------------------------------------------------------------
@@ -383,7 +405,7 @@ class Session(rs.Session):
         log files end up in a separate directory with the name of `session.uid`.
         '''
         return ru.Logger(name=name, ns='radical.pilot', targets=['.'],
-                         path=self._cfg['session_pwd'], level=level)
+                         path=self._cfg.path, level=level)
 
 
     # --------------------------------------------------------------------------
@@ -397,7 +419,7 @@ class Session(rs.Session):
         if not self._reporter:
             self._reporter = ru.Reporter(name=name, ns='radical.pilot',
                                          targets=['stdout'],
-                                         path=self._cfg.session_pwd)
+                                         path=self._cfg.path)
         return self._reporter
 
 
@@ -410,7 +432,7 @@ class Session(rs.Session):
         '''
 
         prof = ru.Profiler(name=name, ns='radical.pilot',
-                                      path=self._cfg.session_pwd)
+                                      path=self._cfg.path)
 
         return prof
 
@@ -539,7 +561,14 @@ class Session(rs.Session):
         description.  Not that resource aliases won't be listed.
         '''
 
-        return sorted(self._rcfgs.keys())
+        resources = list()
+        for domain in self._rcfgs:
+            if domain == 'aliases':
+                continue
+            for host in self._rcfgs:
+                resources.append('%s.%s' % (domain, host))
+
+        return sorted(resources)
 
 
     # -------------------------------------------------------------------------
@@ -589,15 +618,19 @@ class Session(rs.Session):
         Returns a dictionary of the requested resource config
         '''
 
-        if  resource in self._resource_aliases:
+        if  resource in self._rcfgs.get('aliases', {}):
             self._log.warning("using alias '%s' for deprecated resource '%s'"
-                              % (self._resource_aliases[resource], resource))
-            resource = self._resource_aliases[resource]
+                              % (self._rcfgs.aliases.resource, resource))
+            resource = self._rcfgs.aliases.resource
 
-        if  resource not in self._rcfgs:
-            raise RuntimeError("Resource '%s' is not known." % resource)
+        domain, host = resource.split('.', 1)
+        if domain not in self._rcfgs:
+            raise RuntimeError("Resource domain '%s' is unknown." % domain)
 
-        resource_cfg = copy.deepcopy(self._rcfgs[resource])
+        if host not in self._rcfgs[domain]:
+            raise RuntimeError("Resource host '%s' ununknown." % host)
+
+        resource_cfg = copy.deepcopy(self._rcfgs[domain][host])
 
         if  not schema:
             if 'schemas' in resource_cfg:
@@ -638,22 +671,6 @@ class Session(rs.Session):
 
         return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt,
                               session=self)
-
-
-    # -------------------------------------------------------------------------
-    #
-    def get_session_base(self):
-        '''
-        The session is usually created in the application workdir, but we
-        immediately create a session directory in which all RCT related (not
-        application related) files are created (logfiles, profiles, configs,
-        etc).  That session dir is usually created under the current corking
-        directory and has the session UID as name - but the environment
-        `$RADICAL_PILOT_SESSION_BASE` can overwrite the base directory, as can
-        the config entry `session_base` (see `__init__()`).
-        '''
-
-        return self._session_base
 
 
     # -------------------------------------------------------------------------

@@ -7,7 +7,8 @@
     "db_poll_sleeptime" : 10.0,
 
     "bridges" : {
-        "pmgr_launching_queue" : {"log_level" : "error",
+        "pmgr_launching_queue" : {"kind"      : "queue",
+                                  "log_level" : "error",
                                   "stall_hwm" : 1,
                                   "bulk_size" : 0}
     },

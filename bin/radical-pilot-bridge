@@ -1,25 +1,21 @@
 #!/usr/bin/env python
 
-__copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2014-2019, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os
 import sys
-import time
 
 import setproctitle  as spt
-
 import radical.utils as ru
 
 
 # ------------------------------------------------------------------------------
 #
-def main():
+def main(cfg):
     '''
-    This thin wrapper starts a ZMQ communication bridge.
-    It expects a single argument: a path to a config file to use for the
-    bridge's configuration.  The config must contain
+    This thin wrapper starts a ZMQ bridge.  It expects a single argument:
+    a config to use for the bridge's configuration.  The config must contain:
 
       - uid : UID of bridge instance (unique to the hosting session)
       - name: name of the bridge
@@ -29,11 +25,11 @@ def main():
     as follows:
 
         {
-          "from"    : "uid",
-          "pub"     : "addr_pub",
-          "sub"     : "addr_sub",
-          "interval": <float>,
-          "timeout" : <float>
+          'from'    : 'uid',
+          'pub'     : 'addr_pub',
+          'sub'     : 'addr_sub',
+          'interval': <float>,
+          'timeout' : <float>
         }
 
     If that section exists, the process will daemonize and heartbeats are used
@@ -47,20 +43,22 @@ def main():
     lifetime is expected to be explicitly managed, i.e., that this wrapper
     process hosting the bridge is terminated externally.
 
+    The config file may contain other entries which are passed to the bridge
+    and are interpreted by the bridge implementation.
 
     After startup, the bridge's communication endpoint URLs are stored in a
     file `$uid.cfg`, in the form (shown for pubsub and queue type bridges):
 
         {
-          "uid": "$bridge.uid",
-          "pub": "$addr_pub",
-          "sub": "$addr_sub"
+          'uid': '$bridge.uid',
+          'pub': '$addr_pub',
+          'sub': '$addr_sub'
         }
 
         {
-          "uid": "$bridge.uid",
-          "put": "$addr_put",
-          "get": "$addr_get"
+          'uid': '$bridge.uid',
+          'put': '$addr_put',
+          'get': '$addr_get'
         }
 
     That config is formed so that any publishers, subscribers, putters or getters
@@ -76,51 +74,37 @@ def main():
     [3] connect to the command channel, send messages for topic `foo`
     '''
 
-    fname = sys.argv[1]
-    cfg   = ru.Config(path=fname)
-    for k in ['uid', 'kind', 'session_pwd']:
-        assert(k in cfg), 'missing %s in config %s' % (k, fname)
-
-    log = ru.Logger(name=cfg.uid, ns='radical.pilot', path=cfg.session_pwd)
-
     uid = cfg.uid
+    log = ru.Logger(name=cfg.uid, ns='radical.pilot', path=cfg.path)
+
     spt.setproctitle('rp.%s' % uid)
 
-    ret = ru.daemonize()
-    log.debug('daemonize: %s', ret)
-    if ret:
-        log.debug('daemonize: exit %s', ret)
-        sys.exit(0)
-    else:
-        log.debug('daemonize: continue')
-
-    # create the bridge
     bridge  = ru.zmq.Bridge.create(cfg)
-    fname   = '%s/%s.cfg' % (cfg.session_pwd, uid)
-    cfg_out = {'uid'          : bridge.uid,
-               bridge.type_in : str(bridge.addr_in),
-               bridge.type_out: str(bridge.addr_out)}
-
-    ru.write_json(cfg_out, fname)
-
     bridge.start()
 
-    hb_pub = ru.zmq.Publisher('heartbeat', cfg.heartbeat.addr_pub)
-    hb     = ru.Heartbeat(uid=bridge.uid,
-                          timeout = cfg.heartbeat.timeout,
-                          interval= cfg.heartbeat.interval)
+    ru.write_json('%s/%s.cfg' % (cfg.path, uid),
+                  {'uid'          : bridge.uid,
+                   bridge.type_in : str(bridge.addr_in),
+                   bridge.type_out: str(bridge.addr_out)})
 
-    # FIXME: wait for a session heartbeat
-    while True:
 
-        hb.beat()
-        hb_pub.put('heartbeat', msg={'uid' : uid})
+    hb = ru.Heartbeat(uid=bridge.uid,
+                      timeout = cfg.heartbeat.timeout,
+                      interval= cfg.heartbeat.interval)
 
-        if not bridge.alive:
-            sys.exit(1)
+    # -------------------------------------------------
+    # forward session heartbeat to bridge
+    def hb_sub(topic, msg):
+        hb.beat(uid=msg['uid'])
+        if msg['uid'] == cfg.cmgr:
+            hb_pub.put('heartbeat', msg={'uid' : uid})
+    # -------------------------------------------------
 
-        time.sleep(cfg.heartbeat.interval)
+    hb_pub = ru.zmq.Publisher ('heartbeat', cfg.heartbeat.addr_pub, log=log)
+    hb_sub = ru.zmq.Subscriber('heartbeat', cfg.heartbeat.addr_sub, log=log,
+                         topic='heartbeat', cb=hb_sub)
 
+    bridge.wait()  # block forever
 
 
 # ------------------------------------------------------------------------------
@@ -132,7 +116,12 @@ if __name__ == "__main__":
                          'usage: %s <cfg_file>\n\n' % sys.argv[0])
         raise RuntimeError('argument error: %s' % sys.argv)
 
-    ru.daemonize(main=main)
+    fname = sys.argv[1]
+    cfg   = ru.Config(path=fname)
+    base  = '%s/%s' % (cfg.path, cfg.uid)
+
+    ru.daemonize(main=main, args=[cfg], stdout='%s.out' % base,
+                                        stderr='%s.err' % base)
     sys.exit(0)
 
 
