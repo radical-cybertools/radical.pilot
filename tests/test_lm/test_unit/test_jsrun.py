@@ -3,7 +3,7 @@
 import os
 import glob
 import radical.utils as ru
-from test_common                  import setUp
+from .test_common                  import setUp
 from radical.pilot.agent.lm.jsrun import JSRUN
 
 try:
@@ -36,7 +36,7 @@ def test_create_resource_set_file(mocked_init, mocked_configure, mocked_raise_on
         uid          = unit['uid']
 
         component._create_resource_set_file(slots=slot, uid=uid, sandbox='.')
-        print uid
+        print(uid)
         with open('%s.rs' % uid) as rs_layout:
             assert rs_layout.readlines() ==  resource_file
 

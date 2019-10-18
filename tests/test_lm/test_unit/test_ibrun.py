@@ -1,7 +1,7 @@
 
 # pylint: disable=protected-access, unused-argument
 
-from   test_common                   import setUp
+from   .test_common                   import setUp
 from   radical.pilot.agent.lm.ibrun import IBRun
 
 import radical.utils as ru
@@ -53,7 +53,7 @@ def test_construct_command(mocked_init,
                 command, hop = component.construct_command(unit, None)
         else:
             command, hop = component.construct_command(unit, None)
-            print command, hop
+            print(command, hop)
             assert([command, hop] == result)
 
 # ------------------------------------------------------------------------------

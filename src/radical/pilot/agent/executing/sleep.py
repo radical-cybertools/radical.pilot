@@ -4,21 +4,10 @@ __license__   = "MIT"
 
 
 import os
-import copy
-import stat
 import time
-import Queue
-import signal
-import tempfile
-import traceback
-import subprocess
 
 import threading     as mt
 
-import radical.utils as ru
-
-from .... import pilot     as rp
-from ...  import utils     as rpu
 from ...  import states    as rps
 from ...  import constants as rpc
 
