@@ -26,9 +26,9 @@ def src(host):
     for num in range(n):
         msg = {unicode(pid):num}
         socket_src.send_json(msg)
-        print 'put %s' % msg
+        print('put %s' % msg)
         time.sleep (t)
-    print 'put %s' % msg
+    print('put %s' % msg)
     socket_src.send_json({pid:'stop'})
     context.destroy()
 
@@ -48,9 +48,9 @@ def queue(host):
 
     try:
         while True:
-            req = socket_sink.recv()
+            _   = socket_sink.recv()
             msg = socket_src.recv_json()
-            print '<-> %s' % msg
+            print('<-> %s' % msg)
             socket_sink.send_json(msg)
 
             if 'stop' in msg.values():
@@ -72,9 +72,9 @@ def tgt(host):
 
     try:
         while True:
-            socket_sink.send('request')
+            socket_sink.send(b'request')
             msg = socket_sink.recv_json()
-            print 'get %s' % msg
+            print('get %s' % msg)
             time.sleep (t)
 
             if 'stop' in msg.values():
@@ -85,11 +85,11 @@ def tgt(host):
 
 
 if len(sys.argv) < 3:
-    print """
+    print('''
 
     usage: %s <host> <type> [<type>]
 
-    """
+    ''')
     sys.exit(-1)
 
 

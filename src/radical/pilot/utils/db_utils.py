@@ -150,7 +150,7 @@ def get_session_slothist(db, sid, cache=None, cachedir=None) :
                 slot_name = "%s:%s" % (node, core)
                 slot_names.append (slot_name)
                 slot_infos  [slot_name] = list()
-                slot_started[slot_name] = sys.maxint
+                slot_started[slot_name] = sys.maxsize
 
         for unit_doc in docs['unit'] :
             if unit_doc['pilot'] == pilot_doc['uid'] :

@@ -28,9 +28,9 @@ _DEFAULT_DBURL = str(_DEFAULT_DBURL)
 def usage (msg=None, noexit=False) :
 
     if  msg :
-        print "\n      Error: %s" % msg
+        print("\n      Error: %s" % msg)
 
-    print """
+    print("""
       usage       : %s [-d <dburl>] [-m <mode>] [-p <pid>]
       example     : %s -m sid -p 53e124edd1969c73e56f0eb2
                     find ID of the session which created that pilot
@@ -50,7 +50,7 @@ def usage (msg=None, noexit=False) :
 
       The default mode is 'help'.  
       
-""" % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL)
+""" % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL))
 
     if  msg :
         sys.exit (1)
@@ -65,7 +65,7 @@ def find_sid_by_pid (dbclient, dbname, pid) :
 
     sids = rpu.get_session_ids (dbclient[dbname])
 
-    print "%d sessions" % len(sids)
+    print("%d sessions" % len(sids))
 
     # IDs are globally time ordered.  We start looking from last session
     # (request is likely of recent run), but only look at session IDs which have
@@ -88,12 +88,12 @@ def find_sid_by_pid (dbclient, dbname, pid) :
             if  str(doc['_id']) == pid :
                 sys.stdout.write ('!')
                 sys.stdout.flush (   )
-                print "\nfound pilot %s in session %s" % (pid, sid)
+                print("\nfound pilot %s in session %s" % (pid, sid))
                 return
         sys.stdout.write ('.')
         sys.stdout.flush (   )
 
-    print "\npilot %s not found in any session"
+    print("\npilot %s not found in any session")
 
 
 # ------------------------------------------------------------------------------
@@ -102,7 +102,7 @@ def find_sid_by_uid (dbclient, dbname, uid) :
 
     sids = rpu.get_session_ids (dbclient[dbname])
 
-    print "%d sessions" % len(sids)
+    print("%d sessions" % len(sids))
 
     # IDs are globally time ordered.  We start looking from last session
     # (request is likely of recent run), but only look at session IDs which have
@@ -125,12 +125,12 @@ def find_sid_by_uid (dbclient, dbname, uid) :
             if  str(doc['_id']) == uid :
                 sys.stdout.write ('!')
                 sys.stdout.flush (   )
-                print "\nfound unit %s in session %s" % (uid, sid)
+                print("\nfound unit %s in session %s" % (uid, sid))
                 return
         sys.stdout.write ('.')
         sys.stdout.flush (   )
 
-    print "\nunit %s not found in any session"
+    print("\nunit %s not found in any session")
 
 
 # ------------------------------------------------------------------------------
@@ -156,14 +156,14 @@ def list_resources (verbose) :
     session = rp.Session ()
 
     for name in session._resource_configs :
-        print " -----------------------------------------------------------------------------"
-        print name
+        print(" -----------------------------------------------------------------------------")
+        print(name)
         cfg = session._resource_configs[name]
 
-        print "    %-25s : %s" % ('description', cfg['description'   ])
+        print("    %-25s : %s" % ('description', cfg['description'   ]))
 
         if verbose :
-            print "    %-25s : %s" % ('notes', cfg['notes'         ])
+            print("    %-25s : %s" % ('notes', cfg['notes'         ]))
 
         if  'schemas' in cfg  and cfg['schemas'] :
             default_schema  = cfg['schemas'][0]
@@ -171,45 +171,45 @@ def list_resources (verbose) :
         else :
             job_manager_url = cfg['job_manager_endpoint']
 
-        print "    %-25s : %s" % ('hostname'      , ru.Url (job_manager_url).host)
-        print "    %-25s : %s" % ('lrms'          , cfg['lrms'])
-        print "    %-25s : %s" % ('default queue' , cfg['default_queue' ])
+        print("    %-25s : %s" % ('hostname'      , ru.Url (job_manager_url).host))
+        print("    %-25s : %s" % ('lrms'          , cfg['lrms']))
+        print("    %-25s : %s" % ('default queue' , cfg['default_queue' ]))
 
         if  verbose :
-            print "    %-25s : %s" % ('spmd variation'         , cfg['spmd_variation'])
-            print "    %-25s : %s" % ('python_interpreter'     , cfg['python_interpreter'     ])
-            print "    %-25s : %s" % ('default_remote_workdir' , cfg['default_remote_workdir' ])
-            print "    %-25s : %s" % ('valid_roots'            , cfg['valid_roots'            ])
-            print "    %-25s : %s" % ('pre_bootstrap_1'        , cfg['pre_bootstrap_1'        ])
-            print "    %-25s : %s" % ('pre_bootstrap_2'        , cfg['pre_bootstrap_2'        ])
-            print "    %-25s : %s" % ('bootstrapper'           , cfg['bootstrapper'           ])
-            print "    %-25s : %s" % ('pilot_agent'            , cfg['pilot_agent'            ])
-            print "    %-25s : %s" % ('pilot_agent_worker'     , cfg['pilot_agent_worker'     ])
-            print "    %-25s : %s" % ('global_virtenv'         , cfg['global_virtenv'         ])
-            print "    %-25s : %s" % ('task_launch_method'     , cfg['task_launch_method'     ])
-            print "    %-25s : %s" % ('mpi_launch_method'      , cfg['mpi_launch_method'      ])
-            print "    %-25s : %s" % ('agent_mongodb_endpoint' , cfg['agent_mongodb_endpoint' ])
-            print "    %-25s : %s" % ('forward_tunnel_endpoint', cfg['forward_tunnel_endpoint'])
+            print("    %-25s : %s" % ('spmd variation'         , cfg['spmd_variation']))
+            print("    %-25s : %s" % ('python_interpreter'     , cfg['python_interpreter'     ]))
+            print("    %-25s : %s" % ('default_remote_workdir' , cfg['default_remote_workdir' ]))
+            print("    %-25s : %s" % ('valid_roots'            , cfg['valid_roots'            ]))
+            print("    %-25s : %s" % ('pre_bootstrap_1'        , cfg['pre_bootstrap_1'        ]))
+            print("    %-25s : %s" % ('pre_bootstrap_2'        , cfg['pre_bootstrap_2'        ]))
+            print("    %-25s : %s" % ('bootstrapper'           , cfg['bootstrapper'           ]))
+            print("    %-25s : %s" % ('pilot_agent'            , cfg['pilot_agent'            ]))
+            print("    %-25s : %s" % ('pilot_agent_worker'     , cfg['pilot_agent_worker'     ]))
+            print("    %-25s : %s" % ('global_virtenv'         , cfg['global_virtenv'         ]))
+            print("    %-25s : %s" % ('task_launch_method'     , cfg['task_launch_method'     ]))
+            print("    %-25s : %s" % ('mpi_launch_method'      , cfg['mpi_launch_method'      ]))
+            print("    %-25s : %s" % ('agent_mongodb_endpoint' , cfg['agent_mongodb_endpoint' ]))
+            print("    %-25s : %s" % ('forward_tunnel_endpoint', cfg['forward_tunnel_endpoint']))
 
         if  'schemas' in cfg  and cfg['schemas'] :
-            print "    %-25s : %s" % ('schemas'  , cfg['schemas'])
+            print("    %-25s : %s" % ('schemas'  , cfg['schemas']))
 
             if  verbose :
-                print
+                print()
                 for schema in cfg['schemas'] :
-                    print "    %s:" % schema
-                    for key in sorted (cfg[schema].keys (), reverse=True) :
-                        print "        %-21s : %s" % (key , cfg[schema][key])
+                    print("    %s:" % schema)
+                    for key in sorted (list(cfg[schema].keys ()), reverse=True) :
+                        print("        %-21s : %s" % (key , cfg[schema][key]))
 
         else :
             if  verbose :
-                print "    %-25s : %s" % ('job_manager_endpoint', cfg['job_manager_endpoint'])
-                print "    %-25s : %s" % ('filesystem_endpoint' , cfg['filesystem_endpoint'])
+                print("    %-25s : %s" % ('job_manager_endpoint', cfg['job_manager_endpoint']))
+                print("    %-25s : %s" % ('filesystem_endpoint' , cfg['filesystem_endpoint']))
 
         if  verbose :
-            print " -----------------------------------------------------------------------------"
+            print(" -----------------------------------------------------------------------------")
 
-        print
+        print()
 
 
 # ------------------------------------------------------------------------------
@@ -260,14 +260,14 @@ if __name__ == '__main__' :
     host, port, dbname, cname, pname = ru.split_dburl (url, _DEFAULT_DBURL)[0:5]
     dbclient = pymongo.MongoClient (host=host, port=port)
 
-    print "modes   : %s" % mode
-    print "db url  : %s" % url
+    print("modes   : %s" % mode)
+    print("db url  : %s" % url)
 
     if  pid :
-        print "pid     : %s" % pid
+        print("pid     : %s" % pid)
 
     if  uid :
-        print "uid     : %s" % uid
+        print("uid     : %s" % uid)
 
 
     for m in mode.split (',') :

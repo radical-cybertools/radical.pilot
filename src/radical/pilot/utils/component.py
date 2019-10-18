@@ -25,7 +25,7 @@ from .pubsub     import PUBSUB_SUB     as rpu_PUBSUB_SUB
 from .pubsub     import PUBSUB_BRIDGE  as rpu_PUBSUB_BRIDGE
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Component(ru.Process):
     """
@@ -132,7 +132,7 @@ class Component(ru.Process):
 
         # start all bridges which don't yet have an address
         bridges = list()
-        for bname,bcfg in bspec.iteritems():
+        for bname,bcfg in bspec.items():
 
             addr_in  = bcfg.get('addr_in')
             addr_out = bcfg.get('addr_out')
@@ -222,7 +222,7 @@ class Component(ru.Process):
 
         # start components
         components = list()
-        for cname,ccfg in cspec.iteritems():
+        for cname,ccfg in cspec.items():
 
             cnum = ccfg.get('count', 1)
 
@@ -510,8 +510,8 @@ class Component(ru.Process):
             # get debugging, logging, profiling set up
           # self._dh   = ru.DebugHelper(name=self.uid)
             self._prof = self._session._get_profiler(name=self.uid)
-            self._log  = self._session._get_logger  (name=self.uid,
-                                                     level=self._debug)
+          # self._log  = self._session._get_logger  (name=self.uid,
+          #                                          level=self._debug)
 
             # make sure that the Process base class uses the same logger
             # FIXME: do same for profiler?
@@ -1102,9 +1102,10 @@ class Component(ru.Process):
                 topic, msg = None, None
                 try:
                     topic, msg = self._q.get_nowait(500)  # timout in ms
-                except Exception as e:
+                except Exception:
                     if not self._ru_term.is_set():
                         # abort during termination
+                        self._log.exception('get_nowait failed')
                         return False
 
                 if topic and msg:
@@ -1112,7 +1113,7 @@ class Component(ru.Process):
                         msg = [msg]
                     for m in msg:
                         with self._cb_lock:
-                            if self._cb_data != None:
+                            if self._cb_data is not None:
                                 ret = cb(topic=topic, msg=m, cb_data=self._cb_data)
                             else:
                                 ret = self._cb(topic=topic, msg=m)
@@ -1120,6 +1121,7 @@ class Component(ru.Process):
                         if not ret:
                             return False
                 return True
+
             def ru_finalize_common(self):
                 self._q.stop()
         # ----------------------------------------------------------------------
@@ -1233,7 +1235,7 @@ class Component(ru.Process):
 
             # We now can push bulks of things to the workers
 
-            for state,things in buckets.iteritems():
+            for state,things in buckets.items():
 
                 assert(state in states), 'inconsistent state'
                 assert(state in self._workers), 'no worker for state %s' % state
@@ -1274,8 +1276,8 @@ class Component(ru.Process):
 
     # --------------------------------------------------------------------------
     #
-    def advance(self, things, state=None, publish=True, push=False,
-                timestamp=None, prof=True):
+    def advance(self, things, state=None, publish=True, push=False, ts=None,
+                      prof=True):
         """
         Things which have been operated upon are pushed down into the queues
         again, only to be picked up by the next component, according to their
@@ -1300,8 +1302,8 @@ class Component(ru.Process):
 
         self.is_valid()
 
-        if not timestamp:
-            timestamp = time.time()
+        if not ts:
+            ts = time.time()
 
         if not isinstance(things, list):
             things = [things]
@@ -1327,8 +1329,7 @@ class Component(ru.Process):
             _state = thing['state']
 
             if prof:
-                self._prof.prof('advance', uid=uid, state=_state,
-                                timestamp=timestamp)
+                self._prof.prof('advance', uid=uid, state=_state, ts=ts)
 
             if _state not in buckets:
                 buckets[_state] = list()
@@ -1360,10 +1361,11 @@ class Component(ru.Process):
                     to_publish.append(tmp)
 
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
-            ts = time.time()
+
+          # ts = time.time()
           # for thing in things:
           #     self._prof.prof('publish', uid=thing['uid'],
-          #                     state=thing['state'], timestamp=ts)
+          #                     state=thing['state'], ts=ts)
 
         # never carry $all across component boundaries!
         for thing in things:
@@ -1376,31 +1378,31 @@ class Component(ru.Process):
             # the push target depends on the state of things, so we need to sort
             # the things into buckets by state before pushing them
             # now we can push the buckets as bulks
-            for _state,_things in buckets.iteritems():
+            for _state,_things in buckets.items():
 
               # ts = time.time()
                 if _state in rps.FINAL:
-                    # things in final state are dropped
+                  # # things in final state are dropped
                   # for thing in _things:
                   #     self._log.debug('final %s [%s]', thing['uid'], _state)
-                  #   # self._prof.prof('drop', uid=thing['uid'], state=_state,
-                  #   #                 timestamp=ts)
+                  #     self._prof.prof('drop', uid=thing['uid'], state=_state,
+                  #                     ts=ts)
                     continue
 
                 if _state not in self._outputs:
                     # unknown target state -- error
-                    for thing in _things:
-                        self._log.error("lost  %s [%s]", thing['uid'], _state)
+                  # for thing in _things:
+                  #     self._log.debug("lost  %s [%s]", thing['uid'], _state)
                   #     self._prof.prof('lost', uid=thing['uid'], state=_state,
-                  #                     timestamp=ts)
+                  #                     ts=ts)
                     continue
 
                 if not self._outputs[_state]:
-                  # # empty output -- drop thing
+                    # empty output -- drop thing
                   # for thing in _things:
                   #     self._log.debug('drop  %s [%s]', thing['uid'], _state)
                   #     self._prof.prof('drop', uid=thing['uid'], state=_state,
-                  #                     timestamp=ts)
+                  #                     ts=ts)
                     continue
 
                 output = self._outputs[_state]
@@ -1412,7 +1414,7 @@ class Component(ru.Process):
               # ts = time.time()
               # for thing in _things:
               #     self._prof.prof('put', uid=thing['uid'], state=_state,
-              #                     msg=output.name, timestamp=ts)
+              #                     msg=output.name, ts=ts)
 
 
     # --------------------------------------------------------------------------
@@ -1426,7 +1428,7 @@ class Component(ru.Process):
 
         if pubsub not in self._publishers:
             self._log.warn("can't route '%s' notification: %s" % (pubsub,
-                self._publishers.keys()))
+                list(self._publishers.keys())))
             return
 
           # raise RuntimeError("can't route '%s' notification: %s" % (pubsub,
@@ -1436,6 +1438,7 @@ class Component(ru.Process):
             raise RuntimeError("no route for '%s' notification: %s" % (pubsub, msg))
 
         self._publishers[pubsub].put(pubsub, msg)
+
 
 
 # ------------------------------------------------------------------------------
