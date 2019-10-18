@@ -19,14 +19,14 @@ class DBSession(object):
     # --------------------------------------------------------------------------
     #
     def __init__(self, sid, dburl, cfg, logger, connect=True):
-        """ 
+        """
         Creates a new session
 
         A session is a MongoDB collection which contains documents of
         different types:
 
         session : document describing this rp.Session (singleton)
-        pmgr    : document describing a rp.PilotManager 
+        pmgr    : document describing a rp.PilotManager
         pilots  : document describing a rp.Pilot
         umgr    : document describing a rp.UnitManager
         units   : document describing a rp.Unit
@@ -77,7 +77,7 @@ class DBSession(object):
             self._can_remove = True
 
         else:
-            docs = self._c.find({'type' : 'session', 
+            docs = self._c.find({'type' : 'session',
                                  'uid'  : sid})
             if not docs.count():
                 raise ValueError('cannot reconnect to session %s' % sid)
@@ -94,7 +94,7 @@ class DBSession(object):
     #
     @property
     def dburl(self):
-        """ 
+        """
         Returns the session db url.
         """
         return self._dburl
@@ -131,11 +131,11 @@ class DBSession(object):
 
     # --------------------------------------------------------------------------
     #
-    @property 
-    def closed(self): 
-        """ 
-        Returns the close time 
-        """ 
+    @property
+    def closed(self):
+        """
+        Returns the close time
+        """
         return self._closed
 
 
@@ -150,7 +150,7 @@ class DBSession(object):
     # --------------------------------------------------------------------------
     #
     def close(self, delete=True):
-        """ 
+        """
         close the session
         """
         if self.closed:
@@ -174,7 +174,7 @@ class DBSession(object):
     # --------------------------------------------------------------------------
     #
     def insert_pmgr(self, pmgr_doc):
-        """ 
+        """
         Adds a pilot managers doc
         """
         if self.closed:
@@ -209,7 +209,7 @@ class DBSession(object):
             if not isinstance(pmgr_ids, list):
                 pmgr_ids = [pmgr_ids]
 
-            cursor = self._c.find({'type' : 'pmgr', 
+            cursor = self._c.find({'type' : 'pmgr',
                                    'uid'  : {'$in': pmgr_ids}})
 
         # make sure we return every pmgr doc only once
@@ -305,20 +305,20 @@ class DBSession(object):
             raise Exception("pmgr_uid and pilot_ids can't both be None.")
 
         if not pilot_ids:
-            cursor = self._c.find({'type' : 'pilot', 
+            cursor = self._c.find({'type' : 'pilot',
                                    'pmgr' : pmgr_uid})
         else:
 
             if not isinstance(pilot_ids, list):
                 pilot_ids = [pilot_ids]
 
-            cursor = self._c.find({'type' : 'pilot', 
+            cursor = self._c.find({'type' : 'pilot',
                                    'uid'  : {'$in': pilot_ids}})
 
         # make sure we return every pilot doc only once
         # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
-        ret = {doc['uid'] : doc for doc in cursor}
-        docs = ret.values()
+        ret  = {doc['uid'] : doc for doc in cursor}
+        docs = list(ret.values())
 
         # for each doc, we make sure the pilot state is according to the state
         # model, ie. is the largest of any state the pilot progressed through
@@ -358,7 +358,7 @@ class DBSession(object):
         # make sure we return every unit doc only once
         # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
         ret = {doc['uid'] : doc for doc in cursor}
-        docs = ret.values()
+        docs = list(ret.values())
 
         # for each doc, we make sure the unit state is according to the state
         # model, ie. is the largest of any state the unit progressed through
@@ -371,7 +371,7 @@ class DBSession(object):
     # --------------------------------------------------------------------------
     #
     def insert_umgr(self, umgr_doc):
-        """ 
+        """
         Adds a unit managers document
         """
         if self.closed:
@@ -404,7 +404,7 @@ class DBSession(object):
             if not isinstance(umgr_ids, list):
                 umgr_ids = [umgr_ids]
 
-            cursor = self._c.find({'type' : 'umgr', 
+            cursor = self._c.find({'type' : 'umgr',
                                    'uid'  : {'$in': umgr_ids}})
 
         # make sure we return every umgr doc only once
@@ -476,7 +476,7 @@ class DBSession(object):
           cb(docs, cb_data=None)
 
         where 'docs' is a list of None, one or more matching documents.
-        Specifically, the callback is also invoked when *no* document currently 
+        Specifically, the callback is also invoked when *no* document currently
         matches the pattern.  Documents are returned as partial docs, which only
         contain the set of field names given.  If 'fields' is an empty list
         though, then complete documents are returned.

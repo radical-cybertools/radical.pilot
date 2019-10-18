@@ -3,7 +3,7 @@
 
 import os
 
-from   test_common                 import setUp
+from   .test_common                 import setUp
 from   radical.pilot.agent.lm.ssh import SSH
 import pytest
 

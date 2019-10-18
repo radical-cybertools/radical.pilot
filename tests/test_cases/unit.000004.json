@@ -8,7 +8,7 @@
                         "cpu_processes" : 0,
                         "cpu_threads"   : 0
                        },
-        "workdir"       : "./"
+        "unit_sandbox_path": "/tmp"
     },
 
     "setup" : {

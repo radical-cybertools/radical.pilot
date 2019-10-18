@@ -7,7 +7,8 @@
                         "cpu_processes"    : 2,
                         "cpu_threads"      : 2,
                         "cpu_process_type" : "MPI"
-                       }
+                       },
+        "unit_sandbox_path": "/tmp"
     },
 
     "setup" : {

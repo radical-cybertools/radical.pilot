@@ -5,13 +5,13 @@
                         "arguments"     : ["test.py"],
                         "cpu_processes" : 4,
                         "cpu_threads"   : 2},
-                        "workdir"       : "./"
+        "unit_sandbox_path": "/tmp"
     },
 
     "setup" : {
         "lm" : {
-            "slots" :{"nodes"         : [["test", "test", [], []]], 
-                      "cores_per_node": 24, 
+            "slots" :{"nodes"         : [["test", "test", [], []]],
+                      "cores_per_node": 24,
                       "gpus_per_node" : 0,
                       "task_offsets"  : [2],
                       "lm_info"       : {"service_url"    : "test_ip:54170",
@@ -20,7 +20,7 @@
                                          "rm_ip"          : "test_ip",
                                          "name"           : "YARN",
                                          "launch_command" : "./bin/yarn",
-                                         "nodename"       : "test_ip" 
+                                         "nodename"       : "test_ip"
                 }
             }
         }
@@ -28,7 +28,7 @@
 
     "results": {
         "lm": {
-            "yarn"  : ["echo '#!/usr/bin/env bash'>>ExecScript.sh\necho ''>>ExecScript.sh\necho ''>>ExecScript.sh\necho '#---------------------------------------------------------'>>ExecScript.sh\necho '# Staging Input Files'>>ExecScript.sh\necho ''>>ExecScript.sh\necho ''>>ExecScript.sh\necho '#---------------------------------------------------------'>>ExecScript.sh\necho '# Creating Executing Command'>>ExecScript.sh\necho 'start=`date +%s.%3N`'>>ExecScript.sh\necho 'python \"test.py\"  1>Ystdout 2>Ystderr'>>ExecScript.sh\necho 'stop=`date +%s.%3N`'>>ExecScript.sh\necho 'time_spent=$(echo $stop - $start | bc)'>>ExecScript.sh\necho 'echo $time_spent >>Yprof'>>ExecScript.sh\necho ''>>ExecScript.sh\necho ''>>ExecScript.sh\necho '#---------------------------------------------------------'>>ExecScript.sh\necho '# Staging Output Files'>>ExecScript.sh\necho 'start=`date +%s.%3N`'>>ExecScript.sh\necho 'YarnUser=$(whoami)'>>ExecScript.sh\necho 'scp -v Ystderr Ystdout $YarnUser@test_ip:./'>>ExecScript.sh\necho 'stop=`date +%s.%3N`'>>ExecScript.sh\necho 'time_spent=$(echo $stop - $start | bc)'>>ExecScript.sh\necho 'echo $time_spent >>Yprof'>>ExecScript.sh\necho 'scp -v Yprof $YarnUser@test_ip:./'>>ExecScript.sh\necho ''>>ExecScript.sh\necho ''>>ExecScript.sh\necho '#End of File'>>ExecScript.sh\n\n\nyarn -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar com.radical.pilot.Client -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar -shell_script ExecScript.sh  -container_vcores 8 -service_url yarn://test_ip?fs=hdfs://test_ip:54170", null],
+            "yarn"  : ["echo '#!/usr/bin/env bash'>>ExecScript.sh\necho ''>>ExecScript.sh\necho ''>>ExecScript.sh\necho '#---------------------------------------------------------'>>ExecScript.sh\necho '# Staging Input Files'>>ExecScript.sh\necho ''>>ExecScript.sh\necho ''>>ExecScript.sh\necho '#---------------------------------------------------------'>>ExecScript.sh\necho '# Creating Executing Command'>>ExecScript.sh\necho 'start=`date +%s.%3N`'>>ExecScript.sh\necho 'python \"test.py\"  1>Ystdout 2>Ystderr'>>ExecScript.sh\necho 'stop=`date +%s.%3N`'>>ExecScript.sh\necho 'time_spent=$(echo $stop - $start | bc)'>>ExecScript.sh\necho 'echo $time_spent >>Yprof'>>ExecScript.sh\necho ''>>ExecScript.sh\necho ''>>ExecScript.sh\necho '#---------------------------------------------------------'>>ExecScript.sh\necho '# Staging Output Files'>>ExecScript.sh\necho 'start=`date +%s.%3N`'>>ExecScript.sh\necho 'YarnUser=$(whoami)'>>ExecScript.sh\necho 'scp -v Ystderr Ystdout $YarnUser@test_ip:/tmp'>>ExecScript.sh\necho 'stop=`date +%s.%3N`'>>ExecScript.sh\necho 'time_spent=$(echo $stop - $start | bc)'>>ExecScript.sh\necho 'echo $time_spent >>Yprof'>>ExecScript.sh\necho 'scp -v Yprof $YarnUser@test_ip:/tmp'>>ExecScript.sh\necho ''>>ExecScript.sh\necho ''>>ExecScript.sh\necho '#End of File'>>ExecScript.sh\n\n\nyarn -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar com.radical.pilot.Client -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar -shell_script ExecScript.sh  -container_vcores 8 -service_url yarn://test_ip?fs=hdfs://test_ip:54170", null],
             "ibrun" : ["ibrun -n 4 -o 2 python \"test.py\" ", null]
         }
     }

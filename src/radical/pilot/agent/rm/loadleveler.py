@@ -12,7 +12,8 @@ from ... import constants as rpc
 
 from ..scheduler.torus import Torus
 
-from base import LRMS
+from .base import LRMS
+from functools import reduce
 
 
 # ==============================================================================
@@ -634,7 +635,7 @@ class LoadLeveler(LRMS):
                 # Calculate the number of nodes for the current shape
                 from operator import mul
                 num_nodes = reduce(mul, [length for length 
-                                    in sub_block_shape.values() if length != 0])
+                                    in list(sub_block_shape.values()) if length != 0])
 
                 if num_nodes in self.BGQ_SUPPORTED_SUB_BLOCK_SIZES:
                     table[num_nodes] = copy.copy(sub_block_shape)
