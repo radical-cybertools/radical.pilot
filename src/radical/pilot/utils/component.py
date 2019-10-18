@@ -1306,6 +1306,9 @@ class Component(ru.Process):
         if not isinstance(things, list):
             things = [things]
 
+        if not things:
+            return
+
         self._log.debug('advance bulk size: %s [%s, %s]', len(things), push, publish)
 
         # assign state, sort things by state
@@ -1363,10 +1366,9 @@ class Component(ru.Process):
           #                     state=thing['state'], timestamp=ts)
 
         # never carry $all across component boundaries!
-        else:
-            for thing in things:
-                if '$all' in thing:
-                    del(thing['$all'])
+        for thing in things:
+            if '$all' in thing:
+                del(thing['$all'])
 
         # should we push things downstream, to the next component
         if push:
@@ -1376,7 +1378,7 @@ class Component(ru.Process):
             # now we can push the buckets as bulks
             for _state,_things in buckets.iteritems():
 
-                ts = time.time()
+              # ts = time.time()
                 if _state in rps.FINAL:
                     # things in final state are dropped
                   # for thing in _things:
@@ -1436,8 +1438,7 @@ class Component(ru.Process):
         self._publishers[pubsub].put(pubsub, msg)
 
 
-
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Worker(Component):
     """
