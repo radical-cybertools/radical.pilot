@@ -107,11 +107,11 @@ class ComputePilot(object):
         # we need to expand plaaceholders in the sandboxes
         # FIXME: this code is a duplication from the pilot launcher code
         expand = dict()
-        for k,v in pilot['description'].iteritems():
+        for k,v in pilot['description'].items():
             if v is None:
                 v = ''
             expand['pd.%s' % k] = v
-            if isinstance(v, basestring):
+            if isinstance(v, str):
                 expand['pd.%s' % k.upper()] = v.upper()
                 expand['pd.%s' % k.lower()] = v.lower()
             else:
@@ -153,7 +153,7 @@ class ComputePilot(object):
             # There are different ways to tell main...
           # ru.cancel_main_thread('int')
           # raise RuntimeError('pilot %s failed - fatal!' % self.uid)
-          # import sys
+          # os.kill(os.getpid())
             sys.exit()
 
 
@@ -193,7 +193,7 @@ class ComputePilot(object):
 
         # invoke pilot specific callbacks
         # FIXME: this iteration needs to be thread-locked!
-        for _,cb_val in self._callbacks[rpc.PILOT_STATE].iteritems():
+        for _,cb_val in self._callbacks[rpc.PILOT_STATE].items():
 
             cb      = cb_val['cb']
             cb_data = cb_val['cb_data']
@@ -477,7 +477,7 @@ class ComputePilot(object):
             for metric in metrics:
 
                 if cb: to_delete = [cb.__name__]
-                else : to_delete = self._callbacks[metric].keys()
+                else : to_delete = list(self._callbacks[metric].keys())
 
                 for cb_name in to_delete:
 

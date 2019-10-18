@@ -44,7 +44,7 @@ class Agent_0(rpu.Worker):
     def __init__(self, agent_name):
 
         assert(agent_name == 'agent_0'), 'expect agent_0, not subagent'
-        print 'startup agent %s' % agent_name
+        print('startup agent %s' % agent_name)
 
         self._pwd = os.getcwd()
 
@@ -391,7 +391,7 @@ class Agent_0(rpu.Worker):
                     # note that 'exec' only makes sense if we don't add any
                     # commands (such as post-processing) after it.
                     ls.write('#!/bin/sh\n\n')
-                    for k,v in agent_cmd['description'].get('environment', {}).iteritems():
+                    for k,v in agent_cmd['description'].get('environment', {}).items():
                         ls.write('export "%s"="%s"\n' % (k, v))
                     ls.write('\n')
                     for pe_cmd in agent_cmd['description'].get('pre_exec', []):
@@ -578,7 +578,7 @@ class Agent_0(rpu.Worker):
             if 'unit_environment' in self._cfg:
                 if not unit['description'].get('environment'):
                     unit['description']['environment'] = dict()
-                for k,v in self._cfg['unit_environment'].iteritems():
+                for k,v in self._cfg['unit_environment'].items():
                     unit['description']['environment'][k] = v
 
             # we need to make sure to have the correct state:

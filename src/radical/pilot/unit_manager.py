@@ -569,38 +569,40 @@ class UnitManager(rpu.Component):
 
             for metric in metrics:
 
-                cbs = dict()  # cb dict pointing to cb_data and unit bulks
+                for cb_name, cb_val in self._callbacks[metric].items():
 
-                for unit in units:
+                    cbs = dict()  # cb dict pointing to cb_data and unit bulks
 
-                    uid = unit.uid
-                    cb_dicts = list()
+                    for unit in units:
 
-                    # get wildcard callbacks
-                    if '*' in self._callbacks:
-                        cb_dict = self._callbacks['*'].get(rpc.UNIT_STATE)
-                        if cb_dict:
-                            cb_dicts.append(cb_dict)
+                        uid = unit.uid
+                        cb_dicts = list()
 
-                    if uid in self._callbacks:
-                        cb_dict = self._callbacks[uid].get(rpc.UNIT_STATE)
-                        if cb_dict:
-                            cb_dicts.append(cb_dict)
+                        # get wildcard callbacks
+                        if '*' in self._callbacks:
+                            cb_dict = self._callbacks['*'].get(rpc.UNIT_STATE)
+                            if cb_dict:
+                                cb_dicts.append(cb_dict)
 
-                    for cb_dict in cb_dicts:
+                        if uid in self._callbacks:
+                            cb_dict = self._callbacks[uid].get(rpc.UNIT_STATE)
+                            if cb_dict:
+                                cb_dicts.append(cb_dict)
 
-                        for cb_name in cb_dict:
+                        for cb_dict in cb_dicts:
 
-                            if cb_name not in cbs:
-                                cb           = cb_dict[cb_name]['cb']
-                                cb_data      = cb_dict[cb_name]['cb_data']
-                                cbs[cb_name] = {'cb'     : cb,
-                                                'cb_data': cb_data,
-                                                'units'  : set()}
+                            for cb_name in cb_dict:
 
-                            cbs[cb_name]['units'].add(unit)
+                                if cb_name not in cbs:
+                                    cb           = cb_dict[cb_name]['cb']
+                                    cb_data      = cb_dict[cb_name]['cb_data']
+                                    cbs[cb_name] = {'cb'     : cb,
+                                                    'cb_data': cb_data,
+                                                    'units'  : set()}
 
-                self._log.debug('umgr: CBS: %s', pprint.pformat(cbs))
+                                cbs[cb_name]['units'].add(unit)
+
+                    self._log.debug('umgr: CBS: %s', pprint.pformat(cbs))
 
                 for cb_name in cbs:
 
@@ -662,6 +664,7 @@ class UnitManager(rpu.Component):
               added to the unit manager.
         """
 
+
         self.is_valid()
 
         if not isinstance(pilots, list):
@@ -706,7 +709,7 @@ class UnitManager(rpu.Component):
         self.is_valid()
 
         with self._pilots_lock:
-            return self._pilots.keys()
+            return list(self._pilots.keys())
 
 
     # --------------------------------------------------------------------------
@@ -722,7 +725,7 @@ class UnitManager(rpu.Component):
         self.is_valid()
 
         with self._pilots_lock:
-            return self._pilots.values()
+            return list(self._pilots.values())
 
 
     # --------------------------------------------------------------------------
@@ -788,7 +791,7 @@ class UnitManager(rpu.Component):
         self.is_valid()
 
         with self._pilots_lock:
-            return self._units.keys()
+            return list(self._units.keys())
 
 
     # --------------------------------------------------------------------------
@@ -875,7 +878,7 @@ class UnitManager(rpu.Component):
 
         if not uids:
             with self._units_lock:
-                ret = self._units.values()
+                ret = list(self._units.values())
             return ret
 
         ret_list = True
@@ -937,7 +940,7 @@ class UnitManager(rpu.Component):
         if not uids:
             with self._units_lock:
                 uids = list()
-                for uid,unit in self._units.iteritems():
+                for uid,unit in self._units.items():
                     if unit.state not in rps.FINAL:
                         uids.append(uid)
 
@@ -1050,7 +1053,7 @@ class UnitManager(rpu.Component):
 
         if not uids:
             with self._units_lock:
-                uids  = self._units.keys()
+                uids  = list(self._units.keys())
         else:
             if not isinstance(uids, list):
                 uids = [uids]
@@ -1192,7 +1195,7 @@ class UnitManager(rpu.Component):
                 if cb:
                     to_delete = [cb.__name__]
                 else:
-                    to_delete = self._callbacks[uid][metric].keys()
+                    to_delete = list(self._callbacks[uid][metric].keys())
 
                 for cb_name in to_delete:
 

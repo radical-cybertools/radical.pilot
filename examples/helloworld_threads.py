@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
     def _thread(size, rank):
         time.sleep(1)
-        print "%d/%d/%s"  % (rank+1, size, host)
+        print("%d/%d/%s"  % (rank+1, size, host))
 
     threads = list()
     size    = int(sys.argv[1])

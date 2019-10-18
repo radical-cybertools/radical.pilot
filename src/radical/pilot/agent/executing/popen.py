@@ -7,7 +7,7 @@ import os
 import copy
 import stat
 import time
-import Queue
+import queue
 import signal
 import tempfile
 import threading
@@ -56,7 +56,7 @@ class Popen(AgentExecutingComponent) :
         self._cancel_lock    = threading.RLock()
         self._cus_to_cancel  = list()
         self._cus_to_watch   = list()
-        self._watch_queue    = Queue.Queue ()
+        self._watch_queue    = queue.Queue ()
 
         self._pilot_id = self._cfg['pilot_id']
 
@@ -144,7 +144,7 @@ class Popen(AgentExecutingComponent) :
 
         # Remove the configured set of environment variables from the
         # environment that we pass to Popen.
-        for e in new_env.keys():
+        for e in list(new_env.keys()):
             env_removables = list()
             if self._mpi_launcher : env_removables += self._mpi_launcher.env_removables
             if self._task_launcher: env_removables += self._task_launcher.env_removables
@@ -164,8 +164,6 @@ class Popen(AgentExecutingComponent) :
 
         self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        ru.raise_on('work bulk')
-
         for unit in units:
             self._handle_unit(unit)
 
@@ -173,10 +171,6 @@ class Popen(AgentExecutingComponent) :
     # --------------------------------------------------------------------------
     #
     def _handle_unit(self, cu):
-
-        ru.raise_on('work unit')
-      # import pprint
-      # self._log.info('handle cu: %s', pprint.pformat(cu))
 
         try:
             # prep stdout/err so that we can append w/o checking for None
@@ -288,12 +282,12 @@ prof(){
                 raise RuntimeError(msg)
 
             # also add any env vars requested for export by the resource config
-            for k,v in self._env_cu_export.iteritems():
+            for k,v in self._env_cu_export.items():
                 env_string += "export %s=%s\n" % (k,v)
 
             # also add any env vars requested in the unit description
             if descr['environment']:
-                for key,val in descr['environment'].iteritems():
+                for key,val in descr['environment'].items():
                     env_string += 'export "%s=%s"\n' % (key, val)
 
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
@@ -387,7 +381,7 @@ prof(){
                     while len(cus) < MAX_QUEUE_BULKSIZE :
                         cus.append (self._watch_queue.get_nowait())
 
-                except Queue.Empty:
+                except queue.Empty:
                     # nothing found -- no problem, see if any CUs finished
                     pass
 

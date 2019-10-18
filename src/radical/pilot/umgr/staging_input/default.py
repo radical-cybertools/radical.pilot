@@ -77,8 +77,8 @@ class Default(UMGRStagingInputComponent):
         self.unregister_subscriber(rpc.STATE_PUBSUB, self._base_command_cb)
 
         try:
-            [fs.close() for fs in self._fs_cache.values()]
-            [js.close() for js in self._js_cache.values()]
+            [fs.close() for fs in list(self._fs_cache.values())]
+            [js.close() for js in list(self._js_cache.values())]
 
         except:
             pass

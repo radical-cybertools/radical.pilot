@@ -3,7 +3,7 @@ __copyright__ = "Copyright 2018, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 
-from base import LRMS
+from .base import LRMS
 
 
 # ------------------------------------------------------------------------------
@@ -17,7 +17,7 @@ class Debug(LRMS):
         This RM will digest whatever the respective configs throw at it.
         '''
 
-        for k,v in cfg['resource_cfg'].iteritems():
+        for k,v in list(cfg['resource_cfg'].items()):
             cfg[k] = v
 
         LRMS.__init__(self, cfg, session)

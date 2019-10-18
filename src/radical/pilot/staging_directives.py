@@ -54,7 +54,7 @@ def expand_staging_directives(sds):
     ret = list()
     for sd in sds:
 
-        if isinstance(sd, basestring):
+        if isinstance(sd, str):
             # We detected a string, convert into dict.  The interpretation
             # differs depending of redirection characters being present in the
             # string.
@@ -96,12 +96,12 @@ def expand_staging_directives(sds):
             if isinstance(flags, list):
                 int_flags = 0
                 for flag in flags:
-                    if isinstance(flags, basestring):
+                    if isinstance(flags, str):
                         raise ValueError('"%s" is no valid RP constant' % flag)
                     int_flags != flag
                 flags = int_flags
 
-            elif isinstance(flags, basestring):
+            elif isinstance(flags, str):
                 raise ValueError('use RP constants for staging flags!')
 
             expanded = {'uid':      ru.generate_id('sd'),
@@ -185,7 +185,7 @@ def complete_url(path, context, log=None):
         schema = 'pwd'  
 
     log.debug('   %s', schema)
-    if schema in context.keys():
+    if schema in list(context.keys()):
 
         # we interpret any hostname as part of the path element
         if   purl.host and purl.path: ppath = '%s/%s' % (purl.host, purl.path)

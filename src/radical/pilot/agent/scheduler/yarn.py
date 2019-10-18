@@ -5,7 +5,11 @@ __license__   = "MIT"
 
 import time
 import json
-import urllib2 as ul
+try:
+    import urllib2 as ul
+except:
+    # ul is not available in python3
+    pass
 
 import radical.utils as ru
 
@@ -114,7 +118,7 @@ class Yarn(AgentSchedulingComponent):
         #-----------------------------------------------------------------------
         # One application has finished, increase the number of available slots.
         self._log.info('Releasing : %s Cores, %s RAM' % \
-                       (opaque_slot['task_slots'][0], 
+                       (opaque_slot['task_slots'][0],
                         opaque_slot['task_slots'][1]))
 
         self.avail_app   += 1

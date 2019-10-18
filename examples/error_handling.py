@@ -42,12 +42,12 @@ def pilot_state_cb(pilots, state=None):
     # to match the remaining set of pilots.
 
     for pilot in pilots:
-        print "[Callback]: Pilot '%s' state: %s." % (pilot.uid, pilot.state)
+        print("[Callback]: Pilot '%s' state: %s." % (pilot.uid, pilot.state))
 
-        print '=== Pilot state: %s' % pilot.state
+        print('=== Pilot state: %s' % pilot.state)
         if pilot.state == rp.FAILED:
-            print '=== Pilot failed'
-            print pilot.log[-1]  # Get the last log message
+            print('=== Pilot failed')
+            print(pilot.log[-1]  # Get the last log message)
 
     return True
 
@@ -72,13 +72,13 @@ def unit_state_cb(units, state=None):
     # compute units, or spawn a pilot on a different resource which might be
     # better equipped to handle the unit payload.
 
-    print '=== unit cb for %d units' % len(units)
+    print('=== unit cb for %d units' % len(units))
     for unit in units:
-        print '  === unit %s: %s' % (unit.uid, unit.state)
+        print('  === unit %s: %s' % (unit.uid, unit.state))
 
         if unit.state == rp.FAILED:
-            print '  === Unit failed!'
-            print '  === stderr: %s' % unit.stderr  # Get the unit's stderr
+            print('  === Unit failed!')
+            print('  === stderr: %s' % unit.stderr  # Get the unit's stderr)
 
     return True
 
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
     session = rp.Session(uid=session_name)
-    print "session id: %s" % session.uid
+    print("session id: %s" % session.uid)
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
@@ -138,12 +138,12 @@ if __name__ == "__main__":
             cud = rp.ComputeUnitDescription()
             if random.random() < 0.5:
                 cud.executable = '/bin/true'
-                print '+',
+                print('+', end=' ')
             else:
                 cud.executable = '/bin/fail'
-                print '-',
+                print('-', end=' ')
             cuds.append(cud)
-        print
+        print()
 
         # submit the units...
         cus = umgr.submit_units(cuds)
@@ -154,7 +154,7 @@ if __name__ == "__main__":
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        print "caught Exception: %s" % e
+        print("caught Exception: %s" % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -162,12 +162,12 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        print "need to exit now: %s" % e
+        print("need to exit now: %s" % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.
-        print "closing session"
+        print("closing session")
         session.close()
 
 

@@ -193,13 +193,13 @@ class ResourceConfig(attributes.Attributes):
               # return empty list
               return []
 
-          for res_name, cfg in rcf_dict.iteritems():
+          for res_name, cfg in rcf_dict.items():
 
               # create config from resource section
               label = "%s.%s" % (rcf_name, res_name)
               rcfgs[label] = ResourceConfig(label, cfg)
 
-      except ValueError, err:
+      except ValueError as err:
           raise BadParameter("Couldn't parse resource configuration file '%s': %s." % (filename, str(err)))
 
       return rcfgs

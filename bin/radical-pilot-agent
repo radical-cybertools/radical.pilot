@@ -33,7 +33,7 @@ def bootstrap_3(agent_name):
     agent_0 will create derived config files for all sub-agents.
     """
 
-    print "bootstrap agent %s" % agent_name
+    print(("bootstrap agent %s" % agent_name))
     agent = None
 
     try:
@@ -42,9 +42,9 @@ def bootstrap_3(agent_name):
         if agent_name == 'agent_0': agent = rpa.Agent_0(agent_name)
         else                      : agent = rpa.Agent_n(agent_name)
 
-        print 'start   %s' % agent_name
+        print(('start   %s' % agent_name))
         agent.start(spawn=False)
-        print 'started %s' % agent_name
+        print(('started %s' % agent_name))
 
         # wait until the agent finishes or fails.
         agent.wait_final()
@@ -53,12 +53,12 @@ def bootstrap_3(agent_name):
         # in all cases, make sure we perform an orderly shutdown.  I hope python
         # does not mind doing all those things in a finally clause of
         # (essentially) main...
-        print 'finalize %s' % agent_name
+        print(('finalize %s' % agent_name))
         if agent:
             agent.stop()
-            print 'stopped  %s' % agent_name
+            print(('stopped  %s' % agent_name))
             agent.join()
-            print 'joined   %s' % agent_name
+            print(('joined   %s' % agent_name))
 
 
 # ------------------------------------------------------------------------------
