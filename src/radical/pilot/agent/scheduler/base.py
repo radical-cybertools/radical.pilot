@@ -463,6 +463,8 @@ class AgentSchedulingComponent(rpu.Component):
         if not self._waitpool:
             return
 
+        self._prof.prof('tsmap_start')
+
         for uid,task in self._waitpool.iteritems():
             ts = task['tuple_size']
             if ts not in self._ts_map:
@@ -470,6 +472,7 @@ class AgentSchedulingComponent(rpu.Component):
             self._ts_map[ts].add(uid)
 
         self._ts_valid = True
+        self._prof.prof('tsmap_stop')
 
 
     # --------------------------------------------------------------------------
@@ -580,7 +583,7 @@ class AgentSchedulingComponent(rpu.Component):
         resources = True  # fresh start, all is free
         while not self._proc_term.is_set():
 
-            self._log.debug('=== schedule units 0: %s, w: %d', resources,
+            self._log.debug('=== schedule units  : %s, w: %d', resources,
                     len(self._waitpool))
 
             active = 0  # see if we do anything in this iteration
@@ -617,8 +620,6 @@ class AgentSchedulingComponent(rpu.Component):
             if not active:
                 time.sleep(0.1)  # FIXME: configurable
 
-            self._log.debug('=== schedule units x: %s %s', resources, active)
-
 
     # --------------------------------------------------------------------------
     #
@@ -649,6 +650,9 @@ class AgentSchedulingComponent(rpu.Component):
                                                 check=self._try_allocation,
                                                 on_skip=self._prof_sched_skip,
                                                 log=self._log)
+
+        for task in scheduled:
+            self._prof.prof('schedule_wait', uid=task['uid'])
 
         self._waitpool = {task['uid']:task for task in unscheduled}
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
@@ -703,6 +707,7 @@ class AgentSchedulingComponent(rpu.Component):
 
                 # task got scheduled - advance state, notify world about the
                 # state change, and push it out toward the next component.
+                self._prof.prof('schedule_first', uid=unit['uid'])
                 self.advance(unit, rps.AGENT_EXECUTING_PENDING,
                              publish=True, push=True)
 
@@ -718,8 +723,7 @@ class AgentSchedulingComponent(rpu.Component):
         # if units remain waiting, we are out of usable resources
         resources = not bool(to_wait)
 
-        # incoming units which have to wait are the only reason to rebuild the
-        # tuple_size map
+        # new waiting units are a reason to rebuild the tuple_size map
         self._ts_valid = False
 
         self.slot_status("after  schedule incoming")
@@ -756,29 +760,51 @@ class AgentSchedulingComponent(rpu.Component):
             # immediately. This assumes that the `tuple_size` is good enough to
             # judge the legality of the resources for the new target unit.
 
-         ## ts = tuple(unit['tuple_size'])
-         ## if self._ts_map.get(ts):
-         ##
-         ##     replace = self._waitpool[self._ts_map[ts].pop()]
-         ##     replace['slots'] = unit['slots']
-         ##     placed.append(placed)
-         ##
-         ##     # unschedule unit A and schedule unit B have the same
-         ##     # timestamp
-         ##     ts = time.time()
-         ##     self._prof.prof('unschedule_stop', uid=unit['uid'],
-         ##                     timestamp=ts)
-         ##     self._prof.prof('schedule_fast', uid=replace['uid'],
-         ##                     timestamp=ts)
-         ##     self.advance(replace, rps.AGENT_EXECUTING_PENDING,
-         ##                  publish=True, push=True)
-         ## else:
-         ##
-         ##     # no replacement unit found: free the slots, and try to
-         ##     # schedule other units of other sizes.
-         ##     to_release.append(unit)
+            ts = tuple(unit['tuple_size'])
+            if not self._ts_map.get(ts):
 
-            to_release.append(unit)
+                # no candidates with matching tuple sizes
+                to_release.append(unit)
+
+            else:
+           
+                # cycle through the matching ts-candidates.  Some
+                # may be invalid by now, having been scheduled via
+                # `schedule_waitlist`, but if we find any, break the
+                # search and swap the slots.
+                replace = None
+                while not replace:
+
+                    # stop search on emptied candidate list
+                    if not self._ts_map[ts]:
+                        del(self._ts_map[ts])
+                        break
+
+                    candidate = self._ts_map[ts].pop()
+                    replace   = self._waitpool.get(candidate)
+
+                if not replace:
+           
+                    # no replacement unit found: free the slots, and try to
+                    # schedule other units of other sizes.
+                    to_release.append(unit)
+
+                else:
+
+                    # found one - swap the slots and push out to executor
+                    replace['slots'] = unit['slots']
+                    placed.append(placed)
+           
+                    # unschedule unit A and schedule unit B have the same
+                    # timestamp
+                    ts = time.time()
+                    self._prof.prof('unschedule_stop', uid=unit['uid'],
+                                    timestamp=ts)
+                    self._prof.prof('schedule_fast', uid=replace['uid'],
+                                    timestamp=ts)
+                    self.advance(replace, rps.AGENT_EXECUTING_PENDING,
+                                 publish=True, push=True)
+
 
         if not to_release:
             if not to_unschedule:
@@ -795,10 +821,11 @@ class AgentSchedulingComponent(rpu.Component):
             self.unschedule_unit(unit)
             self._prof.prof('unschedule_stop', uid=unit['uid'])
 
-        # we placed some previously waiting units, and need to remove those from
-        # the waitpool
-        self._waitpool = {task['uid']:task for task in self._waitpool.values()
-                                           if  task['uid'] not in placed}
+        # if previously waiting units were placed, remove them from the waitpool
+        if placed:
+            self._waitpool = {task['uid'] : task 
+                                            for task in self._waitpool.values()
+                                            if  task['uid'] not in placed}
 
         # we have new resources, and were active
         return True, True
