@@ -6,11 +6,12 @@ import copy
 import math
 import time
 import errno
+import queue
 import pprint
 import msgpack
 
-import Queue           as pyq
 import setproctitle    as spt
+import threading       as mt
 import multiprocessing as mp
 import threading       as mt
 
@@ -61,7 +62,7 @@ def _uninterruptible(f, *args, **kwargs):
                 raise
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 # Notifications between components are based on pubsub channels.  Those channels
 # have different scope (bound to the channel name).  Only one specific topic is
@@ -92,7 +93,7 @@ class Pubsub(ru.Process):
                          level=self._cfg.get('log_level'))
 
         # avoid superfluous logging calls in critical code sections
-        if self._log.getEffectiveLevel() == 10: # logging.DEBUG:
+        if self._log.getEffectiveLevel() == 10:  # logging.DEBUG:
             self._debug = True
         else:
             self._debug = False
@@ -151,7 +152,7 @@ class Pubsub(ru.Process):
                 self._addr_in.host  = rpu_hostip()
                 self._addr_out.host = rpu_hostip()
 
-            except pyq.Empty as e:
+            except queue.Empty as e:
                 raise RuntimeError ("bridge did not come up! (%s)" % e)
 
 
@@ -233,8 +234,9 @@ class Pubsub(ru.Process):
         self._poll.register(self._out, zmq.POLLIN)
 
         # communicate the bridge ports to the parent process
-        _addr_in  = self._in.getsockopt( zmq.LAST_ENDPOINT)
-        _addr_out = self._out.getsockopt(zmq.LAST_ENDPOINT)
+        _addr_in  = ru.to_string(self._in.getsockopt( zmq.LAST_ENDPOINT))
+        _addr_out = ru.to_string(self._out.getsockopt(zmq.LAST_ENDPOINT))
+
 
         self._pqueue.put([_addr_in, _addr_out])
 
@@ -249,6 +251,7 @@ class Pubsub(ru.Process):
         if self._in  : self._in .close()
         if self._out : self._out.close()
         if self._ctx : self._ctx.destroy()
+        pass
 
 
     # --------------------------------------------------------------------------
@@ -260,7 +263,6 @@ class Pubsub(ru.Process):
             _socks = dict(_uninterruptible(self._poll.poll, timeout=1000)) # timeout in ms
 
         if self._in in _socks:
-
 
             # if any incoming socket signals a message, get the
             # message on the subscriber channel, and forward it
@@ -303,7 +305,7 @@ class Pubsub(ru.Process):
 
         assert(self._role == PUBSUB_SUB), 'incorrect role on subscribe'
 
-        topic = topic.replace(' ', '_')
+        topic = ru.to_byte(topic.replace(' ', '_'))
 
         self._log.debug("~~ %s", topic)
 
@@ -326,12 +328,13 @@ class Pubsub(ru.Process):
 
         self._log.debug("?> %s", pprint.pformat(msg))
 
-        topic = topic.replace(' ', '_')
+        topic = ru.to_byte(topic.replace(' ', '_'))
         data  = msgpack.packb(msg)
 
+        if self._debug:
+            self._log.debug("-> %s %s", topic, pprint.pformat(msg))
+
         if _USE_MULTIPART:
-            if self._debug:
-                self._log.debug("-> %s", ([topic, pprint.pformat(msg)]))
             with self._lock:
                 _uninterruptible(self._q.send_multipart, [topic, data])
 
@@ -357,9 +360,11 @@ class Pubsub(ru.Process):
             raw = _uninterruptible(self._q.recv)
             topic, data = raw.split(' ', 1)
 
-        msg = msgpack.unpackb(data)
+        msg = msgpack.unpackb(data, raw=False)  # we want non-byte types back
+
         if self._debug:
             self._log.debug("<- %s", ([topic, pprint.pformat(msg)]))
+
         return [topic, msg]
 
 
@@ -369,24 +374,25 @@ class Pubsub(ru.Process):
 
         assert(self._role == PUBSUB_SUB), 'invalid role on get_nowait'
 
-        with self._lock:
-            if _uninterruptible(self._q.poll, flags=zmq.POLLIN, timeout=timeout):
+        if _uninterruptible(self._q.poll, flags=zmq.POLLIN, timeout=timeout):
 
-                if _USE_MULTIPART:
+            if _USE_MULTIPART:
+                with self._lock:
                     topic, data = _uninterruptible(self._q.recv_multipart,
                                                    flags=zmq.NOBLOCK)
-
-                else:
-                    raw = _uninterruptible(self._q.recv)
-                    topic, data = raw.split(' ', 1)
-
-                msg = msgpack.unpackb(data)
-                if self._debug:
-                    self._log.debug("<< %s", ([topic, pprint.pformat(msg)]))
-                return [topic, msg]
-
             else:
-                return [None, None]
+                raw = _uninterruptible(self._q.recv)
+                topic, data = raw.split(' ', 1)
+
+            msg = msgpack.unpackb(data, raw=False)
+
+            if self._debug:
+                self._log.debug("<< %s", ([topic, pprint.pformat(msg)]))
+
+            return [topic, msg]
+
+        else:
+            return [None, None]
 
 
 # ------------------------------------------------------------------------------

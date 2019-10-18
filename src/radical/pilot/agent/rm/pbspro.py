@@ -8,7 +8,7 @@ import subprocess
 
 import radical.utils as ru
 
-from base import LRMS
+from .base import LRMS
 
 
 # ==============================================================================

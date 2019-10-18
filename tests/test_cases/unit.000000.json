@@ -5,7 +5,8 @@
         "description": {"executable"   : "/bin/sleep",
                         "arguments"    : null,
                         "cpu_processes" : 1
-                       }
+                       },
+        "unit_sandbox_path": "/tmp"
     },
 
     "setup" : {

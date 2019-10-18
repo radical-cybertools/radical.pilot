@@ -8,6 +8,7 @@ import fractions
 import collections
 
 import radical.utils as ru
+from functools import reduce
 
 
 # 'enum' for launch method types
@@ -272,11 +273,12 @@ class LaunchMethod(object):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def _create_hostfile(cls, uid, all_hosts, separator=' ', impaired=False):
+    def _create_hostfile(cls, sandbox, uid, all_hosts, separator=' ',
+                         impaired=False):
 
         # Open appropriately named temporary file
         # NOTE: we make an assumption about the unit sandbox here
-        filename = '%s/%s/%s.hosts' % (PWD, uid, uid)
+        filename = '%s/%s.hosts' % (sandbox, uid)
         with open(filename, 'w') as fout:
 
             if not impaired:
@@ -289,7 +291,7 @@ class LaunchMethod(object):
                 count_dict = collections.OrderedDict(sorted(counter.items(),
                                                      key=lambda t: t[0]))
 
-                for (host, count) in count_dict.iteritems():
+                for (host, count) in count_dict.items():
                     fout.write('%s%s%d\n' % (host, separator, count))
 
             else:
@@ -321,7 +323,7 @@ class LaunchMethod(object):
 
         # Recreate a list of hosts based on the normalized dict
         hosts = list()
-        for (host, count) in count_dict.iteritems():
+        for (host, count) in list(count_dict.items()):
             hosts.extend([host] * count)
 
         # sort the list for readbility
