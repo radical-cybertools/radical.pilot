@@ -67,8 +67,8 @@ if __name__ == '__main__':
             if state in rp.FINAL:
                 global n_done
                 n_done += 1
-                print '%5s: %4d - %4d - %5.1f - %s' % (state[0:5], n_done, n_units,
-                        time.time()-start, unit.pilot)
+                print('%5s: %4d - %4d - %5.1f - %s' % (state[0:5], n_done, n_units,
+                        time.time()-start, unit.pilot))
           # if state in [rp.FAILED]:
           #     session.close()
         umgr.register_callback(unit_cb)
@@ -107,7 +107,7 @@ if __name__ == '__main__':
         umgr.add_pilots(pilots)
 
         def pilot_cb(pilot, state):
-            print 'pilot: %s - %s - %5.1f' % (pilot.uid, state, time.time()-start)
+            print('pilot: %s - %s - %5.1f' % (pilot.uid, state, time.time()-start))
           # if state in rp.FINAL:
           #     sys.exit()
         for pilot in pilots:
@@ -149,7 +149,7 @@ if __name__ == '__main__':
         start  = time.time()
         units  = umgr.submit_units(cuds)
         stop   = time.time()
-        print ' === > %s' % (stop-start)
+        print(' === > %s' % (stop-start))
 
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')

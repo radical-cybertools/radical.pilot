@@ -95,24 +95,25 @@ class Update(rpu.Worker):
 
         # is there anything to execute?
         if not self._uids:
-            return False
+            return True
 
         now = time.time()
         age = now - self._last
 
         # only push if flush is forced, or when collection time or size
         # have been exceeded
-        if  not flush \
-            and age < self._bct \
-            and len(self._uids) < self._bcs:
+        if not flush \
+           and age < self._bct \
+           and len(self._uids) < self._bcs:
             return False
 
         try:
             res = self._bulk.execute()
-            self._log.debug("bulk update result: %s", res)
+
         except pymongo.errors.OperationFailure as e:
             self._log.exception('bulk exec error: %s' % e.details)
             raise
+
         except Exception as e:
             self._log.exception('mongodb error: %s', e)
             raise
@@ -142,7 +143,7 @@ class Update(rpu.Worker):
     def _idle_cb(self):
 
         with self._lock:
-             self._timed_bulk_execute()
+            self._timed_bulk_execute()
 
         return True
 
@@ -192,68 +193,72 @@ class Update(rpu.Worker):
         does not exist, an exception is raised.
         '''
 
-        cmd    = msg['cmd']
-        things = msg['arg']
+        try:
+            cmd    = msg['cmd']
+            things = msg['arg']
 
-      # cmds = ['delete',       'update',       'state',
-      #         'delete_flush', 'update_flush', 'state_flush', 'flush']
-        if cmd not in ['update']:
-            self._log.info('ignore cmd %s', cmd)
-            return True
-
-        if not isinstance(things, list):
-            things = [things]
-
-
-        # FIXME: we don't have any error recovery -- any failure to update
-        #        state in the DB will thus result in an exception here and tear
-        #        down the module.
-        for thing in things:
-
-            # got a new request.  Add to bulk (create as needed),
-            # and push bulk if time is up.
-            uid   = thing['uid']
-            ttype = thing['type']
-            state = thing['state']
-
-            if 'clone' in uid:
-                # we don't push clone states to DB
+          # cmds = ['delete',       'update',       'state',
+          #         'delete_flush', 'update_flush', 'state_flush', 'flush']
+            if cmd not in ['update']:
+                self._log.info('ignore cmd %s', cmd)
                 return True
 
-          # self._prof.prof('update_request', msg=state, uid=uid)
+            if not isinstance(things, list):
+                things = [things]
 
-            if not state:
-                # nothing to push
-                return True
 
-            # create an update document
-            update_dict          = dict()
-            update_dict['$set']  = dict()
-            update_dict['$push'] = dict()
+            # FIXME: we don't have any error recovery -- any failure to update
+            #        state in the DB will thus result in an exception here and tear
+            #        down the module.
+            for thing in things:
 
-            for key,val in thing.iteritems():
-                # we never set _id, states (to avoid index clash, duplicated ops)
-                if key not in ['_id', 'states']:
-                    update_dict['$set'][key] = val
+                # got a new request.  Add to bulk (create as needed),
+                # and push bulk if time is up.
+                uid   = thing['uid']
+                ttype = thing['type']
+                state = thing['state']
 
-            # we set state, put (more importantly) we push the state onto the
-            # 'states' list, so that we can later get state progression in sync with
-            # the state model, even if they have been pushed here out-of-order
-            update_dict['$push']['states'] = state
+                if 'clone' in uid:
+                    # we don't push clone states to DB
+                    return True
+
+              # self._prof.prof('update_request', msg=state, uid=uid)
+
+                if not state:
+                    # nothing to push
+                    return True
+
+                # create an update document
+                update_dict          = dict()
+                update_dict['$set']  = dict()
+                update_dict['$push'] = dict()
+
+                for key,val in thing.items():
+                    # we never set _id, states (to avoid index clash, duplicated ops)
+                    if key not in ['_id', 'states']:
+                        update_dict['$set'][key] = val
+
+                # we set state, put (more importantly) we push the state onto the
+                # 'states' list, so that we can later get state progression in sync with
+                # the state model, even if they have been pushed here out-of-order
+                update_dict['$push']['states'] = state
+
+                with self._lock:
+
+                    # push the update request onto the bulk
+                    self._uids.append([uid, ttype, state])
+                    self._bulk.find  ({'uid'  : uid,
+                                       'type' : ttype}) \
+                              .update(update_dict)
 
             with self._lock:
+                # attempt a timed update
+                self._timed_bulk_execute()
 
-                # push the update request onto the bulk
-                self._uids.append([uid, ttype, state])
-                self._bulk.find  ({'uid'  : uid,
-                                   'type' : ttype}) \
-                          .update(update_dict)
+            return True
 
-        with self._lock:
-            # attempt a timed update
-            self._timed_bulk_execute()
-
-        return True
+        except:
+            return False
 
 
 # ------------------------------------------------------------------------------

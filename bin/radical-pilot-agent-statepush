@@ -51,17 +51,17 @@ if __name__ == '__main__':
         raise ValueError('need sid, pid and state arguments %s' % sys.argv[1:])
 
 
-    print 'dburl   : %s' % dburl
-    print 'tunnel  : %s' % hostport
+    print('dburl   : %s' % dburl)
+    print('tunnel  : %s' % hostport)
 
     if hostport:
         dburl = ru.Url(dburl)
         dburl.host, dburl.port = hostport.split(':')
-        print 'dburl[t]: %s' % dburl
+        print('dburl[t]: %s' % dburl)
 
-    print 'session : %s' % sid
-    print 'pilot   : %s' % pid
-    print 'state   : %s' % pid
+    print('session : %s' % sid)
+    print('pilot   : %s' % pid)
+    print('state   : %s' % pid)
 
     # mpongodb_connect wants a string at the moment
     mongo, db, _, _, _ = ru.mongodb_connect(str(dburl))
@@ -77,7 +77,7 @@ if __name__ == '__main__':
                                   'finished': time.time()}
                        })
 
-    print 'update  : %s' % ret
+    print('update  : %s' % ret)
 
 
 # ------------------------------------------------------------------------------

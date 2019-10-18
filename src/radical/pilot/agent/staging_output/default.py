@@ -132,7 +132,7 @@ class Default(AgentStagingOutputComponent):
         if unit.get('stdout_file') and os.path.isfile(unit['stdout_file']):
             with open(unit['stdout_file'], 'r') as stdout_f:
                 try:
-                    txt = unicode(stdout_f.read(), "utf-8")
+                    txt = ru.to_string(stdout_f.read())
                 except UnicodeDecodeError:
                     txt = "unit stdout is binary -- use file staging"
 
@@ -145,7 +145,7 @@ class Default(AgentStagingOutputComponent):
         if unit.get('stderr_file') and os.path.isfile(unit['stderr_file']):
             with open(unit['stderr_file'], 'r') as stderr_f:
                 try:
-                    txt = unicode(stderr_f.read(), "utf-8")
+                    txt = ru.to_string(stderr_f.read())
                 except UnicodeDecodeError:
                     txt = "unit stderr is binary -- use file staging"
 
@@ -173,11 +173,11 @@ class Default(AgentStagingOutputComponent):
         if os.path.isfile(unit_prof):
             try:
                 with open(unit_prof, 'r') as prof_f:
-                    txt = prof_f.read()
+                    txt = ru.to_string(prof_f.read())
                     for line in txt.split("\n"):
                         if line:
                             ts, event, comp, tid, _uid, state, msg = line.split(',')
-                            self._prof.prof(timestamp=float(ts), event=event,
+                            self._prof.prof(ts=float(ts), event=event,
                                             comp=comp, tid=tid, uid=_uid,
                                             state=state, msg=msg)
             except Exception as e:

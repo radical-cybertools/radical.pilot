@@ -14,9 +14,9 @@ import radical.pilot.utils as rpu
 def usage(msg=None, noexit=False):
 
     if msg:
-        print "\n      Error: %s" % msg
+        print("\n      Error: %s" % msg)
 
-    print """
+    print("""
       usage   : %s <sid> [-t tgt] [-d dburl] [-c src] [-a schema://host] [-s] [-h]
       example : %s $SID -d mongodb://localhost/rp -t /tmp/
 
@@ -37,7 +37,7 @@ def usage(msg=None, noexit=False):
           -s  : skip existing files
           -h  : print this help message
 
-""" % (sys.argv[0], sys.argv[0], os.environ.get('RADICAL_PILOT_DBURL'))
+""" % (sys.argv[0], sys.argv[0], os.environ.get('RADICAL_PILOT_DBURL')))
 
     if msg:
         sys.exit(1)
