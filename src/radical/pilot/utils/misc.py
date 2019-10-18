@@ -4,6 +4,8 @@ import time
 import errno
 import netifaces
 
+import radical.utils as ru
+
 from   radical.pilot.states import *
 
 
@@ -161,7 +163,7 @@ def create_tar(tgt, dnames):
     uid   = os.getuid()
     gid   = os.getgid()
     mode  = 16893
-    mtime = time.time()
+    mtime = int(time.time())
 
     fout  = open(tgt, 'wb')
 
@@ -179,7 +181,7 @@ def create_tar(tgt, dnames):
         cksum = 256 + sum(ord(h) for h in data)
         data  = rpad(data  , 512)
         data  = data  [:-364] + '%06o\0' % cksum + data[-357:]
-        fout.write(data)
+        fout.write(ru.to_byte(data))
 
     for dname in dnames:
         write_dir(dname)

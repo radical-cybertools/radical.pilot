@@ -1,9 +1,8 @@
 # pylint: disable=protected-access, unused-argument
 
-
 import pytest
 
-from test_common                 import setUp
+from .test_common                import setUp
 from radical.pilot.agent.lm.prte import PRTE
 
 import radical.utils as ru

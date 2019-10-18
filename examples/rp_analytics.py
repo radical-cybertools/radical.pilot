@@ -17,7 +17,7 @@ rpu = rp.utils
 if __name__ == '__main__':
 
     if len(sys.argv) <= 1:
-        print "\n\tusage: %s <session_id>\n"
+        print("\n\tusage: %s <session_id>\n")
         sys.exit(1)
 
     sid = sys.argv[1]
@@ -25,18 +25,18 @@ if __name__ == '__main__':
 
     profiles = rpu.fetch_profiles(sid=sid, skip_existing=True)
     for p in profiles:
-        print p
+        print(p)
 
     profs = rpu.read_profiles(profiles)
 
     for p in profs:
-        print type(p)
+        print(type(p))
 
     prof = rpu.combine_profiles(profs)
 
-    print len(prof)
+    print(len(prof))
     for entry in prof:
-        print entry
+        print(entry)
 
 
 

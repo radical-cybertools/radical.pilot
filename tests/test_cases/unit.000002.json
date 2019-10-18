@@ -4,25 +4,26 @@
         "uid":         "unit.000002",
         "description": {"executable" : "spark-submit",
                         "arguments"  : ["test.py"],
-                        "cpu_processes" : 1}
+                        "cpu_processes" : 1},
+        "unit_sandbox_path": "/tmp"
     },
 
     "setup" : {
         "lm" : {
              "slots" :{
                  "nodes"         : [["test", "test", [], []]],
-                 "cores_per_node": 24, 
-                 "gpus_per_node" : 0, 
-                 "lm_info"       : {"spark_home"     : "/", 
-                                    "master_ip"      : "test_ip", 
-                                    "lm_detail"      : "spark://test_ip:7077", 
-                                    "name"           : "spark", 
-                                    "launch_command" : "", 
+                 "cores_per_node": 24,
+                 "gpus_per_node" : 0,
+                 "lm_info"       : {"spark_home"     : "/",
+                                    "master_ip"      : "test_ip",
+                                    "lm_detail"      : "spark://test_ip:7077",
+                                    "name"           : "spark",
+                                    "launch_command" : "",
                                     "nodename"       : "test"
                  }
              }
         }
-    }, 
+    },
 
     "results": {
         "lm": {
