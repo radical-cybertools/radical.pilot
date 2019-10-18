@@ -32,34 +32,22 @@ class Update(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    @classmethod
-    def create(cls, cfg):
+    def __init__(self, cfg, session):
 
-        return cls(cfg)
+        self._uid = ru.generate_id('update.%(counter)s', ru.ID_CUSTOM)
+
+        rpu.Worker.__init__(self, cfg, session)
+
+        self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
+        self.register_timed_cb(self._idle_cb, timer=self._bct)
 
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    @classmethod
+    def create(cls, cfg):
 
-        self._uid = ru.generate_id('update.%(counter)s', ru.ID_CUSTOM)
-
-        rpu.Worker.__init__(self, cfg)
-
-        _, db, _, _, _   = ru.mongodb_connect(self._cfg.dburl)
-        self._coll       = db[self._cfg.sid]
-        self._bulk       = self._coll.initialize_ordered_bulk_op()
-        self._last       = time.time()        # time of last bulk push
-        self._uids       = list()             # list of collected uids
-        self._lock       = threading.RLock()  # protect _bulk
-
-        self._bct        = self._cfg.get('bulk_collection_time',
-                                          DEFAULT_BULK_COLLECTION_TIME)
-        self._bcs        = self._cfg.get('bulk_collection_size',
-                                          DEFAULT_BULK_COLLECTION_SIZE)
-
-        self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
-        self.register_timed_cb(self._idle_cb, timer=self._bct)
+        return cls(cfg)
 
 
     # --------------------------------------------------------------------------
@@ -93,15 +81,15 @@ class Update(rpu.Worker):
 
         self._prof.prof('update_pushed', msg='bulk size: %d' % len(self._uids))
 
-        for entry in self._uids:
-
-            uid   = entry[0]
-            state = entry[2]
-
-            if state:
-                self._prof.prof('update_pushed', uid=uid, msg=state)
-            else:
-                self._prof.prof('update_pushed', uid=uid)
+      # for entry in self._uids:
+      #
+      #     uid   = entry[0]
+      #     state = entry[2]
+      #
+      #     if state:
+      #         self._prof.prof('update_pushed', uid=uid, msg=state)
+      #     else:
+      #         self._prof.prof('update_pushed', uid=uid)
 
         # empty bulk, refresh state
         self._last = now
@@ -195,7 +183,7 @@ class Update(rpu.Worker):
                     # we don't push clone states to DB
                     return True
 
-                self._prof.prof('update_request', msg=state, uid=uid)
+              # self._prof.prof('update_request', msg=state, uid=uid)
 
                 if not state:
                     # nothing to push

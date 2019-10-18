@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import sys
 import copy
 import time
 import threading
@@ -146,10 +147,10 @@ class ComputePilot(object):
             self._log.error("[Callback]: pilot '%s' failed - exit", self.uid)
 
             # There are different ways to tell main...
-            ru.cancel_main_thread('int')
+          # ru.cancel_main_thread('int')
           # raise RuntimeError('pilot %s failed - fatal!' % self.uid)
-          # import sys
-          # sys.exit()
+          # os.kill(os.getpid())
+            sys.exit()
 
 
     # --------------------------------------------------------------------------

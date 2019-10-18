@@ -854,7 +854,7 @@ class Session(rs.Session):
             if sandbox:
                 unit_sandbox = ru.Url(self._get_pilot_sandbox(pilot))
                 if sandbox[0] == '/':
-                    unit_sandbox.path = unit_sandbox
+                    unit_sandbox.path = sandbox
                 else:
                     unit_sandbox.path += '/%s/' % sandbox
 

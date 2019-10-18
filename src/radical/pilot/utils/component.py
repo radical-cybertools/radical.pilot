@@ -935,9 +935,10 @@ class Component(object):
             # pushing them
             buckets = dict()
             for thing in things:
+
                 state = thing['state']
                 uid   = thing['uid']
-                self._prof.prof('get', uid=uid, state=state)
+              # self._prof.prof('get', uid=uid, state=state)
 
                 if state not in buckets:
                     buckets[state] = list()
@@ -1066,10 +1067,11 @@ class Component(object):
                     to_publish.append(tmp)
 
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
-            ts = time.time()
-            for thing in things:
-                self._prof.prof('publish', uid=thing['uid'],
-                                state=thing['state'], ts=ts)
+
+          # ts = time.time()
+          # for thing in things:
+          #     self._prof.prof('publish', uid=thing['uid'],
+          #                     state=thing['state'], ts=ts)
 
         # never carry $all across component boundaries!
         else:
@@ -1087,27 +1089,27 @@ class Component(object):
 
                 ts = time.time()
                 if _state in rps.FINAL:
-                    # things in final state are dropped
-                    for thing in _things:
-                        self._log.debug('final %s [%s]', thing['uid'], _state)
-                        self._prof.prof('drop', uid=thing['uid'], state=_state,
-                                        ts=ts)
+                  # # things in final state are dropped
+                  # for thing in _things:
+                  #     self._log.debug('final %s [%s]', thing['uid'], _state)
+                  #     self._prof.prof('drop', uid=thing['uid'], state=_state,
+                  #                     ts=ts)
                     continue
 
                 if _state not in self._outputs:
                     # unknown target state -- error
-                    for thing in _things:
-                        self._log.debug("lost  %s [%s]", thing['uid'], _state)
-                        self._prof.prof('lost', uid=thing['uid'], state=_state,
-                                        ts=ts)
+                  # for thing in _things:
+                  #     self._log.debug("lost  %s [%s]", thing['uid'], _state)
+                  #     self._prof.prof('lost', uid=thing['uid'], state=_state,
+                  #                     ts=ts)
                     continue
 
                 if not self._outputs[_state]:
                     # empty output -- drop thing
-                    for thing in _things:
-                        self._log.debug('drop  %s [%s]', thing['uid'], _state)
-                        self._prof.prof('drop', uid=thing['uid'], state=_state,
-                                        ts=ts)
+                  # for thing in _things:
+                  #     self._log.debug('drop  %s [%s]', thing['uid'], _state)
+                  #     self._prof.prof('drop', uid=thing['uid'], state=_state,
+                  #                     ts=ts)
                     continue
 
                 output = self._outputs[_state]
@@ -1116,10 +1118,10 @@ class Component(object):
                 self._log.debug('put bulk %s: %s', _state, len(_things))
                 output.put(_things)
 
-                ts = time.time()
-                for thing in _things:
-                    self._prof.prof('put', uid=thing['uid'], state=_state,
-                                    msg=output.name, ts=ts)
+              # ts = time.time()
+              # for thing in _things:
+              #     self._prof.prof('put', uid=thing['uid'], state=_state,
+              #                     msg=output.name, ts=ts)
 
 
     # --------------------------------------------------------------------------

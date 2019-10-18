@@ -172,9 +172,6 @@ class Popen(AgentExecutingComponent) :
     #
     def _handle_unit(self, cu):
 
-      # import pprint
-      # self._log.info('handle cu: %s', pprint.pformat(cu))
-
         try:
             # prep stdout/err so that we can append w/o checking for None
             cu['stdout'] = ''
