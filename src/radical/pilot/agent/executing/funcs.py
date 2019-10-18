@@ -4,14 +4,10 @@ __license__   = "MIT"
 
 
 import os
-import copy
 import stat
 import time
-import Queue
-import signal
-import tempfile
+import queue
 import threading
-import traceback
 import subprocess
 
 import radical.utils as ru
@@ -70,7 +66,7 @@ class FUNCS(AgentExecutingComponent) :
         self._cancel_lock    = threading.RLock()
         self._cus_to_cancel  = list()
         self._cus_to_watch   = list()
-        self._watch_queue    = Queue.Queue ()
+        self._watch_queue    = queue.Queue ()
 
         self._pilot_id = self._cfg['pilot_id']
 
@@ -93,20 +89,20 @@ class FUNCS(AgentExecutingComponent) :
             exe = '%s/rp_install/bin/radical-pilot-agent-funcs' % self._pwd
 
         for idx, node in enumerate(self._cfg['lrms_info']['node_list']):
-            uid   = 'func_exec.%04d' % idx 
+            uid   = 'func_exec.%04d' % idx
             pwd   = '%s/%s' % (self._pwd, uid)
             funcs = {'uid'        : uid,
                      'description': {'executable'   : exe,
                                      'arguments'    : [pwd, ve],
                                      'cpu_processes': 1,
-                                     'environment'  : [], 
+                                     'environment'  : [],
                                     },
-                     'slots'      : {'nodes'        : [{'name'  : node[0], 
-                                                        'uid'   : node[1], 
-                                                        'cores' : [[0]], 
+                     'slots'      : {'nodes'        : [{'name'  : node[0],
+                                                        'uid'   : node[1],
+                                                        'cores' : [[0]],
                                                         'gpus'  : []
                                                        }]
-                                    }, 
+                                    },
                      'cfg'        : {'addr_wrk'     : addr_wrk['addr_out'],
                                      'addr_res'     : addr_res['addr_in']
                                     }
@@ -166,7 +162,7 @@ class FUNCS(AgentExecutingComponent) :
 
             # also add any env vars requested in the unit description
             if descr.get('environment', []):
-                for key,val in descr['environment'].iteritems():
+                for key,val in descr['environment'].items():
                     fout.write('export "%s=%s"\n' % (key, val))
 
             fout.write('\n%s\n\n' % launch_cmd)
@@ -176,10 +172,6 @@ class FUNCS(AgentExecutingComponent) :
         # done writing to launch script, get it ready for execution.
         st = os.stat(fname)
         os.chmod(fname, st.st_mode | stat.S_IEXEC)
-
-        # prepare stdout/stderr
-        stdout_file = descr.get('stdout') or 'STDOUT'
-        stderr_file = descr.get('stderr') or 'STDERR'
 
         fout = open('%s/%s.out' % (sandbox, funcs['uid']), "w")
         ferr = open('%s/%s.err' % (sandbox, funcs['uid']), "w")
@@ -227,7 +219,7 @@ class FUNCS(AgentExecutingComponent) :
                     unit['target_state'] = unit['state']
                     unit['pilot']        = self._pilot_id
 
-                    self._log.debug('=== got %s [%s] [%s] [%s]', 
+                    self._log.debug('=== got %s [%s] [%s] [%s]',
                                     unit['uid'],    unit['state'],
                                     unit['stdout'], unit['stderr'])
 

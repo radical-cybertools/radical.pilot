@@ -26,9 +26,9 @@ _DEFAULT_DBURL = str(_DEFAULT_DBURL)
 def usage (msg=None, noexit=False) :
 
     if  msg :
-        print "\n      Error: %s" % msg
+        print("\n      Error: %s" % msg)
 
-    print """
+    print("""
       usage   : %s -m <mode> [-d dburl] [-s session]
       example : %s -m close   -d mongodb://user:password@localhost/radicalpilot -s 536afe101d41c83696ea0135
 
@@ -41,7 +41,7 @@ def usage (msg=None, noexit=False) :
       Closing a session will cancel all its compute units and pilots.
       The default MongoDB is '%s'
       
-""" % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL)
+""" % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL))
 
     if  msg :
         sys.exit (1)
@@ -55,26 +55,26 @@ def usage (msg=None, noexit=False) :
 def list_sessions (dbclient, dbname, session) :
 
     if  session :
-        print "invalid session parameter on 'list'"
+        print("invalid session parameter on 'list'")
         sys.exit (-1)
 
     sids = rpu.get_session_ids (dbclient[dbname])
 
 
     if not sids :
-        print 'no session recorded in database at %s' % url
+        print('no session recorded in database at %s' % url)
 
     else :
-        print "Session IDs:"
+        print("Session IDs:")
         for sid in sids :
-            print "  %s" % sid
+            print("  %s" % sid)
 
 
 # ------------------------------------------------------------------------------
 def close_session (dburl, session) :
 
-    print "session : %s" % session
-    print "mode    : close"
+    print("session : %s" % session)
+    print("mode    : close")
 
     rp.Session (database_url=dburl, uid=session).close ()
 
@@ -123,11 +123,11 @@ if __name__ == '__main__' :
     host, port, dbname, cname, pname = ru.split_dburl (url, _DEFAULT_DBURL)[0:5]
     dbclient = pymongo.MongoClient (host=host, port=port)
 
-    print "modes   : %s" % mode
-    print "db url  : %s" % url
+    print("modes   : %s" % mode)
+    print("db url  : %s" % url)
 
     if  not session and mode != 'list' :
-        print usage ("no session sepcified")
+        print(usage ("no session sepcified"))
 
     for m in mode.split (',') :
 

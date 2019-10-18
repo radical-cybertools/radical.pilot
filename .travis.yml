@@ -2,7 +2,7 @@ language: python
 sudo: disabled
 
 python:
-  - "2.7"
+  - "3.5"
 
 os:
   - linux

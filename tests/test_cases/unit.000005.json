@@ -9,7 +9,8 @@
                         "cpu_process_type" : "MPI",
                         "gpu_process_type" : "MPI",
                         "gpu_thread_type"  : "CUDA"
-                       }
+                       },
+        "unit_sandbox_path": "/tmp"
     },
 
     "setup" : {

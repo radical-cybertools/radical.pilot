@@ -351,7 +351,7 @@ class PilotManager(rpu.Component):
     def _call_pilot_callbacks(self, pilot_obj, state):
 
         with self._pcb_lock:
-            for cb_name, cb_val in self._callbacks[rpc.PILOT_STATE].iteritems():
+            for cb_name, cb_val in self._callbacks[rpc.PILOT_STATE].items():
 
                 cb      = cb_val['cb']
                 cb_data = cb_val['cb_data']
@@ -388,13 +388,13 @@ class PilotManager(rpu.Component):
         # and wait for their completion
         with self._sds_lock:
             sd_states = [sd['pmgr_state'] for sd
-                                          in  self._active_sds.values()
+                                          in  list(self._active_sds.values())
                                           if  sd['uid'] in uids]
         while rps.NEW in sd_states:
             time.sleep(1.0)
             with self._sds_lock:
                 sd_states = [sd['pmgr_state'] for sd
-                                              in  self._active_sds.values()
+                                              in  list(self._active_sds.values())
                                               if  sd['uid'] in uids]
 
         if rps.FAILED in sd_states:
@@ -446,7 +446,7 @@ class PilotManager(rpu.Component):
         self.is_valid()
 
         with self._pilots_lock:
-            ret = self._pilots.keys()
+            ret = list(self._pilots.keys())
 
         return ret
 
@@ -561,7 +561,7 @@ class PilotManager(rpu.Component):
 
         if not uids:
             with self._pilots_lock:
-                ret = self._pilots.values()
+                ret = list(self._pilots.values())
             return ret
 
 
@@ -624,7 +624,7 @@ class PilotManager(rpu.Component):
         if not uids:
             with self._pilots_lock:
                 uids = list()
-                for uid,pilot in self._pilots.iteritems():
+                for uid,pilot in self._pilots.items():
                     if pilot.state not in rps.FINAL:
                         uids.append(uid)
 
@@ -723,7 +723,7 @@ class PilotManager(rpu.Component):
 
         if not uids:
             with self._pilots_lock:
-                uids = self._pilots.keys()
+                uids = list(self._pilots.keys())
 
         if not isinstance(uids, list):
             uids = [uids]
@@ -798,7 +798,7 @@ class PilotManager(rpu.Component):
                 if cb:
                     to_delete = [cb.__name__]
                 else:
-                    to_delete = self._callbacks[metric].keys()
+                    to_delete = list(self._callbacks[metric].keys())
 
                 for cb_name in to_delete:
 

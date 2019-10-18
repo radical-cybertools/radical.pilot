@@ -44,21 +44,21 @@
         "notes"                       : "Requires the use of an RSA SecurID on every connection.",
         "schemas"                     : ["local", "ssh", "go"],
         "ssh"                         : {
-            "job_manager_endpoint"    : "torque+ssh://rhea.ccs.ornl.gov",
+            "job_manager_endpoint"    : "slurm+ssh://rhea.ccs.ornl.gov",
             "filesystem_endpoint"     : "sftp://rhea.ccs.ornl.gov/"
         },
         "local"                       : {
-            "job_manager_endpoint"    : "torque://localhost",
+            "job_manager_endpoint"    : "slurm://localhost",
             "filesystem_endpoint"     : "file://localhost/"
         },
         "go"                          : {
-            "job_manager_endpoint"    : "torque+ssh://rhea.ccs.ornl.gov",
+            "job_manager_endpoint"    : "slurm+ssh://rhea.ccs.ornl.gov",
             "filesystem_endpoint"     : "go://olcf#dtn/"
         },
         "default_queue"               : "batch",
         "cores_per_node"              : "16",
         "gpus_per_node"               : 1,
-        "lrms"                        : "TORQUE",
+        "lrms"                        : "SLURM",
         #"agent_type"                  : "multicore",
         #"agent_config"                : "mpirun",
         "agent_scheduler"             : "CONTINUOUS",

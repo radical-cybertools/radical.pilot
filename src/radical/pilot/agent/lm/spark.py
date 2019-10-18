@@ -194,7 +194,7 @@ class Spark(LaunchMethod):
 
         if task_env:
             env_string = ''
-            for key,val in task_env.iteritems():
+            for key,val in list(task_env.items()):
                 env_string += '-shell_env ' + key + '=' + str(val) + ' '
         else:
             env_string = ''

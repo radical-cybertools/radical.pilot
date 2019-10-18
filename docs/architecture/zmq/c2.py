@@ -9,6 +9,7 @@ delay = 0.0
 if len(sys.argv) > 1:
     delay = float(sys.argv[1])
 
+
 def filter():
     context        = zmq.Context()
     socket_src     = context.socket(zmq.PULL)
@@ -21,13 +22,14 @@ def filter():
     socket_sink.bind("tcp://127.0.0.1:5001")
 
     while True:
-        req = socket_sink.recv()
+        _   = socket_sink.recv()
         msg = socket_src.recv_json()
-        print msg
+        print(msg)
         socket_sink.send_json(msg)
 
         if delay:
             time.sleep (delay)
+
 
 filter()
 
