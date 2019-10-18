@@ -27,9 +27,9 @@ _DEFAULT_DBURL = str(_DEFAULT_DBURL)
 def usage(msg=None, noexit=False):
 
     if  msg:
-        print "\n      Error: %s" % msg
+        print("\n      Error: %s" % msg)
 
-    print """
+    print("""
       usage      : %s [-d <dburl>] [-m <mode>] [-a <age>] [-s <sid>]
       example    : %s -a 3d -m purge
                    purge all sessions older than 3 days in the default database
@@ -56,7 +56,7 @@ def usage(msg=None, noexit=False):
 
       The default command is 'list'.  
       
-""" % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL)
+""" % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL))
 
     if msg:
         sys.exit(1)
@@ -78,7 +78,7 @@ def get_sessions(db, dbname, age, session):
         sids = rpu.get_session_ids(db)
 
     if not sids:
-        print 'no matching session in database at %s' % url
+        print('no matching session in database at %s' % url)
         return
 
     sessions = dict()
@@ -90,7 +90,7 @@ def get_sessions(db, dbname, age, session):
             not 'session' in docs or \
             not 'created' in docs['session']:
             # invalid session
-            print 'check  session %s ? (%17s)' % (sid, '???')
+            print('check  session %s ? (%17s)' % (sid, '???'))
             continue
 
         c = docs['session']['created']
@@ -101,10 +101,10 @@ def get_sessions(db, dbname, age, session):
         if (now-c) > age:
             sessions[sid] = docs
             created.append(c)
-            print 'check  session %s + (%17s)' % (sid, now-c)
+            print('check  session %s + (%17s)' % (sid, now-c))
         else:
-            print 'check  session %s - (%17s)' % (sid, now-c)
-            print 'optimignore remaining sessions'
+            print('check  session %s - (%17s)' % (sid, now-c))
+            print('optimignore remaining sessions')
             break
 
 
@@ -114,7 +114,7 @@ def get_sessions(db, dbname, age, session):
             if isinstance(c, float):
                 session_created = datetime.datetime.utcfromtimestamp(session_created) 
             if session_created == c:
-                print 'match  session %s   (%17s)' % (sid, now-c)
+                print('match  session %s   (%17s)' % (sid, now-c))
 
     return sessions
 
@@ -132,7 +132,7 @@ def list_sessions(db, dbname, age, session):
         sids = rpu.get_session_ids(db)
 
     if not sids:
-        print 'no matching session in database at %s' % url
+        print('no matching session in database at %s' % url)
         return []
 
     session_ids = list()
@@ -143,7 +143,7 @@ def list_sessions(db, dbname, age, session):
             not 'session' in docs or \
             not 'created' in docs['session']:
             # invalid session
-            print 'check  session %s ? (%17s)' % (sid, '???')
+            print('check  session %s ? (%17s)' % (sid, '???'))
             continue
 
         c = docs['session']['created']
@@ -153,14 +153,14 @@ def list_sessions(db, dbname, age, session):
 
         if (now-c) > age:
             session_ids.append(sid)
-            print 'check  session %s + (%17s)' % (sid, now-c)
+            print('check  session %s + (%17s)' % (sid, now-c))
         else:
-            print 'check  session %s - (%17s)' % (sid, now-c)
-            print 'optimignore remaining sessions'
+            print('check  session %s - (%17s)' % (sid, now-c))
+            print('optimignore remaining sessions')
             break
 
     for sid in session_ids:
-        print sid
+        print(sid)
 
     return session_ids
 
@@ -177,7 +177,7 @@ def purge_sessions(db, dbname, age, session):
         db.drop_collection(sid)
       # collection = database[sid]
       # collection.drop()
-        print 'purged session %s' % sid
+        print('purged session %s' % sid)
 
 
 # ------------------------------------------------------------------------------
@@ -190,7 +190,7 @@ def export_sessions(db, dbname, age, session):
 
         docs = sessions[sid]
 
-        print "export session %s.json" % sid
+        print("export session %s.json" % sid)
         ru.write_json(docs, "%s.json" % sid)
 
 
@@ -201,7 +201,7 @@ def dump_session(db, dbname, age, session):
     sessions = get_sessions(db, dbname, age, session)
 
     for sid in sessions:
-        print "\n%s:\n%s" % (sid, pprint.pformat(sessions[sid]))
+        print("\n%s:\n%s" % (sid, pprint.pformat(sessions[sid])))
 
 
 # ------------------------------------------------------------------------------
@@ -248,11 +248,11 @@ if __name__ == '__main__':
 
     mongo, db, dbname, cname, pname = ru.mongodb_connect(str(url), _DEFAULT_DBURL)
 
-    print "modes   : %s" % mode
-    print "db url  : %s" % url
+    print("modes   : %s" % mode)
+    print("db url  : %s" % url)
 
     if  session:
-        print "session : %s" % session
+        print("session : %s" % session)
 
     if  age:
         suffix=age[-1]
@@ -263,7 +263,7 @@ if __name__ == '__main__':
         if  suffix in 'mhdwMy':
             num    = int(age[:-1])
         else:
-            print suffix
+            print(suffix)
             usage("invalid age specification (%s)" % options.age)
 
         if  suffix is 'm': age = datetime.timedelta(minutes =       num)
@@ -277,7 +277,7 @@ if __name__ == '__main__':
     else:
         age = datetime.timedelta.min
 
-    print "age     : %s" % age
+    print("age     : %s" % age)
 
 
     for m in mode.split(','):

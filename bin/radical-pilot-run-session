@@ -41,7 +41,7 @@ def run_record(rec):
         for pd_json in glob.glob("%s/pilot.*.json" % rec):
             pd_dict = ru.read_json(pd_json)
             pd      = rp.ComputePilotDescription()
-            for key, val in pd_dict.iteritems():
+            for key, val in pd_dict.items():
                 pd.set_attribute(key, val)
             pds.append(pd)
             rep.info('%-15s [%3d cores]' % (pd.resource, pd.cores))
@@ -64,7 +64,7 @@ def run_record(rec):
             for ud_json in ud_json_list:
                 ud_dict = ru.read_json(ud_json)
                 ud      = rp.ComputeUnitDescription()
-                for key, val in ud_dict.iteritems():
+                for key, val in ud_dict.items():
                     ud.set_attribute(key, val)
                 uds.append(ud)
                 args = ud_dict.get('arguments', [])
@@ -101,9 +101,9 @@ def run_record(rec):
 def usage (msg=None, noexit=False) :
 
     if  msg :
-        print "\n      Error: %s" % msg
+        print("\n      Error: %s" % msg)
 
-    print """
+    print("""
       usage      : %s [-r rec]
       example    : %s -r /tmp/recorded_session
       options :
@@ -111,7 +111,7 @@ def usage (msg=None, noexit=False) :
                    if not specified, we use the value of the env variable
                    RADICAL_PILOT_SESSION_RECORD (if available)
 
-""" % (sys.argv[0], sys.argv[0])
+""" % (sys.argv[0], sys.argv[0]))
 
     if  msg :
         sys.exit (1)
@@ -138,10 +138,10 @@ if __name__ == '__main__' :
     if  options.rec :
         rec = options.rec
     else:
-        print 'looking for RADICAL_PILOT_SESSION_RECORD'
+        print('looking for RADICAL_PILOT_SESSION_RECORD')
         rec = os.environ.get('RADICAL_PILOT_RECORD_SESSION')
         if not rec:
-            print 'not found'
+            print('not found')
 
     if not rec:
         usage ("No record specified")

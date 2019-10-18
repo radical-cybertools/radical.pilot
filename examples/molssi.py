@@ -62,7 +62,7 @@ def push_tasks(bulk_id, unit):
         if unit.state == rp.DONE:
             fout   = unit.metadata['fout']   # FIXME: implies data staging
             result = ru.read_json(fout)
-            data_ok[unit.name] = (result, u'single', [])
+            data_ok[unit.name] = (result, 'single', [])
 
         else:
             data_nok.apppend(unit.name)
@@ -72,7 +72,7 @@ def push_tasks(bulk_id, unit):
         payload = {"meta": {"name": bulk_id},
                    "data": data_ok}
         r = requests.post(address + "queue_manager", json=payload, verify=False)
-        print '%s ok: %s' % (bulk_id, r.json())
+        print('%s ok: %s' % (bulk_id, r.json()))
 
 
     if data_nok:
@@ -80,7 +80,7 @@ def push_tasks(bulk_id, unit):
                             "operation": 'shutdown'},
                    "data" : data_nok}
         r = requests.put(address + "queue_manager", json=payload, verify=False)
-        print '%s nok: %s' % (bulk_id, r)
+        print('%s nok: %s' % (bulk_id, r))
 
 
 # ------------------------------------------------------------------------------

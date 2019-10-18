@@ -319,7 +319,7 @@ class Yarn(LaunchMethod):
     def construct_command(self, cu, launch_script_hop):
 
         slots        = cu['slots']
-        work_dir     = cu['workdir']
+        work_dir     = cu['unit_sandbox_path']
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cpu_processes'] * cud['cpu_threads']
@@ -428,7 +428,7 @@ class Yarn(LaunchMethod):
         print_str += "echo '#End of File'>>ExecScript.sh\n\n\n"
 
         env_string = ''
-        for key,val in task_env.iteritems():
+        for key,val in list(task_env.items()):
             env_string += '-shell_env ' + key + '=' + str(val) + ' '
 
         # app_name = '-appname '+ cud['uid']

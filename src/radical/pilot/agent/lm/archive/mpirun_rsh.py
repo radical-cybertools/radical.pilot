@@ -71,7 +71,7 @@ class MPIRunRSH(LaunchMethod):
 
 
         env_string = ''
-        env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
+        env_list   = self.EXPORT_ENV_VARIABLES + list(task_env.keys())
         if env_list:
             if 'mvapich2' in self.launch_version:
                 env_string = '-envlist "%s"' % ','.join(env_list)

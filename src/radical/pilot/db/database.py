@@ -284,7 +284,7 @@ class DBSession(object):
         # make sure we return every pilot doc only once
         # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
         ret = { doc['uid'] : doc for doc in cursor}
-        docs = ret.values()
+        docs = list(ret.values())
 
         # for each doc, we make sure the pilot state is according to the state
         # model, ie. is the largest of any state the pilot progressed through
@@ -324,7 +324,7 @@ class DBSession(object):
         # make sure we return every unit doc only once
         # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
         ret = {doc['uid'] : doc for doc in cursor}
-        docs = ret.values()
+        docs = list(ret.values())
 
         # for each doc, we make sure the unit state is according to the state
         # model, ie. is the largest of any state the unit progressed through

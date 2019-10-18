@@ -16,9 +16,9 @@ import radical.pilot.utils as rpu
 def usage (msg=None, noexit=False) :
 
     if  msg :
-        print "\n      Error: %s" % msg
+        print("\n      Error: %s" % msg)
 
-    print """
+    print("""
       usage      : %s [<sid>] [<output>]
       example    : %s 5490ba7174df926284f8ef48 -
 
@@ -30,7 +30,7 @@ def usage (msg=None, noexit=False) :
       them to json, to write them to <sid>.json (default) or ot another output
       location (file or stdout [-]).
       
-""" % (sys.argv[0], sys.argv[0])
+""" % (sys.argv[0], sys.argv[0]))
 
     if  msg :
         sys.exit (1)
