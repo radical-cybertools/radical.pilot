@@ -73,14 +73,16 @@ What is a Compute Unit (CU)?
 In RP, tasks are called ``ComputeUnits`` (CU, or 'unit'), indicating that are
 independent and self-contained units of computation. Each CU represents a
 self-contained, executable part of the application's workload.  A CU is
-described by the following attributes (for more details, see the
-:class:`API documentation <radical.pilot.ComputeUnitDescription>`):
+described by the following attributes:
 
   * `executable`    : the name of the executable to be run on the target machines
   * `arguments`     : a list of argument strings to be passed to the executable
   * `environment`   : a dictionary of environment variable/value pairs to be set before unit execution
   * `input_staging` : a set of staging directives for input data
   * `output_staging`: a set of staging directives for output data
+
+For more details, see the
+:class:`API documentation <radical.pilot.ComputeUnitDescription>`
 
 
 What is a Pilot?
@@ -137,15 +139,34 @@ they are specifically covered in sections:
 Why do I need a MongoDB to run RP?
 ==================================
 
-The RP application uses a MongoDB database to communicate with the pilots it
-created: upon startup, the pilots will connect to the database and look for
-CUs to execute.  Similarly, pilots will push information into the database,
-such as about units which completed execution. You can run your own MongoDB or
-use one provided by the RADICAL group. In each case, the MongoDB server needs
-to be accessible by the login node of the target HPC resource and by the host
-from which the RP application is executed. More details about MongoDB
-requirements and deployment can be found in section
+RP applications use a MongoDB database to communicate with the pilots they
+created: upon startup, pilots connect to the MongoDB database and look for CUs
+to execute.  Similarly, pilots push information into the database about, for
+example, units which completed execution. You can run your own MongoDB or use
+one provided by the RADICAL group. In each case, the MongoDB database needs to
+be accessible by the login node of the target HPC resource and by the host on
+which the RP application executes.
+
+Generally, RP applications should not be run on the login node of a HPC
+machine. RP executes several processes and may require relevant amount of ram,
+depending on the number of pilots and units required by the application.
+Executing RP on the login node of HPC machines almost certainly violates the
+policy of fair usage enforced by the managers of those machines. In rare
+cases, RP has to be executed from a login node but it should not be assumed as
+the default approach to RP deployment.
+
+More details about MongoDB requirements and deployment can be found in section
 :ref:`chapter_installation`.
+
+Why do I need a RADICAL-SAGA to run RP?
+=======================================
+
+RP needs to submit one or more jobs to the target HPC machine(s) in order to
+acquire the resources on which to schedule the application compute units. RP
+uses SAGA to describe these jobs, independent from the batch system used by
+each target machine. SAGA is then used to translate this job description into
+a specific batch job description and to submit it to the machine's batch
+system.
 
 
 How do I monitor pilots and CUs?
@@ -173,8 +194,8 @@ information about RP's inner functionality.  Pilots running on target
 resources also create log files, useful for debugging purposes.
 
 
-What about logging and profiling?
-=================================
+What about logging?
+===================
 
 RP supports logging to the terminal and to files.  Also, profiles can be
 written during runtime. You can set the following environment variables in the
@@ -183,8 +204,27 @@ shell from which the RP application is executed:
 .. code-block:: bash
    RADICAL_LOG_LVL=DEBUG
    RADICAL_LOG_TGT=/tmp/rp.log
-   RADICAL_PROF=True
 
 The defined verbosity levels are the same as defined by Python's logging module.
 
 
+What about tracing and profiling?
+=================================
+
+We have extensive tracing capabilities in each RP module, with every time
+stamp corresponding to an explicitly defined event of that module or state of
+the whole RP system. Depending on RP, workload or platform configuration, an
+event may leave a trace or not at runtime and the order among events may
+change. States are instead configuration independent, always guaranteed to be
+traced and always in the given order. As such, states describe the global
+behavior of RP while events that of each components to which they belong.
+
+Profiling must be explicitly enabled by exporting the following environment
+variable in the shell from which the RP application is executed:
+
+.. code-block:: bash
+   RADICAL_PROF=True
+
+Further, the argument ``download=True`` must be passed to the ``method
+session.close()``. For more information about profiling see Chapter
+:ref:`Profiling <chapter_profiles>`.

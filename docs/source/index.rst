@@ -84,6 +84,7 @@ Contents:
    schedulers.rst
    testing.rst
    benchmarks.rst
+   profiles.rst
    faq.rst
    developer.rst
 
