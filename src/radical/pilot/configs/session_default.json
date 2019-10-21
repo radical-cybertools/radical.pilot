@@ -7,6 +7,8 @@
     "dburl"        : "${RADICAL_PILOT_DBURL}",
     "session_base" : "${RADICAL_PILOT_SESSION_BASE:$PWD}",
     "record"       : "${RADICAL_PILOT_SESSION_RECORD}",
+    "bulk_time"    : 1.0,
+    "bulk_size"    : 1024,
 
     "heartbeat"    : {
         "interval" : 0.5,

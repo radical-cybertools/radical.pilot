@@ -5,7 +5,6 @@ import copy
 import time
 import pprint
 
-import setproctitle    as spt
 import threading       as mt
 import radical.utils   as ru
 
@@ -23,9 +22,9 @@ class ComponentManager(object):
         self._sid  = self._cfg.sid
         self._uid  = ru.generate_id('cmgr', ns=self._sid)
         self._log  = session._get_logger(self._uid)
-        self._uids = list()
+        self._uids = [self._uid]  # also track own heartbeats
 
-        # every ComponentManager runs a HB pubsub bridge in a separate thread.
+        # Every ComponentManager runs a HB pubsub bridge in a separate thread.
         # That HB channel should be used by all components and bridges created
         # under this CMGR.
         bcfg = ru.Config(cfg={'channel'    : 'heartbeat',
@@ -44,20 +43,9 @@ class ComponentManager(object):
         self._hb = ru.Heartbeat(uid=self.uid,
                                 timeout=self._cfg.heartbeat.timeout,
                                 interval=self._cfg.heartbeat.interval,
-                                cb=self._hb_cb,
-                                term_cb=self._hb_term,
+                                beat_cb=self._hb_beat_cb,  # on every heartbeat
+                                term_cb=self._hb_term_cb,  # on termination
                                 log=self._log)
-
-        # -------------------------------
-        def hb_sub(topic, msg):
-            '''
-            keep treack of heartbeats for all bridges/components we know
-            '''
-            self._log.debug('=== hb_sub %s: get %s', self.uid, msg['uid'])
-            if msg['uid'] in self._uids:
-              # self._log.debug('=== hb_sub %s: get %s !', self.uid, msg['uid'])
-                self._hb.beat(uid=msg['uid'])
-        # -------------------------------
 
         self._hb_pub = ru.zmq.Publisher('heartbeat',
                                         self._cfg.heartbeat.addr_pub,
@@ -65,28 +53,51 @@ class ComponentManager(object):
         self._hb_sub = ru.zmq.Subscriber('heartbeat',
                                          self._cfg.heartbeat.addr_sub,
                                          topic='heartbeat',
-                                         cb=hb_sub, log=self._log)
+                                         cb=self._hb_sub_cb, log=self._log)
+
+        # confirm the bridge being usable by listening to our own heartbeat
+        self._hb.start()
+        self._hb.wait_startup(self._uid, self._cfg.heartbeat.timeout)
+        self._log.info('heartbeat system up')
 
 
     # --------------------------------------------------------------------------
     #
-    def _hb_cb(self):
+    def _hb_sub_cb(self, topic, msg):
         '''
-        publish every heartbeat on the hb channel under our UID, to keep all
-        bridges and components alive.
+        keep treack of heartbeats for all bridges/components we know
         '''
 
-        self._hb.beat()  # beat own heart, too
+        self._log.debug('=== hb_sub %s: get %s check', self.uid, msg['uid'])
+        if msg['uid'] in self._uids:
+            self._log.debug('=== hb_sub %s: get %s used', self.uid, msg['uid'])
+            self._hb.beat(uid=msg['uid'])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _hb_beat_cb(self):
+        '''
+        publish own heartbeat on the hb channel
+        '''
+
         self._hb_pub.put('heartbeat', msg={'uid' : self.uid})
       # self._log.debug('=== hb_cb %s: put %s', self.uid, self.uid)
 
 
     # --------------------------------------------------------------------------
     #
-    def _hb_term(self, uid=None):
+    def _hb_term_cb(self, uid=None):
 
-        self._log.debug('=== hb_term %s', self.uid)
-        return False  # did not recover
+        self._log.debug('=== hb_term %s: %s died', self.uid, uid)
+
+        # FIXME: restart goes here
+
+        # NOTE: returning `False` indicates failure to recover.  The HB will
+        #       terminate and suicidally kill the very process it is living in.
+        #       Make sure all required cleanup is done at this point!
+
+        return False
 
 
     # --------------------------------------------------------------------------
@@ -127,7 +138,9 @@ class ComponentManager(object):
 
         # all bridges should start now, for their heartbeats
         # to appear.
+        self._log.debug('=== wait   for %s', self._uids)
         failed = self._hb.wait_startup(self._uids, timeout=1.0)
+        self._log.debug('=== waited for %s: %s', self._uids, failed)
         if failed:
             raise RuntimeError('could not start all bridges %s' % failed)
 
@@ -376,7 +389,7 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session=None):
+    def __init__(self, cfg):
         '''
         This constructor MUST be called by inheriting classes, as it specifies
         the operation mode of the component: components can spawn a child
@@ -408,12 +421,12 @@ class Component(object):
         #       to create it's own set of locks in self.initialize_child
         #       / self.initialize_parent!
 
-        self._cfg     = cfg
-        self._session = session
+        self._cfg = cfg
 
-        if not self._session:
-            from ..session import Session
-            self._session = Session(cfg=self._cfg, _primary=False)
+        # NOTE: this local import can move up once the CMGR moved to a separate
+        #       file.  For now `session.py` needs to import te cmgr from above.
+        from ..session import Session
+        self._session = Session(cfg=self._cfg, _primary=False)
 
         # we always need an UID
         if not hasattr(self, '_uid'):
@@ -462,6 +475,47 @@ class Component(object):
         self._ctx  = None
 
         self._initialize()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def start(self):
+        # symmetry with bridge - should go away
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod
+    def create(cfg):
+
+        # TODO:  We keep this static typemap for component startup. The map
+        #        should really be derived from rp module inspection via an
+        #        `ru.PluginManager`.
+        #
+        from radical.pilot import worker    as rpw
+        from radical.pilot import pmgr      as rppm
+        from radical.pilot import umgr      as rpum
+        from radical.pilot import agent     as rpa
+        from radical.pilot import constants as rpc
+
+        comp = {
+                rpc.UPDATE_WORKER                  : rpw.Update,
+
+                rpc.PMGR_LAUNCHING_COMPONENT       : rppm.Launching,
+
+                rpc.UMGR_STAGING_INPUT_COMPONENT   : rpum.Input,
+                rpc.UMGR_SCHEDULING_COMPONENT      : rpum.Scheduler,
+                rpc.UMGR_STAGING_OUTPUT_COMPONENT  : rpum.Output,
+
+                rpc.AGENT_STAGING_INPUT_COMPONENT  : rpa.Input,
+                rpc.AGENT_SCHEDULING_COMPONENT     : rpa.Scheduler,
+                rpc.AGENT_EXECUTING_COMPONENT      : rpa.Executing,
+                rpc.AGENT_STAGING_OUTPUT_COMPONENT : rpa.Output
+
+               }[cfg.kind]
+
+        return comp.create(cfg)
 
 
     # --------------------------------------------------------------------------
@@ -557,9 +611,9 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def ru_finalize(self):
+    def _finalize(self):
 
-        self._log.debug('ru_finalize()')
+        self._log.debug('_finalize()')
 
         # call component level finalize, before we tear down channels
         self.finalize()
@@ -581,7 +635,6 @@ class Component(object):
         pass  # can be overloaded
 
 
-
     # --------------------------------------------------------------------------
     #
     def stop(self, timeout=None):
@@ -595,10 +648,7 @@ class Component(object):
         self._log.info('stop %s (%s : %s : %s) [%s]', self.uid, os.getpid(),
                        self.pid, ru.get_thread_name(), ru.get_caller_name())
 
-        # FIXME: well, we don't completely trust termination just yet...
-        self._prof.flush()
-
-        super(Component, self).stop(timeout)
+        self._finalize()
 
 
     # --------------------------------------------------------------------------

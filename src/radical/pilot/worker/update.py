@@ -4,10 +4,11 @@ __license__   = "MIT"
 
 
 import time
-import threading
 import pymongo
 
-import radical.utils as ru
+import threading         as mt
+
+import radical.utils     as ru
 
 from .. import utils     as rpu
 from .. import constants as rpc
@@ -32,14 +33,37 @@ class Update(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg):
 
         self._uid = ru.generate_id('update.%(counter)s', ru.ID_CUSTOM)
 
-        rpu.Worker.__init__(self, cfg, session)
+        rpu.Worker.__init__(self, cfg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def initialize(self):
+
+        import pprint
+        pprint.pprint(self._cfg)
+
+        self._session_id = self._cfg['sid']
+        self._dburl      = self._cfg['dburl']
+
+        # TODO: get db handle from a connected session
+        _, db, _, _, _   = ru.mongodb_connect(self._dburl)
+        self._mongo_db   = db
+        self._coll       = self._mongo_db[self._session_id]
+        self._bulk       = self._coll.initialize_ordered_bulk_op()
+        self._last       = time.time()        # time of last bulk push
+        self._uids       = list()             # list of collected uids
+        self._lock       = mt.Lock()          # protect _bulk
+
+        self._bulk_time = self._cfg.bulk_time
+        self._bulk_size = self._cfg.bulk_size
 
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
-        self.register_timed_cb(self._idle_cb, timer=self._bct)
+        self.register_timed_cb(self._idle_cb, timer=self._bulk_time)
 
 
     # --------------------------------------------------------------------------
@@ -64,8 +88,8 @@ class Update(rpu.Worker):
         # only push if flush is forced, or when collection time or size
         # have been exceeded
         if not flush \
-           and age < self._bct \
-           and len(self._uids) < self._bcs:
+           and age < self._bulk_time \
+           and len(self._uids) < self._bulk_size:
             return False
 
         try:

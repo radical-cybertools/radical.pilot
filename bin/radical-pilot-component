@@ -5,37 +5,11 @@ __license__   = "MIT"
 
 
 import sys
+import time
 
 import setproctitle  as spt
 import radical.utils as ru
 import radical.pilot as rp
-
-
-# ----------------------------------------------------------------------
-# TODO:  We keep this static typemap for component startup. We should
-#        derive that typemap from rp module inspection via an
-#        `ru.PluginManager`.
-#
-from radical.pilot import worker    as rpw
-from radical.pilot import pmgr      as rppm
-from radical.pilot import umgr      as rpum
-from radical.pilot import agent     as rpa
-from radical.pilot import constants as rpc
-
-_ctypemap = {rpc.UPDATE_WORKER                  : rpw.Update,
-
-             rpc.PMGR_LAUNCHING_COMPONENT       : rppm.Launching,
-
-             rpc.UMGR_STAGING_INPUT_COMPONENT   : rpum.Input,
-             rpc.UMGR_SCHEDULING_COMPONENT      : rpum.Scheduler,
-             rpc.UMGR_STAGING_OUTPUT_COMPONENT  : rpum.Output,
-
-             rpc.AGENT_STAGING_INPUT_COMPONENT  : rpa.Input,
-             rpc.AGENT_SCHEDULING_COMPONENT     : rpa.Scheduler,
-             rpc.AGENT_EXECUTING_COMPONENT      : rpa.Executing,
-             rpc.AGENT_STAGING_OUTPUT_COMPONENT : rpa.Output
-            }
-# ----------------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------------
@@ -75,40 +49,46 @@ def main(cfg):
     and are interpreted by the component implementation.
     '''
 
+    # basic setup: uid, logger, process name
     uid  = cfg.uid
-    kind = cfg.kind
-    log  = ru.Logger(name=cfg.uid, ns='radical.pilot', path=cfg.path)
-    log.debug('==== CLOG 0')
+    path = cfg.path
+    log  = ru.Logger(name=uid, ns='radical.pilot', path=path)
 
     spt.setproctitle('rp.%s' % uid)
 
-    ctype = _ctypemap[kind]
-    comp  = ctype.create(cfg)
-    hb = ru.Heartbeat(uid=comp.uid,
-                      timeout = cfg.heartbeat.timeout,
-                      interval= cfg.heartbeat.interval)
-
-    # --------------------------------------------------------------------------
-    # forward session heartbeat to component
-    def hb_sub(topic, msg):
-        log.debug('=== HB_SUB %s: GET %s', uid, msg['uid'])
-        hb.beat(uid=msg['uid'])
-        if msg['uid'] == cfg.cmgr:
-            log.debug('=== hb_pub %s: PUT %s', uid, uid)
-            hb_pub.put('heartbeat', msg={'uid' : uid})
-    # --------------------------------------------------------------------------
-
-    log.debug('==== CLOG 1')
-    hb_pub = ru.zmq.Publisher ('heartbeat', cfg.heartbeat.addr_pub, log=log)
-    hb_sub = ru.zmq.Subscriber('heartbeat', cfg.heartbeat.addr_sub, log=log,
-                         topic='heartbeat', cb=hb_sub)
-    log.debug('==== CLOG 2')
-
-    log.debug('==== CLOG 0')
+    # create the component and begin to work
+    comp  = rp.utils.Component.create(cfg)
     comp.start()
-    log.debug('==== CLOG 1')
 
-    comp.wait()  # block forever
+    # component runs - send heartbeats so that cmgr knows about it
+    hb_pub = ru.zmq.Publisher ('heartbeat', cfg.heartbeat.addr_pub, log=log)
+
+    def hb_beat_cb():
+        hb_pub.put('heartbeat', msg={'uid' : uid})
+
+    def hb_term_cb(hb_uid):
+        comp.stop()
+        return False
+
+    hb = ru.Heartbeat(uid=uid,
+                      timeout=cfg.heartbeat.timeout,
+                      interval=cfg.heartbeat.interval,
+                      beat_cb=hb_beat_cb,
+                      term_cb=hb_term_cb,
+                      log=log)
+    hb.start()
+
+    # record cmgr heartbeats
+    def hb_sub_cb(topic, msg):
+        if msg['uid'] == cfg.cmgr:
+            hb.beat(uid=cfg.cmgr)
+
+    ru.zmq.Subscriber('heartbeat', cfg.heartbeat.addr_sub, log=log,
+                      topic='heartbeat', cb=hb_sub_cb)
+
+    # all is set up - we can sit idle 'til end of time.
+    while True:
+        time.sleep(1)
 
 
 # ------------------------------------------------------------------------------
@@ -116,16 +96,16 @@ def main(cfg):
 if __name__ == "__main__":
 
     if len(sys.argv) != 2:
-        sys.stderr.write('error: argument error\n'
-                         'usage: %s <cfg_file>\n\n' % sys.argv[0])
-        raise RuntimeError('argument error: %s' % sys.argv)
+        sys.stderr.write('error: invalid arguments\n'
+                         'usage: %s <cfg_file>\n'  % sys.argv[0])
+        raise RuntimeError('invalid arguments: %s' % sys.argv)
 
     fname = sys.argv[1]
     cfg   = ru.Config(path=fname)
-    base  = '%s/%s' % (cfg.path, cfg.uid)
+    path  = '%s/%s' % (cfg.path, cfg.uid)
 
-    ru.daemonize(main=main, args=[cfg], stdout='%s.out' % base,
-                                        stderr='%s.err' % base)
+    ru.daemonize(main=main, args=[cfg], stdout='%s.out' % path,
+                                        stderr='%s.err' % path)
     sys.exit(0)
 
 

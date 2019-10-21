@@ -5,6 +5,7 @@ __license__   = "MIT"
 
 
 import sys
+import time
 
 import setproctitle  as spt
 import radical.utils as ru
@@ -74,37 +75,52 @@ def main(cfg):
     [3] connect to the command channel, send messages for topic `foo`
     '''
 
-    uid = cfg.uid
-    log = ru.Logger(name=cfg.uid, ns='radical.pilot', path=cfg.path)
+    # basic setup: uid, logger, process name
+    uid  = cfg.uid
+    path = cfg.path
+    log  = ru.Logger(name=uid, ns='radical.pilot', path=path)
 
     spt.setproctitle('rp.%s' % uid)
 
-    bridge  = ru.zmq.Bridge.create(cfg)
-    bridge.start()
+    # create the bridge, store connection addresses in FS, and begin to work
+    bridge = ru.zmq.Bridge.create(cfg)
 
-    ru.write_json('%s/%s.cfg' % (cfg.path, uid),
-                  {'uid'          : bridge.uid,
+    ru.write_json('%s/%s.cfg' % (path, uid),
+                  {'uid'          : uid,
                    bridge.type_in : str(bridge.addr_in),
                    bridge.type_out: str(bridge.addr_out)})
 
+    bridge.start()
 
-    hb = ru.Heartbeat(uid=bridge.uid,
-                      timeout = cfg.heartbeat.timeout,
-                      interval= cfg.heartbeat.interval)
-
-    # -------------------------------------------------
-    # forward session heartbeat to bridge
-    def hb_sub(topic, msg):
-        hb.beat(uid=msg['uid'])
-        if msg['uid'] == cfg.cmgr:
-            hb_pub.put('heartbeat', msg={'uid' : uid})
-    # -------------------------------------------------
-
+    # bridge runs - send heartbeats so that cmgr knows about it
     hb_pub = ru.zmq.Publisher ('heartbeat', cfg.heartbeat.addr_pub, log=log)
-    hb_sub = ru.zmq.Subscriber('heartbeat', cfg.heartbeat.addr_sub, log=log,
-                         topic='heartbeat', cb=hb_sub)
 
-    bridge.wait()  # block forever
+    def hb_beat_cb():
+        hb_pub.put('heartbeat', msg={'uid' : uid})
+
+    def hb_term_cb(hb_uid):
+        bridge.stop()
+        return False
+
+    hb = ru.Heartbeat(uid=uid,
+                      timeout=cfg.heartbeat.timeout,
+                      interval=cfg.heartbeat.interval,
+                      beat_cb=hb_beat_cb,
+                      term_cb=hb_term_cb,
+                      log=log)
+    hb.start()
+
+    # record cmgr heartbeats
+    def hb_sub_cb(topic, msg):
+        if msg['uid'] == cfg.cmgr:
+            hb.beat(uid=cfg.cmgr)
+
+    ru.zmq.Subscriber('heartbeat', cfg.heartbeat.addr_sub, log=log,
+                      topic='heartbeat', cb=hb_sub_cb)
+
+    # all is set up - we can sit idle 'til end of time.
+    while True:
+        time.sleep(1)
 
 
 # ------------------------------------------------------------------------------
@@ -112,16 +128,16 @@ def main(cfg):
 if __name__ == "__main__":
 
     if len(sys.argv) != 2:
-        sys.stderr.write('error: argument error\n'
-                         'usage: %s <cfg_file>\n\n' % sys.argv[0])
-        raise RuntimeError('argument error: %s' % sys.argv)
+        sys.stderr.write('error: invalid arguments\n'
+                         'usage: %s <cfg_file>\n'  % sys.argv[0])
+        raise RuntimeError('invalid arguments: %s' % sys.argv)
 
     fname = sys.argv[1]
     cfg   = ru.Config(path=fname)
-    base  = '%s/%s' % (cfg.path, cfg.uid)
+    path  = '%s/%s' % (cfg.path, cfg.uid)
 
-    ru.daemonize(main=main, args=[cfg], stdout='%s.out' % base,
-                                        stderr='%s.err' % base)
+    ru.daemonize(main=main, args=[cfg], stdout='%s.out' % path,
+                                        stderr='%s.err' % path)
     sys.exit(0)
 
 
