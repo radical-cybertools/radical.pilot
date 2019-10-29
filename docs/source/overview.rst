@@ -211,8 +211,8 @@ The defined verbosity levels are the same as defined by Python's logging module.
 What about tracing and profiling?
 =================================
 
-We have extensive tracing capabilities in each RP module, with every time
-stamp corresponding to an explicitly defined event of that module or state of
+We have tracing capabilities in each RP module, with every time stamp of the
+trace corresponding to an explicitly defined event of that module or state of
 the whole RP system. Depending on RP, workload or platform configuration, an
 event may leave a trace or not at runtime and the order among events may
 change. States are instead configuration independent, always guaranteed to be
