@@ -23,7 +23,7 @@ EXECUTING_NAME_FUNCS   = "FUNCS"
 # EXECUTING_NAME_ORTE    = "ORTE"
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class AgentExecutingComponent(rpu.Component):
     """
@@ -35,12 +35,12 @@ class AgentExecutingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
         self._uid = ru.generate_id(cfg['owner'] + '.executing.%(counter)s',
                                    ru.ID_CUSTOM)
 
-        rpu.Component.__init__(self, cfg)
+        rpu.Component.__init__(self, cfg, session)
 
         # if so configured, let the CU know what to use as tmp dir
         self._cu_tmp = cfg.get('cu_tmp', os.environ.get('TMP', '/tmp'))
@@ -51,7 +51,7 @@ class AgentExecutingComponent(rpu.Component):
     # This class-method creates the appropriate sub-class for the Spawner
     #
     @classmethod
-    def create(cls, cfg):
+    def create(cls, cfg, session):
 
         name = cfg['spawner']
 
@@ -79,7 +79,7 @@ class AgentExecutingComponent(rpu.Component):
                   # EXECUTING_NAME_ORTE   : ORTE,
                    }[name]
 
-            return impl(cfg)
+            return impl(cfg, session)
 
         except KeyError:
             raise RuntimeError("AgentExecutingComponent '%s' unknown" % name)

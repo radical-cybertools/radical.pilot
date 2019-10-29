@@ -77,7 +77,7 @@ class Continuous(AgentSchedulingComponent):
     #
     def __init__(self, cfg, session):
 
-        AgentSchedulingComponent.__init__(self, cfg)
+        AgentSchedulingComponent.__init__(self, cfg, session)
 
         self._tag_history   = dict()
         self._scattered     = None
@@ -146,20 +146,13 @@ class Continuous(AgentSchedulingComponent):
         # note that the first index is yielded twice, so that the respecitve
         # node can function as first and last node in an allocation.
 
-        self._log.debug(' ==== 0 iterate [%d]', self._node_offset)
         iterator_count = 0
 
         while iterator_count < len(self.nodes):
-            self._log.debug(' ==== 1 iterate [%d] [%d] [%d]', self._node_offset,
-                            iterator_count, len(self.nodes))
             yield self.nodes[self._node_offset]
             iterator_count    += 1
             self._node_offset += 1
-            self._log.debug(' ==== 2 iterate [%d] [%d] [%d]', self._node_offset,
-                            iterator_count, len(self.nodes))
             self._node_offset  = self._node_offset % len(self.nodes)
-            self._log.debug(' ==== 3 iterate [%d] [%d] [%d]', self._node_offset,
-                            iterator_count, len(self.nodes))
 
 
     # --------------------------------------------------------------------------
@@ -444,8 +437,6 @@ class Continuous(AgentSchedulingComponent):
             # search for remaining ones
             rem_slots -= len(new_slots)
             alc_slots.extend(new_slots)
-
-            self._log.debug('=== new slots: %s', pprint.pformat(new_slots))
 
             self._log.debug('req2: %s = %s + %s <> %s', req_slots, rem_slots,
                                                   len(new_slots), len(alc_slots))

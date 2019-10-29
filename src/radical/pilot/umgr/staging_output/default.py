@@ -14,7 +14,7 @@ from ...   import staging_directives as rpsd
 from .base import UMGRStagingOutputComponent
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Default(UMGRStagingOutputComponent):
     """
@@ -27,14 +27,14 @@ class Default(UMGRStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        UMGRStagingOutputComponent.__init__(self, cfg)
+        UMGRStagingOutputComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         # we keep a cache of SAGA dir handles
         self._cache = dict()
@@ -47,7 +47,7 @@ class Default(UMGRStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
+    def finalize(self):
 
         try:
             for key in self._cache:

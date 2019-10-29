@@ -84,7 +84,6 @@ class ComputeUnit(object):
         self._unit_sandbox     = None
         self._client_sandbox   = None
         self._callbacks        = dict()
-        self._cb_lock          = threading.RLock()
 
         for m in rpc.UMGR_METRICS:
             self._callbacks[m] = dict()
@@ -170,11 +169,17 @@ class ComputeUnit(object):
 
             self._log.debug('%s calls state cb %s', self.uid, cb)
 
-            if cb_data: cb(self, self.state, cb_data)
-            else      : cb(self, self.state)
+            try:
+                if cb_data: cb(self, self.state, cb_data)
+                else      : cb(self, self.state)
+            except:
+                self._log.exception('cb %s failed', cb)
 
-        # ask umgr to invoke any global callbacks
-        self._umgr._call_unit_callbacks(self, self.state)
+        try:
+            # ask umgr to invoke any global callbacks
+            self._umgr._call_unit_callbacks(self, self.state)
+        except:
+            self._log.exception('global cb failed')
 
 
     # --------------------------------------------------------------------------

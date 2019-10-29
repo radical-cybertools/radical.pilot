@@ -27,15 +27,16 @@ _BF_STOP  = os.environ.get('RADICAL_PILOT_BACKFILLING_STOP',  rps.PMGR_ACTIVE)
 _BF_START_VAL = rps._pilot_state_value(_BF_START)
 _BF_STOP_VAL  = rps._pilot_state_value(_BF_STOP)
 
-# ==============================================================================
+
+# ------------------------------------------------------------------------------
 #
 class Backfilling(UMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        UMGRSchedulingComponent.__init__(self, cfg)
+        UMGRSchedulingComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -110,15 +111,15 @@ class Backfilling(UMGRSchedulingComponent):
 
                 state = self._pilots[pid]['state']
 
-              # self._log.debug('=== update pilot: %s %s', pid, state)
+              # self._log.debug('update pilot: %s %s', pid, state)
 
                 if  rps._pilot_state_value(state) < _BF_START_VAL:
-                  # self._log.debug('=== early')
+                  # self._log.debug('early')
                     # not eligible, yet
                     continue
 
                 if  rps._pilot_state_value(state) > _BF_STOP_VAL:
-                  # self._log.debug('=== late')
+                  # self._log.debug('late')
                     # not eligible anymore
                     continue
 

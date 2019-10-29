@@ -93,7 +93,7 @@ def main(cfg):
     bridge.start()
 
     # bridge runs - send heartbeats so that cmgr knows about it
-    hb_pub = ru.zmq.Publisher ('heartbeat', cfg.heartbeat.addr_pub, log=log)
+    hb_pub = ru.zmq.Publisher ('heartbeat', cfg.heartbeat.addr_pub)  # , log=log)
 
     def hb_beat_cb():
         hb_pub.put('heartbeat', msg={'uid' : uid})
@@ -109,6 +109,9 @@ def main(cfg):
                       term_cb=hb_term_cb,
                       log=log)
     hb.start()
+
+    # register cmgr heartbeat by beating once
+    hb.beat(uid=cfg.cmgr)
 
     # record cmgr heartbeats
     def hb_sub_cb(topic, msg):

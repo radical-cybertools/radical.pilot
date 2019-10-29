@@ -54,8 +54,8 @@ def usage(msg=None, noexit=False):
         -s <sid> : apply mode to session with given ID
         -d <url> : use given database URL instead of default (%s).
 
-      The default command is 'list'.  
-      
+      The default command is 'list'.
+
 """ % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL))
 
     if msg:
@@ -96,7 +96,7 @@ def get_sessions(db, dbname, age, session):
         c = docs['session']['created']
 
         if isinstance(c, float):
-            c = datetime.datetime.utcfromtimestamp(c) 
+            c = datetime.datetime.utcfromtimestamp(c)
 
         if (now-c) > age:
             sessions[sid] = docs
@@ -112,7 +112,7 @@ def get_sessions(db, dbname, age, session):
         for sid in sessions:
             session_created = sessions[sid]['session']['created']
             if isinstance(c, float):
-                session_created = datetime.datetime.utcfromtimestamp(session_created) 
+                session_created = datetime.datetime.utcfromtimestamp(session_created)
             if session_created == c:
                 print('match  session %s   (%17s)' % (sid, now-c))
 
@@ -135,7 +135,7 @@ def list_sessions(db, dbname, age, session):
         print('no matching session in database at %s' % url)
         return []
 
-    session_ids = list()
+    sids = list()
     for sid in sids:
 
         docs = rpu.get_session_docs(db[dbname], sid)
@@ -149,30 +149,30 @@ def list_sessions(db, dbname, age, session):
         c = docs['session']['created']
 
         if isinstance(c, float):
-            c = datetime.datetime.utcfromtimestamp(c) 
+            c = datetime.datetime.utcfromtimestamp(c)
 
         if (now-c) > age:
-            session_ids.append(sid)
+            sids.append(sid)
             print('check  session %s + (%17s)' % (sid, now-c))
         else:
             print('check  session %s - (%17s)' % (sid, now-c))
             print('optimignore remaining sessions')
             break
 
-    for sid in session_ids:
+    for sid in sids:
         print(sid)
 
-    return session_ids
+    return sids
 
 
 # ------------------------------------------------------------------------------
 #
 def purge_sessions(db, dbname, age, session):
 
-    session_ids = list_sessions(db, dbname, age, session)
+    sids = list_sessions(db, dbname, age, session)
     database    = db[dbname]
 
-    for sid in session_ids:
+    for sid in sids:
 
         db.drop_collection(sid)
       # collection = database[sid]
@@ -205,7 +205,7 @@ def dump_session(db, dbname, age, session):
 
 
 # ------------------------------------------------------------------------------
-# 
+#
 def parse_commandline():
 
     return options
@@ -232,16 +232,16 @@ if __name__ == '__main__':
     if  options.help:
         usage()
 
-    if  options.mode in ['help']: 
+    if  options.mode in ['help']:
         usage()
 
     if  not options.mode:
         usage("No mode specified")
 
-    if  not options.url: 
-        options.url = _DEFAULT_DBURL 
+    if  not options.url:
+        options.url = _DEFAULT_DBURL
 
-    mode    = options.mode 
+    mode    = options.mode
     url     = options.url
     session = options.session
     age     = options.age
@@ -259,7 +259,7 @@ if __name__ == '__main__':
         if  suffix in '01234567890':
             suffix = 'd'
             num    = int(age)
-        
+
         if  suffix in 'mhdwMy':
             num    = int(age[:-1])
         else:
@@ -284,8 +284,8 @@ if __name__ == '__main__':
 
         if   m == 'list'  : list_sessions  (db, dbname, age, session)
         elif m == 'dump'  : dump_session   (db, dbname, age, session)
-        elif m == 'purge' : purge_sessions (db, dbname, age, session) 
-        elif m == 'export': export_sessions(db, dbname, age, session) 
+        elif m == 'purge' : purge_sessions (db, dbname, age, session)
+        elif m == 'export': export_sessions(db, dbname, age, session)
         elif m == 'help'  : usage(noexit=True)
         else              : usage("unknown mode '%s'" % m)
 

@@ -28,7 +28,7 @@ REMOVED = 'removed'
 FAILED  = 'failed'
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class UMGRSchedulingComponent(rpu.Component):
 
@@ -36,25 +36,25 @@ class UMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
         self._uid = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
                                    ru.ID_CUSTOM)
 
-        rpu.Component.__init__(self, cfg)
-
-        self._umgr = self._owner
+        rpu.Component.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
-        self._early       = dict()            # early-bound units, sorted by pid
-        self._pilots      = dict()            # dict of pilots to schedule over
-        self._pilots_lock = threading.RLock() # lock on the above dict
-        self._units       = dict()            # dict of scheduled unit IDs
-        self._units_lock  = threading.RLock() # lock on the above dict
+        self._umgr = self._cfg.owner
+
+        self._early       = dict()             # early-bound units, pid-sorted
+        self._pilots      = dict()             # dict of known pilots
+        self._pilots_lock = threading.RLock()  # lock on the above dict
+        self._units       = dict()             # dict of scheduled unit IDs
+        self._units_lock  = threading.RLock()  # lock on the above dict
 
         # configure the scheduler instance
         self._configure()
@@ -79,26 +79,10 @@ class UMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
-
-        self._log.info('finalize_child')
-
-        self.unregister_subscriber(rpc.CONTROL_PUBSUB, self._base_command_cb)
-        self.unregister_subscriber(rpc.STATE_PUBSUB,   self._base_state_cb)
-        self.unregister_output(rps.UMGR_STAGING_INPUT_PENDING)
-        self.unregister_input (rps.UMGR_SCHEDULING_PENDING,
-                               rpc.UMGR_SCHEDULING_QUEUE, self.work)
-
-
-        self._log.info('finalize_child done')
-
-
-    # --------------------------------------------------------------------------
-    #
     # This class-method creates the appropriate sub-class for the Scheduler.
     #
     @classmethod
-    def create(cls, cfg):
+    def create(cls, cfg, session):
 
         # Make sure that we are the base-class!
         if cls != UMGRSchedulingComponent:
@@ -115,7 +99,7 @@ class UMGRSchedulingComponent(rpu.Component):
                 SCHEDULER_BACKFILLING : Backfilling
             }[name]
 
-            impl = impl(cfg)
+            impl = impl(cfg, session)
             return impl
 
         except KeyError:
@@ -221,6 +205,8 @@ class UMGRSchedulingComponent(rpu.Component):
         # make sure command is for *this* scheduler, and from *that* umgr
 
         cmd = msg['cmd']
+
+        self._log.debug('got cmd %s', cmd)
 
         if cmd not in ['add_pilots', 'remove_pilots', 'cancel_units']:
             return True
@@ -440,6 +426,7 @@ class UMGRSchedulingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _work(self, units=None):
+
         raise NotImplementedError("work() missing for '%s'" % self.uid)
 
 

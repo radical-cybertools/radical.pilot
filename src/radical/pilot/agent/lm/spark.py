@@ -10,7 +10,7 @@ import sys
 from .base import LaunchMethod
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 # The Launch Method Implementation for Running Spark applications
 #
@@ -80,7 +80,7 @@ class Spark(LaunchMethod):
 
         spark_conf_slaves.close()
 
-        # put Master Ip in spark-env.sh file - 
+        # put Master Ip in spark-env.sh file -
 
         if len(lrms.node_list) == 1:
             master_ip = lrms.node_list[0]
@@ -145,7 +145,7 @@ class Spark(LaunchMethod):
 
         if lm_info['name'] != 'SPARKLRMS':
             logger.info('Stoping SPARK')
-            stop_spark = subprocess.check_output(lm_info['spark_home'] + '/sbin/stop-all.sh') 
+            stop_spark = subprocess.check_output(lm_info['spark_home'] + '/sbin/stop-all.sh')
             if 'Error' in stop_spark:
                 logger.warn("Spark didn't terminate properly")
             else:
@@ -208,7 +208,7 @@ class Spark(LaunchMethod):
         spark_configurations = " "
         # if the user hasn't specified another ui port use this one
         # if not 'spark.ui.port' in command:
-        # spark_configurations += ' --conf spark.ui.port=%d '  % (random.randint(4020,4180))  
+        # spark_configurations += ' --conf spark.ui.port=%d '  % (random.randint(4020,4180))
 
         spark_command = self.launch_command + '/' + task_exec + '  ' + spark_configurations + ' '  +  command
 

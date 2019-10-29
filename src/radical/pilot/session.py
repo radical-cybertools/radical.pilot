@@ -80,37 +80,41 @@ class Session(rs.Session):
             cfg  = None
 
         self._dbs     = None
-        self._uid     = None
         self._closed  = False
         self._primary = _primary
 
         self._pmgrs   = dict()  # map IDs to pmgr instances
         self._umgrs   = dict()  # map IDs to umgr instances
+        self._cmgr    = None    # only primary sessions have a cmgr
 
-        self._cfg     = ru.Config('radical.pilot.session', name=name, cfg=cfg)
-        self._rcfgs   = ru.Config('radical.pilot.resource')
+        self._cfg     = ru.Config('radical.pilot.session',  name=name, cfg=cfg)
+        self._rcfgs   = ru.Config('radical.pilot.resource', name='*')
 
         if _primary:
 
-            pwd  = os.getcwd()
-            base = self._cfg.query('base', pwd)
+            pwd = os.getcwd()
 
-            if uid:
-                self._uid = uid
-            else:
-                self._uid = ru.generate_id('rp.session',  mode=ru.ID_PRIVATE)
+            if not self._cfg.sid:
+                if uid:
+                    self._cfg.sid = uid
+                else:
+                    self._cfg.sid = ru.generate_id('rp.session',
+                                                   mode=ru.ID_PRIVATE)
+            if not self._cfg.base:
+                self._cfg.base = pwd
 
-            self._cfg.sid  = self._uid
-            self._cfg.base = base
-            self._cfg.path = '%s/%s' % (base, self._uid)
-            self._cfg.client_sandbox = pwd
+            if not self._cfg.path:
+                self._cfg.path = '%s/%s' % (self._cfg.base, self._cfg.sid)
+
+            if not self._cfg.client_sandbox:
+                self._cfg.client_sandbox = pwd
 
         else:
             for k in ['sid', 'base', 'path']:
                 assert(k in self._cfg), 'non-primary session misses %s' % k
 
-            self._uid = self._cfg.get('sid')
 
+        self._uid  = self._cfg.sid
 
         self._prof = self._get_profiler(name=self._uid)
         self._rep  = self._get_reporter(name=self._uid)
@@ -178,9 +182,12 @@ class Session(rs.Session):
 
         # primary sessions have a component manager which also manages
         # heartbeat.  'self._cmgr.close()` should be called during termination
-        self._cmgr = rpu.ComponentManager(self, self._cfg)
+        self._cmgr = rpu.ComponentManager(self._cfg)
         self._cmgr.start_bridges()
         self._cmgr.start_components()
+
+        # expose the cmgr's heartbeat channel to anyone who wants to use it
+        self._cfg.heartbeat = self._cmgr.cfg.heartbeat
 
         self._rec = False
         if self._cfg.record:
@@ -240,17 +247,18 @@ class Session(rs.Session):
             # cleanup implies terminate
             terminate = True
 
-        for umgr_uid,umgr in self._umgrs.items():
+        for umgr_uid, umgr in self._umgrs.items():
             self._log.debug("session %s closes umgr   %s", self._uid, umgr_uid)
             umgr.close()
             self._log.debug("session %s closed umgr   %s", self._uid, umgr_uid)
 
-        for pmgr_uid,pmgr in self._pmgrs.items():
+        for pmgr_uid, pmgr in self._pmgrs.items():
             self._log.debug("session %s closes pmgr   %s", self._uid, pmgr_uid)
             pmgr.close(terminate=terminate)
             self._log.debug("session %s closed pmgr   %s", self._uid, pmgr_uid)
 
-        self._cmgr.stop()
+        if self._cmgr:
+            self._cmgr.close()
 
         if self._dbs:
             self._log.debug("session %s closes db (%s)", self._uid, cleanup)
@@ -322,7 +330,6 @@ class Session(rs.Session):
     #
     @property
     def path(self):
-        self._log.info('==== path %s', self._cfg.get('path', 'nonono'))
         return self._cfg.path
 
 
@@ -346,6 +353,13 @@ class Session(rs.Session):
     @property
     def primary(self):
         return self._primary
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def cfg(self):
+        return self._cfg
 
 
     # --------------------------------------------------------------------------

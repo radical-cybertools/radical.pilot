@@ -30,7 +30,7 @@ UNIT_BULK_MKDIR_THRESHOLD = 16
 UNIT_BULK_MKDIR_MECHANISM = 'tar'
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Default(UMGRStagingInputComponent):
     """
@@ -43,14 +43,14 @@ class Default(UMGRStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        UMGRStagingInputComponent.__init__(self, cfg)
+        UMGRStagingInputComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         # we keep a cache of SAGA dir handles
         self._fs_cache    = dict()
@@ -72,14 +72,15 @@ class Default(UMGRStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
-
-        self.unregister_subscriber(rpc.STATE_PUBSUB, self._base_command_cb)
+    def finalize(self):
 
         try:
             [fs.close() for fs in list(self._fs_cache.values())]
-            [js.close() for js in list(self._js_cache.values())]
+        except:
+            pass
 
+        try:
+            [js.close() for js in list(self._js_cache.values())]
         except:
             pass
 
@@ -196,7 +197,7 @@ class Default(UMGRStagingInputComponent):
 
             if len(unit_sboxes) >= UNIT_BULK_MKDIR_THRESHOLD:
 
-                self._log.debug('=== tar %d sboxes', len(unit_sboxes))
+                self._log.debug('tar %d sboxes', len(unit_sboxes))
 
                 # no matter the bulk mechanism, we need a SAGA handle to the
                 # remote FS

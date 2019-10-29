@@ -15,7 +15,7 @@ from ... import constants as rpc
 from .base import AgentSchedulingComponent
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Torus(AgentSchedulingComponent):
 
@@ -37,7 +37,7 @@ class Torus(AgentSchedulingComponent):
         self.nodes            = None
         self._cores_per_node  = None
 
-        AgentSchedulingComponent.__init__(self, cfg)
+        AgentSchedulingComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------

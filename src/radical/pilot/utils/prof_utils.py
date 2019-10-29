@@ -129,7 +129,7 @@ def get_hostmap(profile):
     '''
     We abuse the profile combination to also derive a pilot-host map, which
     will tell us on what exact host each pilot has been running.  To do so, we
-    check for the PMGR_ACTIVE advance event in agent_0.prof, and use the NTP
+    check for the PMGR_ACTIVE advance event in agent.0.prof, and use the NTP
     sync info to associate a hostname.
     '''
     # FIXME: This should be replaced by proper hostname logging
@@ -165,7 +165,7 @@ def get_hostmap_deprecated(profiles):
 
         for row in prof:
 
-            if 'agent_0.prof' in pname    and \
+            if 'agent.0.prof' in pname    and \
                 row[ru.EVENT] == 'advance' and \
                 row[ru.STATE] == rps.PMGR_ACTIVE:
                 hostmap[row[ru.UID]] = host_id

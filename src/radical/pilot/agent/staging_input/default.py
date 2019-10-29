@@ -21,7 +21,7 @@ from .base import AgentStagingInputComponent
 from ...staging_directives import complete_url
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Default(AgentStagingInputComponent):
     """
@@ -34,14 +34,14 @@ class Default(AgentStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        AgentStagingInputComponent.__init__(self, cfg)
+        AgentStagingInputComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         self._pwd = os.getcwd()
 

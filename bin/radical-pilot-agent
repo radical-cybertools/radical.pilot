@@ -4,18 +4,18 @@ __copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import os
 import sys
+import time
 import setproctitle
 
 import radical.utils as ru
 import radical.pilot as rp
 
-import radical.pilot.agent as rpa
-
 
 # ------------------------------------------------------------------------------
 #
-def bootstrap_3(agent_name):
+def bootstrap_3(aid):
     """
     This method continues where the bootstrap_0/1/2 left off, and will now pass
     control to the Agent class which will spawn the functional components.
@@ -29,40 +29,46 @@ def bootstrap_3(agent_name):
       - what bridges should be started
       - what are the endpoints for bridges which are not started
       - what components should be started
-    agent_0 will create derived config files for all sub-agents.
+    agent.0 will create derived config files for all sub-agents.
     """
 
-    print("bootstrap agent %s" % agent_name)
+    print("bootstrap agent %s" % aid)
     agent = None
 
     try:
-        setproctitle.setproctitle('rp.%s' % agent_name)
+        setproctitle.setproctitle('rp.%s' % aid)
 
-        if agent_name == 'agent_0': agent = rpa.Agent_0(agent_name)
-        else                      : agent = rpa.Agent_n(agent_name)
+        cfg = ru.Config(path='%s.cfg' % aid)
+        cfg.uid  = aid
+        cfg.aid  = aid
+        cfg.path = os.getcwd()
+        cfg.base = os.getcwd()
 
-        print('start   %s' % agent_name)
-        agent.start(spawn=False)
-        print('started %s' % agent_name)
+        # start a non-primary session (the agents will own their cmgrs)
+        session = rp.Session(cfg=cfg, _primary=False)
+
+        if aid == 'agent.0': agent = rp.Agent_0(cfg, session)
+        else               : agent = rp.Agent_n(cfg, session)
+
+        agent.start()
 
         # wait until the agent finishes or fails.
-        agent.wait_final()
+        while True:
+            time.sleep(0.1)
 
     except:
-        print('failed %s' % agent_name)
+        print('failed %s' % aid)
         ru.print_exception_trace()
 
     finally:
         # in all cases, make sure we perform an orderly shutdown.  I hope python
         # does not mind doing all those things in a finally clause of
         # (essentially) main...
-        print('finalize %s' % agent_name)
+        print('finalize %s' % aid)
 
         if agent:
             agent.stop()
-            print('stopped  %s' % agent_name)
-            agent.join()
-            print('joined   %s' % agent_name)
+            print('stopped  %s' % aid)
 
 
 # ------------------------------------------------------------------------------
@@ -70,7 +76,7 @@ def bootstrap_3(agent_name):
 if __name__ == "__main__":
 
     if len(sys.argv) != 2:
-        raise RuntimeError('missing agent_name parameter')
+        raise RuntimeError('missing parameter: agent id')
 
     bootstrap_3(sys.argv[1])
 

@@ -4,24 +4,20 @@ __license__   = "MIT"
 
 import threading
 
-import radical.utils as ru
-
-from ... import utils     as rpu
 from ... import states    as rps
-from ... import constants as rpc
 
-from .base import UMGRSchedulingComponent, ROLE, ADDED
+from .base import UMGRSchedulingComponent
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class RoundRobin(UMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        UMGRSchedulingComponent.__init__(self, cfg)
+        UMGRSchedulingComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------

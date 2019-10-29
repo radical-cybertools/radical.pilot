@@ -28,7 +28,7 @@ def bson2json (bson_data) :
                 return str (o)
             if  isinstance (o, datetime.datetime) :
                 seconds  = time.mktime (o.timetuple ())
-                seconds += (o.microsecond / 1000000.0) 
+                seconds += (o.microsecond / 1000000.0)
                 return seconds
             return json.JSONEncoder.default (self, o)
 
@@ -123,7 +123,7 @@ def get_session_slothist(db, sid, cache=None, cachedir=None) :
     For all pilots in the session, get the slot lists and slot histories. and
     return as list of tuples like:
 
-            [pilot_id,      [      [hostname, slotnum] ],      [      [slotstate, timestamp] ] ] 
+            [pilot_id,      [      [hostname, slotnum] ],      [      [slotstate, timestamp] ] ]
       tuple (string  , list (tuple (string  , int    ) ), list (tuple (string   , datetime ) ) )
     """
 
@@ -133,7 +133,7 @@ def get_session_slothist(db, sid, cache=None, cachedir=None) :
 
     for pilot_doc in docs['pilot'] :
 
-        pilot_id     = pilot_doc['uid'] 
+        pid          = pilot_doc['uid']
         slot_names   = list()
         slot_infos   = dict()
         slot_started = dict()
@@ -142,7 +142,7 @@ def get_session_slothist(db, sid, cache=None, cachedir=None) :
         n_cores = pilot_doc['cores_per_node']
 
         if  not nodes:
-          # print "no nodes in pilot doc for %s" % pilot_id
+          # print "no nodes in pilot doc for %s" % pid
             continue
 
         for node in nodes :
@@ -157,7 +157,7 @@ def get_session_slothist(db, sid, cache=None, cachedir=None) :
 
                 started  = None
                 finished = None
-                for event in sorted (unit_doc['state_history'], 
+                for event in sorted (unit_doc['state_history'],
                                      key=lambda x: x['timestamp']) :
                     if started :
                         finished = event['timestamp']
@@ -171,9 +171,9 @@ def get_session_slothist(db, sid, cache=None, cachedir=None) :
 
                 for slot_id in unit_doc['opaque_slots'] :
                     if slot_id not in slot_infos :
-                      # print "slot %s for pilot %s unknown - ignored" % (slot_id, pilot_id)
+                      # print "slot %s for pilot %s unknown - ignored" % (slot_id, pid)
                         continue
-                    
+
                     slot_infos[slot_id].append([started, finished])
                     slot_started[slot_id] = min(started, slot_started[slot_id])
 
@@ -185,11 +185,11 @@ def get_session_slothist(db, sid, cache=None, cachedir=None) :
         # the plotting tools though... (FIXME)
         slot_names.sort (key=lambda x: slot_started[x])
 
-        ret[pilot_id] = dict()
-        ret[pilot_id]['started']    = pilot_doc['started']
-        ret[pilot_id]['finished']   = pilot_doc['finished']
-        ret[pilot_id]['slots']      = slot_names
-        ret[pilot_id]['slot_infos'] = slot_infos
+        ret[pid] = dict()
+        ret[pid]['started']    = pilot_doc['started']
+        ret[pid]['finished']   = pilot_doc['finished']
+        ret[pid]['slots']      = slot_names
+        ret[pid]['slot_infos'] = slot_infos
 
     return ret
 
@@ -202,7 +202,7 @@ def get_session_events(db, sid, cache=None, cachedir=None) :
 
            [      [object type, object id, pilot id, timestamp, event name, object document] ]
       list (tuple (string     , string   , string  , datetime , string    , dict           ) )
-      
+
     """
 
     docs = get_session_docs(db, sid, cache, cachedir)
@@ -223,11 +223,11 @@ def get_session_events(db, sid, cache=None, cachedir=None) :
         oid   = doc['uid']
 
         for event in [# 'submitted', 'started',    'finished',  # redundant to states..
-                      'input_transfer_started',  'input_transfer_finished', 
+                      'input_transfer_started',  'input_transfer_finished',
                       'output_transfer_started', 'output_transfer_finished'] :
             if  event in doc :
                 ret.append (['state', otype, oid, oid, doc[event], event, odoc])
-            else : 
+            else :
                 ret.append (['state', otype, oid, oid, None,       event, odoc])
 
         for event in doc['state_history'] :
@@ -246,12 +246,12 @@ def get_session_events(db, sid, cache=None, cachedir=None) :
 
         # TODO: change states to look for
         for event in [# 'submitted', 'started',    'finished',  # redundant to states..
-                      'input_transfer_started',  'input_transfer_finished', 
+                      'input_transfer_started',  'input_transfer_finished',
                       'output_transfer_started', 'output_transfer_finished'
                       ] :
             if  event in doc :
                 ret.append (['state', otype, oid, pid, doc[event], event, doc])
-            else :                                
+            else :
                 ret.append (['state', otype, oid, pid, None,       event, doc])
 
         for event in doc['state_history'] :
@@ -266,8 +266,8 @@ def get_session_events(db, sid, cache=None, cachedir=None) :
     for r in list(ret) :
         if  r[4] == None :
             ret.remove (r)
-    
-    ret.sort (key=lambda tup: tup[4]) 
+
+    ret.sort (key=lambda tup: tup[4])
 
     return ret
 

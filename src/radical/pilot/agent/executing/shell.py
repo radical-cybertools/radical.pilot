@@ -19,21 +19,21 @@ from ... import constants as rpc
 from .base import AgentExecutingComponent
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Shell(AgentExecutingComponent):
 
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        AgentExecutingComponent.__init__ (self, cfg)
+        AgentExecutingComponent.__init__ (self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         from .... import pilot as rp
 
@@ -134,8 +134,8 @@ class Shell(AgentExecutingComponent):
         # Moving back to shared file system again, until it reaches maturity,
         # as this breaks launch methods with a hop, e.g. ssh.
         # FIXME: see #658
-        self._pilot_id    = self._cfg['pilot_id']
-        self._spawner_tmp = "/%s/%s-%s" % (self._pwd, self._pilot_id, self.uid)
+        self._pid    = self._cfg['pid']
+        self._spawner_tmp = "/%s/%s-%s" % (self._pwd, self._pid, self.uid)
 
         ret, out, _  = self.launcher_shell.run_sync \
                            ("/bin/sh %s/agent/executing/shell_spawner.sh %s" \
@@ -309,9 +309,9 @@ class Shell(AgentExecutingComponent):
         sandbox = cu['unit_sandbox_path']
 
         env  += "# CU environment\n"
-        env  += "export RP_SESSION_ID=%s\n"     % self._cfg['session_id']
-        env  += "export RP_PILOT_ID=%s\n"       % self._cfg['pilot_id']
-        env  += "export RP_AGENT_ID=%s\n"       % self._cfg['agent_name']
+        env  += "export RP_SESSION_ID=%s\n"     % self._cfg['sid']
+        env  += "export RP_PILOT_ID=%s\n"       % self._cfg['pid']
+        env  += "export RP_AGENT_ID=%s\n"       % self._cfg['aid']
         env  += "export RP_SPAWNER_ID=%s\n"     % self.uid
         env  += "export RP_UNIT_ID=%s\n"        % cu['uid']
         env  += 'export RP_UNIT_NAME="%s"\n'    % cu['description'].get('name')

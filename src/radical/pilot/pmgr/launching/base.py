@@ -15,18 +15,18 @@ from ... import constants as rpc
 RP_UL_NAME_DEFAULT = "DEFAULT"
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class PMGRLaunchingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
         self._uid = ru.generate_id(cfg['owner'] + '.launching.%(counter)s',
                                    ru.ID_CUSTOM)
 
-        rpu.Component.__init__(self, cfg)
+        rpu.Component.__init__(self, cfg, session)
 
         self._pmgr = self._owner
 
@@ -35,7 +35,7 @@ class PMGRLaunchingComponent(rpu.Component):
     # This class-method creates the appropriate sub-class for the Launcher.
     #
     @classmethod
-    def create(cls, cfg):
+    def create(cls, cfg, session):
 
         name = cfg.get('pmgr_launching_component', RP_UL_NAME_DEFAULT)
 
@@ -50,7 +50,7 @@ class PMGRLaunchingComponent(rpu.Component):
                 RP_UL_NAME_DEFAULT: Default
             }[name]
 
-            impl = impl(cfg)
+            impl = impl(cfg, session)
             return impl
 
         except KeyError:

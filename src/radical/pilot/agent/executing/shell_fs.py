@@ -15,7 +15,7 @@ from ... import constants as rpc
 from .base import AgentExecutingComponent
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class ShellFS(AgentExecutingComponent):
 
@@ -24,12 +24,12 @@ class ShellFS(AgentExecutingComponent):
     #
     def __init__(self, cfg, session):
 
-        AgentExecutingComponent.__init__ (self, cfg)
+        AgentExecutingComponent.__init__ (self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         from .... import pilot as rp
 
@@ -152,7 +152,7 @@ class ShellFS(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
+    def finalize(self):
 
         self._terminate.set()
 
@@ -306,9 +306,9 @@ class ShellFS(AgentExecutingComponent):
         sandbox = cu['unit_sandbox_path']
 
         env  += "# CU environment\n"
-        env  += "export RP_SESSION_ID=%s\n"     % self._cfg['session_id']
-        env  += "export RP_PILOT_ID=%s\n"       % self._cfg['pilot_id']
-        env  += "export RP_AGENT_ID=%s\n"       % self._cfg['agent_name']
+        env  += "export RP_SESSION_ID=%s\n"     % self._cfg['sid']
+        env  += "export RP_PILOT_ID=%s\n"       % self._cfg['pid']
+        env  += "export RP_AGENT_ID=%s\n"       % self._cfg['aid']
         env  += "export RP_SPAWNER_ID=%s\n"     % self.uid
         env  += "export RP_UNIT_ID=%s\n"        % cu['uid']
         env  += 'export RP_GTOD="%s"\n'         % self.gtod

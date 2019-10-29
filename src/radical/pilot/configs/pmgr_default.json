@@ -15,7 +15,7 @@
 
     "components" : {
         # how many instances of the respective components should be started
-        "PMGRLaunchingComponent" : {"count" : 1}
+        "pmgr_launching" : {"count" : 1}
     }
 }
 

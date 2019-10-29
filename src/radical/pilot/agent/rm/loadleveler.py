@@ -16,7 +16,7 @@ from .base import LRMS
 from functools import reduce
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class LoadLeveler(LRMS):
 
@@ -277,7 +277,7 @@ class LoadLeveler(LRMS):
             self._log.debug("Shape table constructed: ")
             for (size, dim) in [(key, self.shape_table[key])
                                       for key in sorted(self.shape_table)]:
-                self._log.debug("%s %s", (size, 
+                self._log.debug("%s %s", (size,
                                             [dim[key] for key in sorted(dim)]))
 
             # Determine the number of cpus per node
@@ -501,7 +501,7 @@ class LoadLeveler(LRMS):
                     for d in range(shape['D']):
                         for e in range(shape['E']):
                             location = {'A': a, 'B': b, 'C': c, 'D': d, 'E': e}
-                            nodename = self._bgq_nodename_by_loc(midplanes, 
+                            nodename = self._bgq_nodename_by_loc(midplanes,
                                                                 board, location)
                             nodes.append([index, location, nodename, rpc.FREE])
                             index += 1
@@ -634,7 +634,7 @@ class LoadLeveler(LRMS):
 
                 # Calculate the number of nodes for the current shape
                 from operator import mul
-                num_nodes = reduce(mul, [length for length 
+                num_nodes = reduce(mul, [length for length
                                     in list(sub_block_shape.values()) if length != 0])
 
                 if num_nodes in self.BGQ_SUPPORTED_SUB_BLOCK_SIZES:

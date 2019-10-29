@@ -5,13 +5,14 @@ __license__   = "MIT"
 
 import os
 import time
+import threading     as mt
 import subprocess    as mp
 import radical.utils as ru
 
 from .base import LaunchMethod
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 # NOTE: This requires a development version of Open MPI available.
 #
@@ -93,7 +94,7 @@ class ORTE(LaunchMethod):
 
         vm_size = len(lrms.node_list)
         logger.info("Start DVM on %d nodes ['%s']", vm_size, ' '.join(cmdline))
-        profiler.prof(event='dvm_start', uid=cfg['pilot_id'])
+        profiler.prof(event='dvm_start', uid=cfg['pid'])
 
         dvm_uri     = None
         dvm_process = mp.Popen(cmdline.split(), stdout=mp.PIPE, stderr=mp.STDOUT)
@@ -120,7 +121,7 @@ class ORTE(LaunchMethod):
                     raise Exception("VMURI not found!")
 
                 logger.info("ORTE DVM startup successful!")
-                profiler.prof(event='dvm_ok', uid=cfg['pilot_id'])
+                profiler.prof(event='dvm_ok', uid=cfg['pid'])
                 break
 
             else:
@@ -131,7 +132,7 @@ class ORTE(LaunchMethod):
                     logger.debug("ORTE: %s", line)
                 else:
                     # Process is gone: fatal!
-                    profiler.prof(event='dvm_fail', uid=cfg['pilot_id'])
+                    profiler.prof(event='dvm_fail', uid=cfg['pid'])
                     raise Exception("DVM process disappeared")
 
 
@@ -160,7 +161,8 @@ class ORTE(LaunchMethod):
             logger.info('DVM stopped (%d)' % dvm_process.returncode)
         # ----------------------------------------------------------------------
 
-        dvm_watcher = ru.Thread(target=_watch_dvm, name="DVMWatcher")
+        dvm_watcher = mt.Thread(target=_watch_dvm)
+        dvm_watcher.daemon = True
         dvm_watcher.start()
 
         lm_info = {'dvm_uri'     : dvm_uri,
@@ -187,14 +189,14 @@ class ORTE(LaunchMethod):
                 orterun = ru.which('orterun')
                 if not orterun:
                     raise Exception("Couldn't find orterun")
-                ru.sh_callout('%s --hnp %s --terminate' 
+                ru.sh_callout('%s --hnp %s --terminate'
                              % (orterun, lm_info['dvm_uri']))
-                profiler.prof(event='dvm_stop', uid=cfg['pilot_id'])
+                profiler.prof(event='dvm_stop', uid=cfg['pid'])
 
             except Exception as e:
                 # use the same event name as for runtime failures - those are
                 # not distinguishable at the moment from termination failures
-                profiler.prof(event='dvm_fail', uid=cfg['pilot_id'], msg=e)
+                profiler.prof(event='dvm_fail', uid=cfg['pid'], msg=e)
                 logger.exception('dvm termination failed')
 
 
@@ -218,8 +220,6 @@ class ORTE(LaunchMethod):
         task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
-      # import pprint
-      # self._log.debug('=== prep %s', pprint.pformat(cu))
         self._log.debug('prep %s', cu['uid'])
 
         if 'lm_info' not in slots:
@@ -268,8 +268,8 @@ class ORTE(LaunchMethod):
 
         # Additional (debug) arguments to orterun
         if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
-            debug_strings = ['-display-devel-map', 
-                             '-display-allocation', 
+            debug_strings = ['-display-devel-map',
+                             '-display-allocation',
                              '--debug-devel',
                              '--mca oob_base_verbose 100',
                              '--mca rml_base_verbose 100'

@@ -14,14 +14,14 @@ rs.fs = rs.filesystem
 
 # ------------------------------------------------------------------------------
 #
-def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None, 
+def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
         session=None, skip_existing=False, fetch_client=False, log=None):
     '''
     sid: session for which all profiles are fetched
     src: dir to look for client session profiles ($src/$sid/*.prof)
     tgt: dir to store the profile in
          - $tgt/$sid/*.prof,
-         - $tgt/$sid/$pilot_id/*.prof)
+         - $tgt/$sid/$pid/*.prof)
 
     returns list of file names
     '''
@@ -123,12 +123,12 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
                     if skip_existing and os.path.isfile(ftgt.path) \
                             and os.stat(ftgt.path).st_size > 0:
 
-                        log.info("skip fetching of '%s/%s' to '%s'.", 
+                        log.info("skip fetching of '%s/%s' to '%s'.",
                                  sandbox_url, PROFILES_TARBALL, tgt_url)
                         tarball_available = True
                     else:
 
-                        log.info("fetch '%s%s' to '%s'.", sandbox_url, 
+                        log.info("fetch '%s%s' to '%s'.", sandbox_url,
                                  PROFILES_TARBALL, tgt_url)
 
                         prof_file = rs.fs.File("%s%s" % (sandbox_url,
@@ -192,7 +192,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
 # ------------------------------------------------------------------------------
 #
-def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None, 
+def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
         session=None, skip_existing=False, fetch_client=False, log=None):
     '''
     sid: session for which all logfiles are fetched
@@ -219,10 +219,10 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
     if not src:
         src = os.getcwd()
-            
+
     if not tgt:
         tgt = os.getcwd()
-            
+
     if not tgt.startswith('/') and '://' not in tgt:
         tgt = "%s/%s" % (os.getcwd(), tgt)
 
@@ -289,12 +289,12 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
                     if skip_existing and os.path.isfile(ftgt.path) \
                             and os.stat(ftgt.path).st_size > 0:
 
-                        log.info("Skip fetching of '%s/%s' to '%s'.", 
+                        log.info("Skip fetching of '%s/%s' to '%s'.",
                                  sandbox_url, LOGFILES_TARBALL, tgt_url)
                         tarball_available = True
                     else:
 
-                        log.info("Fetching '%s%s' to '%s'.", 
+                        log.info("Fetching '%s%s' to '%s'.",
                                 sandbox_url, LOGFILES_TARBALL, tgt_url)
                         log_file = rs.fs.File("%s%s" % (sandbox_url, LOGFILES_TARBALL), session=session)
                         log_file.copy(ftgt, flags=rs.fs.CREATE_PARENTS)
@@ -321,7 +321,7 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
                     tarball.extractall("%s/%s" % (tgt_url.path, pilot['uid']))
 
                     logfiles = glob.glob("%s/%s/*.log" % (tgt_url.path, pilot['uid']))
-                    log.info("tarball %s extracted to '%s/%s/'.", 
+                    log.info("tarball %s extracted to '%s/%s/'.",
                             ftgt.path, tgt_url.path, pilot['uid'])
                     ret.extend(logfiles)
                     os.unlink(ftgt.path)

@@ -15,18 +15,18 @@ from ... import constants as rpc
 RP_ASI_NAME_DEFAULT = "DEFAULT"
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class AgentStagingInputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
         self._uid = ru.generate_id(cfg['owner'] + '.staging.input.%(counter)s',
                                    ru.ID_CUSTOM)
 
-        rpu.Component.__init__(self, cfg)
+        rpu.Component.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -34,7 +34,7 @@ class AgentStagingInputComponent(rpu.Component):
     # This class-method creates the appropriate sub-class for the Stager
     #
     @classmethod
-    def create(cls, cfg):
+    def create(cls, cfg, session):
 
         name = cfg.get('agent_staging_input_component', RP_ASI_NAME_DEFAULT)
 
@@ -49,7 +49,7 @@ class AgentStagingInputComponent(rpu.Component):
                 RP_ASI_NAME_DEFAULT: Default
             }[name]
 
-            impl = impl(cfg)
+            impl = impl(cfg, session)
             return impl
 
         except KeyError:

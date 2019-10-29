@@ -104,18 +104,20 @@ class PilotManager(rpu.Component):
             name = cfg
             cfg  = None
 
-        cfg       = ru.Config('radical.pilot.pmgr', name=name, cfg=cfg)
-        cfg.sid   = self._session.uid
-        cfg.base  = self._session.base
-        cfg.path  = self._session.path
+        cfg           = ru.Config('radical.pilot.pmgr', name=name, cfg=cfg)
+        cfg.uid       = self._uid
+        cfg.owner     = self._uid
+        cfg.sid       = self._session.uid
+        cfg.base      = self._session.base
+        cfg.path      = self._session.path
+        cfg.heartbeat = session.cfg.heartbeat
+
         rpu.Component.__init__(self, cfg, session=self._session)
 
         # create pmgr bridges and components, use session cmgr for that
-        print('--------------------------')
-        pprint.pprint(self._cfg)
-        print('--------------------------')
-        self._session.cmgr.start_bridges(self._cfg)
-        self._session.cmgr.start_components(self._cfg)
+        self._cmgr = rpu.ComponentManager(self._cfg)
+        self._cmgr.start_bridges()
+        self._cmgr.start_components()
 
         # only now we have a logger... :/
         self._rep.info('<<create pilot manager')
@@ -135,6 +137,8 @@ class PilotManager(rpu.Component):
         # FIXME: we may want to have the frequency configurable
         # FIXME: this should be a tailing cursor in the update worker
         self.register_timed_cb(self._state_pull_cb,
+                               timer=self._cfg['db_poll_sleeptime'])
+        self.register_timed_cb(self._pilot_heartbeat_cb,
                                timer=self._cfg['db_poll_sleeptime'])
 
         # also listen to the state pubsub for pilot state changes
@@ -193,8 +197,8 @@ class PilotManager(rpu.Component):
 
         if self._closed:
             return
-        self._terminate.set()
 
+        self._terminate.set()
         self._rep.info('<<close pilot manager')
 
         # we don't want any callback invokations during shutdown
@@ -209,7 +213,8 @@ class PilotManager(rpu.Component):
             # if this cancel op fails and the pilots are s till alive after
             # timeout, the pmgr.launcher termination will kill them
 
-        self.stop()
+
+        self._cmgr.close()
 
         self._log.info("Closed PilotManager %s." % self._uid)
 
@@ -243,7 +248,22 @@ class PilotManager(rpu.Component):
         return str(self.as_dict())
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    #
+    def _pilot_heartbeat_cb(self):
+
+        if self._terminate.is_set():
+            return False
+
+        # send heartbeat
+        self._log.debug('=== send pilot heartbeat')
+        self._session._dbs.pilot_command('pilot_heartbeat', {'pmgr': self._uid})
+        self._log.debug('=== sent pilot heartbeat')
+
+        return True
+
+
+    # --------------------------------------------------------------------------
     #
     def _state_pull_cb(self):
 
@@ -711,8 +731,6 @@ class PilotManager(rpu.Component):
               compute pilot objects to cancel.
         """
 
-        self._log.debug('in cancel_pilots: %s', ru.get_stacktrace())
-
         if not uids:
             with self._pilots_lock:
                 uids = list(self._pilots.keys())
@@ -725,6 +743,14 @@ class PilotManager(rpu.Component):
                 if uid not in self._pilots:
                     raise ValueError('pilot %s not known' % uid)
 
+        self._log.debug('pilot(s).need(s) cancellation %s', uids)
+
+        # send the cancelation request to the pilots
+        # FIXME: the cancellation request should not go directly to the DB, but
+        #        through the DB abstraction layer...
+        self._session._dbs.pilot_command('cancel_pilot', [], uids)
+
+        # inform pmgr.launcher - it will force-kill the pilot after some delay
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots',
                                           'arg' : {'pmgr' : self.uid,
                                                    'uids' : uids}})

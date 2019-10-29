@@ -37,14 +37,14 @@ class Default(AgentStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        AgentStagingOutputComponent.__init__(self, cfg)
+        AgentStagingOutputComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         self._pwd = os.getcwd()
 
@@ -132,7 +132,7 @@ class Default(AgentStagingOutputComponent):
         if unit.get('stdout_file') and os.path.isfile(unit['stdout_file']):
             with open(unit['stdout_file'], 'r') as stdout_f:
                 try:
-                    txt = ru.to_string(stdout_f.read())
+                    txt = ru.as_string(stdout_f.read())
                 except UnicodeDecodeError:
                     txt = "unit stdout is binary -- use file staging"
 
@@ -145,7 +145,7 @@ class Default(AgentStagingOutputComponent):
         if unit.get('stderr_file') and os.path.isfile(unit['stderr_file']):
             with open(unit['stderr_file'], 'r') as stderr_f:
                 try:
-                    txt = ru.to_string(stderr_f.read())
+                    txt = ru.as_string(stderr_f.read())
                 except UnicodeDecodeError:
                     txt = "unit stderr is binary -- use file staging"
 
@@ -173,7 +173,7 @@ class Default(AgentStagingOutputComponent):
         if os.path.isfile(unit_prof):
             try:
                 with open(unit_prof, 'r') as prof_f:
-                    txt = ru.to_string(prof_f.read())
+                    txt = ru.as_string(prof_f.read())
                     for line in txt.split("\n"):
                         if line:
                             ts, event, comp, tid, _uid, state, msg = line.split(',')

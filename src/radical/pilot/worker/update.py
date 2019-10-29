@@ -33,27 +33,22 @@ class Update(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        self._uid = ru.generate_id('update.%(counter)s', ru.ID_CUSTOM)
-
-        rpu.Worker.__init__(self, cfg)
+        rpu.Worker.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
     def initialize(self):
 
-        import pprint
-        pprint.pprint(self._cfg)
-
-        self._session_id = self._cfg['sid']
+        self._sid        = self._cfg['sid']
         self._dburl      = self._cfg['dburl']
 
         # TODO: get db handle from a connected session
         _, db, _, _, _   = ru.mongodb_connect(self._dburl)
         self._mongo_db   = db
-        self._coll       = self._mongo_db[self._session_id]
+        self._coll       = self._mongo_db[self._sid]
         self._bulk       = self._coll.initialize_ordered_bulk_op()
         self._last       = time.time()        # time of last bulk push
         self._uids       = list()             # list of collected uids
@@ -69,9 +64,9 @@ class Update(rpu.Worker):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def create(cls, cfg):
+    def create(cls, cfg, session):
 
-        return cls(cfg)
+        return cls(cfg, session)
 
 
     # --------------------------------------------------------------------------

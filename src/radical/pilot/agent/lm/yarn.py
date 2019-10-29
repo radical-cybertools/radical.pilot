@@ -11,7 +11,7 @@ import radical.utils as ru
 from .base import LaunchMethod
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 # The Launch Method Implementation for Running YARN applications
 #

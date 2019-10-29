@@ -16,9 +16,9 @@ class Agent_n(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, agent_name):
+    def __init__(self, cfg, session):
 
-        rpu.Worker.__init__(self, '%s.cfg' % agent_name)
+        rpu.Worker.__init__(self, cfg, session)
 
 
 # ------------------------------------------------------------------------------

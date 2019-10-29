@@ -219,22 +219,22 @@ class AgentSchedulingComponent(rpu.Component):
                                     ru.ID_CUSTOM)
         self._too_large = None
 
-        rpu.Component.__init__(self, cfg)
+        rpu.Component.__init__(self, cfg, session)
 
 
 
     # --------------------------------------------------------------------------
     #
-    # Once the component process is spawned, `initialize_child()` will be called
+    # Once the component process is spawned, `initialize()` will be called
     # before control is given to the component's main loop.
     #
-    def initialize_child(self):
+    def initialize(self):
 
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
         #
         # NOTE: this information is insufficient for the torus scheduler!
-        self._pilot_id            = self._cfg['pilot_id']
+        self._pid                 = self._cfg['pid']
         self._lrms_info           = self._cfg['lrms_info']
         self._lrms_lm_info        = self._cfg['lrms_info']['lm_info']
         self._lrms_node_list      = self._cfg['lrms_info']['node_list']
@@ -266,7 +266,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
-        self.nodes = []
+        self.nodes = list()
         for node, node_uid in self._lrms_node_list:
             self.nodes.append({'uid'  : node_uid,
                                'name' : node,
@@ -296,6 +296,14 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def finalize(self):
+
+        self._p.kill()
+        self._p.terminate()
+
+
+    # --------------------------------------------------------------------------
+    #
     def _configure(self):
 
         raise NotImplementedError('deriving classes must implement this')
@@ -306,7 +314,7 @@ class AgentSchedulingComponent(rpu.Component):
     # This class-method creates the appropriate instance for the scheduler.
     #
     @classmethod
-    def create(cls, cfg):
+    def create(cls, cfg, session):
 
         # make sure that we are the base-class!
         if cls != AgentSchedulingComponent:
@@ -345,7 +353,7 @@ class AgentSchedulingComponent(rpu.Component):
 
             }[name]
 
-            impl = impl(cfg)
+            impl = impl(cfg, session)
             return impl
 
         except KeyError:
@@ -473,8 +481,7 @@ class AgentSchedulingComponent(rpu.Component):
         '''
 
         # unify handling of bulks / non-bulks
-        if not isinstance(units, list):
-            units = [units]
+        units = ru.as_list(units)
 
         # advance state, publish state change, do not push unit out.
         self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)

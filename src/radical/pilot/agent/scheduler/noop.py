@@ -39,7 +39,7 @@ class Noop(AgentSchedulingComponent):
     #
     def __init__(self, cfg, session):
 
-        AgentSchedulingComponent.__init__(self, cfg)
+        AgentSchedulingComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------

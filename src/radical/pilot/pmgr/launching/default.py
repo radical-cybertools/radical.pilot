@@ -43,20 +43,20 @@ LOCAL_SCHEME   = 'file'
 BOOTSTRAPPER_0 = "bootstrap_0.sh"
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        PMGRLaunchingComponent.__init__(self, cfg)
+        PMGRLaunchingComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         # we don't really have an output queue, as we pass control over the
         # pilot jobs to the resource management system (RM).
@@ -90,12 +90,7 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
-
-        # avoid shutdown races:
-
-        self.unregister_timed_cb(self._pilot_watcher_cb)
-        self.unregister_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
+    def finalize(self):
 
         # FIXME: always kill all saga jobs for non-final pilots at termination,
         #        and set the pilot states to CANCELED.  This will confluct with
@@ -257,6 +252,7 @@ class Default(PMGRLaunchingComponent):
         with self._pilots_lock, self._check_lock:
 
             for pid in self._checking:
+
                 tc.add(self._pilots[pid]['job'])
 
         states = tc.get_states()
@@ -335,12 +331,6 @@ class Default(PMGRLaunchingComponent):
         if not pids or not self._pilots:
             # nothing to do
             return
-
-        # send the cancelation request to the pilots
-        # FIXME: the cancellation request should not go directly to the DB, but
-        #        through the DB abstraction layer...
-        self._session._dbs.pilot_command('cancel_pilot', [], pids)
-        self._log.debug('pilot(s).need(s) cancellation %s', pids)
 
         # recod time of request, so that forceful termination can happen
         # after a certain delay
@@ -867,7 +857,7 @@ class Default(PMGRLaunchingComponent):
                 agent_cfg_file = os.path.join(self._conf_dir, "agent_%s.json" % agent_config)
 
                 self._log.info("Read agent config file: %s",  agent_cfg_file)
-                agent_cfg = ru.read_json(agent_cfg_file)
+                agent_cfg = ru.Config(path=agent_cfg_file)
 
                 # allow for user level overload
                 user_cfg_file = '%s/.radical/pilot/config/%s' \
@@ -1052,7 +1042,7 @@ class Default(PMGRLaunchingComponent):
         for arg in pre_bootstrap_1:
             bootstrap_args += " -w '%s'" % arg
 
-        agent_cfg['owner']               = 'agent_0'
+        agent_cfg['owner']               = 'agent.0'
         agent_cfg['cores']               = number_cores
         agent_cfg['gpus']                = number_gpus
         agent_cfg['lrms']                = lrms
@@ -1061,8 +1051,9 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['runtime']             = runtime
         agent_cfg['app_comm']            = app_comm
         agent_cfg['dburl']               = str(database_url)
-        agent_cfg['session_id']          = sid
-        agent_cfg['pilot_id']            = pid
+        agent_cfg['sid']                 = sid
+        agent_cfg['pid']                 = pid
+        agent_cfg['pmgr']                = self._pmgr
         agent_cfg['logdir']              = '.'
         agent_cfg['pilot_sandbox']       = pilot_sandbox
         agent_cfg['session_sandbox']     = session_sandbox
@@ -1087,7 +1078,7 @@ class Default(PMGRLaunchingComponent):
         # ----------------------------------------------------------------------
         # Write agent config dict to a json file in pilot sandbox.
 
-        agent_cfg_name = 'agent_0.cfg'
+        agent_cfg_name = 'agent.0.cfg'
         cfg_tmp_handle, cfg_tmp_file = tempfile.mkstemp(prefix='rp.agent_cfg.')
         os.close(cfg_tmp_handle)  # file exists now
 

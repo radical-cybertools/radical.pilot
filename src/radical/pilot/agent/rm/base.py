@@ -20,7 +20,7 @@ RM_NAME_YARN        = 'YARN'
 RM_NAME_SPARK       = 'SPARK'
 RM_NAME_DEBUG       = 'DEBUG'
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 # Base class for LRMS implementations.
 #
@@ -92,7 +92,7 @@ class LRMS(object):
         # FIXME: this loop iterates over all agents *defined* in the layout, not
         #        over all agents which are to be actually executed, thus
         #        potentially reserving too many nodes.a
-        # NOTE:  this code path is *within* the agent, so at least agent_0
+        # NOTE:  this code path is *within* the agent, so at least agent.0
         #        cannot possibly land on a different node.
         for agent in agents:
             target = agents[agent].get('target')
@@ -205,7 +205,7 @@ class LRMS(object):
     # This class-method creates the appropriate sub-class for the LRMS.
     #
     @classmethod
-    def create(cls, name, cfg):
+    def create(cls, name, cfg, session):
 
         from .ccm         import CCM
         from .fork        import Fork
@@ -239,7 +239,7 @@ class LRMS(object):
                 RM_NAME_SPARK       : Spark,
                 RM_NAME_DEBUG       : Debug
             }[name]
-            return impl(cfg)
+            return impl(cfg, session)
 
         except KeyError:
             raise RuntimeError("LRMS type '%s' unknown or defunct" % name)

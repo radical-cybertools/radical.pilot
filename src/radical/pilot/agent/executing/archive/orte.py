@@ -57,9 +57,9 @@ class ORTE(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session):
 
-        AgentExecutingComponent.__init__(self, cfg)
+        AgentExecutingComponent.__init__(self, cfg, session)
 
         self._watcher   = None
         self._terminate = threading.Event()
@@ -67,7 +67,7 @@ class ORTE(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         self._pwd = os.getcwd()
 
@@ -84,7 +84,7 @@ class ORTE(AgentExecutingComponent):
         self._cus_to_cancel  = list()
         self._watch_queue    = queue.Queue ()
 
-        self._pilot_id = self._cfg['pilot_id']
+        self._pid = self._cfg['pid']
 
         self.task_map = {}
         self.task_map_lock = threading.Lock()
@@ -389,9 +389,9 @@ class ORTE(AgentExecutingComponent):
 
         # Set RP environment variables
         rp_envs = [
-            "RP_SESSION_ID=%s" % self._cfg['session_id'],
-            "RP_PILOT_ID=%s"   % self._cfg['pilot_id'],
-            "RP_AGENT_ID=%s"   % self._cfg['agent_name'],
+            "RP_SESSION_ID=%s" % self._cfg['sid'],
+            "RP_PILOT_ID=%s"   % self._cfg['pid'],
+            "RP_AGENT_ID=%s"   % self._cfg['aid'],
             "RP_SPAWNER_ID=%s" % self.uid,
             "RP_UNIT_ID=%s"    % cu['uid'],
             "RP_UNIT_NAME=%s"  % cu['description'].get('name'),

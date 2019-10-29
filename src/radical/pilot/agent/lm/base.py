@@ -45,7 +45,7 @@ LM_NAME_SRUN          = 'SRUN'
 PWD = os.getcwd()
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class LaunchMethod(object):
 
@@ -96,7 +96,7 @@ class LaunchMethod(object):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, cfg):
+    def create(cls, name, cfg, session):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
@@ -165,18 +165,16 @@ class LaunchMethod(object):
               # LM_NAME_POE           : POE,
               # LM_NAME_RUNJOB        : Runjob,
             }[name]
-            return impl(name, cfg)
+            return impl(name, cfg, session)
 
         except KeyError:
             # pylint: disable=protected-access
             # FIXME
-          # session._log.exception("LM '%s' unknown or defunct" % name)
             pass
 
         except Exception as e:
             # pylint: disable=protected-access
             # FIXME
-          # session._log.exception("LM cannot be used: %s!" % e)
             pass
 
 

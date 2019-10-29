@@ -5,13 +5,14 @@ __license__   = "MIT"
 
 import os
 import time
+import threading     as mt
 import subprocess    as mp
 import radical.utils as ru
 
 from .base import LaunchMethod
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class PRTE(LaunchMethod):
 
@@ -113,7 +114,7 @@ class PRTE(LaunchMethod):
         cmdline  = cmdline.strip()
 
         logger.info("Start prte on %d nodes [%s]", vm_size, cmdline)
-        profiler.prof(event='dvm_start', uid=cfg['pilot_id'])
+        profiler.prof(event='dvm_start', uid=cfg['pid'])
 
         dvm_uri     = None
         dvm_process = mp.Popen(cmdline.split(), stdout=mp.PIPE,
@@ -145,7 +146,8 @@ class PRTE(LaunchMethod):
             logger.info('prte stopped (%d)' % dvm_process.returncode)
         # ----------------------------------------------------------------------
 
-        dvm_watcher = ru.Thread(target=_watch_dvm, name="DVMWatcher")
+        dvm_watcher = mt.Thread(target=_watch_dvm)
+        dvm_watcher.daemon = True
         dvm_watcher.start()
 
         for _ in range(100):
@@ -173,7 +175,7 @@ class PRTE(LaunchMethod):
         # in some cases, the DVM seems to need some additional time to settle.
         # FIXME: this should not be needed, really
         time.sleep(10)
-        profiler.prof(event='dvm_ok', uid=cfg['pilot_id'])
+        profiler.prof(event='dvm_ok', uid=cfg['pid'])
 
 
         lm_info = {'dvm_uri'     : dvm_uri,
@@ -202,12 +204,12 @@ class PRTE(LaunchMethod):
                     raise Exception("Couldn't find prun")
                 ru.sh_callout('%s --hnp %s --terminate'
                              % (prun, lm_info['dvm_uri']))
-                profiler.prof(event='dvm_stop', uid=cfg['pilot_id'])
+                profiler.prof(event='dvm_stop', uid=cfg['pid'])
 
             except Exception as e:
                 # use the same event name as for runtime failures - those are
                 # not distinguishable at the moment from termination failures
-                profiler.prof(event='dvm_fail', uid=cfg['pilot_id'], msg=e)
+                profiler.prof(event='dvm_fail', uid=cfg['pid'], msg=e)
                 logger.exception('prte termination failed')
 
 

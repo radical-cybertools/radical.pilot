@@ -87,15 +87,15 @@ class ContinuousSummit(AgentSchedulingComponent):
         self.nodes = None
         self._tag_history = dict()
 
-        AgentSchedulingComponent.__init__(self, cfg)
+        AgentSchedulingComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
-    # Once the component process is spawned, `initialize_child()` will be called
+    # Once the component process is spawned, `initialize()` will be called
     # before control is given to the component's main loop.
     #
-    def initialize_child(self):
+    def initialize(self):
 
         # register unit input channels
         self.register_input(rps.AGENT_SCHEDULING_PENDING,
@@ -125,7 +125,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         # during agent startup.  We dig them out of the config at this point.
         #
         # NOTE: this information is insufficient for the torus scheduler!
-        self._pilot_id              = self._cfg['pilot_id']
+        self._pid                   = self._cfg['pid']
         self._lrms_info             = self._cfg['lrms_info']
         self._lrms_lm_info          = self._cfg['lrms_info']['lm_info']
         self._lrms_node_list        = self._cfg['lrms_info']['node_list']
@@ -159,21 +159,6 @@ class ContinuousSummit(AgentSchedulingComponent):
         self._configure()
         self._log.debug("slot status after  init      : %s",
                         self.slot_status())
-
-
-    # --------------------------------------------------------------------------
-    #
-    # FIXME: this should not be overloaded here, but in the base class
-    #
-    def finalize_child(self):
-
-        cprof_env = os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "")
-        if "CONTINUOUS" in cprof_env.split():
-            self_thread = mt.current_thread()
-            cprof.dump_stats("python-%s.profile" % self_thread.name)
-
-        # make sure that parent finalizers are called
-        super(ContinuousSummit, self).finalize_child()
 
 
     # --------------------------------------------------------------------------

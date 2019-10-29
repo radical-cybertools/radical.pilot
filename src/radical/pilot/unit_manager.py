@@ -15,8 +15,6 @@ from . import constants as rpc
 
 from . import compute_unit_description as rpcud
 
-from .umgr import scheduler as rpus
-
 
 # ------------------------------------------------------------------------------
 #
@@ -81,14 +79,12 @@ class UnitManager(rpu.Component):
             * A new `UnitManager` object [:class:`radical.pilot.UnitManager`].
         """
 
-        self._bridges     = dict()
-        self._components  = dict()
         self._pilots      = dict()
-        self._pilots_lock = threading.RLock()
+        self._pilots_lock = ru.RLock('umgr.pilots_lock')
         self._units       = dict()
-        self._units_lock  = threading.RLock()
+        self._units_lock  = ru.RLock('umgr.units_lock')
         self._callbacks   = dict()
-        self._cb_lock     = threading.RLock()
+        self._cb_lock     = ru.RLock()
         self._terminate   = threading.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
@@ -96,31 +92,34 @@ class UnitManager(rpu.Component):
         for m in rpc.UMGR_METRICS:
             self._callbacks[m] = dict()
 
-        cfg = ru.read_json("%s/configs/umgr_%s.json" \
-                % (os.path.dirname(__file__),
-                   os.environ.get('RADICAL_PILOT_UMGR_CFG', 'default')))
+        # FIXME: expose in API
+        name = 'default'
+        cfg  = None
+        cfg = ru.Config('radical.pilot.umgr', name=name, cfg=cfg)
 
         if scheduler:
             # overwrite the scheduler from the config file
-            cfg['scheduler'] = scheduler
-
-        if not cfg.get('scheduler'):
-            # set default scheduler if needed
-            cfg['scheduler'] = rpus.SCHEDULER_DEFAULT
-
-        assert(cfg['db_poll_sleeptime']), 'db_poll_sleeptime not configured'
+            cfg.scheduler = scheduler
 
         # initialize the base class (with no intent to fork)
-        self._uid    = ru.generate_id('umgr.%(item_counter)04d', ru.ID_CUSTOM,
-                                      ns=session.uid)
-        cfg['owner'     ] = self.uid
-        cfg['session_id'] = session.uid
-        rpu.Component.__init__(self, cfg)
-        self.start(spawn=False)
-        self._log.info('started umgr %s', self._uid)
+        self._uid  = ru.generate_id('umgr.%(item_counter)04d', ru.ID_CUSTOM,
+                                    ns=session.uid)
+        cfg.uid       = self.uid
+        cfg.owner     = self.uid
+        cfg.sid       = session.uid
+        cfg.base      = session.cfg.base
+        cfg.path      = session.cfg.path
+        cfg.heartbeat = session.cfg.heartbeat
 
-        # only now we have a logger... :/
+        rpu.Component.__init__(self, cfg, session=session)
+        self.start()
+
+        self._log.info('started umgr %s', self._uid)
         self._rep.info('<<create unit manager')
+
+        self._cmgr = rpu.ComponentManager(self._cfg)
+        self._cmgr.start_bridges()
+        self._cmgr.start_components()
 
         # The output queue is used to forward submitted units to the
         # scheduling component.
@@ -154,38 +153,6 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_common(self):
-
-        # the manager must not carry bridge and component handles across forks
-        ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _atfork_prepare(self): pass
-    def _atfork_parent(self) : pass
-    def _atfork_child(self)  :
-        self._bridges    = dict()
-        self._components = dict()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize_parent(self):
-
-        # terminate umgr components
-        for c in self._components:
-            c.stop()
-            c.join()
-
-        # terminate umgr bridges
-        for b in self._bridges:
-            b.stop()
-            b.join()
-
-
-    # --------------------------------------------------------------------------
-    #
     def close(self):
         """
         Shut down the UnitManager, and all umgr components.
@@ -199,16 +166,16 @@ class UnitManager(rpu.Component):
             return
 
         self._terminate.set()
-        self.stop()
 
         self._rep.info('<<close unit manager')
 
-        # we don't want any callback invokations during shutdown
-        # FIXME: really?
+        # disable callbacks during shutdown
         with self._cb_lock:
             self._callbacks = dict()
             for m in rpc.UMGR_METRICS:
                 self._callbacks[m] = dict()
+
+        self._cmgr.close()
 
         self._log.info("Closed UnitManager %s." % self._uid)
 
@@ -241,7 +208,7 @@ class UnitManager(rpu.Component):
         return str(self.as_dict())
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _pilot_state_cb(self, pilot, state):
 

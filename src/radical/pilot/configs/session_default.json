@@ -12,7 +12,7 @@
 
     "heartbeat"    : {
         "interval" : 0.5,
-        "timeout"  : 2.0
+        "timeout"  : 1.0
     },
 
     "bridges" : {
@@ -32,7 +32,7 @@
 
     "components" : {
         # how many instances of the respective components should be started
-        "UpdateWorker" : {
+        "update" : {
             "count" : 1
         }
     }
