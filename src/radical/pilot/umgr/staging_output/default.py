@@ -49,11 +49,8 @@ class Default(UMGRStagingOutputComponent):
     #
     def finalize(self):
 
-        try:
-            for key in self._cache:
-                self._cache[key].close()
-        except:
-            pass
+        for key in self._cache:
+            self._cache[key].close()
 
 
     # --------------------------------------------------------------------------

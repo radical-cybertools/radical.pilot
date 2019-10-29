@@ -74,15 +74,8 @@ class Default(UMGRStagingInputComponent):
     #
     def finalize(self):
 
-        try:
-            [fs.close() for fs in list(self._fs_cache.values())]
-        except:
-            pass
-
-        try:
-            [js.close() for js in list(self._js_cache.values())]
-        except:
-            pass
+        [fs.close() for fs in list(self._fs_cache.values())]
+        [js.close() for js in list(self._js_cache.values())]
 
 
     # --------------------------------------------------------------------------

@@ -103,11 +103,7 @@ class Default(PMGRLaunchingComponent):
 
         with self._cache_lock:
             for url,js in self._saga_js_cache.items():
-                self._log.debug('close  js to %s', url)
                 js.close()
-                self._log.debug('closed js to %s', url)
-            self._saga_js_cache.clear()
-        self._log.debug('finalized child')
 
 
     # --------------------------------------------------------------------------
