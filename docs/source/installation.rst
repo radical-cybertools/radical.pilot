@@ -192,74 +192,81 @@ installed.
 .. Source: http://nerderati.com/2011/03/17/simplify-your-life-with-an-ssh-config-file/
 
 
-Troubleshooting
-===============
+.. Troubleshooting
+.. ===============
 
-Here a collection of common problems with installing RADICAL-Pilot. Please
-open a (support ticket
-<https://github.com/radical-cybertools/radical.pilot/issues>`_) with RADICAL
-Lab if your issue is not addressed by the following.
-
-
-Missing virtualenv
-------------------
-
-This should return the version of the RADICAL-Pilot installation, e.g., ``0.X.Y``.
-
-If virtualenv **is not** installed on your system, you can try the following.
-
-.. code-block:: bash
-
-    wget --no-check-certificate https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz
-    tar xzf virtualenv-1.9.tar.gz
-
-    python virtualenv-1.9/virtualenv.py $HOME/ve
-    source $HOME/ve/bin/activate
+.. Here a collection of common problems with installing RADICAL-Pilot. Please
+.. open a (support ticket
+.. <https://github.com/radical-cybertools/radical.pilot/issues>`_) with RADICAL
+.. Lab if your issue is not addressed by the following.
 
 
-Incompatibilities
------------------
+.. Missing virtualenv
+.. ------------------
 
-Many installation problems boil down to one of two causes:  an Anaconda based Python
-distribution, or an incompatible version of pip/setuptools.
+.. This should return the version of the RADICAL-Pilot installation, e.g., ``0.X.Y``.
 
-Many recent systems, specifically in the academic community, install Python in
-its incarnation as Anaconda Distribution.  RADICAL-Pilot is not yet able to function in
-that environment.  While support of Anaconda is planned in the near future, you
-will have to revert to a 'normal' Python distribution to use RADICAL-Pilot.
+.. If virtualenv **is not** installed on your system, you can try the following.
 
-Python supports a large variety of module deployment paths: ``easy_install``,
-``setuptools`` and ``pip`` being the most prominent ones for non-compilable
-modules.  RADICAL-Pilot only supports ``pip``, and even for pip we do not attempt to keep
-up with its vivid evolution.  If you encounter pip errors, please downgrade pip
-to version ``1.4.1``, via
+.. .. code-block:: bash
 
-.. code-block:: bash
+..     wget --no-check-certificate https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz
+..     tar xzf virtualenv-1.9.tar.gz
 
-    $ pip install --upgrade pip==1.4.1
-
-If you continue to encounter problems, please also fix the version of setuptools
-to ``0.6c11`` via
-
-.. code-block:: bash
-
-    $ pip install --upgrade setuptools==0.6c11
-
-.. note::
-
-    RADICAL-Pilot can be installed under Anaconda, although that mode is not
-    tested as thoroughly compared to installation under non-Anaconda Python.
+..     python virtualenv-1.9/virtualenv.py $HOME/ve
+..     source $HOME/ve/bin/activate
 
 
-**Mailing Lists**
+.. Incompatibilities
+.. -----------------
 
-If you encounter any errors, please do not hesitate to contact us via the
-mailing list:
+.. Many installation problems depends on an incompatible version of
+.. ``pip`` and ``setuptools``.
 
-* https://groups.google.com/d/forum/radical-pilot-users
+.. Many recent systems, specifically in the academic community, install Python in
+.. its incarnation as Anaconda Distribution.  RADICAL-Pilot is not yet able to function in
+.. that environment.  While support of Anaconda is planned in the near future, you
+.. will have to revert to a 'normal' Python distribution to use RADICAL-Pilot.
 
-We also appreciate issues and bug reports via our public github tracker:
+.. Python supports a large variety of module deployment paths: ``easy_install``,
+.. ``setuptools`` and ``pip`` being the most prominent ones for non-compilable
+.. modules.  RADICAL-Pilot only supports ``pip``, and even for pip we do not attempt to keep
+.. up with its vivid evolution.  If you encounter pip errors, please downgrade pip
+.. to version ``1.4.1``, via:
 
-* https://github.com/radical-cybertools/radical.pilot/issues
+.. .. code-block:: bash
+
+..     $ pip install --upgrade pip==1.4.1
+
+.. If you continue to encounter problems, please also fix the version of setuptools
+.. to ``0.6c11`` via
+
+.. .. code-block:: bash
+
+..     $ pip install --upgrade setuptools==0.6c11
+
+.. .. note::
+
+..     RADICAL-Pilot can be installed under Anaconda, although that mode is not
+..     tested as thoroughly compared to installation under non-Anaconda Python.
+
+
+Support
+=======
+
+RADICAL-Pilot undergoes constant evolution, implementing new capabilities,
+supporting new resources and keeping up with the progressing of its
+dependences. If you encounter any error, please do not hesitate to contact the
+RADICAL lab team by opening a (support ticket
+<https://github.com/radical-cybertools/radical.pilot/issues>`_).
+
+.. via the
+.. mailing list:
+
+.. * https://groups.google.com/d/forum/radical-pilot-users
+
+.. We also appreciate issues and bug reports via our public github tracker:
+
+.. * https://github.com/radical-cybertools/radical.pilot/issues
 
 
