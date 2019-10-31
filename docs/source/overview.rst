@@ -202,6 +202,7 @@ written during runtime. You can set the following environment variables in the
 shell from which the RP application is executed:
 
 .. code-block:: bash
+   
    RADICAL_LOG_LVL=DEBUG
    RADICAL_LOG_TGT=/tmp/rp.log
 
@@ -223,6 +224,7 @@ Profiling must be explicitly enabled by exporting the following environment
 variable in the shell from which the RP application is executed:
 
 .. code-block:: bash
+   
    RADICAL_PROF=True
 
 Further, the argument ``download=True`` must be passed to the ``method

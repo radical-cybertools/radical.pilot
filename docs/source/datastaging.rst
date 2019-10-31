@@ -213,9 +213,9 @@ is staged back to the local environment.
 .. note::
     Download the example:
 
-    ``curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/io_staging_simple.py``
+    ``curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/data_staging/io_staging_simple.py``
 
-.. literalinclude:: ../../examples/io_staging_simple.py
+.. literalinclude:: ../../examples/data_staging/io_staging_simple.py
 
 
 .. _example-dict:
@@ -233,9 +233,9 @@ a feature that is often required in real-world applications.
 .. note::
     Download the example:
 
-    ``curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/io_staging_dict.py``
+    ``curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/data_staging/io_staging_dict.py``
 
-.. literalinclude:: ../../examples/io_staging_dict.py
+.. literalinclude:: ../../examples/data_staging/io_staging_dict.py
 
 
 .. _example-shared:
@@ -250,9 +250,9 @@ all compute units.
 .. note::
     Download the example:
 
-    ``curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/io_staging_shared.py``
+    ``curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/data_staging/io_staging_shared.py``
 
-.. literalinclude:: ../../examples/io_staging_shared.py
+.. literalinclude:: ../../examples/data_staging/io_staging_shared.py
 
 
 .. _example-pipeline:
@@ -267,6 +267,6 @@ output into and that is picked up by the second step in the pipeline.
 .. note::
     Download the example:
 
-    ``curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/io_staging_pipeline.py``
+    ``curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/data_staging/io_staging_pipeline.py``
 
-.. literalinclude:: ../../examples/io_staging_pipeline.py
+.. literalinclude:: ../../examples/data_staging/io_staging_pipeline.py
