@@ -30,6 +30,8 @@ class ComponentManager(object):
         self._log  = ru.Logger(self._uid, ns='radical.pilot',
                                path=self._cfg.path)
 
+        self._prof.prof('init2', uid=self._uid, msg=self._cfg.path)
+
         # Every ComponentManager runs a HB pubsub bridge in a separate thread.
         # That HB channel should be used by all components and bridges created
         # under this CMGR.
