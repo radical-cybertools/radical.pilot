@@ -25,6 +25,8 @@ class ComponentManager(object):
         self._uid  = ru.generate_id('cmgr', ns=self._sid)
         self._uids = [self._uid]  # uids to track hartbeats for (incl. own)
 
+        self._prof = ru.Profiler(self._uid, ns='radical.pilot',
+                               path=self._cfg.path)
         self._log  = ru.Logger(self._uid, ns='radical.pilot',
                                path=self._cfg.path)
 
@@ -33,7 +35,7 @@ class ComponentManager(object):
         # under this CMGR.
         bcfg = ru.Config(cfg={'channel'    : 'heartbeat',
                               'type'       : 'pubsub',
-                              'uid'        : self._uid,
+                              'uid'        : self._uid + '.hb',
                               'stall_hwm'  : 1,
                               'bulk_size'  : 0,
                               'path'       : self._cfg.path})
@@ -94,6 +96,7 @@ class ComponentManager(object):
     def _hb_term_cb(self, uid=None):
 
         self._log.debug('=== hb_term %s: %s died', self.uid, uid)
+        self._prof.prof('term', uid=self._uid)
 
         # FIXME: restart goes here
 
@@ -124,6 +127,8 @@ class ComponentManager(object):
         '''
         check if any bridges are defined under `cfg['bridges']` and start them
         '''
+
+        self._prof.prof('start_bridges_start', uid=self._uid)
 
         timeout = self._cfg.heartbeat.timeout
 
@@ -157,6 +162,8 @@ class ComponentManager(object):
         if failed:
             raise RuntimeError('could not start all bridges %s' % failed)
 
+        self._prof.prof('start_bridges_stop', uid=self._uid)
+
 
     # --------------------------------------------------------------------------
     #
@@ -165,6 +172,8 @@ class ComponentManager(object):
         check if any components are defined under `cfg['components']`
         and start them
         '''
+
+        self._prof.prof('start_components_start', uid=self._uid)
 
         timeout = self._cfg.heartbeat.timeout
 
@@ -212,93 +221,17 @@ class ComponentManager(object):
         if failed:
             raise RuntimeError('could not start all components %s' % failed)
 
+        self._prof.prof('start_components_stop', uid=self._uid)
+
 
     # --------------------------------------------------------------------------
     #
     def close(self):
 
+        self._prof.prof('close', uid=self._uid)
+
         self._hb_bridge.stop()
         self._hb.stop()
-
-
-  # # --------------------------------------------------------------------------
-  # #
-  # def start_components(self):
-  #     '''
-  #     `start_components()` is very similar to `start_bridges()`, in that it
-  #     interprets a given configuration and creates all listed component
-  #     instances.  Components are, however,  *always* created, independent of
-  #     any existing instances.
-  #
-  #     This method will return a list of created component instances.  It is up
-  #     to the callee to watch those components for health and to terminate them
-  #     as needed.
-  #     '''
-  #
-  #     # ----------------------------------------------------------------------
-  #     # TODO:  We keep this static typemap for component startup. We should
-  #     #        derive that typemap from rp module inspection via an
-  #     #        `ru.PluginManager`.
-  #     #
-  #     # NOTE:  I'd rather have this as class data than as stack data, but
-  #     #        python stumbles over circular imports at that point :/
-  #     #
-  #     # FIXME: this goes into the daemonizer script
-  #     #
-  #     from .. import worker as rpw
-  #     from .. import pmgr   as rppm
-  #     from .. import umgr   as rpum
-  #     from .. import agent  as rpa
-  #
-  #     _ctypemap = {rpc.UPDATE_WORKER                  : rpw.Update,
-  #
-  #                  rpc.PMGR_LAUNCHING_COMPONENT       : rppm.Launching,
-  #
-  #                  rpc.UMGR_STAGING_INPUT_COMPONENT   : rpum.Input,
-  #                  rpc.UMGR_SCHEDULING_COMPONENT      : rpum.Scheduler,
-  #                  rpc.UMGR_STAGING_OUTPUT_COMPONENT  : rpum.Output,
-  #
-  #                  rpc.AGENT_STAGING_INPUT_COMPONENT  : rpa.Input,
-  #                  rpc.AGENT_SCHEDULING_COMPONENT     : rpa.Scheduler,
-  #                  rpc.AGENT_EXECUTING_COMPONENT      : rpa.Executing,
-  #                  rpc.AGENT_STAGING_OUTPUT_COMPONENT : rpa.Output
-  #                 }
-  #     # ----------------------------------------------------------------------
-  #
-  #     cspec = self._cfg.get('components', {})
-  #     self._log.debug('start components: %s', pprint.pformat(cspec))
-  #
-  #     # start components
-  #     for cname,ccfg in cspec.items():
-  #
-  #         if cname not in _ctypemap:
-  #             raise ValueError('unknown component type (%s)' % cname)
-  #
-  #         cnum  = ccfg.get('count', 1)
-  #         ctype = _ctypemap[cname]
-  #
-  #         self._log.debug('start %s component(s) %s', cnum, cname)
-  #
-  #         for i in range(cnum):
-  #
-  #             # for components, we pass on the original cfg (or rather a copy
-  #             # of that), and merge the component's config section into it
-  #             tmp_cfg = copy.deepcopy(self._cfg)
-  #             tmp_cfg['number'] = i
-  #             tmp_cfg['cname']  = cname
-  #             tmp_cfg['owner']  = self._uid
-  #
-  #             # avoid recursion
-  #             tmp_cfg['bridges']    = dict()
-  #             tmp_cfg['components'] = dict()
-  #
-  #             # merge the component config section (overwrite)
-  #             ru.dict_merge(tmp_cfg, ccfg, ru.OVERWRITE)
-  #
-  #             comp = ctype.create(tmp_cfg)
-  #           # comp.start()
-  #
-  #             self._log.info('%-30s starts %s',  tmp_cfg['owner'], comp.uid)
 
 
 # ------------------------------------------------------------------------------
@@ -481,6 +414,7 @@ class Component(object):
       #                            scope='entity',
       #                            start='get',
       #                            stop=['put', 'drop'])
+        self._prof.prof('init1', uid=self._uid, msg=self._prof.path)
 
         self._q    = None
         self._in   = None

@@ -54,7 +54,18 @@ def main(cfg):
     # basic setup: uid, logger, process name
     uid  = cfg.uid
     path = cfg.path
-    log  = ru.Logger(name=uid, ns='radical.pilot', path=path)
+    prof = ru.Profiler(name=uid, ns='radical.pilot', path=path)
+
+    try:
+        prof.prof('comp_start', uid=uid)
+        wrapped_main(cfg, uid, path)
+    finally:
+        prof.prof('comp_stop', uid=uid)
+
+
+def wrapped_main(cfg, uid, path):
+
+    log = ru.Logger(name=uid, ns='radical.pilot', path=path)
 
     spt.setproctitle('rp.%s' % uid)
 
