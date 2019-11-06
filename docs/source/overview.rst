@@ -158,8 +158,8 @@ the default approach to RP deployment.
 More details about MongoDB requirements and deployment can be found in section
 :ref:`chapter_installation`.
 
-Why do I need a RADICAL-SAGA to run RP?
-=======================================
+Why do I need RADICAL-SAGA to run RP?
+=====================================
 
 RP needs to submit one or more jobs to the target HPC machine(s) in order to
 acquire the resources on which to schedule the application compute units. RP
