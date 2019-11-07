@@ -179,6 +179,7 @@ class Agent_0(rpu.Worker):
                      'rm_info'      : self._lrms.lrms_info},
                  '$set'             : ['resource_details']}
         self.advance(pilot, publish=True, push=False)
+        ru.write_json(pilot, '%s.json' % self._pid)
 
         # register idle callback to pull for units -- which is the only action
         # we have to perform, really
