@@ -73,6 +73,13 @@ class PRTE(LaunchMethod):
         if profiler.enabled:
             prte += ' --pmca orte_state_base_verbose 1'  # prte profiling
 
+        # large tasks imply large message sizes, and we need to account for that
+        # FIXME: we should derive the message size from DVM size - smaller DVMs
+        #        will never need large messages, as they can't run large tasks)
+        prte += ' --pmca ptl_base_max_msg_size %d' % (1024 * 1024 * 1024 * 1)
+
+        # debug mapper problems for large tasks
+        prte += '  -pmca orte_rmaps_base_verbose 100'
 
         # we apply two temporary tweaks on Summit which should not be needed in
         # the long run:
@@ -103,7 +110,7 @@ class PRTE(LaunchMethod):
             debug_strings = [
                              '--debug-devel',
                              '--pmca odls_base_verbose 100',
-                             '--pmca rml_base_verbose 100'
+                             '--pmca rml_base_verbose 100',
                             ]
         else:
             debug_strings = []
@@ -270,6 +277,9 @@ class PRTE(LaunchMethod):
         map_flag  = ' -np %d --cpus-per-proc %d' % (n_procs, n_threads)
         map_flag += ' --bind-to hwthread:overload-allowed --use-hwthread-cpus'
         map_flag += ' --oversubscribe'
+
+        # see DVM startup
+        map_flag += ' --pmca ptl_base_max_msg_size %d' % (1024 * 1024 * 1024 * 1)
 
         if 'nodes' not in slots:
             # this task is unscheduled - we leave it to PRRTE/PMI-X to
