@@ -30,7 +30,7 @@
         "valid_roots"                 : ["/lustre/atlas/scratch"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "use",
-        "virtenv"                     : "/lustre/atlas2/geo111/world-shared/ve.rp.titan.2018.05.23",
+        "virtenv"                     : "/lustre/atlas2/%(pd.project)s/world-shared/ve.rp.titan.2018.05.23",
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system",
@@ -159,7 +159,7 @@
                                          "ulimit -u 65536"
                                         ],
         "valid_roots"                 : ["$MEMBERWORK/"],
-        "default_remote_workdir"      : "$MEMBERWORK/geo111",
+        "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
@@ -215,7 +215,7 @@
                                          "ulimit -u 65536"
                                         ],
         "valid_roots"                 : ["$MEMBERWORK/"],
-        "default_remote_workdir"      : "$MEMBERWORK/geo111",
+        "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "stage_cacerts"               : true,
