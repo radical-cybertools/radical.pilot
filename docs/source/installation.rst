@@ -27,7 +27,7 @@ RADICAL-Pilot requires the following packages:
 
 or
 
-* Anaconda Python >= 3.5
+* Anaconda Python >= 2.7
 
 All other dependencies are installed automatically by RADICAL-Pilot installer.
 

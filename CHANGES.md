@@ -1,10 +1,6 @@
 
-  - For a list of bug fixes, see
-    https://github.com/radical-cybertools/radical.pilot/ \
-            issues?q=is%3Aissue+is%3Aclosed+sort%3Aupdated-desc
-  - For a list of open issues and known problems, see
-    https://github.com/radical-cybertools/radical.pilot/ \
-            issues?q=is%3Aissue+is%3Aopen+
+  - For a list of bug fixes, see: https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aclosed+sort%3Aupdated-desc
+  - For a list of open issues and known problems, see: https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
 0.73.1  Release                                                       2019-10-07
@@ -1001,14 +997,14 @@ New Features
   - Experimental pilot-agent for Cray systems
   - New multi-core agent with MPI support
   - New ResourceConfig mechanism does not reuquire the user to add
-  resource configurations explicitly. Resources can be configured
-  programatically on API-level.
+    resource configurations explicitly. Resources can be configured
+    programatically on API-level.
 
 API Changes:
 
-  - ComputeUnitDescription.working_dir_priv removed
+  - ComputeUnitDescription.working\_dir\_priv removed
   - Extended state model
-  - resource_configurations parameter removed from PilotManager c`tor
+  - resource\_configurations parameter removed from PilotManager c`tor
 
 
 0.13 Release                                                        May 19. 2014
@@ -1037,7 +1033,7 @@ API Changes:
 0.10 Release                                                       Apr. 29. 2014
 --------------------------------------------------------------------------------
 
-  - Support for state transition introspection via CU/Pilot state_history
+  - Support for state transition introspection via CU/Pilot state\_history
   - Cleaned up an streamlined Input and Outpout file transfer workers
   - Support for interchangeable pilot agents
   - Closed tickets:
@@ -1098,8 +1094,7 @@ API Changes:
 0.1.3 Release
 --------------------------------------------------------------------------------
 
-  - Github only release:
-  pip install --upgrade -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot
+  - Github only release: pip install --upgrade -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot
 
   - Added logging
   - Added security context handling
@@ -1110,12 +1105,8 @@ API Changes:
 0.1.2 Release
 --------------------------------------------------------------------------------
 
-  - Github only release:
-  pip install --upgrade -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot
+  - Github only release: pip install --upgrade -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot
 
   - Closed tickets:
     - https://github.com/saga-project/saga-pilot/issues?milestone=4&state=closed
-
-
---------------------------------------------------------------------------------
 
