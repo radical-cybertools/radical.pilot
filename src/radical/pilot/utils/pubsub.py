@@ -261,17 +261,17 @@ class Pubsub(ru.Process):
 
         if self._in in _socks:
 
-            with self._lock:
 
-                # if any incoming socket signals a message, get the
-                # message on the subscriber channel, and forward it
-                # to the publishing channel, no questions asked.
-                if _USE_MULTIPART:
+            # if any incoming socket signals a message, get the
+            # message on the subscriber channel, and forward it
+            # to the publishing channel, no questions asked.
+            if _USE_MULTIPART:
+                with self._lock:
                     msg = _uninterruptible(self._in.recv_multipart, flags=zmq.NOBLOCK)
                     _uninterruptible(self._out.send_multipart, msg)
-                else:
-                    msg = _uninterruptible(self._in.recv, flags=zmq.NOBLOCK)
-                    _uninterruptible(self._out.send, msg)
+            else:
+                msg = _uninterruptible(self._in.recv, flags=zmq.NOBLOCK)
+                _uninterruptible(self._out.send, msg)
 
             if self._debug:
                 self._log.debug("-> %s", pprint.pformat(msg))
@@ -279,18 +279,17 @@ class Pubsub(ru.Process):
 
         if self._out in _socks:
 
-            with self._lock:
-
-                # if any outgoing socket signals a message, it's
-                # likely a topic subscription.  We forward that on
-                # the incoming channels to subscribe for the
-                # respective messages.
-                if _USE_MULTIPART:
+            # if any outgoing socket signals a message, it's
+            # likely a topic subscription.  We forward that on
+            # the incoming channels to subscribe for the
+            # respective messages.
+            if _USE_MULTIPART:
+                with self._lock:
                     msg = _uninterruptible(self._out.recv_multipart)
                     _uninterruptible(self._in.send_multipart, msg)
-                else:
-                    msg = _uninterruptible(self._out.recv)
-                    _uninterruptible(self._in.send, msg)
+            else:
+                msg = _uninterruptible(self._out.recv)
+                _uninterruptible(self._in.send, msg)
 
             if self._debug:
                 self._log.debug("<- %s", pprint.pformat(msg))
@@ -339,8 +338,7 @@ class Pubsub(ru.Process):
         else:
             if self._debug:
                 self._log.debug("-> %s %s", topic, pprint.pformat(msg))
-            with self._lock:
-                _uninterruptible(self._q.send, "%s %s" % (topic, data))
+            _uninterruptible(self._q.send, "%s %s" % (topic, data))
 
 
     # --------------------------------------------------------------------------
@@ -356,8 +354,7 @@ class Pubsub(ru.Process):
                 topic, data = _uninterruptible(self._q.recv_multipart)
 
         else:
-            with self._lock:
-                raw = _uninterruptible(self._q.recv)
+            raw = _uninterruptible(self._q.recv)
             topic, data = raw.split(' ', 1)
 
         msg = msgpack.unpackb(data)
@@ -368,7 +365,7 @@ class Pubsub(ru.Process):
 
     # --------------------------------------------------------------------------
     #
-    def get_nowait(self, timeout=None): # timeout in ms
+    def get_nowait(self, timeout=None):  # timeout in ms
 
         assert(self._role == PUBSUB_SUB), 'invalid role on get_nowait'
 

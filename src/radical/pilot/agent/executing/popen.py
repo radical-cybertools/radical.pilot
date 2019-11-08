@@ -164,8 +164,6 @@ class Popen(AgentExecutingComponent) :
 
         self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        ru.raise_on('work bulk')
-
         for unit in units:
             self._handle_unit(unit)
 
@@ -173,10 +171,6 @@ class Popen(AgentExecutingComponent) :
     # --------------------------------------------------------------------------
     #
     def _handle_unit(self, cu):
-
-        ru.raise_on('work unit')
-      # import pprint
-      # self._log.info('handle cu: %s', pprint.pformat(cu))
 
         try:
             # prep stdout/err so that we can append w/o checking for None
@@ -211,6 +205,7 @@ class Popen(AgentExecutingComponent) :
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
+            self._prof.prof('unschedule_start', uid=cu['uid'])
             self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
@@ -449,6 +444,7 @@ prof(){
                     self._prof.prof('exec_cancel_stop', uid=uid)
 
                     del(cu['proc'])  # proc is not json serializable
+                    self._prof.prof('unschedule_start', uid=cu['uid'])
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
                     self.advance(cu, rps.CANCELED, publish=True, push=False)
 
@@ -471,6 +467,7 @@ prof(){
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._cus_to_watch.remove(cu)
                 del(cu['proc'])  # proc is not json serializable
+                self._prof.prof('unschedule_start', uid=cu['uid'])
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
                 if exit_code != 0:

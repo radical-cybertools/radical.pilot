@@ -15,7 +15,7 @@ pilots for execution.  It does so according to some schedulin algorithm, which
 can be selected when instantiating the manager.  Momentarily we support two
 schduling algorithms: 'Round-Robin' and 'Backfilling'.  New schedulers can be
 added to radical.pilot -- please contact us on the mailing list
-`radical-pilot-devel@googlegroups.com' for details on support.
+`radical-pilot-devel@googlegroups.com` for details on support.
 
 Note that radical.pilot enacts a second scheduling step: once a pilot agent
 takes ownership of units which the unit manager scheduler assigned to it, the

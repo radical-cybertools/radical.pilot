@@ -12,8 +12,6 @@ import shutil
 import tempfile
 import threading
 
-import subprocess              as sp
-
 import radical.saga            as rs
 import radical.saga.filesystem as rsfs
 import radical.utils           as ru
@@ -254,8 +252,6 @@ class Default(PMGRLaunchingComponent):
         # we don't want to lock our members all the time.  For that reason we
         # use a copy of the pilots_tocheck list and iterate over that, and only
         # lock other members when they are manipulated.
-
-        ru.raise_on('pilot_watcher_cb')
 
         tc = rs.job.Container()
         with self._pilots_lock, self._check_lock:
@@ -630,11 +626,8 @@ class Default(PMGRLaunchingComponent):
         # tar.  If any command fails, this will raise.
         cmd = "cd %s && tar zchf %s *" % (tmp_dir, tar_tgt)
         self._log.debug('cmd: %s', cmd)
-        try:
-            out, err, ret = ru.sh_callout(cmd, shell=True)
-        except Exception:
-            self._log.exception('callout failed')
-            raise
+
+        out, err, ret = ru.sh_callout(cmd, shell=True)
 
         if ret:
             self._log.debug('out: %s', out)

@@ -28,16 +28,16 @@
     # stall_hwm and batch_size is 1 (no stalling, no bulking).
     #
     "bridges" : {
-        "agent_staging_input_queue"  : { "log_level" : "error",
+        "agent_staging_input_queue"  : { "log_level" : "default",
                                          "stall_hwm" : 1,
                                          "bulk_size" : 1},
-        "agent_scheduling_queue"     : { "log_level" : "error",
+        "agent_scheduling_queue"     : { "log_level" : "default",
                                          "stall_hwm" : 1,
                                          "bulk_size" : 1},
-        "agent_executing_queue"      : { "log_level" : "error",
+        "agent_executing_queue"      : { "log_level" : "default",
                                          "stall_hwm" : 1,
                                          "bulk_size" : 1},
-        "agent_staging_output_queue" : { "log_level" : "error",
+        "agent_staging_output_queue" : { "log_level" : "default",
                                          "stall_hwm" : 1,
                                          "bulk_size" : 1},
 
@@ -48,12 +48,12 @@
                                          "stall_hwm" : 1,
                                          "bulk_size" : 0},
 
-        "agent_unschedule_pubsub"    : { "log_level" : "error"},
-        "agent_schedule_pubsub"      : { "log_level" : "error"},
+        "agent_unschedule_pubsub"    : { "log_level" : "default"},
+        "agent_schedule_pubsub"      : { "log_level" : "default"},
 
-        "control_pubsub"             : { "log_level" : "error"},
-        "state_pubsub"               : { "log_level" : "error"},
-        "log_pubsub"                 : { "log_level" : "error"}
+        "control_pubsub"             : { "log_level" : "default"},
+        "state_pubsub"               : { "log_level" : "default"},
+        "log_pubsub"                 : { "log_level" : "default"}
     },
 
     "components" : {

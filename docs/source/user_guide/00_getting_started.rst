@@ -5,27 +5,27 @@
 Getting Started
 ***************
 
-In this section we will walk you through the basics of using  RP.  After you
-have worked through this chapter, you will understand how to launch a local
-``ComputePilot`` and use a ``UnitManager`` to schedule and run ``ComputeUnits``
-(tasks) on it.
+In this section we will walk you through the basics of using  RADICAL-Pilot
+(RP).  After you have worked through this chapter, you will understand how to
+launch a local ``ComputePilot`` and use a ``UnitManager`` to schedule and run
+``ComputeUnits`` (i.e., tasks) on local and remore resources.
 
 .. note:: The reader is assumed to be familiar with the general RP concepts as
           described in :ref:`chapter_overview` for reference.
 
 .. note:: This chapter assumes that you have successfully installed
-          RADICAL-Pilot, and also configured access to the resources you intent
-          to use for the examples (see chapter :ref:`chapter_installation`).
+          RADICAL-Pilot, and also configured access to the resources you
+          intend to use for the examples (see chapter
+          :ref:`chapter_installation`).
 
-.. note:: We colloquially refer to ``ComputePilot`` as `pilot`, and to
-          ``ComputeUnit`` as `unit`.
+.. note:: We colloquially refer to RADICAL-Pilot as `RP`, ``ComputePilot`` as 
+          `pilot`, and to ``ComputeUnit`` as `unit`.
 
 You can download the basic :download:`00_getting_started.py
 <../../../examples/00_getting_started.py>`.  The text below will explain the
-most important code sections, and at the end shows the expected output
-from the execution of the example.  Please look carefully at the code comments as
-they explain some aspects of the code which are not explicitly covered in the
-text below.  
+most important sections of the code, showing the expected output from the
+execution of the example.  Please look carefully at the code comments as they
+explain some aspects of the code which we do not explicitly cover in the text.
 
 Loading the RP Module, Follow the Application Execution
 -------------------------------------------------------

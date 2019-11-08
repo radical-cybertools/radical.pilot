@@ -1,14 +1,15 @@
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
-__license__ = "MIT"
+__license__   = "MIT"
 
 
-import os
+import time
+import queue
 import logging
-import pprint
-import threading
 
-import radical.utils as ru
+import multiprocessing    as mp
+
+import radical.utils      as ru
 
 from ... import utils     as rpu
 from ... import states    as rps
@@ -20,6 +21,7 @@ from ... import constants as rpc
 # 'enum' for RPs's pilot scheduler types
 #
 SCHEDULER_NAME_CONTINUOUS_ORDERED = "CONTINUOUS_ORDERED"
+SCHEDULER_NAME_CONTINUOUS_COLO    = "CONTINUOUS_COLO"
 SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
 SCHEDULER_NAME_HOMBRE             = "HOMBRE"
 SCHEDULER_NAME_SPARK              = "SPARK"
@@ -58,7 +60,7 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 #     - the scheduler receives notifications about units which completed
 #       execution, and whose resources can now be used again for other units,
 #     - the above triggers an 'unschedule' (free resources) action and also a
-#       `schedule` action (check waitlist if waiting units can now be placed).
+#       `schedule` action (check waitpool if waiting units can now be placed).
 #
 #
 # A scheduler implementation will derive from this base class, and overload the
@@ -68,11 +70,11 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 #     - make sure that the base class configuration is usable
 #     - do any additional configuration
 #
-#   _allocate_slot(cud):
-#     - given a unit description, find and return a suitable allocation
+#   _schecule_unit(unit):
+#     - given a unit (incl. description), find and return a suitable allocation
 #
-#   _release_slot(slots):
-#     - release the given allocation
+#   unschedule_unit(unit):
+#     - release the allocation held by that unit
 #
 #
 # The scheduler needs (in the general case) three pieces of information:
@@ -215,15 +217,7 @@ class AgentSchedulingComponent(rpu.Component):
         self.nodes = None
         self._uid  = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
                                     ru.ID_CUSTOM)
-
-        tmp = os.environ.get('RP_UNIFORM_WORKLOAD', '').lower()
-        if tmp in ['true', 'yes', '1']:
-            self._uniform_wl = True
-        else:
-            self._uniform_wl = False
-
         rpu.Component.__init__(self, cfg, session)
-
 
 
     # --------------------------------------------------------------------------
@@ -232,30 +226,6 @@ class AgentSchedulingComponent(rpu.Component):
     # before control is given to the component's main loop.
     #
     def initialize_child(self):
-
-        # register unit input channels
-        self.register_input(rps.AGENT_SCHEDULING_PENDING,
-                            rpc.AGENT_SCHEDULING_QUEUE, self._schedule_units)
-
-        # register unit output channels
-        self.register_output(rps.AGENT_EXECUTING_PENDING,
-                             rpc.AGENT_EXECUTING_QUEUE)
-
-        # we need unschedule updates to learn about units for which to free the
-        # allocated cores.  Those updates MUST be issued after execution, ie.
-        # by the AgentExecutionComponent.
-        self.register_subscriber(rpc.AGENT_UNSCHEDULE_PUBSUB, self.unschedule_cb)
-
-        # we don't want the unschedule above to compete with actual
-        # scheduling attempts, so we move the re-scheduling of units from the
-        # wait pool into a separate thread (ie. register a separate callback).
-        # This is triggered by the unscheduled_cb.
-        #
-        # NOTE: we could use a local queue here.  Using a zmq bridge goes toward
-        #       an distributed scheduler, and is also easier to implement right
-        #       now, since `Component` provides the right mechanisms...
-        self.register_publisher (rpc.AGENT_SCHEDULE_PUBSUB)
-        self.register_subscriber(rpc.AGENT_SCHEDULE_PUBSUB, self.schedule_cb)
 
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
@@ -282,14 +252,22 @@ class AgentSchedulingComponent(rpu.Component):
             raise RuntimeError("LRMS %s didn't _configure gpus_per_node."
                               % self._lrms_info['name'])
 
-        # create and initialize the wait pool
-        self._wait_pool = list()             # pool of waiting units
-        self._wait_lock = threading.RLock()  # look on the above pool
-        self._slot_lock = threading.RLock()  # lock slot allocation/deallocation
+        # create and initialize the wait pool.  Also maintain a mapping of that
+        # waitlist to a binned list where tasks are binned by size for faster
+        # lookups of replacement units.  And outdated binlist is mostly
+        # sufficient, only rebuild when we run dry
+        self._waitpool = dict()  # map uid:task
+        self._ts_map   = dict()
+        self._ts_valid = False  # set to False to trigger re-binning
+
+        # the scheduler algorithms have two inputs: tasks to be scheduled, and
+        # slots becoming available (after tasks complete).
+        self._queue_sched   = mp.Queue()
+        self._queue_unsched = mp.Queue()
+        self._proc_term     = mp.Event()  # signal termination ot scheduler proc
 
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
-
         self.nodes = []
         for node, node_uid in self._lrms_node_list:
             self.nodes.append({'uid'  : node_uid,
@@ -301,7 +279,21 @@ class AgentSchedulingComponent(rpu.Component):
 
         # configure the scheduler instance
         self._configure()
-        self._log.debug("slot status after  init      : %s", self.slot_status())
+        self.slot_status("slot status after  init")
+
+        # register unit input channels
+        self.register_input(rps.AGENT_SCHEDULING_PENDING,
+                            rpc.AGENT_SCHEDULING_QUEUE, self.work)
+
+        # we need unschedule updates to learn about units for which to free the
+        # allocated cores.  Those updates MUST be issued after execution, ie.
+        # by the AgentExecutionComponent.
+        self.register_subscriber(rpc.AGENT_UNSCHEDULE_PUBSUB, self.unschedule_cb)
+
+        # start a process to host the actual scheduling algorithm
+        self._p = mp.Process(target=self._schedule_units)
+        self._p.daemon = True
+        self._p.start()
 
 
     # --------------------------------------------------------------------------
@@ -325,6 +317,7 @@ class AgentSchedulingComponent(rpu.Component):
         name = cfg['scheduler']
 
         from .continuous_ordered import ContinuousOrdered
+        from .continuous_colo    import ContinuousColo
         from .continuous         import Continuous
         from .hombre             import Hombre
         from .torus              import Torus
@@ -340,6 +333,7 @@ class AgentSchedulingComponent(rpu.Component):
             impl = {
 
                 SCHEDULER_NAME_CONTINUOUS_ORDERED : ContinuousOrdered,
+                SCHEDULER_NAME_CONTINUOUS_COLO    : ContinuousColo,
                 SCHEDULER_NAME_CONTINUOUS         : Continuous,
                 SCHEDULER_NAME_HOMBRE             : Hombre,
                 SCHEDULER_NAME_TORUS              : Torus,
@@ -424,10 +418,15 @@ class AgentSchedulingComponent(rpu.Component):
     #
     # NOTE: any scheduler implementation which uses a different nodelist
     #       structure MUST overload this method.
-    def slot_status(self):
+    def slot_status(self, msg=None):
         '''
         Returns a multi-line string corresponding to the status of the node list
         '''
+
+        if not self._log.isEnabledFor(logging.DEBUG):
+            return
+
+        if not msg: msg = ''
 
         glyphs = {rpc.FREE : '-',
                   rpc.BUSY : '#',
@@ -441,69 +440,368 @@ class AgentSchedulingComponent(rpu.Component):
                 ret += glyphs[gpu]
             ret += '|'
 
+        self._log.debug("status: %-30s: %s", msg, ret)
+
         return ret
 
 
     # --------------------------------------------------------------------------
     #
-    def _allocate_slot(self, cud):
+    def _refresh_ts_map(self):
 
-        raise NotImplementedError('_allocate_slot needs to be implemented.')
+        # The ts map only gets invalidated when new units get added to the
+        # waitpool.  Removing tasks does *not* invalidate it.
+        #
+        # This method should only be called opportunistically, i.e., when a task
+        # lookup failed and it is worthwhile checking the waitlist tasks.
+
+        if self._ts_valid:
+            # nothing to do, the map is valid
+            return
+
+        # we can only rebuild if we have waiting tasks
+        if not self._waitpool:
+            return
+
+        for uid,task in self._waitpool.iteritems():
+            ts = task['tuple_size']
+            if ts not in self._ts_map:
+                self._ts_map[ts] = set()
+            self._ts_map[ts].add(uid)
+
+        self._ts_valid = True
 
 
     # --------------------------------------------------------------------------
     #
-    def _release_slot(self, slots):
+    def schedule_unit(self, unit):
 
-        raise NotImplementedError('_release_slot needs to be implemented.')
+        raise NotImplementedError('schedule_unit needs to be implemented.')
 
 
     # --------------------------------------------------------------------------
     #
-    def _schedule_units(self, units):
+    def unschedule_unit(self, unit):
+
+        raise NotImplementedError('unschedule_unit needs to be implemented.')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def work(self, units):
         '''
-        This is the main callback of the component, which is calledfor any
+        This is the main callback of the component, which is called for any
         incoming (set of) unit(s).  Units arriving here must always be in
         `AGENT_SCHEDULING_PENDING` state, and must always leave in either
         `AGENT_EXECUTING_PENDING` or in a FINAL state (`FAILED` or `CANCELED`).
-        While handled by this method, the units will be in `AGENT_SCHEDULING`
+        While handled by this component, the units will be in `AGENT_SCHEDULING`
         state.
+
+        This methods takes care of initial state change to `AGENT_SCHEDULING`,
+        and then puts them forward onto the queue towards the actual scheduling
+        process (self._schedule_units).
         '''
 
         # unify handling of bulks / non-bulks
         if not isinstance(units, list):
             units = [units]
 
-        # advance state, publish state change, do not push unit out.
+        # advance state, publish state change, and push to scheduler process
         self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
+        self._queue_sched.put(units)
 
-      # # sort units by size
-      # def _sort(a,b):
-      #     da = a['description']
-      #     db = b['description']
-      #     va = da['cpu_processes'] * da['cpu_threads'] + da['gpu_processes']
-      #     vb = db['cpu_processes'] * db['cpu_threads'] + db['gpu_processes']
-      #     return cmp(vb, va)
-      # units.sort(_sort)
 
-        for unit in units:
+    # --------------------------------------------------------------------------
+    #
+    def unschedule_cb(self, topic, msg):
+        '''
+        release (for whatever reason) all slots allocated to this unit
+        '''
 
-            # we got a new unit to schedule.  Either we can place it
-            # straight away and move it to execution, or we have to
+        self._queue_unsched.put(msg)
+
+        # return True to keep the cb registered
+        return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _schedule_units(self):
+        '''
+        This method runs in a separate process and hosts the actual scheduling
+        algorithm invocation.  The process is fed by two queues: a queue of
+        incoming tasks to schedule, and a queue of slots freed by finishing
+        tasks.
+        '''
+
+        # The loop alternates between
+        #
+        #   - scheduling tasks from a waitpool;
+        #   - pulling new tasks to schedule; and
+        #   - pulling for free slots to use.
+        #
+        # resources = True  # fresh start
+        #
+        # while True:
+        #
+        #   if resources:  # otherwise: why bother?
+        #     if waitpool:
+        #       sort(waitpool)  # largest tasks first
+        #       for task in sorted(waitpool):
+        #         if task >= max_task:
+        #           prof schedule_skip
+        #         else:
+        #           if try_schedule:
+        #             advance
+        #             continue
+        #           max_task = max(max_task, size(task))
+        #         break  # larger tasks won't work
+        #
+        #   if any_resources:  # otherwise: why bother
+        #     for task in queue_units.get():
+        #         if task <= max_task:
+        #           if try_schedule:
+        #             advance
+        #             continue
+        #           waitpool.append(task)
+        #           max_task = max(max_task, size(task))
+        #         continue  # next task mght be smaller
+        #
+        #   resources = False  # nothing in waitpool fits
+        #   for slot in queue_slots.get():
+        #     free_slot(slot)
+        #     resources = True  # maybe we can place a task now
+
+
+        # register unit output channels
+        self.register_output(rps.AGENT_EXECUTING_PENDING,
+                             rpc.AGENT_EXECUTING_QUEUE)
+
+        resources = True  # fresh start, all is free
+        while not self._proc_term.is_set():
+
+            self._log.debug('=== schedule units 0: %s, w: %d', resources,
+                    len(self._waitpool))
+
+            active = 0  # see if we do anything in this iteration
+
+            # if we have new resources, try to place waiting tasks.
+            r_wait = False
+            if resources:
+                r_wait, a = self._schedule_waitpool()
+                active += int(a)
+                self._log.debug('=== schedule units w: %s %s', r_wait, a)
+
+            # always try to schedule newly incoming tasks
+            # running out of resources for incoming could still mean we have
+            # smaller slots for waiting tasks, so ignore `r` for now.
+            r_inc, a = self._schedule_incoming()
+            active += int(a)
+            self._log.debug('=== schedule units i: %s %s', r_inc, a)
+
+            # if we had resources, but could not schedule any incoming not any
+            # waiting, then we effectively ran out of *useful* resources
+            if resources and (r_wait is False and r_inc is False):
+                resources = False
+
+            # reclaim resources from completed tasks
+            # if tasks got unscheduled (and not replaced), then we have new
+            # space to schedule waiting tasks (unless we have resources from
+            # before)
+            r, a = self._unschedule_completed()
+            if not resources and r:
+                resources = True
+            active += int(a)
+            self._log.debug('=== schedule units c: %s %s', r, a)
+
+            if not active:
+                time.sleep(0.1)  # FIXME: configurable
+
+            self._log.debug('=== schedule units x: %s %s', resources, active)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _prof_sched_skip(self, task):
+
+        self._prof.prof('schedule_skip', uid=task['uid'])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _schedule_waitpool(self):
+
+        self.slot_status("before schedule waitpool")
+
+        # sort by inverse tuple size to place larger tasks first and backfill
+        # with smaller tasks.  We only look at cores right now - this needs
+        # fixing for GPU dominated loads.
+        # We define `tuple_size` as
+        #     `(cpu_processes + gpu_processes) * cpu_threads`
+        #
+        tasks = self._waitpool.values()
+        tasks.sort(key=lambda x:
+                (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
+                 reverse=True)
+
+        # cycle through waitpool, and see if we get anything placed now.
+        scheduled, unscheduled = ru.lazy_bisect(tasks,
+                                                check=self._try_allocation,
+                                                on_skip=self._prof_sched_skip,
+                                                log=self._log)
+
+        self._waitpool = {task['uid']:task for task in unscheduled}
+        self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
+                                                             push=True)
+        # method counts as `active` if anything was scheduled
+        active = bool(scheduled)
+
+        # if we sccheduled some tasks but not all, we ran out of resources
+        resources = not (bool(unscheduled) and bool(unscheduled))
+
+        self.slot_status("after  schedule waitpool")
+        return resources, active
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _schedule_incoming(self):
+
+        # fetch all units from the queue
+        units = list()
+        try:
+
+            while not self._proc_term.is_set():
+                data = self._queue_sched.get(timeout=0.001)
+
+                if not isinstance(data, list):
+                    data = [data]
+
+                for unit in data:
+                    self._set_tuple_size(unit)
+                    units.append(unit)
+
+        except queue.Empty:
+            # no more unschedule requests
+            pass
+
+        if not units:
+            # no resource change, no activity
+            return None, False
+
+        self.slot_status("before schedule incoming [%d]" % len(units))
+
+        # handle largest units first
+        # FIXME: this needs lazy-bisect
+        to_wait = list()
+        for unit in sorted(units, key=lambda x: x['tuple_size'][0],
+                           reverse=True):
+
+            # either we can place the unit straight away, or we have to
             # put it in the wait pool.
             if self._try_allocation(unit):
-                # we could schedule the unit - advance its state, notify worls
-                # about the state change, and push the unit out toward the next
-                # component.
+
+                # task got scheduled - advance state, notify world about the
+                # state change, and push it out toward the next component.
                 self.advance(unit, rps.AGENT_EXECUTING_PENDING,
                              publish=True, push=True)
-            else:
-                # no resources available, put in wait queue
-                with self._wait_lock:
-                    self._wait_pool.append(unit)
 
-      # # also sort the wait pool
-      # self._wait_pool.sort(_sort)
+            else:
+                to_wait.append(unit)
+
+        # all units which could not be scheduled are added to the waitpool
+        self._waitpool.update({task['uid']:task for task in to_wait})
+
+        # we performed some activity (worked on units)
+        active = True
+
+        # if units remain waiting, we are out of usable resources
+        resources = not bool(to_wait)
+
+        # incoming units which have to wait are the only reason to rebuild the
+        # tuple_size map
+        self._ts_valid = False
+
+        self.slot_status("after  schedule incoming")
+        return resources, active
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _unschedule_completed(self):
+
+        to_unschedule = list()
+        try:
+            while not self._proc_term.is_set():
+                unit = self._queue_unsched.get(timeout=0.001)
+                to_unschedule.append(unit)
+
+        except queue.Empty:
+            # no more unschedule requests
+            pass
+
+        to_release = list()  # slots of unscheduling tasks
+        placed     = list()  # uids of waiting tasks replacing unscheduled ones
+
+        if to_unschedule:
+
+            # rebuild the tuple_size binning, maybe
+            self._refresh_ts_map()
+
+
+        for unit in to_unschedule:
+            # if we find a waiting unit with the same tuple size, we don't free
+            # the slots, but just pass them on unchanged to the waiting unit.
+            # Thus we replace the unscheduled unit on the same cores / GPUs
+            # immediately. This assumes that the `tuple_size` is good enough to
+            # judge the legality of the resources for the new target unit.
+
+         ## ts = tuple(unit['tuple_size'])
+         ## if self._ts_map.get(ts):
+         ##
+         ##     replace = self._waitpool[self._ts_map[ts].pop()]
+         ##     replace['slots'] = unit['slots']
+         ##     placed.append(placed)
+         ##
+         ##     # unschedule unit A and schedule unit B have the same
+         ##     # timestamp
+         ##     ts = time.time()
+         ##     self._prof.prof('unschedule_stop', uid=unit['uid'],
+         ##                     timestamp=ts)
+         ##     self._prof.prof('schedule_fast', uid=replace['uid'],
+         ##                     timestamp=ts)
+         ##     self.advance(replace, rps.AGENT_EXECUTING_PENDING,
+         ##                  publish=True, push=True)
+         ## else:
+         ##
+         ##     # no replacement unit found: free the slots, and try to
+         ##     # schedule other units of other sizes.
+         ##     to_release.append(unit)
+
+            to_release.append(unit)
+
+        if not to_release:
+            if not to_unschedule:
+                # no new resources, not been active
+                return False, False
+            else:
+                # no new resources, but activity
+                return False, True
+
+        # we have units to unschedule, which will free some resources. We can
+        # thus try to schedule larger units again, and also inform the caller
+        # about resource availability.
+        for unit in to_release:
+            self.unschedule_unit(unit)
+            self._prof.prof('unschedule_stop', uid=unit['uid'])
+
+        # we placed some previously waiting units, and need to remove those from
+        # the waitpool
+        self._waitpool = {task['uid']:task for task in self._waitpool.values()
+                                           if  task['uid'] not in placed}
+
+        # we have new resources, and were active
+        return True, True
 
 
     # --------------------------------------------------------------------------
@@ -513,97 +811,89 @@ class AgentSchedulingComponent(rpu.Component):
         attempt to allocate cores/gpus for a specific unit.
         '''
 
-        # needs to be locked as we try to acquire slots here, but slots are
-        # freed in a different thread.  But we keep the lock duration short...
-        with self._slot_lock:
+        uid = unit['uid']
+        self._prof.prof('schedule_try', uid=uid)
 
-            self._prof.prof('schedule_try', uid=unit['uid'])
-            unit['slots'] = self._allocate_slot(unit['description'])
+        slots = self.schedule_unit(unit)
+        if not slots:
 
-        # the lock is freed here
-        if not unit['slots']:
-
-            # signal the unit remains unhandled (Fales signals that failure)
-            self._prof.prof('schedule_fail', uid=unit['uid'])
+            # schedule failure
+            self._prof.prof('schedule_fail', uid=uid)
             return False
 
-        # translate gpu maps into `CUDA_VISIBLE_DEVICES` env
-        self._handle_cuda(unit)
+        # the task was placed, we need to reflect the allocation in the
+        # nodelist state (BUSY) and pass placement to the task, to have
+        # it enacted by the executor
+        self._change_slot_states(slots, rpc.BUSY)
+        unit['slots'] = slots
+
+      # self._handle_cuda(unit)
 
         # got an allocation, we can go off and launch the process
-        self._prof.prof('schedule_ok', uid=unit['uid'])
+        self._prof.prof('schedule_ok', uid=uid)
 
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  allocate   %s: %s", unit['uid'],
-                            self.slot_status())
-          # self._log.debug("%s [%s/%s] : %s", unit['uid'],
-          #                 unit['description']['cpu_processes'],
-          #                 unit['description']['gpu_processes'],
-          #                 pprint.pformat(unit['slots']))
-
-        # True signals success
         return True
 
 
-    # --------------------------------------------------------------------------
-    #
-    def _handle_cuda(self, unit):
-
-        # Check if unit requires GPUs.  If so, set CUDA_VISIBLE_DEVICES to the
-        # list of assigned  GPU IDs.  We only handle uniform GPU setting for
-        # now, and will isse a warning on non-uniform ones.
-        #
-        # The default setting is ``
-        #
-        # FIXME: This code should probably live elsewhere, not in this
-        #        performance critical scheduler base class
-        #
-        # FIXME: The specification for `CUDA_VISIBLE_DEVICES` is actually LM
-        #        dependent.  Assume the scheduler assigns the second GPU.
-        #        Manually, one would set `CVD=1`.  That also holds for launch
-        #        methods like `fork` which leave GPU indexes unaltered.  Other
-        #        launch methods like `jsrun` mask the system GPUs and only the
-        #        second GPU is visible, at all, to the task.  To CUDA the system
-        #        now seems to have only one GPU, and we need to be set `CVD=0`.
-        #
-        #        In other words, CVD sometimes needs to be set to the physical
-        #        GPU IDs, and at other times to the logical GPU IDs (IDs as
-        #        visible to the task).  This also implies that this code should
-        #        actually live within the launch method.  On the upside, the LM
-        #        should also be able to handle heterogeneus tasks.
-        #
-        #        For now, we hardcode the CVD ID mode to `logical`, thus
-        #        assuming that unassigned GPUs are masked away, as for example
-        #        with `jsrun`.
-        cvd_id_mode = 'logical'
-
-        unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = ''
-        gpu_maps = list()
-        for node in unit['slots']['nodes']:
-            if node['gpu_map'] not in gpu_maps:
-                gpu_maps.append(node['gpu_map'])
-
-        if not gpu_maps:
-            # no gpu maps, nothing to do
-            pass
-
-        elif len(gpu_maps) > 1:
-            # FIXME: this does not actually check for uniformity
-            self._log.warn('cannot set CUDA_VISIBLE_DEVICES for non-uniform'
-                           'GPU schedule (%s)' % gpu_maps)
-
-        else:
-            gpu_map = gpu_maps[0]
-            if gpu_map:
-                # uniform, non-zero gpu map
-                if cvd_id_mode == 'physical':
-                    unit['description']['environment']['CUDA_VISIBLE_DEVICES']\
-                            = ','.join(str(gpu_set[0]) for gpu_set in gpu_map)
-                elif cvd_id_mode == 'logical':
-                    unit['description']['environment']['CUDA_VISIBLE_DEVICES']\
-                            = ','.join(str(x) for x in range(len(gpu_map)))
-                else:
-                    raise ValueError('invalid CVD mode %s' % cvd_id_mode)
+  # # --------------------------------------------------------------------------
+  # #
+  # def _handle_cuda(self, unit):
+  #
+  #     # Check if unit requires GPUs.  If so, set CUDA_VISIBLE_DEVICES to the
+  #     # list of assigned  GPU IDs.  We only handle uniform GPU setting for
+  #     # now, and will isse a warning on non-uniform ones.
+  #     #
+  #     # The default setting is ``
+  #     #
+  #     # FIXME: This code should probably live elsewhere, not in this
+  #     #        performance critical scheduler base class
+  #     #
+  #     # FIXME: The specification for `CUDA_VISIBLE_DEVICES` is actually LM
+  #     #        dependent.  Assume the scheduler assigns the second GPU.
+  #     #        Manually, one would set `CVD=1`.  That also holds for launch
+  #     #        methods like `fork` which leave GPU indexes unaltered.  Other
+  #     #        launch methods like `jsrun` mask the system GPUs and only the
+  #     #        second GPU is visible, at all, to the task.  To CUDA the system
+  #     #        now seems to have only one GPU, and we need to be set `CVD=0`.
+  #     #
+  #     #        In other words, CVD sometimes needs to be set to the physical
+  #     #        GPU IDs, and at other times to the logical GPU IDs (IDs as
+  #     #        visible to the task).  This also implies that this code should
+  #     #        actually live within the launch method.  On the upside, the LM
+  #     #        should also be able to handle heterogeneus tasks.
+  #     #
+  #     #        For now, we hardcode the CVD ID mode to `logical`, thus
+  #     #        assuming that unassigned GPUs are masked away, as for example
+  #     #        with `jsrun`.
+  #     cvd_id_mode = 'logical'
+  #
+  #     unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = ''
+  #     gpu_maps = list()
+  #     for node in unit['slots']['nodes']:
+  #         if node['gpu_map'] not in gpu_maps:
+  #             gpu_maps.append(node['gpu_map'])
+  #
+  #     if not gpu_maps:
+  #         # no gpu maps, nothing to do
+  #         pass
+  #
+  #     elif len(gpu_maps) > 1:
+  #         # FIXME: this does not actually check for uniformity
+  #         self._log.warn('cannot set CUDA_VISIBLE_DEVICES for non-uniform'
+  #                        'GPU schedule (%s)' % gpu_maps)
+  #
+  #     else:
+  #         gpu_map = gpu_maps[0]
+  #         if gpu_map:
+  #             # uniform, non-zero gpu map
+  #             if cvd_id_mode == 'physical':
+  #                 unit['description']['environment']['CUDA_VISIBLE_DEVICES']\
+  #                         = ','.join(str(gpu_set[0]) for gpu_set in gpu_map)
+  #             elif cvd_id_mode == 'logical':
+  #                 unit['description']['environment']['CUDA_VISIBLE_DEVICES']\
+  #                         = ','.join(str(x) for x in range(len(gpu_map)))
+  #             else:
+  #                 raise ValueError('invalid CVD mode %s' % cvd_id_mode)
 
 
     # --------------------------------------------------------------------------
@@ -653,85 +943,26 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def unschedule_cb(self, topic, msg):
+    def _set_tuple_size(self, unit):
         '''
-        release (for whatever reason) all slots allocated to this unit
-        '''
+        Scheduling, in very general terms, maps resource request to available
+        resources.  While the scheduler may check arbitrary task attributes in
+        order to estimate the resource requirements of the tast, we assume that
+        the most basic attributes (cores, threads, GPUs, MPI/non-MPI) determine
+        the resulting placement decision.  Specifically, we assume that this
+        tuple of attributes result in a placement that is valid for all tasks
+        which have the same attribute tuple.
 
-        unit = msg
-
-        slots = unit.get('slots')
-
-        if not slots:
-            # Nothing to do
-            self._log.error("cannot unschedule: %s (no slots)" % unit)
-            return True
-
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("before unschedule %s: %s", unit['uid'],
-                            self.slot_status())
-
-        # needs to be locked as we try to release slots, but slots are acquired
-        # in a different thread....
-        with self._slot_lock:
-            self._prof.prof('unschedule_start', uid=unit['uid'])
-            self._release_slot(slots)
-            self._prof.prof('unschedule_stop',  uid=unit['uid'])
-
-        # notify the scheduling thread, ie. trigger an attempt to use the freed
-        # slots for units waiting in the wait pool.
-        self.publish(rpc.AGENT_SCHEDULE_PUBSUB, unit)
-
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug("after  unschedule %s: %s", unit['uid'],
-                            self.slot_status())
-
-        # return True to keep the cb registered
-        return True
-
-
-    # --------------------------------------------------------------------------
-    #
-    def schedule_cb(self, topic, msg):
-        '''
-        This cb is triggered after a unit's resources became available again, so
-        we can attempt to schedule units from the wait pool.
+        To speed up that tuple lookup and to simplify some scheduler
+        optimizations, we extract that attribute tuple on task arrival, and will
+        use it for fast task-to-placement lookups.
         '''
 
-        # we ignore any passed unit.  In principle the unit info could be used
-        # to determine which slots have been freed.  No need for that
-        # optimization right now.  This will become interesting once schedule
-        # becomes too expensive.
-        #
-        # FIXME: optimization
-
-        unit = msg
-
-      # if self._log.isEnabledFor(logging.DEBUG):
-      #     self._log.debug("before schedule   %s: %s", unit['uid'],
-      #                     self.slot_status())
-
-        # cycle through wait queue, and see if we get anything placed now.  We
-        # cycle over a copy of the list, so that we can modify the list on the
-        # fly,without locking the whole loop.  However, this is costly, too.
-        for unit in self._wait_pool[:]:
-
-            if self._try_allocation(unit):
-
-                # allocated unit -- advance it
-                self.advance(unit, rps.AGENT_EXECUTING_PENDING,
-                             publish=True, push=True)
-
-                # remove it from the wait queue
-                with self._wait_lock:
-                    self._wait_pool.remove(unit)
-
-            else:
-                if self._uniform_wl:
-                    break
-
-        # return True to keep the cb registered
-        return True
+        d = unit['description']
+        unit['tuple_size'] = tuple([d.get('cpu_processes', 1),
+                                    d.get('cpu_threads',   1),
+                                    d.get('gpu_processes', 0),
+                                    d.get('cpu_process_type')])
 
 
 # ------------------------------------------------------------------------------
