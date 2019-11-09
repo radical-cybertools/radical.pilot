@@ -162,7 +162,7 @@
                                         "module unload intel",
                                         "module unload impi",
                                         "module load   intel",
-                                        "module load   python2"
+                                        "module load   python3/3.7.0"
                                         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["$SCRATCH", "$WORK"],
@@ -172,7 +172,7 @@
         "export_to_cu"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : ["module restore"]
+        "cu_pre_exec"                 : []
     },
 
     "stampede2_ssh": {
