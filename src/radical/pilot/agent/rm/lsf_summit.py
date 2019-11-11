@@ -233,11 +233,11 @@ class LSF_SUMMIT(LRMS):
 
         # ensure we can derive the number of cores per socket
         assert(not lsf_cores_per_node % lsf_sockets_per_node)
-        lsf_cores_per_socket = lsf_cores_per_node / lsf_sockets_per_node
+        lsf_cores_per_socket = int(lsf_cores_per_node / lsf_sockets_per_node)
 
         # same for gpus
         assert(not lsf_gpus_per_node % lsf_sockets_per_node)
-        lsf_gpus_per_socket = lsf_gpus_per_node / lsf_sockets_per_node
+        lsf_gpus_per_socket = int(lsf_gpus_per_node / lsf_sockets_per_node)
 
         # get lfs info from configs, too
         lsf_lfs_per_node = {'path': self._cfg.get('lfs_path_per_node', None),
