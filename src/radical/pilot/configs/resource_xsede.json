@@ -162,7 +162,7 @@
                                         "module unload intel",
                                         "module unload impi",
                                         "module load   intel",
-                                        "module load   python2"
+                                        "module load   python3/3.7.0"
                                         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["$SCRATCH", "$WORK"],
@@ -172,7 +172,7 @@
         "export_to_cu"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : ["module restore"]
+        "cu_pre_exec"                 : []
     },
 
     "stampede2_ssh": {
@@ -252,7 +252,7 @@
     },
 
     "comet_ssh": {
-        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
+        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
         "mandatory_args"              : ["project"],
@@ -287,7 +287,7 @@
     },
 
     "comet_ssh_funcs": {
-        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
+        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
         "mandatory_args"              : ["project"],
@@ -321,7 +321,7 @@
     },
 
     "comet_orte": {
-        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
+        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
         "mandatory_args"              : ["project"],
@@ -357,7 +357,7 @@
     },
 
     "comet_ortelib": {
-        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
+        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
         "mandatory_args"              : ["project"],
@@ -393,7 +393,7 @@
     },
 
     "comet_spark": {
-        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
+        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
         "mandatory_args"              : ["project"],
