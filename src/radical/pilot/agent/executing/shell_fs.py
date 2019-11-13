@@ -93,7 +93,7 @@ class ShellFS(AgentExecutingComponent):
         # TODO: test that this actually works
         # Remove the configured set of environment variables from the
         # environment that we pass to Popen.
-        for e in os.environ.keys():
+        for e in list(os.environ.keys()):
             env_removables = list()
             if self._mpi_launcher : env_removables += self._mpi_launcher.env_removables
             if self._task_launcher: env_removables += self._task_launcher.env_removables
@@ -324,7 +324,7 @@ prof(){
 '''
 
         # also add any env vars requested for export by the resource config
-        for k,v in self._env_cu_export.iteritems():
+        for k,v in self._env_cu_export.items():
             env += "export %s=%s\n" % (k,v)
 
         # also add any env vars requested in hte unit description

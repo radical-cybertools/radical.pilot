@@ -31,7 +31,7 @@ while True:
     except:
         break
 
-print 'files  : %5d' % len(files)
+print('files  : %5d' % len(files))
 for f in files:
     os.unlink(f.name)
     f.close()
@@ -48,7 +48,7 @@ while True:
     except Exception as e:
         break
 
-print 'sockets: %5d' % len(sockets)
+print('sockets: %5d' % len(sockets))
 for s in sockets:
     s.close()
 
@@ -62,7 +62,7 @@ while True:
     except:
         break
 
-print 'threads: %5d' % len(threads)
+print('threads: %5d' % len(threads))
 for t in threads:
     t.join()
 
@@ -77,7 +77,7 @@ while True:
     except:
         break
 
-print 'procs  : %5d' % len(procs)
+print('procs  : %5d' % len(procs))
 for p in procs:
     p.join()
 

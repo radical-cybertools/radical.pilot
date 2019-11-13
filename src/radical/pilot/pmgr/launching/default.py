@@ -12,8 +12,6 @@ import shutil
 import tempfile
 import threading
 
-import subprocess              as sp
-
 import radical.saga            as rs
 import radical.saga.filesystem as rsfs
 import radical.utils           as ru
@@ -103,13 +101,13 @@ class Default(PMGRLaunchingComponent):
         #        and set the pilot states to CANCELED.  This will confluct with
         #        disconnect/reconnect semantics.
         with self._pilots_lock:
-            pids = self._pilots.keys()
+            pids = list(self._pilots.keys())
 
         self._cancel_pilots(pids)
         self._kill_pilots(pids)
 
         with self._cache_lock:
-            for url,js in self._saga_js_cache.iteritems():
+            for url,js in self._saga_js_cache.items():
                 self._log.debug('close  js to %s', url)
                 js.close()
                 self._log.debug('closed js to %s', url)
@@ -333,8 +331,6 @@ class Default(PMGRLaunchingComponent):
         # use a copy of the pilots_tocheck list and iterate over that, and only
         # lock other members when they are manipulated.
 
-        ru.raise_on('pilot_watcher_cb')
-
         tc = rs.job.Container()
         with self._pilots_lock, self._check_lock:
 
@@ -454,9 +450,9 @@ class Default(PMGRLaunchingComponent):
         with self._pilots_lock:
             self._log.debug('killing pilots: %s',
                               [p['pilot'].get('cancel_requested', 0)
-                               for p in self._pilots.values()])
+                               for p in list(self._pilots.values())])
             last_cancel = max([p['pilot'].get('cancel_requested', 0)
-                               for p in self._pilots.values()])
+                               for p in list(self._pilots.values())])
 
         self._log.debug('killing pilots: last cancel: %s', last_cancel)
 
@@ -628,11 +624,11 @@ class Default(PMGRLaunchingComponent):
         #        entries, so that the expansion is only done on the first PD.
         expand = dict()
         pd     = pilots[0]['description']
-        for k,v in pd.iteritems():
+        for k,v in pd.items():
             if v is None:
                 v = ''
             expand['pd.%s' % k] = v
-            if isinstance(v, basestring):
+            if isinstance(v, str):
                 expand['pd.%s' % k.upper()] = v.upper()
                 expand['pd.%s' % k.lower()] = v.lower()
             else:
@@ -640,7 +636,7 @@ class Default(PMGRLaunchingComponent):
                 expand['pd.%s' % k.lower()] = v
 
         for k in rcfg:
-            if isinstance(rcfg[k], basestring):
+            if isinstance(rcfg[k], str):
                 orig     = rcfg[k]
                 rcfg[k]  = rcfg[k] % expand
                 expanded = rcfg[k]
@@ -708,11 +704,7 @@ class Default(PMGRLaunchingComponent):
         # tar.  If any command fails, this will raise.
         cmd = "cd %s && tar zchf %s *" % (tmp_dir, tar_tgt)
         self._log.debug('cmd: %s', cmd)
-        try:
-            out, err, ret = ru.sh_callout(cmd, shell=True)
-        except Exception:
-            self._log.exception('callout failed')
-            raise
+        out, err, ret = ru.sh_callout(cmd, shell=True)
 
         if ret:
             self._log.debug('out: %s', out)
@@ -947,7 +939,7 @@ class Default(PMGRLaunchingComponent):
             # use dict as is
             agent_cfg = agent_config
 
-        elif isinstance(agent_config, basestring):
+        elif isinstance(agent_config, str):
             try:
                 # interpret as a config name
                 agent_cfg_file = os.path.join(self._conf_dir, "agent_%s.json" % agent_config)
@@ -1265,7 +1257,7 @@ class Default(PMGRLaunchingComponent):
         jd.environment           = dict()
 
         # we set any saga_jd_supplement keys which are not already set above
-        for key, val in saga_jd_supplement.iteritems():
+        for key, val in saga_jd_supplement.items():
             if not jd[key]:
                 self._log.debug('supplement %s: %s', key, val)
                 jd[key] = val

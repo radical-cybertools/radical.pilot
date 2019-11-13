@@ -89,10 +89,24 @@ PREBOOTSTRAP2=""
 # seconds to wait for lock files
 # 10 min should be enough for anybody to create/update a virtenv...
 LOCK_TIMEOUT=600 # 10 min
-VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.9.tar.gz"
-VIRTENV_TGZ="virtualenv-1.9.tar.gz"
+
+VIRTENV_VER="virtualenv-16.7.5"
+VIRTENV_DIR="$VIRTENV_VER"
+VIRTENV_TGZ="$VIRTENV_VER.tar.gz"
+VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/66/f0/6867af06d2e2f511e4e1d7094ff663acdebc4f15d4a0cb0fed1007395124/$VIRTENV_TGZ"
 VIRTENV_IS_ACTIVATED=FALSE
-VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist ntplib pyzmq netifaces==0.10.4 setproctitle orte_cffi msgpack-python future regex"
+
+VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist "\
+"ntplib pyzmq netifaces==0.10.4 setproctitle orte_cffi "\
+"msgpack-python future regex"
+
+VIRTENV_RADICAL_MODS="pymongo libcloud colorama hostlist "\
+"ntplib zmq netifaces setproctitle msgpack future regex"
+
+if ! test -z "$RADICAL_DEBUG"
+then
+    VIRTENV_RADICAL_DEPS="$VIRTENV_RADICAL_DEPS pudb"
+fi
 
 
 # ------------------------------------------------------------------------------
@@ -120,7 +134,7 @@ int main ()
 {
     struct timeval tv;
     (void) gettimeofday (&tv, NULL);
-    fprintf (stdout, "%d.%06d\n", tv.tv_sec, tv.tv_usec);
+    fprintf (stdout, "%ld.%06ld\n", tv.tv_sec, tv.tv_usec);
     return (0);
 }
 EOT
@@ -444,7 +458,7 @@ rehash()
 verify_install()
 {
     echo -n "verify python viability: $PYTHON ..."
-    if ! $PYTHON -c 'import sys; assert(sys.version_info >= (2,7))'
+    if ! $PYTHON -c 'import sys; assert(sys.version_info >= (3,5))'
     then
         echo ' failed'
         echo "python installation ($PYTHON) is not usable - abort"
@@ -452,16 +466,8 @@ verify_install()
     fi
     echo ' ok'
 
-    if ! test -z "$RADICAL_DEBUG"
-    then
-        echo 'debug mode: install pudb'
-        pip install pudb || true
-    fi
-
     # FIXME: attempt to load all required modules
-    modules="radical.saga radical.utils pymongo hostlist netifaces"
-    modules="$modules setproctitle ntplib msgpack zmq"
-
+    modules="radical.pilot radical.saga radical.utils $VIRTENV_RADICAL_MODS"
     for m in $modules
     do
         printf 'verify module viability: %-15s ...' $m
@@ -812,6 +818,7 @@ virtenv_activate()
     then
         source activate $virtenv/
     else
+        unset VIRTUAL_ENV
         . "$virtenv/bin/activate"
         if test -z "$VIRTUAL_ENV"
         then
@@ -838,8 +845,8 @@ virtenv_activate()
     prefix="$virtenv/rp_install"
 
     # make sure the lib path into the prefix conforms to the python conventions
-    PYTHON_VERSION=`$PYTHON -c 'import distutils.sysconfig as sc; print sc.get_python_version()'`
-    VE_MOD_PREFIX=` $PYTHON -c 'import distutils.sysconfig as sc; print sc.get_python_lib()'`
+    PYTHON_VERSION=`$PYTHON -c 'import distutils.sysconfig as sc; print(sc.get_python_version())'`
+    VE_MOD_PREFIX=` $PYTHON -c 'import distutils.sysconfig as sc; print(sc.get_python_lib())'`
     echo "PYTHON INTERPRETER: $PYTHON"
     echo "PYTHON_VERSION    : $PYTHON_VERSION"
     echo "VE_MOD_PREFIX     : $VE_MOD_PREFIX"
@@ -949,7 +956,7 @@ virtenv_create()
                     echo "Couldn't unpack virtualenv! Using systemv version"
                     virtenv_dist="default"
                 else
-                    VIRTENV_CMD="$PYTHON virtualenv-1.9/virtualenv.py"
+                    VIRTENV_CMD="$PYTHON $VIRTENV_DIR/virtualenv.py"
                 fi
 
             fi
@@ -968,7 +975,7 @@ virtenv_create()
         fi
 
         run_cmd "Create virtualenv" \
-                "$VIRTENV_CMD $virtenv"
+                "$VIRTENV_CMD -p python3 $virtenv"
 
         if test $? -ne 0
         then
@@ -977,16 +984,16 @@ virtenv_create()
         fi
 
         # clean out virtenv sources
-        if test -d "virtualenv-1.9/"
+        if test -d "$VIRTENV_DIR"
         then
-            rm -rf "virtualenv-1.9/" "$VIRTENV_TGZ"
+            rm -rf "$VIRTENV_DIR" "$VIRTENV_TGZ"
         fi
 
 
     elif test "$python_dist" = "anaconda"
     then
         run_cmd "Create virtualenv" \
-                "conda create -y -p $virtenv python=2.7"
+                "conda create -y -p $virtenv python=3"
         if test $? -ne 0
         then
             echo "ERROR: Couldn't create virtualenv"
@@ -1003,48 +1010,20 @@ virtenv_create()
     virtenv_activate "$virtenv" "$python_dist"
 
     # make sure we have pip
-    PIP=`which pip`
-    if test -z "$PIP"
+    if test -z "$(which pip)"
     then
         run_cmd "install pip" \
                 "easy_install pip" \
              || echo "Couldn't install pip! Uh oh...."
     fi
-
-    # NOTE: setuptools 15.0 (which for some reason is the next release afer
-    #       0.6c11) breaks on BlueWaters, and breaks badly (install works, but
-    #       pip complains about some parameter mismatch).  So we fix on the last
-    #       known workable version -- which seems to be acceptable to other
-    #       hosts, too
-
-    if ! test "$python_dist" = "anaconda"
-    then
-        run_cmd "update setuptools" \
-            "$PIP install --upgrade setuptools==0.6c11" \
-         || echo "Couldn't update setuptools -- using default version"
-    else
-        echo "Setuptools will not be updated"
-    fi
-
-    # NOTE: new releases of pip deprecate options we depend upon.  While the pip
-    #       developers discuss if those options will get un-deprecated again,
-    #       fact is that there are released pip versions around which do not
-    #       work for us (hello supermuc!).  So we fix the version to one we know
-    #       is functional.
-    if ! test "$python_dist" = "anaconda"
-    then
-        run_cmd "update pip" \
-                "$PIP install --upgrade pip==1.4.1" \
-             || echo "Couldn't update pip -- using default version"
-    else
-        echo "PIP will not be updated"
-    fi
+    PIP="$(which pip)"
 
     # make sure the new pip version is used (but keep the python executable)
     rehash "$PYTHON"
 
     # now that the virtenv is set up, we install all dependencies
     # of the RADICAL stack
+    echo "=== 5 $VIRTENV_RADICAL_DEPS"
     for dep in $VIRTENV_RADICAL_DEPS
     do
         run_cmd "install $dep" \
@@ -1303,9 +1282,10 @@ verify_rp_install()
     echo
     echo "`$PYTHON --version` ($PYTHON)"
     echo "PYTHONPATH: $PYTHONPATH"
- (  $PYTHON -c 'print "RU: ",; import radical.utils as ru; print ru.version_detail,; print ru.__file__' \
- && $PYTHON -c 'print "RS: ",; import radical.saga  as rs; print rs.version_detail,; print rs.__file__' \
- && $PYTHON -c 'print "RP: ",; import radical.pilot as rp; print rp.version_detail,; print rp.__file__' \
+    radical-stack
+ (  $PYTHON -c 'import radical.utils as ru; print("RU: %s %s" % (ru.version_detail, ru.__file__))' \
+ && $PYTHON -c 'import radical.saga  as rs; print("RS: %s %s" % (rs.version_detail, rs.__file__))' \
+ && $PYTHON -c 'import radical.pilot as rp; print("RP: %s %s" % (rp.version_detail, rp.__file__))' \
  && (echo 'install ok!'; true) \
  ) \
  || (echo 'install failed!'; false) \

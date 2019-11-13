@@ -66,6 +66,7 @@ class MPIRun(LaunchMethod):
         slots        = cu['slots']
         uid          = cu['uid']
         cud          = cu['description']
+        sandbox      = cu['unit_sandbox_path']
         task_exec    = cud['executable']
         task_threads = cud.get('cpu_threads', 1)
         task_env     = cud.get('environment') or dict()
@@ -81,7 +82,7 @@ class MPIRun(LaunchMethod):
         else          : task_command = task_exec
 
         env_string = ''
-        env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
+        env_list   = self.EXPORT_ENV_VARIABLES + list(task_env.keys())
         if env_list:
 
             if self.mpi_flavor == self.MPI_FLAVOR_HYDRA:
@@ -107,10 +108,7 @@ class MPIRun(LaunchMethod):
             for cpu_proc in node['core_map']:
                 host_list.append(node['name'])
                 core_list.append(cpu_proc[0])
-
-            for gpu_proc in node['gpu_map']:
-                host_list.append(node['name'])
-                core_list.append(gpu_proc[0])
+                # FIXME: inform this proc about the GPU to be used
 
             if '_dplace' in self.name and save_list:
                 assert(save_list == core_list), 'inhomog. core sets (dplace)'
@@ -127,7 +125,8 @@ class MPIRun(LaunchMethod):
         if len(host_list) > 42:
 
             # Create a hostfile from the list of hosts
-            hostfile = self._create_hostfile(uid, host_list, impaired=True)
+            hostfile = self._create_hostfile(sandbox, uid, host_list,
+                                             impaired=True)
             hosts_string = '-hostfile %s' % hostfile
 
         else:

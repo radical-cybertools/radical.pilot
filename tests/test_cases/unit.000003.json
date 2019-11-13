@@ -6,7 +6,8 @@
                         "arguments"     : ["10"],
                         "cpu_processes" : 1,
                         "cpu_threads"   : 4
-                       }
+                       },
+        "unit_sandbox_path": "/tmp"
     },
 
     "setup" : {
