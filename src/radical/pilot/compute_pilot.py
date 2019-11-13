@@ -577,5 +577,17 @@ class ComputePilot(object):
         self._pmgr._pilot_staging_input(self.as_dict(), directives)
 
 
+    # --------------------------------------------------------------------------
+    #
+    def stage_out(self, directives):
+        '''
+        Stages the content of the staging directive into the pilot's
+        staging area
+        '''
+
+        # send the staging request to the pmg launcher
+        self._pmgr._pilot_staging_output(self.as_dict(), directives)
+
+
 # ------------------------------------------------------------------------------
 
