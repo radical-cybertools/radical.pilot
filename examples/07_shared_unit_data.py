@@ -75,7 +75,7 @@ if __name__ == '__main__':
         os.system('date     >> input.dat')
 
         # Synchronously stage the data to the pilot
-        report.info('stage shared data')
+        report.info('stage in shared data')
         pilot.stage_in({'source': 'client:///input.dat',
                         'target': 'pilot:///input.dat',
                         'action': rp.TRANSFER})
@@ -92,6 +92,7 @@ if __name__ == '__main__':
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
+        outs = list()
         for i in range(0, n):
 
             # create a new CU description, and fill it.
@@ -99,12 +100,13 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
             cud.executable     = '/bin/echo'
             cud.arguments      = ['-c', 'input.dat', '%d' % i]
-            cud.input_staging  = {'source': 'pilot:///input.dat', 
+            cud.input_staging  = {'source': 'pilot:///input.dat',
                                   'target': 'unit:///input.dat',
                                   'action': rp.LINK}
             cud.output_staging = {'source': 'unit:///STDOUT',
-                                  'target': 'pilot:///STDOUT.%06d'%i,
+                                  'target': 'pilot:///STDOUT.%06d' % i,
                                   'action': rp.COPY }
+            outs.append('STDOUT.%06d' % i)
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
@@ -117,21 +119,28 @@ if __name__ == '__main__':
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
-    
+
         report.info('\n')
         for unit in units:
             report.plain('  * %s: %s, exit: %3s, out: %s\n' \
-                    % (unit.uid, unit.state[:4], 
+                    % (unit.uid, unit.state[:4],
                         unit.exit_code, unit.stdout.strip()[:35]))
-    
+
         # delete the sample input files
         os.system('rm input.dat')
+
+        # Synchronously stage the data to the pilot
+        report.info('stage out shared data')
+        pilot.stage_out([{'source': 'pilot:///%s'  % fname,
+                          'target': 'client:///%s' % fname,
+                          'action': rp.TRANSFER} for fname in outs])
+        report.ok('>>ok\n')
 
 
   # except Exception as e:
   #     # Something unexpected happened in the pilot code above
   #     report.error('caught Exception: %s\n' % e)
-  #     raise 
+  #     raise
   #
   # except (KeyboardInterrupt, SystemExit) as e:
   #     # the callback called sys.exit(), and we can here catch the
