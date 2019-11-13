@@ -256,9 +256,7 @@ class PilotManager(rpu.Component):
             return False
 
         # send heartbeat
-        self._log.debug('=== send pilot heartbeat')
         self._session._dbs.pilot_command('pilot_heartbeat', {'pmgr': self._uid})
-        self._log.debug('=== sent pilot heartbeat')
 
         return True
 

@@ -113,6 +113,11 @@ class Session(rs.Session):
             for k in ['sid', 'base', 'path']:
                 assert(k in self._cfg), 'non-primary session misses %s' % k
 
+        # change RU defaults to point logfiles etc. to the session sandbox
+        def_cfg             = ru.DefaultConfig()
+        def_cfg.log_dir     = self._cfg.path
+        def_cfg.report_dir  = self._cfg.path
+        def_cfg.profile_dir = self._cfg.path
 
         self._uid  = self._cfg.sid
 
@@ -418,8 +423,8 @@ class Session(rs.Session):
         This is a thin wrapper around `ru.Logger()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
         '''
-        return ru.Logger(name=name, ns='radical.pilot', targets=['.'],
-                         path=self._cfg.path, level=level)
+        return ru.Logger(name=name, ns='radical.pilot', path=self._cfg.path,
+                         targets=['.'], level=level)
 
 
     # --------------------------------------------------------------------------
@@ -432,8 +437,8 @@ class Session(rs.Session):
 
         if not self._reporter:
             self._reporter = ru.Reporter(name=name, ns='radical.pilot',
-                                         targets=['stdout'],
-                                         path=self._cfg.path)
+                                         path=self._cfg.path,
+                                         targets=['stdout'])
         return self._reporter
 
 
@@ -445,8 +450,7 @@ class Session(rs.Session):
         log files end up in a separate directory with the name of `session.uid`.
         '''
 
-        prof = ru.Profiler(name=name, ns='radical.pilot',
-                                      path=self._cfg.path)
+        prof = ru.Profiler(name=name, ns='radical.pilot', path=self._cfg.path)
 
         return prof
 
