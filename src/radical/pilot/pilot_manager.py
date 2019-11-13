@@ -413,6 +413,43 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _pilot_staging_output(self, pilot, directives):
+        '''
+        Run some staging directives for a pilot.  We pass this request on to
+        the launcher, and wait until the launcher confirms completion on the
+        command pubsub.
+        '''
+
+        # add uid, ensure its a list, general cleanup
+        sds  = expand_staging_directives(directives)
+        uids = [sd['uid'] for sd in sds]
+
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'pilot_staging_output_request',
+                                          'arg' : {'pilot' : pilot,
+                                                   'sds'   : sds}})
+        # keep track of SDS we sent off
+        for sd in sds:
+            sd['pmgr_state'] = rps.NEW
+            self._active_sds[sd['uid']] = sd
+
+        # and wait for their completion
+        with self._sds_lock:
+            sd_states = [sd['pmgr_state'] for sd
+                                          in  self._active_sds.values()
+                                          if  sd['uid'] in uids]
+        while rps.NEW in sd_states:
+            time.sleep(1.0)
+            with self._sds_lock:
+                sd_states = [sd['pmgr_state'] for sd
+                                              in  self._active_sds.values()
+                                              if  sd['uid'] in uids]
+
+        if rps.FAILED in sd_states:
+            raise RuntimeError('pilot staging failed')
+
+
+    # --------------------------------------------------------------------------
+    #
     def _staging_ack_cb(self, topic, msg):
         '''
         update staging directive state information
@@ -421,13 +458,11 @@ class PilotManager(rpu.Component):
         cmd = msg.get('cmd')
         arg = msg.get('arg')
 
-        if cmd != 'pilot_staging_input_result':
-            return True
-
-        with self._sds_lock:
-            for sd in arg['sds']:
-                if sd['uid'] in self._active_sds:
-                    self._active_sds[sd['uid']]['pmgr_state'] = sd['pmgr_state']
+        if cmd in ['pilot_staging_input_result', 'pilot_staging_output_result']:
+            with self._sds_lock:
+                for sd in arg['sds']:
+                    if sd['uid'] in self._active_sds:
+                        self._active_sds[sd['uid']]['pmgr_state'] = sd['pmgr_state']
 
         return True
 
