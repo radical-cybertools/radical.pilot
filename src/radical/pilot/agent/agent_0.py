@@ -357,32 +357,32 @@ class Agent_0(rpu.Worker):
                 bs_name = "%s/bootstrap_2.sh" % (self._pwd)
                 ls_name = "%s/%s.sh" % (self._pwd, sa)
                 slots = {
-                    'cpu_processes' : 1,
-                    'cpu_threads'   : 1,
-                    'gpu_processes' : 0,
-                    'gpu_threads'   : 0,
-                  # 'nodes'         : [[node[0], node[1], [[0]], []]],
-                    'nodes'         : [{'name'    : node[0],
-                                        'uid'     : node[1],
-                                        'core_map': [[0]],
-                                        'gpu_map' : [],
-                                        'lfs'     : {'path': '/tmp', 'size': 0}
-                                      }],
-                    'cores_per_node': self._cfg['lrms_info']['cores_per_node'],
-                    'gpus_per_node' : self._cfg['lrms_info']['gpus_per_node'],
-                    'lm_info'       : self._cfg['lrms_info']['lm_info'],
+                    'cpu_processes'    : 1,
+                    'cpu_threads'      : 1,
+                    'gpu_processes'    : 0,
+                    'gpu_threads'      : 0,
+                  # 'nodes'            : [[node[0], node[1], [[0]], []]],
+                    'nodes'            : [{'name'    : node[0],
+                                           'uid'     : node[1],
+                                           'core_map': [[0]],
+                                           'gpu_map' : [],
+                                           'lfs'     : {'path': '/tmp', 'size': 0}
+                                         }],
+                    'cores_per_node'   : self._cfg['lrms_info']['cores_per_node'],
+                    'gpus_per_node'    : self._cfg['lrms_info']['gpus_per_node'],
+                    'lm_info'          : self._cfg['lrms_info']['lm_info'],
                 }
                 agent_cmd = {
-                    'uid'           : sa,
-                    'slots'         : slots,
-                    'unit_sandbox'  : self._pwd,
-                    'description'   : {'cpu_processes'    : 1,
-                                       'gpu_process_type' : 'posix',
-                                       'gpu_thread_type'  : 'posix',
-                                       'executable'       : "/bin/sh",
-                                       'mpi'              : False,
-                                       'arguments'        : [bs_name, sa]
-                                      }
+                    'uid'              : sa,
+                    'slots'            : slots,
+                    'unit_sandbox_path': self._pwd,
+                    'description'      : {'cpu_processes'    : 1,
+                                          'gpu_process_type' : 'posix',
+                                          'gpu_thread_type'  : 'posix',
+                                          'executable'       : "/bin/sh",
+                                          'mpi'              : False,
+                                          'arguments'        : [bs_name, sa],
+                                         }
                 }
                 cmd, hop = agent_lm.construct_command(agent_cmd,
                         launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "%s"' % ls_name)
