@@ -114,19 +114,16 @@ class Backfilling(UMGRSchedulingComponent):
               # self._log.debug('update pilot: %s %s', pid, state)
 
                 if  rps._pilot_state_value(state) < _BF_START_VAL:
-                  # self._log.debug('early')
                     # not eligible, yet
                     continue
 
                 if  rps._pilot_state_value(state) > _BF_STOP_VAL:
-                  # self._log.debug('late')
                     # not eligible anymore
                     continue
 
                 # this pilot is eligible.  Stop checking the others, and attempt
                 # reschedule
                 action = True
-              # self._log.debug('break')
                 break
 
       # self._log.debug('action: %s', action)

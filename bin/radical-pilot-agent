@@ -40,7 +40,7 @@ def bootstrap_3(aid):
 
         cfg = ru.Config(path='%s.cfg' % aid)
         cfg.uid  = aid
-        cfg.aid  = aid
+        cfg.aid  = aid  # used by executor
         cfg.path = os.getcwd()
         cfg.base = os.getcwd()
 
