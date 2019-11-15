@@ -30,7 +30,7 @@
         "valid_roots"                 : ["/glade/scratch","/glade/p/work","/glade/u/home"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "use",
-        "virtenv"                     : "/glade/scratch/vivekb/radical.pilot.sandbox/ve.rp.cheyenne.2019.02.07",
+        "virtenv"                     : "/glade/scratch/amerzky/radical.pilot.sandbox/ve.rp.cheyenne.2019.11.15",
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system"
