@@ -83,7 +83,7 @@ class ComponentManager(object):
     #
     def _hb_sub_cb(self, topic, msg):
         '''
-        keep treack of heartbeats for all bridges/components we know
+        keep track of heartbeats for all bridges/components we know
         '''
 
       # self._log.debug('hb_sub %s: get %s check', self.uid, msg['uid'])
