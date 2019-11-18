@@ -525,10 +525,6 @@ def get_consumed_resources(session):
     consumed = dict()
     for e in session.get(etype=['pilot', 'unit']):
 
-        import sys
-        sys.stdout.write('.')
-        sys.stdout.flush()
-
         if   e.etype == 'pilot': data = _get_pilot_consumption(session, e)
         elif e.etype == 'unit' : data = _get_unit_consumption(session,  e)
 
@@ -549,10 +545,10 @@ def get_consumed_resources(session):
     for pilot in session.get(etype='pilot'):
 
         if pilot.cfg['task_launch_method'] == 'PRTE':
-            print('\nusing prte configuration')
+          # print('\nusing prte configuration')
             unit_durations = UNIT_DURATIONS_PRTE
         else:
-            print('\nusing default configuration')
+          # print('\nusing default configuration')
             unit_durations = UNIT_DURATIONS_DEFAULT
 
         p_min = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][0])[ 0]
