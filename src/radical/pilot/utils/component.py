@@ -15,6 +15,16 @@ from ..          import states         as rps
 # ------------------------------------------------------------------------------
 #
 class ComponentManager(object):
+    '''
+    RP spans a hierarchy of component instances: the application has a pmgr and
+    umgr, and the umgr has a staging component and a scheduling component, and
+    the pmgr has a launching component, and components also can have bridges,
+    etc. etc.  This ComponentManager centralises the code needed to spawn,
+    manage and terminate such components - any code which needs to create
+    component should create a ComponentManager instance and pass the required
+    component and bridge layout and configuration.  Callng `stop()` on the cmgr
+    will terminate the components and brisged.
+    '''
 
     # --------------------------------------------------------------------------
     #
