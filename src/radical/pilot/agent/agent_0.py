@@ -27,16 +27,18 @@ from .    import lm        as rpa_lm
 #
 class Agent_0(rpu.Worker):
 
-    # This is the main agent.  It starts sub-agents and watches them.  If any of
-    # the sub-agents die, it will shut down the other sub-agents and itself.
-    #
-    # This class inherits the rpu.Worker, so that it can use its communication
-    # bridges and callback mechanisms.  Specifically, it will pull the DB for
-    # new tasks to be exexuted and forwards them to the agent's component
-    # network (see `work()`).  It will also watch the DB for any commands to be
-    # forwarded (pilot termination, task cancelation, etc), and will take care
-    # of heartbeat messages to be sent to the client module.  To do all this, it
-    # initializes a DB connection in `initialize()`.
+    '''
+    This is the main agent.  It starts sub-agents and watches them.  If any of
+    the sub-agents die, it will shut down the other sub-agents and itself.
+
+    This class inherits the rpu.Worker, so that it can use its communication
+    bridges and callback mechanisms.  Specifically, it will pull the DB for
+    new tasks to be exexuted and forwards them to the agent's component
+    network (see `work()`).  It will also watch the DB for any commands to be
+    forwarded (pilot termination, task cancelation, etc), and will take care
+    of heartbeat messages to be sent to the client module.  To do all this, it
+    initializes a DB connection in `initialize()`.
+    '''
 
     # --------------------------------------------------------------------------
     #
