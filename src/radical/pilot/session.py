@@ -215,7 +215,7 @@ class Session(rs.Session):
         return self
 
     def __exit__(self, type, value, traceback):
-        self.close()
+        self.close(download=True)
 
 
     # --------------------------------------------------------------------------

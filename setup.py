@@ -96,7 +96,7 @@ def get_version(mod_root):
             'git-error'      in version_detail or \
             'not-a-git-repo' in version_detail or \
             'not-found'      in version_detail or \
-            'fatal'          in version_detail    :
+            'fatal'          in version_detail :
             version = version_base
         elif '@' not in version_base:
             version = '%s-%s' % (version_base, version_detail)
@@ -168,12 +168,6 @@ class RunTwine(Command):
     def run (self) :
         out,  err, ret = sh_callout('python setup.py sdist upload -r pypi')
         raise SystemExit(ret)
-
-
-# ------------------------------------------------------------------------------
-#
-if  sys.hexversion <= 0x03050000:
-    raise RuntimeError('SETUP ERROR: %s requires Python 3.5 or higher' % name)
 
 
 # ------------------------------------------------------------------------------
@@ -252,8 +246,8 @@ setup_args = {
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.c',
                                  '*.md', 'VERSION', 'SDIST', sdist_name]},
   # 'setup_requires'     : ['pytest-runner'],
-    'install_requires'   : ['radical.utils>=0.60',
-                            'radical.saga>=0.60',
+    'install_requires'   : ['radical.utils>=0.90',
+                            'radical.saga>=0.90',
                             'pymongo',
                             'python-hostlist',
                             'netifaces',

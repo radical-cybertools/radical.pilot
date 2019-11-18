@@ -119,6 +119,14 @@ UNIT_DURATIONS_PRTE = {
                              {ru.EVENT: 'app_stop'               }],
             'prte_phase_3': [{ru.EVENT: 'app_stop'               },
                              {ru.EVENT: 'prte_notify_completed'  }],
+
+          # # if we have app_start / app_stop:
+          # 'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
+          #                  {ru.EVENT: 'cmd_start'              }],
+          # 'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
+          #                  {ru.EVENT: 'cmd_stop'               }],
+          # 'prte_phase_3': [{ru.EVENT: 'cmd_stop'               },
+          #                  {ru.EVENT: 'prte_notify_completed'  }],
         }
 }
 
@@ -424,10 +432,6 @@ def cluster_resources(resources):
 # ------------------------------------------------------------------------------
 #
 def _get_pilot_provision(session, pilot):
-
-  # import pprint
-  # pprint.pprint(pilot.cfg)  # ['resource_details'])
-  # pprint.pprint(pilot.description)
 
     pid   = pilot.uid
     cpn   = pilot.cfg['resource_details']['rm_info']['cores_per_node']

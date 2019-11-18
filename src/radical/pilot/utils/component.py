@@ -432,16 +432,21 @@ class Component(object):
     #
     def start(self):
 
-        self._thread = mt.Thread(target=self._worker_thread)
+        sync = mt.Event()
+        self._thread = mt.Thread(target=self._worker_thread, args=[sync])
         self._thread.daemon = True
         self._thread.start()
 
+        # TODO: add timeout to shield against failing initlization?
+        while not sync.is_set():
+            time.sleep(0.1)
 
     # --------------------------------------------------------------------------
     #
-    def _worker_thread(self):
+    def _worker_thread(self, sync):
 
         self._initialize()
+        sync.set()
 
         while True:
             try:

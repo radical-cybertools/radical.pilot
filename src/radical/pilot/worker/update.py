@@ -214,13 +214,14 @@ class Update(rpu.Worker):
                 update_dict['$push'] = dict()
 
                 for key,val in thing.items():
-                    # we never set _id, states (to avoid index clash, duplicated ops)
+                    # never set _id, states (to avoid index clash, doubled ops)
                     if key not in ['_id', 'states']:
                         update_dict['$set'][key] = val
 
-                # we set state, put (more importantly) we push the state onto the
-                # 'states' list, so that we can later get state progression in sync with
-                # the state model, even if they have been pushed here out-of-order
+                # we set state, put (more importantly) we push the state onto
+                # the 'states' list, so that we can later get state progression
+                # in sync with the state model, even if they have been pushed
+                # here out-of-order
                 update_dict['$push']['states'] = state
 
                 with self._lock:
