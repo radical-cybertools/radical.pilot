@@ -12,7 +12,6 @@ import radical.utils                as ru
 import radical.saga                 as rs
 import radical.saga.utils.pty_shell as rsup
 
-from .resource_config import ResourceConfig
 from .db              import DBSession
 from .                import utils          as rpu
 
