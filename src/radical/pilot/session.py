@@ -592,33 +592,32 @@ class Session(rs.Session):
     # -------------------------------------------------------------------------
     #
     def add_resource_config(self, resource_config):
-        '''Adds a new :class:`radical.pilot.ResourceConfig` to the PilotManager's
-           dictionary of known resources, or accept a string which points to
-           a configuration file.
+        '''
+        Adds a new :class:`ru.Config` to the session's dictionary of known
+        resources, or accept a string which points to a configuration file.
 
-           For example::
+        For example::
 
-                  rc = radical.pilot.ResourceConfig(label="mycluster")
-                  rc.job_manager_endpoint = "ssh+pbs://mycluster
-                  rc.filesystem_endpoint  = "sftp://mycluster
-                  rc.default_queue        = "private"
-                  rc.bootstrapper         = "default_bootstrapper.sh"
+               rc = ru.Config("./mycluster.json")
+               rc.job_manager_endpoint = "ssh+pbs://mycluster
+               rc.filesystem_endpoint  = "sftp://mycluster
+               rc.default_queue        = "private"
 
-                  pm = radical.pilot.PilotManager(session=s)
-                  pm.add_resource_config(rc)
+               session = rp.Session()
+               session.add_resource_config(rc)
 
-                  pd = radical.pilot.ComputePilotDescription()
-                  pd.resource = "mycluster"
-                  pd.cores    = 16
-                  pd.runtime  = 5 # minutes
+               pd = rp.ComputePilotDescription()
+               pd.resource = "mycluster"
+               pd.cores    = 16
+               pd.runtime  = 5 # minutes
 
-                  pilot = pm.submit_pilots(pd)
+               pilot = pm.submit_pilots(pd)
         '''
 
         if isinstance(resource_config, str):
 
             # let exceptions fall through
-            rcs = ResourceConfig.from_file(resource_config)
+            rcs = ru.Config('radical.pilot.resource', name=resource_config)
 
             for rc in rcs:
                 self._log.info('load rcfg for %s' % rc)

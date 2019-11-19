@@ -12,7 +12,7 @@
         "default_queue"               : "",
         "lrms"                        : "FORK",
         "lfs_per_node"                : "/tmp",
-        "agent_config"                : "default",
+        "agent_config"                : "default_sa",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "FORK",

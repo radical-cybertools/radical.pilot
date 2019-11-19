@@ -47,6 +47,7 @@ class Agent_0(rpu.Worker):
         self._cfg     = cfg
         self._pid     = cfg.pid
         self._pmgr    = cfg.pmgr
+        self._pwd     = cfg.pilot_sandbox
         self._session = session
         self._log     = session._log
 

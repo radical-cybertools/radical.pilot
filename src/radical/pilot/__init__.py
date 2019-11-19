@@ -13,7 +13,6 @@ import radical.utils as _ru
 # constants and types
 from .states     import *
 from .constants  import *
-from .exceptions import *
 
 
 # ------------------------------------------------------------------------------
@@ -30,7 +29,6 @@ from .pilot_manager             import PilotManager
 from .compute_pilot             import ComputePilot
 from .compute_pilot_description import ComputePilotDescription
 
-from .resource_config           import ResourceConfig
 from .staging_directives        import COPY, LINK, MOVE, TRANSFER
 from .staging_directives        import SKIP_FAILED, CREATE_PARENTS
 
