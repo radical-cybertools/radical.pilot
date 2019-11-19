@@ -424,8 +424,7 @@ class Agent_0(rpu.Worker):
                             return False  # proc is gone - terminate
             # ------------------------------------------------------------------
 
-            # the agent is up - let the watcher manage it from here
-            self.register_watchable(_SA(sa, cmdline, log=self._log))
+            # FIXME: register heartbeats?
 
         self._log.debug('start_sub_agents done')
 

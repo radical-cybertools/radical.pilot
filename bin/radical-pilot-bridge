@@ -25,6 +25,10 @@ def main(cfg):
     If the config contains a `heartbeat` section, that section must be formatted
     as follows:
 
+    RCT comm bridges can be monitored via heartbeats (using a bridge-less pubsub
+    channel).  To enable that monitoring, the config should contains
+    a `heartbeat` section, that section must be formatted as follows:
+
         {
           'from'    : 'uid',
           'pub'     : 'addr_pub',
