@@ -447,15 +447,27 @@ class Component(object):
         self._thread.daemon = True
         self._thread.start()
 
-        # TODO: add timeout to shield against failing initlization?
         while not sync.is_set():
+
+            if not self._thread.is_alive():
+                raise RuntimeError('worker thread died during initialization')
+
             time.sleep(0.1)
+
+        assert(self._thread.is_alive())
+
 
     # --------------------------------------------------------------------------
     #
     def _worker_thread(self, sync):
 
-        self._initialize()
+        try:
+            self._initialize()
+
+        except Exception:
+            self._log.exception('worker thread initialization failed')
+            return
+
         sync.set()
 
         while True:
@@ -464,7 +476,7 @@ class Component(object):
                 if not ret:
                     break
             except:
-                self._log.exception('work cb error')
+                self._log.exception('work cb error [ignored]')
 
 
     # --------------------------------------------------------------------------
