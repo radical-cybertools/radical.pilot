@@ -18,7 +18,7 @@ reqs="$reqs future regex msgpack parse"
 # pip="pip==1.4.1"
 
 setuptools="setuptools"
-pip="pip --no-cache-dir "
+pip="pip"
 
 #  /glade/scratch/amerzky/radical.pilot.sandbox/ve.rp.cheyenne.2019.11.15
 #  --no-cache-dir install --no-build-isolation
@@ -147,14 +147,14 @@ stdbuf -oL $VIRTENV_CMD "$prefix" | progress
 .          "$prefix"/bin/activate
 
 echo -n "update  setuptools "
-pip install --upgrade --no-build-isolation $setuptools | progress || exit 1
+pip --no-cache-dir install --upgrade --no-build-isolation $setuptools | progress || exit 1
 echo -n "update  pip "
-pip install --upgrade --no-build-isolation $pip        | progress || exit 1
+pip --no-cache-dir install --upgrade --no-build-isolation $pip        | progress || exit 1
 
 for req in $reqs
 do
     echo -n "install $req "
-    stdbuf -oL pip install --upgrade --no-build-isolation $req | progress   || exit 1
+    stdbuf -oL pip install --no-cache-dir --upgrade --no-build-isolation $req | progress   || exit 1
 done
 
 # install the radical stack (utils, saga, pilot) into a separate tree
