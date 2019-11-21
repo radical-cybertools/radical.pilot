@@ -20,9 +20,6 @@ reqs="$reqs future regex msgpack parse"
 setuptools="setuptools"
 pip="pip"
 
-#  /glade/scratch/amerzky/radical.pilot.sandbox/ve.rp.cheyenne.2019.11.15
-#  --no-cache-dir install --no-build-isolation
-
 # ------------------------------------------------------------------------------
 #
 help(){
