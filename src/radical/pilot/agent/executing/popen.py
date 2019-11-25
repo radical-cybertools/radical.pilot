@@ -204,6 +204,7 @@ class Popen(AgentExecutingComponent) :
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
+            self._prof.prof('unschedule_start', uid=cu['uid'])
             self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
@@ -442,6 +443,7 @@ prof(){
                     self._prof.prof('exec_cancel_stop', uid=uid)
 
                     del(cu['proc'])  # proc is not json serializable
+                    self._prof.prof('unschedule_start', uid=cu['uid'])
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
                     self.advance(cu, rps.CANCELED, publish=True, push=False)
 
@@ -464,6 +466,7 @@ prof(){
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._cus_to_watch.remove(cu)
                 del(cu['proc'])  # proc is not json serializable
+                self._prof.prof('unschedule_start', uid=cu['uid'])
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
                 if exit_code != 0:
