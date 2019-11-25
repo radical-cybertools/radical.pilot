@@ -264,6 +264,7 @@ class Pubsub(ru.Process):
 
         if self._in in _socks:
 
+
             # if any incoming socket signals a message, get the
             # message on the subscriber channel, and forward it
             # to the publishing channel, no questions asked.
@@ -274,11 +275,13 @@ class Pubsub(ru.Process):
             else:
                 msg = _uninterruptible(self._in.recv, flags=zmq.NOBLOCK)
                 _uninterruptible(self._out.send, msg)
+
             if self._debug:
                 self._log.debug("-> %s", pprint.pformat(msg))
 
 
         if self._out in _socks:
+
             # if any outgoing socket signals a message, it's
             # likely a topic subscription.  We forward that on
             # the incoming channels to subscribe for the
@@ -337,6 +340,8 @@ class Pubsub(ru.Process):
                 _uninterruptible(self._q.send_multipart, [topic, data])
 
         else:
+            if self._debug:
+                self._log.debug("-> %s %s", topic, pprint.pformat(msg))
             _uninterruptible(self._q.send, "%s %s" % (topic, data))
 
 
@@ -353,8 +358,7 @@ class Pubsub(ru.Process):
                 topic, data = _uninterruptible(self._q.recv_multipart)
 
         else:
-            with self._lock:
-                raw = _uninterruptible(self._q.recv)
+            raw = _uninterruptible(self._q.recv)
             topic, data = raw.split(' ', 1)
 
         msg = msgpack.unpackb(data, raw=False)  # we want non-byte types back

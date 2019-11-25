@@ -704,6 +704,7 @@ class Default(PMGRLaunchingComponent):
         # tar.  If any command fails, this will raise.
         cmd = "cd %s && tar zchf %s *" % (tmp_dir, tar_tgt)
         self._log.debug('cmd: %s', cmd)
+
         out, err, ret = ru.sh_callout(cmd, shell=True)
 
         if ret:
