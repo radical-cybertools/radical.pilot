@@ -24,6 +24,7 @@ SCHEDULER_NAME_CONTINUOUS_ORDERED = "CONTINUOUS_ORDERED"
 SCHEDULER_NAME_CONTINUOUS_COLO    = "CONTINUOUS_COLO"
 SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
 SCHEDULER_NAME_HOMBRE             = "HOMBRE"
+SCHEDULER_NAME_FLUX               = "FLUX"
 SCHEDULER_NAME_SPARK              = "SPARK"
 SCHEDULER_NAME_TORUS              = "TORUS"
 SCHEDULER_NAME_YARN               = "YARN"
@@ -326,6 +327,7 @@ class AgentSchedulingComponent(rpu.Component):
         from .continuous_colo    import ContinuousColo
         from .continuous         import Continuous
         from .hombre             import Hombre
+        from .flux               import Flux
         from .torus              import Torus
         from .yarn               import Yarn
         from .spark              import Spark
@@ -342,6 +344,7 @@ class AgentSchedulingComponent(rpu.Component):
                 SCHEDULER_NAME_CONTINUOUS_COLO    : ContinuousColo,
                 SCHEDULER_NAME_CONTINUOUS         : Continuous,
                 SCHEDULER_NAME_HOMBRE             : Hombre,
+                SCHEDULER_NAME_FLUX               : Flux,
                 SCHEDULER_NAME_TORUS              : Torus,
                 SCHEDULER_NAME_YARN               : Yarn,
                 SCHEDULER_NAME_SPARK              : Spark,

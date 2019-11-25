@@ -24,6 +24,7 @@ LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
 LM_NAME_JSRUN         = 'JSRUN'
 LM_NAME_PRTE          = 'PRTE'
+LM_NAME_FLUX          = 'FLUX'
 LM_NAME_ORTE          = 'ORTE'
 LM_NAME_ORTE_LIB      = 'ORTE_LIB'
 LM_NAME_RSH           = 'RSH'
@@ -114,6 +115,7 @@ class LaunchMethod(object):
         from .mpirun         import MPIRun
         from .jsrun          import JSRUN
         from .prte           import PRTE
+        from .flux           import Flux
         from .rsh            import RSH
         from .ssh            import SSH
         from .yarn           import Yarn
@@ -152,6 +154,7 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_DPLACE : MPIRun,
                 LM_NAME_JSRUN         : JSRUN,
                 LM_NAME_PRTE          : PRTE,
+                LM_NAME_FLUX          : Flux,
                 LM_NAME_RSH           : RSH,
                 LM_NAME_SSH           : SSH,
                 LM_NAME_YARN          : Yarn,
@@ -182,12 +185,12 @@ class LaunchMethod(object):
     #
     @classmethod
     def lrms_config_hook(cls, name, cfg, lrms, logger, profiler):
-        """
+        '''
         This hook will allow the LRMS to perform launch methods specific
         configuration steps.  The LRMS layer MUST ensure that this hook is
         called exactly once (globally).  This will be a NOOP for LMs which do
         not overload this method.  Exceptions fall through to the LRMS.
-        """
+        '''
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
@@ -195,6 +198,7 @@ class LaunchMethod(object):
 
         from .fork           import Fork
         from .prte           import PRTE
+        from .flux           import Flux
         from .yarn           import Yarn
         from .spark          import Spark
 
@@ -204,6 +208,7 @@ class LaunchMethod(object):
         impl = {
             LM_NAME_FORK          : Fork,
             LM_NAME_PRTE          : PRTE,
+            LM_NAME_FLUX          : Flux,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
 
@@ -224,16 +229,17 @@ class LaunchMethod(object):
     #
     @classmethod
     def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profiler):
-        """
+        '''
         This hook is symmetric to the config hook above, and is called during
         shutdown sequence, for the sake of freeing allocated resources.
-        """
+        '''
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
             raise TypeError("LM shutdown hook only available to base class!")
 
         from .prte           import PRTE
+        from .flux           import FLUX
         from .yarn           import Yarn
         from .spark          import Spark
 
@@ -242,6 +248,7 @@ class LaunchMethod(object):
 
         impl = {
             LM_NAME_PRTE          : PRTE,
+            LM_NAME_FLUX          : FLUX,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
 
