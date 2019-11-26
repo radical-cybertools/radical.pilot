@@ -94,7 +94,5 @@ printf "$PREFIX : SLEEP   : $ARG\n"
 # if so requested, sleep for a bit
 sleep $ARG
 
-touch /tmp/$RP_UNIT_ID
-
 prof "app_stop"
 
