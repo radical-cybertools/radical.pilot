@@ -17,18 +17,20 @@ from ... import compute_unit_description as rpcud
 # This is a simple extension of the Continuous scheduler which evaluates the
 # `colocate` tag of arriving units, which is expected to have the form
 #
-#   colocate : {'bag'  : <string>,
+#   colocate : {'ns'   : <string>,
 #               'size' : <int>}
 #
-# where 'ns' is a bag ID, and 'size' is the number of tasks in that bag of tasks
-# that need to land on the same host.  The semantics of the scheduler is that,
-# for any given namespace, it will schedule either all tasks in that ns at the
-# same time on the same node, or will schedule no task of that ns at all.
+# where 'ns' (for namespace) is a bag ID, and 'size' is the number of tasks in
+# that bag of tasks that need to land on the same host.  The semantics of the
+# scheduler is that, for any given namespace, it will schedule either all tasks
+# in that ns at the same time on the same node, or will schedule no task of that
+# ns at all.
 #
 # The dominant use case for this scheduler is the execution of coupled
-# applications which exchange data via shmem.
+# applications which exchange data via shared local files or shared memory.
 #
-# FIXME: - failed units cannot yet be recognized
+# FIXME: - failed tasks cannot yet considered, subsequent tasks in the same ns
+#          will be scheduled anyway.
 #
 class ContinuousColo(Continuous):
 
