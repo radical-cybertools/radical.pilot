@@ -123,20 +123,6 @@ class Agent_0(rpu.Worker):
         self._dbs = DBSession(sid=self._cfg.sid, dburl=self._cfg.dburl,
                               cfg=self._cfg, logger=self._log)
 
-      # # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold
-      # # the address of the tunnelized DB endpoint. If it exists, we
-      # # overrule the agent config with it.
-      # dburl    = ru.Url(self._cfg.dburl)
-      # hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
-      # if hostport:
-      #     dburl.host, dburl.port = hostport.split(':')
-      #     self._cfg['dburl'] = str(dburl)
-      #
-      # # connect to the DB
-      # _, db, _, _, _  = ru.mongodb_connect(dburl)
-      # self._coll      = db[self._cfg['sid']]
-
-
     # --------------------------------------------------------------------------
     #
     def _configure_rm(self):
