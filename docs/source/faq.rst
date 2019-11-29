@@ -150,7 +150,7 @@ have a prompt set as `$PS1`).  The snippet below shows how to di that:
     
 
 ...avoid the pop-up "Do you want the application python to accept incoming network connections?" on Mac OSX.
----------------------------------------------------------
+------------------------------------------------------------------------------------------------------------
 
 This is coming from the firewall on your Mac. You can either:
 
@@ -179,12 +179,14 @@ far.
 
 
 Other Questions
-================
+===============
 
 How many concurrent RADICAL-Pilot scripts can I execute?
--------------------------------------------------------
+--------------------------------------------------------
 
-From a RADICAL-Pilot perspective there is no limit, but as SSH is used to access many systems, there is a resource specific limit of the number of SSH connections one can make.
+From a RADICAL-Pilot perspective there is no limit, but as SSH is used to access 
+many systems, there is a resource specific limit of the number of SSH connections 
+one can make.
 
 
 
