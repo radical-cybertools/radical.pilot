@@ -275,7 +275,7 @@
         "gpus_per_node"               : 1,
         "lrms"                        : "FORK",
         "agent_type"                  : "default",
-        "agent_config"                : "flux",
+        "agent_config"                : "default",
         "agent_scheduler"             : "FLUX",
         "agent_spawner"               : "FLUX",
         "agent_launch_method"         : "FORK",
