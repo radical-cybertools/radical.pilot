@@ -471,7 +471,7 @@ class AgentSchedulingComponent(rpu.Component):
         if not self._waitpool:
             return
 
-        for uid,task in self._waitpool.iteritems():
+        for uid,task in self._waitpool.items():
             ts = task['tuple_size']
             if ts not in self._ts_map:
                 self._ts_map[ts] = set()
@@ -646,7 +646,7 @@ class AgentSchedulingComponent(rpu.Component):
         # We define `tuple_size` as
         #     `(cpu_processes + gpu_processes) * cpu_threads`
         #
-        tasks = self._waitpool.values()
+        tasks = list(self._waitpool.values())
         tasks.sort(key=lambda x:
                 (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
                  reverse=True)
