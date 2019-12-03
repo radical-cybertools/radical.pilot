@@ -87,7 +87,7 @@ class JSRUN(LaunchMethod):
                 rs_str += ' cpu: {%s}'  % cores
                 if gpu_maps:
                     gpus  = ','.join(str(gpu) for gpu in gpu_maps.pop(0))
-                    rs_str += '; gpu: {%s}' % gpus
+                    rs_str += '; gpu: {%s}' % gpus if gpus != '' else ''
                 rs_str += '}\n'
                 rank   += 1
 
