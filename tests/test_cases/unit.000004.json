@@ -33,9 +33,9 @@
     "results": {
         "lm": {
             "fork"  : ["/bin/sleep \"10\" ", null],
-            # "orte"  : "RuntimeError",
+          # "orte"  : "RuntimeError",
             "aprun" : ["aprun -n 1 -N 1 -L node1 -d 1 -cc 0 /bin/sleep \"10\"  ", null],
-            "mpirun": ["mpirun -np 1  -host node1  /bin/sleep \"10\"", null],
+            "mpirun": ["mpirun -np 0  -host   /bin/sleep \"10\"", null],
             "ibrun" : ["ibrun -n 0 -o 0 /bin/sleep \"10\" ", null],
             "ssh"   : ["/bin/sleep \"10\" ","ssh node1 LD_LIBRARY_PATH=/usr/local/lib/ PATH=test_path 1"],
             "spark" : "RuntimeError",

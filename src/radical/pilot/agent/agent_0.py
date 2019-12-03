@@ -123,20 +123,6 @@ class Agent_0(rpu.Worker):
         self._dbs = DBSession(sid=self._cfg.sid, dburl=self._cfg.dburl,
                               cfg=self._cfg, logger=self._log)
 
-      # # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold
-      # # the address of the tunnelized DB endpoint. If it exists, we
-      # # overrule the agent config with it.
-      # dburl    = ru.Url(self._cfg.dburl)
-      # hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
-      # if hostport:
-      #     dburl.host, dburl.port = hostport.split(':')
-      #     self._cfg['dburl'] = str(dburl)
-      #
-      # # connect to the DB
-      # _, db, _, _, _  = ru.mongodb_connect(dburl)
-      # self._coll      = db[self._cfg['sid']]
-
-
     # --------------------------------------------------------------------------
     #
     def _configure_rm(self):
@@ -262,6 +248,41 @@ class Agent_0(rpu.Worker):
                             {'$set': {'stdout' : rpu.tail(out),
                                       'stderr' : rpu.tail(err),
                                       'logfile': rpu.tail(log)} })
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _update_db(self, state, msg=None):
+
+        # NOTE: we do not push the final pilot state, as that is done by the
+        #       bootstrapper *after* this poilot *actually* finished.
+
+        self._log.info('pilot state: %s', state)
+        self._log.info('rusage: %s', rpu.get_rusage())
+        self._log.info(msg)
+
+        if state == rps.FAILED:
+            self._log.info(ru.get_trace())
+
+        out = None
+        err = None
+        log = None
+
+        try   : out = open('./agent_0.out', 'r').read(1024)
+        except: pass
+        try   : err = open('./agent_0.err', 'r').read(1024)
+        except: pass
+        try   : log = open('./agent_0.log', 'r').read(1024)
+        except: pass
+
+        ret = self._session._dbs._c.update(
+                {'type'   : 'pilot',
+                 'uid'    : self._pid},
+                {'$set'   : {'stdout'        : rpu.tail(out),
+                             'stderr'        : rpu.tail(err),
+                             'logfile'       : rpu.tail(log)}
+                })
+        self._log.debug('update ret: %s', ret)
 
 
     # --------------------------------------------------------------------
