@@ -275,13 +275,12 @@ class Agent_0(rpu.Worker):
         try   : log = open('./agent_0.log', 'r').read(1024)
         except: pass
 
-        ret = self._session._dbs._c.update(
-                {'type'   : 'pilot',
-                 'uid'    : self._pid},
-                {'$set'   : {'stdout'        : rpu.tail(out),
-                             'stderr'        : rpu.tail(err),
-                             'logfile'       : rpu.tail(log)}
-                })
+        ret = self._dbs._c.update({'type': 'pilot',
+                                   'uid' : self._pid},
+                                  {'$set': {'stdout' : rpu.tail(out),
+                                            'stderr' : rpu.tail(err),
+                                            'logfile': rpu.tail(log)}
+                                  })
         self._log.debug('update ret: %s', ret)
 
 
