@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        print "Initializing Pilot Manager ..."
+        print("Initializing Pilot Manager ...")
         pmgr = rp.PilotManager(session=session)
 
 
@@ -68,16 +68,16 @@ if __name__ == "__main__":
         pdesc.queue    = QUEUE
 
         # submit the pilot.
-        print "Submitting Compute Pilot to Pilot Manager ..."
+        print("Submitting Compute Pilot to Pilot Manager ...")
         pilot = pmgr.submit_pilots(pdesc)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
-        print "Initializing Unit Manager ..."
+        print("Initializing Unit Manager ...")
         umgr = rp.UnitManager (session=session)
 
         # Add the created ComputePilot to the UnitManager.
-        print "Registering Compute Pilot with Unit Manager ..."
+        print("Registering Compute Pilot with Unit Manager ...")
         umgr.add_pilots(pilot)
 
         # submit A cus to pilot job
@@ -97,7 +97,7 @@ if __name__ == "__main__":
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        print "Submit Compute Units 'A' to Unit Manager ..."
+        print("Submit Compute Units 'A' to Unit Manager ...")
         cu_set_A = umgr.submit_units(cudesc_list_A)
 
         # submit B cus to pilot job
@@ -117,14 +117,14 @@ if __name__ == "__main__":
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        print "Submit Compute Units 'B' to Unit Manager ..."
+        print("Submit Compute Units 'B' to Unit Manager ...")
         cu_set_B = umgr.submit_units(cudesc_list_B)
 
 
         # ---------------------------------------------------------------------
-        print "Waiting for 'A' and 'B' CUs to complete..."
+        print("Waiting for 'A' and 'B' CUs to complete...")
         umgr.wait_units()
-        print "Executing 'C' tasks now..."
+        print("Executing 'C' tasks now...")
         # ---------------------------------------------------------------------
 
         # submit 'C' tasks to pilot job. each 'C' task takes the output of
@@ -145,18 +145,18 @@ if __name__ == "__main__":
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        print "Submit Compute Units 'C' to Unit Manager ..."
+        print("Submit Compute Units 'C' to Unit Manager ...")
         cu_set_C = umgr.submit_units(cudesc_list_C)
 
         # ---------------------------------------------------------------------
-        print "Waiting for 'C' CUs to complete..."
+        print("Waiting for 'C' CUs to complete...")
         umgr.wait_units()
-        print "All CUs completed successfully!"
+        print("All CUs completed successfully!")
 
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        print "caught Exception: %s" % e
+        print("caught Exception: %s" % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -164,12 +164,12 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        print "need to exit now: %s" % e
+        print("need to exit now: %s" % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.
-        print "closing session"
+        print("closing session")
         session.close ()
 
         # the above is equivalent to

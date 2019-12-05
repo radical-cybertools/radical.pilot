@@ -156,7 +156,7 @@ except Exception as e:
     report.error('caught Exception: %s\n' % e)
     raise
 
-except (KeyboardInterrupt, SystemExit) as e:
+except (KeyboardInterrupt, SystemExit):
     report.warn('exit requested\n')
 
 finally:

@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        print "Initializing Pilot Manager ..."
+        print("Initializing Pilot Manager ...")
         pmgr = rp.PilotManager(session=session)
 
 
@@ -76,17 +76,17 @@ if __name__ == "__main__":
         pdesc.cleanup  = True
 
         # submit the pilot.
-        print "Submitting Compute Pilot to Pilot Manager ..."
+        print("Submitting Compute Pilot to Pilot Manager ...")
         pilot = pmgr.submit_pilots(pdesc)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
-        print "Initializing Unit Manager ..."
+        print("Initializing Unit Manager ...")
         umgr = rp.UnitManager (session=session)
 
 
         # Add the created ComputePilot to the UnitManager.
-        print "Registering Compute Pilot with Unit Manager ..."
+        print("Registering Compute Pilot with Unit Manager ...")
         umgr.add_pilots(pilot)
 
         # submit A cus to pilot job
@@ -106,7 +106,7 @@ if __name__ == "__main__":
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning ComputeUnits to the ComputePilots.
-        print "Submit 'A' Compute Units to Unit Manager ..."
+        print("Submit 'A' Compute Units to Unit Manager ...")
         cu_list_A = umgr.submit_units(cudesc_list_A)
 
         # Chaining cus i.e submit a compute unit, when compute unit from A is
@@ -122,7 +122,7 @@ if __name__ == "__main__":
                 idx = cu_list_A_copy.index(cu_a)
 
                 cu_a.wait ()
-                print "'A' Compute Unit '%s' done. Submitting 'B' CU ..." % idx
+                print("'A' Compute Unit '%s' done. Submitting 'B' CU ..." % idx)
 
                 # -------- BEGIN USER DEFINED CU B_n DESCRIPTION --------- #
                 cudesc = rp.ComputeUnitDescription()
@@ -137,18 +137,18 @@ if __name__ == "__main__":
                 cu_list_B.append(cu_b)
                 cu_list_A.remove(cu_a)
 
-        print "Waiting for 'B' Compute Units to complete ..."
+        print("Waiting for 'B' Compute Units to complete ...")
         for cu_b in cu_list_B :
             cu_b.wait ()
-            print "'B' Compute Unit '%s' finished with output:" % (cu_b.uid)
-            print cu_b.stdout
+            print("'B' Compute Unit '%s' finished with output:" % (cu_b.uid))
+            print(cu_b.stdout)
 
-        print "All Compute Units completed successfully!"
+        print("All Compute Units completed successfully!")
 
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        print "caught Exception: %s" % e
+        print("caught Exception: %s" % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -156,12 +156,12 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        print "need to exit now: %s" % e
+        print("need to exit now: %s" % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.
-        print "closing session"
+        print("closing session")
         session.close ()
 
         # the above is equivalent to

@@ -186,7 +186,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
             rep.ok("+ %s (profiles)\n" % pilot['uid'])
 
-        except Exception as e:
+        except Exception:
             rep.error("- %s (profiles)\n" % pilot['uid'])
             log.exception('failed to fet profile for %s', pilot['uid'])
 
@@ -362,7 +362,7 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
             rep.ok("+ %s (logfiles)\n" % pilot['uid'])
 
-        except Exception as e:
+        except Exception:
             rep.error("- %s (logfiles)\n" % pilot['uid'])
 
     return ret

@@ -101,13 +101,13 @@ if __name__ == "__main__":
         umgr.wait_units()
 
         for unit in cu_set:
-            print "* CU %s, state %s, exit code: %s, stdout: %s" \
-                % (unit.uid, unit.state, unit.exit_code, unit.stdout.strip())
+            print("* CU %s, state %s, exit code: %s, stdout: %s"
+                % (unit.uid, unit.state, unit.exit_code, unit.stdout.strip()))
 
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        print "caught Exception: %s" % e
+        print("caught Exception: %s" % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -115,7 +115,7 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        print "need to exit now: %s" % e
+        print("need to exit now: %s" % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or
@@ -131,4 +131,6 @@ if __name__ == "__main__":
         # all remaining pilots.
     report.header()
 
+
 # ------------------------------------------------------------------------------
+

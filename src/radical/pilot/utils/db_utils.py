@@ -109,7 +109,7 @@ def get_session_docs(db, sid, cache=None, cachedir=None):
     try:
         os.system ('mkdir -p %s' % cachedir)
         ru.write_json (json_data, "%s/%s.json" % (cachedir, sid))
-    except Exception as e:
+    except Exception:
         # we can live without cache, no problem...
         pass
 

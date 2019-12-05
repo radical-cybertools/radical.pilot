@@ -131,7 +131,7 @@ if __name__ == '__main__':
         report.error('caught Exception: %s\n' % e)
         raise
 
-    except (KeyboardInterrupt, SystemExit) as e:
+    except (KeyboardInterrupt, SystemExit):
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other

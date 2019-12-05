@@ -251,8 +251,8 @@ class LoadLeveler(LRMS):
                 self.torus_block = self._bgq_construct_block(
                     loadl_bg_block_shape_str, loadl_bg_board_list_str,
                     loadl_bg_block_size,      loadl_bg_midplane_list_str)
-            except Exception as e:
-                raise RuntimeError("Couldn't construct block: %s" % e.message)
+            except Exception:
+                raise RuntimeError("Couldn't construct block")
 
             self._log.debug("Torus block constructed:")
             for e in self.torus_block:
@@ -262,14 +262,14 @@ class LoadLeveler(LRMS):
             try:
                 loadl_node_list = [entry[Torus.TORUS_BLOCK_NAME]
                                    for entry in self.torus_block]
-            except Exception as e:
+            except Exception:
                 raise RuntimeError("Couldn't construct node list")
 
             # Construct sub-block table
             try:
                 self.shape_table = self._bgq_create_sub_block_shape_table(
                                                        loadl_bg_block_shape_str)
-            except Exception as e:
+            except Exception:
                 raise RuntimeError("Couldn't construct shape table")
 
             self._log.debug("Node list constructed: %s" % loadl_node_list)
