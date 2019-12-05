@@ -17,11 +17,11 @@ env:
     - COVERAGE=false
     - CODECOV_TOKEN="c7e0d993-d31a-4d39-8ffa-07c30ea73e48"
   matrix:
-    - coverage run -m pytest -vvv tests/ COVERAGE=false
-    - tests/bin/run_check.sh flake8 diff
-    - tests/bin/run_check.sh pylint diff
-    - tests/bin/run_check.sh flake8 tests/ bin/ examples/
-    - tests/bin/run_check.sh pylint tests/ bin/ examples/
+    - MAIN_CMD=coverage run -m pytest -vvv tests/ COVERAGE=false
+    - MAIN_CMD=tests/bin/run_check.sh flake8 diff
+    - MAIN_CMD=tests/bin/run_check.sh pylint diff
+    - MAIN_CMD=tests/bin/run_check.sh flake8 tests/ bin/ examples/
+    - MAIN_CMD=tests/bin/run_check.sh pylint tests/ bin/ examples/
 
 before_install:
   - uname -a
