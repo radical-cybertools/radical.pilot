@@ -21,8 +21,8 @@ env:
     - DIFF=$(echo $DIFF | grep -o -e '\b[^ ]*.py\b')
     - LOC=/home/travis/virtualenv/python2.7  # Location where VE is created on travis
     - CMD_PYTEST="coverage run -m pytest -vvv tests/"
-    - CMD_FLAKE8="if ! test -z \"$DIFF\"; then test -f $DIFF && flake8 --config=.flake8 $DIFF;else echo 'Nothing to pep8'; fi"
-    - CMD_PYLINT="if ! test -z \"$DIFF\"; then test -f $DIFF && pylint $DIFF;else echo 'Nothing to lint';fi"
+    - CMD_FLAKE8="for f in $DIFF do; test -f $f && flake8 --config=.flake8 $f; done"
+    - CMD_PYLINT="for f in $DIFF do; test -f $f && pylint $f"
     - CMD_FLAKE8_OTHER="flake8 --config=.flake8 tests/ bin/ exmaples/"
     - CMD_PYLINT_OTHER="pylint tests/ bin/ examples/"
     - COVERAGE=false
