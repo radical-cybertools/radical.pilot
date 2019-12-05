@@ -15,28 +15,28 @@ os.environ['RADICAL_PILOT_VERBOSE'] = verbose
 For every task A_n a task B_n is started consecutively.
 """
 
-# READ: The RADICAL-Pilot documentation: 
+# READ: The RADICAL-Pilot documentation:
 #   http://radicalpilot.readthedocs.org/en/latest
 #
-# Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
+# Try running this example with RADICAL_PILOT_VERBOSE=debug set if
 # you want to see what happens behind the scences!
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
-    RESOURCE_LABEL=
-    PILOT_CORES = 
-    NUMBER_CHAINS =
-    CU_A_EXECUTABLE =
-    CU_B_EXECUTABLE =
-    QUEUE = None
+    RESOURCE_LABEL  = None
+    PILOT_CORES     = None
+    NUMBER_CHAINS   = None
+    CU_A_EXECUTABLE = None
+    CU_B_EXECUTABLE = None
+    QUEUE           = None
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
     session = rp.Session()
- 
+
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
     # the whole RP stack down via a 'session.close()' call in the 'finally'
@@ -44,10 +44,10 @@ if __name__ == "__main__":
     try:
 
         # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
-        # 
-        # Change the user name below if you are using a remote resource 
-        # and your username on that resource is different from the username 
-        # on your local machine. 
+        #
+        # Change the user name below if you are using a remote resource
+        # and your username on that resource is different from the username
+        # on your local machine.
         #
 
 
@@ -57,20 +57,21 @@ if __name__ == "__main__":
 
 
         # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
-        # 
-        # If you want to run this example on your local machine, you don't have 
-        # to change anything here. 
-        # 
-        # Change the resource below if you want to run on a remote resource. 
-        # You also might have to set the 'project' to your allocation ID if 
-        # your remote resource does compute time accounting. 
         #
-        # A list of preconfigured resources can be found at: 
-        # http://radicalpilot.readthedocs.org/en/latest/machconf.html#preconfigured-resources
-        # 
+        # If you want to run this example on your local machine, you don't have
+        # to change anything here.
+        #
+        # Change the resource below if you want to run on a remote resource.
+        # You also might have to set the 'project' to your allocation ID if
+        # your remote resource does compute time accounting.
+        #
+        # A list of preconfigured resources can be found at:
+        # http://radicalpilot.readthedocs.org/en/latest/ \
+        #        machconf.html#preconfigured-resources
+        #
         pdesc = rp.ComputePilotDescription ()
-        pdesc.resource = RESOURCE_LABEL  # NOTE: This is a "label", not a hostname
-        pdesc.runtime  = 30 # minutes
+        pdesc.resource = RESOURCE_LABEL
+        pdesc.runtime  = 30
         pdesc.cores    = PILOT_CORES
         pdesc.cleanup  = True
 
@@ -108,9 +109,9 @@ if __name__ == "__main__":
         print "Submit 'A' Compute Units to Unit Manager ..."
         cu_list_A = umgr.submit_units(cudesc_list_A)
 
-        # Chaining cus i.e submit a compute unit, when compute unit from A is successfully executed.
-        # A B CU reads the content of the output file of an A CU and writes it into its own
-        # output file.
+        # Chaining cus i.e submit a compute unit, when compute unit from A is
+        # successfully executed.  A B CU reads the content of the output file of
+        # an A CU and writes it into its own output file.
         cu_list_B = []
 
         # We create a copy of cu_list_A so that we can remove elements from it,
@@ -121,7 +122,7 @@ if __name__ == "__main__":
                 idx = cu_list_A_copy.index(cu_a)
 
                 cu_a.wait ()
-                print "'A' Compute Unit '%s' finished. Submitting 'B' CU ..." % idx
+                print "'A' Compute Unit '%s' done. Submitting 'B' CU ..." % idx
 
                 # -------- BEGIN USER DEFINED CU B_n DESCRIPTION --------- #
                 cudesc = rp.ComputeUnitDescription()
@@ -171,5 +172,5 @@ if __name__ == "__main__":
         # all remaining pilots (none in our example).
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 

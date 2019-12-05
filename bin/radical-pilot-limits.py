@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import os
-import sys
 import time
 import socket
 import threading       as mt
@@ -16,6 +15,7 @@ t_max   = 4 * 1024
 p_max   = 1 * 1024
 f_max   = 1 * 1024
 s_max   = 1 * 1024
+
 
 def _work():
     time.sleep(30)

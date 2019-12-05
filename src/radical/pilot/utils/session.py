@@ -368,7 +368,6 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
     return ret
 
 
-
 # ------------------------------------------------------------------------------
 #
 def fetch_json(sid, dburl=None, tgt=None, skip_existing=False, session=None,

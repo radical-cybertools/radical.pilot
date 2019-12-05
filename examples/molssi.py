@@ -4,10 +4,6 @@ import radical.pilot as rp
 import radical.utils as ru
 
 import os
-import sys
-import time
-import json
-import pprint
 import requests
 
 
@@ -131,7 +127,7 @@ try:
             ru.write_json(args, fin)
 
             cud = rp.ComputeUnitDescription()
-            cud.executable       = '/home/dgasmith/miniconda/envs/qcf/bin/qcengine'
+            cud.executable    = '/home/dgasmith/miniconda/envs/qcf/bin/qcengine'
             cud.arguments        = [prog, fin]
             cud.name             = tid
             cud.metadata         = {'fout' : fout}

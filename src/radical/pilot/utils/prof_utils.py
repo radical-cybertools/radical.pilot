@@ -813,8 +813,8 @@ def _get_unit_consumption(session, unit):
         if t0 is not None:
 
             if _debug:
-                print('%s: %-15s : %10.3f - %10.3f = %10.3f' \
-                    % (unit.uid, metric, t1, t0, t1 - t0))
+                print('%s: %-15s : %10.3f - %10.3f = %10.3f'
+                     % (unit.uid, metric, t1, t0, t1 - t0))
             for r in resources:
                 boxes.append([t0, t1, r[0], r[1]])
 

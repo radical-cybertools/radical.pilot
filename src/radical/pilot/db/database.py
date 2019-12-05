@@ -153,7 +153,7 @@ class DBSession(object):
     @property
     def is_connected(self):
 
-        return (self._connected != None)
+        return (self._connected is None)
 
 
     # --------------------------------------------------------------------------
@@ -193,9 +193,9 @@ class DBSession(object):
         pmgr_doc['_id']  = pmgr_doc['uid']
         pmgr_doc['type'] = 'pmgr'
 
-        result = self._c.insert(pmgr_doc)
+        # FIXME: evaluate retval
+        self._c.insert(pmgr_doc)
 
-        # FIXME: evaluate result
 
 
     # --------------------------------------------------------------------------
@@ -252,16 +252,16 @@ class DBSession(object):
             cmd_spec = {'cmd' : cmd,
                         'arg' : arg}
 
-            # FIXME: evaluate res
+            # FIXME: evaluate retval
             if pids:
-                res = self._c.update({'type'  : 'pilot',
-                                      'uid'   : {'$in' : pids}},
-                                     {'$push' : {'cmd' : cmd_spec}},
-                                     multi = True)
+                self._c.update({'type'  : 'pilot',
+                                'uid'   : {'$in' : pids}},
+                               {'$push' : {'cmd' : cmd_spec}},
+                               multi=True)
             else:
-                res = self._c.update({'type'  : 'pilot'},
-                                     {'$push' : {'cmd' : cmd_spec}},
-                                     multi = True)
+                self._c.update({'type'  : 'pilot'},
+                               {'$push' : {'cmd' : cmd_spec}},
+                               multi=True)
 
         except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)
@@ -359,9 +359,8 @@ class DBSession(object):
         umgr_doc['_id']  = umgr_doc['uid']
         umgr_doc['type'] = 'umgr'
 
-        result = self._c.insert(umgr_doc)
-
-        # FIXME: evaluate result
+        # FIXME: evaluate retval
+        self._c.insert(umgr_doc)
 
 
     # --------------------------------------------------------------------------
@@ -388,7 +387,7 @@ class DBSession(object):
 
         while True:
 
-            subset = unit_docs[cur : cur+bcs]
+            subset = unit_docs[cur : cur + bcs]
             bulk   = self._c.initialize_ordered_bulk_op()
             cur   += bcs
 
@@ -410,8 +409,8 @@ class DBSession(object):
                 # FIXME: evaluate res
 
             except pymongo.errors.OperationFailure as e:
-                self._log.exception('pymongo error: %s' % e.details)
-                raise RuntimeError( 'pymongo error: %s' % e.details)
+                self._log.exception('pymongo error')
+                raise RuntimeError ('pymongo error: %s' % e.details)
 
     # --------------------------------------------------------------------------
     #

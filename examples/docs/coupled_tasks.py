@@ -3,7 +3,6 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import sys
 import os
 import radical.pilot as rp
 
@@ -21,17 +20,17 @@ For every task A1 and B1 a C1 is started.
 # you want to see what happens behind the scences!
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
-    RESOURCE_LABEL =
-    PILOT_CORES = 
-    NUMBER_COUPLES = 
-    CU_A_CORES = 
-    CU_B_CORES = 
-    CU_C_CORES = 
-    QUEUE = None
+    RESOURCE_LABEL = None
+    PILOT_CORES    = None
+    NUMBER_COUPLES = None
+    CU_A_CORES     = None
+    CU_B_CORES     = None
+    CU_C_CORES     = None
+    QUEUE          = None
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -50,20 +49,20 @@ if __name__ == "__main__":
 
 
         # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
-        # 
-        # If you want to run this example on your local machine, you don't have 
-        # to change anything here. 
-        # 
-        # Change the resource below if you want to run on a remote resource. 
-        # You also might have to set the 'project' to your allocation ID if 
-        # your remote resource does compute time accounting. 
         #
-        # A list of preconfigured resources can be found at: 
+        # If you want to run this example on your local machine, you don't have
+        # to change anything here.
+        #
+        # Change the resource below if you want to run on a remote resource.
+        # You also might have to set the 'project' to your allocation ID if
+        # your remote resource does compute time accounting.
+        #
+        # A list of preconfigured resources can be found at:
         # http://radicalpilot.readthedocs.org/en/latest/machconf.html#preconfigured-resources
-        # 
+        #
         pdesc = rp.ComputePilotDescription ()
-        pdesc.resource = RESOURCE_LABEL  # NOTE: This is a "label", not a hostname
-        pdesc.runtime  = 30 # minutes
+        pdesc.resource = RESOURCE_LABEL
+        pdesc.runtime  = 30
         pdesc.cores    = PILOT_CORES
         pdesc.cleanup  = True
         pdesc.queue    = QUEUE
@@ -181,5 +180,5 @@ if __name__ == "__main__":
         # all remaining pilots (none in our example).
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 

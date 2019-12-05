@@ -11,14 +11,14 @@ import radical.pilot as rp
                              submitted to multiple machines
 """
 
-# READ: The RADICAL-Pilot documentation: 
+# READ: The RADICAL-Pilot documentation:
 #   http://radicalpilot.readthedocs.org/en/latest
 #
-# Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
+# Try running this example with RADICAL_PILOT_VERBOSE=debug set if
 # you want to see what happens behind the scences!
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def pilot_state_cb (pilot, state):
 
@@ -31,7 +31,7 @@ def pilot_state_cb (pilot, state):
         sys.exit (1)
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def unit_state_cb (unit, state):
 
@@ -47,7 +47,7 @@ def unit_state_cb (unit, state):
         sys.exit(2)
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
@@ -69,14 +69,14 @@ if __name__ == "__main__":
     try:
 
         # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
-        # 
-        # Change the user name below if you are using a remote resource 
-        # and your username on that resource is different from the username 
-        # on your local machine. 
+        #
+        # Change the user name below if you are using a remote resource
+        # and your username on that resource is different from the username
+        # on your local machine.
         #
         c = rp.Context('ssh')
         c.user_id = "username"
-        #c.user_pass = "PutYourPasswordHere"
+      # c.user_pass = "PutYourPasswordHere"
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -89,24 +89,25 @@ if __name__ == "__main__":
         pmgr.register_callback(pilot_state_cb)
 
         # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
-        # 
-        # If you want to run this example on XSEDE Gordon and Comet, you have 
-        # to add your allocation ID by setting the project attribute for each pilot
-        # description ot it. 
-        # 
-        # A list of preconfigured resources can be found at: 
-        # http://radicalpilot.readthedocs.org/en/latest/machconf.html#preconfigured-resources
         #
-        
+        # If you want to run this example on XSEDE Gordon and Comet, you have
+        # to add your allocation ID by setting the project attribute for each
+        # pilot description ot it.
+        #
+        # A list of preconfigured resources can be found at:
+        # http://radicalpilot.readthedocs.org/en/latest/ \
+        #        machconf.html#preconfigured-resources
+        #
+
         # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
         # The pilot_list will contain the description of the pilot that will be
         # submitted
-        pilot_list=list() 
+        pilot_list = list()
 
         # Create the description of the first pilot and add it to the list
         pdesc = rp.ComputePilotDescription ()
-        pdesc.resource = "xsede.gordon"  # NOTE: This is a "label", not a hostname
-        pdesc.runtime  = 10 # minutes
+        pdesc.resource = "xsede.gordon"
+        pdesc.runtime  = 10
         pdesc.cores    = 1
         pdesc.cleanup  = True
         pdesc.project  = ''
@@ -114,8 +115,8 @@ if __name__ == "__main__":
 
         # Create the description of the secind pilot and add it to the list
         pdesc2 = rp.ComputePilotDescription ()
-        pdesc2.resource = "xsede.comet"  # NOTE: This is a "label", not a hostname
-        pdesc2.runtime  = 10 # minutes
+        pdesc2.resource = "xsede.comet"
+        pdesc2.runtime  = 10
         pdesc2.cores    = 1
         pdesc2.cleanup  = True
         pdesc2.project  = ''
@@ -198,5 +199,5 @@ if __name__ == "__main__":
         # all remaining pilots (none in our example).
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 

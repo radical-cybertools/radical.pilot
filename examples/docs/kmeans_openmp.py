@@ -7,17 +7,18 @@ import sys
 import radical.pilot as rp
 
 
-""" DESCRIPTION: A Simple Workload consisting one task of parallel k-means clustering.
+"""
+A Simple Workload consisting one task of parallel k-means clustering.
 """
 
-# READ: The RADICAL-Pilot documentation: 
+# READ: The RADICAL-Pilot documentation:
 #   http://radicalpilot.readthedocs.org/en/latest
 #
-# Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
+# Try running this example with RADICAL_PILOT_VERBOSE=debug set if
 # you want to see what happens behind the scences!
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def pilot_state_cb (pilot, state):
 
@@ -30,7 +31,7 @@ def pilot_state_cb (pilot, state):
         sys.exit (1)
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def unit_state_cb (unit, state):
 
@@ -46,7 +47,7 @@ def unit_state_cb (unit, state):
         sys.exit(2)
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
@@ -85,8 +86,8 @@ if __name__ == "__main__":
 # !!!   you may want to specify a different target resource below
         # this describes the parameters and requirements for our pilot job
         pdesc = rp.ComputePilotDescription ()
-        pdesc.resource = "xsede.stampede" # NOTE: This is a "label", not a hostname
-        pdesc.runtime  = 5 # minutes
+        pdesc.resource = "xsede.stampede"
+        pdesc.runtime  = 5
         pdesc.cores    = 8
         pdesc.cleanup  = True
 
@@ -117,8 +118,8 @@ if __name__ == "__main__":
         input     = '/data/random_1000000points.csv'
         output    = '$PWD'
         clusters  = 42
-        threshold = 0.0010 # default
-        cores     = 8      # Number of cores to use for once instance.
+        threshold = 0.0010  # default
+        cores     = 8       # Number of cores to use for once instance.
 
         cudesc = rp.ComputeUnitDescription()
         cudesc.cores       = cores
@@ -128,7 +129,8 @@ if __name__ == "__main__":
                               '-z', output,     # output directory
                               '-n', clusters,   # number of clusters to find
                               '-t', threshold,  # convergence threshold
-                              '-p', cores,      # number of cores, should be the same as cudesc.cores
+                              '-p', cores,      # number of cores, should be the
+                                                # same as cudesc.cores
                               '-o'              # output timing results
                               ]
 
@@ -169,5 +171,5 @@ if __name__ == "__main__":
         # all remaining pilots (none in our example).
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 

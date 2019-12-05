@@ -120,8 +120,8 @@ class Shell(AgentExecutingComponent):
         self._cus_to_cancel  = list()
         self._cancel_lock    = threading.RLock()
 
-        self._cached_events = list() # keep monitoring events for pid's which
-                                     # are not yet known
+        self._cached_events = list()  # keep monitoring events for pid's which
+                                      # are not yet known
 
         # get some threads going -- those will do all the work.
         import radical.saga.utils.pty_shell as sups
@@ -408,7 +408,7 @@ prof(){
         ret, out, _ = self.launcher_shell.run_sync (run_cmd)
 
         if  ret != 0 :
-            raise RuntimeError("failed to run unit '%s': (%s)(%s)" % \
+            raise RuntimeError("failed to run unit '%s': (%s)(%s)" %
                                (run_cmd, ret, out))
 
         lines = [_f for _f in out.split ("\n") if _f]
@@ -430,7 +430,7 @@ prof(){
         ret, out = self.launcher_shell.find_prompt ()
         if  ret != 0 :
             self._prof.prof('exec_fail', uid=cu['uid'])
-            raise RuntimeError ("failed to run unit '%s': (%s)(%s)" \
+            raise RuntimeError ("failed to run unit '%s': (%s)(%s)"
                              % (run_cmd, ret, out))
 
         self._prof.prof('exec_ok', uid=cu['uid'])

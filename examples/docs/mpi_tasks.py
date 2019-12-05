@@ -11,14 +11,14 @@ import radical.pilot as rp
 """ DESCRIPTION: Tutorial 4: A workload consisting of of MPI tasks
 """
 
-# READ: The RADICAL-Pilot documentation: 
+# READ: The RADICAL-Pilot documentation:
 #   http://radicalpilot.readthedocs.org/en/latest
 #
-# Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
+# Try running this example with RADICAL_PILOT_VERBOSE=debug set if
 # you want to see what happens behind the scences!
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def pilot_state_cb (pilot, state):
 
@@ -31,7 +31,7 @@ def pilot_state_cb (pilot, state):
         sys.exit (1)
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def unit_state_cb (unit, state):
 
@@ -47,7 +47,7 @@ def unit_state_cb (unit, state):
         sys.exit(2)
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
@@ -59,7 +59,8 @@ if __name__ == "__main__":
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    session = rp.Session(name=session_name,database_url=os.environ.get('RADICAL_PILOT_DBURL'))
+    session = rp.Session(name=session_name,
+                         dburl=os.environ.get('RADICAL_PILOT_DBURL'))
     print "session id: %s" % session.uid
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
@@ -69,14 +70,14 @@ if __name__ == "__main__":
     try:
 
         # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
-        # 
-        # Change the user name below if you are using a remote resource 
-        # and your username on that resource is different from the username 
-        # on your local machine. 
+        #
+        # Change the user name below if you are using a remote resource
+        # and your username on that resource is different from the username
+        # on your local machine.
         #
         c = rp.Context('userpass')
-        #c.user_id = "tutorial_X"
-        #c.user_pass = "PutYourPasswordHere"
+      # c.user_id = "tutorial_X"
+      # c.user_pass = "PutYourPasswordHere"
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -89,18 +90,19 @@ if __name__ == "__main__":
         pmgr.register_callback(pilot_state_cb)
 
         # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
-        # 
+        #
         # Change the resource below if you want to run on a another resource than
         # the pre-configured tutorial cluster.
-        # You also might have to set the 'project' to your allocation ID if 
+        # You also might have to set the 'project' to your allocation ID if
         # your remote resource requires so.
         #
         # A list of pre-configured resources can be found at:
-        # http://radicalpilot.readthedocs.org/en/latest/machconf.html#preconfigured-resources
-        # 
+        # http://radicalpilot.readthedocs.org/en/latest/ \
+        #        machconf.html#preconfigured-resources
+        #
         pdesc = rp.ComputePilotDescription ()
-        pdesc.resource = "localhost"  # NOTE: This is a "label", not a hostname
-        pdesc.runtime  = 10 # minutes
+        pdesc.resource = "local.localhost"
+        pdesc.runtime  = 10
         pdesc.cores    = 16
         pdesc.cleanup  = True
 
@@ -123,7 +125,7 @@ if __name__ == "__main__":
         print "Registering Compute Pilot with Unit Manager ..."
         umgr.add_pilots(pilot)
 
-        NUMBER_JOBS  = 10 # the total number of cus to run
+        NUMBER_JOBS  = 10  # the total number of cus to run
 
         # submit CUs to pilot job
         cudesc_list = []
@@ -151,8 +153,9 @@ if __name__ == "__main__":
         print "All CUs completed successfully!"
 
         for unit in cu_set:
-            print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-                  % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
+            print '* Task %s - state: %s, exit code: %s, started: %s, ' \
+                  'finished: %s, stdout: %s' % (unit.uid, unit.state,
+                  unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
 
 
     except Exception as e:
@@ -181,5 +184,5 @@ if __name__ == "__main__":
         # all remaining pilots (none in our example).
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
