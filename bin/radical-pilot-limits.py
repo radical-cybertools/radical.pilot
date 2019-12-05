@@ -45,7 +45,7 @@ while True:
         sockets.append(s)
         if len(sockets) >= s_max:
             break
-    except Exception as e:
+    except Exception:
         break
 
 print('sockets: %5d' % len(sockets))
