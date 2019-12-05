@@ -121,7 +121,7 @@ class Agent_0(rpu.Worker):
 
         # TODO: this needs to evaluate the bootstrapper's HOSTPORT
         self._dbs = DBSession(sid=self._cfg.sid, dburl=self._cfg.dburl,
-                              cfg=self._cfg, logger=self._log)
+                              cfg=self._cfg, log=self._log)
 
     # --------------------------------------------------------------------------
     #

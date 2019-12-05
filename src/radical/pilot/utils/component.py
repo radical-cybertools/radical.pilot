@@ -210,7 +210,7 @@ class ComponentManager(object):
                 ccfg.path        = cfg.path
                 ccfg.heartbeat   = cfg.heartbeat
 
-                ccfg.merge(scfg, policy=ru.PRESERVE, logger=self._log)
+                ccfg.merge(scfg, policy=ru.PRESERVE, log=self._log)
 
                 fname = '%s/%s.json' % (cfg.path, ccfg.uid)
                 ccfg.write(fname)

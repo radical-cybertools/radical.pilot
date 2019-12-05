@@ -168,7 +168,7 @@ class Session(rs.Session):
         # create/connect database handle on primary sessions
         try:
             self._dbs = DBSession(sid=self.uid, dburl=dburl,
-                                  cfg=self._cfg, logger=self._log)
+                                  cfg=self._cfg, log=self._log)
 
             py_version_detail = sys.version.replace("\n", " ")
             from . import version_detail as rp_version_detail

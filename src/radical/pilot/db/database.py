@@ -19,7 +19,7 @@ class DBSession(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, sid, dburl, cfg, logger, connect=True):
+    def __init__(self, sid, dburl, cfg, log, connect=True):
         """
         Creates a new session
 
@@ -34,7 +34,7 @@ class DBSession(object):
         """
 
         self._dburl      = dburl
-        self._log        = logger
+        self._log        = log
         self._mongo      = None
         self._db         = None
         self._created    = time.time()
