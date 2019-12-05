@@ -14,25 +14,14 @@ env:
   global:
     - RADICAL_PILOT_DBURL=mongodb://rct:rct_test@one.radical-project.org/rct_test
     - RADICAL_PILOT_TEST_DBNAME=rct_test
-    - LOG=`git log -n 1 | grep Merge`
-    - OLD=`echo $LOG | cut -d ' ' -f2`
-    - NEW=`echo $LOG | cut -d ' ' -f3`
-    - DIFF=`git diff --name-only --diff-filter=b $OLD...$NEW`
-    - DIFF=$(echo $DIFF | grep -o -e '\b[^ ]*.py\b')
-    - LOC=/home/travis/virtualenv/python2.7  # Location where VE is created on travis
-    - CMD_PYTEST="coverage run -m pytest -vvv tests/"
-    - CMD_FLAKE8="echo $DIFF | xargs -n 1 -I XXX test -f XXX && flake8 XXX"
-    - CMD_PYLINT="echo $DIFF | xargs -n 1 -I XXX test -f XXX && pylint XXX"
-    - CMD_FLAKE8_OTHER="flake8 tests/ bin/ examples/"
-    - CMD_PYLINT_OTHER="pylint tests/ bin/ examples/"
     - COVERAGE=false
     - CODECOV_TOKEN="c7e0d993-d31a-4d39-8ffa-07c30ea73e48"
   matrix:
-    - MAIN_CMD=$CMD_PYTEST COVERAGE=true
-    - MAIN_CMD=$CMD_FLAKE8
-    - MAIN_CMD=$CMD_PYLINT
-    - MAIN_CMD=$CMD_FLAKE8_OTHER
-    - MAIN_CMD=$CMD_PYLINT_OTHER
+    - coverage run -m pytest -vvv tests/ COVERAGE=false
+    - tests/bin/run_check.sh flake8 diff
+    - tests/bin/run_check.sh pylint diff
+    - tests/bin/run_check.sh flake8 tests/ bin/ examples/
+    - tests/bin/run_check.sh pylint tests/ bin/ examples/
 
 before_install:
   - uname -a
