@@ -3,10 +3,9 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import sys
 import os
 import radical.pilot as rp
-import radical.utils as ru
+
 
 verbose  = os.environ.get('RADICAL_PILOT_VERBOSE', 'REPORT')
 os.environ['RADICAL_PILOT_VERBOSE'] = verbose
@@ -144,7 +143,6 @@ if __name__ == "__main__":
             print(cu_b.stdout)
 
         print("All Compute Units completed successfully!")
-
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

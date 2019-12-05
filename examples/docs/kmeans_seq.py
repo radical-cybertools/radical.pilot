@@ -67,9 +67,10 @@ if __name__ == "__main__":
     # clause...
     try:
 
-# !!!   you may need to specify a login name below, to be used in the session.
         # Add an ssh identity to the session.
         c = rp.Context('ssh')
+
+# !!!   you may need to specify a login name below, to be used in the session.
       # c.user_id = 'osdcXX'
         session.add_context(c)
 
