@@ -21,18 +21,18 @@ env:
     - DIFF=$(echo $DIFF | grep -o -e '\b[^ ]*.py\b')
     - LOC=/home/travis/virtualenv/python2.7  # Location where VE is created on travis
     - CMD_PYTEST="coverage run -m pytest -vvv tests/"
-    - CMD_FLAKE8="if ! test -z \"$DIFF\"; then flake8 --config=.flake8 $DIFF;else echo 'Nothing to pep8'; fi"
-    - CMD_PYLINT="if ! test -z \"$DIFF\"; then pylint $DIFF;else echo 'Nothing to lint';fi"
-    - CMD_FLAKE8_TESTS="flake8 --config=.flake8 tests/"
-    - CMD_PYLINT_TESTS="pylint tests/"
+    - CMD_FLAKE8="if ! test -z \"$DIFF\"; then test -f $DIFF && flake8 --config=.flake8 $DIFF;else echo 'Nothing to pep8'; fi"
+    - CMD_PYLINT="if ! test -z \"$DIFF\"; then test -f $DIFF && pylint $DIFF;else echo 'Nothing to lint';fi"
+    - CMD_FLAKE8_OTHER="flake8 --config=.flake8 tests/ bin/ exmaples/"
+    - CMD_PYLINT_OTHER="pylint tests/ bin/ examples/"
     - COVERAGE=false
     - CODECOV_TOKEN="c7e0d993-d31a-4d39-8ffa-07c30ea73e48"
   matrix:
     - MAIN_CMD=$CMD_PYTEST COVERAGE=true
     - MAIN_CMD=$CMD_FLAKE8
     - MAIN_CMD=$CMD_PYLINT
-    - MAIN_CMD=$CMD_FLAKE8_TESTS
-    - MAIN_CMD=$CMD_PYLINT_TESTS
+    - MAIN_CMD=$CMD_FLAKE8_OTHER
+    - MAIN_CMD=$CMD_PYLINT_OTHER
 
 before_install:
   - uname -a
