@@ -26,7 +26,6 @@ GPU_THREADS            = 'gpu_threads'
 GPU_THREAD_TYPE        = 'gpu_thread_type'
 
 LFS_PER_PROCESS        = 'lfs_per_process'
-TAG                    = 'tag'
 MEM_PER_PROCESS        = 'mem_per_process'
 
 INPUT_STAGING          = 'input_staging'
