@@ -177,7 +177,7 @@ class Popen(AgentExecutingComponent) :
             cu['stderr'] = ''
 
             cpt = cu['description']['cpu_process_type']
-            gpt = cu['description']['gpu_process_type']  # FIXME: use
+          # gpt = cu['description']['gpu_process_type']  # FIXME: use
 
             # FIXME: this switch is insufficient for mixed units (MPI/OpenMP)
             if cpt == 'MPI': launcher = self._mpi_launcher

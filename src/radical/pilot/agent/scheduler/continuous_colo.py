@@ -3,7 +3,6 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import copy
-import pprint
 import threading as mt
 
 from .continuous import Continuous

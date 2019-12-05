@@ -172,7 +172,7 @@ class LaunchMethod(object):
             # FIXME
             pass
 
-        except Exception as e:
+        except Exception:
             # pylint: disable=protected-access
             # FIXME
             pass

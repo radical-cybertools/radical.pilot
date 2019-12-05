@@ -88,7 +88,7 @@ class Update(rpu.Worker):
             return False
 
         try:
-            res = self._bulk.execute()
+            self._bulk.execute()
 
         except pymongo.errors.OperationFailure as e:
             self._log.exception('bulk exec error: %s' % e.details)

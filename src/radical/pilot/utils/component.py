@@ -1,9 +1,7 @@
 
 import os
-import sys
 import copy
 import time
-import pprint
 
 import threading       as mt
 import radical.utils   as ru

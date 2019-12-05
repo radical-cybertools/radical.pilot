@@ -763,27 +763,27 @@ class AgentSchedulingComponent(rpu.Component):
             # immediately. This assumes that the `tuple_size` is good enough to
             # judge the legality of the resources for the new target unit.
 
-         ## ts = tuple(unit['tuple_size'])
-         ## if self._ts_map.get(ts):
-         ##
-         ##     replace = self._waitpool[self._ts_map[ts].pop()]
-         ##     replace['slots'] = unit['slots']
-         ##     placed.append(placed)
-         ##
-         ##     # unschedule unit A and schedule unit B have the same
-         ##     # timestamp
-         ##     ts = time.time()
-         ##     self._prof.prof('unschedule_stop', uid=unit['uid'],
-         ##                     timestamp=ts)
-         ##     self._prof.prof('schedule_fast', uid=replace['uid'],
-         ##                     timestamp=ts)
-         ##     self.advance(replace, rps.AGENT_EXECUTING_PENDING,
-         ##                  publish=True, push=True)
-         ## else:
-         ##
-         ##     # no replacement unit found: free the slots, and try to
-         ##     # schedule other units of other sizes.
-         ##     to_release.append(unit)
+          # ts = tuple(unit['tuple_size'])
+          # if self._ts_map.get(ts):
+          #
+          #     replace = self._waitpool[self._ts_map[ts].pop()]
+          #     replace['slots'] = unit['slots']
+          #     placed.append(placed)
+          #
+          #     # unschedule unit A and schedule unit B have the same
+          #     # timestamp
+          #     ts = time.time()
+          #     self._prof.prof('unschedule_stop', uid=unit['uid'],
+          #                     timestamp=ts)
+          #     self._prof.prof('schedule_fast', uid=replace['uid'],
+          #                     timestamp=ts)
+          #     self.advance(replace, rps.AGENT_EXECUTING_PENDING,
+          #                  publish=True, push=True)
+          # else:
+          #
+          #     # no replacement unit found: free the slots, and try to
+          #     # schedule other units of other sizes.
+          #     to_release.append(unit)
 
             to_release.append(unit)
 

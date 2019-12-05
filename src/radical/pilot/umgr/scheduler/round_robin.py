@@ -58,7 +58,7 @@ class RoundRobin(UMGRSchedulingComponent):
 
             for pid in pids:
 
-                if not pid in self._pids:
+                if pid not in self._pids:
                     raise ValueError('no such pilot %s' % pid)
 
                 self._pids.remove(pid)
@@ -98,7 +98,7 @@ class RoundRobin(UMGRSchedulingComponent):
                 if pid:
                     # make sure we know this pilot
                     if pid not in self._pilots:
-                        self._log.error('got unit %s for unknown pilot %s', uid, pid)
+                        self._log.error('unknown pilot %s (unit %s)', uid, pid)
                         self.advance(unit, rps.FAILED, publish=True, push=True)
                         continue
 
@@ -148,7 +148,7 @@ class RoundRobin(UMGRSchedulingComponent):
 
                     units_ok.append(unit)
 
-                except Exception as e:
+                except Exception:
                     self._log.exception('unit schedule preparation failed')
                     units_fail.append(unit)
 

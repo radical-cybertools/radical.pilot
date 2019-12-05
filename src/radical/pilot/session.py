@@ -5,7 +5,6 @@ __license__   = "MIT"
 import os
 import sys
 import copy
-import glob
 import threading
 
 import radical.utils                as ru

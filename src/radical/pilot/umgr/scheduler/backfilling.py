@@ -3,16 +3,11 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
-import pprint
 import threading
 
-import radical.utils as ru
-
-from ... import utils     as rpu
 from ... import states    as rps
-from ... import constants as rpc
 
-from .base import UMGRSchedulingComponent, ROLE, ADDED
+from .base import UMGRSchedulingComponent, ADDED
 
 
 # the high water mark determines the percentage of unit oversubscription for the
@@ -65,14 +60,14 @@ class Backfilling(UMGRSchedulingComponent):
             for pid in pids:
                 pilot = self._pilots[pid]['pilot']
                 cores = pilot['description']['cores']
-                hwm   = int(cores * _HWM/100)
+                hwm   = int(cores * _HWM / 100)
                 self._pilots[pid]['info'] = {
                         'cores' : cores,
                         'hwm'   : hwm,
                         'used'  : 0,
-                        'units' : list(), # list of assigned unit IDs
-                        'done'  : list(), # list of executed unit IDs
-                        }
+                        'units' : list(),  # list of assigned unit IDs
+                        'done'  : list(),  # list of executed unit IDs
+                }
 
             # now we can use the pilot
             self._pids += pids
@@ -89,7 +84,7 @@ class Backfilling(UMGRSchedulingComponent):
 
             for pid in pids:
 
-                if not pid in self._pids:
+                if pid not in self._pids:
                     raise ValueError('no such pilot %s' % pid)
 
                 self._pids.remove(pid)
@@ -157,7 +152,7 @@ class Backfilling(UMGRSchedulingComponent):
                     self._log.debug('upd unit  %s no pilot', uid)
                     continue
 
-                if not pid in self._pilots:
+                if pid not in self._pilots:
                     # we don't handle the pilot of this unit
                     self._log.debug('upd unit  %s not handled', uid)
                     continue
@@ -174,7 +169,7 @@ class Backfilling(UMGRSchedulingComponent):
                     self._log.debug('upd unit  %s too early', uid)
                     continue
 
-                if not uid in info['units']:
+                if uid not in info['units']:
                     # this contradicts the unit's assignment
                     self._log.debug('upd unit  %s not in units', uid)
                     self._log.error('bf: unit %s on %s inconsistent', uid, pid)
@@ -242,9 +237,6 @@ class Backfilling(UMGRSchedulingComponent):
         """
 
         with self._pilots_lock, self._wait_lock:
-
-            # units to advance beyond scheduling
-            to_advance = list()
 
             # check if we have pilots to schedule over
             if not self._pids:

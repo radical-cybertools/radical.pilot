@@ -368,10 +368,11 @@ class Continuous(AgentSchedulingComponent):
         for node in self._iterate_nodes():
 
             node_uid  = node['uid']
-            node_name = node['name']
+          # node_name = node['name']
 
-          # self._log.debug(' -------------- next %s : %s', node_uid, node_name)
-          # self._log.debug('req1: %s = %s + %s', req_slots, rem_slots, len(alc_slots))
+          # self._log.debug('next %s : %s', node_uid, node_name)
+          # self._log.debug('req1: %s = %s + %s', req_slots, rem_slots,
+          #                                       len(alc_slots))
 
             # Check if a unit is tagged to use this node.  This means we check
             #   - if a tag exists

@@ -845,7 +845,7 @@ class UnitManager(rpu.Component):
         self._rep.idle(mode='stop')
 
         if to_check: self._rep.warn('>>timeout\n')
-        else       : self._rep.ok(  '>>ok\n')
+        else       : self._rep.ok  ('>>ok\n')
 
         # grab the current states to return
         state = None

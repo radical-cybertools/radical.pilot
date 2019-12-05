@@ -6,8 +6,6 @@ __license__   = "MIT"
 import radical.utils as ru
 
 from ... import utils     as rpu
-from ... import states    as rps
-from ... import constants as rpc
 
 
 # ------------------------------------------------------------------------------
@@ -53,7 +51,7 @@ class UMGRStagingInputComponent(rpu.Component):
             return impl
 
         except KeyError:
-            raise ValueError("UMGRStagingInputComponent '%s' unknown or defunct" % name)
+            raise ValueError("UMGRStagingInputComponent '%s' defunct" % name)
 
 
 # ------------------------------------------------------------------------------

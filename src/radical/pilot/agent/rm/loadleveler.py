@@ -24,7 +24,7 @@ class LoadLeveler(LRMS):
     #
     # BG/Q Topology of Nodes within a Board
     #
-    BGQ_BOARD_TOPO = { 0: {'A': 29, 'B':  3, 'C':  1, 'D': 12, 'E':  7},
+    BGQ_BOARD_TOPO =  {0: {'A': 29, 'B':  3, 'C':  1, 'D': 12, 'E':  7},
                        1: {'A': 28, 'B':  2, 'C':  0, 'D': 13, 'E':  6},
                        2: {'A': 31, 'B':  1, 'C':  3, 'D': 14, 'E':  5},
                        3: {'A': 30, 'B':  0, 'C':  2, 'D': 15, 'E':  4},
@@ -115,18 +115,17 @@ class LoadLeveler(LRMS):
     #
     # TODO: Is this independent of the mapping?
     #
-    BGQ_BLOCK_STARTING_CORNERS = { 0:  0,
+    BGQ_BLOCK_STARTING_CORNERS =  {0:  0,
                                    4: 29,
                                    8:  4,
-                                  12: 25
-                                 }
+                                  12: 25}
 
 
     # --------------------------------------------------------------------------
     #
     # BG/Q Topology of Boards within a Midplane
     #
-    BGQ_MIDPLANE_TOPO = { 0: {'A':  4, 'B':  8, 'C':  1, 'D':  2},
+    BGQ_MIDPLANE_TOPO =  {0: {'A':  4, 'B':  8, 'C':  1, 'D':  2},
                           1: {'A':  5, 'B':  9, 'C':  0, 'D':  3},
                           2: {'A':  6, 'B': 10, 'C':  3, 'D':  0},
                           3: {'A':  7, 'B': 11, 'C':  2, 'D':  1},
