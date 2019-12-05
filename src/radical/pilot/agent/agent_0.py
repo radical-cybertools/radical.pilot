@@ -502,7 +502,7 @@ class Agent_0(rpu.Worker):
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units',
                                                   'arg' : arg})
             else:
-                self._log.error('could not interpret cmd "%s" - ignore', cmd)
+                self._log.warn('could not interpret cmd "%s" - ignore', cmd)
 
         return True
 

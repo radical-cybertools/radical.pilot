@@ -23,7 +23,6 @@ from ...  import constants     as rpc
 from .base import PMGRLaunchingComponent
 
 from ...staging_directives import complete_url
-from ...staging_directives import TRANSFER, COPY, LINK, MOVE
 
 
 # ------------------------------------------------------------------------------
@@ -176,14 +175,14 @@ class Default(PMGRLaunchingComponent):
             src    = sd['source']
             tgt    = sd['target']
 
-            assert(action in [COPY, LINK, MOVE, TRANSFER])
+            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
 
             self._prof.prof('staging_in_start', uid=pid, msg=did)
 
             src = complete_url(src, src_context, self._log)
             tgt = complete_url(tgt, tgt_context, self._log)
 
-            if action in [COPY, LINK, MOVE]:
+            if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 self._prof.prof('staging_in_fail', uid=pid, msg=did)
                 raise ValueError("invalid action '%s' on pilot level" % action)
 
@@ -251,14 +250,14 @@ class Default(PMGRLaunchingComponent):
             src    = sd['source']
             tgt    = sd['target']
 
-            assert(action in [COPY, LINK, MOVE, TRANSFER])
+            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
 
             self._prof.prof('staging_out_start', uid=pid, msg=did)
 
             src = complete_url(src, src_context, self._log)
             tgt = complete_url(tgt, tgt_context, self._log)
 
-            if action in [COPY, LINK, MOVE]:
+            if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 self._prof.prof('staging_out_fail', uid=pid, msg=did)
                 raise ValueError("invalid action '%s' on pilot level" % action)
 
