@@ -468,7 +468,7 @@ class Component(object):
 
         sync.set()
 
-        while True:
+        while not self._term.is_set():
             try:
                 ret = self.work_cb()
                 if not ret:
@@ -612,6 +612,9 @@ class Component(object):
         # call component level finalize, before we tear down channels
         self.finalize()
 
+        for thread in self._threads.values():
+            thread.stop()
+
         self._log.debug('%s close prof', self.uid)
         try:
             self._prof.prof('component_final')
@@ -637,6 +640,7 @@ class Component(object):
         self._log.info('stop %s (%s : %s) [%s]', self.uid, os.getpid(),
                        ru.get_thread_name(), ru.get_caller_name())
 
+        self._term.set()
         self._finalize()
 
 
