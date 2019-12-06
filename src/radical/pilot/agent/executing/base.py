@@ -14,12 +14,12 @@ from ... import utils     as rpu
 EXECUTING_NAME_POPEN   = "POPEN"
 EXECUTING_NAME_SHELL   = "SHELL"
 EXECUTING_NAME_SHELLFS = "SHELLFS"
-EXECUTING_NAME_ABDS    = "ABDS"
 EXECUTING_NAME_SLEEP   = "SLEEP"
 EXECUTING_NAME_FUNCS   = "FUNCS"
 
 # archived
 #
+# EXECUTING_NAME_ABDS    = "ABDS"
 # EXECUTING_NAME_ORTE    = "ORTE"
 
 
@@ -62,10 +62,10 @@ class AgentExecutingComponent(rpu.Component):
         from .popen    import Popen
         from .shell    import Shell
         from .shell_fs import ShellFS
-        from .abds     import ABDS
         from .funcs    import FUNCS
         from .sleep    import Sleep
 
+      # from .abds     import ABDS
       # from .orte     import ORTE
 
         try:
@@ -73,9 +73,9 @@ class AgentExecutingComponent(rpu.Component):
                     EXECUTING_NAME_POPEN  : Popen,
                     EXECUTING_NAME_SHELL  : Shell,
                     EXECUTING_NAME_SHELLFS: ShellFS,
-                    EXECUTING_NAME_ABDS   : ABDS,
                     EXECUTING_NAME_SLEEP  : Sleep,
                     EXECUTING_NAME_FUNCS  : FUNCS,
+                  # EXECUTING_NAME_ABDS   : ABDS,
                   # EXECUTING_NAME_ORTE   : ORTE,
                    }[name]
 
