@@ -5,7 +5,6 @@ __license__   = "MIT"
 
 import os
 import tempfile
-import threading     as mt
 import tarfile
 
 import radical.utils as ru
@@ -58,7 +57,7 @@ class Default(UMGRStagingInputComponent):
         self._fs_cache    = dict()
         self._js_cache    = dict()
         self._pilots      = dict()
-        self._pilots_lock = mt.RLock()
+        self._pilots_lock = ru.RLock()
 
         self.register_input(rps.UMGR_STAGING_INPUT_PENDING,
                             rpc.UMGR_STAGING_INPUT_QUEUE, self.work)

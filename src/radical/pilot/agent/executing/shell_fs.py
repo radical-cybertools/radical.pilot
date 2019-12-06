@@ -7,6 +7,8 @@ import os
 import threading
 import subprocess    as sp
 
+import radical.utils as ru
+
 from ... import states    as rps
 from ... import constants as rpc
 
@@ -114,10 +116,10 @@ class ShellFS(AgentExecutingComponent):
 
         # the registry keeps track of units to watch
         self._registry      = dict()
-        self._registry_lock = threading.RLock()
+        self._registry_lock = ru.RLock()
 
         self._to_cancel  = list()
-        self._cancel_lock    = threading.RLock()
+        self._cancel_lock    = ru.RLock()
 
         self._cached_events = list()  # keep monitoring events for pid's which
                                       # are not yet known

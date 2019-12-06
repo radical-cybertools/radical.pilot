@@ -114,7 +114,7 @@ class ComponentManager(object):
         #       terminate and suicidally kill the very process it is living in.
         #       Make sure all required cleanup is done at this point!
 
-        return False
+        return None
 
 
     # --------------------------------------------------------------------------

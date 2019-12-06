@@ -63,7 +63,7 @@ class FUNCS(AgentExecutingComponent) :
                                     rpu.QUEUE_OUTPUT, self._cfg,
                                     addr_res['addr_out'])
 
-        self._cancel_lock    = mt.RLock()
+        self._cancel_lock    = ru.RLock()
         self._cus_to_cancel  = list()
         self._cus_to_watch   = list()
         self._watch_queue    = queue.Queue ()

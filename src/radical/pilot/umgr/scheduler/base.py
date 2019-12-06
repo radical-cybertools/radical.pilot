@@ -4,7 +4,6 @@ __license__   = "MIT"
 
 
 import os
-import threading
 
 import radical.utils as ru
 
@@ -50,11 +49,11 @@ class UMGRSchedulingComponent(rpu.Component):
 
         self._umgr = self._cfg.owner
 
-        self._early       = dict()             # early-bound units, pid-sorted
-        self._pilots      = dict()             # dict of known pilots
-        self._pilots_lock = threading.RLock()  # lock on the above dict
-        self._units       = dict()             # dict of scheduled unit IDs
-        self._units_lock  = threading.RLock()  # lock on the above dict
+        self._early       = dict()      # early-bound units, pid-sorted
+        self._pilots      = dict()      # dict of known pilots
+        self._pilots_lock = ru.RLock()  # lock on the above dict
+        self._units       = dict()      # dict of scheduled unit IDs
+        self._units_lock  = ru.RLock()  # lock on the above dict
 
         # configure the scheduler instance
         self._configure()

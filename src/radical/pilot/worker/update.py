@@ -6,8 +6,6 @@ __license__   = "MIT"
 import time
 import pymongo
 
-import threading         as mt
-
 import radical.utils     as ru
 
 from .. import utils     as rpu
@@ -52,7 +50,7 @@ class Update(rpu.Worker):
         self._bulk       = self._coll.initialize_ordered_bulk_op()
         self._last       = time.time()        # time of last bulk push
         self._uids       = list()             # list of collected uids
-        self._lock       = mt.Lock()          # protect _bulk
+        self._lock       = ru.Lock()          # protect _bulk
 
         self._bulk_time = self._cfg.bulk_time
         self._bulk_size = self._cfg.bulk_size

@@ -111,8 +111,9 @@ class Agent_0(rpu.Worker):
     def _hb_term_cb(self):
 
         self._cmgr.close()
-
         self._log.warn('=== hb termination')
+
+        return None
 
 
     # --------------------------------------------------------------------------

@@ -10,7 +10,6 @@ import time
 import pprint
 import shutil
 import tempfile
-import threading
 
 import radical.saga            as rs
 import radical.saga.filesystem as rsfs
@@ -60,14 +59,14 @@ class Default(PMGRLaunchingComponent):
         # we don't really have an output queue, as we pass control over the
         # pilot jobs to the resource management system (RM).
 
-        self._pilots        = dict()             # dict for all known pilots
-        self._pilots_lock   = threading.RLock()  # lock on maipulating the above
-        self._checking      = list()             # pilots to check state on
-        self._check_lock    = threading.RLock()  # lock on maipulating the above
-        self._saga_fs_cache = dict()             # cache of saga directories
-        self._saga_js_cache = dict()             # cache of saga job services
-        self._sandboxes     = dict()             # cache of resource sandbox URLs
-        self._cache_lock    = threading.RLock()  # lock for cache
+        self._pilots        = dict()      # dict for all known pilots
+        self._pilots_lock   = ru.RLock()  # lock on maipulating the above
+        self._checking      = list()      # pilots to check state on
+        self._check_lock    = ru.RLock()  # lock on maipulating the above
+        self._saga_fs_cache = dict()      # cache of saga directories
+        self._saga_js_cache = dict()      # cache of saga job services
+        self._sandboxes     = dict()      # cache of resource sandbox URLs
+        self._cache_lock    = ru.RLock()  # lock for cache
 
         self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
         self._root_dir      = "%s/../../"   % self._mod_dir

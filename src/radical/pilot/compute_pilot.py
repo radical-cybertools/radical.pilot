@@ -3,10 +3,10 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import os
 import sys
 import copy
 import time
-import threading
 
 import radical.utils as ru
 
@@ -72,7 +72,7 @@ class ComputePilot(object):
         self._pilot_dict = dict()
         self._callbacks  = dict()
         self._cache      = dict()    # cache of SAGA dir handles
-        self._cb_lock    = threading.RLock()
+        self._cb_lock    = ru.RLock()
 
         # pilot failures can trigger app termination
         self._exit_on_error = self._descr.get('exit_on_error')
@@ -147,10 +147,10 @@ class ComputePilot(object):
             self._log.error("[Callback]: pilot '%s' failed - exit", self.uid)
 
             # There are different ways to tell main...
-          # ru.cancel_main_thread('int')
+            ru.cancel_main_thread('int')
           # raise RuntimeError('pilot %s failed - fatal!' % self.uid)
           # os.kill(os.getpid())
-            sys.exit()
+          # sys.exit()
 
 
     # --------------------------------------------------------------------------
@@ -162,6 +162,8 @@ class ComputePilot(object):
 
         Return True if state changed, False otherwise
         '''
+
+        self._log.debug('==== update %s', pilot_dict['uid'])
 
         if pilot_dict['uid'] != self.uid:
             self._log.error('invalid uid: %s / %s', pilot_dict['uid'], self.uid)
@@ -190,12 +192,16 @@ class ComputePilot(object):
         # keep all information around
         self._pilot_dict = copy.deepcopy(pilot_dict)
 
+        self._log.debug('==== call callbacks')
+
         # invoke pilot specific callbacks
         # FIXME: this iteration needs to be thread-locked!
         for _,cb_val in self._callbacks[rpc.PILOT_STATE].items():
 
             cb      = cb_val['cb']
             cb_data = cb_val['cb_data']
+
+            self._log.debug('==== call %s', cb)
 
             self._log.debug('%s calls cb %s', self.uid, cb)
 

@@ -14,6 +14,8 @@ import threading as mt
 import traceback
 import subprocess
 
+import radical.utils as ru
+
 from .... import pilot     as rp
 from ...  import utils     as rpu
 from ...  import states    as rps
@@ -51,7 +53,7 @@ class Popen(AgentExecutingComponent) :
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
-        self._cancel_lock    = mt.RLock()
+        self._cancel_lock    = ru.RLock()
         self._cus_to_cancel  = list()
         self._cus_to_watch   = list()
         self._watch_queue    = queue.Queue ()

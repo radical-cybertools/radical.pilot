@@ -3,9 +3,10 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
-import threading
 
-from ... import states    as rps
+import radical.utils   as ru
+
+from ... import states as rps
 
 from .base import UMGRSchedulingComponent, ADDED
 
@@ -38,8 +39,8 @@ class Backfilling(UMGRSchedulingComponent):
     #
     def _configure(self):
 
-        self._wait_pool = dict()             # set of unscheduled units
-        self._wait_lock = threading.RLock()  # look on the above set
+        self._wait_pool = dict()      # set of unscheduled units
+        self._wait_lock = ru.RLock()  # look on the above set
 
         self._pids = list()
         self._idx  = 0

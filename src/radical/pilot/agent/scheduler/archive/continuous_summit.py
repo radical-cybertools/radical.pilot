@@ -8,8 +8,6 @@ import pprint
 import inspect
 import logging
 
-import threading     as mt
-
 import radical.utils as ru
 
 from ...   import constants as rpc
@@ -152,8 +150,8 @@ class ContinuousSummit(AgentSchedulingComponent):
 
         # create and initialize the wait pool
         self._wait_pool = list()      # pool of waiting units
-        self._wait_lock = mt.RLock()  # look on the above pool
-        self._slot_lock = mt.RLock()  # lock slot allocation/deallocation
+        self._wait_lock = ru.RLock()  # look on the above pool
+        self._slot_lock = ru.RLock()  # lock slot allocation/deallocation
 
         # configure the scheduler instance
         self._configure()

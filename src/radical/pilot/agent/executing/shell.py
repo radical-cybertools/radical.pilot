@@ -7,6 +7,8 @@ import os
 import threading
 import traceback
 
+import radical.utils as ru
+
 from ... import states    as rps
 from ... import constants as rpc
 
@@ -115,10 +117,10 @@ class Shell(AgentExecutingComponent):
         # spawner process ID.  As the registry is shared between the spawner and
         # watcher thread, we use a lock while accessing it.
         self._registry      = dict()
-        self._registry_lock = threading.RLock()
+        self._registry_lock = ru.RLock()
 
         self._cus_to_cancel  = list()
-        self._cancel_lock    = threading.RLock()
+        self._cancel_lock    = ru.RLock()
 
         self._cached_events = list()  # keep monitoring events for pid's which
                                       # are not yet known

@@ -2,9 +2,9 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import threading
+import radical.utils    as ru
 
-from ... import states    as rps
+from ... import states as rps
 
 from .base import UMGRSchedulingComponent
 
@@ -24,8 +24,8 @@ class RoundRobin(UMGRSchedulingComponent):
     #
     def _configure(self):
 
-        self._wait_pool = list()             # set of unscheduled units
-        self._wait_lock = threading.RLock()  # look on the above set
+        self._wait_pool = list()      # set of unscheduled units
+        self._wait_lock = ru.RLock()  # look on the above set
 
         self._pids = list()
         self._idx  = 0

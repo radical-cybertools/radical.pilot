@@ -3,7 +3,8 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import copy
-import threading as mt
+
+import radical.utils as ru
 
 from .continuous import Continuous
 
@@ -51,7 +52,7 @@ class ContinuousColo(Continuous):
         #      'uids': [...]}, # ids    of units to be scheduled
         #   }
 
-        self._lock      = mt.RLock()   # lock on the bags
+        self._lock      = ru.RLock()   # lock on the bags
         self._units     = dict()       # unit registry (we use uids otherwise)
         self._unordered = list()       # IDs of units which are not colocated
         self._bags      = dict()       # nothing has run, yet

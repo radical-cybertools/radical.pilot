@@ -79,9 +79,9 @@ class PilotManager(rpu.Component):
 
         self._session     = session
         self._pilots      = dict()
-        self._pilots_lock = mt.RLock()
+        self._pilots_lock = ru.RLock()
         self._callbacks   = dict()
-        self._pcb_lock    = mt.RLock()
+        self._pcb_lock    = ru.RLock()
         self._terminate   = mt.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
@@ -127,7 +127,7 @@ class PilotManager(rpu.Component):
         # directives
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._staging_ack_cb)
         self._active_sds = dict()
-        self._sds_lock = mt.Lock()
+        self._sds_lock   = ru.Lock()
 
         # register the state notification pull cb
         # FIXME: we may want to have the frequency configurable
@@ -274,7 +274,10 @@ class PilotManager(rpu.Component):
         # FIXME: this is a big and frequently invoked lock
         pilot_dicts = self._session._dbs.get_pilots(pmgr_uid=self.uid)
 
+
         for pilot_dict in pilot_dicts:
+            self._log.debug('==== state pulled: %s: %s', pilot_dict['uid'],
+                                                         pilot_dict['state'])
             if not self._update_pilot(pilot_dict, publish=True):
                 return False
 
@@ -304,6 +307,9 @@ class PilotManager(rpu.Component):
         for thing in things:
 
             if 'type' in thing and thing['type'] == 'pilot':
+
+                self._log.debug('==== state push: %s: %s', thing['uid'],
+                                                           thing['state'])
 
                 # we got the state update from the state callback - don't
                 # publish it again
