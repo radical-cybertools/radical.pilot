@@ -16,29 +16,34 @@
     "db_poll_sleeptime" : 1.0,
 
     "bridges" : {
-        "umgr_staging_input_queue"  : {"log_level" : "error",
+        "umgr_staging_input_queue"  : {"kind"      : "queue",
+                                       "log_level" : "error",
                                        "stall_hwm" : 1,
                                        "bulk_size" : 0},
-        "umgr_scheduling_queue"     : {"log_level" : "error",
+        "umgr_scheduling_queue"     : {"kind"      : "queue",
+                                       "log_level" : "error",
                                        "stall_hwm" : 1,
                                        "bulk_size" : 0},
-        "umgr_staging_output_queue" : {"log_level" : "error",
+        "umgr_staging_output_queue" : {"kind"      : "queue",
+                                       "log_level" : "error",
                                        "stall_hwm" : 1,
                                        "bulk_size" : 0},
 
-        "umgr_unschedule_pubsub"    : {"log_level" : "error",
+        "umgr_unschedule_pubsub"    : {"kind"      : "pubsub",
+                                       "log_level" : "error",
                                        "stall_hwm" : 1,
                                        "bulk_size" : 0},
-        "umgr_reschedule_pubsub"    : {"log_level" : "error",
+        "umgr_reschedule_pubsub"    : {"kind"      : "pubsub",
+                                       "log_level" : "error",
                                        "stall_hwm" : 1,
                                        "bulk_size" : 0}
     },
 
     "components" : {
         # how many instances of the respective components should be started
-        "UMGRStagingInputComponent"  : { "count" : 1},
-        "UMGRSchedulingComponent"    : { "count" : 1},
-        "UMGRStagingOutputComponent" : { "count" : 1}
+        "umgr_staging_input"  : { "count" : 1},
+        "umgr_scheduling"     : { "count" : 1},
+        "umgr_staging_output" : { "count" : 1}
     }
 }
 

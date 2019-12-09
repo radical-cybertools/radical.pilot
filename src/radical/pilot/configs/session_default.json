@@ -3,24 +3,36 @@
 # specified.  It contains the minimal set of settings required for
 # a functional rp session, both on the client and on the agent side.
 {
-    # fallback db url
-    "default_dburl"      : "mongodb://rct:rct_test@two.radical-project.org/rct_test",
+    "default_dburl": "mongodb://rct:rct_test@two.radical-project.org/rct_test",
+    "dburl"        : "${RADICAL_PILOT_DBURL}",
+    "session_base" : "${RADICAL_PILOT_SESSION_BASE:$PWD}",
+    "record"       : "${RADICAL_PILOT_SESSION_RECORD}",
+    "bulk_time"    : 1.0,
+    "bulk_size"    : 1024,
+
+    "heartbeat"    : {
+        "interval" : 0.5,
+        "timeout"  : 1.0
+    },
 
     "bridges" : {
-        "log_pubsub"     : {"log_level" : "error",
+        "log_pubsub"     : {"kind"      : "pubsub",
+                            "log_level" : "error",
                             "stall_hwm" : 1,
                             "bulk_size" : 0},
-        "state_pubsub"   : {"log_level" : "error",
+        "state_pubsub"   : {"kind"      : "pubsub",
+                            "log_level" : "error",
                             "stall_hwm" : 1,
                             "bulk_size" : 0},
-        "control_pubsub" : {"log_level" : "error",
+        "control_pubsub" : {"kind"      : "pubsub",
+                            "log_level" : "error",
                             "stall_hwm" : 1,
                             "bulk_size" : 0}
     },
 
     "components" : {
         # how many instances of the respective components should be started
-        "UpdateWorker" : {
+        "update" : {
             "count" : 1
         }
     }

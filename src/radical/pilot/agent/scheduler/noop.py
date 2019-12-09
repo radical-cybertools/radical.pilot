@@ -3,20 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 
-import os
-import inspect
-import logging
-import pprint
-
-
-import threading     as mt
-
-import radical.utils as ru
-
-from ...   import constants as rpc
 from .base import AgentSchedulingComponent
-
-import logging  # delayed import for atfork
 
 
 # ------------------------------------------------------------------------------

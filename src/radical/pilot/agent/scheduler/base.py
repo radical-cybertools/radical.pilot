@@ -24,11 +24,11 @@ SCHEDULER_NAME_CONTINUOUS_ORDERED = "CONTINUOUS_ORDERED"
 SCHEDULER_NAME_CONTINUOUS_COLO    = "CONTINUOUS_COLO"
 SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
 SCHEDULER_NAME_HOMBRE             = "HOMBRE"
-SCHEDULER_NAME_SPARK              = "SPARK"
-SCHEDULER_NAME_TORUS              = "TORUS"
-SCHEDULER_NAME_YARN               = "YARN"
 SCHEDULER_NAME_NOOP               = "NOOP"
+SCHEDULER_NAME_TORUS              = "TORUS"
 
+# SCHEDULER_NAME_YARN               = "YARN"
+# SCHEDULER_NAME_SPARK              = "SPARK"
 # SCHEDULER_NAME_CONTINUOUS_SUMMIT  = "CONTINUOUS_SUMMIT"
 # SCHEDULER_NAME_CONTINUOUS_FIFO    = "CONTINUOUS_FIFO"
 # SCHEDULER_NAME_SCATTERED          = "SCATTERED"
@@ -222,16 +222,16 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    # Once the component process is spawned, `initialize_child()` will be called
+    # Once the component process is spawned, `initialize()` will be called
     # before control is given to the component's main loop.
     #
-    def initialize_child(self):
+    def initialize(self):
 
         # The scheduler needs the LRMS information which have been collected
         # during agent startup.  We dig them out of the config at this point.
         #
         # NOTE: this information is insufficient for the torus scheduler!
-        self._pilot_id            = self._cfg['pilot_id']
+        self._pid                 = self._cfg['pid']
         self._lrms_info           = self._cfg['lrms_info']
         self._lrms_lm_info        = self._cfg['lrms_info']['lm_info']
         self._lrms_node_list      = self._cfg['lrms_info']['node_list']
@@ -268,7 +268,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
-        self.nodes = []
+        self.nodes = list()
         for node, node_uid in self._lrms_node_list:
             self.nodes.append({'uid'  : node_uid,
                                'name' : node,
@@ -298,6 +298,14 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def finalize(self):
+
+        self._p.kill()
+        self._p.terminate()
+
+
+    # --------------------------------------------------------------------------
+    #
     def _configure(self):
 
         raise NotImplementedError('deriving classes must implement this')
@@ -321,10 +329,10 @@ class AgentSchedulingComponent(rpu.Component):
         from .continuous         import Continuous
         from .hombre             import Hombre
         from .torus              import Torus
-        from .yarn               import Yarn
-        from .spark              import Spark
         from .noop               import Noop
 
+      # from .yarn               import Yarn
+      # from .spark              import Spark
       # from .continuous_summit  import ContinuousSummit
       # from .continuous_fifo    import ContinuousFifo
       # from .scattered          import Scattered
@@ -337,10 +345,10 @@ class AgentSchedulingComponent(rpu.Component):
                 SCHEDULER_NAME_CONTINUOUS         : Continuous,
                 SCHEDULER_NAME_HOMBRE             : Hombre,
                 SCHEDULER_NAME_TORUS              : Torus,
-                SCHEDULER_NAME_YARN               : Yarn,
-                SCHEDULER_NAME_SPARK              : Spark,
                 SCHEDULER_NAME_NOOP               : Noop,
 
+              # SCHEDULER_NAME_YARN               : Yarn,
+              # SCHEDULER_NAME_SPARK              : Spark,
               # SCHEDULER_NAME_CONTINUOUS_SUMMIT  : ContinuousSummit,
               # SCHEDULER_NAME_CONTINUOUS_FIFO    : ContinuousFifo,
               # SCHEDULER_NAME_SCATTERED          : Scattered,
@@ -465,7 +473,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         self._prof.prof('tsmap_start')
 
-        for uid,task in self._waitpool.iteritems():
+        for uid,task in self._waitpool.items():
             ts = task['tuple_size']
             if ts not in self._ts_map:
                 self._ts_map[ts] = set()
@@ -506,8 +514,7 @@ class AgentSchedulingComponent(rpu.Component):
         '''
 
         # unify handling of bulks / non-bulks
-        if not isinstance(units, list):
-            units = [units]
+        units = ru.as_list(units)
 
         # advance state, publish state change, and push to scheduler process
         self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
@@ -640,7 +647,7 @@ class AgentSchedulingComponent(rpu.Component):
         # We define `tuple_size` as
         #     `(cpu_processes + gpu_processes) * cpu_threads`
         #
-        tasks = self._waitpool.values()
+        tasks = list(self._waitpool.values())
         tasks.sort(key=lambda x:
                 (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
                  reverse=True)
@@ -767,7 +774,7 @@ class AgentSchedulingComponent(rpu.Component):
                 to_release.append(unit)
 
             else:
-           
+
                 # cycle through the matching ts-candidates.  Some
                 # may be invalid by now, having been scheduled via
                 # `schedule_waitlist`, but if we find any, break the
@@ -784,7 +791,7 @@ class AgentSchedulingComponent(rpu.Component):
                     replace   = self._waitpool.get(candidate)
 
                 if not replace:
-           
+
                     # no replacement unit found: free the slots, and try to
                     # schedule other units of other sizes.
                     to_release.append(unit)
@@ -794,17 +801,16 @@ class AgentSchedulingComponent(rpu.Component):
                     # found one - swap the slots and push out to executor
                     replace['slots'] = unit['slots']
                     placed.append(placed)
-           
+
                     # unschedule unit A and schedule unit B have the same
                     # timestamp
                     ts = time.time()
-                    self._prof.prof('unschedule_stop', uid=unit['uid'],
-                                    timestamp=ts)
-                    self._prof.prof('schedule_fast', uid=replace['uid'],
-                                    timestamp=ts)
+                    self._prof.prof('unschedule_stop', uid=unit['uid'], ts=ts)
+                    self._prof.prof('schedule_fast', uid=replace['uid'], ts=ts)
                     self.advance(replace, rps.AGENT_EXECUTING_PENDING,
-                                 publish=True, push=True)
+                                          publish=True, push=True)
 
+            to_release.append(unit)
 
         if not to_release:
             if not to_unschedule:
@@ -823,7 +829,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # if previously waiting units were placed, remove them from the waitpool
         if placed:
-            self._waitpool = {task['uid'] : task 
+            self._waitpool = {task['uid'] : task
                                             for task in self._waitpool.values()
                                             if  task['uid'] not in placed}
 

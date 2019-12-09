@@ -572,7 +572,7 @@
                                          "module load gcc",
                                          "module load mpi/gcc_openmpi",
                                          "module load slurm",
-                                         "module load python2"
+                                         "module load anaconda3"
                                         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/home", "/pylon1", "/pylon5"],
