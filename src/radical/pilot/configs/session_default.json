@@ -11,23 +11,23 @@
     "bulk_size"    : 1024,
 
     "heartbeat"    : {
-        "interval" : 0.5,
-        "timeout"  : 1.0
+        "interval" :  3.0,
+        "timeout"  : 10.0
     },
 
     "bridges" : {
         "log_pubsub"     : {"kind"      : "pubsub",
                             "log_level" : "error",
                             "stall_hwm" : 1,
-                            "bulk_size" : 0},
+                            "bulk_size" : 1024},
         "state_pubsub"   : {"kind"      : "pubsub",
                             "log_level" : "error",
                             "stall_hwm" : 1,
-                            "bulk_size" : 0},
+                            "bulk_size" : 1024},
         "control_pubsub" : {"kind"      : "pubsub",
                             "log_level" : "error",
                             "stall_hwm" : 1,
-                            "bulk_size" : 0}
+                            "bulk_size" : 1024}
     },
 
     "components" : {
