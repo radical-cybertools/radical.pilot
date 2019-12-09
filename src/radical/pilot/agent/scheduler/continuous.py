@@ -3,9 +3,6 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 
-import logging
-import pprint
-
 import math as m
 
 from ...   import constants as rpc
@@ -146,20 +143,13 @@ class Continuous(AgentSchedulingComponent):
         # note that the first index is yielded twice, so that the respecitve
         # node can function as first and last node in an allocation.
 
-      # self._log.debug('0 iterate [%d]', self._node_offset)
         iterator_count = 0
 
         while iterator_count < len(self.nodes):
-          # self._log.debug('1 iterate [%d] [%d] [%d]', self._node_offset,
-          #                 iterator_count, len(self.nodes))
             yield self.nodes[self._node_offset]
             iterator_count    += 1
             self._node_offset += 1
-          # self._log.debug('2 iterate [%d] [%d] [%d]', self._node_offset,
-          #                 iterator_count, len(self.nodes))
             self._node_offset  = self._node_offset % len(self.nodes)
-          # self._log.debug('3 iterate [%d] [%d] [%d]', self._node_offset,
-          #                 iterator_count, len(self.nodes))
 
 
     # --------------------------------------------------------------------------
@@ -378,10 +368,11 @@ class Continuous(AgentSchedulingComponent):
         for node in self._iterate_nodes():
 
             node_uid  = node['uid']
-            node_name = node['name']
+          # node_name = node['name']
 
-          # self._log.debug(' -------------- next %s : %s', node_uid, node_name)
-          # self._log.debug('req1: %s = %s + %s', req_slots, rem_slots, len(alc_slots))
+          # self._log.debug('next %s : %s', node_uid, node_name)
+          # self._log.debug('req1: %s = %s + %s', req_slots, rem_slots,
+          #                                       len(alc_slots))
 
             # Check if a unit is tagged to use this node.  This means we check
             #   - if a tag exists

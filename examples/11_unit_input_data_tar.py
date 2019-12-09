@@ -20,7 +20,7 @@ import radical.utils as ru
 # ------------------------------------------------------------------------------
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
@@ -63,7 +63,7 @@ if __name__ == '__main__':
                 'queue'         : config[resource]['queue'],
                 'access_schema' : config[resource]['schema'],
                 'cores'         : config[resource]['cores'],
-                }
+        }
         pdesc = rp.ComputePilotDescription(pd_init)
 
         # Launch the pilot.
@@ -118,9 +118,9 @@ if __name__ == '__main__':
 
         report.info('\n')
         for unit in units:
-            report.plain('  * %s: %s, exit: %3s, out: %s\n' \
-                    % (unit.uid, unit.state[:4],
-                        unit.exit_code, unit.stdout.strip()[:35]))
+            report.plain('  * %s: %s, exit: %3s, out: %s\n'
+                        % (unit.uid, unit.state[:4],
+                           unit.exit_code, unit.stdout.strip()[:35]))
 
         # delete the sample input files
         os.system('rm input.dat')
@@ -131,7 +131,7 @@ if __name__ == '__main__':
         report.error('caught Exception: %s\n' % e)
         raise
 
-    except (KeyboardInterrupt, SystemExit) as e:
+    except (KeyboardInterrupt, SystemExit):
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
@@ -147,5 +147,5 @@ if __name__ == '__main__':
     report.header()
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 

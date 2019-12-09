@@ -35,8 +35,8 @@ if __name__ == '__main__':
         state = sys.argv[2]
 
         cfg      = ru.read_json(json)
-        sid      = cfg['session_id']
-        pid      = cfg['pilot_id']
+        sid      = cfg['sid']
+        pid      = cfg['pid']
         dburl    = cfg['dburl']
         hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
 

@@ -96,7 +96,7 @@ def get_version(mod_root):
             'git-error'      in version_detail or \
             'not-a-git-repo' in version_detail or \
             'not-found'      in version_detail or \
-            'fatal'          in version_detail    :
+            'fatal'          in version_detail :
             version = version_base
         elif '@' not in version_base:
             version = '%s-%s' % (version_base, version_detail)
@@ -172,12 +172,6 @@ class RunTwine(Command):
 
 # ------------------------------------------------------------------------------
 #
-if  sys.hexversion <= 0x03050000:
-    raise RuntimeError('SETUP ERROR: %s requires Python 3.5 or higher' % name)
-
-
-# ------------------------------------------------------------------------------
-#
 # This copies the contents like examples/ dir under sys.prefix/share/$name
 # It needs the MANIFEST.in entries to work.
 base = 'share/%s' % name
@@ -227,9 +221,11 @@ setup_args = {
     'packages'           : find_packages('src'),
     'package_dir'        : {'': 'src'},
     'scripts'            : [
+                            'bin/radical-pilot-bridge',
                             'bin/radical-pilot-bson2json',
                             'bin/radical-pilot-cleanup',
                             'bin/radical-pilot-close-session',
+                            'bin/radical-pilot-component',
                             'bin/radical-pilot-create-static-ve',
                             'bin/radical-pilot-deploy-ompi.sh',
                             'bin/radical-pilot-fetch-db',
@@ -250,15 +246,15 @@ setup_args = {
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.c',
                                  '*.md', 'VERSION', 'SDIST', sdist_name]},
   # 'setup_requires'     : ['pytest-runner'],
-    'install_requires'   : ['radical.utils>=0.60',
-                            'radical.saga>=0.60',
+    'install_requires'   : ['radical.utils>=0.90',
+                            'radical.saga>=0.90',
                             'pymongo',
                             'python-hostlist',
                             'netifaces',
                             'setproctitle',
                             'ntplib',
-                            'msgpack-python',
-                            'pyzmq'],
+                            'msgpack-python'
+                           ],
     'extras_require'     : {'autopilot' : ['github3.py']},
     'tests_require'      : ['pytest',
                             'pylint',

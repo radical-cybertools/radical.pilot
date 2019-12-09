@@ -9,7 +9,7 @@ import radical.utils as ru
 from .base import LaunchMethod
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class MPIRun(LaunchMethod):
 
@@ -103,6 +103,7 @@ class MPIRun(LaunchMethod):
         host_list = list()
         core_list = list()
         save_list = list()
+
         for node in slots['nodes']:
 
             for cpu_proc in node['core_map']:

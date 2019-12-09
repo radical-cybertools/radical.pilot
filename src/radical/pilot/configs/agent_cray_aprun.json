@@ -31,12 +31,12 @@
     },
 
     "components": {
-        "UpdateWorker"                : {"count" : 1},
-        "AgentExecutingComponent"     : {"count" : 1}
+        "update"                     : {"count" : 1},
+        "agent_executing"            : {"count" : 1}
     },
-    
+
     "agents": {
-        "agent_1": {
+        "agent.1": {
             "target": "node",
             "components": {
                 "AgentSchedulingComponent"    : {"count" : 1},

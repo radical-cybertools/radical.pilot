@@ -19,9 +19,9 @@ following policies are implemented:
 
 An important element to consider when discussing unit scheduling is pilot
 startup time: pilot jobs can potentially sit in batch queues for a long time, or
-pass quickly, depending on their size and resource usage, etc.  Any static
-assignment of units will not be able to take that into account -- and the first
-pilot may have finished all its work before a second pilot even came up.
+pass quickly, depending on their size and resource usage, resource policies, etc.  
+Any static assignment of units will not be able to take that into account -- and 
+the first pilot may have finished all its work before a second pilot even came up.
 
 This is what the backfilling scheduler tries to address: it only schedules units
 once the pilot is available, and only as many as a pilot can execute at any
@@ -40,22 +40,22 @@ It will select `Round Robin` scheduling for two pilots, and `Backfilling` for
 three or more. 
 
 
-Running the Example
--------------------
+.. Running the Example
+.. -------------------
 
-We show here the output for 3 pilots, where one is running locally (and thus is
-likely to come up quickly), and 2 are running exemplarily on `xsede.stampede` and
-`epsrc.archer`, respectively, where they likely will sit in the queue for a bit.
-We thus expect the backfilling scheduler to prefer the local pilot
-(`pilot.0000`).
+.. We show here the output for 3 pilots, where one is running locally (and thus is
+.. likely to come up quickly), and 2 are running exemplarily on `xsede.stampede` and
+.. `epsrc.archer`, respectively, where they likely will sit in the queue for a bit.
+.. We thus expect the backfilling scheduler to prefer the local pilot
+.. (`pilot.0000`).
 
-.. image:: 04_scheduler_selection_b.png
+.. .. image: 04_scheduler_selection_b.png
 
 
-What's Next?
-------------
+.. What's Next?
+.. ------------
 
-Using multiple pilots is very powerful -- it becomes more powerful if you allow
+Using multiple pilots is very powerful but it becomes more powerful if you allow
 RP to load-balance units between them.  :ref:`chapter_user_guide_04` will show
 how to do just that.
 
