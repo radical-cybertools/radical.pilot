@@ -1,8 +1,11 @@
+
 language: python
 python:   "3.5"
 sudo:     disabled
 os:       linux
-git:      depth: 1
+
+git:
+  depth: 1
 
 env:
   global:
@@ -11,6 +14,7 @@ env:
     - PYTEST="coverage run -m pytest -ra --timeout=600 -vvv --showlocals"
     - RADICAL_PILOT_DBURL=mongodb://rct:rct_test@one.radical-project.org/rct_test
     - RADICAL_PILOT_TEST_DBNAME=rct_test
+
   matrix:
     - MAIN_CMD="$PYTEST tests/"
     - MAIN_CMD="ru-runcheck.sh flake8 diff"
@@ -59,8 +63,10 @@ after_success:
       coverage report; \
       curl -s https://codecov.io/bash | bash
     fi
+
 notifications:
   email:
     recipients: andre@merzky.net
     on_success: change
     on_failure: always
+
