@@ -168,14 +168,12 @@ class LaunchMethod(object):
             return impl(name, cfg, session)
 
         except KeyError:
-            # pylint: disable=protected-access
-            # FIXME
-            pass
+            session._log.exception('invalid lm %s' % name)
+            raise ValueError('invalid lm %s' % name)
 
         except Exception:
-            # pylint: disable=protected-access
-            # FIXME
-            pass
+            session._log.exception('unusable lm %s' % name)
+            raise RuntimeError('unusable lm %s' % name)
 
 
     # --------------------------------------------------------------------------

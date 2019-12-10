@@ -29,8 +29,8 @@ class Yarn(LaunchMethod):
     @classmethod
     def lrms_config_hook(cls, name, cfg, lrms, log, profiler=None):
         """
-        FIXME: this config hook will inspect the LRMS nodelist and, if needed,
-               will start the YARN cluster on node[0].
+        this config hook will inspect the LRMS nodelist and, if needed,
+        will start the YARN cluster on node[0].
         """
         log.info('Hook called by YARN LRMS with the name %s' % lrms.name)
 
