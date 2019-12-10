@@ -10,7 +10,7 @@ import radical.utils as ru
 from .base import LRMS
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Torque(LRMS):
 
@@ -72,7 +72,7 @@ class Torque(LRMS):
 
         if self._cfg.get('cores_per_node'):
             cfg_cpn = self._cfg.get('cores_per_node')
-            self._log.info('overwriting cores_per_node[%s] from cfg [%s]', 
+            self._log.info('overwriting cores_per_node[%s] from cfg [%s]',
                     torque_cores_per_node, cfg_cpn)
             torque_cores_per_node = cfg_cpn
 

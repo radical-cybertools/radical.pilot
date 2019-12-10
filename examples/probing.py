@@ -5,7 +5,6 @@ __license__   = 'MIT'
 
 import os
 import sys
-import time
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -44,7 +43,7 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
+        config = ru.read_json('%s/config.json' % os.path.dirname(__file__))
         report.ok('>>ok\n')
 
         report.header('submit pilots')
@@ -113,7 +112,7 @@ if __name__ == '__main__':
         ru.print_exception_trace()
         raise
 
-    except (KeyboardInterrupt, SystemExit) as e:
+    except (KeyboardInterrupt, SystemExit):
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
