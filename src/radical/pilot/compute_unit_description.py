@@ -26,7 +26,6 @@ GPU_THREADS            = 'gpu_threads'
 GPU_THREAD_TYPE        = 'gpu_thread_type'
 
 LFS_PER_PROCESS        = 'lfs_per_process'
-TAG                    = 'tag'
 MEM_PER_PROCESS        = 'mem_per_process'
 
 INPUT_STAGING          = 'input_staging'
@@ -59,14 +58,12 @@ class ComputeUnitDescription(attributes.Attributes):
     :meth:`radical.pilot.UnitManager.submit_units` to instantiate and run
     a new unit.
 
+
     .. note:: A ComputeUnitDescription **MUST** define at least an
               `executable` or `kernel` -- all other elements are optional.
 
-    **Example**::
 
-        # TODO 
-
-    .. data:: executable 
+    .. data:: executable
 
        The executable to launch (`string`).  The executable is expected to be
        either available via `$PATH` on the target resource, or to be an absolute
@@ -75,43 +72,61 @@ class ComputeUnitDescription(attributes.Attributes):
        default: `None`
 
 
-    .. data:: cpu_processes    
+    .. data:: cpu_processes
        number of application processes to start on CPU cores
+
        default: 0
 
-    .. data:: cpu_threads      
+
+    .. data:: cpu_threads
        number of threads each process will start on CPU cores
+
        default: 1
 
-    .. data:: cpu_process_type 
-       process type, determines startup method (POSIX, MPI) 
+
+    .. data:: cpu_process_type
+       process type, determines startup method (POSIX, MPI)
+
        default: POSIX
 
-    .. data:: cpu_thread_type  
+
+    .. data:: cpu_thread_type
        thread type, influences startup and environment (POSIX, OpenMP)
+
        default: POSIX
 
-    .. data:: gpu_processes    
+
+    .. data:: gpu_processes
        number of application processes to start on GPU cores
+
        default: 0
 
-    .. data:: gpu_threads      
+
+    .. data:: gpu_threads
        number of threads each process will start on GPU cores
+
        default: 1
 
-    .. data:: gpu_process_type 
-       process type, determines startup method (POSIX, MPI) 
+
+    .. data:: gpu_process_type
+       process type, determines startup method (POSIX, MPI)
+
        default: POSIX
 
-    .. data:: gpu_thread_type  
+
+    .. data:: gpu_thread_type
        thread type, influences startup and environment (POSIX, OpenMP, CUDA)
+
        default: POSIX
+
 
     .. data:: lfs (local file storage)
-       amount of data (MB) required on the local file system of the node 
+       amount of data (MB) required on the local file system of the node
+
        default: 0
 
-    .. data:: name 
+
+    .. data:: name
 
        A descriptive name for the compute unit (`string`).  This attribute can
        be used to map individual units back to application level workloads.
@@ -119,7 +134,7 @@ class ComputeUnitDescription(attributes.Attributes):
        default: `None`
 
 
-    .. data:: arguments 
+    .. data:: arguments
 
        The command line arguments for the given `executable` (`list` of
        `strings`).
@@ -127,7 +142,7 @@ class ComputeUnitDescription(attributes.Attributes):
        default: `[]`
 
 
-    .. data:: environment 
+    .. data:: environment
 
        Environment variables to set in the environment before execution
        (`dict`).
@@ -141,6 +156,7 @@ class ComputeUnitDescription(attributes.Attributes):
        directory *MUST* be relative to the pilot sandbox.  It will be created if
        it does not exist.  By default, the sandbox has the name of the unit's
        uid.
+
 
     .. data:: stdout
 
@@ -183,7 +199,7 @@ class ComputeUnitDescription(attributes.Attributes):
 
        No assumption should be made as to where these commands are executed
        (although RP attempts to perform them in the unit's execution
-       environment).  
+       environment).
 
        No assumption should be made on the specific shell environment the
        commands are executed in.
@@ -200,17 +216,14 @@ class ComputeUnitDescription(attributes.Attributes):
        Actions (shell commands) to perform after this task finishes (`list` of
        `strings`).  The same remarks as on `pre_exec` apply, inclusive the point
        on error handling, which again will cause the unit to fail, even if the
-       actual execution was successful..
+       actual execution was successful.
 
        default: `[]`
 
 
     .. data:: kernel
 
-       Name of a simulation kernel which expands to description attributes once
-       the unit is scheduled to a pilot (and resource).
-
-       .. note:: TODO: explain in detail, reference ENMDTK.
+       Name of a simulation kernel which expands to description attributes once the unit is scheduled to a pilot and resource. TODO: explain in detail, referencing ENMDTK.
 
        default: `None`
 
@@ -218,8 +231,7 @@ class ComputeUnitDescription(attributes.Attributes):
     .. data:: restartable
 
        If the unit starts to execute on a pilot, but cannot finish because the
-       pilot fails or is canceled, can the unit be restarted on a different
-       pilot / resource? 
+       pilot fails or is canceled, the unit can be restarted.
 
        default: `False`
 
@@ -232,7 +244,7 @@ class ComputeUnitDescription(attributes.Attributes):
 
     .. data:: metadata
 
-       user defined metadata
+       User defined metadata.
 
        default: `None`
 
@@ -356,9 +368,6 @@ class ComputeUnitDescription(attributes.Attributes):
         self._attributes_register(LFS_PER_PROCESS,  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
         self._attributes_register(MEM_PER_PROCESS,  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
 
-        # tag -- user level tag that can be used in scheduling
-        self._attributes_register(TAG,              None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-
         # dependencies
       # self._attributes_register(RUN_AFTER,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
       # self._attributes_register(START_AFTER,      None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
@@ -391,8 +400,6 @@ class ComputeUnitDescription(attributes.Attributes):
         self.set_attribute (GPU_THREAD_TYPE,    '')
         self.set_attribute (LFS_PER_PROCESS,     0)
         self.set_attribute (MEM_PER_PROCESS,     0)
-
-        self.set_attribute (TAG,              None)
 
         self.set_attribute (RESTARTABLE,     False)
         self.set_attribute (TAGS,           dict())

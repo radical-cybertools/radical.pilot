@@ -4,7 +4,7 @@ import sys
 
 import radical.utils as ru
 
-from .constants import *
+from .constants import DEFAULT_ACTION, DEFAULT_FLAGS, DEFAULT_PRIORITY
 
 
 # ------------------------------------------------------------------------------
@@ -112,7 +112,7 @@ def expand_staging_directives(sds):
                         'priority': priority}
 
         else:
-            raise Exception("Unknown type of staging directive: %s (%s)" % (sd, type(sd)))
+            raise Exception("Unknown directive: %s (%s)" % (sd, type(sd)))
 
         # we warn the user when  src or tgt are using the deprecated
         # `staging://` schema
@@ -189,8 +189,8 @@ def complete_url(path, context, log=None):
 
         # we interpret any hostname as part of the path element
         if   purl.host and purl.path: ppath = '%s/%s' % (purl.host, purl.path)
-        elif purl.host              : ppath =    '%s' % (           purl.host)
-        elif purl.path              : ppath =    '%s' % (           purl.path)
+        elif purl.host              : ppath =    '%s' %            (purl.host)
+        elif purl.path              : ppath =    '%s' %            (purl.path)
         else                        : ppath =     '.'
 
         if schema not in context:

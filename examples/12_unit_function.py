@@ -109,11 +109,11 @@ if __name__ == '__main__':
 
         for unit in (units[:10] + units[-10:]):
             if unit.state == rp.DONE:
-                print '\t+ %s: %-10s: %10s: %s' \
-                    % (unit.uid, unit.state, unit.pilot, unit.stdout)
+                print( '\t+ %s: %-10s: %10s: %s' \
+                    % (unit.uid, unit.state, unit.pilot, unit.stdout))
             else:
-                print '\t- %s: %-10s: %10s: %s' \
-                    % (unit.uid, unit.state, unit.pilot, unit.stderr)
+                print( '\t- %s: %-10s: %10s: %s' \
+                    % (unit.uid, unit.state, unit.pilot, unit.stderr))
 
 
     except Exception as e:

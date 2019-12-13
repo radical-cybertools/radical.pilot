@@ -8,8 +8,6 @@ import pprint
 import inspect
 import logging
 
-import threading     as mt
-
 import radical.utils as ru
 
 from ...   import constants as rpc
@@ -92,10 +90,10 @@ class ContinuousSummit(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    # Once the component process is spawned, `initialize_child()` will be called
+    # Once the component process is spawned, `initialize()` will be called
     # before control is given to the component's main loop.
     #
-    def initialize_child(self):
+    def initialize(self):
 
         # register unit input channels
         self.register_input(rps.AGENT_SCHEDULING_PENDING,
@@ -125,7 +123,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         # during agent startup.  We dig them out of the config at this point.
         #
         # NOTE: this information is insufficient for the torus scheduler!
-        self._pilot_id              = self._cfg['pilot_id']
+        self._pid                   = self._cfg['pid']
         self._lrms_info             = self._cfg['lrms_info']
         self._lrms_lm_info          = self._cfg['lrms_info']['lm_info']
         self._lrms_node_list        = self._cfg['lrms_info']['node_list']
@@ -152,28 +150,13 @@ class ContinuousSummit(AgentSchedulingComponent):
 
         # create and initialize the wait pool
         self._wait_pool = list()      # pool of waiting units
-        self._wait_lock = mt.RLock()  # look on the above pool
-        self._slot_lock = mt.RLock()  # lock slot allocation/deallocation
+        self._wait_lock = ru.RLock()  # look on the above pool
+        self._slot_lock = ru.RLock()  # lock slot allocation/deallocation
 
         # configure the scheduler instance
         self._configure()
         self._log.debug("slot status after  init      : %s",
                         self.slot_status())
-
-
-    # --------------------------------------------------------------------------
-    #
-    # FIXME: this should not be overloaded here, but in the base class
-    #
-    def finalize_child(self):
-
-        cprof_env = os.getenv("RADICAL_PILOT_CPROFILE_COMPONENTS", "")
-        if "CONTINUOUS" in cprof_env.split():
-            self_thread = mt.current_thread()
-            cprof.dump_stats("python-%s.profile" % self_thread.name)
-
-        # make sure that parent finalizers are called
-        super(ContinuousSummit, self).finalize_child()
 
 
     # --------------------------------------------------------------------------
@@ -260,7 +243,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         #                     'uid'     : node_uid,
         #                     'core_map': core_map,
         #                     'gpu_map' : gpu_map,
-        #                     'lfs'     : {'size': lfs, 
+        #                     'lfs'     : {'size': lfs,
         #                                  'path': self._lrms_lfs_per_node['path']
         #                                 }
         #                    }],
@@ -269,7 +252,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         #          'lfs_per_node'   : self._lrms_lfs_per_node,
         #          'lm_info'        : self._lrms_lm_info
         #          }
-        # 
+        #
         # self.nodes = [{
         #                   'name'    : 'node_1',
         #                   'uid'     : xxxx,
@@ -549,7 +532,7 @@ class ContinuousSummit(AgentSchedulingComponent):
                     return [], [], None
 
                 # If we can use this node, then we visit each socket of the node and
-                # determine the number of continuous core_chunks that can be use on the 
+                # determine the number of continuous core_chunks that can be use on the
                 # socket till we either run out of continuous cores or have acquired
                 # the requested number of cores.
                 usable_cores = 0
@@ -588,7 +571,7 @@ class ContinuousSummit(AgentSchedulingComponent):
 
         # Maximum number of processes allocatable on a socket
         if self._cross_socket_threads:
-            max_procs_on_socket = [num_procs['cores'] 
+            max_procs_on_socket = [num_procs['cores']
                                    for _ in range(self._lrms_sockets_per_node)]
             self._log.debug('max_procs_on_socket %s', max_procs_on_socket)
 
@@ -776,7 +759,7 @@ class ContinuousSummit(AgentSchedulingComponent):
                             'uid'     : node_uid,
                             'core_map': core_map,
                             'gpu_map' : gpu_map,
-                            'lfs'     : {'size': lfs, 
+                            'lfs'     : {'size': lfs,
                                          'path': self._lrms_lfs_per_node['path']
                                         }
                            }],
@@ -962,7 +945,7 @@ class ContinuousSummit(AgentSchedulingComponent):
                                    'uid'     : node_uid,
                                    'core_map': core_map,
                                    'gpu_map' : gpu_map,
-                                   'lfs'     : {'size': lfs, 
+                                   'lfs'     : {'size': lfs,
                                                 'path': lfs_path}})
 
             alloced_cores += len(cores)
