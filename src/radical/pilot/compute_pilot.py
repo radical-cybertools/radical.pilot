@@ -588,13 +588,12 @@ class ComputePilot(object):
         '''
 
         try:
-            self._log.debug('=== stage_out')
+            self._log.debug('stage_out')
             psbox = self._session.get_fs_dir(self._pilot_sandbox)
             psbox.copy('staging_output.tgz', self._client_sandbox)
 
         except Exception:
-            self._log.exception('=== output staging failed')
-            raise
+            self._log.exception('output staging failed')
 
 
 # ------------------------------------------------------------------------------
