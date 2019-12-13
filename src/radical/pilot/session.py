@@ -141,7 +141,11 @@ class Session(rs.Session):
         self._cache      = {'resource_sandbox' : dict(),
                             'session_sandbox'  : dict(),
                             'pilot_sandbox'    : dict(),
-                            'client_sandbox'   : self._cfg.client_sandbox}
+                            'client_sandbox'   : self._cfg.client_sandbox,
+                            'js_shells'        : dict(),
+                            'fs_dirs'          : dict()
+                            }
+
 
         if _primary:
             self._initialize_primary(dburl)
@@ -794,10 +798,10 @@ class Session(rs.Session):
     #
     def get_js_shell(self, resource, schema):
 
-        if resource not in self._js_shells:
-            self._js_shells[resource] = dict()
+        if resource not in self._cache['js_shells']:
+            self._cache['js_shells'][resource] = dict()
 
-        if schema not in self._js_shells[resource]:
+        if schema not in self._cache['js_shells'][resource]:
 
             rcfg   = self.get_resource_config(resource, schema)
 
@@ -817,19 +821,19 @@ class Session(rs.Session):
                 js_url.hostname = 'localhost'
 
             self._log.debug("rsup.PTYShell('%s')", js_url)
-            self._js_shells[resource][schema] = rsup.PTYShell(js_url, self)
+            self._cache['js_shells'][resource][schema] = rsup.PTYShell(js_url, self)
 
-        return self._js_shells[resource][schema]
+        return self._cache['js_shells'][resource][schema]
 
 
     # --------------------------------------------------------------------------
     #
     def get_fs_dir(self, url):
 
-        if url not in self._fs_dirs:
-            self._fs_dirs[url] = rsfs.Directory(url)
+        if url not in self._cache['fs_dirs']:
+            self._cache['fs_dirs'][url] = rsfs.Directory(url, flags=rsfs.CREATE)
 
-        return self._fs_dirs[url]
+        return self._cache['fs_dirs'][url]
 
 
     # --------------------------------------------------------------------------
