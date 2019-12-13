@@ -26,7 +26,7 @@ from .  import lm         as rpa_lm
 git_ident = '$Id$'
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Agent_0(rpu.Worker):
 
@@ -192,7 +192,38 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
+    def stage_output(self):
+
+        self._log.debug('=== stage output 0')
+        if  os.path.isfile('./staging_output.txt'):
+            self._log.debug('=== stage output 1')
+
+            if not os.path.isfile('./staging_output.tgz'):
+                self._log.debug('=== stage output 2')
+
+                cmd = 'tar zcvf staging_output.tgz $(cat staging_output.txt)'
+                out, err, ret = ru.sh_callout(cmd, shell=True)
+
+                if ret:
+                    self._log.debug('=== out: %s', out)
+                    self._log.debug('=== err: %s', err)
+                    self._log.error('=== output tarring failed: %s', cmd)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize_child(self):
+        self._log.debug('=== stage output child')
+        self.stage_output()
+
+
+    # --------------------------------------------------------------------------
+    #
     def finalize_parent(self):
+
+        # tar up output staging data
+        self._log.debug('=== stage output parent')
+        self.stage_output()
 
         # tear things down in reverse order
         self._prof.flush()

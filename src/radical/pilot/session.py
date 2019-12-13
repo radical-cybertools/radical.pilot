@@ -22,6 +22,7 @@ import threading
 
 import radical.utils                as ru
 import radical.saga                 as rs
+import radical.saga.filesystem      as rsfs
 import radical.saga.utils.pty_shell as rsup
 
 from . import utils         as rpu
@@ -135,6 +136,10 @@ class Session(rs.Session):
         #        session config, as should be the case for any agent side
         #        session instance.
         self._client_sandbox = os.getcwd()
+
+        # cache job service shells
+        self._js_shells = dict()
+        self._fs_dirs   = dict()
 
         # The resource configuration dictionary associated with the session.
         self._resource_configs = {}
@@ -984,31 +989,14 @@ class Session(rs.Session):
                     sandbox_base = sandbox_raw
 
                 else:
-                    js_url = rcfg['job_manager_endpoint']
-                    js_url = rcfg.get('job_manager_hop', js_url)
-                    js_url = rs.Url(js_url)
-
-                    elems  = js_url.schema.split('+')
-
-                    if   'ssh'    in elems: js_url.schema = 'ssh'
-                    elif 'gsissh' in elems: js_url.schema = 'gsissh'
-                    elif 'fork'   in elems: js_url.schema = 'fork'
-                    elif len(elems) == 1  : js_url.schema = 'fork'
-                    else: raise Exception("invalid schema: %s" % js_url.schema)
-
-                    if js_url.schema == 'fork':
-                        js_url.hostname = 'localhost'
-
-                    self._log.debug("rsup.PTYShell('%s')", js_url)
-                    shell = rsup.PTYShell(js_url, self)
-
+                    shell = self.get_js_shell(resource, schema)
                     ret, out, err = shell.run_sync(' echo "WORKDIR: %s"'
                                                                   % sandbox_raw)
                     if ret or 'WORKDIR:' not in out:
                         raise RuntimeError("Couldn't get remote workdir.")
 
                     sandbox_base = out.split(":")[1].strip()
-                    self._log.debug("sandbox base %s: %s", js_url, sandbox_base)
+                    self._log.debug("sandbox base %s", sandbox_base)
 
                 # at this point we have determined the remote 'pwd' - the
                 # global sandbox is relative to it.
@@ -1018,6 +1006,48 @@ class Session(rs.Session):
                 self._cache['resource_sandbox'][resource] = fs_url
 
             return self._cache['resource_sandbox'][resource]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_js_shell(self, resource, schema):
+
+        if resource not in self._js_shells:
+            self._js_shells[resource] = dict()
+
+        if schema not in self._js_shells[resource]:
+
+            rcfg   = self.get_resource_config(resource, schema)
+
+            js_url = rcfg['job_manager_endpoint']
+            js_url = rcfg.get('job_manager_hop', js_url)
+            js_url = rs.Url(js_url)
+
+            elems  = js_url.schema.split('+')
+
+            if   'ssh'    in elems: js_url.schema = 'ssh'
+            elif 'gsissh' in elems: js_url.schema = 'gsissh'
+            elif 'fork'   in elems: js_url.schema = 'fork'
+            elif len(elems) == 1  : js_url.schema = 'fork'
+            else: raise Exception("invalid schema: %s" % js_url.schema)
+
+            if js_url.schema == 'fork':
+                js_url.hostname = 'localhost'
+
+            self._log.debug("rsup.PTYShell('%s')", js_url)
+            self._js_shells[resource][schema] = rsup.PTYShell(js_url, self)
+
+        return self._js_shells[resource][schema]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_fs_dir(self, url):
+
+        if url not in self._fs_dirs:
+            self._fs_dirs[url] = rsfs.Directory(url)
+
+        return self._fs_dirs[url]
 
 
     # --------------------------------------------------------------------------

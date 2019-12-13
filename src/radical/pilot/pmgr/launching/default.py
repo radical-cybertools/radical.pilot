@@ -43,7 +43,7 @@ LOCAL_SCHEME   = 'file'
 BOOTSTRAPPER_0 = "bootstrap_0.sh"
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Default(PMGRLaunchingComponent):
 
@@ -226,7 +226,7 @@ class Default(PMGRLaunchingComponent):
 
             fs.copy(src, tgt, flags=flags)
 
-            sd['pmgr_state'] = rps.DONE
+            sd['state'] = rps.DONE
 
             self._prof.prof('staging_in_stop', uid=pid, msg=did)
 
@@ -252,54 +252,63 @@ class Default(PMGRLaunchingComponent):
         # Iterate over all directives
         for sd in sds:
 
-            # TODO: respect flags in directive
+            try:
 
-            action = sd['action']
-            flags  = sd['flags']
-            did    = sd['uid']
-            src    = sd['source']
-            tgt    = sd['target']
+                # TODO: respect flags in directive
 
-            assert(action in [COPY, LINK, MOVE, TRANSFER])
+                action = sd['action']
+                flags  = sd['flags']
+                did    = sd['uid']
+                src    = sd['source']
+                tgt    = sd['target']
 
-            self._prof.prof('staging_out_start', uid=pid, msg=did)
+                self._log.debug('handle output: %s', did)
 
-            src = complete_url(src, src_context, self._log)
-            tgt = complete_url(tgt, tgt_context, self._log)
+                assert(action in [COPY, LINK, MOVE, TRANSFER])
 
-            if action in [COPY, LINK, MOVE]:
-                self._prof.prof('staging_out_fail', uid=pid, msg=did)
-                raise ValueError("invalid action '%s' on pilot level" % action)
+                self._prof.prof('staging_out_start', uid=pid, msg=did)
 
-            self._log.info('transfer %s to %s', src, tgt)
+                src = complete_url(src, src_context, self._log)
+                tgt = complete_url(tgt, tgt_context, self._log)
 
-            # FIXME: make sure that tgt URL points to the right resource
-            # FIXME: honor sd flags if given (recursive...)
-            flags = rsfs.CREATE_PARENTS
+                if action in [COPY, LINK, MOVE]:
+                    self._prof.prof('staging_out_fail', uid=pid, msg=did)
+                    raise ValueError("invalid action '%s' on pilot level" % action)
 
-            if os.path.isdir(src.path):
-                flags |= rsfs.RECURSIVE
+                self._log.info('transfer %s to %s', src, tgt)
 
-            # Define and open the staging directory for the pilot
+                # FIXME: make sure that tgt URL points to the right resource
+                # FIXME: honor sd flags if given (recursive...)
+                flags = rsfs.CREATE_PARENTS
 
-            # url used for cache (sandbox url w/o path)
-            tmp      = rs.Url(pilot['pilot_sandbox'])
-            tmp.path = '/'
-            key = str(tmp)
+                if os.path.isdir(src.path):
+                    flags |= rsfs.RECURSIVE
 
-            self._log.debug("rs.file.Directory ('%s')", key)
+                # Define and open the staging directory for the pilot
 
-            with self._cache_lock:
-                if key in self._saga_fs_cache:
-                    fs = self._saga_fs_cache[key]
+                # url used for cache (sandbox url w/o path)
+                tmp      = rs.Url(pilot['pilot_sandbox'])
+                tmp.path = '/'
+                key = str(tmp)
 
-                else:
-                    fs = rsfs.Directory(key, session=self._session)
-                    self._saga_fs_cache[key] = fs
+                self._log.debug("rs.file.Directory ('%s')", key)
 
-            fs.copy(src, tgt, flags=flags)
+                with self._cache_lock:
+                    if key in self._saga_fs_cache:
+                        fs = self._saga_fs_cache[key]
 
-            sd['pmgr_state'] = rps.DONE
+                    else:
+                        fs = rsfs.Directory(key, session=self._session)
+                        self._saga_fs_cache[key] = fs
+
+                fs.copy(src, tgt, flags=flags)
+
+                sd['state'] = rps.DONE
+
+            except:
+                sd['state'] = rps.FAILED
+
+            self._log.debug('done: %s: %s', sd['uid'], sd['state'])
 
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'pilot_staging_output_result',
                                               'arg': {'pilot': pilot,
@@ -656,9 +665,12 @@ class Default(PMGRLaunchingComponent):
 
         # we need the session sandbox url, but that is (at least in principle)
         # dependent on the schema to use for pilot startup.  So we confirm here
-        # that the bulk is consistent wrt. to the schema.
+        # that the bulk is consistent wrt. to the schema.  Also include
+        # `staging_input` files and place them in the `staging_area`.
+        #
         # FIXME: if it is not, it needs to be splitted into schema-specific
         # sub-bulks
+        #
         schema = pd.get('access_schema')
         for pilot in pilots[1:]:
             assert(schema == pilot['description'].get('access_schema')), \
@@ -668,19 +680,39 @@ class Default(PMGRLaunchingComponent):
         session_sandbox = self._session._get_session_sandbox(pilots[0]).path
         session_sandbox = session_sandbox % expand
 
-
         # we will create the session sandbox before we untar, so we can use that
         # as workdir, and pack all paths relative to that session sandbox.  That
         # implies that we have to recheck that all URLs in fact do point into
         # the session sandbox.
+        #
+        # We also create a file `staging_output.json` for each pilot which
+        # contains the list of files to be tarred up and prepared for output
+        # staging
 
         ft_list = list()  # files to stage
         jd_list = list()  # jobs  to submit
         for pilot in pilots:
+
+            os.makedirs('%s/%s' % (tmp_dir, pilot['uid']))
+
             info = self._prepare_pilot(resource, rcfg, pilot, expand)
             ft_list += info['ft']
             jd_list.append(info['jd'])
             self._prof.prof('staging_in_start', uid=pilot['uid'])
+
+            for fname in ru.to_list(pilot['description'].get('input_staging')):
+                ft_list.append({'src': fname,
+                                'tgt': '%s/staging_area/%s'
+                                     % (pilot['uid'], os.path.basename(fname)),
+                                'rem': False})
+
+            output_staging = pilot['description'].get('output_staging')
+            self._log.debug('=== outputs: %s', output_staging)
+            if output_staging:
+                fname = '%s/%s/staging_output.txt' % (tmp_dir, pilot['uid'])
+                with open(fname, 'w') as fout:
+                    for entry in output_staging:
+                        fout.write('%s\n' % entry)
 
         for ft in ft_list:
             src     = os.path.abspath(ft['src'])
@@ -689,7 +721,9 @@ class Default(PMGRLaunchingComponent):
             tgt_dir = os.path.dirname(tgt)
 
             if tgt_dir.startswith('..'):
-                raise ValueError('staging target %s outside of pilot sandbox' % ft['tgt'])
+              # raise ValueError('staging target %s outside of pilot sandbox: %s' % (ft['tgt'], tgt))
+                tgt = ft['tgt']
+                tgt_dir = os.path.dirname(tgt)
 
             if not os.path.isdir('%s/%s' % (tmp_dir, tgt_dir)):
                 os.makedirs('%s/%s' % (tmp_dir, tgt_dir))
@@ -699,17 +733,24 @@ class Default(PMGRLaunchingComponent):
                 # handle a symlink to /dev/null)
                 open('%s/%s' % (tmp_dir, tgt), 'a').close()
             else:
-                os.symlink(src, '%s/%s' % (tmp_dir, tgt))
+                # use a shell callout to account for wildcard expansion
+                cmd = 'ln -s %s %s/%s' % (os.path.abspath(src), tmp_dir, tgt)
+                out, err, ret = ru.sh_callout(cmd, shell=True)
+                if ret:
+                    self._log.debug('out: %s', out)
+                    self._log.debug('err: %s', err)
+                    raise RuntimeError('callout failed: %s' % cmd)
+
+      # assert(False)
 
         # tar.  If any command fails, this will raise.
         cmd = "cd %s && tar zchf %s *" % (tmp_dir, tar_tgt)
-        self._log.debug('cmd: %s', cmd)
         out, err, ret = ru.sh_callout(cmd, shell=True)
 
         if ret:
             self._log.debug('out: %s', out)
             self._log.debug('err: %s', err)
-            raise RuntimeError('callout failed')
+            raise RuntimeError('callout failed: %s' % cmd)
 
         # remove all files marked for removal-after-pack
         for ft in ft_list:

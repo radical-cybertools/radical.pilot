@@ -11,18 +11,18 @@ from .constants import *
 #
 def expand_description(descr):
     """
-    convert any simple, string based staging directive in the description into 
+    convert any simple, string based staging directive in the description into
     its dictionary equivalent
 
     In this context, the following kinds of expansions are performed:
 
-      in:  ['input.dat'] 
-      out: {'source' : 'client:///input.dat', 
+      in:  ['input.dat']
+      out: {'source' : 'client:///input.dat',
             'target' : 'unit:///input.dat',
             'action' : rp.TRANSFER}
 
       in:  ['input.dat > staged.dat']
-      out: {'source' : 'client:///input.dat', 
+      out: {'source' : 'client:///input.dat',
             'target' : 'unit:///staged.dat',
             'action' : rp.TRANSFER}
 
@@ -118,12 +118,12 @@ def expand_staging_directives(sds):
         # `staging://` schema
         if str(expanded['source']).startswith('staging://'):
             sys.stderr.write('staging:// schema is deprecated - use pilot://\n')
-            expanded['source'] = str(expanded['source']).replace('staging://', 
+            expanded['source'] = str(expanded['source']).replace('staging://',
                                                                  'pilot://')
 
         if str(expanded['target']).startswith('staging://'):
             sys.stderr.write('staging:// schema is deprecated - use pilot://\n')
-            expanded['target'] = str(expanded['target']).replace('staging://', 
+            expanded['target'] = str(expanded['target']).replace('staging://',
                                                                  'pilot://')
 
         ret.append(expanded)
@@ -179,10 +179,10 @@ def complete_url(path, context, log=None):
 
     schema = purl.schema
 
-    if schema == 'client': 
-        # 'client' is 'pwd' in client context.  
+    if schema == 'client':
+        # 'client' is 'pwd' in client context.
         # We don't check context though.
-        schema = 'pwd'  
+        schema = 'pwd'
 
     log.debug('   %s', schema)
     if schema in list(context.keys()):

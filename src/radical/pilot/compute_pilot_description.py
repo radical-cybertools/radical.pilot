@@ -27,6 +27,9 @@ CORES             = 'cores'
 GPUS              = 'gpus'
 MEMORY            = 'memory'
 
+INPUT_STAGING     = 'input_staging'
+OUTPUT_STAGING    = 'output_staging'
+
 
 # ------------------------------------------------------------------------------
 #
@@ -129,10 +132,10 @@ class ComputePilotDescription(rsa.Attributes):
 
     .. data:: cleanup
 
-       [Type: `bool`] [optional] If cleanup is set to True, the pilot will 
+       [Type: `bool`] [optional] If cleanup is set to True, the pilot will
        delete its entire sandbox upon termination. This includes individual
-       ComputeUnit sandboxes and all generated output data. Only log files will 
-       remain in the sandbox directory. 
+       ComputeUnit sandboxes and all generated output data. Only log files will
+       remain in the sandbox directory.
 
     """
 
@@ -160,6 +163,8 @@ class ComputePilotDescription(rsa.Attributes):
         self._attributes_register    (CLEANUP,          None, rsa.BOOL,   rsa.SCALAR, rsa.WRITEABLE)
         self._attributes_register    (CANDIDATE_HOSTS,  None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
         self._attributes_register    (EXIT_ON_ERROR,    None, rsa.BOOL,   rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register    (INPUT_STAGING,    None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
+        self._attributes_register    (OUTPUT_STAGING,   None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
 
         # rsa not part of the published API
         self._attributes_register    (_CONFIG,          None, rsa.ANY,    rsa.SCALAR, rsa.WRITEABLE)
@@ -179,14 +184,16 @@ class ComputePilotDescription(rsa.Attributes):
         self.set_attribute (CANDIDATE_HOSTS,  None)
         self.set_attribute (EXIT_ON_ERROR,    False)
         self.set_attribute (_CONFIG,          None)
+        self.set_attribute (INPUT_STAGING,    None)
+        self.set_attribute (OUTPUT_STAGING,   None)
 
         # apply initialization dict
         if from_dict:
             self.from_dict(from_dict)
 
       # FIXME
-      #     logger.report.plain('[%s:%s:%s]' % (from_dict.get(RESOURCE, ''), 
-      #                                         from_dict.get(CORES,     1), 
+      #     logger.report.plain('[%s:%s:%s]' % (from_dict.get(RESOURCE, ''),
+      #                                         from_dict.get(CORES,     1),
       #                                         from_dict.get(GPUS,      0)))
       # logger.report.ok('>>ok\n')
 
