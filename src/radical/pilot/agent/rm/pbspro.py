@@ -57,7 +57,7 @@ class PBSPro(LRMS):
             pbspro_node_count = int(val)
         else:
             pbspro_node_count = len(set(pbspro_nodes))
-            self._log.error("$NODE_COUNT not set - use %d" % pbspro_node_count)
+            self._log.warn("$NODE_COUNT not set - use %d" % pbspro_node_count)
 
         # Number of Parallel Environments
         val = os.environ.get('NUM_PES')
@@ -65,9 +65,12 @@ class PBSPro(LRMS):
             pbspro_num_pes = int(val)
         else:
             pbspro_num_pes = len(pbspro_nodes)
-            self._log.error("$NUM_PES not set - use %d" % pbspro_num_pes)
-
-        pbspro_vnodes = self._parse_pbspro_vnodes()
+            self._log.warn("$NUM_PES not set - use %d" % pbspro_num_pes)
+        try:
+            pbspro_vnodes = self._parse_pbspro_vnodes()
+        except:
+            self._log.exception('node parsing failed')
+            raise
 
         # Verify that $NUM_PES == $NODE_COUNT * $NUM_PPN == len($PBS_NODEFILE)
         if not (pbspro_node_count * pbspro_num_ppn == pbspro_num_pes == pbspro_nodes_length):
@@ -103,6 +106,7 @@ class PBSPro(LRMS):
         # Get the (multiline) 'exec_vnode' entry
         vnodes_str = ''
         for line in output.splitlines():
+            line = ru.to_string(line)
             # Detect start of entry
             if 'exec_vnode = ' in line:
                 vnodes_str += line.strip()
@@ -162,4 +166,5 @@ class PBSPro(LRMS):
         return node_list
 
 
+# ------------------------------------------------------------------------------
 
