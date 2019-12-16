@@ -1,9 +1,9 @@
 
 .. _chapter_example_simple_bag_multi_pilots:
 
-*****************************************
+****************************************
 Simple Bag-of-Tasks on Multiple Machines
-*****************************************
+****************************************
 
 This example assumes that you are familiar with submitting at least one RADICAL-Pilot
 to a remote resource and moves forward explaining how to submit multiple pilots
@@ -61,13 +61,14 @@ the  :class:`radical.pilot.UnitManager`. In our example we use the Round-Robin
 scheduler.
 
 .. code-block:: python
-    umgr = rp.UnitManager (session=session,
-                           scheduler=rp.SCHEDULER_ROUND_ROBIN)
+    
+   umgr = rp.UnitManager (session=session,
+                          scheduler=rp.SCHEDULER_ROUND_ROBIN)
 
 
-------------
+-----------
 Preparation
-------------
+-----------
 
 Before running the example, create a config file under your .ssh folder in the following manner:
 

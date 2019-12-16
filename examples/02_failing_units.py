@@ -5,7 +5,6 @@ __license__   = 'MIT'
 
 import os
 import sys
-import time
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -18,7 +17,7 @@ import radical.utils as ru
 # ------------------------------------------------------------------------------
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
@@ -60,18 +59,18 @@ if __name__ == '__main__':
             # Define an [n]-core local pilot that runs for [x] minutes
             # Here we use a dict to initialize the description object
             for i in range(n):
-               pd_init = {
-                       'resource'      : resource,
-                       'runtime'       : 60,   # pilot runtime (min)
-                       'exit_on_error' : True,
-                       'project'       : config.get(resource,{}).get('project'),
-                       'queue'         : config.get(resource,{}).get('queue'),
-                       'access_schema' : config.get(resource,{}).get('schema'),
-                       'cores'         : config[resource]['cores'],
-                       }
-               pdesc = rp.ComputePilotDescription(pd_init)
-               pdescs.append(pdesc)
-       
+                pd_init = {
+                      'resource'      : resource,
+                      'runtime'       : 60,   # pilot runtime (min)
+                      'exit_on_error' : True,
+                      'project'       : config.get(resource,{}).get('project'),
+                      'queue'         : config.get(resource,{}).get('queue'),
+                      'access_schema' : config.get(resource,{}).get('schema'),
+                      'cores'         : config[resource]['cores'],
+                }
+                pdesc = rp.ComputePilotDescription(pd_init)
+                pdescs.append(pdesc)
+
         # Launch the pilot.
         pilots = pmgr.submit_pilots(pdescs)
         umgr.add_pilots(pilots)
@@ -81,7 +80,7 @@ if __name__ == '__main__':
 
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
-        n = 128 # number of units to run
+        n = 128  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -90,11 +89,11 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            if i % 10: 
+            if i % 10:
                 cud.executable = '/bin/date'
             else:
                 # trigger an error now and then
-                cud.executable = '/bin/data' # does not exist
+                cud.executable = '/bin/data'  # does not exist
             cuds.append(cud)
             report.progress()
 
@@ -108,34 +107,35 @@ if __name__ == '__main__':
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
-    
+
         report.info('\n')
         for unit in units:
             if unit.state in [rp.FAILED, rp.CANCELED]:
-                report.plain('  * %s: %s, exit: %5s, err: %35s' \
-                        % (unit.uid, unit.state[:4], 
-                           unit.exit_code, unit.stderr))
+                report.plain('  * %s: %s, exit: %5s, err: %35s'
+                            % (unit.uid, unit.state[:4],
+                               unit.exit_code, unit.stderr))
                 report.error('>>err\n')
+
             else:
-                report.plain('  * %s: %s, exit: %5s, out: %35s' \
-                        % (unit.uid, unit.state[:4], 
-                            unit.exit_code, unit.stdout))
+                report.plain('  * %s: %s, exit: %5s, out: %35s'
+                            % (unit.uid, unit.state[:4],
+                               unit.exit_code, unit.stdout))
                 report.ok('>>ok\n')
-    
+
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
         session._log.exception('oops')
         report.error('caught Exception: %s\n' % e)
         raise
-    
-    except (KeyboardInterrupt, SystemExit) as e:
+
+    except (KeyboardInterrupt, SystemExit):
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
         report.warn('exit requested\n')
-    
+
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
@@ -146,5 +146,5 @@ if __name__ == '__main__':
     report.header()
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 

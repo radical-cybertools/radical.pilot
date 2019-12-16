@@ -20,9 +20,9 @@ To define an MPI ComputeUnit, all you need to do is to set the ``cores`` and the
     pdesc.mpi      = True
     pdesc.cores    = 32
 
-.. literalinclude:: ../../../examples/running_mpi_executables.py
+.. literalinclude:: ../../../examples/misc/running_mpi_executables.py
 
 This example uses this simple MPI4Py example as MPI executable
  (requires MPI4Py installed on the remote cluster):
 
-.. literalinclude:: ../../../tests/helloworld_mpi.py
+.. literalinclude:: ../../../examples/helloworld_mpi.py

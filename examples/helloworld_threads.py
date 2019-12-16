@@ -3,7 +3,6 @@
 # This is an example multithreaded program that is used
 # by different examples and tests.
 
-import os
 import sys
 import time
 import socket
@@ -14,12 +13,11 @@ import threading
 #
 if __name__ == '__main__':
 
-    import socket
     host = socket.gethostname().split('.')[0]
 
     def _thread(size, rank):
         time.sleep(1)
-        print("%d/%d/%s"  % (rank+1, size, host))
+        print("%d/%d/%s"  % (rank + 1, size, host))
 
     threads = list()
     size    = int(sys.argv[1])
@@ -27,7 +25,7 @@ if __name__ == '__main__':
         threads.append(threading.Thread(target=_thread, args=[size, n]))
 
     for thread in threads:
-        time.sleep(0.01) # ensure ordered output
+        time.sleep(0.01)  # ensure ordered output
         thread.start()
 
     for thread in threads:

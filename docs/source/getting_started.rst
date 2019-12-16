@@ -56,14 +56,14 @@ variable `RADICAL_PILOT_DBURL` to point to a valid MongoDB.  The value should
 have the form:
 
 ```
-  export RADICAL_PILOT_DBURL="mongodb://some.host.ne:port/database_name/"
+export RADICAL_PILOT_DBURL="mongodb://some.host.ne:port/database_name/"
 ```
 
 The specified database does not not need to exist, but is created on the fly.
 For MongoDB instances which require user/pass authentication, use
 
 ```
-  export RADICAL_PILOT_DBURL="mongodb://user:pass@some.host.ne:port/database_name/"
+export RADICAL_PILOT_DBURL="mongodb://user:pass@some.host.ne:port/database_name/"
 ```
 
 Other MongoDB authentication methods are currently not supported.  *Note that

@@ -51,7 +51,7 @@ and change the code below accordging to the instructions in the comments.
 .. a python for loop, therefore, ``i`` corresponds to what iteration we are on.
 .. This is not a parallel code, echo uses just one core, so we specify ``cores=1``.
 
-----------
+---------
 Execution
 ---------
 

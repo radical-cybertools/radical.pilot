@@ -80,9 +80,9 @@
 
     "xsede.bridges" : {
         "project"  : null,
-        "queue"    : "RM",
+        "queue"    : "RM-small",
         "schema"   : "gsissh",
-        "cores"    : 64
+        "cores"    : 24
     },
 
     "xsede.wrangler" : {

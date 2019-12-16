@@ -13,7 +13,6 @@ import radical.utils as _ru
 # constants and types
 from .states     import *
 from .constants  import *
-from .exceptions import *
 
 
 # ------------------------------------------------------------------------------
@@ -30,14 +29,6 @@ from .pilot_manager             import PilotManager
 from .compute_pilot             import ComputePilot
 from .compute_pilot_description import ComputePilotDescription
 
-from .resource_config           import ResourceConfig
-from .staging_directives        import COPY, LINK, MOVE, TRANSFER
-from .staging_directives        import SKIP_FAILED, CREATE_PARENTS
-
-from .utils                     import version, version_short
-from .utils                     import version_detail, version_branch
-from .utils                     import sdist_name, sdist_path
-
 
 # ------------------------------------------------------------------------------
 # make submodules available -- mostly for internal use
@@ -46,6 +37,21 @@ from . import worker
 from . import umgr
 from . import pmgr
 from . import agent
+
+from .agent import Agent_0
+from .agent import Agent_n
+
+
+# ------------------------------------------------------------------------------
+#
+# get version info
+#
+import os as _os
+
+version_short, version_detail, version_base, version_branch, \
+        sdist_name, sdist_path = _ru.get_version(_os.path.dirname(__file__))
+
+version = version_short
 
 
 # ------------------------------------------------------------------------------
