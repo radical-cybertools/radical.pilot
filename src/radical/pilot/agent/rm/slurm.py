@@ -8,10 +8,10 @@ import hostlist
 
 import radical.utils as ru
 
-from base import LRMS
+from .base import LRMS
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Slurm(LRMS):
 

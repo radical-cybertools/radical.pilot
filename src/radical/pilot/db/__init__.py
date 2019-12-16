@@ -1,5 +1,5 @@
 """ Database abstraction layer
 """
 
-from database import *
+from .database import *
 

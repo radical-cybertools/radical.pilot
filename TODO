@@ -34,7 +34,7 @@
 
   + state pubsub now has [cmd, ttype, thing] tuples fed from advance.
   + self.advance(cu, FAILED, ...) will not find a suitable output channel.
-    Handle gracefully!  
+    Handle gracefully!
   + Always push final things fully to DB!
   - we mostly don't need create() methods -- in many cases we can just use
     constructors.
@@ -58,14 +58,14 @@
     + for each cancel request
       + add to self._cancel_requested
     + whenver we see an advance or work request:
-      + if uid in self._cancel_requested: advance(CANCEL) + drop   
+      + if uid in self._cancel_requested: advance(CANCEL) + drop
     - we can still additionally add cancel actions during staging and
       execution -- but the component base should provide support for that.
 
   - use heartbeat mechanism also for bridges, agents, sub_agents
   + define _cfg['heart'] and use that for heartbeat src instead of owner,
     limiting traffic and noise
-  - component.stop() should *first* unregister component_checker_cb 
+  - component.stop() should *first* unregister component_checker_cb
     (and probably all other callbacks)
     + in fact, we should be very careful to unregister callbacks in reverse
       order of registration.
@@ -107,12 +107,12 @@
 
   - staging directives should be expanded in umgr_input_staging -- at that point
     we have enough information to make *all* src and tgt names into full URLs
-    (including fully quualified paths), and can then rely on those being URLs in 
+    (including fully quualified paths), and can then rely on those being URLs in
     all places.
 
-  + ctrl 
+  + ctrl
     + things -> watchable
-  - advance -> remove push/pull args, and make those separate calls?  
+  - advance -> remove push/pull args, and make those separate calls?
     Probably not, but the advance call is a tad too complex and powerful...
   + comment in cb in sch base
   + remove release_slot in rr
@@ -140,7 +140,7 @@
   - rpu.Component (via ru.Process) allows
       self.start(spawn=False)
     cases like this should not need a *process* class in the first place.  It
-    would be cleaner to separate out the initialization/finalization, callback 
+    would be cleaner to separate out the initialization/finalization, callback
     and communication layer from Process
 
   - separation of controller.[uid,heart,owner] is unclean
@@ -192,10 +192,10 @@ application calls session close
     - in other processes / components
       - stop the component
       - no message is sent, we expect the pmgr, umgr or session watcher to
-        detect the closed component (if needed), and to start teardown 
+        detect the closed component (if needed), and to start teardown
         -> watcher calling session.close + raise
 
-        
+
 user interrupts via Ctrl-C
 --------------------------
   - application must except, call session.close()
@@ -244,4 +244,8 @@ term iv
       - keep component and bridge handles in the component and clean out after
         fork
 
-remove exceptions.py
+  + remove exceptions.py
+
+
+  - Exception in SA startup causes hang (agent_0 does not die)
+

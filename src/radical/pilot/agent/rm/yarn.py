@@ -7,10 +7,10 @@ import os
 import subprocess
 import multiprocessing
 
-from base import LRMS
+from .base import LRMS
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Yarn(LRMS):
 
@@ -45,7 +45,7 @@ class Yarn(LRMS):
                 self._log.warn("more cores available: using requested %d instead of available %d.",
                         selected_cpus, detected_cpus)
 
-        hdfs_conf_output = subprocess.check_output(['hdfs', 'getconf', 
+        hdfs_conf_output = subprocess.check_output(['hdfs', 'getconf',
                                                     '-nnRpcAddresses']).split('\n')[0]
         self._log.debug('Namenode URL = %s', hdfs_conf_output)
         self.namenode_url = hdfs_conf_output
@@ -55,7 +55,7 @@ class Yarn(LRMS):
 
         # I will leave it for the moment because I have not found another way
         # to take the necessary value yet.
-        yarn_conf_output = subprocess.check_output(['yarn', 'node', '-list'], 
+        yarn_conf_output = subprocess.check_output(['yarn', 'node', '-list'],
                                                    stderr=subprocess.STDOUT).split('\n')
         for line in yarn_conf_output:
             if 'ResourceManager' in line:

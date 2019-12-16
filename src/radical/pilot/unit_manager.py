@@ -15,8 +15,6 @@ from . import constants as rpc
 
 from . import compute_unit_description as rpcud
 
-from .umgr import scheduler as rpus
-
 
 # ------------------------------------------------------------------------------
 #
@@ -81,14 +79,12 @@ class UnitManager(rpu.Component):
             * A new `UnitManager` object [:class:`radical.pilot.UnitManager`].
         """
 
-        self._bridges     = dict()
-        self._components  = dict()
         self._pilots      = dict()
-        self._pilots_lock = threading.RLock()
+        self._pilots_lock = ru.RLock('umgr.pilots_lock')
         self._units       = dict()
-        self._units_lock  = threading.RLock()
+        self._units_lock  = ru.RLock('umgr.units_lock')
         self._callbacks   = dict()
-        self._cb_lock     = threading.RLock()
+        self._cb_lock     = ru.RLock()
         self._terminate   = threading.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
@@ -96,30 +92,34 @@ class UnitManager(rpu.Component):
         for m in rpc.UMGR_METRICS:
             self._callbacks[m] = dict()
 
-        cfg = ru.read_json("%s/configs/umgr_%s.json" \
-                % (os.path.dirname(__file__),
-                   os.environ.get('RADICAL_PILOT_UMGR_CFG', 'default')))
+        # FIXME: expose in API
+        name = 'default'
+        cfg  = None
+        cfg = ru.Config('radical.pilot.umgr', name=name, cfg=cfg)
 
         if scheduler:
             # overwrite the scheduler from the config file
-            cfg['scheduler'] = scheduler
-
-        if not cfg.get('scheduler'):
-            # set default scheduler if needed
-            cfg['scheduler'] = rpus.SCHEDULER_DEFAULT
-
-        assert(cfg['db_poll_sleeptime']), 'db_poll_sleeptime not configured'
+            cfg.scheduler = scheduler
 
         # initialize the base class (with no intent to fork)
-        self._uid    = ru.generate_id('umgr.%(item_counter)04d', ru.ID_CUSTOM,
-                                      namespace=session.uid)
-        cfg['owner'] = self.uid
-        rpu.Component.__init__(self, cfg, session)
-        self.start(spawn=False)
-        self._log.info('started umgr %s', self._uid)
+        self._uid  = ru.generate_id('umgr.%(item_counter)04d', ru.ID_CUSTOM,
+                                    ns=session.uid)
+        cfg.uid       = self.uid
+        cfg.owner     = self.uid
+        cfg.sid       = session.uid
+        cfg.base      = session.cfg.base
+        cfg.path      = session.cfg.path
+        cfg.heartbeat = session.cfg.heartbeat
 
-        # only now we have a logger... :/
+        rpu.Component.__init__(self, cfg, session=session)
+        self.start()
+
+        self._log.info('started umgr %s', self._uid)
         self._rep.info('<<create unit manager')
+
+        self._cmgr = rpu.ComponentManager(self._cfg)
+        self._cmgr.start_bridges()
+        self._cmgr.start_components()
 
         # The output queue is used to forward submitted units to the
         # scheduling component.
@@ -153,38 +153,6 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_common(self):
-
-        # the manager must not carry bridge and component handles across forks
-        ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _atfork_prepare(self): pass
-    def _atfork_parent(self) : pass
-    def _atfork_child(self)  :
-        self._bridges    = dict()
-        self._components = dict()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize_parent(self):
-
-        # terminate umgr components
-        for c in self._components:
-            c.stop()
-            c.join()
-
-        # terminate umgr bridges
-        for b in self._bridges:
-            b.stop()
-            b.join()
-
-
-    # --------------------------------------------------------------------------
-    #
     def close(self):
         """
         Shut down the UnitManager, and all umgr components.
@@ -198,32 +166,21 @@ class UnitManager(rpu.Component):
             return
 
         self._terminate.set()
-        self.stop()
 
         self._rep.info('<<close unit manager')
 
-        # we don't want any callback invokations during shutdown
-        # FIXME: really?
+        # disable callbacks during shutdown
         with self._cb_lock:
             self._callbacks = dict()
             for m in rpc.UMGR_METRICS:
                 self._callbacks[m] = dict()
 
+        self._cmgr.close()
+
         self._log.info("Closed UnitManager %s." % self._uid)
 
         self._closed = True
         self._rep.ok('>>ok\n')
-
-
-    # --------------------------------------------------------------------------
-    #
-    def is_valid(self, term=True):
-
-        # don't check during termination
-        if self._closed:
-            return True
-
-        return super(UnitManager, self).is_valid(term)
 
 
     # --------------------------------------------------------------------------
@@ -251,7 +208,7 @@ class UnitManager(rpu.Component):
         return str(self.as_dict())
 
 
-    #---------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _pilot_state_cb(self, pilot, state):
 
@@ -276,8 +233,7 @@ class UnitManager(rpu.Component):
         # we only look into pilot states when the umgr is still active
         # FIXME: note that there is a race in that the umgr can be closed while
         #        we are in the cb.
-        # FIXME: should is_valid be used?  Either way, `self._closed` is not an
-        #        `mt.Event`!
+        # FIXME: `self._closed` is not an `mt.Event`!
         if self._closed:
             self._log.debug('umgr closed, ignore pilot state (%s: %s)',
                             pilot.uid, pilot.state)
@@ -499,7 +455,7 @@ class UnitManager(rpu.Component):
     def _call_unit_callbacks(self, unit_obj, state):
 
         with self._cb_lock:
-            for cb_name, cb_val in self._callbacks[rpc.UNIT_STATE].iteritems():
+            for cb_name, cb_val in self._callbacks[rpc.UNIT_STATE].items():
 
                 self._log.debug('%s calls state cb %s for %s',
                                 self.uid, cb_name, unit_obj.uid)
@@ -558,8 +514,6 @@ class UnitManager(rpu.Component):
               added to the unit manager.
         """
 
-        self.is_valid()
-
         if not isinstance(pilots, list):
             pilots = [pilots]
 
@@ -599,10 +553,8 @@ class UnitManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputePilot` UIDs [`string`].
         """
 
-        self.is_valid()
-
         with self._pilots_lock:
-            return self._pilots.keys()
+            return list(self._pilots.keys())
 
 
     # --------------------------------------------------------------------------
@@ -615,10 +567,8 @@ class UnitManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputePilot` instances.
         """
 
-        self.is_valid()
-
         with self._pilots_lock:
-            return self._pilots.values()
+            return list(self._pilots.values())
 
 
     # --------------------------------------------------------------------------
@@ -644,8 +594,6 @@ class UnitManager(rpu.Component):
 
         if drain:
             raise RuntimeError("'drain' is not yet implemented")
-
-        self.is_valid()
 
         if not isinstance(pilot_ids, list):
             pilot_ids = [pilot_ids]
@@ -681,10 +629,8 @@ class UnitManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputeUnit` UIDs [`string`].
         """
 
-        self.is_valid()
-
         with self._pilots_lock:
-            return self._units.keys()
+            return list(self._units.keys())
 
 
     # --------------------------------------------------------------------------
@@ -704,8 +650,6 @@ class UnitManager(rpu.Component):
         """
 
         from .compute_unit import ComputeUnit
-
-        self.is_valid()
 
         ret_list = True
         if not isinstance(descriptions, list):
@@ -767,11 +711,9 @@ class UnitManager(rpu.Component):
               * A list of :class:`radical.pilot.ComputeUnit` objects.
         """
 
-        self.is_valid()
-
         if not uids:
             with self._units_lock:
-                ret = self._units.values()
+                ret = list(self._units.values())
             return ret
 
         ret_list = True
@@ -828,12 +770,10 @@ class UnitManager(rpu.Component):
               state changes. The default value **None** waits forever.
         """
 
-        self.is_valid()
-
         if not uids:
             with self._units_lock:
                 uids = list()
-                for uid,unit in self._units.iteritems():
+                for uid,unit in self._units.items():
                     if unit.state not in rps.FINAL:
                         uids.append(uid)
 
@@ -902,12 +842,10 @@ class UnitManager(rpu.Component):
 
             to_check = check_again
 
-            self.is_valid()
-
         self._rep.idle(mode='stop')
 
         if to_check: self._rep.warn('>>timeout\n')
-        else       : self._rep.ok(  '>>ok\n')
+        else       : self._rep.ok  ('>>ok\n')
 
         # grab the current states to return
         state = None
@@ -942,11 +880,9 @@ class UnitManager(rpu.Component):
               compute units objects to cancel.
         """
 
-        self.is_valid()
-
         if not uids:
             with self._units_lock:
-                uids  = self._units.keys()
+                uids  = list(self._units.keys())
         else:
             if not isinstance(uids, list):
                 uids = [uids]
@@ -1050,7 +986,7 @@ class UnitManager(rpu.Component):
                 if cb:
                     to_delete = [cb.__name__]
                 else:
-                    to_delete = self._callbacks[metric].keys()
+                    to_delete = list(self._callbacks[metric].keys())
 
                 for cb_name in to_delete:
 

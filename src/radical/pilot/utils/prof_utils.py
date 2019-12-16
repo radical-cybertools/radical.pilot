@@ -119,6 +119,14 @@ UNIT_DURATIONS_PRTE = {
                              {ru.EVENT: 'app_stop'               }],
             'prte_phase_3': [{ru.EVENT: 'app_stop'               },
                              {ru.EVENT: 'prte_notify_completed'  }],
+
+          # # if we have app_start / app_stop:
+          # 'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
+          #                  {ru.EVENT: 'cmd_start'              }],
+          # 'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
+          #                  {ru.EVENT: 'cmd_stop'               }],
+          # 'prte_phase_3': [{ru.EVENT: 'cmd_stop'               },
+          #                  {ru.EVENT: 'prte_notify_completed'  }],
         }
 }
 
@@ -129,7 +137,7 @@ def get_hostmap(profile):
     '''
     We abuse the profile combination to also derive a pilot-host map, which
     will tell us on what exact host each pilot has been running.  To do so, we
-    check for the PMGR_ACTIVE advance event in agent_0.prof, and use the NTP
+    check for the PMGR_ACTIVE advance event in agent.0.prof, and use the NTP
     sync info to associate a hostname.
     '''
     # FIXME: This should be replaced by proper hostname logging
@@ -152,7 +160,7 @@ def get_hostmap_deprecated(profiles):
     '''
 
     hostmap = dict()  # map pilot IDs to host names
-    for pname, prof in profiles.iteritems():
+    for pname, prof in profiles.items():
 
         if not len(prof):
             continue
@@ -165,7 +173,7 @@ def get_hostmap_deprecated(profiles):
 
         for row in prof:
 
-            if 'agent_0.prof' in pname    and \
+            if 'agent.0.prof' in pname    and \
                 row[ru.EVENT] == 'advance' and \
                 row[ru.STATE] == rps.PMGR_ACTIVE:
                 hostmap[row[ru.UID]] = host_id
@@ -260,7 +268,7 @@ def get_session_description(sid, src=None, dburl=None):
                     json['uid'] = json['_id']
                     if 'cfg' not in json:
                         json['cfg'] = dict()
-                for k,v in json.iteritems():
+                for k,v in json.items():
                     fix_uids(v)
         fix_uids(json)
     fix_json(json)
@@ -425,10 +433,6 @@ def cluster_resources(resources):
 #
 def _get_pilot_provision(session, pilot):
 
-  # import pprint
-  # pprint.pprint(pilot.cfg)  # ['resource_details'])
-  # pprint.pprint(pilot.description)
-
     pid   = pilot.uid
     cpn   = pilot.cfg['resource_details']['rm_info']['cores_per_node']
     gpn   = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
@@ -442,7 +446,7 @@ def _get_pilot_provision(session, pilot):
         t0, t1 = get_duration(pilot, PILOT_DURATIONS['provide'][metric])
 
         if t0 is None:
-            t0 = pilot.events[ 0][ru.TIME]
+            t0 = pilot.events [0][ru.TIME]
             t1 = pilot.events[-1][ru.TIME]
 
         for node in nodes:
@@ -521,10 +525,6 @@ def get_consumed_resources(session):
     consumed = dict()
     for e in session.get(etype=['pilot', 'unit']):
 
-        import sys
-        sys.stdout.write('.')
-        sys.stdout.flush()
-
         if   e.etype == 'pilot': data = _get_pilot_consumption(session, e)
         elif e.etype == 'unit' : data = _get_unit_consumption(session,  e)
 
@@ -545,14 +545,15 @@ def get_consumed_resources(session):
     for pilot in session.get(etype='pilot'):
 
         if pilot.cfg['task_launch_method'] == 'PRTE':
-            print '\nusing prte configuration'
+          # print('\nusing prte configuration')
             unit_durations = UNIT_DURATIONS_PRTE
         else:
-            print '\nusing default configuration'
+          # print('\nusing default configuration')
             unit_durations = UNIT_DURATIONS_DEFAULT
 
-        p_min = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][0])[ 0]
-        p_max = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][1])[-1]
+        pt    = pilot.timestamps
+        p_min = pt(event=PILOT_DURATIONS['consume']['ignore'][0]) [0]
+        p_max = pt(event=PILOT_DURATIONS['consume']['ignore'][1])[-1]
       # p_max = pilot.events[-1][ru.TIME]
 
         pid = pilot.uid
@@ -579,8 +580,9 @@ def get_consumed_resources(session):
 
             try:
                 snodes = unit.cfg['slots']['nodes']
-                u_min  = unit.timestamps(event=unit_durations['consume']['exec_queue'][0])[ 0]
-                u_max  = unit.timestamps(event=unit_durations['consume']['unschedule'][1])[-1]
+                ut     = unit.timestamps
+                u_min  = ut(event=unit_durations['consume']['exec_queue'][0]) [0]
+                u_max  = ut(event=unit_durations['consume']['unschedule'][1])[-1]
             except:
                 continue
 
@@ -754,11 +756,6 @@ def _get_unit_consumption(session, unit):
     uid = unit.uid
     pid = unit.cfg['pilot']
 
-    with open ('events.dat', 'w') as fout:
-        for e in unit.events:
-            fout.write('%14.2f : %-25s [%s]\n' % (e[ru.TIME], e[ru.EVENT],
-                e[ru.STATE]))
-
     if not pid:
         return dict()
 
@@ -804,7 +801,7 @@ def _get_unit_consumption(session, unit):
         unit_durations = UNIT_DURATIONS_DEFAULT
 
     if _debug:
-        print
+        print()
 
     ret = dict()
     for metric in unit_durations['consume']:
@@ -816,16 +813,16 @@ def _get_unit_consumption(session, unit):
         if t0 is not None:
 
             if _debug:
-                print '%s: %-15s : %10.3f - %10.3f = %10.3f' \
-                    % (unit.uid, metric, t1, t0, t1 - t0)
+                print('%s: %-15s : %10.3f - %10.3f = %10.3f'
+                     % (unit.uid, metric, t1, t0, t1 - t0))
             for r in resources:
                 boxes.append([t0, t1, r[0], r[1]])
 
         else:
             if _debug:
-                print '%s: %-15s : -------------- ' % (unit.uid, metric)
+                print('%s: %-15s : -------------- ' % (unit.uid, metric))
                 dur = unit_durations['consume'][metric]
-                print dur
+                print(dur)
 
                 for e in dur:
                     if ru.STATE in e and ru.EVENT not in e:
@@ -833,10 +830,10 @@ def _get_unit_consumption(session, unit):
 
                 t0 = unit.timestamps(event=dur[0])
                 t1 = unit.timestamps(event=dur[1])
-                print t0
-                print t1
+                print(t0)
+                print(t1)
                 for e in unit.events:
-                    print '\t'.join([str(x) for x in e])
+                    print('\t'.join([str(x) for x in e]))
 
               # sys.exit()
 

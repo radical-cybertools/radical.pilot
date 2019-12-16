@@ -11,7 +11,6 @@ import tarfile
 import radical.saga  as rs
 import radical.utils as ru
 
-from .... import pilot     as rp
 from ...  import utils     as rpu
 from ...  import states    as rps
 from ...  import constants as rpc
@@ -21,7 +20,7 @@ from .base import AgentStagingInputComponent
 from ...staging_directives import complete_url
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Default(AgentStagingInputComponent):
     """
@@ -41,7 +40,7 @@ class Default(AgentStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         self._pwd = os.getcwd()
 
@@ -60,8 +59,6 @@ class Default(AgentStagingInputComponent):
             units = [units]
 
         self.advance(units, rps.AGENT_STAGING_INPUT, publish=True, push=False)
-
-        ru.raise_on('work bulk')
 
         # we first filter out any units which don't need any input staging, and
         # advance them again as a bulk.  We work over the others one by one, and
@@ -97,8 +94,6 @@ class Default(AgentStagingInputComponent):
     # --------------------------------------------------------------------------
     #
     def _handle_unit(self, unit, actionables):
-
-        ru.raise_on('work unit')
 
         uid = unit['uid']
 
@@ -146,7 +141,8 @@ class Default(AgentStagingInputComponent):
 
             self._prof.prof('staging_in_start', uid=uid, msg=did)
 
-            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER, rpc.TARBALL])
+            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE,
+                              rpc.TRANSFER, rpc.TARBALL])
 
             # we only handle staging which does *not* include 'client://' src or
             # tgt URLs - those are handled by the umgr staging components
@@ -162,13 +158,15 @@ class Default(AgentStagingInputComponent):
 
             # Fix for when the target PATH is empty
             # we assume current directory is the unit staging 'unit://'
-            # and we assume the file to be copied is the base filename of the source
+            # and we assume the file to be copied is the base filename
+            # of the source
             if tgt is None: tgt = ''
             if tgt.strip() == '':
                 tgt = 'unit:///{}'.format(os.path.basename(src))
             # Fix for when the target PATH is exists *and* it is a folder
             # we assume the 'current directory' is the target folder
-            # and we assume the file to be copied is the base filename of the source
+            # and we assume the file to be copied is the base filename
+            # of the source
             elif os.path.exists(tgt.strip()) and os.path.isdir(tgt.strip()):
                 tgt = os.path.join(tgt, os.path.basename(src))
 

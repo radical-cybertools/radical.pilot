@@ -8,7 +8,7 @@ import radical.utils as ru
 from .base import LaunchMethod
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class MPIRun_MPT(LaunchMethod):
 
@@ -49,7 +49,7 @@ class MPIRun_MPT(LaunchMethod):
         else          : task_command = task_exec
 
         env_string = ''
-        env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
+        env_list   = self.EXPORT_ENV_VARIABLES + list(task_env.keys())
         if env_list:
 
             if self.mpi_flavor == self.MPI_FLAVOR_HYDRA:
@@ -76,7 +76,7 @@ class MPIRun_MPT(LaunchMethod):
         # On Cheyenne (which is the only machine that requires mpirun_mpt
         # currently), we also have to set MPI_SHEPHERD=true, we add it to the
         # environment of the cu which will get parsed in the spawner
-        if 'environment' not in cu['description'].keys():
+        if 'environment' not in list(cu['description'].keys()):
             cu['description']['environment'] = dict()
         cu['description']['environment']['MPI_SHEPHERD'] = True
 

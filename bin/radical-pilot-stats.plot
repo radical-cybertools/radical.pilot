@@ -47,18 +47,18 @@ color_list_1 = "#FF8855 #88FF55 #8855FF #FF55FF #55FFFF"
 color_list_2 = "#AA8855 #88AA55 #8855AA #AA55AA #55AAAA"
 
 do for [i=1:pilot_num] {
-    pilot_id = word(pilot_id_list, i)
+    pid = word(pilot_id_list, i)
 
     print ''
     print 'pilot name      : '  . word(pilot_name_list, i)
-    print 'pilot id        : '  . pilot_id
+    print 'pilot id        : '  . pid
 
-    pilot_states_dat         = '/tmp/rp.' . session . '.pilot.states.'    . pilot_id . '.dat'
-    pilot_callbacks_dat      = '/tmp/rp.' . session . '.pilot.callbacks.' . pilot_id . '.dat'
-    pilot_slots_dat          = '/tmp/rp.' . session . '.pilot.slots.'     . pilot_id . '.dat'
-    pilot_queue_dat          = '/tmp/rp.' . session . '.pilot.queue.'     . pilot_id . '.dat'
-    unit_states_dat          = '/tmp/rp.' . session . '.unit.states.'     . pilot_id . '.dat'
-    unit_callbacks_dat       = '/tmp/rp.' . session . '.unit.callbacks.'  . pilot_id . '.dat'
+    pilot_states_dat         = '/tmp/rp.' . session . '.pilot.states.'    . pid . '.dat'
+    pilot_callbacks_dat      = '/tmp/rp.' . session . '.pilot.callbacks.' . pid . '.dat'
+    pilot_slots_dat          = '/tmp/rp.' . session . '.pilot.slots.'     . pid . '.dat'
+    pilot_queue_dat          = '/tmp/rp.' . session . '.pilot.queue.'     . pid . '.dat'
+    unit_states_dat          = '/tmp/rp.' . session . '.unit.states.'     . pid . '.dat'
+    unit_callbacks_dat       = '/tmp/rp.' . session . '.unit.callbacks.'  . pid . '.dat'
 
     pilot_states_dat_list    = pilot_states_dat_list    . pilot_states_dat    . ' '
     pilot_callbacks_dat_list = pilot_callbacks_dat_list . pilot_callbacks_dat . ' '
@@ -82,13 +82,13 @@ get_title(i)= sprintf("%s: %-15s (%4s cores / %4s units)", \
 # do for [i=1:pilot_num] {
 #     print  '        ' . color_1(i) . '  ' . color_2(i)
 # }
-# 
+#
 # print 'offsets'
 # do for [i=1:pilot_num] {
 #     print  '        ' . sprintf ("%f", offset (i, 0.2))
 #     print word(slotnum_list,i)+offset(i,0.5)
 # }
-# 
+#
 # print 'pilot_queue_dats'
 # do for [i=1:pilot_num] {
 #     print word(pilot_queue_dat_list,i)
@@ -132,8 +132,8 @@ do for [term_i=1:words(terms)] {
     }
 
     # pilot 1: pilot states, pilot notifications
-    #          unit states, unit state notifications, 
-    #          slots, maxslots  
+    #          unit states, unit state notifications,
+    #          slots, maxslots
     set style line 100 lt 1 lc rgb '#FF9944' pt 7 ps term_mult*0.6 lw term_mult*2
     set style line 101 lt 1 lc rgb '#AA6666' pt 6 ps term_mult*0.4 lw term_mult*1
     set style line 102 lt 1 lc rgb '#FF9944' pt 7 ps term_mult*0.6 lw term_mult*2
@@ -168,9 +168,9 @@ do for [term_i=1:words(terms)] {
         fontscale  term_mult     \
         dashlength term_dl       \
         linewidth  term_lw
-      
+
     # --------------------------------------------------------------------------------------------------
-    set output './'.sname.'.'.term 
+    set output './'.sname.'.'.term
     print      './'.sname.'.'.term
 
     set title  ''
@@ -211,7 +211,7 @@ do for [term_i=1:words(terms)] {
          word(pilot_states_dat_list,i)    using 1:($2+offset(i,0.05))      title '' with steps  lt 1 lc rgb color_1(i) lw term_mult*2, \
          for [i=1:pilot_num] \
          word(pilot_callbacks_dat_list,i) using 1:($2+offset(i,0.05)+0.05) title '' with points lt 1 lc rgb color_2(i) lw term_mult*1
- 
+
     # ------------------------------------------------------------------------------------
     set xrange [0:maxtime]
     set yrange [0:12]
@@ -253,7 +253,7 @@ do for [term_i=1:words(terms)] {
     set xlabel  'time (in seconds)'
     set ylabel  "PILOT ACTIVITY\n[slots / queue]" offset second -00,0
     set y2label "UNIT WAIT QUEUE SIZE"            offset second -00.0,0
-    set grid 
+    set grid
   unset format
 
   # set style line 104 lt 1 lc rgb '#FF9944' pt 7 ps term_mult*0.6 lw term_mult*3

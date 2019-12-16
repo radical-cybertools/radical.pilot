@@ -1,7 +1,7 @@
 
 # pylint: disable=protected-access, unused-argument
 
-from   test_common                    import setUp
+from   .test_common                    import setUp
 from   radical.pilot.agent.lm.mpiexec import MPIExec
 
 import radical.utils as ru
@@ -37,7 +37,7 @@ def test_configure(mocked_init, mocked_get_mpi_info, mocked_raise_on,
 @mock.patch.object(MPIExec, '__init__',   return_value=None)
 @mock.patch.object(MPIExec, '_configure', return_value=None)
 @mock.patch('radical.utils.raise_on')
-def test_construct_command(mocked_init, 
+def test_construct_command(mocked_init,
                            mocked_configure,
                            mocked_raise_on):
 
@@ -51,7 +51,6 @@ def test_construct_command(mocked_init,
 
     for unit, result in test_cases:
         command, hop = component.construct_command(unit, None)
-        print unit['uid']
         assert([command, hop] == result)
 
 # ------------------------------------------------------------------------------

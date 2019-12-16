@@ -6,17 +6,18 @@ __license__   = "MIT"
 import os
 import multiprocessing
 
-from base import LRMS
+from .base import LRMS
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Spark(LRMS):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, logger):
-        LRMS.__init__(self, cfg, logger)
+    def __init__(self, cfg, log):
+
+        LRMS.__init__(self, cfg, log)
 
 
     # --------------------------------------------------------------------------

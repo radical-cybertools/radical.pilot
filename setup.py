@@ -84,6 +84,7 @@ def get_version(mod_root):
             'branch=`git branch | grep -e "^*" | cut -f 2- -d " "` 2>/dev/null ; '
             'echo $tag@$branch' % src_root)
         version_detail = out.strip()
+        version_detail = version_detail.decode()
         version_detail = version_detail.replace('detached from ', 'detached-')
 
         # remove all non-alphanumeric (and then some) chars
@@ -95,7 +96,7 @@ def get_version(mod_root):
             'git-error'      in version_detail or \
             'not-a-git-repo' in version_detail or \
             'not-found'      in version_detail or \
-            'fatal'          in version_detail    :
+            'fatal'          in version_detail :
             version = version_base
         elif '@' not in version_base:
             version = '%s-%s' % (version_base, version_detail)
@@ -139,8 +140,8 @@ def get_version(mod_root):
 
 # ------------------------------------------------------------------------------
 # check python version. we need >= 2.7, <3.x
-if  sys.hexversion < 0x02070000 or sys.hexversion >= 0x03000000:
-    raise RuntimeError('%s requires Python 2.x (2.7 or higher)' % name)
+if  sys.hexversion <= 0x03050000:
+    raise RuntimeError('%s requires Python 3.5 or higher' % name)
 
 
 # ------------------------------------------------------------------------------
@@ -167,12 +168,6 @@ class RunTwine(Command):
     def run (self) :
         out,  err, ret = sh_callout('python setup.py sdist upload -r pypi')
         raise SystemExit(ret)
-
-
-# ------------------------------------------------------------------------------
-#
-if  sys.hexversion < 0x02060000 or sys.hexversion >= 0x03000000:
-    raise RuntimeError('SETUP ERROR: %s requires Python 2.6 or higher' % name)
 
 
 # ------------------------------------------------------------------------------
@@ -207,14 +202,15 @@ setup_args = {
     'url'                : 'https://www.github.com/radical-cybertools/radical.pilot/',
     'license'            : 'MIT',
     'keywords'           : 'radical pilot job saga',
+    'python_requires'    : '>=3.5',
     'classifiers'        : [
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
         'Environment :: Console',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.5',
         'Topic :: Utilities',
         'Topic :: System :: Distributed Computing',
         'Topic :: Scientific/Engineering',
@@ -225,9 +221,11 @@ setup_args = {
     'packages'           : find_packages('src'),
     'package_dir'        : {'': 'src'},
     'scripts'            : [
+                            'bin/radical-pilot-bridge',
                             'bin/radical-pilot-bson2json',
                             'bin/radical-pilot-cleanup',
                             'bin/radical-pilot-close-session',
+                            'bin/radical-pilot-component',
                             'bin/radical-pilot-create-static-ve',
                             'bin/radical-pilot-deploy-ompi.sh',
                             'bin/radical-pilot-fetch-db',
@@ -248,15 +246,15 @@ setup_args = {
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.c',
                                  '*.md', 'VERSION', 'SDIST', sdist_name]},
   # 'setup_requires'     : ['pytest-runner'],
-    'install_requires'   : ['radical.utils>=0.60',
-                            'radical.saga>=0.60',
+    'install_requires'   : ['radical.utils>=0.90',
+                            'radical.saga>=0.90',
                             'pymongo',
                             'python-hostlist',
                             'netifaces',
                             'setproctitle',
                             'ntplib',
-                            'msgpack-python',
-                            'pyzmq'],
+                            'msgpack-python'
+                           ],
     'extras_require'     : {'autopilot' : ['github3.py']},
     'tests_require'      : ['pytest',
                             'pylint',
@@ -290,4 +288,5 @@ os.system('rm -rf src/%s.egg-info' % name)
 
 
 # ------------------------------------------------------------------------------
+
 

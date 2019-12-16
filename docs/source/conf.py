@@ -106,15 +106,15 @@ List of Pre-Configured Resources
             resources_rst.write("{0}\n".format(host_key.upper()))
             resources_rst.write("{0}\n\n".format("*"*len(host_key)))
             resources_rst.write("{0}\n\n".format(resource_config["description"]))
-            resources_rst.write("* **Resource label**      : ``{0}``\n".format(resource_key[9:]))
-            resources_rst.write("* **Raw config**          : :download:`{0} <../../src/radical/pilot/configs/{0}>`\n".format(config))
+            resources_rst.write("* **Resource label**    : ``{0}``\n".format(resource_key[9:]))
+            resources_rst.write("* **Raw config**        : :download:`{0} <../../src/radical/pilot/configs/{0}>`\n".format(config))
             if resource_config["notes"] != "None":
-                resources_rst.write("* **Note**            : {0}\n".format(resource_config["notes"]))
+                resources_rst.write("* **Note**              : {0}\n".format(resource_config["notes"]))
             resources_rst.write("* **Default values** for ComputePilotDescription attributes:\n\n")
-            resources_rst.write(" * ``queue         : {0}``\n".format(default_queue))
-            resources_rst.write(" * ``sandbox       : {0}``\n".format(working_dir))
-            resources_rst.write(" * ``access_schema : {0}``\n\n".format(access_schemas[0]))
-            resources_rst.write("* **Available schemas**   : ``{0}``\n".format(', '.join(access_schemas)))
+            resources_rst.write(" * ``queue         :{0}``\n".format(default_queue))
+            resources_rst.write(" * ``sandbox       :{0}``\n".format(working_dir))
+            resources_rst.write(" * ``access_schema :{0}``\n\n".format(access_schemas[0]))
+            resources_rst.write("* **Available schemas** : ``{0}``\n".format(', '.join(access_schemas)))
             resources_rst.write("\n")
 
 ##
@@ -137,7 +137,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.intersphinx',
               'sphinx.ext.todo',
               'sphinx.ext.coverage',
-              'sphinx.ext.pngmath',
+              'sphinx.ext.imgmath',
               'sphinx.ext.ifconfig',
               'sphinx.ext.viewcode',
               'sphinx.ext.extlinks']
@@ -266,6 +266,7 @@ html_use_smartypants = True
 
 # Custom sidebar templates, maps document names to template names.
 #html_sidebars = {}
+html_sidebars = { '**': ['globaltoc.html', 'relations.html', 'searchbox.html'] }
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.

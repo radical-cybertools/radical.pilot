@@ -4,7 +4,8 @@ __license__   = "MIT"
 
 
 import copy
-import threading as mt
+
+import radical.utils as ru
 
 from .base import AgentSchedulingComponent
 
@@ -93,7 +94,7 @@ class Hombre(AgentSchedulingComponent):
         self.gpn     = self._lrms_gpus_per_node
 
         self.free    = list()     # list of free chunks
-        self.lock    = mt.Lock()  # lock for the above list
+        self.lock    = ru.Lock()  # lock for the above list
 
         cores_needed = cud['cpu_processes'] * cud['cpu_threads']
         gpus_needed  = cud['gpu_processes']
@@ -119,7 +120,7 @@ class Hombre(AgentSchedulingComponent):
         cidx     = 0
 
         while cidx + cblock <= self.cpn:
-            cblocks.append(range(cidx,cidx + cblock))
+            cblocks.append(list(range(cidx,cidx + cblock)))
             cidx += cblock
 
         gblock   = 1
@@ -127,7 +128,7 @@ class Hombre(AgentSchedulingComponent):
         gblocks  = list()
         gidx     = 0
         while gidx + gblock <= self.gpn:
-            gblocks.append(range(gidx,gidx + gblock))
+            gblocks.append(list(range(gidx,gidx + gblock)))
             gidx += gblock
 
         self._log.debug('core blocks %s', cblocks)
@@ -223,7 +224,7 @@ class Hombre(AgentSchedulingComponent):
         self._delayed_configure(cud)
 
         # ensure that all CUDs require the same amount of reources
-        for k,v in self.chunk.iteritems():
+        for k,v in list(self.chunk.items()):
             if cud[k] != v:
                 raise ValueError('hetbre?  %d != %d' % (v, cud[k]))
 

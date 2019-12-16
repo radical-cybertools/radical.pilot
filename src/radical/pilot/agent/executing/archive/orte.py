@@ -7,12 +7,14 @@ import os
 import copy
 import time
 import errno
-import Queue
+import queue
 import tempfile
 import threading
 import traceback
 
 from orte_cffi import ffi, lib as orte_lib                                # noca
+
+import radical.utils as ru
 
 from ....  import pilot     as rp
 from ...   import states    as rps
@@ -67,7 +69,7 @@ class ORTE(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         self._pwd = os.getcwd()
 
@@ -80,14 +82,14 @@ class ORTE(AgentExecutingComponent):
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
-        self._cancel_lock    = threading.RLock()
+        self._cancel_lock    = ru.RLock()
         self._cus_to_cancel  = list()
-        self._watch_queue    = Queue.Queue ()
+        self._watch_queue    = queue.Queue ()
 
-        self._pilot_id = self._cfg['pilot_id']
+        self._pid = self._cfg['pid']
 
         self.task_map = {}
-        self.task_map_lock = threading.Lock()
+        self.task_map_lock = ru.Lock()
 
         # we needs the LaunchMethods to construct commands.
         assert(self._cfg['task_launch_method'] ==
@@ -154,7 +156,7 @@ class ORTE(AgentExecutingComponent):
 
         # Remove the configured set of environment variables from the
         # environment that we pass to Popen.
-        for e in new_env.keys():
+        for e in list(new_env.keys()):
             env_removables = list()
             if self._task_launcher:
                 env_removables += self._task_launcher.env_removables
@@ -389,9 +391,9 @@ class ORTE(AgentExecutingComponent):
 
         # Set RP environment variables
         rp_envs = [
-            "RP_SESSION_ID=%s" % self._cfg['session_id'],
-            "RP_PILOT_ID=%s"   % self._cfg['pilot_id'],
-            "RP_AGENT_ID=%s"   % self._cfg['agent_name'],
+            "RP_SESSION_ID=%s" % self._cfg['sid'],
+            "RP_PILOT_ID=%s"   % self._cfg['pid'],
+            "RP_AGENT_ID=%s"   % self._cfg['aid'],
             "RP_SPAWNER_ID=%s" % self.uid,
             "RP_UNIT_ID=%s"    % cu['uid'],
             "RP_UNIT_NAME=%s"  % cu['description'].get('name'),
@@ -403,13 +405,13 @@ class ORTE(AgentExecutingComponent):
 
         # Set pre-populated environment variables
         if self._cu_environment:
-            for key,val in self._cu_environment.iteritems():
+            for key,val in self._cu_environment.items():
                 arg_list.append(ffi.new("char[]", "-x"))
                 arg_list.append(ffi.new("char[]", "%s=%s" % (key, val)))
 
         # Set environment variables specified for this CU
         if cu['description']['environment']:
-            for key,val in cu['description']['environment'].iteritems():
+            for key,val in cu['description']['environment'].items():
                 arg_list.append(ffi.new("char[]", "-x"))
                 arg_list.append(ffi.new("char[]", "%s=%s" % (key, val)))
 
