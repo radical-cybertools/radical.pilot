@@ -3,31 +3,28 @@
 #
 # global constants
 #
-UPDATE_WORKER                  = 'UpdateWorker'
+UPDATE_WORKER                  = 'update'
 
 PMGR_LAUNCHING_QUEUE           = 'pmgr_launching_queue'
-PMGR_LAUNCHING_COMPONENT       = 'PMGRLaunchingComponent'
+PMGR_LAUNCHING_COMPONENT       = 'pmgr_launching'
 
 UMGR_SCHEDULING_QUEUE          = 'umgr_scheduling_queue'
 UMGR_STAGING_INPUT_QUEUE       = 'umgr_staging_input_queue'
 UMGR_STAGING_OUTPUT_QUEUE      = 'umgr_staging_output_queue'
 
-UMGR_SCHEDULING_COMPONENT      = 'UMGRSchedulingComponent'
-UMGR_STAGING_INPUT_COMPONENT   = 'UMGRStagingInputComponent'
-UMGR_STAGING_OUTPUT_COMPONENT  = 'UMGRStagingOutputComponent'
-UMGR_UPDATE_WORKER             = 'UMGRUpdateWorker'
+UMGR_SCHEDULING_COMPONENT      = 'umgr_scheduling'
+UMGR_STAGING_INPUT_COMPONENT   = 'umgr_staging_input'
+UMGR_STAGING_OUTPUT_COMPONENT  = 'umgr_staging_output'
 
 AGENT_STAGING_INPUT_QUEUE      = 'agent_staging_input_queue'
 AGENT_SCHEDULING_QUEUE         = 'agent_scheduling_queue'
 AGENT_EXECUTING_QUEUE          = 'agent_executing_queue'
 AGENT_STAGING_OUTPUT_QUEUE     = 'agent_staging_output_queue'
-# AGENT_UPDATE_QUEUE             = 'agent_update_queue'
 
-AGENT_STAGING_INPUT_COMPONENT  = 'AgentStagingInputComponent'
-AGENT_SCHEDULING_COMPONENT     = 'AgentSchedulingComponent'
-AGENT_EXECUTING_COMPONENT      = 'AgentExecutingComponent'
-AGENT_STAGING_OUTPUT_COMPONENT = 'AgentStagingOutputComponent'
-# AGENT_UPDATE_WORKER            = 'AgentUpdateWorker'
+AGENT_STAGING_INPUT_COMPONENT  = 'agent_staging_input'
+AGENT_SCHEDULING_COMPONENT     = 'agent_scheduling'
+AGENT_EXECUTING_COMPONENT      = 'agent_executing'
+AGENT_STAGING_OUTPUT_COMPONENT = 'agent_staging_output'
 
 UMGR_UNSCHEDULE_PUBSUB         = 'umgr_unschedule_pubsub'
 UMGR_RESCHEDULE_PUBSUB         = 'umgr_reschedule_pubsub'
@@ -55,7 +52,7 @@ DOWN = 2
 #
 UNIT_STATE           = 'UNIT_STATE'
 WAIT_QUEUE_SIZE      = 'WAIT_QUEUE_SIZE'
-UMGR_METRICS         = [UNIT_STATE, 
+UMGR_METRICS         = [UNIT_STATE,
                         WAIT_QUEUE_SIZE]
 
 PILOT_STATE          = 'PILOT_STATE'

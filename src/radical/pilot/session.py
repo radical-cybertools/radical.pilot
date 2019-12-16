@@ -2,58 +2,47 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-# the session needs to get rid of child process handles after forks, as Python's
-# multiprocessing module does not allow to check for child process health from
-# processes which did not originally spawn the children.  For htis we use
-# `at_fork`, which monkeypatches `os.fork()` to support prepare, parent and
-# child hooks.  We then register a child hook during session initialization.
-#
-# Since the monkeypatch needs to be applies before `os` is imported, we do that
-# right here, in the (probably vain) hope that os was not imported before.  If
-# it was, at_fork will raise an error.
-#
-
-
 import os
 import sys
 import copy
-import glob
-import threading
 
 import radical.utils                as ru
 import radical.saga                 as rs
 import radical.saga.utils.pty_shell as rsup
 
-from . import utils         as rpu
-
-from .resource_config import ResourceConfig
 from .db              import DBSession
-from .utils           import version_detail as rp_version_detail
+from .                import utils          as rpu
 
 
 # ------------------------------------------------------------------------------
 #
 class Session(rs.Session):
-    """
-    A Session encapsulates a RADICAL-Pilot instance and is the *root* object
-
-    A Session holds :class:`radical.pilot.PilotManager` and
+    '''
+    A Session is the root object of all RP objects in an application instance:
+    it holds :class:`radical.pilot.PilotManager` and
     :class:`radical.pilot.UnitManager` instances which in turn hold
     :class:`radical.pilot.ComputePilot` and :class:`radical.pilot.ComputeUnit`
-    instances.
-    """
+    instances, and several other components which operate on those stateful
+    entities.
+    '''
+
+    # In that role, the session will create a special pubsub channel `heartbeat`
+    # which is used by all components in its hierarchy to exchange heartbeat
+    # messages.  Those messages are used to watch component health - if
+    # a (parent or child) component fails to send heartbeats for a certain
+    # amount of time, it is considered dead and the process tree will terminate.
+    # That heartbeat management is implemented in the `ru.Heartbeat` class.
+    # Only primary sessions instantiate a heartbeat channel (i.e., only the root
+    # sessions of RP client or agent modules), but all components need to call
+    # the sessions `heartbeat()` method at regular intervals.
 
     # the reporter is an applicataion-level singleton
     _reporter = None
 
-    # We keep a static typemap for component startup. If we ever want to
-    # become reeeealy fancy, we can derive that typemap from rp module
-    # inspection.
-    #
     # --------------------------------------------------------------------------
     #
-    def __init__(self, dburl=None, uid=None, cfg=None, _connect=True):
-        """
+    def __init__(self, dburl=None, uid=None, cfg=None, _primary=True):
+        '''
         Creates a new session.  A new Session instance is created and
         stored in the database.
 
@@ -62,379 +51,181 @@ class Session(rs.Session):
               RP uses the environment variable RADICAL_PILOT_DBURL.  If that is
               not set, an error will be raises.
 
-            * **uid** (`string`): Create a session with this UID.
-              *Only use this when you know what you are doing!*
+            * **cfg** (`str` or `dict`): a named or instantiated configuration
+              to be used for the session.
 
-        **Returns:**
-            * A new Session instance.
+            * **uid** (`string`): Create a session with this UID.  Session UIDs
+              MUST be unique - otherwise they will lead to conflicts in the
+              underlying database, resulting in undefined behaviours (or worse).
 
-        **Raises:**
-            * :class:`radical.pilot.DatabaseError`
+            * **_primary** (`bool`): only sessions created by the original
+              application process (via `rp.Session()`, will connect to the  DB.
+              Secondary session instances are instantiated internally in
+              processes spawned (directly or indirectly) by the initial session,
+              for example in some of it's components.  A secondary session will
+              inherit the original session ID, but will not attempt to create
+              a new DB collection - if such a DB connection is needed, the
+              component needs to establish that on its own.
+        '''
 
-        """
+        # NOTE: `name` and `cfg` are overloaded, the user cannot point to
+        #       a predefined config and amed it at the same time.  This might
+        #       be ok for the session, but introduces a minor API inconsistency.
+        name = 'default'
+        if isinstance(cfg, str):
+            name = cfg
+            cfg  = None
 
-        if os.uname()[0] == 'Darwin':
-            # on MacOS, we are running out of file descriptors soon.  The code
-            # below attempts to increase the limit of open files - but any error
-            # is silently ignored, so this is an best-effort, no guarantee.  We
-            # leave responsibility for system limits with the user.
-            try:
-                import resource
-                limits    = list(resource.getrlimit(resource.RLIMIT_NOFILE))
-                limits[0] = 512
-                resource.setrlimit(resource.RLIMIT_NOFILE, limits)
-            except:
-                pass
+        self._dbs     = None
+        self._closed  = False
+        self._primary = _primary
 
-        self._dh          = ru.DebugHelper()
-        self._valid       = True
-        self._closed      = False
-        self._valid_iter  = 0  # detect recursive calls of `is_valid()`
+        self._pmgrs   = dict()  # map IDs to pmgr instances
+        self._umgrs   = dict()  # map IDs to umgr instances
+        self._cmgr    = None    # only primary sessions have a cmgr
 
-        # class state
-        self._dbs         = None
-        self._uid         = None
-        self._dburl       = None
-        self._reconnected = False
+        self._cfg     = ru.Config('radical.pilot.session',  name=name, cfg=cfg)
+        self._rcfgs   = ru.Config('radical.pilot.resource', name='*')
 
-        self._cache       = dict()  # cache sandboxes etc.
-        self._cache_lock  = threading.RLock()
+        if _primary:
 
-        self._cache['resource_sandbox'] = dict()
-        self._cache['session_sandbox']  = dict()
-        self._cache['pilot_sandbox']    = dict()
+            pwd = os.getcwd()
 
-        # before doing anything else, set up the debug helper for the lifetime
-        # of the session.
-        self._debug_helper = ru.DebugHelper()
+            if not self._cfg.sid:
+                if uid:
+                    self._cfg.sid = uid
+                else:
+                    self._cfg.sid = ru.generate_id('rp.session',
+                                                   mode=ru.ID_PRIVATE)
+            if not self._cfg.base:
+                self._cfg.base = pwd
 
-        # Dictionaries holding all manager objects created during the session.
-        # NOTE: should this also include agents?
-        self._pmgrs      = dict()
-        self._umgrs      = dict()
-        self._bridges    = list()
-        self._components = list()
+            if not self._cfg.path:
+                self._cfg.path = '%s/%s' % (self._cfg.base, self._cfg.sid)
 
-        # FIXME: we work around some garbage collection issues we don't yet
-        #        understand: instead of relying on the GC to eventually collect
-        #        some stuff, we actively free those on `session.close()`, at
-        #        least for the current process.  Usually, all resources get
-        #        nicely collected on process termination - but not when we
-        #        create many sessions (one after the other) in the same
-        #        application instance (ie. the same process).  This workarounf
-        #        takes care of that use case.
-        #        The clean solution would be to ensure clean termination
-        #        sequence, something which I seem to be unable to implement...
-        #        :/
-        self._to_close   = list()
-        self._to_stop    = list()
-        self._to_destroy = list()
+            if not self._cfg.client_sandbox:
+                self._cfg.client_sandbox = pwd
 
-        # cache the client sandbox
-        # FIXME: this needs to be overwritten if configured differently in the
-        #        session config, as should be the case for any agent side
-        #        session instance.
-        self._client_sandbox = os.getcwd()
-
-        # The resource configuration dictionary associated with the session.
-        self._resource_configs = {}
-
-        # if a config is given, us its values:
-        if cfg:
-            self._cfg = copy.deepcopy(cfg)
         else:
-            # otherwise we need a config
-            self._cfg = ru.read_json("%s/configs/session_%s.json"
-                    % (os.path.dirname(__file__),
-                       os.environ.get('RADICAL_PILOT_SESSION_CFG', 'default')))
+            for k in ['sid', 'base', 'path']:
+                assert(k in self._cfg), 'non-primary session misses %s' % k
 
-        # fall back to config data where possible
-        # sanity check on parameters
-        if not uid :
-            uid = self._cfg.get('session_id')
+        # change RU defaults to point logfiles etc. to the session sandbox
+        def_cfg             = ru.DefaultConfig()
+        def_cfg.log_dir     = self._cfg.path
+        def_cfg.report_dir  = self._cfg.path
+        def_cfg.profile_dir = self._cfg.path
 
-        if uid:
-            self._uid         = uid
-            self._reconnected = True
-        else:
-            # generate new uid, reset all other ID counters
-            # FIXME: this will screw up counters for *concurrent* sessions,
-            #        as the ID generation is managed in a process singleton.
-            self._uid = ru.generate_id('rp.session',  mode=ru.ID_PRIVATE)
-            ru.reset_id_counters(prefix='rp.session', reset_all_others=True)
+        self._uid  = self._cfg.sid
 
-        if not self._cfg.get('session_id'): self._cfg['session_id'] = self._uid
-        if not self._cfg.get('owner')     : self._cfg['owner']      = self._uid
-        if not self._cfg.get('logdir')    : self._cfg['logdir']     = '%s/%s' \
-                                                     % (os.getcwd(), self._uid)
-        self._logdir = self._cfg['logdir']
-        self._prof   = self._get_profiler(name=self._cfg['owner'])
-        self._rep    = self._get_reporter(name=self._cfg['owner'])
-        self._log    = self._get_logger  (name=self._cfg['owner'],
-                                          level=self._cfg.get('debug'))
+        self._prof = self._get_profiler(name=self._uid)
+        self._rep  = self._get_reporter(name=self._uid)
+        self._log  = self._get_logger  (name=self._uid,
+                                       level=self._cfg.get('debug'))
 
-        if _connect:
-
-            # we need a dburl to connect to.
-            if not dburl:
-                dburl = os.environ.get("RADICAL_PILOT_DBURL")
-
-            if not dburl:
-                dburl = self._cfg.get('default_dburl')
-
-            if not dburl:
-                dburl = self._cfg.get('dburl')
-
-            if not dburl:
-                # we forgive missing dburl on reconnect, but not otherwise
-                raise RuntimeError("no database URL (set RADICAL_PILOT_DBURL)")
-
-
-        self._dburl = ru.Url(dburl)
-        self._cfg['dburl'] = str(self._dburl)
-
-        # now we have config and uid - initialize base class (saga session)
-        rs.Session.__init__(self, uid=self._uid)
-
-
-        # ----------------------------------------------------------------------
-        # create new session
-        if _connect:
-            self._log.info("using database %s" % self._dburl)
-
-            # if the database url contains a path element, we interpret that as
-            # database name (without the leading slash)
-            if  not self._dburl.path         or \
-                self._dburl.path[0]   != '/' or \
-                len(self._dburl.path) <=  1  :
-                if not uid:
-                    # we fake reconnnect if no DB is available -- but otherwise we
-                    # really really need a db connection...
-                    raise ValueError("incomplete DBURL '%s' no db name!" % self._dburl)
-
-        if not self._reconnected:
-            self._prof.prof('session_start', uid=self._uid)
-            self._rep.info ('<<new session: ')
-            self._rep.plain('[%s]' % self._uid)
-            self._rep.info ('<<database   : ')
-            self._rep.plain('[%s]' % self._dburl)
-
-        self._load_resource_configs()
-
-        self._rec = os.environ.get('RADICAL_PILOT_RECORD_SESSION')
-        if self._rec:
-            # NOTE: Session recording cannot handle reconnected sessions, yet.
-            #       We thus turn it off here with a warning
-            if self._reconnected:
-                self._log.warn("no session recording on reconnected session")
-
-            else:
-                # append session ID to recording path
-                self._rec = "%s/%s" % (self._rec, self._uid)
-
-                # create recording path and record session
-                os.system('mkdir -p %s' % self._rec)
-                ru.write_json({'dburl': str(self.dburl)},
-                              "%s/session.json" % self._rec)
-                self._log.info("recording session in %s" % self._rec)
-
-
-        # create/connect database handle
-        try:
-            self._dbs = DBSession(sid=self.uid, dburl=str(self._dburl),
-                                  cfg=self._cfg, logger=self._log,
-                                  connect=_connect)
-
-            # from here on we should be able to close the session again
-            self._log.info("New Session created: %s." % self.uid)
-
-        except Exception as e:
-            self._rep.error(">>err\n")
-            self._log.exception('session create failed [%s]', self._dburl)
-            raise RuntimeError('session create failed [%s]: %s'
-                              % (self._dburl, e))
-
-        # the session must not carry bridge and component handles across forks
-        ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
-
-        # if bridges and components are specified in the config, start them
-        ruc = rpu.Component
-        self._bridges    = ruc.start_bridges   (self._cfg, self, self._log)
-        self._components = ruc.start_components(self._cfg, self, self._log)
-        self.is_valid()
-
-        # at this point we have a DB connection, logger, etc, and can record
-        # some metadata
+        from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s' % rp_version_detail)
         self._log.info('radical.saga  version: %s' % rs.version_detail)
         self._log.info('radical.utils version: %s' % ru.version_detail)
 
-        py_version_detail = sys.version.replace("\n", " ")
-        self.inject_metadata({'radical_stack' : {'rp': rp_version_detail,
-                                                 'rs': rs.version_detail,
-                                                 'ru': ru.version_detail,
-                                                 'py': py_version_detail}})
+        self._prof.prof('session_start', uid=self._uid, msg=int(_primary))
+        self._rep.info ('<<new session: ')
+        self._rep.plain('[%s]' % self._uid)
 
+        # now we have config and uid - initialize base class (saga session)
+        rs.Session.__init__(self, uid=self._uid)
 
-        # FIXME: make sure the above code results in a usable session on
-        #        reconnect
+        # cache sandboxes etc.
+        self._cache_lock = ru.RLock()
+        self._cache      = {'resource_sandbox' : dict(),
+                            'session_sandbox'  : dict(),
+                            'pilot_sandbox'    : dict(),
+                            'client_sandbox'   : self._cfg.client_sandbox}
+
+        if _primary:
+            self._initialize_primary(dburl)
+
+        # at this point we have a DB connection, logger, etc, and are done
+        self._prof.prof('session_ok', uid=self._uid, msg=int(_primary))
         self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
-    #
-    def _atfork_prepare(self):
-        pass
+    def _initialize_primary(self, dburl):
 
-    def _atfork_parent(self) :
-        pass
+        # create db connection - need a dburl to connect to
+        if not dburl: dburl = self._cfg.dburl
+        if not dburl: dburl = self._cfg.default_dburl
+        if not dburl: raise RuntimeError("no db URL (set RADICAL_PILOT_DBURL)")
 
-    def _atfork_child(self)  :
-        self._components = list()
-        self._bridges    = list()
-        self._to_close   = list()
-        self._to_stop    = list()
-        self._to_destroy = list()
+        self._cfg.dburl = dburl
+
+        self._rep.info ('<<database   : ')
+        self._rep.plain('[%s]'    % dburl)
+        self._log.info('dburl %s' % dburl)
+
+        # create/connect database handle on primary sessions
+        try:
+            self._dbs = DBSession(sid=self.uid, dburl=dburl,
+                                  cfg=self._cfg, log=self._log)
+
+            py_version_detail = sys.version.replace("\n", " ")
+            from . import version_detail as rp_version_detail
+
+            self.inject_metadata({'radical_stack':
+                                         {'rp': rp_version_detail,
+                                          'rs': rs.version_detail,
+                                          'ru': ru.version_detail,
+                                          'py': py_version_detail}})
+        except Exception:
+            self._rep.error(">>err\n")
+            self._log.exception('session create failed [%s]',  dburl)
+            raise RuntimeError ('session create failed [%s]' % dburl)
+
+        # primary sessions have a component manager which also manages
+        # heartbeat.  'self._cmgr.close()` should be called during termination
+        self._cmgr = rpu.ComponentManager(self._cfg)
+        self._cmgr.start_bridges()
+
+        try:
+            self._cmgr.start_components()
+        except:
+            sys.stdout.write('============= session\n')
+            sys.stdout.flush()
+            raise
+
+
+        # expose the cmgr's heartbeat channel to anyone who wants to use it
+        self._cfg.heartbeat = self._cmgr.cfg.heartbeat
+
+        self._rec = False
+        if self._cfg.record:
+
+            # append session ID to recording path
+            self._rec = "%s/%s" % (self._rec, self._uid)
+
+            # create recording path and record session
+            os.system('mkdir -p %s' % self._rec)
+            ru.write_json({'dburl': str(self.dburl)},
+                          "%s/session.json" % self._rec)
+            self._log.info("recording session in %s" % self._rec)
 
 
     # --------------------------------------------------------------------------
-    # Allow Session to function as a context manager in a `with` clause
+    # context manager `with` clause
+    # FIXME: cleanup_on_close, terminate_on_close attributes?
+    #
     def __enter__(self):
         return self
 
-
-    # --------------------------------------------------------------------------
-    # Allow Session to function as a context manager in a `with` clause
     def __exit__(self, type, value, traceback):
-
-        # FIXME: use cleanup_on_close, terminate_on_close attributes
-        self.close()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def is_valid(self, term=True):
-
-        # don't check validity during termination
-        if self._closed:
-            return True
-
-        # if we check any manager or agent, it will likely also check the
-        # session in turn.  We break that loop here.
-        self._valid_iter += 1
-
-        try:
-            if self._valid_iter >= 2:
-                # we are too deep - abort this line or tests
-                return True
-
-            if self._valid:
-                for _,umgr in self._umgrs.items():
-                    if not umgr.is_valid(term):
-                        self._valid = False
-                        break
-
-            if self._valid:
-                for _,pmgr in self._pmgrs.items():
-                    if not pmgr.is_valid(term):
-                        self._valid = False
-                        break
-
-            if self._valid:
-                for bridge in self._bridges:
-                    if not bridge.is_valid(term):
-                        self._valid = False
-                        break
-
-            if self._valid:
-                for component in self._components:
-                    if not component.is_valid(term):
-                        self._valid = False
-                        break
-
-        finally:
-            pass
-
-        if not self._valid and term:
-            self._log.warn("session %s is invalid" % self.uid)
-            self.close()
-          # raise RuntimeError("session %s is invalid" % self.uid)
-
-        return self._valid
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _load_resource_configs(self):
-
-        self.is_valid()
-
-        self._prof.prof('config_parser_start', uid=self._uid)
-
-        # Loading all "default" resource configurations
-        module_path  = os.path.dirname(os.path.abspath(__file__))
-        default_cfgs = "%s/configs/resource_*.json" % module_path
-        config_files = glob.glob(default_cfgs)
-
-        for config_file in config_files:
-
-            try:
-                self._log.info("Load resource configurations from %s" % config_file)
-                rcs = ResourceConfig.from_file(config_file)
-            except Exception as e:
-                self._log.exception("skip config file %s: %s" % (config_file, e))
-                raise RuntimeError('config error (%s) - abort' % e)
-
-            for rc in rcs:
-                self._log.info("Load resource configurations for %s" % rc)
-                self._resource_configs[rc] = rcs[rc].as_dict()
-                self._log.debug('read rcfg for %s (%s)',
-                        rc, self._resource_configs[rc].get('cores_per_node'))
-
-        home         = os.environ.get('HOME', '')
-        user_cfgs    = "%s/.radical/pilot/configs/resource_*.json" % home
-        config_files = glob.glob(user_cfgs)
-
-        for config_file in config_files:
-
-            try:
-                rcs = ResourceConfig.from_file(config_file)
-            except Exception as e:
-                self._log.exception("skip config file %s: %s" % (config_file, e))
-                raise RuntimeError('config error (%s) - abort' % e)
-
-            for rc in rcs:
-                self._log.info("Load resource configurations for %s" % rc)
-
-                if rc in self._resource_configs:
-                    # config exists -- merge user config into it
-                    ru.dict_merge(self._resource_configs[rc],
-                                  rcs[rc].as_dict(),
-                                  policy='overwrite')
-                else:
-                    # new config -- add as is
-                    self._resource_configs[rc] = rcs[rc].as_dict()
-
-                self._log.debug('fix  rcfg for %s (%s)',
-                        rc, self._resource_configs[rc].get('cores_per_node'))
-
-        default_aliases = "%s/configs/resource_aliases.json" % module_path
-        self._resource_aliases = ru.read_json_str(default_aliases)['aliases']
-
-        # check if we have aliases to merge
-        usr_aliases = '%s/.radical/pilot/configs/resource_aliases.json' % home
-        if os.path.isfile(usr_aliases):
-            ru.dict_merge(self._resource_aliases,
-                          ru.read_json_str(usr_aliases).get('aliases', {}),
-                          policy='overwrite')
-
-        self._prof.prof('config_parser_stop', uid=self._uid)
+        self.close(download=True)
 
 
     # --------------------------------------------------------------------------
     #
     def close(self, cleanup=False, terminate=True, download=False):
-        """Closes the session.
+        '''Closes the session.
 
         All subsequent attempts access objects attached to the session will
         result in an error. If cleanup is set to True (default) the session
@@ -447,7 +238,7 @@ class Session(rs.Session):
         **Raises:**
             * :class:`radical.pilot.IncorrectState` if the session is closed
               or doesn't exist.
-        """
+        '''
 
         # close only once
         if self._closed:
@@ -465,27 +256,18 @@ class Session(rs.Session):
             # cleanup implies terminate
             terminate = True
 
-        for umgr_uid,umgr in self._umgrs.items():
+        for umgr_uid, umgr in self._umgrs.items():
             self._log.debug("session %s closes umgr   %s", self._uid, umgr_uid)
             umgr.close()
             self._log.debug("session %s closed umgr   %s", self._uid, umgr_uid)
 
-        for pmgr_uid,pmgr in self._pmgrs.items():
+        for pmgr_uid, pmgr in self._pmgrs.items():
             self._log.debug("session %s closes pmgr   %s", self._uid, pmgr_uid)
             pmgr.close(terminate=terminate)
             self._log.debug("session %s closed pmgr   %s", self._uid, pmgr_uid)
 
-        for comp in self._components:
-            self._log.debug("session %s closes comp   %s", self._uid, comp.uid)
-            comp.stop()
-            comp.join()
-            self._log.debug("session %s closed comp   %s", self._uid, comp.uid)
-
-        for bridge in self._bridges:
-            self._log.debug("session %s closes bridge %s", self._uid, bridge.uid)
-            bridge.stop()
-            bridge.join()
-            self._log.debug("session %s closed bridge %s", self._uid, bridge.uid)
+        if self._cmgr:
+            self._cmgr.close()
 
         if self._dbs:
             self._log.debug("session %s closes db (%s)", self._uid, cleanup)
@@ -495,19 +277,7 @@ class Session(rs.Session):
         self._prof.prof("session_stop", uid=self._uid)
         self._prof.close()
 
-        # support GC
-        for x in self._to_close:
-            try:    x.close()
-            except: pass
-        for x in self._to_stop:
-            try:    x.stop()
-            except: pass
-        for x in self._to_destroy:
-            try:    x.destroy()
-            except: pass
-
         self._closed = True
-        self._valid = False
 
         # after all is said and done, we attempt to download the pilot log- and
         # profiles, if so wanted
@@ -529,10 +299,8 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def as_dict(self):
-        """Returns a Python dictionary representation of the object.
-        """
-
-        self.is_valid()
+        '''Returns a Python dictionary representation of the object.
+        '''
 
         object_dict = {
             "uid"       : self._uid,
@@ -548,8 +316,8 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def __str__(self):
-        """Returns a string representation of the object.
-        """
+        '''Returns a string representation of the object.
+        '''
         return str(self.as_dict())
 
 
@@ -560,25 +328,30 @@ class Session(rs.Session):
         return self._uid
 
 
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def base(self):
+        return self._cfg.base
+
+
     # --------------------------------------------------------------------------
     #
     @property
-    def logdir(self):
-        return self._logdir
+    def path(self):
+        return self._cfg.path
 
 
     # --------------------------------------------------------------------------
     #
     @property
     def dburl(self):
-        return self._dburl
+        return self._cfg.dburl
 
 
     # --------------------------------------------------------------------------
     #
     def get_db(self):
-
-        self.is_valid()
 
         if self._dbs: return self._dbs.get_db()
         else        : return None
@@ -587,9 +360,31 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     @property
+    def primary(self):
+        return self._primary
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def cfg(self):
+        return self._cfg
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def cmgr(self):
+        assert(self._primary)
+        return self._cmgr
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
     def created(self):
-        """Returns the UTC date and time the session was created.
-        """
+        '''Returns the UTC date and time the session was created.
+        '''
         if self._dbs: return self._dbs.created
         else        : return None
 
@@ -598,9 +393,10 @@ class Session(rs.Session):
     #
     @property
     def connected(self):
-        """Returns the most recent UTC date and time the session was
-        reconnected to.
-        """
+        '''
+        Return time when the session connected to the DB
+        '''
+
         if self._dbs: return self._dbs.connected
         else        : return None
 
@@ -610,8 +406,6 @@ class Session(rs.Session):
     @property
     def is_connected(self):
 
-        self.is_valid()
-
         return self._dbs.is_connected
 
 
@@ -619,9 +413,9 @@ class Session(rs.Session):
     #
     @property
     def closed(self):
-        """
+        '''
         Returns the time of closing
-        """
+        '''
         if self._dbs: return self._dbs.closed
         else        : return None
 
@@ -629,37 +423,38 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def _get_logger(self, name, level=None):
-        """
+        '''
         This is a thin wrapper around `ru.Logger()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
-        """
-        return ru.Logger(name=name, ns='radical.pilot', targets=['.'],
-                         path=self._logdir, level=level)
+        '''
+        return ru.Logger(name=name, ns='radical.pilot', path=self._cfg.path,
+                         targets=['.'], level=level)
 
 
     # --------------------------------------------------------------------------
     #
     def _get_reporter(self, name):
-        """
+        '''
         This is a thin wrapper around `ru.Reporter()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
-        """
+        '''
 
         if not self._reporter:
             self._reporter = ru.Reporter(name=name, ns='radical.pilot',
-                                         targets=['stdout'], path=self._logdir)
+                                         path=self._cfg.path,
+                                         targets=['stdout'])
         return self._reporter
 
 
     # --------------------------------------------------------------------------
     #
     def _get_profiler(self, name):
-        """
+        '''
         This is a thin wrapper around `ru.Profiler()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
-        """
+        '''
 
-        prof = ru.Profiler(name=name, ns='radical.pilot', path=self._logdir)
+        prof = ru.Profiler(name=name, ns='radical.pilot', path=self._cfg.path)
 
         return prof
 
@@ -667,12 +462,10 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def inject_metadata(self, metadata):
-        """
+        '''
         Insert (experiment) metadata into an active session
         RP stack version info always get added.
-        """
-
-        self.is_valid()
+        '''
 
         if not isinstance(metadata, dict):
             raise Exception("Session metadata should be a dict!")
@@ -686,8 +479,6 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def _register_pmgr(self, pmgr):
-
-        self.is_valid()
 
         self._dbs.insert_pmgr(pmgr.as_dict())
         self._pmgrs[pmgr.uid] = pmgr
@@ -708,23 +499,22 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def list_pilot_managers(self):
-        """
+        '''
         Lists the unique identifiers of all :class:`radical.pilot.PilotManager`
         instances associated with this session.
 
         **Returns:**
             * A list of :class:`radical.pilot.PilotManager` uids
               (`list` of `strings`).
-        """
+        '''
 
-        self.is_valid()
         return list(self._pmgrs.keys())
 
 
     # --------------------------------------------------------------------------
     #
     def get_pilot_managers(self, pmgr_uids=None):
-        """
+        '''
         returns known PilotManager(s).
 
         **Arguments:**
@@ -734,9 +524,7 @@ class Session(rs.Session):
 
         **Returns:**
             * One or more [:class:`radical.pilot.PilotManager`] objects.
-        """
-
-        self.is_valid()
+        '''
 
         return_scalar = False
         if not isinstance(pmgr_uids, list):
@@ -753,8 +541,6 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def _register_umgr(self, umgr):
-
-        self.is_valid()
 
         self._dbs.insert_umgr(umgr.as_dict())
         self._umgrs[umgr.uid] = umgr
@@ -775,22 +561,21 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def list_unit_managers(self):
-        """
+        '''
         Lists the unique identifiers of all :class:`radical.pilot.UnitManager`
         instances associated with this session.
 
         **Returns:**
             * A list of :class:`radical.pilot.UnitManager` uids (`list` of `strings`).
-        """
+        '''
 
-        self.is_valid()
         return list(self._umgrs.keys())
 
 
     # --------------------------------------------------------------------------
     #
     def get_unit_managers(self, umgr_uids=None):
-        """
+        '''
         returns known UnitManager(s).
 
         **Arguments:**
@@ -800,9 +585,7 @@ class Session(rs.Session):
 
         **Returns:**
             * One or more [:class:`radical.pilot.UnitManager`] objects.
-        """
-
-        self.is_valid()
+        '''
 
         return_scalar = False
         if not isinstance(umgr_uids, list):
@@ -824,69 +607,75 @@ class Session(rs.Session):
         description.  Not that resource aliases won't be listed.
         '''
 
-        return sorted(self._resource_configs.keys())
+        resources = list()
+        for domain in self._rcfgs:
+            if domain == 'aliases':
+                continue
+            for host in self._rcfgs:
+                resources.append('%s.%s' % (domain, host))
+
+        return sorted(resources)
 
 
     # -------------------------------------------------------------------------
     #
     def add_resource_config(self, resource_config):
-        """Adds a new :class:`radical.pilot.ResourceConfig` to the PilotManager's
-           dictionary of known resources, or accept a string which points to
-           a configuration file.
+        '''
+        Adds a new :class:`ru.Config` to the session's dictionary of known
+        resources, or accept a string which points to a configuration file.
 
-           For example::
+        For example::
 
-                  rc = radical.pilot.ResourceConfig(label="mycluster")
-                  rc.job_manager_endpoint = "ssh+pbs://mycluster
-                  rc.filesystem_endpoint  = "sftp://mycluster
-                  rc.default_queue        = "private"
-                  rc.bootstrapper         = "default_bootstrapper.sh"
+               rc = ru.Config("./mycluster.json")
+               rc.job_manager_endpoint = "ssh+pbs://mycluster
+               rc.filesystem_endpoint  = "sftp://mycluster
+               rc.default_queue        = "private"
 
-                  pm = radical.pilot.PilotManager(session=s)
-                  pm.add_resource_config(rc)
+               session = rp.Session()
+               session.add_resource_config(rc)
 
-                  pd = radical.pilot.ComputePilotDescription()
-                  pd.resource = "mycluster"
-                  pd.cores    = 16
-                  pd.runtime  = 5 # minutes
+               pd = rp.ComputePilotDescription()
+               pd.resource = "mycluster"
+               pd.cores    = 16
+               pd.runtime  = 5 # minutes
 
-                  pilot = pm.submit_pilots(pd)
-        """
-
-        self.is_valid()
+               pilot = pm.submit_pilots(pd)
+        '''
 
         if isinstance(resource_config, str):
 
             # let exceptions fall through
-            rcs = ResourceConfig.from_file(resource_config)
+            rcs = ru.Config('radical.pilot.resource', name=resource_config)
 
             for rc in rcs:
                 self._log.info('load rcfg for %s' % rc)
-                self._resource_configs[rc] = rcs[rc].as_dict()
+                self._rcfgs[rc] = rcs[rc].as_dict()
 
         else:
             self._log.debug('load rcfg for %s', resource_config.label)
-            self._resource_configs[resource_config.label] = resource_config.as_dict()
+            self._rcfgs[resource_config.label] = resource_config.as_dict()
 
 
     # -------------------------------------------------------------------------
     #
     def get_resource_config(self, resource, schema=None):
-        """
+        '''
         Returns a dictionary of the requested resource config
-        """
+        '''
 
-        self.is_valid()
-
-        if  resource in self._resource_aliases:
+        if  resource in self._rcfgs.get('aliases', {}):
             self._log.warning("using alias '%s' for deprecated resource '%s'"
-                              % (self._resource_aliases[resource], resource))
-            resource = self._resource_aliases[resource]
+                              % (self._rcfgs.aliases.resource, resource))
+            resource = self._rcfgs.aliases.resource
 
-        if  resource not in self._resource_configs:
-            raise RuntimeError("Resource '%s' is not known." % resource)
+        domain, host = resource.split('.', 1)
+        if domain not in self._rcfgs:
+            raise RuntimeError("Resource domain '%s' is unknown." % domain)
 
-        resource_cfg = copy.deepcopy(self._resource_configs[resource])
+        if host not in self._rcfgs[domain]:
+            raise RuntimeError("Resource host '%s' ununknown." % host)
+
+        resource_cfg = copy.deepcopy(self._rcfgs[domain][host])
 
         if  not schema:
             if 'schemas' in resource_cfg:
@@ -929,11 +718,10 @@ class Session(rs.Session):
                               session=self)
 
 
-
     # -------------------------------------------------------------------------
     #
     def _get_client_sandbox(self):
-        """
+        '''
         For the session in the client application, this is os.getcwd().  For the
         session in any other component, specifically in pilot components, the
         client sandbox needs to be read from the session config (or pilot
@@ -941,20 +729,18 @@ class Session(rs.Session):
         interpret client sandboxes.  Since pilot-side stagting to and from the
         client sandbox is not yet supported anyway, this seems acceptable
         (FIXME).
-        """
+        '''
 
-        return self._client_sandbox
+        return self._cache['client_sandbox']
 
 
     # -------------------------------------------------------------------------
     #
     def _get_resource_sandbox(self, pilot):
-        """
+        '''
         for a given pilot dict, determine the global RP sandbox, based on the
         pilot's 'resource' attribute.
-        """
-
-        self.is_valid()
+        '''
 
         # FIXME: this should get 'resource, schema=None' as parameters
 
@@ -1048,8 +834,6 @@ class Session(rs.Session):
     #
     def _get_session_sandbox(self, pilot):
 
-        self.is_valid()
-
         # FIXME: this should get 'resource, schema=None' as parameters
 
         resource = pilot['description'].get('resource')
@@ -1075,11 +859,7 @@ class Session(rs.Session):
     #
     def _get_pilot_sandbox(self, pilot):
 
-        self.is_valid()
-
         # FIXME: this should get 'pid, resource, schema=None' as parameters
-
-        self.is_valid()
 
         pilot_sandbox = pilot.get('pilot_sandbox')
         if str(pilot_sandbox):
@@ -1107,8 +887,6 @@ class Session(rs.Session):
 
         # If a sandbox is specified in the unit description, then interpret
         # relative paths as relativet to the pilot sandbox.
-
-        self.is_valid()
 
         # unit sandboxes are cached in the unit dict
         unit_sandbox = unit.get('unit_sandbox')
@@ -1142,8 +920,6 @@ class Session(rs.Session):
         '''
         get job service endpoint and hop URL for the pilot's target resource.
         '''
-
-        self.is_valid()
 
         resrc   = pilot['description']['resource']
         schema  = pilot['description']['access_schema']

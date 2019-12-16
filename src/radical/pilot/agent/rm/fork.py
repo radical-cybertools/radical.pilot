@@ -46,8 +46,6 @@ class Fork(LRMS):
                                            self._cfg.get('lfs_path_per_node')),
                                'size' :    self._cfg.get('lfs_size_per_node', 0)
                               }
-        self._log.debug('=== req: %d', self.requested_cores)
-        self._log.debug('=== cpn: %d', self.cores_per_node)
 
         if not self.cores_per_node:
             self.cores_per_node = 1

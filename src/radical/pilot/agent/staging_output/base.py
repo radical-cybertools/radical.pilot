@@ -6,8 +6,6 @@ __license__   = "MIT"
 import radical.utils as ru
 
 from ... import utils     as rpu
-from ... import states    as rps
-from ... import constants as rpc
 
 
 # ------------------------------------------------------------------------------
@@ -15,7 +13,7 @@ from ... import constants as rpc
 RP_ASI_NAME_DEFAULT = "DEFAULT"
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class AgentStagingOutputComponent(rpu.Component):
 
@@ -53,7 +51,7 @@ class AgentStagingOutputComponent(rpu.Component):
             return impl
 
         except KeyError:
-            raise ValueError("AgentStagingOutputComponent '%s' unknown or defunct" % name)
+            raise ValueError("AgentStagingOutputComponent '%s' defunct" % name)
 
 
 # ------------------------------------------------------------------------------

@@ -4,7 +4,8 @@ __license__   = "MIT"
 
 
 import copy
-import threading as mt
+
+import radical.utils as ru
 
 from .base import AgentSchedulingComponent
 
@@ -93,7 +94,7 @@ class Hombre(AgentSchedulingComponent):
         self.gpn     = self._lrms_gpus_per_node
 
         self.free    = list()     # list of free chunks
-        self.lock    = mt.Lock()  # lock for the above list
+        self.lock    = ru.Lock()  # lock for the above list
 
         cores_needed = cud['cpu_processes'] * cud['cpu_threads']
         gpus_needed  = cud['gpu_processes']

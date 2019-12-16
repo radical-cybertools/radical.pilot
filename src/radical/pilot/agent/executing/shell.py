@@ -4,22 +4,18 @@ __license__   = "MIT"
 
 
 import os
-import time
-import queue
-import tempfile
 import threading
 import traceback
 
 import radical.utils as ru
 
-from ... import utils     as rpu
 from ... import states    as rps
 from ... import constants as rpc
 
 from .base import AgentExecutingComponent
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Shell(AgentExecutingComponent):
 
@@ -33,7 +29,7 @@ class Shell(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         from .... import pilot as rp
 
@@ -71,7 +67,7 @@ class Shell(AgentExecutingComponent):
         if old_home : os.environ['PYTHON_HOME'] = old_home
         if old_ps1  : os.environ['PS1']         = old_ps1
 
-        if 'VIRTUAL_ENV' in os.environ :
+        if 'VIRTUAL_ENV' in os.environ:
             del(os.environ['VIRTUAL_ENV'])
 
         # simplify shell startup / prompt detection
@@ -91,9 +87,15 @@ class Shell(AgentExecutingComponent):
         # Remove the configured set of environment variables from the
         # environment that we pass to Popen.
         for e in list(os.environ.keys()):
+
             env_removables = list()
-            if self._mpi_launcher : env_removables += self._mpi_launcher.env_removables
-            if self._task_launcher: env_removables += self._task_launcher.env_removables
+
+            if self._mpi_launcher:
+                env_removables += self._mpi_launcher.env_removables
+
+            if self._task_launcher:
+                env_removables += self._task_launcher.env_removables
+
             for r in  env_removables:
                 if e.startswith(r):
                     os.environ.pop(e, None)
@@ -115,13 +117,13 @@ class Shell(AgentExecutingComponent):
         # spawner process ID.  As the registry is shared between the spawner and
         # watcher thread, we use a lock while accessing it.
         self._registry      = dict()
-        self._registry_lock = threading.RLock()
+        self._registry_lock = ru.RLock()
 
         self._cus_to_cancel  = list()
-        self._cancel_lock    = threading.RLock()
+        self._cancel_lock    = ru.RLock()
 
-        self._cached_events = list() # keep monitoring events for pid's which
-                                     # are not yet known
+        self._cached_events = list()  # keep monitoring events for pid's which
+                                      # are not yet known
 
         # get some threads going -- those will do all the work.
         import radical.saga.utils.pty_shell as sups
@@ -134,20 +136,20 @@ class Shell(AgentExecutingComponent):
         # Moving back to shared file system again, until it reaches maturity,
         # as this breaks launch methods with a hop, e.g. ssh.
         # FIXME: see #658
-        self._pilot_id    = self._cfg['pilot_id']
-        self._spawner_tmp = "/%s/%s-%s" % (self._pwd, self._pilot_id, self.uid)
+        self._pid    = self._cfg['pid']
+        self._spawner_tmp = "/%s/%s-%s" % (self._pwd, self._pid, self.uid)
 
         ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/agent/executing/shell_spawner.sh %s" \
+                           ("/bin/sh %s/agent/executing/shell_spawner.sh %s"
                            % (os.path.dirname (rp.__file__), self._spawner_tmp))
-        if  ret != 0 :
-            raise RuntimeError ("failed to bootstrap launcher: (%s)(%s)", ret, out)
+        if  ret != 0:
+            raise RuntimeError ("launcher bootstrap failed: (%s)(%s)", ret, out)
 
         ret, out, _  = self.monitor_shell.run_sync \
-                           ("/bin/sh %s/agent/executing/shell_spawner.sh %s" \
+                           ("/bin/sh %s/agent/executing/shell_spawner.sh %s"
                            % (os.path.dirname (rp.__file__), self._spawner_tmp))
-        if  ret != 0 :
-            raise RuntimeError ("failed to bootstrap monitor: (%s)(%s)", ret, out)
+        if  ret != 0:
+            raise RuntimeError ("monitor bootstrap failed: (%s)(%s)", ret, out)
 
         # run watcher thread
         self._terminate = threading.Event()
@@ -210,7 +212,7 @@ class Shell(AgentExecutingComponent):
             # of cancel candidates, perform one inversion and n lookups on the
             # registry, and lock the registry for that complete time span...
 
-            with self._registry_lock :
+            with self._registry_lock:
                 # inverse registry for quick lookups:
                 inv_registry = {v: k for k, v in list(self._registry.items())}
 
@@ -218,9 +220,10 @@ class Shell(AgentExecutingComponent):
                     pid = inv_registry.get(cu_uid)
                     if pid:
                         # we own that cu, cancel it!
-                        ret, out, _ = self.launcher_shell.run_sync ('CANCEL %s\n', pid)
-                        if  ret != 0 :
-                            self._log.error("failed to cancel unit '%s': (%s)(%s)", \
+                        ret, out, _ = self.launcher_shell.run_sync(
+                                                             'CANCEL %s\n', pid)
+                        if  ret != 0:
+                            self._log.error("unit cancel failed '%s': (%s)(%s)",
                                             cu_uid, ret, out)
                         # successful or not, we only try once
                         del(self._registry[pid])
@@ -236,13 +239,15 @@ class Shell(AgentExecutingComponent):
         try:
             if cu['description']['mpi']:
                 launcher = self._mpi_launcher
-            else :
+            else:
                 launcher = self._task_launcher
 
             if not launcher:
-                raise RuntimeError("no launcher (mpi=%s)" % cu['description']['mpi'])
+                raise RuntimeError("no launcher (mpi=%s)"
+                                  % cu['description']['mpi'])
 
-            self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
+            self._log.debug("Launching unit with %s (%s).",
+                            launcher.name, launcher.launch_command)
 
             assert(cu['slots'])
 
@@ -267,37 +272,8 @@ class Shell(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _cu_to_cmd (self, cu, launcher) :
+    def _cu_to_cmd (self, cu, launcher):
 
-        # ----------------------------------------------------------------------
-        def quote_args (args) :
-
-            ret = list()
-            for arg in args :
-
-                if not arg:
-                    continue
-
-                # if string is between outer single quotes,
-                #    pass it as is.
-                # if string is between outer double quotes,
-                #    pass it as is.
-                # otherwise (if string is not quoted)
-                #    escape all double quotes
-
-                if  arg[0] == arg[-1]  == "'" :
-                    ret.append (arg)
-                elif arg[0] == arg[-1] == '"' :
-                    ret.append (arg)
-                else :
-                    arg = arg.replace ('"', '\\"')
-                    ret.append ('"%s"' % arg)
-
-            return  ret
-
-        # ----------------------------------------------------------------------
-
-        args  = ""
         env   = self._deactivate
         cwd   = ""
         pre   = ""
@@ -309,9 +285,9 @@ class Shell(AgentExecutingComponent):
         sandbox = cu['unit_sandbox_path']
 
         env  += "# CU environment\n"
-        env  += "export RP_SESSION_ID=%s\n"     % self._cfg['session_id']
-        env  += "export RP_PILOT_ID=%s\n"       % self._cfg['pilot_id']
-        env  += "export RP_AGENT_ID=%s\n"       % self._cfg['agent_name']
+        env  += "export RP_SESSION_ID=%s\n"     % self._cfg['sid']
+        env  += "export RP_PILOT_ID=%s\n"       % self._cfg['pid']
+        env  += "export RP_AGENT_ID=%s\n"       % self._cfg['aid']
         env  += "export RP_SPAWNER_ID=%s\n"     % self.uid
         env  += "export RP_UNIT_ID=%s\n"        % cu['uid']
         env  += 'export RP_UNIT_NAME="%s"\n'    % cu['description'].get('name')
@@ -338,7 +314,7 @@ prof(){
 
         # also add any env vars requested in hte unit description
         if descr['environment']:
-            for e in descr['environment'] :
+            for e in descr['environment']:
                 env += "export %s=%s\n"  %  (e, descr['environment'][e])
         env  += "\n"
 
@@ -348,7 +324,7 @@ prof(){
         cwd  += 'prof cu_cd_done\n'
         cwd  += "\n"
 
-        if  descr['pre_exec'] :
+        if  descr['pre_exec']:
             fail  = ' (echo "pre_exec failed"; false) || exit'
             pre  += "\n# CU pre-exec\n"
             pre  += 'prof cu_pre_start\n'
@@ -358,7 +334,7 @@ prof(){
             pre  += 'prof cu_pre_stop\n'
             pre  += "\n"
 
-        if  descr['post_exec'] :
+        if  descr['post_exec']:
             fail  = ' (echo "post_exec failed"; false) || exit'
             post += "\n# CU post-exec\n"
             post += 'prof cu_post_start\n'
@@ -367,17 +343,15 @@ prof(){
             post += 'prof cu_post_stop\n'
             post += "\n"
 
-        if  descr['arguments']  :
-            args  = ' ' .join (quote_args (descr['arguments']))
+      # if  descr['stdin'] : io  += "<%s "  % descr['stdin']
+      # else               : io  += "<%s "  % '/dev/null'
+        if  descr['stdout']: io  += "1>%s " % descr['stdout']
+        else               : io  += "1>%s " %       'STDOUT'
+        if  descr['stderr']: io  += "2>%s " % descr['stderr']
+        else               : io  += "2>%s " %       'STDERR'
 
-      # if  descr['stdin']  : io  += "<%s "  % descr['stdin']
-      # else                : io  += "<%s "  % '/dev/null'
-        if  descr['stdout'] : io  += "1>%s " % descr['stdout']
-        else                : io  += "1>%s " %       'STDOUT'
-        if  descr['stderr'] : io  += "2>%s " % descr['stderr']
-        else                : io  += "2>%s " %       'STDERR'
-
-        cmd, hop_cmd  = launcher.construct_command(cu, '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"')
+        cmd, hop_cmd  = launcher.construct_command(cu,
+                                        '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"')
 
         script  = '\n%s\n' % env
         script += 'prof cu_start\n'
@@ -436,7 +410,7 @@ prof(){
         ret, out, _ = self.launcher_shell.run_sync (run_cmd)
 
         if  ret != 0 :
-            raise RuntimeError("failed to run unit '%s': (%s)(%s)" % \
+            raise RuntimeError("failed to run unit '%s': (%s)(%s)" %
                                (run_cmd, ret, out))
 
         lines = [_f for _f in out.split ("\n") if _f]
@@ -458,7 +432,7 @@ prof(){
         ret, out = self.launcher_shell.find_prompt ()
         if  ret != 0 :
             self._prof.prof('exec_fail', uid=cu['uid'])
-            raise RuntimeError ("failed to run unit '%s': (%s)(%s)" \
+            raise RuntimeError ("failed to run unit '%s': (%s)(%s)"
                              % (run_cmd, ret, out))
 
         self._prof.prof('exec_ok', uid=cu['uid'])
@@ -490,12 +464,13 @@ prof(){
 
             while not self._terminate.is_set () :
 
-                _, out = self.monitor_shell.find (['\n'], timeout=MONITOR_READ_TIMEOUT)
+                _, out = self.monitor_shell.find (['\n'],
+                                                  timeout=MONITOR_READ_TIMEOUT)
 
                 line = out.strip ()
               # self._log.debug ('monitor line: %s', line)
 
-                if  not line :
+                if not line:
 
                     # just a read timeout, i.e. an opportunity to check for
                     # termination signals...
@@ -513,7 +488,6 @@ prof(){
                         static_cnt += 1
 
                     else :
-                        self._log.info ("monitoring channel checks cache (%d)", len(self._cached_events))
                         static_cnt += 1
 
                         if static_cnt == 10 :
@@ -523,14 +497,20 @@ prof(){
                         cache_copy          = self._cached_events[:]
                         self._cached_events = list()
                         events_to_handle    = list()
+                        self._log.info ("monitoring channel checks cache (%d)",
+                                        len(self._cached_events))
 
                         with self._registry_lock :
 
                             for pid, state, data in cache_copy :
                                 cu = self._registry.get (pid, None)
 
-                                if cu : events_to_handle.append ([cu, pid, state, data])
-                                else  : self._cached_events.append ([pid, state, data])
+                                if cu:
+                                    events_to_handle.append(
+                                                         [cu, pid, state, data])
+                                else:
+                                    self._cached_events.append(
+                                                             [pid, state, data])
 
                         # FIXME: measure if using many locks in the loop below
                         # is really better than doing all ops in the locked loop
@@ -548,7 +528,7 @@ prof(){
                     self._terminate.set()
                     return
 
-                elif not ':' in line :
+                elif ':' not in line :
                     self._log.warn ("monitoring channel noise: %s", line)
 
                 else :
@@ -584,7 +564,8 @@ prof(){
     def _handle_event (self, cu, pid, state, data) :
 
         # got an explicit event to handle
-        self._log.info ("monitoring handles event for %s: %s:%s:%s", cu['uid'], pid, state, data)
+        self._log.info ("monitoring handles event for %s: %s:%s:%s",
+                        cu['uid'], pid, state, data)
 
         rp_state = {'DONE'     : rps.DONE,
                     'FAILED'   : rps.FAILED,
@@ -614,7 +595,8 @@ prof(){
             # directives -- at the very least, we'll upload stdout/stderr
             cu['target_state'] = rps.DONE
 
-        self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
+        self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING,
+                         publish=True, push=True)
 
         # we don't need the cu in the registry anymore
         with self._registry_lock :

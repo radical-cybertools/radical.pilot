@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import os
 import copy
 import time
 import pymongo
@@ -18,7 +19,7 @@ class DBSession(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, sid, dburl, cfg, logger, connect=True):
+    def __init__(self, sid, dburl, cfg, log, connect=True):
         """
         Creates a new session
 
@@ -33,7 +34,7 @@ class DBSession(object):
         """
 
         self._dburl      = dburl
-        self._log        = logger
+        self._log        = log
         self._mongo      = None
         self._db         = None
         self._created    = time.time()
@@ -44,6 +45,14 @@ class DBSession(object):
 
         if not connect:
             return
+
+        # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold
+        # the address of the tunnelized DB endpoint. If it exists, we
+        # overrule the agent config with it.
+        hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
+        if hostport:
+            dburl                  = ru.Url(dburl)
+            dburl.host, dburl.port = hostport.split(':')
 
         # mpongodb_connect wants a string at the moment
         self._mongo, self._db, _, _, _ = ru.mongodb_connect(str(dburl))
@@ -62,9 +71,10 @@ class DBSession(object):
 
             # make 'uid', 'type' and 'state' indexes, as we frequently query
             # based on combinations of those.  Only 'uid' is unique
-            self._c.create_index([('uid',   pymongo.ASCENDING)], unique=True,  sparse=False)
-            self._c.create_index([('type',  pymongo.ASCENDING)], unique=False, sparse=False)
-            self._c.create_index([('state', pymongo.ASCENDING)], unique=False, sparse=False)
+            pma = pymongo.ASCENDING
+            self._c.create_index([('uid',   pma)], unique=True,  sparse=False)
+            self._c.create_index([('type',  pma)], unique=False, sparse=False)
+            self._c.create_index([('state', pma)], unique=False, sparse=False)
 
             # insert the session doc
             self._can_delete = True
@@ -184,11 +194,9 @@ class DBSession(object):
         pmgr_doc['_id']  = pmgr_doc['uid']
         pmgr_doc['type'] = 'pmgr'
 
-        print '\n---------- insert %s' % pmgr_doc['uid']
+        # FIXME: evaluate retval
+        self._c.insert(pmgr_doc)
 
-        result = self._c.insert(pmgr_doc)
-
-        # FIXME: evaluate result
 
 
     # --------------------------------------------------------------------------
@@ -255,7 +263,7 @@ class DBSession(object):
 
     # --------------------------------------------------------------------------
     #
-    def pilot_command(self, cmd, arg, pids=None):
+    def pilot_command(self, cmd, arg=None, pids=None):
         """
         send a command and arg to a set of pilots
         """
@@ -274,18 +282,15 @@ class DBSession(object):
             cmd_spec = {'cmd' : cmd,
                         'arg' : arg}
 
-            # FIXME: evaluate res
             if pids:
-                res = self._c.update({'type'  : 'pilot',
-                                      'uid'   : {'$in' : pids}},
-                                     {'$push' : {'cmd' : cmd_spec}},
-                                     multi=True)
+                self._c.update({'type'  : 'pilot',
+                                'uid'   : {'$in' : pids}},
+                               {'$push' : {'cmd' : cmd_spec}},
+                               multi=True)
             else:
-                res = self._c.update({'type'  : 'pilot'},
-                                     {'$push' : {'cmd' : cmd_spec}},
-                                     multi=True)
-
-            # FIXME: evaluate result
+                self._c.update({'type'  : 'pilot'},
+                               {'$push' : {'cmd' : cmd_spec}},
+                               multi=True)
 
         except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)
@@ -316,7 +321,8 @@ class DBSession(object):
                                    'uid'  : {'$in': pilot_ids}})
 
         # make sure we return every pilot doc only once
-        # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
+        # https://www.quora.com/\
+        #         How-did-mongodb-return-duplicated-but-different-documents
         ret  = {doc['uid'] : doc for doc in cursor}
         docs = list(ret.values())
 
@@ -356,7 +362,8 @@ class DBSession(object):
                                    })
 
         # make sure we return every unit doc only once
-        # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
+        # https://www.quora.com/ \
+        #         How-did-mongodb-return-duplicated-but-different-documents
         ret = {doc['uid'] : doc for doc in cursor}
         docs = list(ret.values())
 
@@ -381,9 +388,9 @@ class DBSession(object):
         umgr_doc['_id']  = umgr_doc['uid']
         umgr_doc['type'] = 'umgr'
 
-        result = self._c.insert(umgr_doc)
+        # FIXME: evaluate retval
+        self._c.insert(umgr_doc)
 
-        # FIXME: evaluate result
 
 
     # --------------------------------------------------------------------------
@@ -461,8 +468,8 @@ class DBSession(object):
                 # FIXME: evaluate res
 
             except pymongo.errors.OperationFailure as e:
-                self._log.exception('pymongo error: %s' % e.details)
-                raise RuntimeError( 'pymongo error: %s' % e.details)
+                self._log.exception('pymongo error')
+                raise RuntimeError ('pymongo error: %s' % e.details)
 
 
     # --------------------------------------------------------------------------

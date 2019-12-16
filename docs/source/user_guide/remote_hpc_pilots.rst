@@ -16,7 +16,8 @@ RADICAL-Pilot has been developed with HPC (High-Performance Computing) clusters
 as the primary type of  distributed resources in mind. Currently RADICAL-Pilot
 supports HPC clusters running the following queuing systems:
 
-* PBS / PBS Pro
+* Torque
+* PBS Pro
 * LSF
 * SLURM
 * Sun Grid Engine 
@@ -38,7 +39,7 @@ MongoDB (see diagram below).
 .. code-block:: text
 
     +--------------------------------------+
-    |              RADICAL-Pilot              |
+    |              RADICAL-Pilot           |
     +--------------------------------------+
           ^                      |
           | <MDB>                | <SSH/SFTP>
@@ -52,7 +53,7 @@ MongoDB (see diagram below).
                            +---------------+
 
 In order to allow RADICAL-Pilot to launch ComputePilot agents on a remote  host
-via SSH, you need to provided it with the right credentials. This  is done via
+via SSH, you need to provided it with the right credentials. This is done via
 the :class:`radical.pilot.Context` class.
 
 .. note:: In order for Context to work, you need to be able to manually
@@ -60,7 +61,7 @@ the :class:`radical.pilot.Context` class.
           and password or a public / private key set for the host. The 
           most practical way is to set up password-less public-key authentication
           on the remote host. More about password-less keys can be found 
-          `HERE <http://www.debian-administration.org/articles/152>`_.
+          `HERE <https://linuxize.com/post/how-to-setup-passwordless-ssh-login/>`_.
 
 Assuming that you have password-less public-key authentication set up for 
 a remote host, the most common way to use Context is to set the 
@@ -85,24 +86,24 @@ You can describe a :class:`radical.pilot.ComputePilot` via a :class:`radical.pil
 .. code-block:: python
 
     pdesc = radical.pilot.ComputePilotDescription()
-    pdesc.resource  = "xsede.stampede"
+    pdesc.resource  = "xsede.bridges"
     pdesc.runtime   = 15
-    pdesc.cores     = 32 
+    pdesc.cores     = 28
 
     pilot = pmgr.submit_pilots(pdesc)
 
 
-Launching Multiple ComputePilots
---------------------------------
+.. Launching Multiple ComputePilots
+.. --------------------------------
 
-Scheduling ComputeUnits Across Multiple ComputePilots
------------------------------------------------------
+.. Scheduling ComputeUnits Across Multiple ComputePilots
+.. -----------------------------------------------------
 
 
 
-The Complete Example
---------------------
+.. The Complete Example
+.. --------------------
 
-.. warning:: Make sure to adjust ... before you attempt to run it.
+.. .. warning: Make sure to adjust ... before you attempt to run it.
 
-.. literalinclude:: ../../../examples/getting_started_remote.py
+.. .. literalinclude: ../../../examples/getting_started_remote.py
