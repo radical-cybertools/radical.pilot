@@ -16,7 +16,7 @@ from .base import LRMS
 from functools import reduce
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class LoadLeveler(LRMS):
 
@@ -24,7 +24,7 @@ class LoadLeveler(LRMS):
     #
     # BG/Q Topology of Nodes within a Board
     #
-    BGQ_BOARD_TOPO = { 0: {'A': 29, 'B':  3, 'C':  1, 'D': 12, 'E':  7},
+    BGQ_BOARD_TOPO =  {0: {'A': 29, 'B':  3, 'C':  1, 'D': 12, 'E':  7},
                        1: {'A': 28, 'B':  2, 'C':  0, 'D': 13, 'E':  6},
                        2: {'A': 31, 'B':  1, 'C':  3, 'D': 14, 'E':  5},
                        3: {'A': 30, 'B':  0, 'C':  2, 'D': 15, 'E':  4},
@@ -115,18 +115,17 @@ class LoadLeveler(LRMS):
     #
     # TODO: Is this independent of the mapping?
     #
-    BGQ_BLOCK_STARTING_CORNERS = { 0:  0,
+    BGQ_BLOCK_STARTING_CORNERS =  {0:  0,
                                    4: 29,
                                    8:  4,
-                                  12: 25
-                                 }
+                                  12: 25}
 
 
     # --------------------------------------------------------------------------
     #
     # BG/Q Topology of Boards within a Midplane
     #
-    BGQ_MIDPLANE_TOPO = { 0: {'A':  4, 'B':  8, 'C':  1, 'D':  2},
+    BGQ_MIDPLANE_TOPO =  {0: {'A':  4, 'B':  8, 'C':  1, 'D':  2},
                           1: {'A':  5, 'B':  9, 'C':  0, 'D':  3},
                           2: {'A':  6, 'B': 10, 'C':  3, 'D':  0},
                           3: {'A':  7, 'B': 11, 'C':  2, 'D':  1},
@@ -252,8 +251,8 @@ class LoadLeveler(LRMS):
                 self.torus_block = self._bgq_construct_block(
                     loadl_bg_block_shape_str, loadl_bg_board_list_str,
                     loadl_bg_block_size,      loadl_bg_midplane_list_str)
-            except Exception as e:
-                raise RuntimeError("Couldn't construct block: %s" % e.message)
+            except Exception:
+                raise RuntimeError("Couldn't construct block")
 
             self._log.debug("Torus block constructed:")
             for e in self.torus_block:
@@ -263,21 +262,21 @@ class LoadLeveler(LRMS):
             try:
                 loadl_node_list = [entry[Torus.TORUS_BLOCK_NAME]
                                    for entry in self.torus_block]
-            except Exception as e:
+            except Exception:
                 raise RuntimeError("Couldn't construct node list")
 
             # Construct sub-block table
             try:
                 self.shape_table = self._bgq_create_sub_block_shape_table(
                                                        loadl_bg_block_shape_str)
-            except Exception as e:
+            except Exception:
                 raise RuntimeError("Couldn't construct shape table")
 
             self._log.debug("Node list constructed: %s" % loadl_node_list)
             self._log.debug("Shape table constructed: ")
             for (size, dim) in [(key, self.shape_table[key])
                                       for key in sorted(self.shape_table)]:
-                self._log.debug("%s %s", (size, 
+                self._log.debug("%s %s", (size,
                                             [dim[key] for key in sorted(dim)]))
 
             # Determine the number of cpus per node
@@ -501,7 +500,7 @@ class LoadLeveler(LRMS):
                     for d in range(shape['D']):
                         for e in range(shape['E']):
                             location = {'A': a, 'B': b, 'C': c, 'D': d, 'E': e}
-                            nodename = self._bgq_nodename_by_loc(midplanes, 
+                            nodename = self._bgq_nodename_by_loc(midplanes,
                                                                 board, location)
                             nodes.append([index, location, nodename, rpc.FREE])
                             index += 1
@@ -634,7 +633,7 @@ class LoadLeveler(LRMS):
 
                 # Calculate the number of nodes for the current shape
                 from operator import mul
-                num_nodes = reduce(mul, [length for length 
+                num_nodes = reduce(mul, [length for length
                                     in list(sub_block_shape.values()) if length != 0])
 
                 if num_nodes in self.BGQ_SUPPORTED_SUB_BLOCK_SIZES:

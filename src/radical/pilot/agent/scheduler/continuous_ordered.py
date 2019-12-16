@@ -3,7 +3,8 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import copy
-import threading as mt
+
+import radical.utils as ru
 
 from .continuous import Continuous
 
@@ -17,7 +18,7 @@ from ... import constants as rpc
 # `order` tag of arriving units, which is expected to have the form
 #
 #   order : {'ns'   : <string>,
-#            'order': <int>, 
+#            'order': <int>,
 #            'size' : <int>}
 #
 # where 'ns' is a namespace, 'order' is an integer defining the order of bag of
@@ -25,7 +26,7 @@ from ... import constants as rpc
 # semantics of the scheduler is that, for any given namespace, a BoT with order
 # 'n' will only be executed after 'size' tasks of the BoT with order 'n-1' have
 # been executed.  The first BoT is expected to have order '0'.
-# 
+#
 # The dominant use case for this scheduler is the execution of pipeline stages,
 # where one stage needs to be completed before units from the next stage can be
 # considered for scheduling.
@@ -62,20 +63,20 @@ class ContinuousOrdered(Continuous):
         #     {'size': 128,    # number of units to expect   `max`
         #      'uids': [...]}, # ids    of units to be scheduled
         #      'done': [...]}, # ids    of units in trigger state
-        #     }, 
+        #     },
         #     ...
         #   }
         #
         # prepare an initial entry for each ns which ensures that BOT #0 is
         # runnable once it arrives.
 
-        self._lock       = mt.RLock()   # lock on the ns
+        self._lock       = ru.RLock()   # lock on the ns
         self._units      = dict()       # unit registry (we use uids otherwise)
         self._unordered  = list()       # IDs of units which are not ordered
         self._ns         = dict()       # nothing has run, yet
 
         self._ns_init    = {'current' : 0}
-        self._order_init = {'size'    : 0, 
+        self._order_init = {'size'    : 0,
                             'uids'    : list(),
                             'done'    : list()}
 
@@ -226,7 +227,7 @@ class ContinuousOrdered(Continuous):
 
         # advance all scheduled units and push them out
         if scheduled:
-            self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, 
+            self.advance(scheduled, rps.AGENT_EXECUTING_PENDING,
                          publish=True, push=True)
 
       # self._log.debug('dump')

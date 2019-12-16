@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import os
 import copy
 import time
 import pymongo
@@ -18,22 +19,22 @@ class DBSession(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, sid, dburl, cfg, logger, connect=True):
-        """ 
+    def __init__(self, sid, dburl, cfg, log, connect=True):
+        """
         Creates a new session
 
         A session is a MongoDB collection which contains documents of
         different types:
 
         session : document describing this rp.Session (singleton)
-        pmgr    : document describing a rp.PilotManager 
+        pmgr    : document describing a rp.PilotManager
         pilots  : document describing a rp.Pilot
         umgr    : document describing a rp.UnitManager
         units   : document describing a rp.Unit
         """
 
         self._dburl      = dburl
-        self._log        = logger
+        self._log        = log
         self._mongo      = None
         self._db         = None
         self._created    = time.time()
@@ -45,6 +46,14 @@ class DBSession(object):
         if not connect:
             return
 
+        # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold
+        # the address of the tunnelized DB endpoint. If it exists, we
+        # overrule the agent config with it.
+        hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
+        if hostport:
+            dburl                  = ru.Url(dburl)
+            dburl.host, dburl.port = hostport.split(':')
+
         # mpongodb_connect wants a string at the moment
         self._mongo, self._db, _, _, _ = ru.mongodb_connect(str(dburl))
 
@@ -53,7 +62,7 @@ class DBSession(object):
 
         self._connected = time.time()
 
-        self._c = self._db[sid] # creates collection (lazily)
+        self._c = self._db[sid]  # creates collection (lazily)
 
         # If session exists, we assume this is a reconnect, otherwise we create
         # the session entry.
@@ -62,9 +71,10 @@ class DBSession(object):
 
             # make 'uid', 'type' and 'state' indexes, as we frequently query
             # based on combinations of those.  Only 'uid' is unique
-            self._c.create_index([('uid',   pymongo.ASCENDING)], unique=True,  sparse=False)
-            self._c.create_index([('type',  pymongo.ASCENDING)], unique=False, sparse=False)
-            self._c.create_index([('state', pymongo.ASCENDING)], unique=False, sparse=False)
+            pma = pymongo.ASCENDING
+            self._c.create_index([('uid',   pma)], unique=True,  sparse=False)
+            self._c.create_index([('type',  pma)], unique=False, sparse=False)
+            self._c.create_index([('state', pma)], unique=False, sparse=False)
 
             # insert the session doc
             self._can_delete = True
@@ -76,7 +86,7 @@ class DBSession(object):
                             'connected' : self._connected})
             self._can_remove = True
         else:
-            docs = self._c.find({'type' : 'session', 
+            docs = self._c.find({'type' : 'session',
                                  'uid'  : sid})
             if not docs.count():
                 raise ValueError('cannot reconnect to session %s' % sid)
@@ -89,17 +99,17 @@ class DBSession(object):
             # FIXME: get bridge addresses from DB?  If not, from where?
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def dburl(self):
-        """ 
+        """
         Returns the session db url.
         """
         return self._dburl
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def get_db(self):
         """
@@ -108,7 +118,7 @@ class DBSession(object):
         return self._db
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def created(self):
@@ -118,7 +128,7 @@ class DBSession(object):
         return self._created
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def connected(self):
@@ -128,28 +138,28 @@ class DBSession(object):
         return self._connected
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    @property 
-    def closed(self): 
-        """ 
-        Returns the close time 
-        """ 
+    @property
+    def closed(self):
+        """
+        Returns the close time
+        """
         return self._closed
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def is_connected(self):
 
-        return (self._connected != None)
+        return (self._connected is None)
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def close(self, delete=True):
-        """ 
+        """
         close the session
         """
         if self.closed:
@@ -170,10 +180,10 @@ class DBSession(object):
         self._c = None
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def insert_pmgr(self, pmgr_doc):
-        """ 
+        """
         Adds a pilot managers doc
         """
         if self.closed:
@@ -183,12 +193,12 @@ class DBSession(object):
         pmgr_doc['_id']  = pmgr_doc['uid']
         pmgr_doc['type'] = 'pmgr'
 
-        result = self._c.insert(pmgr_doc)
+        # FIXME: evaluate retval
+        self._c.insert(pmgr_doc)
 
-        # FIXME: evaluate result
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def insert_pilots(self, pilot_docs):
         """
@@ -221,9 +231,9 @@ class DBSession(object):
             raise RuntimeError ('pymongo error: %s' % e.details)
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    def pilot_command(self, cmd, arg, pids=None):
+    def pilot_command(self, cmd, arg=None, pids=None):
         """
         send a command and arg to a set of pilots
         """
@@ -242,23 +252,23 @@ class DBSession(object):
             cmd_spec = {'cmd' : cmd,
                         'arg' : arg}
 
-            # FIXME: evaluate res
+            # FIXME: evaluate retval
             if pids:
-                res = self._c.update({'type'  : 'pilot',
-                                      'uid'   : {'$in' : pids}},
-                                     {'$push' : {'cmd' : cmd_spec}},
-                                     multi = True)
+                self._c.update({'type'  : 'pilot',
+                                'uid'   : {'$in' : pids}},
+                               {'$push' : {'cmd' : cmd_spec}},
+                               multi=True)
             else:
-                res = self._c.update({'type'  : 'pilot'},
-                                     {'$push' : {'cmd' : cmd_spec}},
-                                     multi = True)
+                self._c.update({'type'  : 'pilot'},
+                               {'$push' : {'cmd' : cmd_spec}},
+                               multi=True)
 
         except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)
             raise RuntimeError ('pymongo error: %s' % e.details)
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def get_pilots(self, pmgr_uid=None, pilot_ids=None):
         """
@@ -271,19 +281,20 @@ class DBSession(object):
             raise Exception("pmgr_uid and pilot_ids can't both be None.")
 
         if not pilot_ids:
-            cursor = self._c.find({'type' : 'pilot', 
+            cursor = self._c.find({'type' : 'pilot',
                                    'pmgr' : pmgr_uid})
         else:
 
             if not isinstance(pilot_ids, list):
                 pilot_ids = [pilot_ids]
 
-            cursor = self._c.find({'type' : 'pilot', 
+            cursor = self._c.find({'type' : 'pilot',
                                    'uid'  : {'$in': pilot_ids}})
 
         # make sure we return every pilot doc only once
-        # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
-        ret = { doc['uid'] : doc for doc in cursor}
+        # https://www.quora.com/\
+        #         How-did-mongodb-return-duplicated-but-different-documents
+        ret  = {doc['uid'] : doc for doc in cursor}
         docs = list(ret.values())
 
         # for each doc, we make sure the pilot state is according to the state
@@ -294,7 +305,7 @@ class DBSession(object):
         return docs
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def get_units(self, umgr_uid, unit_ids=None):
         """
@@ -322,7 +333,8 @@ class DBSession(object):
                                    })
 
         # make sure we return every unit doc only once
-        # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
+        # https://www.quora.com/ \
+        #         How-did-mongodb-return-duplicated-but-different-documents
         ret = {doc['uid'] : doc for doc in cursor}
         docs = list(ret.values())
 
@@ -334,10 +346,10 @@ class DBSession(object):
         return docs
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def insert_umgr(self, umgr_doc):
-        """ 
+        """
         Adds a unit managers document
         """
         if self.closed:
@@ -347,12 +359,11 @@ class DBSession(object):
         umgr_doc['_id']  = umgr_doc['uid']
         umgr_doc['type'] = 'umgr'
 
-        result = self._c.insert(umgr_doc)
+        # FIXME: evaluate retval
+        self._c.insert(umgr_doc)
 
-        # FIXME: evaluate result
 
-
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def insert_units(self, unit_docs):
         """
@@ -376,7 +387,7 @@ class DBSession(object):
 
         while True:
 
-            subset = unit_docs[cur : cur+bcs]
+            subset = unit_docs[cur : cur + bcs]
             bulk   = self._c.initialize_ordered_bulk_op()
             cur   += bcs
 
@@ -398,8 +409,8 @@ class DBSession(object):
                 # FIXME: evaluate res
 
             except pymongo.errors.OperationFailure as e:
-                self._log.exception('pymongo error: %s' % e.details)
-                raise RuntimeError( 'pymongo error: %s' % e.details)
+                self._log.exception('pymongo error')
+                raise RuntimeError ('pymongo error: %s' % e.details)
 
     # --------------------------------------------------------------------------
     #
@@ -412,7 +423,7 @@ class DBSession(object):
           cb(docs, cb_data=None)
 
         where 'docs' is a list of None, one or more matching documents.
-        Specifically, the callback is also invoked when *no* document currently 
+        Specifically, the callback is also invoked when *no* document currently
         matches the pattern.  Documents are returned as partial docs, which only
         contain the set of field names given.  If 'fields' is an empty list
         though, then complete documents are returned.

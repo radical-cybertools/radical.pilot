@@ -14,7 +14,7 @@ from ...   import staging_directives as rpsd
 from .base import UMGRStagingOutputComponent
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Default(UMGRStagingOutputComponent):
     """
@@ -34,12 +34,12 @@ class Default(UMGRStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         # we keep a cache of SAGA dir handles
         self._cache = dict()
 
-        self.register_input(rps.UMGR_STAGING_OUTPUT_PENDING, 
+        self.register_input(rps.UMGR_STAGING_OUTPUT_PENDING,
                             rpc.UMGR_STAGING_OUTPUT_QUEUE, self.work)
 
         # we don't need an output queue -- units will be final
@@ -47,13 +47,10 @@ class Default(UMGRStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
+    def finalize(self):
 
-        try:
-            for key in self._cache:
-                self._cache[key].close()
-        except:
-            pass
+        for key in self._cache:
+            self._cache[key].close()
 
 
     # --------------------------------------------------------------------------
@@ -112,12 +109,12 @@ class Default(UMGRStagingOutputComponent):
         uid = unit['uid']
 
         src_context = {'pwd'      : unit['unit_sandbox'],       # !!!
-                       'unit'     : unit['unit_sandbox'], 
-                       'pilot'    : unit['pilot_sandbox'], 
+                       'unit'     : unit['unit_sandbox'],
+                       'pilot'    : unit['pilot_sandbox'],
                        'resource' : unit['resource_sandbox']}
         tgt_context = {'pwd'      : os.getcwd(),                # !!!
-                       'unit'     : unit['unit_sandbox'], 
-                       'pilot'    : unit['pilot_sandbox'], 
+                       'unit'     : unit['unit_sandbox'],
+                       'pilot'    : unit['pilot_sandbox'],
                        'resource' : unit['resource_sandbox']}
 
         # url used for cache (sandbox url w/o path)
@@ -126,7 +123,7 @@ class Default(UMGRStagingOutputComponent):
         key      = str(tmp)
 
         if key not in self._cache:
-            self._cache[key] = rs.filesystem.Directory(tmp, 
+            self._cache[key] = rs.filesystem.Directory(tmp,
                     session=self._session)
         saga_dir = self._cache[key]
 
@@ -134,7 +131,7 @@ class Default(UMGRStagingOutputComponent):
         # Loop over all transfer directives and execute them.
         for sd in actionables:
 
-            action = sd['action']
+          # action = sd['action']
             flags  = sd['flags']
             did    = sd['uid']
             src    = sd['source']

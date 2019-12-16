@@ -6,13 +6,27 @@
 # we also get the version string at this point.
 #
 import os
-import radical.utils as _ru
 
-_root = "%s/.." % os.path.dirname(__file__)
 
-version_short, version_detail, version_base, version_branch, \
-        sdist_name, sdist_path = _ru.get_version(_root)
-version = version_short
+# ------------------------------------------------------------------------------
+#
+# ensure sufficient system limits on OS-X
+#
+if os.uname()[0] == 'Darwin':
+    # on MacOS, we are running out of file descriptors soon.  The code
+    # below attempts to increase the limit of open files - but any error
+    # is silently ignored, so this is an best-effort, no guarantee.  We
+    # leave responsibility for system limits with the user.
+    #
+    # FIXME: should we do this on all systems, not only Darwin (see
+    #        PRTE on Summit)
+    try:
+        import resource
+        _limits    = list(resource.getrlimit(resource.RLIMIT_NOFILE))
+        _limits[0] = 512
+        resource.setrlimit(resource.RLIMIT_NOFILE, _limits)
+    except:
+        pass
 
 
 # ------------------------------------------------------------------------------
@@ -20,8 +34,6 @@ version = version_short
 from .db_utils     import *
 from .prof_utils   import *
 from .misc         import *
-from .queue        import *
-from .pubsub       import *
 from .session      import *
 from .component    import *
 from .slot_utils   import *

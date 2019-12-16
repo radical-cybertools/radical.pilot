@@ -31,14 +31,14 @@
     },
 
     "components": {
-        "UpdateWorker"                : {"count" : 1},
-        "AgentStagingInputComponent"  : {"count" : 1},
-        "AgentStagingOutputComponent" : {"count" : 1},
-        "AgentSchedulingComponent"    : {"count" : 1}
+        "update_worker"        : {"count" : 1},
+        "agent_staging_input"  : {"count" : 1},
+        "agent_scheduling"     : {"count" : 1},
+        "agent_staging_output" : {"count" : 1}
     },
-    
+
     "agents": {
-        "agent_1": {
+        "agent.1": {
             "target": "node",
             "components": {
                 "AgentExecutingComponent" : {"count" : 1}
