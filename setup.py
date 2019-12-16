@@ -209,8 +209,8 @@ setup_args = {
         'Environment :: Console',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.5',
         'Topic :: Utilities',
         'Topic :: System :: Distributed Computing',
         'Topic :: Scientific/Engineering',
@@ -288,4 +288,5 @@ os.system('rm -rf src/%s.egg-info' % name)
 
 
 # ------------------------------------------------------------------------------
+
 
