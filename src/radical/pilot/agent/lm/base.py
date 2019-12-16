@@ -45,7 +45,7 @@ LM_NAME_SRUN          = 'SRUN'
 PWD = os.getcwd()
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class LaunchMethod(object):
 
@@ -168,18 +168,18 @@ class LaunchMethod(object):
             return impl(name, cfg, session)
 
         except KeyError:
-            # pylint: disable=protected-access
-            session._log.exception("LM '%s' unknown or defunct" % name)
+            session._log.exception('invalid lm %s' % name)
+            raise ValueError('invalid lm %s' % name)
 
-        except Exception as e:
-            # pylint: disable=protected-access
-            session._log.exception("LM cannot be used: %s!" % e)
+        except Exception:
+            session._log.exception('unusable lm %s' % name)
+            raise RuntimeError('unusable lm %s' % name)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger, profiler):
+    def lrms_config_hook(cls, name, cfg, lrms, log, profiler):
         """
         This hook will allow the LRMS to perform launch methods specific
         configuration steps.  The LRMS layer MUST ensure that this hook is
@@ -211,17 +211,17 @@ class LaunchMethod(object):
         }.get(name)
 
         if not impl:
-            logger.info('no config hook defined for LaunchMethod %s' % name)
+            log.info('no config hook defined for LaunchMethod %s' % name)
             return None
 
-        logger.info('LRMS config hook for LM %s: %s' % (name, impl))
-        return impl.lrms_config_hook(name, cfg, lrms, logger, profiler)
+        log.info('LRMS config hook for LM %s: %s' % (name, impl))
+        return impl.lrms_config_hook(name, cfg, lrms, log, profiler)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profiler):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, log, profiler):
         """
         This hook is symmetric to the config hook above, and is called during
         shutdown sequence, for the sake of freeing allocated resources.
@@ -248,12 +248,11 @@ class LaunchMethod(object):
         }.get(name)
 
         if not impl:
-            logger.info('no shutdown hook defined for LaunchMethod %s' % name)
+            log.info('no shutdown hook defined for LaunchMethod %s' % name)
             return None
 
-        logger.info('LRMS shutdown hook for LM %s: %s' % (name, impl))
-        return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info,
-                                       logger, profiler)
+        log.info('LRMS shutdown hook for LM %s: %s' % (name, impl))
+        return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info, log, profiler)
 
 
     # --------------------------------------------------------------------------

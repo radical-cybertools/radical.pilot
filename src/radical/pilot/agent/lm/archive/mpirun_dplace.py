@@ -9,7 +9,7 @@ from .base import LaunchMethod
 
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 # dplace: job launcher for SGI systems (e.g. on Blacklight)
 # https://www.nas.nasa.gov/hecc/support/kb/Using-SGIs-dplace-Tool-for-Pinning_284.html

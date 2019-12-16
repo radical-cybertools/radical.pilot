@@ -3,7 +3,6 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import sys
 import os
 import radical.pilot as rp
 import radical.utils as ru
@@ -23,12 +22,12 @@ os.environ['RADICAL_PILOT_VERBOSE'] = verbose
 
 #
 if __name__ == "__main__":
-    
+
     RESOURCE_LABEL = 'local.localhost'
-    PILOT_CORES = 2
-    BAG_SIZE = 10 # The number of units
-    CU_CORES = 1 # The cores each CU will take.
-    QUEUE = None
+    PILOT_CORES    =  2
+    BAG_SIZE       = 10  # The number of units
+    CU_CORES       =  1  # The cores each CU will take.
+    QUEUE          = None
     # we use a reporter class for nicer output
     report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
@@ -51,7 +50,8 @@ if __name__ == "__main__":
         # your remote resource does compute time accounting.
         #
         # A list of preconfigured resources can be found at:
-        # http://radicalpilot.readthedocs.org/en/latest/machconf.html#preconfigured-resources
+        # http://radicalpilot.readthedocs.org/en/latest/ \
+        #        machconf.html#preconfigured-resources
         #
         pdesc = rp.ComputePilotDescription ()
         pdesc.resource = RESOURCE_LABEL  # this is a "label", not a hostname
@@ -101,13 +101,13 @@ if __name__ == "__main__":
         umgr.wait_units()
 
         for unit in cu_set:
-            print "* CU %s, state %s, exit code: %s, stdout: %s" \
-                % (unit.uid, unit.state, unit.exit_code, unit.stdout.strip())
+            print("* CU %s, state %s, exit code: %s, stdout: %s"
+                % (unit.uid, unit.state, unit.exit_code, unit.stdout.strip()))
 
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        print "caught Exception: %s" % e
+        print("caught Exception: %s" % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -115,7 +115,7 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        print "need to exit now: %s" % e
+        print("need to exit now: %s" % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or
@@ -131,4 +131,6 @@ if __name__ == "__main__":
         # all remaining pilots.
     report.header()
 
-#-------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+

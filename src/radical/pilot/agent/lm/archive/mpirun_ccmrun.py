@@ -8,7 +8,7 @@ import radical.utils as ru
 from .base import LaunchMethod
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 # ccmrun: Cluster Compatibility Mode job launcher for Cray systems
 #
