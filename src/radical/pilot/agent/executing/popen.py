@@ -10,7 +10,7 @@ import time
 import queue
 import signal
 import tempfile
-import threading
+import threading as mt
 import traceback
 import subprocess
 
@@ -24,7 +24,7 @@ from ...  import constants as rpc
 from .base import AgentExecutingComponent
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Popen(AgentExecutingComponent) :
 
@@ -32,15 +32,15 @@ class Popen(AgentExecutingComponent) :
     #
     def __init__(self, cfg, session):
 
-        AgentExecutingComponent.__init__ (self, cfg, session)
-
         self._watcher   = None
-        self._terminate = threading.Event()
+        self._terminate = mt.Event()
+
+        AgentExecutingComponent.__init__ (self, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         self._pwd = os.getcwd()
 
@@ -53,15 +53,16 @@ class Popen(AgentExecutingComponent) :
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
-        self._cancel_lock    = threading.RLock()
+        self._cancel_lock    = ru.RLock()
         self._cus_to_cancel  = list()
         self._cus_to_watch   = list()
         self._watch_queue    = queue.Queue ()
 
-        self._pilot_id = self._cfg['pilot_id']
+        self._pid = self._cfg['pid']
 
         # run watcher thread
-        self._watcher = ru.Thread(target=self._watch, name="Watcher")
+        self._watcher = mt.Thread(target=self._watch)
+        self._watcher.daemon = True
         self._watcher.start()
 
         # The AgentExecutingComponent needs the LaunchMethods to construct
@@ -178,7 +179,7 @@ class Popen(AgentExecutingComponent) :
             cu['stderr'] = ''
 
             cpt = cu['description']['cpu_process_type']
-            gpt = cu['description']['gpu_process_type']  # FIXME: use
+          # gpt = cu['description']['gpu_process_type']  # FIXME: use
 
             # FIXME: this switch is insufficient for mixed units (MPI/OpenMP)
             if cpt == 'MPI': launcher = self._mpi_launcher
@@ -235,9 +236,9 @@ class Popen(AgentExecutingComponent) :
 
             # Create string for environment variable setting
             env_string = ''
-            env_string += 'export RP_SESSION_ID="%s"\n'   % self._cfg['session_id']
-            env_string += 'export RP_PILOT_ID="%s"\n'     % self._cfg['pilot_id']
-            env_string += 'export RP_AGENT_ID="%s"\n'     % self._cfg['agent_name']
+            env_string += 'export RP_SESSION_ID="%s"\n'   % self._cfg['sid']
+            env_string += 'export RP_PILOT_ID="%s"\n'     % self._cfg['pid']
+            env_string += 'export RP_AGENT_ID="%s"\n'     % self._cfg['aid']
             env_string += 'export RP_SPAWNER_ID="%s"\n'   % self.uid
             env_string += 'export RP_UNIT_ID="%s"\n'      % cu['uid']
             env_string += 'export RP_UNIT_NAME="%s"\n'    % cu['description'].get('name')

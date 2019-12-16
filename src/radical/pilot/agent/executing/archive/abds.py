@@ -22,7 +22,7 @@ from ... import constants as rpc
 from .base import AgentExecutingComponent
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class ABDS(AgentExecutingComponent):
 
@@ -38,7 +38,7 @@ class ABDS(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         from .... import pilot as rp
 
@@ -53,12 +53,12 @@ class ABDS(AgentExecutingComponent):
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
-        self._cancel_lock    = threading.RLock()
+        self._cancel_lock    = ru.RLock()
         self._cus_to_cancel  = list()
         self._cus_to_watch   = list()
-        self._watch_queue    = queue.Queue ()
+        self._watch_queue    = queue.Queue()
 
-        self._pilot_id = self._cfg['pilot_id']
+        self._pid = self._cfg['pid']
 
         # run watcher thread
         self._terminate = threading.Event()
@@ -99,7 +99,7 @@ class ABDS(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
+    def finalize(self):
 
         # terminate watcher thread
         self._terminate.set()
@@ -242,9 +242,9 @@ class ABDS(AgentExecutingComponent):
             if cu['description']['environment']:
                 for key,val in cu['description']['environment'].items():
                     env_string += 'export %s="%s"\n' % (key, val)
-            env_string += 'export RP_SESSION_ID="%s"\n'   % self._cfg['session_id']
-            env_string += 'export RP_PILOT_ID="%s"\n'     % self._cfg['pilot_id']
-            env_string += 'export RP_AGENT_ID="%s"\n'     % self._cfg['agent_name']
+            env_string += 'export RP_SESSION_ID="%s"\n'   % self._cfg['sid']
+            env_string += 'export RP_PILOT_ID="%s"\n'     % self._cfg['pid']
+            env_string += 'export RP_AGENT_ID="%s"\n'     % self._cfg['aid']
             env_string += 'export RP_SPAWNER_ID="%s"\n'   % self.uid
             env_string += 'export RP_UNIT_ID="%s"\n'      % cu['uid']
             env_string += 'export RP_UNIT_NAME="%s"\n'    % cu['description'].get('name')
@@ -386,7 +386,7 @@ prof(){
 
         try:
             cuid = self.uid.replace('Component', 'Watcher')
-            self._prof.prof('run', uid=self._pilot_id)
+            self._prof.prof('run', uid=self._pid)
 
             while not self._terminate.is_set():
 
@@ -426,7 +426,7 @@ prof(){
             self._log.exception("Error in ExecWorker watch loop (%s)" % e)
             # FIXME: this should signal the ExecWorker for shutdown...
 
-        self._prof.prof('stop', uid=self._pilot_id)
+        self._prof.prof('stop', uid=self._pid)
         self._prof.flush()
 
 

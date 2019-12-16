@@ -2,10 +2,16 @@
     "staging_area"         : "staging_area",
     "staging_schema"       : "staging",
     "max_io_loglength"     : 1024,
-    "bulk_collection_size" :  100,
-    "bulk_collection_time" : 5.0,
     "db_poll_sleeptime"    : 1.0,
     "network_interface"    : "ipogif0",
+
+    "bulk_time"    : 1.0,
+    "bulk_size"    : 1024,
+
+    "heartbeat"    : {
+        "interval" :  5.0,
+        "timeout"  : 60.0
+    },
 
     "target"  : "local",
     "bridges" : {
@@ -31,12 +37,12 @@
     },
 
     "components": {
-        "UpdateWorker"                : {"count" : 1},
-        "AgentExecutingComponent"     : {"count" : 1}
+        "update"                     : {"count" : 1},
+        "agent_executing"            : {"count" : 1}
     },
-    
+
     "agents": {
-        "agent_1": {
+        "agent.1": {
             "target": "node",
             "components": {
                 "AgentSchedulingComponent"    : {"count" : 1},
