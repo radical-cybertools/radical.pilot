@@ -106,7 +106,8 @@ class PilotManager(rpu.Component):
         cfg.sid       = self._session.uid
         cfg.base      = self._session.base
         cfg.path      = self._session.path
-        cfg.heartbeat = session.cfg.heartbeat
+        cfg.dburl     = self._session.dburl
+        cfg.heartbeat = self._session.cfg.heartbeat
 
         rpu.Component.__init__(self, cfg, session=self._session)
 
@@ -276,8 +277,8 @@ class PilotManager(rpu.Component):
 
 
         for pilot_dict in pilot_dicts:
-            self._log.debug('==== state pulled: %s: %s', pilot_dict['uid'],
-                                                         pilot_dict['state'])
+            self._log.debug('state pulled: %s: %s', pilot_dict['uid'],
+                                                    pilot_dict['state'])
             if not self._update_pilot(pilot_dict, publish=True):
                 return False
 
@@ -308,8 +309,8 @@ class PilotManager(rpu.Component):
 
             if 'type' in thing and thing['type'] == 'pilot':
 
-                self._log.debug('==== state push: %s: %s', thing['uid'],
-                                                           thing['state'])
+                self._log.debug('state push: %s: %s', thing['uid'],
+                                                      thing['state'])
 
                 # we got the state update from the state callback - don't
                 # publish it again
