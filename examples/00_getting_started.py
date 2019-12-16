@@ -58,7 +58,6 @@ if __name__ == '__main__':
                    'queue'         : config[resource]['queue'],
                    'access_schema' : config[resource]['schema'],
                    'cores'         : config[resource]['cores'],
-                   'gpus'          : config[resource]['gpus'],
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
