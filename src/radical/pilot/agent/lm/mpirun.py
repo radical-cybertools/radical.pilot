@@ -9,7 +9,7 @@ import radical.utils as ru
 from .base import LaunchMethod
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class MPIRun(LaunchMethod):
 
@@ -24,16 +24,24 @@ class MPIRun(LaunchMethod):
     #
     def _configure(self):
 
-        if   '_rsh' in self.name:
-            self.launch_command = ru.which('mpirun_rsh')  # Gordon   @ SDSC
+        self._mpt = False
+        self._rsh = False
 
-        elif '_mpt' in self.name:
-            self.launch_command = ru.which('mpirun_mpt')  # Cheyenne @ NCAR
-
+        if   '_rsh' in self.name.lower():
+            self._rsh = True
+            self.launch_command = ru.which(['mpirun_rsh',         # Gordon (SDSC)
+                                            'mpirun'              # general case
+                                           ])
+ 
+        elif '_mpt' in self.name.lower():
+            self._mpt = True
+            self.launch_command = ru.which(['mpirun_mpt',         # Cheyenne (NCAR)
+                                            'mpirun'              # general case
+                                           ])
         else:
-            self.launch_command = ru.which(['mpirun',            # general case
-                                            'mpirun-mpich-mp',   # Mac OSX
-                                            'mpirun-openmpi-mp'  # Mac OSX
+            self.launch_command = ru.which(['mpirun-mpich-mp',    # Mac OSX
+                                            'mpirun-openmpi-mp',  # Mac OSX
+                                            'mpirun',             # general case
                                            ])
 
         # don't use the full pathname as the user might load a different
@@ -94,8 +102,8 @@ class MPIRun(LaunchMethod):
 
         # Cheyenne is the only machine that requires mpirun_mpt.  We then
         # have to set MPI_SHEPHERD=true
-        if '_mpt' in self.name:
-            if not cu.get['description'].get('environment'):
+        if self._mpt:
+            if not cu['description'].get('environment'):
                 cu['description']['environment'] = dict()
             cu['description']['environment']['MPI_SHEPHERD'] = 'true'
 
@@ -103,6 +111,7 @@ class MPIRun(LaunchMethod):
         host_list = list()
         core_list = list()
         save_list = list()
+
         for node in slots['nodes']:
 
             for cpu_proc in node['core_map']:
@@ -127,23 +136,31 @@ class MPIRun(LaunchMethod):
             # Create a hostfile from the list of hosts
             hostfile = self._create_hostfile(sandbox, uid, host_list,
                                              impaired=True)
-            hosts_string = '-hostfile %s' % hostfile
+            if self._mpt:
+                hosts_string = '-file %s' % hostfile
+            else:
+                hosts_string = '-hostfile %s' % hostfile
 
         else:
             # Construct the hosts_string ('h1,h2,..,hN')
-            hosts_string = '-host %s' % ",".join(host_list)
+            if self._mpt:
+                mpt_hosts_string = '%s' % ",".join(host_list)
+                hosts_string     = ''
+            else:
+                mpt_hosts_string = ''
+                hosts_string     = '-host %s' % ",".join(host_list)
 
         # -np:  usually len(host_list), meaning N processes over N hosts, but
         # for Cheyenne (mpt) the specification of -host lands N processes on
         # EACH host, where N is specified as arg to -np
-        if '_mpt' in self.name:
+        if self._mpt:
             np = 1
         else:
             np = len(host_list)
 
-        command = ("%s %s -np %d %s %s %s %s" %
-                   (self.ccmrun_command, self.launch_command, np,
-                    self.dplace_command, hosts_string, env_string,
+        command = ("%s %s %s -np %d %s %s %s %s" %
+                   (self.ccmrun_command, self.launch_command, mpt_hosts_string,
+                    np, self.dplace_command, hosts_string, env_string,
                     task_command)).strip()
 
         return command, None

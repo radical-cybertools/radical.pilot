@@ -96,11 +96,10 @@ VIRTENV_TGZ="$VIRTENV_VER.tar.gz"
 VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/66/f0/6867af06d2e2f511e4e1d7094ff663acdebc4f15d4a0cb0fed1007395124/$VIRTENV_TGZ"
 VIRTENV_IS_ACTIVATED=FALSE
 
-VIRTENV_RADICAL_DEPS="pymongo==2.8 apache-libcloud colorama python-hostlist "\
-"ntplib pyzmq netifaces==0.10.4 setproctitle orte_cffi "\
-"msgpack-python future regex"
+VIRTENV_RADICAL_DEPS="pymongo colorama python-hostlist ntplib "\
+"pyzmq netifaces setproctitle orte_cffi msgpack-python future regex munch"
 
-VIRTENV_RADICAL_MODS="pymongo libcloud colorama hostlist "\
+VIRTENV_RADICAL_MODS="pymongo colorama hostlist "\
 "ntplib zmq netifaces setproctitle msgpack future regex"
 
 if ! test -z "$RADICAL_DEBUG"
@@ -1028,11 +1027,10 @@ virtenv_create()
 
     # now that the virtenv is set up, we install all dependencies
     # of the RADICAL stack
-    echo "=== 5 $VIRTENV_RADICAL_DEPS"
     for dep in $VIRTENV_RADICAL_DEPS
     do
         run_cmd "install $dep" \
-                "$PIP install $dep" \
+                "$PIP --no-cache-dir install --no-build-isolation $dep" \
              || echo "Couldn't install $dep! Lets see how far we get ..."
     done
 
@@ -1242,7 +1240,7 @@ rp_install()
     pip_flags="$pip_flags --src '$PILOT_SANDBOX/rp_install/src'"
     pip_flags="$pip_flags --build '$PILOT_SANDBOX/rp_install/build'"
     pip_flags="$pip_flags --install-option='--prefix=$RP_INSTALL'"
-    pip_flags="$pip_flags --no-deps"
+    pip_flags="$pip_flags --no-deps --no-cache-dir --no-build-isolation"
 
     for src in $rp_install_sources
     do
@@ -1582,7 +1580,7 @@ get_tunnel(){
 
     # FIXME: check if tunnel stays up
     echo ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$addr -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST
-    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$addr -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
+         ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$addr -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
 
     # Kill ssh process when bootstrap_0 dies, to prevent lingering ssh's
     trap 'jobs -p | grep ssh | xargs -tr -n 1 kill' EXIT
@@ -1775,7 +1773,7 @@ then
 fi
 
 # start the master agent instance (zero)
-profile_event 'sync_rel' 'agent_0 start'
+profile_event 'sync_rel' 'agent.0'
 
 
 # # I am ashamed that we have to resort to this -- lets hope it's temporary...
@@ -1823,13 +1821,13 @@ profile_event 'sync_rel' 'agent_0 start'
 # PACKER_ID=$!
 
 if test -z "$CCM"; then
-    ./bootstrap_2.sh 'agent_0'    \
-                   1> agent_0.bootstrap_2.out \
-                   2> agent_0.bootstrap_2.err &
+    ./bootstrap_2.sh 'agent.0'    \
+                   1> agent.0.bootstrap_2.out \
+                   2> agent.0.bootstrap_2.err &
 else
-    ccmrun ./bootstrap_2.sh 'agent_0'    \
-                   1> agent_0.bootstrap_2.out \
-                   2> agent_0.bootstrap_2.err &
+    ccmrun ./bootstrap_2.sh 'agent.0'    \
+                   1> agent.0.bootstrap_2.out \
+                   2> agent.0.bootstrap_2.err &
 fi
 AGENT_PID=$!
 
@@ -1976,7 +1974,7 @@ echo "# -------------------------------------------------------------------"
 echo "# push final pilot state: $SESSION_ID $PILOT_ID $final_state"
 sp=$(which radical-pilot-agent-statepush)
 test -z "$sp" && echo "statepush not found"
-test -z "$sp" || $PYTHON "$sp" agent_0.cfg "$final_state"
+test -z "$sp" || $PYTHON "$sp" agent.0.cfg "$final_state"
 
 echo
 echo "# -------------------------------------------------------------------"

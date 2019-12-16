@@ -115,20 +115,23 @@ provided resource configuration files, you can write your own, and drop it in
 ``$HOME/.radical/pilot/configs/<your_resource_configuration_file_name>.json``.
 
 .. note::
-    The remote resource configuration file name has to start with "resource_"
-    and end with ".json" suffix. Within each resource file, multiple resources
-    could be listed. For example, the `resource_xsede.json
-    <https://radicalpilot.readthedocs.io/en/latest/_downloads/resource_xsede.json>`_
-    file contains many different hpc resources from XSEDE.
+    
+   The remote resource configuration file name has to start with "resource\_"
+   and end with ".json" suffix. Within each resource file, multiple resources
+   could be listed. For example, the `resource_xsede.json
+   <https://radicalpilot.readthedocs.io/en/latest/_downloads/resource_xsede.json>`_
+   file contains many different hpc resources from XSEDE.
 
 .. note::
-    Be advised that you may need specific knowledge about the target resource to
-    do so.  Also, while RADICAL-Pilot can handle very different types of systems
-    and batch system, it may run into trouble on specific configurations or
-    software versions we did not encounter before.  If you run into trouble
-    using a resource not in our list of officially supported ones, please drop
-    us a note on the RADICAL-Pilot users `mailing list
-    <https://groups.google.com/d/forum/radical-pilot-users>`_.
+    
+   Be advised that you may need specific knowledge about the target resource to
+   do so.  Also, while RADICAL-Pilot can handle very different types of systems
+   and batch system, it may run into trouble on specific configurations or
+   software versions we did not encounter before.  If you run into trouble
+   using a resource not in our list of officially supported ones, please drop
+   us a note on the RADICAL-Pilot users `mailing list
+   <https://groups.google.com/d/forum/radical-pilot-users>`_.
+
 
 A configuration file has to be valid JSON. The structure is as follows:
 
