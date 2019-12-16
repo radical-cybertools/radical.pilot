@@ -5,7 +5,6 @@ __license__   = "MIT"
 
 import copy
 import time
-import threading
 
 import radical.utils as ru
 
@@ -25,13 +24,13 @@ class ComputeUnit(object):
     ComputeUnits allow to control and query the state of this task.
 
     .. note:: A unit cannot be created directly. The factory method
-              :meth:`radical.pilot.UnitManager.submit_units` has to be used instead.
+              :meth:`rp.UnitManager.submit_units` has to be used instead.
 
                 **Example**::
 
-                      umgr = radical.pilot.UnitManager(session=s)
+                      umgr = rp.UnitManager(session=s)
 
-                      ud = radical.pilot.ComputeUnitDescription()
+                      ud = rp.ComputeUnitDescription()
                       ud.executable = "/bin/date"
 
                       unit = umgr.submit_units(ud)
@@ -69,7 +68,7 @@ class ComputeUnit(object):
         self._session          = self._umgr.session
         self._uid              = ru.generate_id('unit.%(item_counter)06d',
                                                 ru.ID_CUSTOM,
-                                                namespace=self._session.uid)
+                                                ns=self._session.uid)
         self._state            = rps.NEW
         self._log              = umgr._log
         self._exit_code        = None
@@ -134,14 +133,12 @@ class ComputeUnit(object):
         target  = unit_dict['state']
 
         if target not in [rps.FAILED, rps.CANCELED]:
-            try:
-                state_diff = rps._unit_state_value(target) - \
-                             rps._unit_state_value(current)
-                assert(state_diff == 1), 'invalid state transition'
-            except Exception:
+            s_tgt = rps._unit_state_value(target)
+            s_cur = rps._unit_state_value(current)
+            if s_tgt - s_cur != 1:
                 self._log.error('%s: invalid state transition %s -> %s',
                                 self.uid, current, target)
-                raise
+                raise RuntimeError('invalid state transition')
 
         self._state = target
 
@@ -329,12 +326,14 @@ class ComputeUnit(object):
     # --------------------------------------------------------------------------
     #
     @property
-    def working_directory(self): # **NOTE:** deprecated, use *`sandbox`*
+    def working_directory(self):         # **NOTE:** deprecated, use *`sandbox`*
         return self.sandbox
+
 
     @property
     def sandbox(self):
         return self.unit_sandbox
+
 
     @property
     def unit_sandbox(self):
@@ -440,9 +439,9 @@ class ComputeUnit(object):
               By default `wait` waits for the unit to reach a **final**
               state, which can be one of the following:
 
-              * :data:`radical.pilot.states.DONE`
-              * :data:`radical.pilot.states.FAILED`
-              * :data:`radical.pilot.states.CANCELED`
+              * :data:`rp.states.DONE`
+              * :data:`rp.states.FAILED`
+              * :data:`rp.states.CANCELED`
 
             * **timeout** [`float`]
               Optional timeout in seconds before the call returns regardless

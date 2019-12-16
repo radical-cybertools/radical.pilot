@@ -32,4 +32,7 @@ ignore          =
      # Do not use bare 'except'
      E722,
      # allow line breaks after binary operators
-     W504
+     W504,
+     # allow lambda assignment (used for partial callbacks)
+     E731
+

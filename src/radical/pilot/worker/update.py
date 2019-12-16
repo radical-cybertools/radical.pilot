@@ -4,10 +4,9 @@ __license__   = "MIT"
 
 
 import time
-import threading
 import pymongo
 
-import radical.utils as ru
+import radical.utils     as ru
 
 from .. import utils     as rpu
 from .. import constants as rpc
@@ -34,9 +33,30 @@ class Update(rpu.Worker):
     #
     def __init__(self, cfg, session):
 
-        self._uid = ru.generate_id('update.%(counter)s', ru.ID_CUSTOM)
-
         rpu.Worker.__init__(self, cfg, session)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def initialize(self):
+
+        self._sid        = self._cfg['sid']
+        self._dburl      = self._cfg['dburl']
+
+        # TODO: get db handle from a connected session
+        _, db, _, _, _   = ru.mongodb_connect(self._dburl)
+        self._mongo_db   = db
+        self._coll       = self._mongo_db[self._sid]
+        self._bulk       = self._coll.initialize_ordered_bulk_op()
+        self._last       = time.time()        # time of last bulk push
+        self._uids       = list()             # list of collected uids
+        self._lock       = ru.Lock()          # protect _bulk
+
+        self._bulk_time = self._cfg.bulk_time
+        self._bulk_size = self._cfg.bulk_size
+
+        self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
+        self.register_timed_cb(self._idle_cb, timer=self._bulk_time)
 
 
     # --------------------------------------------------------------------------
@@ -45,48 +65,6 @@ class Update(rpu.Worker):
     def create(cls, cfg, session):
 
         return cls(cfg, session)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def initialize_child(self):
-
-        self._session_id = self._cfg['session_id']
-        self._dburl      = self._cfg['dburl']
-        self._owner      = self._cfg['owner']
-
-        # TODO: get db handle from a connected session
-        _, db, _, _, _   = ru.mongodb_connect(self._dburl)
-        self._mongo_db   = db
-        self._coll       = self._mongo_db[self._session_id]
-        self._bulk       = self._coll.initialize_ordered_bulk_op()
-        self._last       = time.time()        # time of last bulk push
-        self._uids       = list()             # list of collected uids
-        self._lock       = threading.RLock()  # protect _bulk
-
-        self._bct        = self._cfg.get('bulk_collection_time',
-                                          DEFAULT_BULK_COLLECTION_TIME)
-        self._bcs        = self._cfg.get('bulk_collection_size',
-                                          DEFAULT_BULK_COLLECTION_SIZE)
-
-        self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
-        self.register_timed_cb(self._idle_cb, timer=self._bct)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def stop(self):
-
-        self._session._log.debug('%s stop called', self._uid)
-        super(Update, self).stop()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize_child(self):
-
-        self.unregister_timed_cb(self._idle_cb)
-        self.unregister_subscriber(rpc.STATE_PUBSUB, self._state_cb)
 
 
     # --------------------------------------------------------------------------
@@ -103,12 +81,12 @@ class Update(rpu.Worker):
         # only push if flush is forced, or when collection time or size
         # have been exceeded
         if not flush \
-           and age < self._bct \
-           and len(self._uids) < self._bcs:
+           and age < self._bulk_time \
+           and len(self._uids) < self._bulk_size:
             return False
 
         try:
-            res = self._bulk.execute()
+            self._bulk.execute()
 
         except pymongo.errors.OperationFailure as e:
             self._log.exception('bulk exec error: %s' % e.details)
@@ -234,21 +212,22 @@ class Update(rpu.Worker):
                 update_dict['$push'] = dict()
 
                 for key,val in thing.items():
-                    # we never set _id, states (to avoid index clash, duplicated ops)
+                    # never set _id, states (to avoid index clash, doubled ops)
                     if key not in ['_id', 'states']:
                         update_dict['$set'][key] = val
 
-                # we set state, put (more importantly) we push the state onto the
-                # 'states' list, so that we can later get state progression in sync with
-                # the state model, even if they have been pushed here out-of-order
+                # we set state, put (more importantly) we push the state onto
+                # the 'states' list, so that we can later get state progression
+                # in sync with the state model, even if they have been pushed
+                # here out-of-order
                 update_dict['$push']['states'] = state
 
                 with self._lock:
 
                     # push the update request onto the bulk
                     self._uids.append([uid, ttype, state])
-                    self._bulk.find  ({'uid'  : uid,
-                                       'type' : ttype}) \
+                    self._bulk.find  ({'uid' : uid,
+                                       'type': ttype}) \
                               .update(update_dict)
 
             with self._lock:

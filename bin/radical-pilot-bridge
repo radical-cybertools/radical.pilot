@@ -1,0 +1,167 @@
+#!/usr/bin/env python
+
+__copyright__ = "Copyright 2014-2019, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+
+import sys
+import time
+
+import threading     as mt
+import setproctitle  as spt
+
+import radical.utils as ru
+
+
+# ------------------------------------------------------------------------------
+#
+def main(cfg):
+    '''
+    This thin wrapper starts a ZMQ bridge.  It expects a single argument:
+    a config to use for the bridge's configuration.  The config must contain:
+
+      - uid : UID of bridge instance (unique to the hosting session)
+      - name: name of the bridge
+      - kind: type of bridge (`pubsub` or `queue`)
+
+    If the config contains a `heartbeat` section, that section must be formatted
+    as follows:
+
+    RCT comm bridges can be monitored via heartbeats (using a bridge-less pubsub
+    channel).  To enable that monitoring, the config should contains
+    a `heartbeat` section, that section must be formatted as follows:
+
+        {
+          'from'    : 'uid',
+          'pub'     : 'addr_pub',
+          'sub'     : 'addr_sub',
+          'interval': <float>,
+          'timeout' : <float>
+        }
+
+    If that section exists, the process will daemonize and heartbeats are used
+    to manage the bridge lifetime: the lifetime of this bridge is then dependent
+    on receiving heartbeats from the given `uid`: after `timeout` seconds of no
+    heartbeats arriving, the bridge will terminate.  The bridge itself will
+    publish heartbeats every `interval` seconds on the heartbeat channel under
+    its own uid.
+
+    If the heartbeat section is not present in the config file, the components
+    lifetime is expected to be explicitly managed, i.e., that this wrapper
+    process hosting the bridge is terminated externally.
+
+    The config file may contain other entries which are passed to the bridge
+    and are interpreted by the bridge implementation.
+
+    After startup, the bridge's communication endpoint URLs are stored in a
+    file `$uid.cfg`, in the form (shown for pubsub and queue type bridges):
+
+        {
+          'uid': '$bridge.uid',
+          'pub': '$addr_pub',
+          'sub': '$addr_sub'
+        }
+
+        {
+          'uid': '$bridge.uid',
+          'put': '$addr_put',
+          'get': '$addr_get'
+        }
+
+    That config is formed so that any publishers, subscribers, putters or getters
+    can obtain the respective bridge addresses automatically.  This also holds
+    for command line tools like:
+
+        > radical-pilot-bridge command.cfg                [1]
+        > radical-pilot-sub    command foo &              [2]
+        > radical-pilot-pub    command foo bar            [3]
+
+    [1] establishes the pubsub channel 'command'
+    [2] connect to the command channel, subscribe for topic `foo`
+    [3] connect to the command channel, send messages for topic `foo`
+    '''
+
+    # basic setup: uid, logger, process name
+    uid  = cfg.uid
+    path = cfg.path
+    prof = ru.Profiler(name=uid, ns='radical.pilot', path=path)
+
+    try:
+        prof.prof('bridge_start', uid=uid)
+        wrapped_main(cfg, uid, path)
+    finally:
+        prof.prof('bridge_stop', uid=uid)
+
+
+def wrapped_main(cfg, uid, path):
+
+    log  = ru.Logger(name=uid, ns='radical.pilot', path=path)
+    term = mt.Event()
+
+    spt.setproctitle('rp.%s' % uid)
+
+    # create the bridge, store connection addresses in FS, and begin to work
+    bridge = ru.zmq.Bridge.create(cfg)
+
+    ru.write_json('%s/%s.cfg' % (path, uid),
+                  {'uid'          : uid,
+                   bridge.type_in : str(bridge.addr_in),
+                   bridge.type_out: str(bridge.addr_out)})
+
+    bridge.start()
+
+    # bridge runs - send heartbeats so that cmgr knows about it
+    hb_pub = ru.zmq.Publisher('heartbeat', cfg.heartbeat.addr_pub, log=log)
+
+    def hb_beat_cb():
+        hb_pub.put('heartbeat', msg={'uid' : uid})
+
+    def hb_term_cb(hb_uid):
+        bridge.stop()
+        term.set()
+        return None
+
+    hb = ru.Heartbeat(uid=uid,
+                      timeout=cfg.heartbeat.timeout,
+                      interval=cfg.heartbeat.interval,
+                      beat_cb=hb_beat_cb,
+                      term_cb=hb_term_cb,
+                      log=log)
+    hb.start()
+
+    # register cmgr heartbeat by beating once
+    hb.beat(uid=cfg.cmgr)
+
+    # record cmgr heartbeats
+    def hb_sub_cb(topic, msg):
+        if msg['uid'] == cfg.cmgr:
+            hb.beat(uid=cfg.cmgr)
+
+    ru.zmq.Subscriber('heartbeat', cfg.heartbeat.addr_sub, log=log,
+                      topic='heartbeat', cb=hb_sub_cb)
+
+    # all is set up - we can sit idle 'til end of time.
+    while not term.is_set():
+        time.sleep(1)
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+
+    if len(sys.argv) != 2:
+        sys.stderr.write('error: invalid arguments\n'
+                         'usage: %s <cfg_file>\n'  % sys.argv[0])
+        raise RuntimeError('invalid arguments: %s' % sys.argv)
+
+    fname = sys.argv[1]
+    cfg   = ru.Config(path=fname)
+    path  = '%s/%s' % (cfg.path, cfg.uid)
+
+    ru.daemonize(main=main, args=[cfg], stdout='%s.out' % path,
+                                        stderr='%s.err' % path)
+    sys.exit(0)
+
+
+# ------------------------------------------------------------------------------
+

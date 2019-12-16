@@ -20,18 +20,18 @@ if  not _DEFAULT_DBURL.path or '/' == _DEFAULT_DBURL.path :
 
 _DEFAULT_DBURL = str(_DEFAULT_DBURL)
 
-# for graphing events, we assign numerical pseudo values to each event.  
-# Note: make sure that those are translated back into event tags via 
+# for graphing events, we assign numerical pseudo values to each event.
+# Note: make sure that those are translated back into event tags via
 # 'set [xy]tics'
-# 
+#
 #   set xtics ("lbl1" 1, "lbl2" 2, "lbl3" 3, "lbl4" 4)
 #
 _EVENT_ENCODING = {
         'session': {
             'created'                  :  1
-        }, 
+        },
         'pmgr': {
-        }, 
+        },
         'pilot' : {
             rp.PENDING_LAUNCH          :  1,
             rp.LAUNCHING               :  2,
@@ -42,7 +42,7 @@ _EVENT_ENCODING = {
             rp.FAILED                  :  7
         },
         'umgr': {
-        }, 
+        },
         'unit': {
             rp.NEW                          :  1,
             rp.SCHEDULING                   :  2,
@@ -64,28 +64,28 @@ _EVENT_ENCODING = {
     }
 
 # # common states
-# DONE                        
-# CANCELED                    
-# FAILED                      
-# 
+# DONE
+# CANCELED
+# FAILED
+#
 # # pilot states
-# PENDING_LAUNCH              
-# LAUNCHING                   
-# PENDING_ACTIVE              
-# ACTIVE                      
-# 
+# PENDING_LAUNCH
+# LAUNCHING
+# PENDING_ACTIVE
+# ACTIVE
+#
 # # ComputeUnit States
-# NEW                         
-# PENDING_INPUT_TRANSFER      
-# TRANSFERRING_INPUT          
-# 
-# PENDING_EXECUTION           
-# SCHEDULING                  
+# NEW
+# PENDING_INPUT_TRANSFER
+# TRANSFERRING_INPUT
+#
+# PENDING_EXECUTION
+# SCHEDULING
 # ALLOCATING
-# EXECUTING                   
-# 
-# PENDING_OUTPUT_TRANSFER     
-# TRANSFERRING_OUTPUT         
+# EXECUTING
+#
+# PENDING_OUTPUT_TRANSFER
+# TRANSFERRING_OUTPUT
 
 # ------------------------------------------------------------------------------
 #
@@ -115,7 +115,7 @@ def usage (msg=None, noexit=False) :
 
 
       arguments :
-        
+
         -d      : database URL
         -s      : session id(s)
         -c      : cachedir where <sid>.json caches are kept
@@ -210,11 +210,11 @@ def sort_session (db, session, cachedir) :
 
     docs = rpu.get_session_docs (db, session, cachedir=cachedir)
 
-    print("pilot managers :") 
+    print("pilot managers :")
     for doc in docs['pmgr'] :
         print("  %s" %  doc['_id'])
 
-    print("pilots :") 
+    print("pilots :")
     for doc in docs['pilot'] :
         print("  %s" %  doc['_id'])
 
@@ -257,7 +257,7 @@ def hist_session (db, session, cachedir) :
 
     if  slothists :
         for pilot_info in slothists :
-            print("pilot   : %s" % pilot_info['pilot_id'])
+            print("pilot   : %s" % pilot_info['pid'])
             for slothist in pilot_info['slothist'] :
                 seconds = ru.time_diff (start, slothist['timestamp'])
                 print("          %08.2fs : %s" % (seconds, str(slothist['slotstate'])))
@@ -295,7 +295,7 @@ def get_stats (docs, events, slothist) :
         for t in doc['statehistory'][1:] :
             ts = t['timestamp']
             s  = t['state']
-            pilot_info['pilot_states'].append ({'state'    : state, 
+            pilot_info['pilot_states'].append ({'state'    : state,
                                                 'duration' : ru.time_diff(start, ts)})
             state = s
             start = ts
@@ -361,7 +361,7 @@ def get_stats (docs, events, slothist) :
 
     return pilot_stats
 
-    
+
 # ------------------------------------------------------------------------------
 def stat_session (db, session, cachedir) :
 
@@ -455,14 +455,15 @@ def prof_session(db, sessions, cachedir, profdir):
             print("Processing pilot '%s'" % pilot['_id'])
 
             sandbox = pilot['sandbox']
-            pilot_id = os.path.basename(os.path.dirname(sandbox))
+            pid = os.path.basename(os.path.dirname(sandbox))
 
             src = sandbox + 'agent.prof'
 
             if profdir.startswith('/'):
-                dst = 'file://localhost/%s/%s.prof' % (profdir, pilot_id)
+                dst = 'file://localhost/%s/%s.prof' % (profdir, pid)
             else:
-                dst = 'file://localhost/%s/%s/%s.prof' % (os.getcwd(), profdir, pilot_id)
+                dst = 'file://localhost/%s/%s/%s.prof' % (os.getcwd(), profdir,
+                        pid)
 
             print("Copying '%s' to '%s'." % (src, dst))
             prof_file = rs.filesystem.File(src)
@@ -549,7 +550,7 @@ def plot_session (db, session, cachedir, term) :
                 dat.write (" %10.2f  %-25s\n" % (seconds, etag))
             dat.write ("\n")
             delete_me.append (dat.name)
-            
+
         with open ("/tmp/rp.%s.pilot.callbacks.%s.dat" % (session, pid), "w") as dat :
             if  'callbackhistory' in pilot :
                 for event in pilot['callbackhistory'] :
@@ -562,7 +563,7 @@ def plot_session (db, session, cachedir, term) :
                 print('no pilot callbacks')
             delete_me.append (dat.name)
 
-            
+
         with open ("/tmp/rp.%s.unit.states.%s.dat" % (session, pid), "w") as dat :
 
             for unit_id in pilot['unit_ids'] :
@@ -576,7 +577,7 @@ def plot_session (db, session, cachedir, term) :
                             dat.write (" %10.2f  %-25s\n" % (seconds, etag))
                         dat.write ("\n")
             delete_me.append (dat.name)
-            
+
         with open ("/tmp/rp.%s.unit.callbacks.%s.dat" % (session, pid), "w") as dat :
             for unit_id in pilot['unit_ids'] :
                 for unit in docs['unit'] :
@@ -590,7 +591,7 @@ def plot_session (db, session, cachedir, term) :
                             dat.write ("\n")
             delete_me.append (dat.name)
 
-            
+
         with open ("/tmp/rp.%s.pilot.queue.%s.dat" % (session, pid), "w") as dat :
 
             queue_size = 0
@@ -727,7 +728,7 @@ def plot_session (db, session, cachedir, term) :
 
   # print cmd
     print("\nplotting...")
-    os.system (cmd) 
+    os.system (cmd)
 
     if  plotname :
         os.system ("mv %s.png %s.png" % (session, plotname))
@@ -800,7 +801,7 @@ def plot_session (db, session, cachedir, term) :
                     for slot in slots :
 
                         if  not uid in entity_states :
-                            
+
                             if  state not in [rp.EXECUTING] :
                                 continue
 
@@ -991,7 +992,7 @@ def handle_doc (collection, mode, doc) :
 
             print(" | | | +-- %-10s : %s" % (key, txt_out[:-1])) # remove last \n
 # ------------------------------------------------------------------------------
-# 
+#
 def parse_commandline():
 
     return options
@@ -1021,25 +1022,25 @@ if __name__ == '__main__' :
     if  options.help :
         usage ()
 
-    if  options.mode in ['help'] : 
+    if  options.mode in ['help'] :
         usage ()
 
     if  not options.mode :
         usage ("No mode specified")
 
-    if  options.url : 
+    if  options.url :
         default_dburl = options.url
     else :
-        if  'RADICAL_PILOT_DBURL' in os.environ : 
+        if  'RADICAL_PILOT_DBURL' in os.environ :
             default_dburl = os.environ['RADICAL_PILOT_DBURL']
         else :
-            default_dburl = _DEFAULT_DBURL 
+            default_dburl = _DEFAULT_DBURL
 
     if  not options.url :
         options.url = default_dburl
 
 
-    mode     = options.mode 
+    mode     = options.mode
     url      = options.url
     session  = options.session
     filters  = options.filters
@@ -1078,7 +1079,7 @@ if __name__ == '__main__' :
             usage ("Unsupported mode '%s'" % m)
 
         if   m == 'list' : list_sessions (db, cachedir, filters)
-        elif m == 'tree' : tree_session  (db, dbname, session, cachedir) 
+        elif m == 'tree' : tree_session  (db, dbname, session, cachedir)
         elif m == 'dump' : dump_session  (db, dbname, session, cachedir)
         elif m == 'sort' : sort_session  (db, session, cachedir)
         elif m == 'hist' : hist_session  (db, session, cachedir)

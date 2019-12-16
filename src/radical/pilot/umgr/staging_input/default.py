@@ -5,11 +5,12 @@ __license__   = "MIT"
 
 import os
 import tempfile
-import threading     as mt
 import tarfile
 
-import radical.saga  as rs
 import radical.utils as ru
+import radical.saga  as rs
+
+rs.fs = rs.filesystem
 
 from ...   import states    as rps
 from ...   import constants as rpc
@@ -30,7 +31,7 @@ UNIT_BULK_MKDIR_THRESHOLD = 16
 UNIT_BULK_MKDIR_MECHANISM = 'tar'
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Default(UMGRStagingInputComponent):
     """
@@ -50,13 +51,13 @@ class Default(UMGRStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         # we keep a cache of SAGA dir handles
         self._fs_cache    = dict()
         self._js_cache    = dict()
         self._pilots      = dict()
-        self._pilots_lock = mt.RLock()
+        self._pilots_lock = ru.RLock()
 
         self.register_input(rps.UMGR_STAGING_INPUT_PENDING,
                             rpc.UMGR_STAGING_INPUT_QUEUE, self.work)
@@ -72,16 +73,10 @@ class Default(UMGRStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
+    def finalize(self):
 
-        self.unregister_subscriber(rpc.STATE_PUBSUB, self._base_command_cb)
-
-        try:
-            [fs.close() for fs in list(self._fs_cache.values())]
-            [js.close() for js in list(self._js_cache.values())]
-
-        except:
-            pass
+        [fs.close() for fs in list(self._fs_cache.values())]
+        [js.close() for js in list(self._js_cache.values())]
 
 
     # --------------------------------------------------------------------------
@@ -204,15 +199,15 @@ class Default(UMGRStagingInputComponent):
                 sbox_fs.path = '/'
                 sbox_fs_str  = str(sbox_fs)
                 if sbox_fs_str not in self._fs_cache:
-                    self._fs_cache[sbox_fs_str] = rs.filesystem.Directory(sbox_fs,
-                                                  session=self._session)
+                    self._fs_cache[sbox_fs_str] = \
+                            rs.fs.Directory(sbox_fs, session=self._session)
                 saga_dir = self._fs_cache[sbox_fs_str]
 
                 # we have two options for a bulk mkdir:
                 # 1) ask SAGA to create the sandboxes in a bulk op
-                # 2) create a tarball with all unit sandboxes, push it over, and
-                #    untar it (one untar op then creates all dirs).  We implement
-                #    both
+                # 2) create a tarball with all unit sandboxes, push
+                #    it over, and untar it (one untar op then creates all dirs).
+                #    We implement both
                 if UNIT_BULK_MKDIR_MECHANISM == 'saga':
 
                     tc = rs.task.Container()
@@ -237,15 +232,17 @@ class Default(UMGRStagingInputComponent):
                     rels = list()
                     for path in unit_sboxes:
                         if path.startswith(root):
-                            rels.append(path[rlen+1:])
+                            rels.append(path[rlen + 1:])
 
                     rpu.create_tar(tar_tgt, rels)
 
                     tar_rem_path = "%s/%s" % (str(session_sbox), tar_name)
 
-                    self._log.debug('sbox: %s [%s]', session_sbox, type(session_sbox))
+                    self._log.debug('sbox: %s [%s]', session_sbox,
+                                                             type(session_sbox))
                     self._log.debug('copy: %s -> %s', tar_url, tar_rem_path)
-                    saga_dir.copy(tar_url, tar_rem_path, flags=rs.filesystem.CREATE_PARENTS)
+                    saga_dir.copy(tar_url, tar_rem_path,
+                                             flags=rs.fs.CREATE_PARENTS)
 
                     # get a job service handle to the target resource and run
                     # the untar command.  Use the hop to skip the batch system
@@ -308,11 +305,10 @@ class Default(UMGRStagingInputComponent):
         self._log.debug('key %s / %s', key, tmp)
 
         if key not in self._fs_cache:
-            self._fs_cache[key] = rs.filesystem.Directory(tmp,
-                                             session=self._session)
+            self._fs_cache[key] = rs.fs.Directory(tmp, session=self._session)
 
         saga_dir = self._fs_cache[key]
-        saga_dir.make_dir(sandbox, flags=rs.filesystem.CREATE_PARENTS)
+        saga_dir.make_dir(sandbox, flags=rs.fs.CREATE_PARENTS)
         self._prof.prof("create_sandbox_stop", uid=uid)
 
         # Loop over all transfer directives and filter out tarball staging
@@ -388,10 +384,10 @@ class Default(UMGRStagingInputComponent):
                 # Check if the src is a folder, if true
                 # add recursive flag if not already specified
                 if os.path.isdir(src.path):
-                    flags |= rs.filesystem.RECURSIVE
+                    flags |= rs.fs.RECURSIVE
 
                 # Always set CREATE_PARENTS
-                flags |= rs.filesystem.CREATE_PARENTS
+                flags |= rs.fs.CREATE_PARENTS
 
                 src = complete_url(src, src_context, self._log)
                 tgt = complete_url(tgt, tgt_context, self._log)
@@ -411,7 +407,8 @@ class Default(UMGRStagingInputComponent):
 
 
         # staging is done, we can advance the unit at last
-        self.advance(unit, rps.AGENT_STAGING_INPUT_PENDING, publish=True, push=True)
+        self.advance(unit, rps.AGENT_STAGING_INPUT_PENDING,
+                           publish=True, push=True)
 
 
 # ------------------------------------------------------------------------------

@@ -5,13 +5,14 @@ __license__   = "MIT"
 
 import os
 import time
+import threading     as mt
 import subprocess    as mp
 import radical.utils as ru
 
 from .base import LaunchMethod
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 # NOTE: This requires a development version of Open MPI available.
 #
@@ -32,7 +33,7 @@ class ORTELib(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger, profiler):
+    def lrms_config_hook(cls, name, cfg, lrms, log, profiler):
         """
         FIXME: this config hook will manipulate the LRMS nodelist.  Not a nice
                thing to do, but hey... :P
@@ -62,7 +63,7 @@ class ORTELib(LaunchMethod):
                 orte_info['version_detail'] = val.strip()
 
         assert(orte_info.get('version'))
-        logger.info("Found Open RTE: %s / %s",
+        log.info("Found Open RTE: %s / %s",
                     orte_info['version'], orte_info.get('version_detail'))
 
         # Use (g)stdbuf to disable buffering.
@@ -92,8 +93,8 @@ class ORTELib(LaunchMethod):
         for ds in debug_strings: dvm_args.extend(ds.split())
 
         vm_size = len(lrms.node_list)
-        logger.info("Start DVM on %d nodes ['%s']", vm_size, ' '.join(dvm_args))
-        profiler.prof(event='orte_dvm_start', uid=cfg['pilot_id'])
+        log.info("Start DVM on %d nodes ['%s']", vm_size, ' '.join(dvm_args))
+        profiler.prof(event='orte_dvm_start', uid=cfg['pid'])
 
         dvm_uri     = None
         dvm_process = mp.Popen(dvm_args, stdout=mp.PIPE, stderr=mp.STDOUT)
@@ -112,15 +113,15 @@ class ORTELib(LaunchMethod):
                 if label != 'VMURI:':
                     raise Exception("Unknown VMURI format: %s" % line)
 
-                logger.info("ORTE DVM URI: %s" % dvm_uri)
+                log.info("ORTE DVM URI: %s" % dvm_uri)
 
             elif line == 'DVM ready':
 
                 if not dvm_uri:
                     raise Exception("VMURI not found!")
 
-                logger.info("ORTE DVM startup successful!")
-                profiler.prof(event='orte_dvm_ok', uid=cfg['pilot_id'])
+                log.info("ORTE DVM startup successful!")
+                profiler.prof(event='orte_dvm_ok', uid=cfg['pid'])
                 break
 
             else:
@@ -128,22 +129,22 @@ class ORTELib(LaunchMethod):
                 # Check if the process is still around,
                 # and log output in debug mode.
                 if dvm_process.poll() is None:
-                    logger.debug("ORTE: %s", line)
+                    log.debug("ORTE: %s", line)
                 else:
                     # Process is gone: fatal!
-                    profiler.prof(event='orte_dvm_fail', uid=cfg['pilot_id'])
+                    profiler.prof(event='orte_dvm_fail', uid=cfg['pid'])
                     raise Exception("ORTE DVM process disappeared")
 
         # ----------------------------------------------------------------------
         def _watch_dvm():
 
-            logger.info('starting DVM watcher')
+            log.info('starting DVM watcher')
 
             retval = dvm_process.poll()
             while retval is None:
                 line = dvm_process.stdout.readline().strip()
                 if line:
-                    logger.debug('dvm output: %s', line)
+                    log.debug('dvm output: %s', line)
                 else:
                     time.sleep(1.0)
 
@@ -156,10 +157,11 @@ class ORTELib(LaunchMethod):
                 # termination anyway.
                 os.kill(os.getpid())
 
-            logger.info('DVM stopped (%d)' % dvm_process.returncode)
+            log.info('DVM stopped (%d)' % dvm_process.returncode)
         # ----------------------------------------------------------------------
 
-        dvm_watcher = ru.Thread(target=_watch_dvm, name="DVMWatcher")
+        dvm_watcher = mt.Thread(target=_watch_dvm)
+        dvm_watcher.daemon = True
         dvm_watcher.start()
 
         lm_info = {'dvm_uri'     : dvm_uri,
@@ -178,7 +180,7 @@ class ORTELib(LaunchMethod):
     # case we use ORTE for the sub-agent launch.
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profiler):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, log, profiler):
         """
         This hook is symmetric to the config hook above, and is called during
         shutdown sequence, for the sake of freeing allocated resources.
@@ -186,19 +188,19 @@ class ORTELib(LaunchMethod):
 
         if 'dvm_uri' in lm_info:
             try:
-                logger.info('terminating dvm')
+                log.info('terminating dvm')
                 orterun = ru.which('orterun')
                 if not orterun:
                     raise Exception("Couldn't find orterun")
-                ru.sh_callout('%s --hnp %s --terminate' 
+                ru.sh_callout('%s --hnp %s --terminate'
                              % (orterun, lm_info['dvm_uri']))
-                profiler.prof(event='orte_dvm_stop', uid=cfg['pilot_id'])
+                profiler.prof(event='orte_dvm_stop', uid=cfg['pid'])
 
             except Exception as e:
                 # use the same event name as for runtime failures - those are
                 # not distinguishable at the moment from termination failures
-                profiler.prof(event='orte_dvm_fail', uid=cfg['pilot_id'], msg=e)
-                logger.exception('dvm termination failed')
+                profiler.prof(event='orte_dvm_fail', uid=cfg['pid'], msg=e)
+                log.exception('dvm termination failed')
 
 
     # --------------------------------------------------------------------------
@@ -275,8 +277,8 @@ class ORTELib(LaunchMethod):
 
         # Additional (debug) arguments to orterun
         if os.environ.get('RADICAL_PILOT_ORTE_VERBOSE'):
-            debug_strings = ['-display-devel-map', 
-                             '-display-allocation', 
+            debug_strings = ['-display-devel-map',
+                             '-display-allocation',
                              '--debug-devel',
                              '--mca oob_base_verbose 100',
                              '--mca rml_base_verbose 100'
@@ -289,7 +291,7 @@ class ORTELib(LaunchMethod):
         else       : np_flag = '-np 1'
 
         command = '%s %s %s %s -host %s %s' \
-                % (self.launch_command, debug_string, 
+                % (self.launch_command, debug_string,
                    np_flag, map_flag, hosts_string, env_string)
 
         return command, task_command
