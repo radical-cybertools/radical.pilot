@@ -129,10 +129,10 @@ class ComputePilotDescription(rsa.Attributes):
 
     .. data:: cleanup
 
-       [Type: `bool`] [optional] If cleanup is set to True, the pilot will 
+       [Type: `bool`] [optional] If cleanup is set to True, the pilot will
        delete its entire sandbox upon termination. This includes individual
-       ComputeUnit sandboxes and all generated output data. Only log files will 
-       remain in the sandbox directory. 
+       ComputeUnit sandboxes and all generated output data. Only log files will
+       remain in the sandbox directory.
 
     """
 
@@ -183,12 +183,6 @@ class ComputePilotDescription(rsa.Attributes):
         # apply initialization dict
         if from_dict:
             self.from_dict(from_dict)
-
-      # FIXME
-      #     logger.report.plain('[%s:%s:%s]' % (from_dict.get(RESOURCE, ''), 
-      #                                         from_dict.get(CORES,     1), 
-      #                                         from_dict.get(GPUS,      0)))
-      # logger.report.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------

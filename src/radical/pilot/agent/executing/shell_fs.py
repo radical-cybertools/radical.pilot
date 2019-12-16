@@ -15,7 +15,7 @@ from ... import constants as rpc
 from .base import AgentExecutingComponent
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class ShellFS(AgentExecutingComponent):
 
@@ -29,7 +29,7 @@ class ShellFS(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         from .... import pilot as rp
 
@@ -93,7 +93,7 @@ class ShellFS(AgentExecutingComponent):
         # TODO: test that this actually works
         # Remove the configured set of environment variables from the
         # environment that we pass to Popen.
-        for e in os.environ.keys():
+        for e in list(os.environ.keys()):
             env_removables = list()
             if self._mpi_launcher : env_removables += self._mpi_launcher.env_removables
             if self._task_launcher: env_removables += self._task_launcher.env_removables
@@ -116,10 +116,10 @@ class ShellFS(AgentExecutingComponent):
 
         # the registry keeps track of units to watch
         self._registry      = dict()
-        self._registry_lock = threading.RLock()
+        self._registry_lock = ru.RLock()
 
         self._to_cancel  = list()
-        self._cancel_lock    = threading.RLock()
+        self._cancel_lock    = ru.RLock()
 
         self._cached_events = list()  # keep monitoring events for pid's which
                                       # are not yet known
@@ -152,7 +152,7 @@ class ShellFS(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
+    def finalize(self):
 
         self._terminate.set()
 
@@ -266,35 +266,6 @@ class ShellFS(AgentExecutingComponent):
     #
     def _cu_to_cmd (self, cu, launcher) :
 
-        # ----------------------------------------------------------------------
-        def quote_args (args) :
-
-            ret = list()
-            for arg in args :
-
-                if not arg:
-                    continue
-
-                # if string is between outer single quotes,
-                #    pass it as is.
-                # if string is between outer double quotes,
-                #    pass it as is.
-                # otherwise (if string is not quoted)
-                #    escape all double quotes
-
-                if  arg[0] == arg[-1]  == "'" :
-                    ret.append (arg)
-                elif arg[0] == arg[-1] == '"' :
-                    ret.append (arg)
-                else :
-                    arg = arg.replace ('"', '\\"')
-                    ret.append ('"%s"' % arg)
-
-            return  ret
-
-        # ----------------------------------------------------------------------
-
-        args  = ""
         env   = self._deactivate
         cwd   = ""
         pre   = ""
@@ -306,9 +277,9 @@ class ShellFS(AgentExecutingComponent):
         sandbox = cu['unit_sandbox_path']
 
         env  += "# CU environment\n"
-        env  += "export RP_SESSION_ID=%s\n"     % self._cfg['session_id']
-        env  += "export RP_PILOT_ID=%s\n"       % self._cfg['pilot_id']
-        env  += "export RP_AGENT_ID=%s\n"       % self._cfg['agent_name']
+        env  += "export RP_SESSION_ID=%s\n"     % self._cfg['sid']
+        env  += "export RP_PILOT_ID=%s\n"       % self._cfg['pid']
+        env  += "export RP_AGENT_ID=%s\n"       % self._cfg['aid']
         env  += "export RP_SPAWNER_ID=%s\n"     % self.uid
         env  += "export RP_UNIT_ID=%s\n"        % cu['uid']
         env  += 'export RP_GTOD="%s"\n'         % self.gtod
@@ -324,7 +295,7 @@ prof(){
 '''
 
         # also add any env vars requested for export by the resource config
-        for k,v in self._env_cu_export.iteritems():
+        for k,v in self._env_cu_export.items():
             env += "export %s=%s\n" % (k,v)
 
         # also add any env vars requested in hte unit description
@@ -357,9 +328,6 @@ prof(){
                 post += "%s || %s\n" % (elem, fail)
             post += 'prof cu_post_stop\n'
             post += "\n"
-
-        if  descr['arguments']  :
-            args  = ' ' .join (quote_args (descr['arguments']))
 
         stdout_file = descr.get('stdout') or 'STDOUT'
         stderr_file = descr.get('stderr') or 'STDERR'

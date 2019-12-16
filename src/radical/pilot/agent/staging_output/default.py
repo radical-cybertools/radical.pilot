@@ -7,10 +7,8 @@ import os
 import errno
 import shutil
 
-import radical.saga  as rs
 import radical.utils as ru
 
-from .... import pilot     as rp
 from ...  import utils     as rpu
 from ...  import states    as rps
 from ...  import constants as rpc
@@ -44,7 +42,7 @@ class Default(AgentStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         self._pwd = os.getcwd()
 
@@ -52,7 +50,7 @@ class Default(AgentStagingOutputComponent):
                             rpc.AGENT_STAGING_OUTPUT_QUEUE, self.work)
 
         # we don't need an output queue -- units are picked up via mongodb
-        self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING, None) # drop units
+        self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING, None)  # drop
 
 
     # --------------------------------------------------------------------------
@@ -63,8 +61,6 @@ class Default(AgentStagingOutputComponent):
             units = [units]
 
         self.advance(units, rps.AGENT_STAGING_OUTPUT, publish=True, push=False)
-
-        ru.raise_on('work bulk')
 
         # we first filter out any units which don't need any input staging, and
         # advance them again as a bulk.  We work over the others one by one, and
@@ -94,7 +90,7 @@ class Default(AgentStagingOutputComponent):
             #       final.
             if unit['target_state'] != rps.DONE:
                 unit['state'] = unit['target_state']
-                self._log.debug('unit %s skips staging (%s)', uid, unit['state'])
+                self._log.debug('unit %s skips staging: %s', uid, unit['state'])
                 no_staging_units.append(unit)
                 continue
 
@@ -134,7 +130,7 @@ class Default(AgentStagingOutputComponent):
         if unit.get('stdout_file') and os.path.isfile(unit['stdout_file']):
             with open(unit['stdout_file'], 'r') as stdout_f:
                 try:
-                    txt = unicode(stdout_f.read(), "utf-8")
+                    txt = ru.as_string(stdout_f.read())
                 except UnicodeDecodeError:
                     txt = "unit stdout is binary -- use file staging"
 
@@ -147,7 +143,7 @@ class Default(AgentStagingOutputComponent):
         if unit.get('stderr_file') and os.path.isfile(unit['stderr_file']):
             with open(unit['stderr_file'], 'r') as stderr_f:
                 try:
-                    txt = unicode(stderr_f.read(), "utf-8")
+                    txt = ru.as_string(stderr_f.read())
                 except UnicodeDecodeError:
                     txt = "unit stderr is binary -- use file staging"
 
@@ -175,11 +171,12 @@ class Default(AgentStagingOutputComponent):
         if os.path.isfile(unit_prof):
             try:
                 with open(unit_prof, 'r') as prof_f:
-                    txt = prof_f.read()
+                    txt = ru.as_string(prof_f.read())
                     for line in txt.split("\n"):
                         if line:
-                            ts, event, comp, tid, _uid, state, msg = line.split(',')
-                            self._prof.prof(timestamp=float(ts), event=event,
+                            ts, event, comp, tid, _uid, state, msg = \
+                                                                 line.split(',')
+                            self._prof.prof(ts=float(ts), event=event,
                                             comp=comp, tid=tid, uid=_uid,
                                             state=state, msg=msg)
             except Exception as e:
@@ -191,8 +188,6 @@ class Default(AgentStagingOutputComponent):
     # --------------------------------------------------------------------------
     #
     def _handle_unit_staging(self, unit, actionables):
-
-        ru.raise_on('work unit')
 
         uid = unit['uid']
 
@@ -256,13 +251,15 @@ class Default(AgentStagingOutputComponent):
 
             # Fix for when the target PATH is empty
             # we assume current directory is the unit staging 'unit://'
-            # and we assume the file to be copied is the base filename of the source
+            # and we assume the file to be copied is the base filename
+            # of the source
             if tgt is None: tgt = ''
             if tgt.strip() == '':
                 tgt = 'unit:///{}'.format(os.path.basename(src))
             # Fix for when the target PATH is exists *and* it is a folder
             # we assume the 'current directory' is the target folder
-            # and we assume the file to be copied is the base filename of the source
+            # and we assume the file to be copied is the base filename
+            # of the source
             elif os.path.exists(tgt.strip()) and os.path.isdir(tgt.strip()):
                 tgt = os.path.join(tgt, os.path.basename(src))
 
@@ -325,7 +322,8 @@ class Default(AgentStagingOutputComponent):
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
         # all agent staging is done -- pass on to umgr output staging
-        self.advance(unit, rps.UMGR_STAGING_OUTPUT_PENDING, publish=True, push=False)
+        self.advance(unit, rps.UMGR_STAGING_OUTPUT_PENDING,
+                           publish=True, push=False)
 
 
 # ------------------------------------------------------------------------------

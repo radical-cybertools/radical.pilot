@@ -6,16 +6,12 @@ __license__   = "MIT"
 import time
 import math
 
-import radical.utils as ru
-
-from ... import utils     as rpu
-from ... import states    as rps
 from ... import constants as rpc
 
 from .base import AgentSchedulingComponent
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Torus(AgentSchedulingComponent):
 
@@ -44,7 +40,7 @@ class Torus(AgentSchedulingComponent):
     #
     def _configure(self):
         if not self._lrms_cores_per_node:
-            raise RuntimeError("LRMS %s didn't _configure cores_per_node." % \
+            raise RuntimeError("LRMS %s didn't _configure cores_per_node." %
                                self._lrms_info['name'])
 
         self._cores_per_node = self._lrms_cores_per_node
@@ -144,15 +140,18 @@ class Torus(AgentSchedulingComponent):
             # Check if all nodes from offset till offset+size are rpc.FREE
             for peek in range(num_nodes):
                 try:
-                    if block[offset+peek][self.TORUS_BLOCK_STATUS] == rpc.BUSY:
-                        # Once we find the first rpc.BUSY node we can discard this attempt
+                    if block[offset + peek][self.TORUS_BLOCK_STATUS] \
+                                                                    == rpc.BUSY:
+                        # Once we find the first rpc.BUSY node we
+                        # can discard this attempt
                         not_free = True
                         break
                 except IndexError:
-                    self._log.exception('Block out of bound. Num_nodes: %d, offset: %d, peek: %d.',
-                            num_nodes, offset, peek)
+                    self._log.exception('Block out of bound. Num_nodes: %d,'
+                                        'offset: %d, peek: %d.',
+                                        num_nodes, offset, peek)
 
-            if not_free == True:
+            if not_free is True:
                 # No success at this offset
                 self._log.info("No free nodes found at this offset: %d.", offset)
 
@@ -170,7 +169,7 @@ class Torus(AgentSchedulingComponent):
 
                 # Then mark the nodes busy
                 for peek in range(num_nodes):
-                    block[offset+peek][self.TORUS_BLOCK_STATUS] = rpc.BUSY
+                    block[offset + peek][self.TORUS_BLOCK_STATUS] = rpc.BUSY
 
                 return offset
 
@@ -185,7 +184,8 @@ class Torus(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _release_slot(self, (corner, shape)):
+    def _release_slot(self, xxx_todo_changeme):
+        (corner, shape) = xxx_todo_changeme
         self._free_cores(self._lrms.torus_block, corner, shape)
 
 
@@ -204,9 +204,9 @@ class Torus(AgentSchedulingComponent):
         self._log.info("Freeing %d nodes starting at %d.", num_nodes, offset)
 
         for peek in range(num_nodes):
-            assert block[offset+peek][self.TORUS_BLOCK_STATUS] == rpc.BUSY, \
-                'Block %d not Free!' % block[offset+peek]
-            block[offset+peek][self.TORUS_BLOCK_STATUS] = rpc.FREE
+            assert block[offset + peek][self.TORUS_BLOCK_STATUS] == rpc.BUSY, \
+                   'Block %d not Free!' % block[offset + peek]
+            block[offset + peek][self.TORUS_BLOCK_STATUS] = rpc.FREE
 
 
     # --------------------------------------------------------------------------
@@ -214,9 +214,11 @@ class Torus(AgentSchedulingComponent):
     # Follow coordinates to get the last node
     #
     def get_last_node(self, origin, shape):
-        ret = {}
+
+        ret = dict()
+
         for dim in self._lrms.torus_dimension_labels:
-            ret[dim] = origin[dim] + shape[dim] -1
+            ret[dim] = origin[dim] + shape[dim] - 1
         return ret
 
 

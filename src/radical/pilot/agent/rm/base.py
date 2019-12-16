@@ -20,7 +20,8 @@ RM_NAME_YARN        = 'YARN'
 RM_NAME_SPARK       = 'SPARK'
 RM_NAME_DEBUG       = 'DEBUG'
 
-# ==============================================================================
+
+# ------------------------------------------------------------------------------
 #
 # Base class for LRMS implementations.
 #
@@ -92,7 +93,7 @@ class LRMS(object):
         # FIXME: this loop iterates over all agents *defined* in the layout, not
         #        over all agents which are to be actually executed, thus
         #        potentially reserving too many nodes.a
-        # NOTE:  this code path is *within* the agent, so at least agent_0
+        # NOTE:  this code path is *within* the agent, so at least agent.0
         #        cannot possibly land on a different node.
         for agent in agents:
             target = agents[agent].get('target')
@@ -129,8 +130,8 @@ class LRMS(object):
                     break
 
         if self.agent_nodes:
-            self._log.info('Reserved nodes: %s' % self.agent_nodes.values())
-            self._log.info('Agent    nodes: %s' % self.agent_nodes.keys())
+            self._log.info('Reserved nodes: %s' % list(self.agent_nodes.values()))
+            self._log.info('Agent    nodes: %s' % list(self.agent_nodes.keys()))
             self._log.info('Worker   nodes: %s' % self.node_list)
 
         # Check if we can do any work
@@ -242,7 +243,6 @@ class LRMS(object):
             return impl(cfg, session)
 
         except KeyError:
-            session._log.exception('lrms construction error')
             raise RuntimeError("LRMS type '%s' unknown or defunct" % name)
 
 

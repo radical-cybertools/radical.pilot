@@ -5,9 +5,10 @@
 User Guide
 **********
 
-This chapter will guide the reader through the most commonly used features of
-RADICAL-Pilot (RP).  We will start with a basic RP example, and then discuss individual RP features which
-augment the basic example towards a more complete set of applications.
+This chapter guides the reader through the most commonly used features of
+RADICAL-Pilot (RP).  We start with an example of a basic Python application
+written with RP. We then discuss individual RP features by augmenting the
+given basic application.
 
 .. toctree::
    :maxdepth: 1

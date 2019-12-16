@@ -9,7 +9,7 @@ from .base import LaunchMethod
 
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 # dplace: job launcher for SGI systems (e.g. on Blacklight)
 # https://www.nas.nasa.gov/hecc/support/kb/Using-SGIs-dplace-Tool-for-Pinning_284.html
@@ -64,7 +64,7 @@ class MPIRunDPlace(LaunchMethod):
         else          : task_command = task_exec
 
         env_string = ''
-        env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
+        env_list   = self.EXPORT_ENV_VARIABLES + list(task_env.keys())
         if env_list:
 
             if self.mpi_flavor == self.MPI_FLAVOR_HYDRA:

@@ -80,9 +80,9 @@
 
     "xsede.bridges" : {
         "project"  : null,
-        "queue"    : "RM",
+        "queue"    : "RM-small",
         "schema"   : "gsissh",
-        "cores"    : 64
+        "cores"    : 24
     },
 
     "xsede.wrangler" : {
@@ -120,6 +120,20 @@
         "cores"    : 96
     },
 
+    "xsede.stampede2_ssh"  : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "development",
+        "schema"   : "gsissh",
+        "cores"    : 68
+    },
+
+    "xsede.stampede2_srun"  : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "development",
+        "schema"   : "gsissh",
+        "cores"    : 68
+    },
+
     "ncar.cheyenne": {
 	    "project"  : "URTG0014",
 	    "queue"    : "regular",
@@ -135,7 +149,7 @@
     },
 
     "ornl.summit_prte" : {
-        "project"  : "CSC343",
+        "project"  : "geo111",
         "queue"    : "batch",
         "schema"   : "local",
         "cores"    : 168

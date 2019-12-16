@@ -8,7 +8,7 @@ import radical.utils as ru
 from .base import LaunchMethod
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 # ccmrun: Cluster Compatibility Mode job launcher for Cray systems
 #
@@ -58,7 +58,7 @@ class MPIRunCCMRun(LaunchMethod):
         else          : task_command = task_exec
 
         env_string = ''
-        env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
+        env_list   = self.EXPORT_ENV_VARIABLES + list(task_env.keys())
         if env_list:
 
             if self.mpi_flavor == self.MPI_FLAVOR_HYDRA:

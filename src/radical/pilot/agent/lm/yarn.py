@@ -11,7 +11,7 @@ import radical.utils as ru
 from .base import LaunchMethod
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 # The Launch Method Implementation for Running YARN applications
 #
@@ -27,12 +27,12 @@ class Yarn(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger, profiler=None):
+    def lrms_config_hook(cls, name, cfg, lrms, log, profiler=None):
         """
-        FIXME: this config hook will inspect the LRMS nodelist and, if needed,
-               will start the YARN cluster on node[0].
+        this config hook will inspect the LRMS nodelist and, if needed,
+        will start the YARN cluster on node[0].
         """
-        logger.info('Hook called by YARN LRMS with the name %s' % lrms.name)
+        log.info('Hook called by YARN LRMS with the name %s' % lrms.name)
 
         def config_core_site(node):
 
@@ -178,8 +178,8 @@ class Yarn(LaunchMethod):
         # it is the one that the YARN LRMS returns
         hadoop_home = None
         if lrms.name == 'YARNLRMS':  # FIXME: use constant
-            logger.info('Hook called by YARN LRMS')
-            logger.info('NameNode: %s', lrms.namenode_url)
+            log.info('Hook called by YARN LRMS')
+            log.info('NameNode: %s', lrms.namenode_url)
             service_url    = lrms.namenode_url
             rm_url         = "%s:%s" % (lrms.rm_ip, lrms.rm_port)
             rm_ip          = lrms.rm_ip
@@ -191,14 +191,14 @@ class Yarn(LaunchMethod):
                 node_name = lrms.node_list[0]
             else:
                 node = subprocess.check_output('/bin/hostname')
-                logger.info('Entered Else creation')
+                log.info('Entered Else creation')
                 node_name = node.split('\n')[0]
 
             # Download the tar file
             stat = os.system("wget http://apache.claz.org/hadoop/common/hadoop-2.6.5/hadoop-2.6.5.tar.gz")
             stat = os.system('tar xzf hadoop-2.6.5.tar.gz;mv hadoop-2.6.5 hadoop;rm -rf hadoop-2.6.5.tar.gz')
             # TODO: Decide how the agent will get Hadoop tar ball.
-            logger.debug('YARN Download Completed with code: %s', stat)
+            log.debug('YARN Download Completed with code: %s', stat)
 
 
             hadoop_home        = os.getcwd() + '/hadoop'
@@ -234,27 +234,27 @@ class Yarn(LaunchMethod):
             config_mapred_site()
             config_yarn_site(lrms.cores_per_node, lrms.node_list, host)  # FIXME GPU
 
-            logger.info('Start Formatting DFS')
+            log.info('Start Formatting DFS')
             namenode_format = os.system(hadoop_home + '/bin/hdfs namenode -format -force')
-            logger.info('DFS Formatted. Starting DFS: %s', namenode_format)
-            logger.info('Starting YARN')
+            log.info('DFS Formatted. Starting DFS: %s', namenode_format)
+            log.info('Starting YARN')
             yarn_start = subprocess.check_output([hadoop_home + '/sbin/start-all.sh'])
             if 'Error' in yarn_start:
                 raise RuntimeError('Unable to start YARN cluster: %s'
                     % (yarn_start))
             else:
-                logger.info('Started YARN')
+                log.info('Started YARN')
 
             # ------------------------------------------------------------------
             # Creating user's HDFS home folder
-            logger.debug('Running: %s/bin/hdfs dfs -mkdir /user' % hadoop_home)
+            log.debug('Running: %s/bin/hdfs dfs -mkdir /user' % hadoop_home)
             os.system('%s/bin/hdfs dfs -mkdir /user' % hadoop_home)
             uname = subprocess.check_output('whoami').split('\n')[0]
-            logger.debug('Running: %s/bin/hdfs dfs -mkdir /user/%s' % (hadoop_home,uname))
+            log.debug('Running: %s/bin/hdfs dfs -mkdir /user/%s' % (hadoop_home,uname))
             os.system('%s/bin/hdfs dfs -mkdir /user/%s' % (hadoop_home,uname))
             check = subprocess.check_output(['%s/bin/hdfs' % hadoop_home,'dfs', '-ls', '/user'])
-            logger.info(check)
-            logger.info('Getting YARN app')
+            log.info(check)
+            log.info('Getting YARN app')
             os.system('wget https://www.dropbox.com/s/9yxbj9btibgtg40/Pilot-YARN-0.1-jar-with-dependencies.jar')
 
             # FIXME YARN: why was the scheduler configure called here?  Configure
@@ -286,18 +286,18 @@ class Yarn(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profiler=None):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, log, profiler=None):
         if 'name' not in lm_info:
             raise RuntimeError('name not in lm_info for %s' % name)
 
         if lm_info['name'] != 'YARNLRMS':  # FIXME: use constant
-            logger.info('Stoping YARN')
+            log.info('Stoping YARN')
             os.system(lm_info['hadoop_home'] + '/sbin/stop-yarn.sh')
 
-            logger.info('Stoping DFS.')
+            log.info('Stoping DFS.')
             os.system(lm_info['hadoop_home'] + '/sbin/stop-dfs.sh')
 
-            logger.info("Deleting HADOOP files from temp")
+            log.info("Deleting HADOOP files from temp")
             os.system('rm -rf /tmp/hadoop*')
             os.system('rm -rf /tmp/Jetty*')
             os.system('rm -rf /tmp/hsperf*')
@@ -319,7 +319,7 @@ class Yarn(LaunchMethod):
     def construct_command(self, cu, launch_script_hop):
 
         slots        = cu['slots']
-        work_dir     = cu['workdir']
+        work_dir     = cu['unit_sandbox_path']
         cud          = cu['description']
         task_exec    = cud['executable']
         task_cores   = cud['cpu_processes'] * cud['cpu_threads']
@@ -428,7 +428,7 @@ class Yarn(LaunchMethod):
         print_str += "echo '#End of File'>>ExecScript.sh\n\n\n"
 
         env_string = ''
-        for key,val in task_env.iteritems():
+        for key,val in list(task_env.items()):
             env_string += '-shell_env ' + key + '=' + str(val) + ' '
 
         # app_name = '-appname '+ cud['uid']

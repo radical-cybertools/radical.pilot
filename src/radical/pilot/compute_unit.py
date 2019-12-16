@@ -3,21 +3,17 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os
 import copy
 import time
-import threading
 
 import radical.utils as ru
 
-from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
 
 from . import compute_unit_description as cud
 
 from .staging_directives import expand_description
-from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA
 
 
 # ------------------------------------------------------------------------------
@@ -28,13 +24,13 @@ class ComputeUnit(object):
     ComputeUnits allow to control and query the state of this task.
 
     .. note:: A unit cannot be created directly. The factory method
-              :meth:`radical.pilot.UnitManager.submit_units` has to be used instead.
+              :meth:`rp.UnitManager.submit_units` has to be used instead.
 
                 **Example**::
 
-                      umgr = radical.pilot.UnitManager(session=s)
+                      umgr = rp.UnitManager(session=s)
 
-                      ud = radical.pilot.ComputeUnitDescription()
+                      ud = rp.ComputeUnitDescription()
                       ud.executable = "/bin/date"
 
                       unit = umgr.submit_units(ud)
@@ -72,7 +68,7 @@ class ComputeUnit(object):
         self._session          = self._umgr.session
         self._uid              = ru.generate_id('unit.%(item_counter)06d',
                                                 ru.ID_CUSTOM,
-                                                namespace=self._session.uid)
+                                                ns=self._session.uid)
         self._state            = rps.NEW
         self._log              = umgr._log
         self._exit_code        = None
@@ -84,7 +80,6 @@ class ComputeUnit(object):
         self._unit_sandbox     = None
         self._client_sandbox   = None
         self._callbacks        = dict()
-        self._cb_lock          = threading.RLock()
 
         for m in rpc.UMGR_METRICS:
             self._callbacks[m] = dict()
@@ -142,8 +137,9 @@ class ComputeUnit(object):
 
         if target not in [rps.FAILED, rps.CANCELED]:
             try:
-                assert(rps._unit_state_value(target) - rps._unit_state_value(current) == 1), \
-                            'invalid state transition'
+                s_tgt = rps._unit_state_value(target)
+                s_cur = rps._unit_state_value(current)
+                assert(s_tgt - s_cur == 1), 'invalid state transition'
             except:
                 self._log.error('%s: invalid state transition %s -> %s',
                                 self.uid, current, target)
@@ -163,18 +159,24 @@ class ComputeUnit(object):
                 setattr(self, "_%s" % key, val)
 
         # invoke unit specific callbacks
-        for cb_name, cb_val in self._callbacks[rpc.UNIT_STATE].iteritems():
+        for cb_name, cb_val in self._callbacks[rpc.UNIT_STATE].items():
 
             cb      = cb_val['cb']
             cb_data = cb_val['cb_data']
 
             self._log.debug('%s calls state cb %s', self.uid, cb)
 
-            if cb_data: cb(self, self.state, cb_data)
-            else      : cb(self, self.state)
+            try:
+                if cb_data: cb(self, self.state, cb_data)
+                else      : cb(self, self.state)
+            except:
+                self._log.exception('cb %s failed', cb)
 
-        # ask umgr to invoke any global callbacks
-        self._umgr._call_unit_callbacks(self, self.state)
+        try:
+            # ask umgr to invoke any global callbacks
+            self._umgr._call_unit_callbacks(self, self.state)
+        except:
+            self._log.exception('global cb failed')
 
 
     # --------------------------------------------------------------------------
@@ -347,12 +349,14 @@ class ComputeUnit(object):
     # --------------------------------------------------------------------------
     #
     @property
-    def working_directory(self): # **NOTE:** deprecated, use *`sandbox`*
+    def working_directory(self):         # **NOTE:** deprecated, use *`sandbox`*
         return self.sandbox
+
 
     @property
     def sandbox(self):
         return self.unit_sandbox
+
 
     @property
     def unit_sandbox(self):
@@ -455,9 +459,9 @@ class ComputeUnit(object):
               By default `wait` waits for the unit to reach a **final**
               state, which can be one of the following:
 
-              * :data:`radical.pilot.states.DONE`
-              * :data:`radical.pilot.states.FAILED`
-              * :data:`radical.pilot.states.CANCELED`
+              * :data:`rp.states.DONE`
+              * :data:`rp.states.FAILED`
+              * :data:`rp.states.CANCELED`
 
             * **timeout** [`float`]
               Optional timeout in seconds before the call returns regardless

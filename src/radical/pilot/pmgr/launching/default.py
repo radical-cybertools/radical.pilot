@@ -10,9 +10,6 @@ import time
 import pprint
 import shutil
 import tempfile
-import threading
-
-import subprocess              as sp
 
 import radical.saga            as rs
 import radical.saga.filesystem as rsfs
@@ -25,7 +22,6 @@ from ...  import constants     as rpc
 from .base import PMGRLaunchingComponent
 
 from ...staging_directives import complete_url
-from ...staging_directives import TRANSFER, COPY, LINK, MOVE
 
 
 # ------------------------------------------------------------------------------
@@ -45,7 +41,7 @@ LOCAL_SCHEME   = 'file'
 BOOTSTRAPPER_0 = "bootstrap_0.sh"
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class Default(PMGRLaunchingComponent):
 
@@ -58,19 +54,19 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_child(self):
+    def initialize(self):
 
         # we don't really have an output queue, as we pass control over the
         # pilot jobs to the resource management system (RM).
 
-        self._pilots        = dict()             # dict for all known pilots
-        self._pilots_lock   = threading.RLock()  # lock on maipulating the above
-        self._checking      = list()             # pilots to check state on
-        self._check_lock    = threading.RLock()  # lock on maipulating the above
-        self._saga_fs_cache = dict()             # cache of saga directories
-        self._saga_js_cache = dict()             # cache of saga job services
-        self._sandboxes     = dict()             # cache of resource sandbox URLs
-        self._cache_lock    = threading.RLock()  # lock for cache
+        self._pilots        = dict()      # dict for all known pilots
+        self._pilots_lock   = ru.RLock()  # lock on maipulating the above
+        self._checking      = list()      # pilots to check state on
+        self._check_lock    = ru.RLock()  # lock on maipulating the above
+        self._saga_fs_cache = dict()      # cache of saga directories
+        self._saga_js_cache = dict()      # cache of saga job services
+        self._sandboxes     = dict()      # cache of resource sandbox URLs
+        self._cache_lock    = ru.RLock()  # lock for cache
 
         self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
         self._root_dir      = "%s/../../"   % self._mod_dir
@@ -92,29 +88,20 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_child(self):
-
-        # avoid shutdown races:
-
-        self.unregister_timed_cb(self._pilot_watcher_cb)
-        self.unregister_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
+    def finalize(self):
 
         # FIXME: always kill all saga jobs for non-final pilots at termination,
         #        and set the pilot states to CANCELED.  This will confluct with
         #        disconnect/reconnect semantics.
         with self._pilots_lock:
-            pids = self._pilots.keys()
+            pids = list(self._pilots.keys())
 
         self._cancel_pilots(pids)
         self._kill_pilots(pids)
 
         with self._cache_lock:
-            for url,js in self._saga_js_cache.iteritems():
-                self._log.debug('close  js to %s', url)
+            for url,js in self._saga_js_cache.items():
                 js.close()
-                self._log.debug('closed js to %s', url)
-            self._saga_js_cache.clear()
-        self._log.debug('finalized child')
 
 
     # --------------------------------------------------------------------------
@@ -129,6 +116,11 @@ class Default(PMGRLaunchingComponent):
         if cmd == 'pilot_staging_input_request':
 
             self._handle_pilot_input_staging(arg['pilot'], arg['sds'])
+
+
+        if cmd == 'pilot_staging_output_request':
+
+            self._handle_pilot_output_staging(arg['pilot'], arg['sds'])
 
 
         elif cmd == 'cancel_pilots':
@@ -182,14 +174,14 @@ class Default(PMGRLaunchingComponent):
             src    = sd['source']
             tgt    = sd['target']
 
-            assert(action in [COPY, LINK, MOVE, TRANSFER])
+            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
 
             self._prof.prof('staging_in_start', uid=pid, msg=did)
 
             src = complete_url(src, src_context, self._log)
             tgt = complete_url(tgt, tgt_context, self._log)
 
-            if action in [COPY, LINK, MOVE]:
+            if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 self._prof.prof('staging_in_fail', uid=pid, msg=did)
                 raise ValueError("invalid action '%s' on pilot level" % action)
 
@@ -234,6 +226,79 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
+    def _handle_pilot_output_staging(self, pilot, sds):
+
+        pid = pilot['uid']
+
+        # NOTE: no unit sandboxes defined!
+        src_context = {'pwd'     : pilot['pilot_sandbox'],
+                       'pilot'   : pilot['pilot_sandbox'],
+                       'resource': pilot['resource_sandbox']}
+        tgt_context = {'pwd'     : pilot['client_sandbox'],
+                       'pilot'   : pilot['pilot_sandbox'],
+                       'resource': pilot['resource_sandbox']}
+
+        # Iterate over all directives
+        for sd in sds:
+
+            # TODO: respect flags in directive
+
+            action = sd['action']
+            flags  = sd['flags']
+            did    = sd['uid']
+            src    = sd['source']
+            tgt    = sd['target']
+
+            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
+
+            self._prof.prof('staging_out_start', uid=pid, msg=did)
+
+            src = complete_url(src, src_context, self._log)
+            tgt = complete_url(tgt, tgt_context, self._log)
+
+            if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
+                self._prof.prof('staging_out_fail', uid=pid, msg=did)
+                raise ValueError("invalid action '%s' on pilot level" % action)
+
+            self._log.info('transfer %s to %s', src, tgt)
+
+            # FIXME: make sure that tgt URL points to the right resource
+            # FIXME: honor sd flags if given (recursive...)
+            flags = rsfs.CREATE_PARENTS
+
+            if os.path.isdir(src.path):
+                flags |= rsfs.RECURSIVE
+
+            # Define and open the staging directory for the pilot
+
+            # url used for cache (sandbox url w/o path)
+            tmp      = rs.Url(pilot['pilot_sandbox'])
+            tmp.path = '/'
+            key = str(tmp)
+
+            self._log.debug("rs.file.Directory ('%s')", key)
+
+            with self._cache_lock:
+                if key in self._saga_fs_cache:
+                    fs = self._saga_fs_cache[key]
+
+                else:
+                    fs = rsfs.Directory(key, session=self._session)
+                    self._saga_fs_cache[key] = fs
+
+            fs.copy(src, tgt, flags=flags)
+
+            sd['pmgr_state'] = rps.DONE
+
+            self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'pilot_staging_output_result',
+                                              'arg': {'pilot': pilot,
+                                                      'sds'  : [sd]}})
+
+            self._prof.prof('staging_out_stop', uid=pid, msg=did)
+
+
+    # --------------------------------------------------------------------------
+    #
     def _pilot_watcher_cb(self):
 
         # FIXME: we should actually use SAGA job state notifications!
@@ -255,12 +320,11 @@ class Default(PMGRLaunchingComponent):
         # use a copy of the pilots_tocheck list and iterate over that, and only
         # lock other members when they are manipulated.
 
-        ru.raise_on('pilot_watcher_cb')
-
         tc = rs.job.Container()
         with self._pilots_lock, self._check_lock:
 
             for pid in self._checking:
+
                 tc.add(self._pilots[pid]['job'])
 
         states = tc.get_states()
@@ -340,12 +404,6 @@ class Default(PMGRLaunchingComponent):
             # nothing to do
             return
 
-        # send the cancelation request to the pilots
-        # FIXME: the cancellation request should not go directly to the DB, but
-        #        through the DB abstraction layer...
-        self._session._dbs.pilot_command('cancel_pilot', [], pids)
-        self._log.debug('pilot(s).need(s) cancellation %s', pids)
-
         # recod time of request, so that forceful termination can happen
         # after a certain delay
         now = time.time()
@@ -376,9 +434,9 @@ class Default(PMGRLaunchingComponent):
         with self._pilots_lock:
             self._log.debug('killing pilots: %s',
                               [p['pilot'].get('cancel_requested', 0)
-                               for p in self._pilots.values()])
+                               for p in list(self._pilots.values())])
             last_cancel = max([p['pilot'].get('cancel_requested', 0)
-                               for p in self._pilots.values()])
+                               for p in list(self._pilots.values())])
 
         self._log.debug('killing pilots: last cancel: %s', last_cancel)
 
@@ -550,11 +608,11 @@ class Default(PMGRLaunchingComponent):
         #        entries, so that the expansion is only done on the first PD.
         expand = dict()
         pd     = pilots[0]['description']
-        for k,v in pd.iteritems():
+        for k,v in pd.items():
             if v is None:
                 v = ''
             expand['pd.%s' % k] = v
-            if isinstance(v, basestring):
+            if isinstance(v, str):
                 expand['pd.%s' % k.upper()] = v.upper()
                 expand['pd.%s' % k.lower()] = v.lower()
             else:
@@ -562,7 +620,7 @@ class Default(PMGRLaunchingComponent):
                 expand['pd.%s' % k.lower()] = v
 
         for k in rcfg:
-            if isinstance(rcfg[k], basestring):
+            if isinstance(rcfg[k], str):
                 orig     = rcfg[k]
                 rcfg[k]  = rcfg[k] % expand
                 expanded = rcfg[k]
@@ -630,13 +688,13 @@ class Default(PMGRLaunchingComponent):
         # tar.  If any command fails, this will raise.
         cmd = "cd %s && tar zchf %s *" % (tmp_dir, tar_tgt)
         self._log.debug('cmd: %s', cmd)
-        try:
-            out = sp.check_output(["/bin/sh", "-c", cmd], stderr=sp.STDOUT)
-        except Exception:
-            self._log.exception('callout failed: %s', out)
-            raise
-        else:
+
+        out, err, ret = ru.sh_callout(cmd, shell=True)
+
+        if ret:
             self._log.debug('out: %s', out)
+            self._log.debug('err: %s', err)
+            raise RuntimeError('callout failed')
 
         # remove all files marked for removal-after-pack
         for ft in ft_list:
@@ -866,13 +924,13 @@ class Default(PMGRLaunchingComponent):
             # use dict as is
             agent_cfg = agent_config
 
-        elif isinstance(agent_config, basestring):
+        elif isinstance(agent_config, str):
             try:
                 # interpret as a config name
                 agent_cfg_file = os.path.join(self._conf_dir, "agent_%s.json" % agent_config)
 
                 self._log.info("Read agent config file: %s",  agent_cfg_file)
-                agent_cfg = ru.read_json(agent_cfg_file)
+                agent_cfg = ru.Config(path=agent_cfg_file)
 
                 # allow for user level overload
                 user_cfg_file = '%s/.radical/pilot/config/%s' \
@@ -1057,7 +1115,7 @@ class Default(PMGRLaunchingComponent):
         for arg in pre_bootstrap_1:
             bootstrap_args += " -w '%s'" % arg
 
-        agent_cfg['owner']               = 'agent_0'
+        agent_cfg['owner']               = 'agent.0'
         agent_cfg['cores']               = number_cores
         agent_cfg['gpus']                = number_gpus
         agent_cfg['lrms']                = lrms
@@ -1066,8 +1124,9 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['runtime']             = runtime
         agent_cfg['app_comm']            = app_comm
         agent_cfg['dburl']               = str(database_url)
-        agent_cfg['session_id']          = sid
-        agent_cfg['pilot_id']            = pid
+        agent_cfg['sid']                 = sid
+        agent_cfg['pid']                 = pid
+        agent_cfg['pmgr']                = self._pmgr
         agent_cfg['logdir']              = '.'
         agent_cfg['pilot_sandbox']       = pilot_sandbox
         agent_cfg['session_sandbox']     = session_sandbox
@@ -1092,7 +1151,7 @@ class Default(PMGRLaunchingComponent):
         # ----------------------------------------------------------------------
         # Write agent config dict to a json file in pilot sandbox.
 
-        agent_cfg_name = 'agent_0.cfg'
+        agent_cfg_name = 'agent.0.cfg'
         cfg_tmp_handle, cfg_tmp_file = tempfile.mkstemp(prefix='rp.agent_cfg.')
         os.close(cfg_tmp_handle)  # file exists now
 
@@ -1184,7 +1243,7 @@ class Default(PMGRLaunchingComponent):
         jd.environment           = dict()
 
         # we set any saga_jd_supplement keys which are not already set above
-        for key, val in saga_jd_supplement.iteritems():
+        for key, val in saga_jd_supplement.items():
             if not jd[key]:
                 self._log.debug('supplement %s: %s', key, val)
                 jd[key] = val

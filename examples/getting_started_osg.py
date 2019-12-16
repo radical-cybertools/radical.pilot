@@ -34,7 +34,7 @@ def pilot_state_cb (pilot, state):
     if not pilot:
         return
 
-    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+    print("[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
 
     # Hello HTC :-)
     #if state == rp.FAILED:
@@ -51,11 +51,11 @@ def unit_state_cb (unit, state):
 
     global CNT
 
-    print "[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot, state)
+    print("[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot, state))
 
     if state in [rp.FAILED, rp.DONE, rp.CANCELED]:
         CNT += 1
-        print "[Callback]: # %6d" % CNT
+        print("[Callback]: # %6d" % CNT)
 
     # Hello HTC :-)
     #if state == rp.FAILED:
@@ -67,7 +67,7 @@ def unit_state_cb (unit, state):
 #
 def wait_queue_size_cb(umgr, wait_queue_size):
 
-    print "[Callback]: wait_queue_size: %s." % wait_queue_size
+    print("[Callback]: wait_queue_size: %s." % wait_queue_size)
 
 
 #------------------------------------------------------------------------------
@@ -80,12 +80,12 @@ if __name__ == "__main__":
     else:
         resource = 'local.localhost'
 
-    print 'running on %s' % resource
+    print('running on %s' % resource)
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
     session = rp.Session()
-    print "session id: %s" % session.uid
+    print("session id: %s" % session.uid)
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
@@ -135,15 +135,15 @@ if __name__ == "__main__":
         umgr.wait_units()
 
         for cu in units:
-            print "* Task %s state %s, exit code: %s, stdout: %s, pilot: %s" \
-                % (cu.uid, cu.state, cu.exit_code, cu.stdout, cu.pilot)
+            print("* Task %s state %s, exit code: %s, stdout: %s, pilot: %s" \
+                % (cu.uid, cu.state, cu.exit_code, cu.stdout, cu.pilot))
 
       # os.system ("radicalpilot-stats -m stat,plot -s %s > %s.stat" % (session.uid, session_name))
 
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        print "caught Exception: %s" % e
+        print("caught Exception: %s" % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -151,12 +151,12 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        print "need to exit now: %s" % e
+        print("need to exit now: %s" % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.
-        print "closing session"
+        print("closing session")
         session.close (cleanup=False)
 
         # the above is equivalent to

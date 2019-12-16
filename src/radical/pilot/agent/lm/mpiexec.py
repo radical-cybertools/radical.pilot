@@ -8,7 +8,7 @@ import radical.utils as ru
 from .base import LaunchMethod
 
 
-# ==============================================================================
+# ------------------------------------------------------------------------------
 #
 class MPIExec(LaunchMethod):
 
@@ -51,7 +51,7 @@ class MPIExec(LaunchMethod):
         else          : task_command = task_exec
 
         env_string = ''
-        env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
+        env_list   = self.EXPORT_ENV_VARIABLES + list(task_env.keys())
         if env_list:
 
             if self.mpi_flavor == self.MPI_FLAVOR_HYDRA:
@@ -103,7 +103,7 @@ class MPIExec(LaunchMethod):
 
         # cluster hosts by number of slots
         host_string = ''
-        for node,nslots in host_slots.iteritems():
+        for node,nslots in list(host_slots.items()):
             host_string += '-H %s -np %s ' % (','.join([node] * nslots), nslots)
         command = command_stub % host_string
 
@@ -113,7 +113,7 @@ class MPIExec(LaunchMethod):
             # unit sandbox
             fname = '%s/mpi_hostfile' % cu['unit_sandbox_path']
             with open(fname, 'w') as f:
-                for node,nslots in host_slots.iteritems():
+                for node,nslots in list(host_slots.items()):
                     f.write('%20s \tslots=%s\n' % (node, nslots))
             host_string = "-hostfile %s" % fname
 
