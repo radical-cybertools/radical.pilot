@@ -5,8 +5,6 @@ __license__   = "MIT"
 import os
 import sys
 import copy
-import glob
-import threading
 
 import radical.utils                as ru
 import radical.saga                 as rs
@@ -138,7 +136,7 @@ class Session(rs.Session):
         rs.Session.__init__(self, uid=self._uid)
 
         # cache sandboxes etc.
-        self._cache_lock = threading.RLock()
+        self._cache_lock = ru.RLock()
         self._cache      = {'resource_sandbox' : dict(),
                             'session_sandbox'  : dict(),
                             'pilot_sandbox'    : dict(),
@@ -169,7 +167,7 @@ class Session(rs.Session):
         # create/connect database handle on primary sessions
         try:
             self._dbs = DBSession(sid=self.uid, dburl=dburl,
-                                  cfg=self._cfg, logger=self._log)
+                                  cfg=self._cfg, log=self._log)
 
             py_version_detail = sys.version.replace("\n", " ")
             from . import version_detail as rp_version_detail
@@ -188,7 +186,14 @@ class Session(rs.Session):
         # heartbeat.  'self._cmgr.close()` should be called during termination
         self._cmgr = rpu.ComponentManager(self._cfg)
         self._cmgr.start_bridges()
-        self._cmgr.start_components()
+
+        try:
+            self._cmgr.start_components()
+        except:
+            sys.stdout.write('============= session\n')
+            sys.stdout.flush()
+            raise
+
 
         # expose the cmgr's heartbeat channel to anyone who wants to use it
         self._cfg.heartbeat = self._cmgr.cfg.heartbeat

@@ -111,8 +111,9 @@ class Agent_0(rpu.Worker):
     def _hb_term_cb(self):
 
         self._cmgr.close()
-
         self._log.warn('=== hb termination')
+
+        return None
 
 
     # --------------------------------------------------------------------------
@@ -121,7 +122,7 @@ class Agent_0(rpu.Worker):
 
         # TODO: this needs to evaluate the bootstrapper's HOSTPORT
         self._dbs = DBSession(sid=self._cfg.sid, dburl=self._cfg.dburl,
-                              cfg=self._cfg, logger=self._log)
+                              cfg=self._cfg, log=self._log)
 
     # --------------------------------------------------------------------------
     #
@@ -275,13 +276,12 @@ class Agent_0(rpu.Worker):
         try   : log = open('./agent_0.log', 'r').read(1024)
         except: pass
 
-        ret = self._session._dbs._c.update(
-                {'type'   : 'pilot',
-                 'uid'    : self._pid},
-                {'$set'   : {'stdout'        : rpu.tail(out),
-                             'stderr'        : rpu.tail(err),
-                             'logfile'       : rpu.tail(log)}
-                })
+        ret = self._dbs._c.update({'type': 'pilot',
+                                   'uid' : self._pid},
+                                  {'$set': {'stdout' : rpu.tail(out),
+                                            'stderr' : rpu.tail(err),
+                                            'logfile': rpu.tail(log)}
+                                  })
         self._log.debug('update ret: %s', ret)
 
 
@@ -503,7 +503,7 @@ class Agent_0(rpu.Worker):
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units',
                                                   'arg' : arg})
             else:
-                self._log.error('could not interpret cmd "%s" - ignore', cmd)
+                self._log.warn('could not interpret cmd "%s" - ignore', cmd)
 
         return True
 

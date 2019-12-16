@@ -116,10 +116,10 @@ class ShellFS(AgentExecutingComponent):
 
         # the registry keeps track of units to watch
         self._registry      = dict()
-        self._registry_lock = threading.RLock()
+        self._registry_lock = ru.RLock()
 
         self._to_cancel  = list()
-        self._cancel_lock    = threading.RLock()
+        self._cancel_lock    = ru.RLock()
 
         self._cached_events = list()  # keep monitoring events for pid's which
                                       # are not yet known
@@ -266,35 +266,6 @@ class ShellFS(AgentExecutingComponent):
     #
     def _cu_to_cmd (self, cu, launcher) :
 
-        # ----------------------------------------------------------------------
-        def quote_args (args) :
-
-            ret = list()
-            for arg in args :
-
-                if not arg:
-                    continue
-
-                # if string is between outer single quotes,
-                #    pass it as is.
-                # if string is between outer double quotes,
-                #    pass it as is.
-                # otherwise (if string is not quoted)
-                #    escape all double quotes
-
-                if  arg[0] == arg[-1]  == "'" :
-                    ret.append (arg)
-                elif arg[0] == arg[-1] == '"' :
-                    ret.append (arg)
-                else :
-                    arg = arg.replace ('"', '\\"')
-                    ret.append ('"%s"' % arg)
-
-            return  ret
-
-        # ----------------------------------------------------------------------
-
-        args  = ""
         env   = self._deactivate
         cwd   = ""
         pre   = ""
@@ -357,9 +328,6 @@ prof(){
                 post += "%s || %s\n" % (elem, fail)
             post += 'prof cu_post_stop\n'
             post += "\n"
-
-        if  descr['arguments']  :
-            args  = ' ' .join (quote_args (descr['arguments']))
 
         stdout_file = descr.get('stdout') or 'STDOUT'
         stderr_file = descr.get('stderr') or 'STDERR'

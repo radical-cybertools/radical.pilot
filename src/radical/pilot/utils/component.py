@@ -1,9 +1,7 @@
 
 import os
-import sys
 import copy
 import time
-import pprint
 
 import threading       as mt
 import radical.utils   as ru
@@ -116,7 +114,7 @@ class ComponentManager(object):
         #       terminate and suicidally kill the very process it is living in.
         #       Make sure all required cleanup is done at this point!
 
-        return False
+        return None
 
 
     # --------------------------------------------------------------------------
@@ -212,7 +210,7 @@ class ComponentManager(object):
                 ccfg.path        = cfg.path
                 ccfg.heartbeat   = cfg.heartbeat
 
-                ccfg.merge(scfg, policy=ru.PRESERVE, logger=self._log)
+                ccfg.merge(scfg, policy=ru.PRESERVE, log=self._log)
 
                 fname = '%s/%s.json' % (cfg.path, ccfg.uid)
                 ccfg.write(fname)
@@ -470,7 +468,7 @@ class Component(object):
 
         sync.set()
 
-        while True:
+        while not self._term.is_set():
             try:
                 ret = self.work_cb()
                 if not ret:
@@ -614,6 +612,9 @@ class Component(object):
         # call component level finalize, before we tear down channels
         self.finalize()
 
+        for thread in self._threads.values():
+            thread.stop()
+
         self._log.debug('%s close prof', self.uid)
         try:
             self._prof.prof('component_final')
@@ -639,6 +640,7 @@ class Component(object):
         self._log.info('stop %s (%s : %s) [%s]', self.uid, os.getpid(),
                        ru.get_thread_name(), ru.get_caller_name())
 
+        self._term.set()
         self._finalize()
 
 

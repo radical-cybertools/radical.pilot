@@ -446,7 +446,7 @@ def _get_pilot_provision(session, pilot):
         t0, t1 = get_duration(pilot, PILOT_DURATIONS['provide'][metric])
 
         if t0 is None:
-            t0 = pilot.events[ 0][ru.TIME]
+            t0 = pilot.events [0][ru.TIME]
             t1 = pilot.events[-1][ru.TIME]
 
         for node in nodes:
@@ -551,8 +551,9 @@ def get_consumed_resources(session):
           # print('\nusing default configuration')
             unit_durations = UNIT_DURATIONS_DEFAULT
 
-        p_min = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][0])[ 0]
-        p_max = pilot.timestamps(event=PILOT_DURATIONS['consume']['ignore'][1])[-1]
+        pt    = pilot.timestamps
+        p_min = pt(event=PILOT_DURATIONS['consume']['ignore'][0]) [0]
+        p_max = pt(event=PILOT_DURATIONS['consume']['ignore'][1])[-1]
       # p_max = pilot.events[-1][ru.TIME]
 
         pid = pilot.uid
@@ -579,8 +580,9 @@ def get_consumed_resources(session):
 
             try:
                 snodes = unit.cfg['slots']['nodes']
-                u_min  = unit.timestamps(event=unit_durations['consume']['exec_queue'][0])[ 0]
-                u_max  = unit.timestamps(event=unit_durations['consume']['unschedule'][1])[-1]
+                ut     = unit.timestamps
+                u_min  = ut(event=unit_durations['consume']['exec_queue'][0]) [0]
+                u_max  = ut(event=unit_durations['consume']['unschedule'][1])[-1]
             except:
                 continue
 
@@ -811,8 +813,8 @@ def _get_unit_consumption(session, unit):
         if t0 is not None:
 
             if _debug:
-                print('%s: %-15s : %10.3f - %10.3f = %10.3f' \
-                    % (unit.uid, metric, t1, t0, t1 - t0))
+                print('%s: %-15s : %10.3f - %10.3f = %10.3f'
+                     % (unit.uid, metric, t1, t0, t1 - t0))
             for r in resources:
                 boxes.append([t0, t1, r[0], r[1]])
 

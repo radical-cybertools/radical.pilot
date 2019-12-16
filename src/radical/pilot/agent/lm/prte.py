@@ -33,7 +33,7 @@ class PRTE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger, profiler):
+    def lrms_config_hook(cls, name, cfg, lrms, log, profiler):
 
         prte = ru.which('prte')
         if not prte:
@@ -52,8 +52,8 @@ class PRTE(LaunchMethod):
             elif  'Open RTE repo revision:' in line:
                 prte_info['version_detail'] = line.split(':')[1].strip()
 
-        logger.info("Found Open RTE: %s [%s]",
-                    prte_info.get('version'), prte_info.get('version_detail'))
+        log.info("Found Open RTE: %s [%s]",
+                 prte_info.get('version'), prte_info.get('version_detail'))
 
 
         # write hosts file
@@ -113,7 +113,7 @@ class PRTE(LaunchMethod):
         cmdline += ' '.join(debug_strings)
         cmdline  = cmdline.strip()
 
-        logger.info("Start prte on %d nodes [%s]", vm_size, cmdline)
+        log.info("Start prte on %d nodes [%s]", vm_size, cmdline)
         profiler.prof(event='dvm_start', uid=cfg['pid'])
 
         dvm_uri     = None
@@ -123,13 +123,13 @@ class PRTE(LaunchMethod):
         # ----------------------------------------------------------------------
         def _watch_dvm():
 
-            logger.info('starting prte watcher')
+            log.info('starting prte watcher')
 
             retval = dvm_process.poll()
             while retval is None:
                 line = dvm_process.stdout.readline().strip()
                 if line:
-                    logger.debug('prte output: %s', line)
+                    log.debug('prte output: %s', line)
                 else:
                     time.sleep(1.0)
 
@@ -143,7 +143,7 @@ class PRTE(LaunchMethod):
                 os.kill(os.getpid())
                 raise RuntimeError('PRTE DVM died')
 
-            logger.info('prte stopped (%d)' % dvm_process.returncode)
+            log.info('prte stopped (%d)' % dvm_process.returncode)
         # ----------------------------------------------------------------------
 
         dvm_watcher = mt.Thread(target=_watch_dvm)
@@ -161,7 +161,7 @@ class PRTE(LaunchMethod):
                             break
 
             except Exception as e:
-                logger.debug('DVM check: uri file missing: %s...' % str(e)[:24])
+                log.debug('DVM check: uri file missing: %s...' % str(e)[:24])
                 time.sleep(0.5)
 
             if dvm_uri:
@@ -170,7 +170,7 @@ class PRTE(LaunchMethod):
         if not dvm_uri:
             raise Exception("VMURI not found!")
 
-        logger.info("prte startup successful: [%s]", dvm_uri)
+        log.info("prte startup successful: [%s]", dvm_uri)
 
         # in some cases, the DVM seems to need some additional time to settle.
         # FIXME: this should not be needed, really
@@ -190,7 +190,7 @@ class PRTE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profiler):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, log, profiler):
         """
         This hook is symmetric to the config hook above, and is called during
         shutdown sequence, for the sake of freeing allocated resources.
@@ -198,7 +198,7 @@ class PRTE(LaunchMethod):
 
         if 'dvm_uri' in lm_info:
             try:
-                logger.info('terminating prte')
+                log.info('terminating prte')
                 prun = ru.which('prun')
                 if not prun:
                     raise Exception("Couldn't find prun")
@@ -210,7 +210,7 @@ class PRTE(LaunchMethod):
                 # use the same event name as for runtime failures - those are
                 # not distinguishable at the moment from termination failures
                 profiler.prof(event='dvm_fail', uid=cfg['pid'], msg=e)
-                logger.exception('prte termination failed')
+                log.exception('prte termination failed')
 
 
     # --------------------------------------------------------------------------

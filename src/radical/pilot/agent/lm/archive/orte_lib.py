@@ -33,7 +33,7 @@ class ORTELib(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger, profiler):
+    def lrms_config_hook(cls, name, cfg, lrms, log, profiler):
         """
         FIXME: this config hook will manipulate the LRMS nodelist.  Not a nice
                thing to do, but hey... :P
@@ -63,7 +63,7 @@ class ORTELib(LaunchMethod):
                 orte_info['version_detail'] = val.strip()
 
         assert(orte_info.get('version'))
-        logger.info("Found Open RTE: %s / %s",
+        log.info("Found Open RTE: %s / %s",
                     orte_info['version'], orte_info.get('version_detail'))
 
         # Use (g)stdbuf to disable buffering.
@@ -93,7 +93,7 @@ class ORTELib(LaunchMethod):
         for ds in debug_strings: dvm_args.extend(ds.split())
 
         vm_size = len(lrms.node_list)
-        logger.info("Start DVM on %d nodes ['%s']", vm_size, ' '.join(dvm_args))
+        log.info("Start DVM on %d nodes ['%s']", vm_size, ' '.join(dvm_args))
         profiler.prof(event='orte_dvm_start', uid=cfg['pid'])
 
         dvm_uri     = None
@@ -113,14 +113,14 @@ class ORTELib(LaunchMethod):
                 if label != 'VMURI:':
                     raise Exception("Unknown VMURI format: %s" % line)
 
-                logger.info("ORTE DVM URI: %s" % dvm_uri)
+                log.info("ORTE DVM URI: %s" % dvm_uri)
 
             elif line == 'DVM ready':
 
                 if not dvm_uri:
                     raise Exception("VMURI not found!")
 
-                logger.info("ORTE DVM startup successful!")
+                log.info("ORTE DVM startup successful!")
                 profiler.prof(event='orte_dvm_ok', uid=cfg['pid'])
                 break
 
@@ -129,7 +129,7 @@ class ORTELib(LaunchMethod):
                 # Check if the process is still around,
                 # and log output in debug mode.
                 if dvm_process.poll() is None:
-                    logger.debug("ORTE: %s", line)
+                    log.debug("ORTE: %s", line)
                 else:
                     # Process is gone: fatal!
                     profiler.prof(event='orte_dvm_fail', uid=cfg['pid'])
@@ -138,13 +138,13 @@ class ORTELib(LaunchMethod):
         # ----------------------------------------------------------------------
         def _watch_dvm():
 
-            logger.info('starting DVM watcher')
+            log.info('starting DVM watcher')
 
             retval = dvm_process.poll()
             while retval is None:
                 line = dvm_process.stdout.readline().strip()
                 if line:
-                    logger.debug('dvm output: %s', line)
+                    log.debug('dvm output: %s', line)
                 else:
                     time.sleep(1.0)
 
@@ -157,7 +157,7 @@ class ORTELib(LaunchMethod):
                 # termination anyway.
                 os.kill(os.getpid())
 
-            logger.info('DVM stopped (%d)' % dvm_process.returncode)
+            log.info('DVM stopped (%d)' % dvm_process.returncode)
         # ----------------------------------------------------------------------
 
         dvm_watcher = mt.Thread(target=_watch_dvm)
@@ -180,7 +180,7 @@ class ORTELib(LaunchMethod):
     # case we use ORTE for the sub-agent launch.
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profiler):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, log, profiler):
         """
         This hook is symmetric to the config hook above, and is called during
         shutdown sequence, for the sake of freeing allocated resources.
@@ -188,7 +188,7 @@ class ORTELib(LaunchMethod):
 
         if 'dvm_uri' in lm_info:
             try:
-                logger.info('terminating dvm')
+                log.info('terminating dvm')
                 orterun = ru.which('orterun')
                 if not orterun:
                     raise Exception("Couldn't find orterun")
@@ -200,7 +200,7 @@ class ORTELib(LaunchMethod):
                 # use the same event name as for runtime failures - those are
                 # not distinguishable at the moment from termination failures
                 profiler.prof(event='orte_dvm_fail', uid=cfg['pid'], msg=e)
-                logger.exception('dvm termination failed')
+                log.exception('dvm termination failed')
 
 
     # --------------------------------------------------------------------------

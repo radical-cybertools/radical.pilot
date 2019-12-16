@@ -8,6 +8,8 @@ import time
 
 import threading     as mt
 
+import radical.utils as ru
+
 from ...  import states    as rps
 from ...  import constants as rpc
 
@@ -40,11 +42,12 @@ class Sleep(AgentExecutingComponent) :
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
 
         self._terminate  = mt.Event()
-        self._tasks_lock = mt.RLock()
+        self._tasks_lock = ru.RLock()
         self._tasks      = list()
         self._delay      = 0.1
 
         self._timed = mt.Thread(target=self._timed)
+        self._timed.daemon = True
         self._timed.start()
 
 

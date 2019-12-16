@@ -6,8 +6,6 @@ __license__   = "MIT"
 import radical.utils as ru
 
 from ... import utils     as rpu
-from ... import states    as rps
-from ... import constants as rpc
 
 
 # ------------------------------------------------------------------------------

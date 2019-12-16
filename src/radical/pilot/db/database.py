@@ -19,7 +19,7 @@ class DBSession(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, sid, dburl, cfg, logger, connect=True):
+    def __init__(self, sid, dburl, cfg, log, connect=True):
         """
         Creates a new session
 
@@ -34,7 +34,7 @@ class DBSession(object):
         """
 
         self._dburl      = dburl
-        self._log        = logger
+        self._log        = log
         self._mongo      = None
         self._db         = None
         self._created    = time.time()
@@ -62,7 +62,7 @@ class DBSession(object):
 
         self._connected = time.time()
 
-        self._c = self._db[sid] # creates collection (lazily)
+        self._c = self._db[sid]  # creates collection (lazily)
 
         # If session exists, we assume this is a reconnect, otherwise we create
         # the session entry.
@@ -71,9 +71,10 @@ class DBSession(object):
 
             # make 'uid', 'type' and 'state' indexes, as we frequently query
             # based on combinations of those.  Only 'uid' is unique
-            self._c.create_index([('uid',   pymongo.ASCENDING)], unique=True,  sparse=False)
-            self._c.create_index([('type',  pymongo.ASCENDING)], unique=False, sparse=False)
-            self._c.create_index([('state', pymongo.ASCENDING)], unique=False, sparse=False)
+            pma = pymongo.ASCENDING
+            self._c.create_index([('uid',   pma)], unique=True,  sparse=False)
+            self._c.create_index([('type',  pma)], unique=False, sparse=False)
+            self._c.create_index([('state', pma)], unique=False, sparse=False)
 
             # insert the session doc
             self._can_delete = True
@@ -98,7 +99,7 @@ class DBSession(object):
             # FIXME: get bridge addresses from DB?  If not, from where?
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def dburl(self):
@@ -108,7 +109,7 @@ class DBSession(object):
         return self._dburl
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def get_db(self):
         """
@@ -117,7 +118,7 @@ class DBSession(object):
         return self._db
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def created(self):
@@ -127,7 +128,7 @@ class DBSession(object):
         return self._created
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def connected(self):
@@ -137,7 +138,7 @@ class DBSession(object):
         return self._connected
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def closed(self):
@@ -147,15 +148,15 @@ class DBSession(object):
         return self._closed
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def is_connected(self):
 
-        return (self._connected != None)
+        return (self._connected is None)
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def close(self, delete=True):
         """
@@ -179,7 +180,7 @@ class DBSession(object):
         self._c = None
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def insert_pmgr(self, pmgr_doc):
         """
@@ -192,12 +193,12 @@ class DBSession(object):
         pmgr_doc['_id']  = pmgr_doc['uid']
         pmgr_doc['type'] = 'pmgr'
 
-        result = self._c.insert(pmgr_doc)
+        # FIXME: evaluate retval
+        self._c.insert(pmgr_doc)
 
-        # FIXME: evaluate result
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def insert_pilots(self, pilot_docs):
         """
@@ -230,7 +231,7 @@ class DBSession(object):
             raise RuntimeError ('pymongo error: %s' % e.details)
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def pilot_command(self, cmd, arg=None, pids=None):
         """
@@ -251,23 +252,23 @@ class DBSession(object):
             cmd_spec = {'cmd' : cmd,
                         'arg' : arg}
 
-            # FIXME: evaluate res
+            # FIXME: evaluate retval
             if pids:
-                res = self._c.update({'type'  : 'pilot',
-                                      'uid'   : {'$in' : pids}},
-                                     {'$push' : {'cmd' : cmd_spec}},
-                                     multi = True)
+                self._c.update({'type'  : 'pilot',
+                                'uid'   : {'$in' : pids}},
+                               {'$push' : {'cmd' : cmd_spec}},
+                               multi=True)
             else:
-                res = self._c.update({'type'  : 'pilot'},
-                                     {'$push' : {'cmd' : cmd_spec}},
-                                     multi = True)
+                self._c.update({'type'  : 'pilot'},
+                               {'$push' : {'cmd' : cmd_spec}},
+                               multi=True)
 
         except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)
             raise RuntimeError ('pymongo error: %s' % e.details)
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def get_pilots(self, pmgr_uid=None, pilot_ids=None):
         """
@@ -291,8 +292,9 @@ class DBSession(object):
                                    'uid'  : {'$in': pilot_ids}})
 
         # make sure we return every pilot doc only once
-        # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
-        ret = { doc['uid'] : doc for doc in cursor}
+        # https://www.quora.com/\
+        #         How-did-mongodb-return-duplicated-but-different-documents
+        ret  = {doc['uid'] : doc for doc in cursor}
         docs = list(ret.values())
 
         # for each doc, we make sure the pilot state is according to the state
@@ -303,7 +305,7 @@ class DBSession(object):
         return docs
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def get_units(self, umgr_uid, unit_ids=None):
         """
@@ -331,7 +333,8 @@ class DBSession(object):
                                    })
 
         # make sure we return every unit doc only once
-        # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
+        # https://www.quora.com/ \
+        #         How-did-mongodb-return-duplicated-but-different-documents
         ret = {doc['uid'] : doc for doc in cursor}
         docs = list(ret.values())
 
@@ -343,7 +346,7 @@ class DBSession(object):
         return docs
 
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def insert_umgr(self, umgr_doc):
         """
@@ -356,12 +359,11 @@ class DBSession(object):
         umgr_doc['_id']  = umgr_doc['uid']
         umgr_doc['type'] = 'umgr'
 
-        result = self._c.insert(umgr_doc)
+        # FIXME: evaluate retval
+        self._c.insert(umgr_doc)
 
-        # FIXME: evaluate result
 
-
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def insert_units(self, unit_docs):
         """
@@ -385,7 +387,7 @@ class DBSession(object):
 
         while True:
 
-            subset = unit_docs[cur : cur+bcs]
+            subset = unit_docs[cur : cur + bcs]
             bulk   = self._c.initialize_ordered_bulk_op()
             cur   += bcs
 
@@ -407,8 +409,8 @@ class DBSession(object):
                 # FIXME: evaluate res
 
             except pymongo.errors.OperationFailure as e:
-                self._log.exception('pymongo error: %s' % e.details)
-                raise RuntimeError( 'pymongo error: %s' % e.details)
+                self._log.exception('pymongo error')
+                raise RuntimeError ('pymongo error: %s' % e.details)
 
     # --------------------------------------------------------------------------
     #

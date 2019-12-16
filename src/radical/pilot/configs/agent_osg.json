@@ -3,26 +3,19 @@
 # but forces te ZMQ bridges to bind to the local network interface 'lo'.
 
 {
-    # directory for staging files inside the agent sandbox
     "staging_area"         : "staging_area",
-
-    # url schema to indicate the use of staging_area
     "staging_schema"       : "staging",
-
-    # max number of cu out/err chars to push to db
     "max_io_loglength"     : 1024,
-
-    # max number of updates to put into a db bulk
-    "bulk_collection_size" :  100,
-
-    # max time period to collect db notifications into bulks (seconds)
-    "bulk_collection_time" : 1.0,
-
-    # time to sleep between database polls (seconds)
     "db_poll_sleeptime"    : 1.0,
-
-    # interface for binding zmq to
     "network_interface"    : "lo",
+
+    "bulk_time"    : 1.0,
+    "bulk_size"    : 1024,
+
+    "heartbeat"    : {
+        "interval" :  5.0,
+        "timeout"  : 60.0
+    },
 
     # agent.0 must always have target 'local' at this point
     # mode 'shared'   : local node is also used for CUs

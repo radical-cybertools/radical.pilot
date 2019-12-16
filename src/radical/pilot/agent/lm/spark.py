@@ -25,12 +25,12 @@ class Spark(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger, profiler=None):
+    def lrms_config_hook(cls, name, cfg, lrms, log, profiler=None):
 
         import radical.utils as ru
 
         if not os.environ.get('SPARK_HOME'):
-            logger.info("Downloading Apache Spark..")
+            log.info("Downloading Apache Spark..")
             try:
 
                 VERSION = "2.0.2"
@@ -95,8 +95,8 @@ class Spark(LaunchMethod):
         spark_master_string = 'spark://%s:7077' % master_ip
         spark_default_file.write('spark.master  ' + spark_master_string + '\n')
         spark_default_file.close()
-        logger.info("Let's print the config")
-        logger.info('Config : {0}'.format(cfg['resource_cfg']))
+        log.info("Let's print the config")
+        log.info('Config : {0}'.format(cfg['resource_cfg']))
 
         spark_env_file = open(spark_home + "/conf/spark-env.sh",'w')
         # load in the spark enviroment of master and slaves the
@@ -118,7 +118,7 @@ class Spark(LaunchMethod):
         except Exception as e:
             raise RuntimeError("Spark Cluster failed to start: %s" % e)
 
-        logger.info('Start Spark Cluster')
+        log.info('Start Spark Cluster')
         launch_command = spark_home + '/bin'
 
         # The LRMS instance is only available here -- everything which is later
@@ -139,17 +139,17 @@ class Spark(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, logger, profiler=None):
+    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, log, profiler=None):
         if 'name' not in lm_info:
             raise RuntimeError('name not in lm_info for %s' % name)
 
         if lm_info['name'] != 'SPARKLRMS':
-            logger.info('Stoping SPARK')
+            log.info('Stoping SPARK')
             stop_spark = subprocess.check_output(lm_info['spark_home'] + '/sbin/stop-all.sh')
             if 'Error' in stop_spark:
-                logger.warn("Spark didn't terminate properly")
+                log.warn("Spark didn't terminate properly")
             else:
-                logger.info("Spark stopped successfully")
+                log.info("Spark stopped successfully")
 
         os.remove('spark-2.0.2-bin-hadoop2.7.tgz')
 

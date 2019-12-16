@@ -25,11 +25,12 @@ SCHEDULER_NAME_CONTINUOUS_COLO    = "CONTINUOUS_COLO"
 SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
 SCHEDULER_NAME_HOMBRE             = "HOMBRE"
 SCHEDULER_NAME_FLUX               = "FLUX"
-SCHEDULER_NAME_SPARK              = "SPARK"
 SCHEDULER_NAME_TORUS              = "TORUS"
-SCHEDULER_NAME_YARN               = "YARN"
 SCHEDULER_NAME_NOOP               = "NOOP"
+SCHEDULER_NAME_TORUS              = "TORUS"
 
+# SCHEDULER_NAME_YARN               = "YARN"
+# SCHEDULER_NAME_SPARK              = "SPARK"
 # SCHEDULER_NAME_CONTINUOUS_SUMMIT  = "CONTINUOUS_SUMMIT"
 # SCHEDULER_NAME_CONTINUOUS_FIFO    = "CONTINUOUS_FIFO"
 # SCHEDULER_NAME_SCATTERED          = "SCATTERED"
@@ -331,10 +332,10 @@ class AgentSchedulingComponent(rpu.Component):
         from .hombre             import Hombre
         from .flux               import Flux
         from .torus              import Torus
-        from .yarn               import Yarn
-        from .spark              import Spark
         from .noop               import Noop
 
+      # from .yarn               import Yarn
+      # from .spark              import Spark
       # from .continuous_summit  import ContinuousSummit
       # from .continuous_fifo    import ContinuousFifo
       # from .scattered          import Scattered
@@ -348,10 +349,10 @@ class AgentSchedulingComponent(rpu.Component):
                 SCHEDULER_NAME_HOMBRE             : Hombre,
                 SCHEDULER_NAME_FLUX               : Flux,
                 SCHEDULER_NAME_TORUS              : Torus,
-                SCHEDULER_NAME_YARN               : Yarn,
-                SCHEDULER_NAME_SPARK              : Spark,
                 SCHEDULER_NAME_NOOP               : Noop,
 
+              # SCHEDULER_NAME_YARN               : Yarn,
+              # SCHEDULER_NAME_SPARK              : Spark,
               # SCHEDULER_NAME_CONTINUOUS_SUMMIT  : ContinuousSummit,
               # SCHEDULER_NAME_CONTINUOUS_FIFO    : ContinuousFifo,
               # SCHEDULER_NAME_SCATTERED          : Scattered,
@@ -766,27 +767,27 @@ class AgentSchedulingComponent(rpu.Component):
             # immediately. This assumes that the `tuple_size` is good enough to
             # judge the legality of the resources for the new target unit.
 
-         ## ts = tuple(unit['tuple_size'])
-         ## if self._ts_map.get(ts):
-         ##
-         ##     replace = self._waitpool[self._ts_map[ts].pop()]
-         ##     replace['slots'] = unit['slots']
-         ##     placed.append(placed)
-         ##
-         ##     # unschedule unit A and schedule unit B have the same
-         ##     # timestamp
-         ##     ts = time.time()
-         ##     self._prof.prof('unschedule_stop', uid=unit['uid'],
-         ##                     timestamp=ts)
-         ##     self._prof.prof('schedule_fast', uid=replace['uid'],
-         ##                     timestamp=ts)
-         ##     self.advance(replace, rps.AGENT_EXECUTING_PENDING,
-         ##                  publish=True, push=True)
-         ## else:
-         ##
-         ##     # no replacement unit found: free the slots, and try to
-         ##     # schedule other units of other sizes.
-         ##     to_release.append(unit)
+          # ts = tuple(unit['tuple_size'])
+          # if self._ts_map.get(ts):
+          #
+          #     replace = self._waitpool[self._ts_map[ts].pop()]
+          #     replace['slots'] = unit['slots']
+          #     placed.append(placed)
+          #
+          #     # unschedule unit A and schedule unit B have the same
+          #     # timestamp
+          #     ts = time.time()
+          #     self._prof.prof('unschedule_stop', uid=unit['uid'],
+          #                     timestamp=ts)
+          #     self._prof.prof('schedule_fast', uid=replace['uid'],
+          #                     timestamp=ts)
+          #     self.advance(replace, rps.AGENT_EXECUTING_PENDING,
+          #                  publish=True, push=True)
+          # else:
+          #
+          #     # no replacement unit found: free the slots, and try to
+          #     # schedule other units of other sizes.
+          #     to_release.append(unit)
 
             to_release.append(unit)
 
