@@ -11,8 +11,8 @@ import radical.saga                 as rs
 import radical.saga.filesystem      as rsfs
 import radical.saga.utils.pty_shell as rsup
 
-from .db              import DBSession
-from .                import utils          as rpu
+from .db import DBSession
+from .   import utils as rpu
 
 
 # ------------------------------------------------------------------------------
@@ -195,8 +195,6 @@ class Session(rs.Session):
         try:
             self._cmgr.start_components()
         except:
-            sys.stdout.write('============= session\n')
-            sys.stdout.flush()
             raise
 
 
