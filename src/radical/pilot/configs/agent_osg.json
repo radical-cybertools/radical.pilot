@@ -13,7 +13,7 @@
     "bulk_size"    : 1024,
 
     "heartbeat"    : {
-        "interval" :  5.0,
+        "interval" :  1.0,
         "timeout"  : 60.0
     },
 
