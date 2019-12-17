@@ -95,7 +95,7 @@ class Agent_0(rpu.Worker):
         self._hb.start()
 
         # register pmgr heartbeat
-        self._log.warn('hb init for %s', self._pmgr)
+        self._log.info('hb init for %s', self._pmgr)
         self._hb.beat(uid=self._pmgr)
 
 

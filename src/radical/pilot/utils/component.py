@@ -1065,6 +1065,9 @@ class Component(object):
         if not isinstance(things, list):
             things = [things]
 
+        if not things:
+            return
+
         self._log.debug('advance bulk: %s [%s, %s]', len(things), push, publish)
 
         # assign state, sort things by state
@@ -1122,10 +1125,9 @@ class Component(object):
           #                     state=thing['state'], ts=ts)
 
         # never carry $all across component boundaries!
-        else:
-            for thing in things:
-                if '$all' in thing:
-                    del(thing['$all'])
+        for thing in things:
+            if '$all' in thing:
+                del(thing['$all'])
 
         # should we push things downstream, to the next component
         if push:
@@ -1135,7 +1137,7 @@ class Component(object):
             # now we can push the buckets as bulks
             for _state,_things in buckets.items():
 
-                ts = time.time()
+              # ts = time.time()
                 if _state in rps.FINAL:
                   # # things in final state are dropped
                   # for thing in _things:

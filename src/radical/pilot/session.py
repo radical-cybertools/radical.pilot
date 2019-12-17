@@ -11,8 +11,8 @@ import radical.saga                 as rs
 import radical.saga.filesystem      as rsfs
 import radical.saga.utils.pty_shell as rsup
 
-from .db              import DBSession
-from .                import utils          as rpu
+from .db import DBSession
+from .   import utils as rpu
 
 
 # ------------------------------------------------------------------------------
