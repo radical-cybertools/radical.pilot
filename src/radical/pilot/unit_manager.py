@@ -5,7 +5,7 @@ __license__   = "MIT"
 
 import os
 import time
-import threading
+import threading as mt
 
 import radical.utils as ru
 
@@ -50,8 +50,7 @@ class UnitManager(rpu.Component):
 
         # Combine the two pilots, the workload and a scheduler via
         # a UnitManager.
-        um = rp.UnitManager(session=session,
-                            scheduler=rp.SCHEDULER_ROUND_ROBIN)
+        um = rp.UnitManager(session=session, scheduler=rp.SCHEDULER_ROUND_ROBIN)
         um.add_pilot(p1)
         um.submit_units(compute_units)
 
@@ -65,13 +64,15 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, session, scheduler=None, uid=None):
+    def __init__(self, session, cfg='default', scheduler=None, uid=None):
         """
         Creates a new UnitManager and attaches it to the session.
 
         **Arguments:**
             * session [:class:`radical.pilot.Session`]:
               The session instance to use.
+            * cfg (`dict` or `string`):
+              The configuration or name of configuration to use.
             * scheduler (`string`):
               The name of the scheduler plug-in to use.
             * uid (`string`):
@@ -86,18 +87,32 @@ class UnitManager(rpu.Component):
         self._units       = dict()
         self._units_lock  = ru.RLock('umgr.units_lock')
         self._callbacks   = dict()
-        self._cb_lock     = ru.RLock()
-        self._terminate   = threading.Event()
+        self._cb_lock     = ru.RLock('umgr.cb_lock')
+        self._terminate   = mt.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
+        self._uid         = ru.generate_id('umgr.%(item_counter)04d',
+                                           ru.ID_CUSTOM, ns=session.uid)
 
         for m in rpc.UMGR_METRICS:
             self._callbacks[m] = dict()
 
-        # FIXME: expose in API
-        name = 'default'
-        cfg  = None
-        cfg = ru.Config('radical.pilot.umgr', name=name, cfg=cfg)
+        # NOTE: `name` and `cfg` are overloaded, the user cannot point to
+        #       a predefined config and amed it at the same time.  This might
+        #       be ok for the session, but introduces a minor API inconsistency.
+        #
+        name = None
+        if isinstance(cfg, str):
+            name = cfg
+            cfg  = None
+
+        cfg           = ru.Config('radical.pilot.umgr', name=name, cfg=cfg)
+        cfg.owner     = self._uid
+        cfg.sid       = session.uid
+        cfg.base      = session.base
+        cfg.path      = session.path
+        cfg.dburl     = session.dburl
+        cfg.heartbeat = session.cfg.heartbeat
 
         if scheduler:
             # overwrite the scheduler from the config file
@@ -109,16 +124,8 @@ class UnitManager(rpu.Component):
             self._uid       = uid
         else:
             self._reconnect = False
-            self._uid       = ru.generate_id('umgr')
             self._uid       = ru.generate_id('umgr.%(item_counter)04d',
                                              ru.ID_CUSTOM, ns=session.uid)
-
-        cfg.uid       = self.uid
-        cfg.owner     = self.uid
-        cfg.sid       = session.uid
-        cfg.base      = session.cfg.base
-        cfg.path      = session.cfg.path
-        cfg.heartbeat = session.cfg.heartbeat
 
         rpu.Component.__init__(self, cfg, session=session)
         self.start()
@@ -126,6 +133,7 @@ class UnitManager(rpu.Component):
         self._log.info('started umgr %s', self._uid)
         self._rep.info('<<create unit manager')
 
+        # create pmgr bridges and components, use session cmgr for that
         self._cmgr = rpu.ComponentManager(self._cfg)
         self._cmgr.start_bridges()
         self._cmgr.start_components()
@@ -165,9 +173,36 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def initialize(self):
+
+        # the manager must not carry bridge and component handles across forks
+        ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
+
+
+    # --------------------------------------------------------------------------
+    #
+    # EnTK forks, make sure we don't carry traces of children across the fork
+    #
+    def _atfork_prepare(self): pass
+    def _atfork_parent(self) : pass
+    def _atfork_child(self)  :
+        self._bridges    = dict()
+        self._components = dict()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        self._cmgr.close()
+        self._fail_missing_pilots()
+
+
+    # --------------------------------------------------------------------------
+    #
     def close(self):
         """
-        Shut down the UnitManager, and all umgr components.
+        Shut down the UnitManager and all its components.
         """
 
         # we do not cancel units at this point, in case any component or pilot
@@ -178,7 +213,6 @@ class UnitManager(rpu.Component):
             return
 
         self._terminate.set()
-
         self._rep.info('<<close unit manager')
 
         # disable callbacks during shutdown

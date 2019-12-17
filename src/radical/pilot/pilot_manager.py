@@ -74,6 +74,8 @@ class PilotManager(rpu.Component):
               The session instance to use.
             * uid (`string`):
               ID for pilot manager, to be used for reconnect
+            * cfg (`dict` or `string`):
+              The configuration or name of configuration to use.
 
         **Returns:**
             * A new `PilotManager` object [:class:`rp.PilotManager`].
@@ -81,11 +83,10 @@ class PilotManager(rpu.Component):
 
         assert(session.primary), 'pmgr needs primary session'
 
-        self._session     = session
         self._pilots      = dict()
-        self._pilots_lock = ru.RLock()
+        self._pilots_lock = ru.RLock('pmgr.pilots_lock')
         self._callbacks   = dict()
-        self._pcb_lock    = ru.RLock()
+        self._pcb_lock    = ru.RLock('pmgr.pcb_lock')
         self._terminate   = mt.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
@@ -115,20 +116,22 @@ class PilotManager(rpu.Component):
         cfg           = ru.Config('radical.pilot.pmgr', name=name, cfg=cfg)
         cfg.uid       = self._uid
         cfg.owner     = self._uid
-        cfg.sid       = self._session.uid
-        cfg.base      = self._session.base
-        cfg.path      = self._session.path
+        cfg.sid       = session.uid
+        cfg.base      = session.base
+        cfg.path      = session.path
+        cfg.dburl     = session.dburl
         cfg.heartbeat = session.cfg.heartbeat
 
-        rpu.Component.__init__(self, cfg, session=self._session)
+        rpu.Component.__init__(self, cfg, session=session)
+        self.start()
+
+        self._log.info('started pmgr %s', self._uid)
+        self._rep.info('<<create pilot manager')
 
         # create pmgr bridges and components, use session cmgr for that
         self._cmgr = rpu.ComponentManager(self._cfg)
         self._cmgr.start_bridges()
         self._cmgr.start_components()
-
-        # only now we have a logger... :/
-        self._rep.info('<<create pilot manager')
 
         if self._reconnect:
             self._session._reconnect_pmgr(self)
@@ -145,9 +148,9 @@ class PilotManager(rpu.Component):
         # directives
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._staging_ack_cb)
         self._active_sds = dict()
-        self._sds_lock   = ru.Lock()
+        self._sds_lock   = ru.Lock('pmgr_sds_lock')
 
-        # register the state notification pull cb
+        # register the state notification pull cb and hb pull cb
         # FIXME: we may want to have the frequency configurable
         # FIXME: this should be a tailing cursor in the update worker
         self.register_timed_cb(self._state_pull_cb,
@@ -164,13 +167,15 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_common(self):
+    def initialize(self):
 
         # the manager must not carry bridge and component handles across forks
         ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
 
 
     # --------------------------------------------------------------------------
+    #
+    # EnTK forks, make sure we don't carry traces of children across the fork
     #
     def _atfork_prepare(self): pass
     def _atfork_parent(self) : pass
@@ -181,26 +186,17 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_parent(self):
+    def finalize(self):
 
+        self._cmgr.close()
         self._fail_missing_pilots()
-
-        # terminate pmgr components
-        for c in self._components:
-            c.stop()
-            c.join()
-
-        # terminate pmgr bridges
-        for b in self._bridges:
-            b.stop()
-            b.join()
 
 
     # --------------------------------------------------------------------------
     #
     def close(self, terminate=True):
         """
-        Shuts down the PilotManager.
+        Shut down the PilotManager and all its components.
 
         **Arguments:**
             * **terminate** [`bool`]: cancel non-final pilots if True (default)
@@ -212,7 +208,7 @@ class PilotManager(rpu.Component):
         self._terminate.set()
         self._rep.info('<<close pilot manager')
 
-        # we don't want any callback invokations during shutdown
+        # disable callbacks during shutdown
         # FIXME: really?
         with self._pcb_lock:
             for m in rpc.PMGR_METRICS:
@@ -291,8 +287,8 @@ class PilotManager(rpu.Component):
 
 
         for pilot_dict in pilot_dicts:
-            self._log.debug('==== state pulled: %s: %s', pilot_dict['uid'],
-                                                         pilot_dict['state'])
+            self._log.debug('state pulled: %s: %s', pilot_dict['uid'],
+                                                    pilot_dict['state'])
             if not self._update_pilot(pilot_dict, publish=True):
                 return False
 
@@ -323,8 +319,8 @@ class PilotManager(rpu.Component):
 
             if 'type' in thing and thing['type'] == 'pilot':
 
-                self._log.debug('==== state push: %s: %s', thing['uid'],
-                                                           thing['state'])
+                self._log.debug('state push: %s: %s', thing['uid'],
+                                                      thing['state'])
 
                 # we got the state update from the state callback - don't
                 # publish it again
