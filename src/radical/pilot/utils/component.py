@@ -105,7 +105,7 @@ class ComponentManager(object):
     #
     def _hb_term_cb(self, uid=None):
 
-        self._log.debug('=== hb_term %s: %s died', self.uid, uid)
+        self._log.debug('hb_term %s: %s died', self.uid, uid)
         self._prof.prof('term', uid=self._uid)
 
         # FIXME: restart goes here

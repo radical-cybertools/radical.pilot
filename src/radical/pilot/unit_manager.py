@@ -106,10 +106,11 @@ class UnitManager(rpu.Component):
                                     ns=session.uid)
         cfg.uid       = self.uid
         cfg.owner     = self.uid
-        cfg.sid       = session.uid
-        cfg.base      = session.cfg.base
-        cfg.path      = session.cfg.path
-        cfg.heartbeat = session.cfg.heartbeat
+        cfg.sid       = self._session.uid
+        cfg.base      = self._session.base
+        cfg.path      = self._session.path
+        cfg.dburl     = self._session.dburl
+        cfg.heartbeat = self._session.cfg.heartbeat
 
         rpu.Component.__init__(self, cfg, session=session)
         self.start()
