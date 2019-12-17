@@ -133,4 +133,5 @@ def test_construct_command(mocked_init,
         command, hop = component.construct_command(unit, None)
         assert([command, hop] == result), unit['uid']
 
+
 # ------------------------------------------------------------------------------

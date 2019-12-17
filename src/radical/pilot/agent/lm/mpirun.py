@@ -50,17 +50,17 @@ class MPIRun(LaunchMethod):
         # don't use the full pathname as the user might load a different
         # compiler / MPI library suite from his CU pre_exec that requires
         # the launcher from that version -- see #572.
-        self.launch_command = os.path.basename(self.launch_command)
+        # FIXME: then why are we doing this LM setup in the first place??
+        if self.launch_command:
+            self.launch_command = os.path.basename(self.launch_command)
 
 
         # do we need ccmrun or dplace?
-        self.ccmrun_command = ''
         if '_ccmrun' in self.name:
             self.ccmrun_command = ru.which('ccmrun')
             if not self.ccmrun_command:
                 raise RuntimeError("ccmrun not found!")
 
-        self.dplace_command = ''
         if '_dplace' in self.name:
             self.dplace_command = ru.which('dplace')
             if not self.dplace_command:
