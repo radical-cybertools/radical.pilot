@@ -865,8 +865,8 @@ class Default(PMGRLaunchingComponent):
 
         # ----------------------------------------------------------------------
         # Database connection parameters
-        sid           = self._session.uid
-        database_url  = self._session.dburl
+        sid          = self._session.uid
+        database_url = self._session.cfg.dburl
 
         # some default values are determined at runtime
         default_virtenv = '%%(resource_sandbox)s/ve.%s.%s' % \
