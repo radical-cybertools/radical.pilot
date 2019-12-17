@@ -106,7 +106,7 @@ class PBSPro(LRMS):
         # Get the (multiline) 'exec_vnode' entry
         vnodes_str = ''
         for line in output.splitlines():
-            line = ru.to_string(line)
+            line = ru.as_string(line)
             # Detect start of entry
             if 'exec_vnode = ' in line:
                 vnodes_str += line.strip()
