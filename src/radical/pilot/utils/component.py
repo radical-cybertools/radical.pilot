@@ -159,9 +159,13 @@ class ComponentManager(object):
 
             self._log.info('create  bridge %s [%s]', bname, bcfg.uid)
 
-            ru.sh_callout('radical-pilot-bridge %s' % fname)
-            self._uids.append(bcfg.uid)
+            out, err, ret = ru.sh_callout('radical-pilot-bridge %s' % fname)
+            self._log.debug('bridge startup out: %s', out)
+            self._log.debug('bridge startup err: %s', err)
+            if ret:
+                raise RuntimeError('bridge startup failed')
 
+            self._uids.append(bcfg.uid)
             self._log.info('created bridge %s [%s]', bname, bcfg.uid)
 
         # all bridges should start now, for their heartbeats
@@ -220,9 +224,10 @@ class ComponentManager(object):
                 out, err, ret = ru.sh_callout('radical-pilot-component %s' % fname)
                 self._log.debug('out: %s' , out)
                 self._log.debug('err: %s' , err)
-                self._log.debug('ret: %s' , ret)
-                self._uids.append(ccfg.uid)
+                if ret:
+                    raise RuntimeError('bridge startup failed')
 
+                self._uids.append(ccfg.uid)
                 self._log.info('created component %s [%s]', cname, ccfg.uid)
 
         # all components should start now, for their heartbeats
