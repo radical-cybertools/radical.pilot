@@ -9,6 +9,7 @@
         "xsede.wrangler"                    : "xsede.wrangler_ssh",
         "xsede.comet"                       : "xsede.comet_orte",
         "xsede.supermic"                    : "xsede.supermic_ssh",
+        "ornl.rhea"                         : "ornl.rhea_ssh",
         "yale.grace"                        : "yale.grace_ssh"
     }
 }
