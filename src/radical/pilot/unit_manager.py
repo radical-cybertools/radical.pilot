@@ -169,7 +169,7 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    # EnTK forks, make sure we don't carre traces of children across the fork
+    # EnTK forks, make sure we don't carry traces of children across the fork
     #
     def _atfork_prepare(self): pass
     def _atfork_parent(self) : pass
