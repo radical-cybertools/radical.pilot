@@ -5,6 +5,8 @@ __license__   = "MIT"
 
 import os
 import time
+import logging
+
 import threading     as mt
 import subprocess    as mp
 import radical.utils as ru
@@ -80,7 +82,8 @@ class PRTE(LaunchMethod):
         prte += ' --pmca ptl_base_max_msg_size %d' % (1024 * 1024 * 1024 * 1)
 
         # debug mapper problems for large tasks
-        prte += '  -pmca orte_rmaps_base_verbose 100'
+        if log.isEnabledFor(logging.DEBUG):
+            prte += '  -pmca orte_rmaps_base_verbose 100'
 
         # we apply two temporary tweaks on Summit which should not be needed in
         # the long run:
