@@ -19,6 +19,9 @@ class MPIRun(LaunchMethod):
 
         LaunchMethod.__init__(self, name, cfg, session)
 
+        self._mpt = False
+        self._rsh = False
+
 
     # --------------------------------------------------------------------------
     #
@@ -27,12 +30,12 @@ class MPIRun(LaunchMethod):
         self._mpt = False
         self._rsh = False
 
-        if   '_rsh' in self.name.lower():
+        if '_rsh' in self.name.lower():
             self._rsh = True
             self.launch_command = ru.which(['mpirun_rsh',         # Gordon (SDSC)
                                             'mpirun'              # general case
                                            ])
- 
+
         elif '_mpt' in self.name.lower():
             self._mpt = True
             self.launch_command = ru.which(['mpirun_mpt',         # Cheyenne (NCAR)
