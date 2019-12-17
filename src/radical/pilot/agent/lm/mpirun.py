@@ -19,6 +19,9 @@ class MPIRun(LaunchMethod):
 
         LaunchMethod.__init__(self, name, cfg, session)
 
+        self._mpt = False
+        self._rsh = False
+
 
     # --------------------------------------------------------------------------
     #
@@ -27,12 +30,12 @@ class MPIRun(LaunchMethod):
         self._mpt = False
         self._rsh = False
 
-        if   '_rsh' in self.name.lower():
+        if '_rsh' in self.name.lower():
             self._rsh = True
             self.launch_command = ru.which(['mpirun_rsh',         # Gordon (SDSC)
                                             'mpirun'              # general case
                                            ])
- 
+
         elif '_mpt' in self.name.lower():
             self._mpt = True
             self.launch_command = ru.which(['mpirun_mpt',         # Cheyenne (NCAR)
@@ -47,17 +50,17 @@ class MPIRun(LaunchMethod):
         # don't use the full pathname as the user might load a different
         # compiler / MPI library suite from his CU pre_exec that requires
         # the launcher from that version -- see #572.
-        self.launch_command = os.path.basename(self.launch_command)
+        # FIXME: then why are we doing this LM setup in the first place??
+        if self.launch_command:
+            self.launch_command = os.path.basename(self.launch_command)
 
 
         # do we need ccmrun or dplace?
-        self.ccmrun_command = ''
         if '_ccmrun' in self.name:
             self.ccmrun_command = ru.which('ccmrun')
             if not self.ccmrun_command:
                 raise RuntimeError("ccmrun not found!")
 
-        self.dplace_command = ''
         if '_dplace' in self.name:
             self.dplace_command = ru.which('dplace')
             if not self.dplace_command:
