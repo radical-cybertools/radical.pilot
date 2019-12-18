@@ -257,10 +257,13 @@ class Continuous(AgentSchedulingComponent):
                     gpus.append(gpu_idx)
                 gpu_idx += 1
 
+            core_map = [cores]
+            gpu_map  = [[gpu] for gpu in gpus]
+
             slots.append({'uid'     : node_uid,
                           'name'    : node_name,
-                          'core_map': [cores],  # FIXME: reconsider layout
-                          'gpu_map' : [gpus],   # FIXME: reconsider layout
+                          'core_map': core_map,
+                          'gpu_map' : gpu_map,
                           'lfs'     : {'size': lfs_per_slot,
                                        'path': self._lrms_lfs_per_node['path']},
                           'mem'     : mem_per_slot})
