@@ -130,8 +130,6 @@ class Session(rs.Session):
         self._log.info('radical.utils version: %s' % ru.version_detail)
 
         self._prof.prof('session_start', uid=self._uid, msg=int(_primary))
-        self._rep.info ('<<new session: ')
-        self._rep.plain('[%s]' % self._uid)
 
         # now we have config and uid - initialize base class (saga session)
         rs.Session.__init__(self, uid=self._uid)
@@ -148,11 +146,13 @@ class Session(rs.Session):
 
         # at this point we have a DB connection, logger, etc, and are done
         self._prof.prof('session_ok', uid=self._uid, msg=int(_primary))
-        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
     def _initialize_primary(self, dburl):
+
+        self._rep.info ('<<new session: ')
+        self._rep.plain('[%s]' % self._uid)
 
         # create db connection - need a dburl to connect to
         if not dburl: dburl = self._cfg.dburl
@@ -203,6 +203,8 @@ class Session(rs.Session):
             ru.write_json({'dburl': str(self.dburl)},
                           "%s/session.json" % self._rec)
             self._log.info("recording session in %s" % self._rec)
+
+        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
