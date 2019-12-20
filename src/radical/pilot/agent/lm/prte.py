@@ -83,7 +83,7 @@ class PRTE(LaunchMethod):
 
         # debug mapper problems for large tasks
         if log.isEnabledFor(logging.DEBUG):
-            prte += '  -pmca orte_rmaps_base_verbose 100'
+            prte += ' -pmca orte_rmaps_base_verbose 100'
 
         # we apply two temporary tweaks on Summit which should not be needed in
         # the long run:
