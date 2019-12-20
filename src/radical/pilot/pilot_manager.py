@@ -408,26 +408,27 @@ class PilotManager(rpu.Component):
         # add uid, ensure its a list, general cleanup
         sds  = expand_staging_directives(directives)
         uids = [sd['uid'] for sd in sds]
+        self._active_sds = dict()
 
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'pilot_staging_input_request',
                                           'arg' : {'pilot' : pilot,
                                                    'sds'   : sds}})
         # keep track of SDS we sent off
         for sd in sds:
-            sd['pmgr_state'] = rps.NEW
+            sd['state'] = rps.NEW
             self._active_sds[sd['uid']] = sd
 
         # and wait for their completion
         with self._sds_lock:
-            sd_states = [sd['pmgr_state'] for sd
-                                          in  list(self._active_sds.values())
-                                          if  sd['uid'] in uids]
+            sd_states = [sd['state'] for sd
+                                     in  list(self._active_sds.values())
+                                     if  sd['uid'] in uids]
         while rps.NEW in sd_states:
             time.sleep(1.0)
             with self._sds_lock:
-                sd_states = [sd['pmgr_state'] for sd
-                                              in list(self._active_sds.values())
-                                              if sd['uid'] in uids]
+                sd_states = [sd['state'] for sd
+                                         in  list(self._active_sds.values())
+                                         if  sd['uid'] in uids]
 
         if rps.FAILED in sd_states:
             raise RuntimeError('pilot staging failed')
@@ -445,26 +446,25 @@ class PilotManager(rpu.Component):
         # add uid, ensure its a list, general cleanup
         sds  = expand_staging_directives(directives)
         uids = [sd['uid'] for sd in sds]
+        self._active_sds = dict()
 
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'pilot_staging_output_request',
                                           'arg': {'pilot' : pilot,
                                                   'sds'   : sds}})
         # keep track of SDS we sent off
         for sd in sds:
-            sd['pmgr_state'] = rps.NEW
+            sd['state'] = rps.NEW
             self._active_sds[sd['uid']] = sd
 
         # and wait for their completion
         with self._sds_lock:
-            sd_states = [sd['pmgr_state'] for sd
-                                          in  self._active_sds.values()
-                                          if  sd['uid'] in uids]
+            sd_states = [sd['state'] for sd in self._active_sds.values()
+                                            if sd['uid'] in uids]
         while rps.NEW in sd_states:
             time.sleep(1.0)
             with self._sds_lock:
-                sd_states = [sd['pmgr_state'] for sd
-                                              in  self._active_sds.values()
-                                              if  sd['uid'] in uids]
+                sd_states = [sd['state'] for sd in self._active_sds.values()
+                                                if sd['uid'] in uids]
 
         if rps.FAILED in sd_states:
             raise RuntimeError('pilot staging failed')
@@ -484,8 +484,7 @@ class PilotManager(rpu.Component):
             with self._sds_lock:
                 for sd in arg['sds']:
                     if sd['uid'] in self._active_sds:
-                        self._active_sds[sd['uid']]['pmgr_state'] \
-                                                              = sd['pmgr_state']
+                        self._active_sds[sd['uid']]['state'] = sd['state']
 
         return True
 
