@@ -302,7 +302,6 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def finalize(self):
 
-        self._p.kill()
         self._p.terminate()
 
 

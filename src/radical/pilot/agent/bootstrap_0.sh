@@ -117,6 +117,11 @@ fi
 #
 export PYTHONNOUSERSITE=True
 
+# we someetimes need to install modules via pip, and some need to be compiled
+# during installation.  To speed this up (specifically on cluster compute
+# nodes), we try to convince PIP to run parallel `make`
+export MAKEFLAGS="-j"
+
 # ------------------------------------------------------------------------------
 #
 # If profiling is enabled, compile our little gtod app and take the first time
