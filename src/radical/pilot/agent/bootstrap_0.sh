@@ -887,6 +887,7 @@ virtenv_activate()
     # to derive the PYTHONPATH into the sandbox rp_install, if needed.
     RP_MOD_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$virtenv|$virtenv/rp_install|"`
     VE_PYTHONPATH="$PYTHONPATH"
+    RP_PATH="$virtenv/bin"
 
     # NOTE: this should not be necessary, but we explicit set PYTHONPATH to
     #       include the VE module tree, because some systems set a PYTHONPATH on
@@ -895,11 +896,15 @@ virtenv_activate()
     PYTHONPATH="$VE_MOD_PREFIX:$VE_PYTHONPATH"
     export PYTHONPATH
 
+    PATH="$RP_PATH:$PATH"
+    export $PATH
+
     echo "activated virtenv"
     echo "VIRTENV      : $virtenv"
+    echo "VE_PYTHONPATH: $VE_PYTHONPATH"
     echo "VE_MOD_PREFIX: $VE_MOD_PREFIX"
     echo "RP_MOD_PREFIX: $RP_MOD_PREFIX"
-    echo "PYTHONPATH   : $PYTHONPATH"
+    echo "RP_PATH      : $RP_PATH"
 
     profile_event 've_activate_stop'
 }
@@ -1085,15 +1090,18 @@ virtenv_update()
 #       pip install -t $SANDBOX/rp_install/ radical.pilot.src
 #       rm -rf radical.pilot.src
 #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
+#       export PATH=$SANDBOX/rp_install/bin:$PATH
 #
 #   release: # no sdist staging
 #       pip install -t $SANDBOX/rp_install radical.pilot
 #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
+#       export PATH=$SANDBOX/rp_install/bin:$PATH
 #
 #   local: # needs sdist staging
 #       tar zxmf $sdist.tgz
 #       pip install -t $SANDBOX/rp_install $sdist/
 #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
+#       export PATH=$SANDBOX/rp_install/bin:$PATH
 #
 #   installed: # no sdist staging
 #       true
@@ -1719,6 +1727,7 @@ fi
 
 # make sure rp_install is used
 export PYTHONPATH=$PYTHONPATH
+export PATH=$PATH
 
 # run agent in debug mode
 # FIXME: make option again?
