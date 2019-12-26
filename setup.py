@@ -16,8 +16,8 @@ import shutil
 
 import subprocess as sp
 
-from distutils.ccompiler import new_compiler
-from setuptools          import setup, Command, find_packages
+
+from setuptools import setup, Command, find_packages
 
 
 # ------------------------------------------------------------------------------
@@ -51,11 +51,10 @@ def sh_callout(cmd):
 #
 def get_version(mod_root):
     '''
-    mod_root
-        a VERSION file containes the version strings is created in mod_root,
-        during installation.  That file is used at runtime to get the version
-        information.
-        '''
+    a VERSION file containes the version strings is created in mod_root,
+    during installation.  That file is used at runtime to get the version
+    information.
+    '''
 
     try:
 
@@ -64,7 +63,7 @@ def get_version(mod_root):
 
         # get version from './VERSION'
         src_root = os.path.dirname(__file__)
-        if  not src_root:
+        if not src_root:
             src_root = '.'
 
         with open(src_root + '/VERSION', 'r') as f:
@@ -151,10 +150,9 @@ version, version_detail, sdist_name = get_version(mod_root)
 
 # ------------------------------------------------------------------------------
 #
-def read(*rnames):
-
+def read(fname):
     try:
-        return open(os.path.join(os.path.dirname(__file__), *rnames)).read()
+        return open(fname).read()
     except Exception:
         return ''
 
@@ -163,9 +161,9 @@ def read(*rnames):
 #
 class RunTwine(Command):
     user_options = []
-    def initialize_options (self) : pass
-    def finalize_options   (self) : pass
-    def run (self) :
+    def initialize_options(self): pass
+    def finalize_options(self):   pass
+    def run(self):
         out,  err, ret = sh_callout('python setup.py sdist upload -r pypi')
         raise SystemExit(ret)
 
@@ -262,6 +260,7 @@ setup_args = {
                             'coverage',
                             'mock==2.0.0.',
                            ],
+    'tests_require'      : ['mock==2.0.0', 'pytest', 'coverage'],
     'test_suite'         : '%s.tests' % name,
     'zip_safe'           : False,
   # 'build_sphinx'       : {
@@ -288,5 +287,4 @@ os.system('rm -rf src/%s.egg-info' % name)
 
 
 # ------------------------------------------------------------------------------
-
 
