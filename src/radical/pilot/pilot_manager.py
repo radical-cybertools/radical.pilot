@@ -406,14 +406,15 @@ class PilotManager(rpu.Component):
 
         # and wait for their completion
         with self._sds_lock:
-            sd_states = [sd['state'] for sd in self._active_sds.values()
-                                            if sd['uid'] in uids]
+            sd_states = [sd['state'] for sd
+                                     in  list(self._active_sds.values())
+                                     if  sd['uid'] in uids]
         while rps.NEW in sd_states:
             time.sleep(1.0)
             with self._sds_lock:
                 sd_states = [sd['state'] for sd
-                                         in list(self._active_sds.values())
-                                         if sd['uid'] in uids]
+                                         in  list(self._active_sds.values())
+                                         if  sd['uid'] in uids]
 
         if rps.FAILED in sd_states:
             raise RuntimeError('pilot staging failed')

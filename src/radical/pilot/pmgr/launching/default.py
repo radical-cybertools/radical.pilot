@@ -243,8 +243,6 @@ class Default(PMGRLaunchingComponent):
 
             try:
 
-                # TODO: respect flags in directive
-
                 action = sd['action']
                 flags  = sd['flags']
                 did    = sd['uid']
@@ -256,7 +254,7 @@ class Default(PMGRLaunchingComponent):
                 self._prof.prof('staging_out_start', uid=pid, msg=did)
 
                 if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
-                    raise ValueError("invalid action '%s'" % action)
+                    raise ValueError("invalid pilot action '%s'" % action)
 
                 src = complete_url(src, src_context, self._log)
                 tgt = complete_url(tgt, tgt_context, self._log)
@@ -277,8 +275,6 @@ class Default(PMGRLaunchingComponent):
                 tmp.path = '/'
                 key = str(tmp)
 
-                self._log.debug("rs.file.Directory ('%s')", key)
-
                 with self._cache_lock:
                     if key in self._saga_fs_cache:
                         fs = self._saga_fs_cache[key]
@@ -297,11 +293,11 @@ class Default(PMGRLaunchingComponent):
                 self._prof.prof('staging_out_fail', uid=pid, msg=did)
                 sd['state'] = rps.FAILED
 
-            self._log.debug('done: %s: %s', sd['uid'], sd['state'])
 
-            self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'pilot_staging_output_result',
-                                              'arg': {'pilot': pilot,
-                                                      'sds'  : [sd]}})
+            self.publish(rpc.CONTROL_PUBSUB,
+                         {'cmd': 'pilot_staging_output_result',
+                          'arg': {'pilot': pilot,
+                                  'sds'  : [sd]}})
 
 
     # --------------------------------------------------------------------------
@@ -689,7 +685,6 @@ class Default(PMGRLaunchingComponent):
                                 'rem': False})
 
             output_staging = pilot['description'].get('output_staging')
-            self._log.debug('=== outputs: %s', output_staging)
             if output_staging:
                 fname = '%s/%s/staging_output.txt' % (tmp_dir, pilot['uid'])
                 with open(fname, 'w') as fout:
@@ -723,7 +718,6 @@ class Default(PMGRLaunchingComponent):
                     self._log.debug('err: %s', err)
                     raise RuntimeError('callout failed: %s' % cmd)
 
-      # assert(False)
 
         # tar.  If any command fails, this will raise.
         cmd = "cd %s && tar zchf %s *" % (tmp_dir, tar_tgt)

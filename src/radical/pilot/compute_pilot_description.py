@@ -191,12 +191,6 @@ class ComputePilotDescription(rsa.Attributes):
         if from_dict:
             self.from_dict(from_dict)
 
-      # FIXME
-      #     logger.report.plain('[%s:%s:%s]' % (from_dict.get(RESOURCE, ''),
-      #                                         from_dict.get(CORES,     1),
-      #                                         from_dict.get(GPUS,      0)))
-      # logger.report.ok('>>ok\n')
-
 
     # --------------------------------------------------------------------------
     #
