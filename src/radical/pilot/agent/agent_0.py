@@ -95,7 +95,7 @@ class Agent_0(rpu.Worker):
         self._hb.start()
 
         # register pmgr heartbeat
-        self._log.warn('=== hb init for %s', self._pmgr)
+        self._log.info('hb init for %s', self._pmgr)
         self._hb.beat(uid=self._pmgr)
 
 
@@ -103,7 +103,7 @@ class Agent_0(rpu.Worker):
     #
     def _hb_check(self):
 
-        self._log.debug('=== hb check')
+        self._log.debug('hb check')
 
 
     # --------------------------------------------------------------------------
@@ -111,8 +111,9 @@ class Agent_0(rpu.Worker):
     def _hb_term_cb(self):
 
         self._cmgr.close()
+        self._log.warn('hb termination')
 
-        self._log.warn('=== hb termination')
+        return None
 
 
     # --------------------------------------------------------------------------
@@ -121,21 +122,7 @@ class Agent_0(rpu.Worker):
 
         # TODO: this needs to evaluate the bootstrapper's HOSTPORT
         self._dbs = DBSession(sid=self._cfg.sid, dburl=self._cfg.dburl,
-                              cfg=self._cfg, logger=self._log)
-
-      # # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold
-      # # the address of the tunnelized DB endpoint. If it exists, we
-      # # overrule the agent config with it.
-      # dburl    = ru.Url(self._cfg.dburl)
-      # hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
-      # if hostport:
-      #     dburl.host, dburl.port = hostport.split(':')
-      #     self._cfg['dburl'] = str(dburl)
-      #
-      # # connect to the DB
-      # _, db, _, _, _  = ru.mongodb_connect(dburl)
-      # self._coll      = db[self._cfg['sid']]
-
+                              cfg=self._cfg, log=self._log)
 
     # --------------------------------------------------------------------------
     #
@@ -224,7 +211,26 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
+    def stage_output(self):
+
+        if  os.path.isfile('./staging_output.txt'):
+
+            if not os.path.isfile('./staging_output.tgz'):
+
+                cmd = 'tar zcvf staging_output.tgz $(cat staging_output.txt)'
+                out, err, ret = ru.sh_callout(cmd, shell=True)
+
+                if ret:
+                    self._log.debug('out: %s', out)
+                    self._log.debug('err: %s', err)
+                    self._log.error('output tarring failed: %s', cmd)
+
+
     def finalize(self):
+
+        # tar up output staging data
+        self._log.debug('stage output parent')
+        self.stage_output()
 
         # tear things down in reverse order
         self._hb.stop()
@@ -262,6 +268,40 @@ class Agent_0(rpu.Worker):
                             {'$set': {'stdout' : rpu.tail(out),
                                       'stderr' : rpu.tail(err),
                                       'logfile': rpu.tail(log)} })
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _update_db(self, state, msg=None):
+
+        # NOTE: we do not push the final pilot state, as that is done by the
+        #       bootstrapper *after* this poilot *actually* finished.
+
+        self._log.info('pilot state: %s', state)
+        self._log.info('rusage: %s', rpu.get_rusage())
+        self._log.info(msg)
+
+        if state == rps.FAILED:
+            self._log.info(ru.get_trace())
+
+        out = None
+        err = None
+        log = None
+
+        try   : out = open('./agent_0.out', 'r').read(1024)
+        except: pass
+        try   : err = open('./agent_0.err', 'r').read(1024)
+        except: pass
+        try   : log = open('./agent_0.log', 'r').read(1024)
+        except: pass
+
+        ret = self._dbs._c.update({'type': 'pilot',
+                                   'uid' : self._pid},
+                                  {'$set': {'stdout' : rpu.tail(out),
+                                            'stderr' : rpu.tail(err),
+                                            'logfile': rpu.tail(log)}
+                                  })
+        self._log.debug('update ret: %s', ret)
 
 
     # --------------------------------------------------------------------
@@ -461,8 +501,6 @@ class Agent_0(rpu.Worker):
             cmd = spec['cmd']
             arg = spec['arg']
 
-            self._log.debug('=== cmd: %s [%s]', cmd, arg)
-
             self._prof.prof('cmd', msg="%s : %s" % (cmd, arg), uid=self._pid)
 
             if cmd == 'heartbeat' and arg['pmgr'] == self._pmgr:
@@ -482,7 +520,7 @@ class Agent_0(rpu.Worker):
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units',
                                                   'arg' : arg})
             else:
-                self._log.error('could not interpret cmd "%s" - ignore', cmd)
+                self._log.warn('could not interpret cmd "%s" - ignore', cmd)
 
         return True
 

@@ -29,9 +29,6 @@ from .pilot_manager             import PilotManager
 from .compute_pilot             import ComputePilot
 from .compute_pilot_description import ComputePilotDescription
 
-from .staging_directives        import COPY, LINK, MOVE, TRANSFER
-from .staging_directives        import SKIP_FAILED, CREATE_PARENTS
-
 
 # ------------------------------------------------------------------------------
 # make submodules available -- mostly for internal use

@@ -96,10 +96,10 @@ VIRTENV_TGZ="$VIRTENV_VER.tar.gz"
 VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/66/f0/6867af06d2e2f511e4e1d7094ff663acdebc4f15d4a0cb0fed1007395124/$VIRTENV_TGZ"
 VIRTENV_IS_ACTIVATED=FALSE
 
-VIRTENV_RADICAL_DEPS="pymongo apache-libcloud colorama python-hostlist ntplib "\
+VIRTENV_RADICAL_DEPS="pymongo colorama python-hostlist ntplib "\
 "pyzmq netifaces setproctitle orte_cffi msgpack-python future regex munch"
 
-VIRTENV_RADICAL_MODS="pymongo libcloud colorama hostlist "\
+VIRTENV_RADICAL_MODS="pymongo colorama hostlist "\
 "ntplib zmq netifaces setproctitle msgpack future regex"
 
 if ! test -z "$RADICAL_DEBUG"
@@ -116,6 +116,11 @@ fi
 # NOTE: we need to make sure this is inherited into sub-agent shells
 #
 export PYTHONNOUSERSITE=True
+
+# we someetimes need to install modules via pip, and some need to be compiled
+# during installation.  To speed this up (specifically on cluster compute
+# nodes), we try to convince PIP to run parallel `make`
+export MAKEFLAGS="-j"
 
 # ------------------------------------------------------------------------------
 #
@@ -882,6 +887,7 @@ virtenv_activate()
     # to derive the PYTHONPATH into the sandbox rp_install, if needed.
     RP_MOD_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$virtenv|$virtenv/rp_install|"`
     VE_PYTHONPATH="$PYTHONPATH"
+    RP_PATH="$virtenv/bin"
 
     # NOTE: this should not be necessary, but we explicit set PYTHONPATH to
     #       include the VE module tree, because some systems set a PYTHONPATH on
@@ -890,11 +896,15 @@ virtenv_activate()
     PYTHONPATH="$VE_MOD_PREFIX:$VE_PYTHONPATH"
     export PYTHONPATH
 
+    PATH="$RP_PATH:$PATH"
+    export $PATH
+
     echo "activated virtenv"
     echo "VIRTENV      : $virtenv"
+    echo "VE_PYTHONPATH: $VE_PYTHONPATH"
     echo "VE_MOD_PREFIX: $VE_MOD_PREFIX"
     echo "RP_MOD_PREFIX: $RP_MOD_PREFIX"
-    echo "PYTHONPATH   : $PYTHONPATH"
+    echo "RP_PATH      : $RP_PATH"
 
     profile_event 've_activate_stop'
 }
@@ -1025,7 +1035,7 @@ virtenv_create()
     for dep in $VIRTENV_RADICAL_DEPS
     do
         run_cmd "install $dep" \
-                "$PIP install $dep" \
+                "$PIP --no-cache-dir install --no-build-isolation $dep" \
              || echo "Couldn't install $dep! Lets see how far we get ..."
     done
 
@@ -1080,15 +1090,18 @@ virtenv_update()
 #       pip install -t $SANDBOX/rp_install/ radical.pilot.src
 #       rm -rf radical.pilot.src
 #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
+#       export PATH=$SANDBOX/rp_install/bin:$PATH
 #
 #   release: # no sdist staging
 #       pip install -t $SANDBOX/rp_install radical.pilot
 #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
+#       export PATH=$SANDBOX/rp_install/bin:$PATH
 #
 #   local: # needs sdist staging
 #       tar zxmf $sdist.tgz
 #       pip install -t $SANDBOX/rp_install $sdist/
 #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
+#       export PATH=$SANDBOX/rp_install/bin:$PATH
 #
 #   installed: # no sdist staging
 #       true
@@ -1235,7 +1248,7 @@ rp_install()
     pip_flags="$pip_flags --src '$PILOT_SANDBOX/rp_install/src'"
     pip_flags="$pip_flags --build '$PILOT_SANDBOX/rp_install/build'"
     pip_flags="$pip_flags --install-option='--prefix=$RP_INSTALL'"
-    pip_flags="$pip_flags --no-deps"
+    pip_flags="$pip_flags --no-deps --no-cache-dir --no-build-isolation"
 
     for src in $rp_install_sources
     do
@@ -1575,7 +1588,7 @@ get_tunnel(){
 
     # FIXME: check if tunnel stays up
     echo ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$addr -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST
-    ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$addr -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
+         ssh -o StrictHostKeyChecking=no -x -a -4 -T -N -L $BIND_ADDRESS:$DBPORT:$addr -p $FORWARD_TUNNEL_ENDPOINT_PORT $FORWARD_TUNNEL_ENDPOINT_HOST &
 
     # Kill ssh process when bootstrap_0 dies, to prevent lingering ssh's
     trap 'jobs -p | grep ssh | xargs -tr -n 1 kill' EXIT
@@ -1714,6 +1727,7 @@ fi
 
 # make sure rp_install is used
 export PYTHONPATH=$PYTHONPATH
+export PATH=$PATH
 
 # run agent in debug mode
 # FIXME: make option again?

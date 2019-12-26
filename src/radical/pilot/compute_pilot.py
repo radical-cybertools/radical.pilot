@@ -3,10 +3,8 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import sys
 import copy
 import time
-import threading
 
 import radical.utils as ru
 
@@ -72,7 +70,7 @@ class ComputePilot(object):
         self._pilot_dict = dict()
         self._callbacks  = dict()
         self._cache      = dict()    # cache of SAGA dir handles
-        self._cb_lock    = threading.RLock()
+        self._cb_lock    = ru.RLock()
 
         # pilot failures can trigger app termination
         self._exit_on_error = self._descr.get('exit_on_error')
@@ -147,10 +145,10 @@ class ComputePilot(object):
             self._log.error("[Callback]: pilot '%s' failed - exit", self.uid)
 
             # There are different ways to tell main...
-          # ru.cancel_main_thread('int')
+            ru.cancel_main_thread('int')
           # raise RuntimeError('pilot %s failed - fatal!' % self.uid)
           # os.kill(os.getpid())
-            sys.exit()
+          # sys.exit()
 
 
     # --------------------------------------------------------------------------
@@ -162,6 +160,8 @@ class ComputePilot(object):
 
         Return True if state changed, False otherwise
         '''
+
+        self._log.debug('update %s', pilot_dict['uid'])
 
         if pilot_dict['uid'] != self.uid:
             self._log.error('invalid uid: %s / %s', pilot_dict['uid'], self.uid)
@@ -196,6 +196,8 @@ class ComputePilot(object):
 
             cb      = cb_val['cb']
             cb_data = cb_val['cb_data']
+
+            self._log.debug('call %s', cb)
 
             self._log.debug('%s calls cb %s', self.uid, cb)
 
@@ -578,14 +580,18 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def stage_out(self, directives):
+    def stage_out(self):
         '''
-        Stages the content of the staging directive into the pilot's
-        staging area
+        fetch `staging_output.tgz` from the pilot sandbox, and store in $PWD
         '''
 
-        # send the staging request to the pmg launcher
-        self._pmgr._pilot_staging_output(self.as_dict(), directives)
+        try:
+            psbox = self._session.get_fs_dir(self._pilot_sandbox)
+            psbox.copy('staging_output.tgz', self._client_sandbox)
+
+        except Exception:
+            self._log.exception('output staging failed')
+            raise
 
 
 # ------------------------------------------------------------------------------

@@ -2,9 +2,9 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import threading
+import radical.utils    as ru
 
-from ... import states    as rps
+from ... import states as rps
 
 from .base import UMGRSchedulingComponent
 
@@ -24,8 +24,8 @@ class RoundRobin(UMGRSchedulingComponent):
     #
     def _configure(self):
 
-        self._wait_pool = list()             # set of unscheduled units
-        self._wait_lock = threading.RLock()  # look on the above set
+        self._wait_pool = list()      # set of unscheduled units
+        self._wait_lock = ru.RLock()  # look on the above set
 
         self._pids = list()
         self._idx  = 0
@@ -58,7 +58,7 @@ class RoundRobin(UMGRSchedulingComponent):
 
             for pid in pids:
 
-                if not pid in self._pids:
+                if pid not in self._pids:
                     raise ValueError('no such pilot %s' % pid)
 
                 self._pids.remove(pid)
@@ -98,7 +98,7 @@ class RoundRobin(UMGRSchedulingComponent):
                 if pid:
                     # make sure we know this pilot
                     if pid not in self._pilots:
-                        self._log.error('got unit %s for unknown pilot %s', uid, pid)
+                        self._log.error('unknown pilot %s (unit %s)', uid, pid)
                         self.advance(unit, rps.FAILED, publish=True, push=True)
                         continue
 
@@ -148,7 +148,7 @@ class RoundRobin(UMGRSchedulingComponent):
 
                     units_ok.append(unit)
 
-                except Exception as e:
+                except Exception:
                     self._log.exception('unit schedule preparation failed')
                     units_fail.append(unit)
 

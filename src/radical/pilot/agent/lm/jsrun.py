@@ -2,8 +2,6 @@
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import os
-
 import radical.utils as ru
 
 from .base import LaunchMethod

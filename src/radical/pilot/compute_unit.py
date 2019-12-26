@@ -3,21 +3,17 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os
 import copy
 import time
-import threading
 
 import radical.utils as ru
 
-from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
 
 from . import compute_unit_description as cud
 
 from .staging_directives import expand_description
-from .staging_directives import TRANSFER, COPY, LINK, MOVE, STAGING_AREA
 
 
 # ------------------------------------------------------------------------------
@@ -28,13 +24,13 @@ class ComputeUnit(object):
     ComputeUnits allow to control and query the state of this task.
 
     .. note:: A unit cannot be created directly. The factory method
-              :meth:`radical.pilot.UnitManager.submit_units` has to be used instead.
+              :meth:`rp.UnitManager.submit_units` has to be used instead.
 
                 **Example**::
 
-                      umgr = radical.pilot.UnitManager(session=s)
+                      umgr = rp.UnitManager(session=s)
 
-                      ud = radical.pilot.ComputeUnitDescription()
+                      ud = rp.ComputeUnitDescription()
                       ud.executable = "/bin/date"
 
                       unit = umgr.submit_units(ud)
@@ -141,8 +137,9 @@ class ComputeUnit(object):
 
         if target not in [rps.FAILED, rps.CANCELED]:
             try:
-                assert(rps._unit_state_value(target) - rps._unit_state_value(current) == 1), \
-                            'invalid state transition'
+                s_tgt = rps._unit_state_value(target)
+                s_cur = rps._unit_state_value(current)
+                assert(s_tgt - s_cur == 1), 'invalid state transition'
             except:
                 self._log.error('%s: invalid state transition %s -> %s',
                                 self.uid, current, target)
@@ -352,12 +349,14 @@ class ComputeUnit(object):
     # --------------------------------------------------------------------------
     #
     @property
-    def working_directory(self): # **NOTE:** deprecated, use *`sandbox`*
+    def working_directory(self):         # **NOTE:** deprecated, use *`sandbox`*
         return self.sandbox
+
 
     @property
     def sandbox(self):
         return self.unit_sandbox
+
 
     @property
     def unit_sandbox(self):
@@ -460,9 +459,9 @@ class ComputeUnit(object):
               By default `wait` waits for the unit to reach a **final**
               state, which can be one of the following:
 
-              * :data:`radical.pilot.states.DONE`
-              * :data:`radical.pilot.states.FAILED`
-              * :data:`radical.pilot.states.CANCELED`
+              * :data:`rp.states.DONE`
+              * :data:`rp.states.FAILED`
+              * :data:`rp.states.CANCELED`
 
             * **timeout** [`float`]
               Optional timeout in seconds before the call returns regardless

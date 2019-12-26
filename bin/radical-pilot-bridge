@@ -7,7 +7,9 @@ __license__   = "MIT"
 import sys
 import time
 
+import threading     as mt
 import setproctitle  as spt
+
 import radical.utils as ru
 
 
@@ -93,7 +95,8 @@ def main(cfg):
 
 def wrapped_main(cfg, uid, path):
 
-    log = ru.Logger(name=uid, ns='radical.pilot', path=path)
+    log  = ru.Logger(name=uid, ns='radical.pilot', path=path)
+    term = mt.Event()
 
     spt.setproctitle('rp.%s' % uid)
 
@@ -115,7 +118,8 @@ def wrapped_main(cfg, uid, path):
 
     def hb_term_cb(hb_uid):
         bridge.stop()
-        return False
+        term.set()
+        return None
 
     hb = ru.Heartbeat(uid=uid,
                       timeout=cfg.heartbeat.timeout,
@@ -137,7 +141,7 @@ def wrapped_main(cfg, uid, path):
                       topic='heartbeat', cb=hb_sub_cb)
 
     # all is set up - we can sit idle 'til end of time.
-    while True:
+    while not term.is_set():
         time.sleep(1)
 
 

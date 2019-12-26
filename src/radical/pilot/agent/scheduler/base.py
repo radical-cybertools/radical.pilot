@@ -24,11 +24,11 @@ SCHEDULER_NAME_CONTINUOUS_ORDERED = "CONTINUOUS_ORDERED"
 SCHEDULER_NAME_CONTINUOUS_COLO    = "CONTINUOUS_COLO"
 SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
 SCHEDULER_NAME_HOMBRE             = "HOMBRE"
-SCHEDULER_NAME_SPARK              = "SPARK"
-SCHEDULER_NAME_TORUS              = "TORUS"
-SCHEDULER_NAME_YARN               = "YARN"
 SCHEDULER_NAME_NOOP               = "NOOP"
+SCHEDULER_NAME_TORUS              = "TORUS"
 
+# SCHEDULER_NAME_YARN               = "YARN"
+# SCHEDULER_NAME_SPARK              = "SPARK"
 # SCHEDULER_NAME_CONTINUOUS_SUMMIT  = "CONTINUOUS_SUMMIT"
 # SCHEDULER_NAME_CONTINUOUS_FIFO    = "CONTINUOUS_FIFO"
 # SCHEDULER_NAME_SCATTERED          = "SCATTERED"
@@ -300,7 +300,6 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def finalize(self):
 
-        self._p.kill()
         self._p.terminate()
 
 
@@ -329,10 +328,10 @@ class AgentSchedulingComponent(rpu.Component):
         from .continuous         import Continuous
         from .hombre             import Hombre
         from .torus              import Torus
-        from .yarn               import Yarn
-        from .spark              import Spark
         from .noop               import Noop
 
+      # from .yarn               import Yarn
+      # from .spark              import Spark
       # from .continuous_summit  import ContinuousSummit
       # from .continuous_fifo    import ContinuousFifo
       # from .scattered          import Scattered
@@ -345,10 +344,10 @@ class AgentSchedulingComponent(rpu.Component):
                 SCHEDULER_NAME_CONTINUOUS         : Continuous,
                 SCHEDULER_NAME_HOMBRE             : Hombre,
                 SCHEDULER_NAME_TORUS              : Torus,
-                SCHEDULER_NAME_YARN               : Yarn,
-                SCHEDULER_NAME_SPARK              : Spark,
                 SCHEDULER_NAME_NOOP               : Noop,
 
+              # SCHEDULER_NAME_YARN               : Yarn,
+              # SCHEDULER_NAME_SPARK              : Spark,
               # SCHEDULER_NAME_CONTINUOUS_SUMMIT  : ContinuousSummit,
               # SCHEDULER_NAME_CONTINUOUS_FIFO    : ContinuousFifo,
               # SCHEDULER_NAME_SCATTERED          : Scattered,
@@ -471,7 +470,7 @@ class AgentSchedulingComponent(rpu.Component):
         if not self._waitpool:
             return
 
-        for uid,task in self._waitpool.iteritems():
+        for uid,task in self._waitpool.items():
             ts = task['tuple_size']
             if ts not in self._ts_map:
                 self._ts_map[ts] = set()
@@ -646,7 +645,7 @@ class AgentSchedulingComponent(rpu.Component):
         # We define `tuple_size` as
         #     `(cpu_processes + gpu_processes) * cpu_threads`
         #
-        tasks = self._waitpool.values()
+        tasks = list(self._waitpool.values())
         tasks.sort(key=lambda x:
                 (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
                  reverse=True)
@@ -763,27 +762,27 @@ class AgentSchedulingComponent(rpu.Component):
             # immediately. This assumes that the `tuple_size` is good enough to
             # judge the legality of the resources for the new target unit.
 
-         ## ts = tuple(unit['tuple_size'])
-         ## if self._ts_map.get(ts):
-         ##
-         ##     replace = self._waitpool[self._ts_map[ts].pop()]
-         ##     replace['slots'] = unit['slots']
-         ##     placed.append(placed)
-         ##
-         ##     # unschedule unit A and schedule unit B have the same
-         ##     # timestamp
-         ##     ts = time.time()
-         ##     self._prof.prof('unschedule_stop', uid=unit['uid'],
-         ##                     timestamp=ts)
-         ##     self._prof.prof('schedule_fast', uid=replace['uid'],
-         ##                     timestamp=ts)
-         ##     self.advance(replace, rps.AGENT_EXECUTING_PENDING,
-         ##                  publish=True, push=True)
-         ## else:
-         ##
-         ##     # no replacement unit found: free the slots, and try to
-         ##     # schedule other units of other sizes.
-         ##     to_release.append(unit)
+          # ts = tuple(unit['tuple_size'])
+          # if self._ts_map.get(ts):
+          #
+          #     replace = self._waitpool[self._ts_map[ts].pop()]
+          #     replace['slots'] = unit['slots']
+          #     placed.append(placed)
+          #
+          #     # unschedule unit A and schedule unit B have the same
+          #     # timestamp
+          #     ts = time.time()
+          #     self._prof.prof('unschedule_stop', uid=unit['uid'],
+          #                     timestamp=ts)
+          #     self._prof.prof('schedule_fast', uid=replace['uid'],
+          #                     timestamp=ts)
+          #     self.advance(replace, rps.AGENT_EXECUTING_PENDING,
+          #                  publish=True, push=True)
+          # else:
+          #
+          #     # no replacement unit found: free the slots, and try to
+          #     # schedule other units of other sizes.
+          #     to_release.append(unit)
 
             to_release.append(unit)
 

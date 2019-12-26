@@ -2,17 +2,15 @@
 import os
 import time
 import errno
-import netifaces
 
 import radical.utils as ru
 
-from   radical.pilot.states import *
+# max number of cu out/err chars to push to tail
+MAX_IO_LOGLENGTH = 1024
 
 
 # ------------------------------------------------------------------------------
 #
-# max number of cu out/err chars to push to tail
-MAX_IO_LOGLENGTH = 1024
 def tail(txt, maxlen=MAX_IO_LOGLENGTH):
 
     # shorten the given string to the last <n> characters, and prepend

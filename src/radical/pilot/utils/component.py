@@ -1,9 +1,7 @@
 
 import os
-import sys
 import copy
 import time
-import pprint
 
 import threading       as mt
 import radical.utils   as ru
@@ -107,7 +105,7 @@ class ComponentManager(object):
     #
     def _hb_term_cb(self, uid=None):
 
-        self._log.debug('=== hb_term %s: %s died', self.uid, uid)
+        self._log.debug('hb_term %s: %s died', self.uid, uid)
         self._prof.prof('term', uid=self._uid)
 
         # FIXME: restart goes here
@@ -116,7 +114,7 @@ class ComponentManager(object):
         #       terminate and suicidally kill the very process it is living in.
         #       Make sure all required cleanup is done at this point!
 
-        return False
+        return None
 
 
     # --------------------------------------------------------------------------
@@ -161,9 +159,13 @@ class ComponentManager(object):
 
             self._log.info('create  bridge %s [%s]', bname, bcfg.uid)
 
-            ru.sh_callout('radical-pilot-bridge %s' % fname)
-            self._uids.append(bcfg.uid)
+            out, err, ret = ru.sh_callout('radical-pilot-bridge %s' % fname)
+            self._log.debug('bridge startup out: %s', out)
+            self._log.debug('bridge startup err: %s', err)
+            if ret:
+                raise RuntimeError('bridge startup failed')
 
+            self._uids.append(bcfg.uid)
             self._log.info('created bridge %s [%s]', bname, bcfg.uid)
 
         # all bridges should start now, for their heartbeats
@@ -212,7 +214,7 @@ class ComponentManager(object):
                 ccfg.path        = cfg.path
                 ccfg.heartbeat   = cfg.heartbeat
 
-                ccfg.merge(scfg, policy=ru.PRESERVE, logger=self._log)
+                ccfg.merge(scfg, policy=ru.PRESERVE, log=self._log)
 
                 fname = '%s/%s.json' % (cfg.path, ccfg.uid)
                 ccfg.write(fname)
@@ -222,9 +224,10 @@ class ComponentManager(object):
                 out, err, ret = ru.sh_callout('radical-pilot-component %s' % fname)
                 self._log.debug('out: %s' , out)
                 self._log.debug('err: %s' , err)
-                self._log.debug('ret: %s' , ret)
-                self._uids.append(ccfg.uid)
+                if ret:
+                    raise RuntimeError('bridge startup failed')
 
+                self._uids.append(ccfg.uid)
                 self._log.info('created component %s [%s]', cname, ccfg.uid)
 
         # all components should start now, for their heartbeats
@@ -471,7 +474,7 @@ class Component(object):
 
         sync.set()
 
-        while True:
+        while not self._term.is_set():
             try:
                 ret = self.work_cb()
                 if not ret:
@@ -615,6 +618,9 @@ class Component(object):
         # call component level finalize, before we tear down channels
         self.finalize()
 
+        for thread in self._threads.values():
+            thread.stop()
+
         self._log.debug('%s close prof', self.uid)
         try:
             self._prof.prof('component_final')
@@ -640,6 +646,7 @@ class Component(object):
         self._log.info('stop %s (%s : %s) [%s]', self.uid, os.getpid(),
                        ru.get_thread_name(), ru.get_caller_name())
 
+        self._term.set()
         self._finalize()
 
 
@@ -1064,6 +1071,9 @@ class Component(object):
         if not isinstance(things, list):
             things = [things]
 
+        if not things:
+            return
+
         self._log.debug('advance bulk: %s [%s, %s]', len(things), push, publish)
 
         # assign state, sort things by state
@@ -1121,10 +1131,9 @@ class Component(object):
           #                     state=thing['state'], ts=ts)
 
         # never carry $all across component boundaries!
-        else:
-            for thing in things:
-                if '$all' in thing:
-                    del(thing['$all'])
+        for thing in things:
+            if '$all' in thing:
+                del(thing['$all'])
 
         # should we push things downstream, to the next component
         if push:
@@ -1134,7 +1143,7 @@ class Component(object):
             # now we can push the buckets as bulks
             for _state,_things in buckets.items():
 
-                ts = time.time()
+              # ts = time.time()
                 if _state in rps.FINAL:
                   # # things in final state are dropped
                   # for thing in _things:

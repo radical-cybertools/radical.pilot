@@ -3,10 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os
-import copy
 import time
-import pprint
 import threading as mt
 
 import radical.utils as ru
@@ -22,8 +19,8 @@ from .staging_directives import expand_staging_directives
 #
 class PilotManager(rpu.Component):
     """
-    A PilotManager manages :class:`radical.pilot.ComputePilot` instances that are
-    submitted via the :func:`radical.pilot.PilotManager.submit_pilots` method.
+    A PilotManager manages :class:`rp.ComputePilot` instances that are
+    submitted via the :func:`rp.PilotManager.submit_pilots` method.
 
     It is possible to attach one or more :ref:`chapter_machconf`
     to a PilotManager to outsource machine specific configuration
@@ -31,11 +28,11 @@ class PilotManager(rpu.Component):
 
     **Example**::
 
-        s = radical.pilot.Session(database_url=DBURL)
+        s = rp.Session(database_url=DBURL)
 
-        pm = radical.pilot.PilotManager(session=s)
+        pm = rp.PilotManager(session=s)
 
-        pd = radical.pilot.ComputePilotDescription()
+        pd = rp.ComputePilotDescription()
         pd.resource = "futuregrid.alamo"
         pd.cpus = 16
 
@@ -45,15 +42,14 @@ class PilotManager(rpu.Component):
         # Create a workload of 128 '/bin/sleep' compute units
         compute_units = []
         for unit_count in range(0, 128):
-            cu = radical.pilot.ComputeUnitDescription()
+            cu = rp.ComputeUnitDescription()
             cu.executable = "/bin/sleep"
             cu.arguments = ['60']
             compute_units.append(cu)
 
         # Combine the two pilots, the workload and a scheduler via
         # a UnitManager.
-        um = radical.pilot.UnitManager(session=session,
-                                       scheduler=radical.pilot.SCHEDULER_ROUND_ROBIN)
+        um = rp.UnitManager(session=session, scheduler=rp.SCHEDULER_ROUND_ROBIN)
         um.add_pilot(p1)
         um.submit_units(compute_units)
 
@@ -72,20 +68,21 @@ class PilotManager(rpu.Component):
         Creates a new PilotManager and attaches is to the session.
 
         **Arguments:**
-            * session [:class:`radical.pilot.Session`]:
+            * session [:class:`rp.Session`]:
               The session instance to use.
+            * cfg (`dict` or `string`):
+              The configuration or name of configuration to use.
 
         **Returns:**
-            * A new `PilotManager` object [:class:`radical.pilot.PilotManager`].
+            * A new `PilotManager` object [:class:`rp.PilotManager`].
         '''
 
         assert(session.primary), 'pmgr needs primary session'
 
-        self._session     = session
         self._pilots      = dict()
-        self._pilots_lock = mt.RLock()
+        self._pilots_lock = ru.RLock('pmgr.pilots_lock')
         self._callbacks   = dict()
-        self._pcb_lock    = mt.RLock()
+        self._pcb_lock    = ru.RLock('pmgr.pcb_lock')
         self._terminate   = mt.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
@@ -107,20 +104,22 @@ class PilotManager(rpu.Component):
         cfg           = ru.Config('radical.pilot.pmgr', name=name, cfg=cfg)
         cfg.uid       = self._uid
         cfg.owner     = self._uid
-        cfg.sid       = self._session.uid
-        cfg.base      = self._session.base
-        cfg.path      = self._session.path
+        cfg.sid       = session.uid
+        cfg.base      = session.base
+        cfg.path      = session.path
+        cfg.dburl     = session.dburl
         cfg.heartbeat = session.cfg.heartbeat
 
-        rpu.Component.__init__(self, cfg, session=self._session)
+        rpu.Component.__init__(self, cfg, session=session)
+        self.start()
+
+        self._log.info('started pmgr %s', self._uid)
+        self._rep.info('<<create pilot manager')
 
         # create pmgr bridges and components, use session cmgr for that
         self._cmgr = rpu.ComponentManager(self._cfg)
         self._cmgr.start_bridges()
         self._cmgr.start_components()
-
-        # only now we have a logger... :/
-        self._rep.info('<<create pilot manager')
 
         # The output queue is used to forward submitted pilots to the
         # launching component.
@@ -131,9 +130,9 @@ class PilotManager(rpu.Component):
         # directives
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._staging_ack_cb)
         self._active_sds = dict()
-        self._sds_lock = mt.Lock()
+        self._sds_lock   = ru.Lock('pmgr_sds_lock')
 
-        # register the state notification pull cb
+        # register the state notification pull cb and hb pull cb
         # FIXME: we may want to have the frequency configurable
         # FIXME: this should be a tailing cursor in the update worker
         self.register_timed_cb(self._state_pull_cb,
@@ -153,13 +152,15 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def initialize_common(self):
+    def initialize(self):
 
         # the manager must not carry bridge and component handles across forks
         ru.atfork(self._atfork_prepare, self._atfork_parent, self._atfork_child)
 
 
     # --------------------------------------------------------------------------
+    #
+    # EnTK forks, make sure we don't carry traces of children across the fork
     #
     def _atfork_prepare(self): pass
     def _atfork_parent(self) : pass
@@ -170,26 +171,17 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def finalize_parent(self):
+    def finalize(self):
 
+        self._cmgr.close()
         self._fail_missing_pilots()
-
-        # terminate pmgr components
-        for c in self._components:
-            c.stop()
-            c.join()
-
-        # terminate pmgr bridges
-        for b in self._bridges:
-            b.stop()
-            b.join()
 
 
     # --------------------------------------------------------------------------
     #
     def close(self, terminate=True):
         """
-        Shuts down the PilotManager.
+        Shut down the PilotManager and all its components.
 
         **Arguments:**
             * **terminate** [`bool`]: cancel non-final pilots if True (default)
@@ -201,7 +193,7 @@ class PilotManager(rpu.Component):
         self._terminate.set()
         self._rep.info('<<close pilot manager')
 
-        # we don't want any callback invokations during shutdown
+        # disable callbacks during shutdown
         # FIXME: really?
         with self._pcb_lock:
             for m in rpc.PMGR_METRICS:
@@ -278,7 +270,10 @@ class PilotManager(rpu.Component):
         # FIXME: this is a big and frequently invoked lock
         pilot_dicts = self._session._dbs.get_pilots(pmgr_uid=self.uid)
 
+
         for pilot_dict in pilot_dicts:
+            self._log.debug('state pulled: %s: %s', pilot_dict['uid'],
+                                                    pilot_dict['state'])
             if not self._update_pilot(pilot_dict, publish=True):
                 return False
 
@@ -309,6 +304,9 @@ class PilotManager(rpu.Component):
 
             if 'type' in thing and thing['type'] == 'pilot':
 
+                self._log.debug('state push: %s: %s', thing['uid'],
+                                                      thing['state'])
+
                 # we got the state update from the state callback - don't
                 # publish it again
                 if not self._update_pilot(thing, publish=False):
@@ -324,7 +322,7 @@ class PilotManager(rpu.Component):
         # FIXME: this is breaking the bulk!
 
         pid   = pilot_dict['uid']
-        state = pilot_dict['state']
+      # state = pilot_dict['state']
 
         with self._pilots_lock:
 
@@ -358,7 +356,7 @@ class PilotManager(rpu.Component):
                     self.advance(pilot_dict, s, publish=publish, push=False)
 
                 if s in [rps.PMGR_ACTIVE]:
-                    self._log.info('pilot %s is %s: %s [%s]', \
+                    self._log.info('pilot %s is %s: %s [%s]',
                             pid, s, pilot_dict.get('lm_info'),
                                     pilot_dict.get('lm_detail'))
 
@@ -375,7 +373,8 @@ class PilotManager(rpu.Component):
                 cb      = cb_val['cb']
                 cb_data = cb_val['cb_data']
 
-              # print ' ~~~ call PCBS: %s -> %s : %s' % (self.uid, self.state, cb_name)
+              # print ' ~~~ call PCBS: %s -> %s : %s' \
+              #       % (self.uid, self.state, cb_name)
                 self._log.debug('pmgr calls cb %s for %s', pilot_obj.uid, cb)
 
                 if cb_data: cb(pilot_obj, state, cb_data)
@@ -395,26 +394,27 @@ class PilotManager(rpu.Component):
         # add uid, ensure its a list, general cleanup
         sds  = expand_staging_directives(directives)
         uids = [sd['uid'] for sd in sds]
+        self._active_sds = dict()
 
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'pilot_staging_input_request',
                                           'arg' : {'pilot' : pilot,
                                                    'sds'   : sds}})
         # keep track of SDS we sent off
         for sd in sds:
-            sd['pmgr_state'] = rps.NEW
+            sd['state'] = rps.NEW
             self._active_sds[sd['uid']] = sd
 
         # and wait for their completion
         with self._sds_lock:
-            sd_states = [sd['pmgr_state'] for sd
-                                          in  list(self._active_sds.values())
-                                          if  sd['uid'] in uids]
+            sd_states = [sd['state'] for sd
+                                     in  list(self._active_sds.values())
+                                     if  sd['uid'] in uids]
         while rps.NEW in sd_states:
             time.sleep(1.0)
             with self._sds_lock:
-                sd_states = [sd['pmgr_state'] for sd
-                                              in  list(self._active_sds.values())
-                                              if  sd['uid'] in uids]
+                sd_states = [sd['state'] for sd
+                                         in  list(self._active_sds.values())
+                                         if  sd['uid'] in uids]
 
         if rps.FAILED in sd_states:
             raise RuntimeError('pilot staging failed')
@@ -432,26 +432,25 @@ class PilotManager(rpu.Component):
         # add uid, ensure its a list, general cleanup
         sds  = expand_staging_directives(directives)
         uids = [sd['uid'] for sd in sds]
+        self._active_sds = dict()
 
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'pilot_staging_output_request',
-                                          'arg' : {'pilot' : pilot,
-                                                   'sds'   : sds}})
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'pilot_staging_output_request',
+                                          'arg': {'pilot' : pilot,
+                                                  'sds'   : sds}})
         # keep track of SDS we sent off
         for sd in sds:
-            sd['pmgr_state'] = rps.NEW
+            sd['state'] = rps.NEW
             self._active_sds[sd['uid']] = sd
 
         # and wait for their completion
         with self._sds_lock:
-            sd_states = [sd['pmgr_state'] for sd
-                                          in  self._active_sds.values()
-                                          if  sd['uid'] in uids]
+            sd_states = [sd['state'] for sd in self._active_sds.values()
+                                            if sd['uid'] in uids]
         while rps.NEW in sd_states:
             time.sleep(1.0)
             with self._sds_lock:
-                sd_states = [sd['pmgr_state'] for sd
-                                              in  self._active_sds.values()
-                                              if  sd['uid'] in uids]
+                sd_states = [sd['state'] for sd in self._active_sds.values()
+                                                if sd['uid'] in uids]
 
         if rps.FAILED in sd_states:
             raise RuntimeError('pilot staging failed')
@@ -471,7 +470,7 @@ class PilotManager(rpu.Component):
             with self._sds_lock:
                 for sd in arg['sds']:
                     if sd['uid'] in self._active_sds:
-                        self._active_sds[sd['uid']]['pmgr_state'] = sd['pmgr_state']
+                        self._active_sds[sd['uid']]['state'] = sd['state']
 
         return True
 
@@ -490,11 +489,11 @@ class PilotManager(rpu.Component):
     #
     def list_pilots(self):
         """
-        Returns the UIDs of the :class:`radical.pilot.ComputePilots` managed by
+        Returns the UIDs of the :class:`rp.ComputePilots` managed by
         this pilot manager.
 
         **Returns:**
-              * A list of :class:`radical.pilot.ComputePilot` UIDs [`string`].
+              * A list of :class:`rp.ComputePilot` UIDs [`string`].
         """
 
         with self._pilots_lock:
@@ -507,16 +506,16 @@ class PilotManager(rpu.Component):
     #
     def submit_pilots(self, descriptions):
         """
-        Submits on or more :class:`radical.pilot.ComputePilot` instances to the
+        Submits on or more :class:`rp.ComputePilot` instances to the
         pilot manager.
 
         **Arguments:**
-            * **descriptions** [:class:`radical.pilot.ComputePilotDescription`
-              or list of :class:`radical.pilot.ComputePilotDescription`]: The
+            * **descriptions** [:class:`rp.ComputePilotDescription`
+              or list of :class:`rp.ComputePilotDescription`]: The
               description of the compute pilot instance(s) to create.
 
         **Returns:**
-              * A list of :class:`radical.pilot.ComputePilot` objects.
+              * A list of :class:`rp.ComputePilot` objects.
         """
 
         from .compute_pilot import ComputePilot
@@ -604,7 +603,7 @@ class PilotManager(rpu.Component):
               compute pilot objects to return.
 
         **Returns:**
-              * A list of :class:`radical.pilot.ComputePilot` objects.
+              * A list of :class:`rp.ComputePilot` objects.
         """
 
         if not uids:
@@ -633,7 +632,7 @@ class PilotManager(rpu.Component):
     #
     def wait_pilots(self, uids=None, state=None, timeout=None):
         """
-        Returns when one or more :class:`radical.pilot.ComputePilots` reach a
+        Returns when one or more :class:`rp.ComputePilots` reach a
         specific state.
 
         If `pilot_uids` is `None`, `wait_pilots` returns when **all**
@@ -658,9 +657,9 @@ class PilotManager(rpu.Component):
               By default `wait_pilots` waits for the ComputePilots to
               reach a terminal state, which can be one of the following:
 
-              * :data:`radical.pilot.rps.DONE`
-              * :data:`radical.pilot.rps.FAILED`
-              * :data:`radical.pilot.rps.CANCELED`
+              * :data:`rp.rps.DONE`
+              * :data:`rp.rps.FAILED`
+              * :data:`rp.rps.CANCELED`
 
             * **timeout** [`float`]
               Timeout in seconds before the call returns regardless of Pilot
@@ -699,17 +698,17 @@ class PilotManager(rpu.Component):
 
             to_check = [self._pilots[uid] for uid in uids]
 
-        # We don't want to iterate over all pilots again and again, as that would
-        # duplicate checks on pilots which were found in matching states.  So we
-        # create a list from which we drop the pilots as we find them in
+        # We don't want to iterate over all pilots again and again, as that
+        # would duplicate checks on pilots which were found in matching states.
+        # So we create a list from which we drop the pilots as we find them in
         # a matching state
         self._rep.idle(mode='start')
         while to_check and not self._terminate.is_set():
 
             self._rep.idle()
 
-            to_check = [pilot for pilot in to_check \
-                               if pilot.state not in states and \
+            to_check = [pilot for pilot in to_check
+                               if pilot.state not in states and
                                   pilot.state not in rps.FINAL]
 
             if to_check:
@@ -724,7 +723,7 @@ class PilotManager(rpu.Component):
         self._rep.idle(mode='stop')
 
         if to_check: self._rep.warn('>>timeout\n')
-        else       : self._rep.ok(  '>>ok\n')
+        else       : self._rep.ok  ('>>ok\n')
 
         # grab the current states to return
         state = None
@@ -757,7 +756,7 @@ class PilotManager(rpu.Component):
     #
     def cancel_pilots(self, uids=None, _timeout=None):
         """
-        Cancel one or more :class:`radical.pilot.ComputePilots`.
+        Cancel one or more :class:`rp.ComputePilots`.
 
         **Arguments:**
             * **uids** [`string` or `list of strings`]: The IDs of the
@@ -820,7 +819,7 @@ class PilotManager(rpu.Component):
         # FIXME: the signature should be (self, metrics, cb, cb_data)
 
         if metric not in rpc.PMGR_METRICS :
-            raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
+            raise ValueError ("no such pmgr metric '%s'" % metric)
 
         with self._pcb_lock:
             cb_name = cb.__name__
@@ -833,7 +832,7 @@ class PilotManager(rpu.Component):
     def unregister_callback(self, cb, metric=rpc.PILOT_STATE):
 
         if metric and metric not in rpc.PMGR_METRICS :
-            raise ValueError ("Metric '%s' is not available on the pilot manager" % metric)
+            raise ValueError ("no such pmgr metric '%s'" % metric)
 
         if not metric:
             metrics = rpc.PMGR_METRICS
@@ -854,7 +853,7 @@ class PilotManager(rpu.Component):
                 for cb_name in to_delete:
 
                     if cb_name not in self._callbacks[metric]:
-                        raise ValueError("Callback '%s' is not registered" % cb_name)
+                        raise ValueError("Callback %s not registered" % cb_name)
 
                     del(self._callbacks[metric][cb_name])
 

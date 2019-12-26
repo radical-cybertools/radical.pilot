@@ -14,6 +14,8 @@ import traceback
 
 from orte_cffi import ffi, lib as orte_lib                                # noca
 
+import radical.utils as ru
+
 from ....  import pilot     as rp
 from ...   import states    as rps
 from ...   import constants as rpc
@@ -80,14 +82,14 @@ class ORTE(AgentExecutingComponent):
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
-        self._cancel_lock    = threading.RLock()
+        self._cancel_lock    = ru.RLock()
         self._cus_to_cancel  = list()
         self._watch_queue    = queue.Queue ()
 
         self._pid = self._cfg['pid']
 
         self.task_map = {}
-        self.task_map_lock = threading.Lock()
+        self.task_map_lock = ru.Lock()
 
         # we needs the LaunchMethods to construct commands.
         assert(self._cfg['task_launch_method'] ==

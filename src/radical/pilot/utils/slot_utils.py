@@ -3,6 +3,7 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+
 # ------------------------------------------------------------------------------
 #
 # This file contains methods to support the transition of the non-gpu aware
