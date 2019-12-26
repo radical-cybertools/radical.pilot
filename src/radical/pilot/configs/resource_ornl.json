@@ -3,10 +3,18 @@
     "rhea_aprun": {
         "description"                 : "The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)",
         "notes"                       : "Requires the use of an RSA SecurID on every connection.",
-        "schemas"                     : ["local"],
+        "schemas"                     : ["local", "ssh", "go"],
         "local"                       : {
-            "job_manager_endpoint"    : "torque://localhost",
-            "filesystem_endpoint"     : "file://localhost/"
+            "job_manager_endpoint"    : "slurm://rhea.ccs.ornl.gov/",
+            "filesystem_endpoint"     : "file://rhea.ccs.ornl.gov/"
+        },
+        "ssh"                         : {
+            "job_manager_endpoint"    : "slurm+ssh://rhea.ccs.ornl.gov",
+            "filesystem_endpoint"     : "sftp://rhea.ccs.ornl.gov/"
+        },
+        "go"                          : {
+            "job_manager_endpoint"    : "slurm+ssh://rhea.ccs.ornl.gov",
+            "filesystem_endpoint"     : "go://olcf#dtn/"
         },
         "default_queue"               : "batch",
         "lrms"                        : "TORQUE",
@@ -20,9 +28,9 @@
         "pre_bootstrap_0"             : [
             "module purge",
             "module load PE-gnu",
-            "module load python",
-            "module load python_pip",
-            "module load python_virtualenv",
+            "module load python/3.7.0",
+            "module load py-setuptools",
+            "module load py-virtualenv",
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],
@@ -34,22 +42,23 @@
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system",
+        "cores_per_node"              : "16",
         "gpus_per_node"               : 1,
         "saga_jd_supplement"          : {"candidate_hosts" : ["rhea"]},
         "forward_tunnel_endpoint"     : "rhea-login4g.ccs.ornl.gov"
     },
 
-    "rhea": {
+    "rhea_ssh": {
         "description"                 : "The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/rhea/)",
         "notes"                       : "Requires the use of an RSA SecurID on every connection.",
         "schemas"                     : ["local", "ssh", "go"],
+        "local"                       : {
+            "job_manager_endpoint"    : "slurm://rhea.ccs.ornl.gov",
+            "filesystem_endpoint"     : "file://rhea.ccs.ornl.gov/"
+        },
         "ssh"                         : {
             "job_manager_endpoint"    : "slurm+ssh://rhea.ccs.ornl.gov",
             "filesystem_endpoint"     : "sftp://rhea.ccs.ornl.gov/"
-        },
-        "local"                       : {
-            "job_manager_endpoint"    : "slurm://localhost",
-            "filesystem_endpoint"     : "file://localhost/"
         },
         "go"                          : {
             "job_manager_endpoint"    : "slurm+ssh://rhea.ccs.ornl.gov",
@@ -59,8 +68,6 @@
         "cores_per_node"              : "16",
         "gpus_per_node"               : 1,
         "lrms"                        : "SLURM",
-        #"agent_type"                  : "multicore",
-        #"agent_config"                : "mpirun",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -68,6 +75,9 @@
         "mpi_launch_method"           : "MPIRUN",
         "pre_bootstrap_0"             : [
             "module load python",
+            "module load python/3.7.0",
+            "module load py-setuptools",
+            "module load py-virtualenv",
             # Workaround for ZMQ runtime failure
             "export LD_PRELOAD=/lib64/librt.so.1"
         ],
