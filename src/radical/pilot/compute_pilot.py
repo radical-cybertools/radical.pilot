@@ -161,7 +161,7 @@ class ComputePilot(object):
         Return True if state changed, False otherwise
         '''
 
-        self._log.debug('==== update %s', pilot_dict['uid'])
+        self._log.debug('update %s', pilot_dict['uid'])
 
         if pilot_dict['uid'] != self.uid:
             self._log.error('invalid uid: %s / %s', pilot_dict['uid'], self.uid)
@@ -190,8 +190,6 @@ class ComputePilot(object):
         # keep all information around
         self._pilot_dict = copy.deepcopy(pilot_dict)
 
-        self._log.debug('==== call callbacks')
-
         # invoke pilot specific callbacks
         # FIXME: this iteration needs to be thread-locked!
         for _,cb_val in self._callbacks[rpc.PILOT_STATE].items():
@@ -199,7 +197,7 @@ class ComputePilot(object):
             cb      = cb_val['cb']
             cb_data = cb_val['cb_data']
 
-            self._log.debug('==== call %s', cb)
+            self._log.debug('call %s', cb)
 
             self._log.debug('%s calls cb %s', self.uid, cb)
 
@@ -582,14 +580,18 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def stage_out(self, directives):
+    def stage_out(self):
         '''
-        Stages the content of the staging directive into the pilot's
-        staging area
+        fetch `staging_output.tgz` from the pilot sandbox, and store in $PWD
         '''
 
-        # send the staging request to the pmg launcher
-        self._pmgr._pilot_staging_output(self.as_dict(), directives)
+        try:
+            psbox = self._session.get_fs_dir(self._pilot_sandbox)
+            psbox.copy('staging_output.tgz', self._client_sandbox)
+
+        except Exception:
+            self._log.exception('output staging failed')
+            raise
 
 
 # ------------------------------------------------------------------------------

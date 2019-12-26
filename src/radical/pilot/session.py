@@ -8,6 +8,7 @@ import copy
 
 import radical.utils                as ru
 import radical.saga                 as rs
+import radical.saga.filesystem      as rsfs
 import radical.saga.utils.pty_shell as rsup
 
 from .db import DBSession
@@ -129,8 +130,6 @@ class Session(rs.Session):
         self._log.info('radical.utils version: %s' % ru.version_detail)
 
         self._prof.prof('session_start', uid=self._uid, msg=int(_primary))
-        self._rep.info ('<<new session: ')
-        self._rep.plain('[%s]' % self._uid)
 
         # now we have config and uid - initialize base class (saga session)
         rs.Session.__init__(self, uid=self._uid)
@@ -140,18 +139,22 @@ class Session(rs.Session):
         self._cache      = {'resource_sandbox' : dict(),
                             'session_sandbox'  : dict(),
                             'pilot_sandbox'    : dict(),
-                            'client_sandbox'   : self._cfg.client_sandbox}
+                            'client_sandbox'   : self._cfg.client_sandbox,
+                            'js_shells'        : dict(),
+                            'fs_dirs'          : dict()}
 
         if _primary:
             self._initialize_primary(dburl)
 
         # at this point we have a DB connection, logger, etc, and are done
         self._prof.prof('session_ok', uid=self._uid, msg=int(_primary))
-        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
     def _initialize_primary(self, dburl):
+
+        self._rep.info ('<<new session: ')
+        self._rep.plain('[%s]' % self._uid)
 
         # create db connection - need a dburl to connect to
         if not dburl: dburl = self._cfg.dburl
@@ -186,12 +189,7 @@ class Session(rs.Session):
         # heartbeat.  'self._cmgr.close()` should be called during termination
         self._cmgr = rpu.ComponentManager(self._cfg)
         self._cmgr.start_bridges()
-
-        try:
-            self._cmgr.start_components()
-        except:
-            raise
-
+        self._cmgr.start_components()
 
         # expose the cmgr's heartbeat channel to anyone who wants to use it
         self._cfg.heartbeat = self._cmgr.cfg.heartbeat
@@ -208,6 +206,8 @@ class Session(rs.Session):
                           "%s/session.json" % self._rec)
             self._log.info("recording session in %s" % self._rec)
 
+        self._rep.ok('>>ok\n')
+
 
     # --------------------------------------------------------------------------
     # context manager `with` clause
@@ -223,19 +223,20 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def close(self, cleanup=False, terminate=True, download=False):
-        '''Closes the session.
+        '''
 
-        All subsequent attempts access objects attached to the session will
-        result in an error. If cleanup is set to True (default) the session
-        data is removed from the database.
+        Closes the session.  All subsequent attempts access objects attached to
+        the session will result in an error. If cleanup is set to True (default)
+        the session data is removed from the database.
 
         **Arguments:**
-            * **cleanup** (`bool`): Remove session from MongoDB (implies * terminate)
-            * **terminate** (`bool`): Shut down all pilots associated with the session.
+            * **cleanup**   (`bool`):
+              Remove session from MongoDB (implies * terminate)
+            * **terminate** (`bool`):
+              Shut down all pilots associated with the session.
+            * **download** (`bool`):
+              Fetch pilot profiles and database entries.
 
-        **Raises:**
-            * :class:`radical.pilot.IncorrectState` if the session is closed
-              or doesn't exist.
         '''
 
         # close only once
@@ -297,7 +298,8 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def as_dict(self):
-        '''Returns a Python dictionary representation of the object.
+        '''
+        Returns a Python dictionary representation of the object.
         '''
 
         object_dict = {
@@ -326,7 +328,7 @@ class Session(rs.Session):
         return self._uid
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def base(self):
@@ -399,7 +401,7 @@ class Session(rs.Session):
         else        : return None
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def is_connected(self):
@@ -597,7 +599,7 @@ class Session(rs.Session):
         else            : return umgrs
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def list_resources(self):
         '''
@@ -615,7 +617,7 @@ class Session(rs.Session):
         return sorted(resources)
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def add_resource_config(self, resource_config):
         '''
@@ -654,7 +656,7 @@ class Session(rs.Session):
             self._rcfgs[resource_config.label] = resource_config.as_dict()
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def get_resource_config(self, resource, schema=None):
         '''
@@ -692,7 +694,7 @@ class Session(rs.Session):
         return resource_cfg
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def fetch_profiles(self, tgt=None, fetch_client=False):
 
@@ -700,7 +702,7 @@ class Session(rs.Session):
                                   session=self)
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def fetch_logfiles(self, tgt=None, fetch_client=False):
 
@@ -708,7 +710,7 @@ class Session(rs.Session):
                                   session=self)
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def fetch_json(self, tgt=None, fetch_client=False):
 
@@ -716,7 +718,7 @@ class Session(rs.Session):
                               session=self)
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _get_client_sandbox(self):
         '''
@@ -732,7 +734,7 @@ class Session(rs.Session):
         return self._cache['client_sandbox']
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _get_resource_sandbox(self, pilot):
         '''
@@ -792,31 +794,14 @@ class Session(rs.Session):
                     sandbox_base = sandbox_raw
 
                 else:
-                    js_url = rcfg['job_manager_endpoint']
-                    js_url = rcfg.get('job_manager_hop', js_url)
-                    js_url = rs.Url(js_url)
-
-                    elems  = js_url.schema.split('+')
-
-                    if   'ssh'    in elems: js_url.schema = 'ssh'
-                    elif 'gsissh' in elems: js_url.schema = 'gsissh'
-                    elif 'fork'   in elems: js_url.schema = 'fork'
-                    elif len(elems) == 1  : js_url.schema = 'fork'
-                    else: raise Exception("invalid schema: %s" % js_url.schema)
-
-                    if js_url.schema == 'fork':
-                        js_url.hostname = 'localhost'
-
-                    self._log.debug("rsup.PTYShell('%s')", js_url)
-                    shell = rsup.PTYShell(js_url, self)
-
+                    shell = self.get_js_shell(resource, schema)
                     ret, out, err = shell.run_sync(' echo "WORKDIR: %s"'
                                                                   % sandbox_raw)
                     if ret or 'WORKDIR:' not in out:
                         raise RuntimeError("Couldn't get remote workdir.")
 
                     sandbox_base = out.split(":")[1].strip()
-                    self._log.debug("sandbox base %s: %s", js_url, sandbox_base)
+                    self._log.debug("sandbox base %s", sandbox_base)
 
                 # at this point we have determined the remote 'pwd' - the
                 # global sandbox is relative to it.
@@ -826,6 +811,49 @@ class Session(rs.Session):
                 self._cache['resource_sandbox'][resource] = fs_url
 
             return self._cache['resource_sandbox'][resource]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_js_shell(self, resource, schema):
+
+        if resource not in self._cache['js_shells']:
+            self._cache['js_shells'][resource] = dict()
+
+        if schema not in self._cache['js_shells'][resource]:
+
+            rcfg   = self.get_resource_config(resource, schema)
+
+            js_url = rcfg['job_manager_endpoint']
+            js_url = rcfg.get('job_manager_hop', js_url)
+            js_url = rs.Url(js_url)
+
+            elems  = js_url.schema.split('+')
+
+            if   'ssh'    in elems: js_url.schema = 'ssh'
+            elif 'gsissh' in elems: js_url.schema = 'gsissh'
+            elif 'fork'   in elems: js_url.schema = 'fork'
+            elif len(elems) == 1  : js_url.schema = 'fork'
+            else: raise Exception("invalid schema: %s" % js_url.schema)
+
+            if js_url.schema == 'fork':
+                js_url.hostname = 'localhost'
+
+            self._log.debug("rsup.PTYShell('%s')", js_url)
+            shell = rsup.PTYShell(js_url, self)
+            self._cache['js_shells'][resource][schema] = shell
+
+        return self._cache['js_shells'][resource][schema]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_fs_dir(self, url):
+
+        if url not in self._cache['fs_dirs']:
+            self._cache['fs_dirs'][url] = rsfs.Directory(url)
+
+        return self._cache['fs_dirs'][url]
 
 
     # --------------------------------------------------------------------------

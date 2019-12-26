@@ -3,6 +3,31 @@
   - For a list of open issues and known problems, see: https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
 
 
+1.0.0   Release                                                       2019-12-24
+--------------------------------------------------------------------------------
+
+  - transition to Python3
+  - migrate Rhea to Slurm
+  - ensure PATH setting for sub-agents
+  - CUDA is now handled by LM
+  - fix / improve documentation
+  - Sched optimization: unit lookup in O(1)
+  - Stampede2 prun config
+  - testing, flaking, linting and travis fixes
+  - add `pilot.stage_out` (symmetric to `pilot.stage_in`)
+  - add noop sleep executor
+  - improve prrte support
+  - avoid state publish during idle times
+  - cheyenne support
+  - default to cont scheduler
+  - configuration system revamp
+  - heartbeat based process management
+  - faster termination
+  - support for  Frontera
+  - lockfree scheduler base class
+  - switch to RU ZMQ layer
+
+      
 0.90.1  Release                                                       2019-10-12
 --------------------------------------------------------------------------------
 
