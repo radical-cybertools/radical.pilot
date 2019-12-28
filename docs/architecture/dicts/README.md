@@ -7,11 +7,6 @@ implementations of `Description` types used in RP.  The current implementation
 is based on SAGA attributes which is very slow: it seems not viable to scale to
 millions of tasks.  We compare the following approaches:
 
-  - `dict` : plain Python dictionary
-  - `tdict`: typed dictionaries (backported to 3.6 via mypy)
-  - `rucfg`: ru.Config instances (using plain `dict`s as backend)
-  - `saga` : current implementation
-  -
   - `CUD`  : `ComputeUnitDescription` (current SAGA based implementation)
   - `GOD`  : pypi `good` module (schema validator
   - `SCH`  : pypi `schema` module (schema validator)
