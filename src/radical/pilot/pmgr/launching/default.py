@@ -677,7 +677,7 @@ class Default(PMGRLaunchingComponent):
             jd_list.append(info['jd'])
             self._prof.prof('staging_in_start', uid=pilot['uid'])
 
-            for fname in ru.to_list(pilot['description'].get('input_staging')):
+            for fname in ru.as_list(pilot['description'].get('input_staging')):
                 ft_list.append({'src': fname,
                                 'tgt': '%s/staging_area/%s'
                                      % (pilot['uid'], os.path.basename(fname)),
