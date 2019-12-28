@@ -23,8 +23,13 @@ CLEANUP           = 'cleanup'
 EXIT_ON_ERROR     = 'exit_on_error'
 _CONFIG           = '_config'
 
+LAYOUT            = 'layout'
+
+NODES             = 'nodes'
+CORES_PER_NODE    = 'cores_per_node'
 CORES             = 'cores'
 GPUS              = 'gpus'
+GPUS_PER_NODE     = 'gpus_per_node'
 MEMORY            = 'memory'
 
 INPUT_STAGING     = 'input_staging'

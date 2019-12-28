@@ -1,12 +1,15 @@
 
 import radical.saga.attributes as rsa
 
-from spec_attribs import *
+import spec_attribs as a
 
 
 # ------------------------------------------------------------------------------
 #
 class CUD(rsa.Attributes):
+
+    def validate(self):
+        pass
 
     # --------------------------------------------------------------------------
     #
@@ -21,73 +24,73 @@ class CUD(rsa.Attributes):
 
         # register properties with the attribute interface
         # action description
-        self._attributes_register(KERNEL,           None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-        self._attributes_register(NAME,             None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-        self._attributes_register(EXECUTABLE,       None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-        self._attributes_register(ARGUMENTS,        None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
-        self._attributes_register(ENVIRONMENT,      None, rsa.STRING, rsa.DICT,   rsa.WRITEABLE)
-        self._attributes_register(SANDBOX,          None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-        self._attributes_register(PRE_EXEC,         None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
-        self._attributes_register(POST_EXEC,        None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
-        self._attributes_register(RESTARTABLE,      None, rsa.BOOL,   rsa.SCALAR, rsa.WRITEABLE)
-        self._attributes_register(TAGS,             None, rsa.ANY,    rsa.DICT,   rsa.WRITEABLE)
-        self._attributes_register(METADATA,         None, rsa.ANY,    rsa.SCALAR, rsa.WRITEABLE)
-        self._attributes_register(CLEANUP,          None, rsa.BOOL,   rsa.SCALAR, rsa.WRITEABLE)
-        self._attributes_register(PILOT,            None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.KERNEL,           None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.NAME,             None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.EXECUTABLE,       None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.ARGUMENTS,        None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
+        self._attributes_register(a.ENVIRONMENT,      None, rsa.STRING, rsa.DICT,   rsa.WRITEABLE)
+        self._attributes_register(a.SANDBOX,          None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.PRE_EXEC,         None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
+        self._attributes_register(a.POST_EXEC,        None, rsa.STRING, rsa.VECTOR, rsa.WRITEABLE)
+        self._attributes_register(a.RESTARTABLE,      None, rsa.BOOL,   rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.TAGS,             None, rsa.ANY,    rsa.DICT,   rsa.WRITEABLE)
+        self._attributes_register(a.METADATA,         None, rsa.ANY,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.CLEANUP,          None, rsa.BOOL,   rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.PILOT,            None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
 
 
         # I/O
-        self._attributes_register(STDOUT,           None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-        self._attributes_register(STDERR,           None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-        self._attributes_register(INPUT_STAGING,    None, rsa.ANY,    rsa.VECTOR, rsa.WRITEABLE)
-        self._attributes_register(OUTPUT_STAGING,   None, rsa.ANY,    rsa.VECTOR, rsa.WRITEABLE)
+        self._attributes_register(a.STDOUT,           None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.STDERR,           None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.INPUT_STAGING,    None, rsa.ANY,    rsa.VECTOR, rsa.WRITEABLE)
+        self._attributes_register(a.OUTPUT_STAGING,   None, rsa.ANY,    rsa.VECTOR, rsa.WRITEABLE)
 
         # resource requirements
-        self._attributes_register(CPU_PROCESSES,    None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
-        self._attributes_register(CPU_PROCESS_TYPE, None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-        self._attributes_register(CPU_THREADS,      None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
-        self._attributes_register(CPU_THREAD_TYPE,  None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-        self._attributes_register(GPU_PROCESSES,    None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
-        self._attributes_register(GPU_PROCESS_TYPE, None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-        self._attributes_register(GPU_THREADS,      None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
-        self._attributes_register(GPU_THREAD_TYPE,  None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
-        self._attributes_register(LFS_PER_PROCESS,  None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
-        self._attributes_register(MEM_PER_PROCESS,  None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.CPU_PROCESSES,    None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.CPU_PROCESS_TYPE, None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.CPU_THREADS,      None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.CPU_THREAD_TYPE,  None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.GPU_PROCESSES,    None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.GPU_PROCESS_TYPE, None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.GPU_THREADS,      None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.GPU_THREAD_TYPE,  None, rsa.STRING, rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.LFS_PER_PROCESS,  None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
+        self._attributes_register(a.MEM_PER_PROCESS,  None, rsa.INT,    rsa.SCALAR, rsa.WRITEABLE)
 
         # explicitly set attrib defaults so they get listed and included via as_dict()
-        self.set_attribute (KERNEL,           None)
-        self.set_attribute (NAME,             None)
-        self.set_attribute (EXECUTABLE,       None)
-        self.set_attribute (SANDBOX,          None)
-        self.set_attribute (ARGUMENTS,      list())
-        self.set_attribute (ENVIRONMENT,    dict())
-        self.set_attribute (PRE_EXEC,       list())
-        self.set_attribute (POST_EXEC,      list())
-        self.set_attribute (STDOUT,           None)
-        self.set_attribute (STDERR,           None)
-        self.set_attribute (INPUT_STAGING,  list())
-        self.set_attribute (OUTPUT_STAGING, list())
+        self.set_attribute (a.KERNEL,           None)
+        self.set_attribute (a.NAME,             None)
+        self.set_attribute (a.EXECUTABLE,       None)
+        self.set_attribute (a.SANDBOX,          None)
+        self.set_attribute (a.ARGUMENTS,      list())
+        self.set_attribute (a.ENVIRONMENT,    dict())
+        self.set_attribute (a.PRE_EXEC,       list())
+        self.set_attribute (a.POST_EXEC,      list())
+        self.set_attribute (a.STDOUT,           None)
+        self.set_attribute (a.STDERR,           None)
+        self.set_attribute (a.INPUT_STAGING,  list())
+        self.set_attribute (a.OUTPUT_STAGING, list())
 
-        self.set_attribute (CPU_PROCESSES,       1)
-        self.set_attribute (CPU_PROCESS_TYPE,   '')
-        self.set_attribute (CPU_THREADS,         1)
-        self.set_attribute (CPU_THREAD_TYPE,    '')
-        self.set_attribute (GPU_PROCESSES,       0)
-        self.set_attribute (GPU_PROCESS_TYPE,   '')
-        self.set_attribute (GPU_THREADS,         1)
-        self.set_attribute (GPU_THREAD_TYPE,    '')
-        self.set_attribute (GPU_THREAD_TYPE,    '')
-        self.set_attribute (LFS_PER_PROCESS,     0)
-        self.set_attribute (MEM_PER_PROCESS,     0)
+        self.set_attribute (a.CPU_PROCESSES,       1)
+        self.set_attribute (a.CPU_PROCESS_TYPE,   '')
+        self.set_attribute (a.CPU_THREADS,         1)
+        self.set_attribute (a.CPU_THREAD_TYPE,    '')
+        self.set_attribute (a.GPU_PROCESSES,       0)
+        self.set_attribute (a.GPU_PROCESS_TYPE,   '')
+        self.set_attribute (a.GPU_THREADS,         1)
+        self.set_attribute (a.GPU_THREAD_TYPE,    '')
+        self.set_attribute (a.GPU_THREAD_TYPE,    '')
+        self.set_attribute (a.LFS_PER_PROCESS,     0)
+        self.set_attribute (a.MEM_PER_PROCESS,     0)
 
-        self.set_attribute (RESTARTABLE,     False)
-        self.set_attribute (TAGS,           dict())
-        self.set_attribute (METADATA,         None)
-        self.set_attribute (CLEANUP,         False)
-        self.set_attribute (PILOT,              '')
+        self.set_attribute (a.RESTARTABLE,     False)
+        self.set_attribute (a.TAGS,           dict())
+        self.set_attribute (a.METADATA,         None)
+        self.set_attribute (a.CLEANUP,         False)
+        self.set_attribute (a.PILOT,              '')
 
-        self._attributes_register_deprecated(CORES, CPU_PROCESSES)
-        self._attributes_register_deprecated(MPI,   CPU_PROCESS_TYPE)
+      # self._attributes_rega.ister_deprecated(a.CORES, CPU_PROCESSES)
+      # self._attributes_register_deprecated(a.MPI,     CPU_PROCESS_TYPE)
 
         # apply initialization dict
         if from_dict:

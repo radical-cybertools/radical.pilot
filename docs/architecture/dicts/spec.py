@@ -15,11 +15,17 @@
 import copy
 import time
 
+# import resource
+
 import radical.utils as ru
 
 from spec_rs         import CUD
-from spec_typed_dict import TDD
-from spec_config     import Cfg
+from spec_typed_dict import TDD  # pip install mypy
+from spec_pydantic   import PYD  # pip install pydantic
+from spec_good       import GOD  # pip install good
+from spec_schema     import SCH  # pip install schema
+from spec_rudict     import RUD
+from spec_config     import CFG
 
 
 import spec_attribs as a
@@ -27,8 +33,8 @@ import spec_attribs as a
 
 # ------------------------------------------------------------------------------
 #
-checks = [dict, TDD, Cfg, CUD]
-checks = [dict, TDD, Cfg]
+checks = [CUD, GOD, SCH, dict, TDD, CFG, RUD, PYD]
+checks = [               dict, TDD, CFG, RUD, PYD]
 
 
 for check in checks:
@@ -37,7 +43,7 @@ for check in checks:
     l = list()
     t = list()
     r = ru.Reporter('radical.test')
-    r.progress_tgt(n)
+    r.progress_tgt(n * 5, label=check.__name__)
 
     t0 = time.time()
 
@@ -47,18 +53,20 @@ for check in checks:
         e = check()
         l.append(e)
         r.progress()
-    r.progress_done()
 
     t1 = time.time()
     t.append(['create', t1 - t0, 'sec'])
 
     # -----------------------------------------------
     # fill n entities
+    r.ok('\b|')
     for i, e in enumerate(l):
         e[a.NAME] = 'name.%09d' % i
 
         for att in a.attribs_s:
             e[att] = 'foo'
+        for att in a.attribs_b:
+            e[att] = False
         for att in a.attribs_dict_ss:
             e[att] = {'foo': 'bar', 'buz': 'baz'}
         for att in a.attribs_dict_aa:
@@ -71,14 +79,17 @@ for check in checks:
             e[att] = ['foo', {'bar': ['buz', 2, True]}]
         for att in a.attribs_int:
             e[att] = 3
+        r.progress()
 
     t2 = time.time()
     t.append(['fill', t2 - t1, 'sec'])
 
     # -----------------------------------------------
     # change one attribute in n entities
+    r.ok('\b|')
     for i, e in enumerate(l):
         e[a.NAME] = 'name.%09d' % i
+        r.progress()
 
     t3 = time.time()
     t.append(['change', t3 - t2, 'sec'])
@@ -86,14 +97,38 @@ for check in checks:
     # -----------------------------------------------
     # deep-copy n entities
     c = list()
+    r.ok('\b|')
     for e in l:
         c.append(copy.deepcopy(e))
+        r.progress()
 
     t4 = time.time()
     t.append(['copy', t4 - t3, 'sec'])
 
-    t.append(['size', ru.get_size(l) / (1024 * 1024), 'MB'])
+    # -----------------------------------------------
+    # check type/val errors
+    i = 0
+    r.ok('\b|')
+    for e in l:
+        try:
+            e[a.CPU_PROCESSES] = 'foo'
+            e.validate()
+        except AttributeError:
+            pass
+        except Exception as E:
+            i += 1
+          # print(E)
+          # raise
+        r.progress()
 
+    t5 = time.time()
+    t.append(['check', t5 - t4, 'sec [%d]' % i])
+    t.append(['total', t5 - t0, 'sec'])
+
+    t.append(['size', ru.get_size(l) / (1024 * 1024), 'MB'])
+  # t.append(['size', resource.getrusage(1)[2] / (1024), 'MB'])
+
+    print()
     for n,x,u in t:
         print('      %-10s: %11.3f %s' % (n, x, u))
 

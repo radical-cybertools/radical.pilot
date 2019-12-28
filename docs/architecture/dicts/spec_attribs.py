@@ -57,6 +57,11 @@ attribs_s       = [
                    GPU_THREAD_TYPE   ,  # str,
                   ]
 
+attribs_b       = [
+                   CLEANUP           ,  # bool,
+                   RESTARTABLE       ,  # bool,
+                  ]
+
 attribs_dict_ss = [
                    ENVIRONMENT       ,  # Dict[str, str],
                   ]
@@ -69,8 +74,6 @@ attribs_list_s  = [
                    ARGUMENTS         ,  # List[str],
                    PRE_EXEC          ,  # List[str],
                    POST_EXEC         ,  # List[str],
-                   RESTARTABLE       ,  # bool,
-                   CLEANUP           ,  # bool,
                   ]
 
 attribs_any     = [

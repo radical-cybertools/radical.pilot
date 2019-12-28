@@ -1,11 +1,13 @@
 
 
 import radical.utils as ru
-
 import spec_attribs  as a
 
 
-class Cfg(ru.Config):
+class CFG(ru.Config):
+
+    def validate(self):
+        pass
 
     def __init__(self, from_dict=None):
 
