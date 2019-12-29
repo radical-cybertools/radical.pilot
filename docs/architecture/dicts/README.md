@@ -14,6 +14,7 @@ millions of tasks.  We compare the following approaches:
   - `TDD`  : typed dictionary (via mypy)
   - `CFG`  : `radical.utils.Config` (munched dictionary)
   - `RUD`  : `radicals.utils.DictMixin` dict implementation
+  - `RUM`  : `radicals.utils.Description` implementation (Munch-based)
   - `PYD`  : `pydantic` module (type anotator)
 
 The following performance metrics are considered:
@@ -25,7 +26,7 @@ The following performance metrics are considered:
   - `check` : trigger a type error on value setting on each entity
   - `size`  : memory allocated by all instances
 
-When runnint with `n = 8 * 1024`, we obtain the following results:
+When runnint with `n = 1024 * 8`, we obtain the following results:
 
 ```
 CUD   : #############|#############|##############|#############|###############
@@ -92,6 +93,14 @@ PYD   : #############|#############|##############|#############|###############
       check     :       0.014 sec [0]
       total     :       1.115 sec
       size      :      58.035 MB
+RUM   : #############|#############|##############|#############|###############
+      create    :       0.010 sec
+      fill      :       0.109 sec
+      change    :       0.007 sec
+      copy      :       0.852 sec
+      check     :       0.015 sec [8192]
+      total     :       0.992 sec
+      size      :      57.597 MB
 ```
 
 Based on these data, two classes of implementations can be established: those
@@ -149,6 +158,14 @@ PYD   : #############|#############|##############|#############|###############
       check     :       1.794 sec [0]
       total     :     144.683 sec
       size      :    7428.295 MB
+RUM   : #############|#############|##############|#############|###############
+      create    :       1.420 sec
+      fill      :      10.985 sec
+      change    :       0.826 sec
+      copy      :     107.331 sec
+      check     :       1.752 sec [1048576]
+      total     :     122.314 sec
+      size      :    7372.295 MB
 ```
 
 The similarities between these implementations becomes more apparent: they
@@ -169,4 +186,14 @@ optimized type checker).  I would suggest to use plain dictionaries under our
 consumption, preserve a uniform API to dict-like data, and add the benefits of
 type safety to the RCT configuration system.
 
+
+Update
+------
+
+Motivated by the above, RU now implements a type checking `Description` base
+class.  The dict implementation is based on `Munch` (as for `CFG`), the type
+checking is limited and very forgiving (types are converted if possible).  That
+implementation is the fastest type checking one by a factor of 10 while
+preserving performance and memory consumption close to the native dict
+implementation (equals `CFG` and `RUD`).
 

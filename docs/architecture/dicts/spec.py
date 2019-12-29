@@ -25,6 +25,7 @@ from spec_pydantic   import PYD  # pip install pydantic
 from spec_good       import GOD  # pip install good
 from spec_schema     import SCH  # pip install schema
 from spec_rudict     import RUD
+from spec_rumunch    import RUM
 from spec_config     import CFG
 
 
@@ -33,8 +34,8 @@ import spec_attribs as a
 
 # ------------------------------------------------------------------------------
 #
-checks = [CUD, GOD, SCH, dict, TDD, CFG, RUD, PYD]
-checks = [               dict, TDD, CFG, RUD, PYD]
+checks = [CUD, GOD, SCH, RUM, dict, TDD, CFG, RUD, PYD]
+checks = [               RUM, dict, TDD, CFG, RUD, PYD]
 
 
 for check in checks:
