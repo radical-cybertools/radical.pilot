@@ -8,25 +8,25 @@ is based on SAGA attributes which is very slow: it seems not viable to scale to
 millions of tasks.  We compare the following approaches:
 
   - `CUD`  : `ComputeUnitDescription` (current SAGA based implementation)
-  - `GOD`  : pypi `good` module (schema validator
+  - `GOD`  : pypi `good` module (schema validator)
   - `SCH`  : pypi `schema` module (schema validator)
   - `DICT` : plain python dictionary
   - `TDD`  : typed dictionary (via mypy)
   - `CFG`  : `radical.utils.Config` (munched dictionary)
-  - `RUD`  : `radicals.utils.DictMixin` dict implementation
-  - `RUM`  : `radicals.utils.Description` implementation (Munch-based)
+  - `RUD`  : `radicals.utils.DictMixin` (RU dict implementation)
+  - `RUM`  : `radicals.utils.Description` (munched dict with typed schema)
   - `PYD`  : `pydantic` module (type anotator)
 
 The following performance metrics are considered:
 
   - `create`: create `n` description instances
   - `fill`  : fill all attributes in those instances (correctly typed)
-  - `change`: change on attribute in those instances
+  - `change`: change one attribute in those instances
   - `copy`  : deep-copy all those instances
   - `check` : trigger a type error on value setting on each entity
   - `size`  : memory allocated by all instances
 
-When runnint with `n = 1024 * 8`, we obtain the following results:
+When running with `n = 1024 * 8`, we obtain the following results:
 
 ```
 CUD   : #############|#############|##############|#############|###############
@@ -53,7 +53,7 @@ SCH   : #############|#############|##############|#############|###############
       check     :       7.422 sec [8192]
       total     :       9.170 sec
       size      :      57.597 MB
-dict  : #############|#############|##############|#############|###############
+DICT  : #############|#############|##############|#############|###############
       create    :       0.006 sec
       fill      :       0.116 sec
       change    :       0.007 sec
@@ -118,7 +118,7 @@ When excluding runtime type checkers, we can run with more entities and obtain
 for `n = 1024 * 1024`:
 
 ```
-dict  : #############|#############|##############|#############|###############
+DICT  : #############|#############|##############|#############|###############
       create    :       0.658 sec
       fill      :      10.553 sec
       change    :       0.780 sec
