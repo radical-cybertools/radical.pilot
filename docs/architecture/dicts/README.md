@@ -94,13 +94,13 @@ PYD   : #############|#############|##############|#############|###############
       total     :       1.115 sec
       size      :      58.035 MB
 RUM   : #############|#############|##############|#############|###############
-      create    :       0.010 sec
-      fill      :       0.109 sec
+      create    :       0.013 sec
+      fill      :       0.097 sec
       change    :       0.007 sec
-      copy      :       0.852 sec
-      check     :       0.015 sec [8192]
-      total     :       0.992 sec
-      size      :      57.597 MB
+      copy      :       0.132 sec
+      check     :       0.013 sec [8192]
+      total     :       0.263 sec
+      size      :      59.332 MB
 ```
 
 Based on these data, two classes of implementations can be established: those
@@ -159,21 +159,19 @@ PYD   : #############|#############|##############|#############|###############
       total     :     144.683 sec
       size      :    7428.295 MB
 RUM   : #############|#############|##############|#############|###############
-      create    :       1.420 sec
-      fill      :      10.985 sec
-      change    :       0.826 sec
-      copy      :     107.331 sec
-      check     :       1.752 sec [1048576]
-      total     :     122.314 sec
-      size      :    7372.295 MB
+      create    :       2.278 sec
+      fill      :      14.039 sec
+      change    :       0.976 sec
+      copy      :      19.000 sec
+      check     :       1.807 sec [1048576]
+      total     :      38.100 sec
+      size      :    7594.295 MB
 ```
 
 The similarities between these implementations becomes more apparent: they
-are likely all dominated by the underlying `dict` implementation.  The
-additional recursive object hierarchy of the `ru.Config` implementation is
-adding some overhead on the deep copy test - but not as much as to make it
-concerning (deep copy is a rare operation in RP).
-
+are likely all dominated by the underlying `dict` implementation.
+      
+      
 Conclusion:
 -----------
 
@@ -191,9 +189,14 @@ Update
 ------
 
 Motivated by the above, RU now implements a type checking `Description` base
-class.  The dict implementation is based on `Munch` (as for `CFG`), the type
-checking is limited and very forgiving (types are converted if possible).  That
-implementation is the fastest type checking one by a factor of 10 while
-preserving performance and memory consumption close to the native dict
-implementation (equals `CFG` and `RUD`).
+class with `Munch` semantics (`RUM`).  The schema based type checking is limited
+and very forgiving (types are converted if possible).  That implementation is
+the fastest type checking one by a factor of 10 while preserving performance and
+memory consumption close to the lean DictMixin implementations (`CFG`, `RUD`).
+
+The `RUM` implementation though
+  - has proper (if limited) type checking
+  - has fastest deep_copy by a large margin (even compared to `DICT`)
+  - has very small overheads compared to native Python dicts (`DICT`).
+
 

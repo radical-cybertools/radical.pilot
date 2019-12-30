@@ -34,13 +34,13 @@ import spec_attribs as a
 
 # ------------------------------------------------------------------------------
 #
-checks = [CUD, GOD, SCH, RUM, dict, TDD, CFG, RUD, PYD]
 checks = [               RUM, dict, TDD, CFG, RUD, PYD]
+checks = [RUM, CUD, GOD, SCH, RUM, dict, TDD, CFG, RUD, PYD]
 
 
 for check in checks:
 
-    n = 1024 * 1024
+    n = 1024 * 8
     l = list()
     t = list()
     r = ru.Reporter('radical.test')
