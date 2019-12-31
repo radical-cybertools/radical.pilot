@@ -19,7 +19,8 @@ import time
 
 import radical.utils as ru
 
-from spec_rs         import CUD
+from spec_rs         import RSA
+from spec_rp         import CUD
 from spec_typed_dict import TDD  # pip install mypy
 from spec_pydantic   import PYD  # pip install pydantic
 from spec_good       import GOD  # pip install good
@@ -28,19 +29,24 @@ from spec_rudict     import RUD
 from spec_rumunch    import RUM
 from spec_config     import CFG
 
-
 import spec_attribs as a
 
+class DIC(dict):
+    pass
 
 # ------------------------------------------------------------------------------
 #
-checks = [               RUM, dict, TDD, CFG, RUD, PYD]
-checks = [RUM, CUD, GOD, SCH, RUM, dict, TDD, CFG, RUD, PYD]
+checks = [RSA, GOD, SCH, RUM, DIC, TDD, CFG, CUD, RUD, PYD]
+checks = [               RUM, DIC, TDD, CFG, CUD, RUD, PYD]
+checks = [               RUM,                CUD          ]
 
+data   = list()
 
 for check in checks:
 
-    n = 1024 * 8
+    results = [check.__name__]
+
+    n = 1024 * 1024
     l = list()
     t = list()
     r = ru.Reporter('radical.test')
@@ -56,7 +62,7 @@ for check in checks:
         r.progress()
 
     t1 = time.time()
-    t.append(['create', t1 - t0, 'sec'])
+    results.append(t1 - t0)
 
     # -----------------------------------------------
     # fill n entities
@@ -83,7 +89,7 @@ for check in checks:
         r.progress()
 
     t2 = time.time()
-    t.append(['fill', t2 - t1, 'sec'])
+    results.append(t2 - t1)
 
     # -----------------------------------------------
     # change one attribute in n entities
@@ -93,7 +99,7 @@ for check in checks:
         r.progress()
 
     t3 = time.time()
-    t.append(['change', t3 - t2, 'sec'])
+    results.append(t3 - t2)
 
     # -----------------------------------------------
     # deep-copy n entities
@@ -104,7 +110,7 @@ for check in checks:
         r.progress()
 
     t4 = time.time()
-    t.append(['copy', t4 - t3, 'sec'])
+    results.append(t4 - t3)
 
     # -----------------------------------------------
     # check type/val errors
@@ -123,16 +129,27 @@ for check in checks:
         r.progress()
 
     t5 = time.time()
-    t.append(['check', t5 - t4, 'sec [%d]' % i])
-    t.append(['total', t5 - t0, 'sec'])
+    results.append(t5 - t4)
+    results.append(i)
+    results.append(t5 - t0)
+    results.append(ru.get_size(l) / (1024 * 1024))
+  # results.append(resource.getrusage(1)[2] / (1024))
 
-    t.append(['size', ru.get_size(l) / (1024 * 1024), 'MB'])
-  # t.append(['size', resource.getrusage(1)[2] / (1024), 'MB'])
-
+    data.append(results)
     print()
-    for n,x,u in t:
-        print('      %-10s: %11.3f %s' % (n, x, u))
 
+
+print('+------+--------+--------+--------+--------+--------+--------+--------+--------+')
+print('| name | create |   fill | change |   copy |  check |  found |  total |   size |')
+print('|      |  [sec] |  [sec] |  [sec] |  [sec] |  [sec] |    [n] |  [sec] |   [MB] |')
+print('+------+--------+--------+--------+--------+--------+--------+--------+--------+')
+
+data.sort(key=lambda x: x[7])
+for results in data:
+    print('| %-4s | %6.2f | %6.2f | %6.2f | %6.2f | %6.2f | %6d | %6.2f | %6d |'
+            % tuple(results))
+
+print('+------+--------+--------+--------+--------+--------+--------+--------+--------+')
 
 # ------------------------------------------------------------------------------
 

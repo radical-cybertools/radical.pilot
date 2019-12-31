@@ -6,7 +6,7 @@ import spec_attribs as a
 
 # ------------------------------------------------------------------------------
 #
-class CUD(rsa.Attributes):
+class RSA(rsa.Attributes):
 
     def validate(self):
         pass
@@ -101,7 +101,7 @@ class CUD(rsa.Attributes):
     #
     def __deepcopy__ (self, memo):
 
-        other = CUD()
+        other = RSA()
 
         for key in self.list_attributes ():
             other.set_attribute(key, self.get_attribute (key))
