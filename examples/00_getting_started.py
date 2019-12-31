@@ -40,14 +40,13 @@ if __name__ == '__main__':
     try:
 
         # read the config used for resource details
-        report.info('read config')
-        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
-        report.ok('>>ok\n')
+        config = ru.read_json('%s/config.json' % os.path.dirname(__file__))
+        pmgr   = rp.PilotManager(session=session)
+        umgr   = rp.UnitManager(session=session)
 
         report.header('submit pilots')
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = rp.PilotManager(session=session)
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
@@ -57,25 +56,23 @@ if __name__ == '__main__':
                    'project'       : config[resource]['project'],
                    'queue'         : config[resource]['queue'],
                    'access_schema' : config[resource]['schema'],
-                   'cores'         : config[resource]['cores'],
+                   'cores'         : 128
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        report.header('submit units')
+        n = 1024  # number of units to run
+        report.header('submit %d units' % n)
 
         # Register the ComputePilot in a UnitManager object.
-        umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 128  # number of units to run
-        report.info('create %d unit description(s)\n\t' % n)
-
+        report.progress_tgt(n, label='create')
         cuds = list()
         for i in range(0, n):
 
@@ -86,7 +83,8 @@ if __name__ == '__main__':
             cud.cpu_processes = 1
             cuds.append(cud)
             report.progress()
-        report.ok('>>ok\n')
+
+        report.progress_done()
 
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
@@ -94,7 +92,6 @@ if __name__ == '__main__':
         umgr.submit_units(cuds)
 
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
-        report.header('gather results')
         umgr.wait_units()
 
 
