@@ -84,8 +84,8 @@ PYD   : #############|#############|##############|#############|###############
 | name | create |   fill | change |   copy |  check |   found |  total |   size |
 |      |  [sec] |  [sec] |  [sec] |  [sec] |  [sec] |     [n] |  [sec] |   [MB] |
 +------+--------+--------+--------+--------+--------+---------+--------+--------+
-| CUD  |   1.68 |  13.64 |   0.93 |  18.10 |   1.59 | 1048576 |  35.94 |   7594 |
-| RUM  |   8.99 |  13.21 |   1.00 |  18.52 |   1.68 | 1048576 |  43.30 |   7594 |
+| RUM  |   1.68 |  13.64 |   0.93 |  18.10 |   1.59 | 1048576 |  35.94 |   7594 |
+| CUD  |   8.99 |  13.21 |   1.00 |  18.52 |   1.68 | 1048576 |  43.30 |   7594 |
 | TDD  |   0.75 |   8.57 |   0.81 |  54.44 |   1.04 |       0 |  65.62 |   7356 |
 | DIC  |   0.67 |  14.90 |   0.88 |  57.08 |   1.07 |       0 |  74.59 |   7372 |
 | RUD  |   3.55 |  14.97 |   0.96 |  62.44 |   1.19 |       0 |  83.11 |   7594 |
@@ -101,32 +101,26 @@ are likely all dominated by the underlying `dict` implementation.
 Conclusion:
 -----------
 
-Almost any replacement of SAGA attributes is a good replacement (with respect to
-performance and memory consumption) - but proper type checking is costly, no
-matter what we chose (we could still look into implementing our own limited and
-optimized type checker).  I would suggest to use plain dictionaries under our
-`ru.Config` implementation, and to *optionally* add type checking via `schema`
-(the fastest runtime checker).  This would improve performance and memory
-consumption, preserve a uniform API to dict-like data, and add the benefits of
-type safety to the RCT configuration system.
+Almost any replacement of SAGA attributes is a good replacement (with respect
+to performance and memory consumption).  All available proper type checking
+modules either provide only static type checks or are very costly, no matter
+what we chose.  We thus implement our own limited and optimized type checker
+(RUM, schema-based).  (the fastest runtime checker).  This improves performance
+and memory consumption, preserve a uniform API to dict-like data, and can
+potentially add the benefits of type safety to the RCT configuration system.
 
 
-Update
-------
+RP now implements a type checking `Description` classes (`CUD`).  The schema
+based type checking is limited and very forgiving (types are converted if
+possible).  That implementation is the fastest type checking one by a factor of
+10 while preserving performance and memory consumption close to the lean
+DictMixin implementations (`CFG`, `RUD`).  The penalty of `CUD` vs. `RUM` comes
+from the application of default values for the RP description types which
+requires a dictionary merge.
 
-Motivated by the above, RU now implements a type checking `Description` base
-class with `Munch` semantics (`RUM`).  The schema based type checking is limited
-and very forgiving (types are converted if possible).  That implementation is
-the fastest type checking one by a factor of 10 while preserving performance and
-memory consumption close to the lean DictMixin implementations (`CFG`, `RUD`).
-
-The `RUM` implementation
-  - has proper (if limited) type checking
-  - has fastest deep_copy by a large margin (even compared to `DICT`)
-  - has very small overheads compared to native Python dicts (`DICT`).
-
-The RP `CUD` implementation based on `RUM` benefits from those properties (a
-small runtime overhead is added by applying default values to all description
-entries).
+The `CUD` / `RUM` implementations
+  - have proper (if limited) type checking
+  - have fastest deep_copy by a large margin (even compared to `DICT`)
+  - have very small overheads compared to native Python dicts (`DICT`).
 
 
