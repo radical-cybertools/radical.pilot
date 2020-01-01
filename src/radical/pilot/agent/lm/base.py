@@ -47,7 +47,7 @@ PWD = os.getcwd()
 
 # ------------------------------------------------------------------------------
 #
-class LaunchMethod(object):
+class LM(object):
 
     # List of environment variables that designated Launch Methods should export
     # FIXME: we should find out what env vars are changed or added by
@@ -99,7 +99,7 @@ class LaunchMethod(object):
     def create(cls, name, cfg, session):
 
         # Make sure that we are the base-class!
-        if cls != LaunchMethod:
+        if cls != LM:
             raise TypeError("LM create() only available to base class!")
 
         # In case of undefined LM just return None
@@ -179,16 +179,16 @@ class LaunchMethod(object):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, log, profiler):
+    def rm_config_hook(cls, name, cfg, rm, log, profiler):
         """
-        This hook will allow the LRMS to perform launch methods specific
-        configuration steps.  The LRMS layer MUST ensure that this hook is
+        This hook will allow the RM to perform launch methods specific
+        configuration steps.  The RM layer MUST ensure that this hook is
         called exactly once (globally).  This will be a NOOP for LMs which do
-        not overload this method.  Exceptions fall through to the LRMS.
+        not overload this method.  Exceptions fall through to the RM.
         """
 
         # Make sure that we are the base-class!
-        if cls != LaunchMethod:
+        if cls != LM:
             raise TypeError("LM config hook only available to base class!")
 
         from .fork           import Fork
@@ -211,24 +211,24 @@ class LaunchMethod(object):
         }.get(name)
 
         if not impl:
-            log.info('no config hook defined for LaunchMethod %s' % name)
+            log.info('no config hook defined for LM %s' % name)
             return None
 
-        log.info('LRMS config hook for LM %s: %s' % (name, impl))
-        return impl.lrms_config_hook(name, cfg, lrms, log, profiler)
+        log.info('RM config hook for LM %s: %s' % (name, impl))
+        return impl.rm_config_hook(name, cfg, rm, log, profiler)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, log, profiler):
+    def rm_shutdown_hook(cls, name, cfg, rm, lm_info, log, profiler):
         """
         This hook is symmetric to the config hook above, and is called during
         shutdown sequence, for the sake of freeing allocated resources.
         """
 
         # Make sure that we are the base-class!
-        if cls != LaunchMethod:
+        if cls != LM:
             raise TypeError("LM shutdown hook only available to base class!")
 
         from .prte           import PRTE
@@ -248,11 +248,11 @@ class LaunchMethod(object):
         }.get(name)
 
         if not impl:
-            log.info('no shutdown hook defined for LaunchMethod %s' % name)
+            log.info('no shutdown hook defined for LM %s' % name)
             return None
 
-        log.info('LRMS shutdown hook for LM %s: %s' % (name, impl))
-        return impl.lrms_shutdown_hook(name, cfg, lrms, lm_info, log, profiler)
+        log.info('RM shutdown hook for LM %s: %s' % (name, impl))
+        return impl.rm_shutdown_hook(name, cfg, rm, lm_info, log, profiler)
 
 
     # --------------------------------------------------------------------------

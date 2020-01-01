@@ -23,29 +23,28 @@ RM_NAME_DEBUG       = 'DEBUG'
 
 # ------------------------------------------------------------------------------
 #
-# Base class for LRMS implementations.
+# Base class for RM implementations.
 #
-class LRMS(object):
+class RM(object):
     """
-    The Local Resource Manager (LRMS -- where does the 's' come from, actually?)
-    provide three fundamental information:
+    The Resource Manager provides three fundamental information:
 
-      LRMS.node_list      : a list of node names
-      LRMS.agent_node_list: the list of nodes reserved for agent execution
-      LRMS.cores_per_node : the number of cores each node has available
-      LRMS.gpus_per_node  : the number of gpus  each node has available
+      RM.node_list      : a list of node names
+      RM.agent_node_list: the list of nodes reserved for agent execution
+      RM.cores_per_node : the number of cores each node has available
+      RM.gpus_per_node  : the number of gpus  each node has available
 
-    Schedulers can rely on these information to be available.  Specific LRMS
+    Schedulers can rely on these information to be available.  Specific RM
     incarnation may have additional information available -- but schedulers
-    relying on those are invariably bound to the specific LRMS.  An example is
+    relying on those are invariably bound to the specific RM.  An example is
     the Torus Scheduler which relies on detailed torus layout information from
-    the LoadLevelerLRMS (which describes the BG/Q).
+    the LoadLevelerRM (which describes the BG/Q).
 
-    The LRMS will reserve nodes for the agent execution, by deriving the
+    The RM will reserve nodes for the agent execution, by deriving the
     respectively required node count from the config's 'agents' section.
-    Those nodes will be listed in LRMS.agent_node_list. Schedulers MUST NOT use
+    Those nodes will be listed in RM.agent_node_list. Schedulers MUST NOT use
     the agent_node_list to place compute units -- CUs are limited to the nodes
-    in LRMS.node_list.
+    in RM.node_list.
     """
 
     # TODO: Core counts dont have to be the same number for all hosts.
@@ -72,10 +71,10 @@ class LRMS(object):
         self.requested_cores = self._cfg['cores']
         self.requested_gpus  = self._cfg['gpus']
 
-        self._log.info("Configuring LRMS %s.", self.name)
+        self._log.info("Configuring RM %s.", self.name)
 
         self.lm_info         = dict()
-        self.lrms_info       = dict()
+        self.rm_info         = dict()
         self.node_list       = list()
         self.agent_nodes     = dict()
         self.cores_per_node  = 0
@@ -84,7 +83,7 @@ class LRMS(object):
         self.mem_per_node    = 0
         self.smt             = int(os.environ.get('RADICAL_SAGA_SMT', 1))
 
-        # The LRMS will possibly need to reserve nodes for the agent, according
+        # The RM will possibly need to reserve nodes for the agent, according
         # to the agent layout.  We dig out the respective requirements from the
         # config right here.
         self._agent_reqs = []
@@ -107,17 +106,17 @@ class LRMS(object):
                 raise ValueError("ill-formatted agent target '%s'" % target)
 
         # We are good to get rolling, and to detect the runtime environment of
-        # the local LRMS.
+        # the local RM.
         self._configure()
         self._log.info("Discovered execution environment: %s", self.node_list)
 
         # Make sure we got a valid nodelist and a valid setting for
         # cores_per_node
         if not self.node_list or self.cores_per_node < 1:
-            raise RuntimeError('LRMS configuration invalid (%s)(%s)' %
+            raise RuntimeError('RM configuration invalid (%s)(%s)' %
                     (self.node_list, self.cores_per_node))
 
-        # Check if the LRMS implementation reserved agent nodes.  If not, pick
+        # Check if the RM implementation reserved agent nodes.  If not, pick
         # the first couple of nodes from the nodelist as a fallback.
         if self._agent_reqs and not self.agent_nodes:
             self._log.info('Determine list of agent nodes generically.')
@@ -136,10 +135,10 @@ class LRMS(object):
 
         # Check if we can do any work
         if not self.node_list:
-            raise RuntimeError('LRMS has no nodes left to run units')
+            raise RuntimeError('RM has no nodes left to run units')
 
-        # After LRMS configuration, we call any existing config hooks on the
-        # launch methods.  Those hooks may need to adjust the LRMS settings
+        # After RM configuration, we call any existing config hooks on the
+        # launch methods.  Those hooks may need to adjust the RM settings
         # (hello ORTE).  We only call LM hooks *once* (thus the set)
         launch_methods = set()
         launch_methods.add(self._cfg.get('mpi_launch_method'))
@@ -152,14 +151,14 @@ class LRMS(object):
             try:
                 from .... import pilot as rp
                 ru.dict_merge(self.lm_info,
-                        rp.agent.LM.lrms_config_hook(lm, self._cfg, self,
+                        rp.agent.LM.rm_config_hook(lm, self._cfg, self,
                             self._log, self._prof))
             except Exception as e:
                 # FIXME don't catch/raise
-                self._log.exception("lrms config hook failed: %s" % e)
+                self._log.exception("rm config hook failed: %s" % e)
                 raise
 
-            self._log.info("lrms config hook succeeded (%s)" % lm)
+            self._log.info("rm config hook succeeded (%s)" % lm)
 
         # For now assume that all nodes have equal amount of cores and gpus
         cores_avail = (len(self.node_list) + len(self.agent_nodes)) * self.cores_per_node
@@ -176,12 +175,12 @@ class LRMS(object):
                                 % (str(gpus_avail), str(self.requested_gpus)))
 
 
-        # NOTE: self.lrms_info is what scheduler and launch method can
+        # NOTE: self.rm_info is what scheduler and launch method can
         # ultimately use, as it is included into the cfg passed to all
         # components.
         #
         # five elements are well defined:
-        #   lm_info:        the dict received via the LM's lrms_config_hook
+        #   lm_info:        the dict received via the LM's rm_config_hook
         #   node_list:      a list of node names to be used for unit execution
         #   cores_per_node: as the name says
         #   gpus_per_node:  as the name says
@@ -189,21 +188,21 @@ class LRMS(object):
         #
         # That list may turn out to be insufficient for some schedulers.  Yarn
         # for example may need to communicate YARN service endpoints etc.  an
-        # LRMS can thus expand this dict, but is then likely bound to a specific
+        # RM can thus expand this dict, but is then likely bound to a specific
         # scheduler which can interpret the additional information.
-        self.lrms_info['name']           = self.name
-        self.lrms_info['lm_info']        = self.lm_info
-        self.lrms_info['node_list']      = self.node_list
-        self.lrms_info['cores_per_node'] = self.cores_per_node
-        self.lrms_info['gpus_per_node']  = self.gpus_per_node
-        self.lrms_info['agent_nodes']    = self.agent_nodes
-        self.lrms_info['lfs_per_node']   = self.lfs_per_node
-        self.lrms_info['mem_per_node']   = self.mem_per_node
+        self.rm_info['name']           = self.name
+        self.rm_info['lm_info']        = self.lm_info
+        self.rm_info['node_list']      = self.node_list
+        self.rm_info['cores_per_node'] = self.cores_per_node
+        self.rm_info['gpus_per_node']  = self.gpus_per_node
+        self.rm_info['agent_nodes']    = self.agent_nodes
+        self.rm_info['lfs_per_node']   = self.lfs_per_node
+        self.rm_info['mem_per_node']   = self.mem_per_node
 
 
     # --------------------------------------------------------------------------
     #
-    # This class-method creates the appropriate sub-class for the LRMS.
+    # This class-method creates the appropriate sub-class for the RM.
     #
     @classmethod
     def create(cls, name, cfg, session):
@@ -222,8 +221,8 @@ class LRMS(object):
         from .debug       import Debug
 
         # Make sure that we are the base-class!
-        if cls != LRMS:
-            raise TypeError("LRMS Factory only available to base class!")
+        if cls != RM:
+            raise TypeError("RM Factory only available to base class!")
 
         try:
             impl = {
@@ -243,14 +242,14 @@ class LRMS(object):
             return impl(cfg, session)
 
         except KeyError:
-            raise RuntimeError("LRMS type '%s' unknown or defunct" % name)
+            raise RuntimeError("RM type '%s' unknown or defunct" % name)
 
 
     # --------------------------------------------------------------------------
     #
     def stop(self):
 
-        # During LRMS termination, we call any existing shutdown hooks on the
+        # During RM termination, we call any existing shutdown hooks on the
         # launch methods.  We only call LM shutdown hooks *once*
         launch_methods = set()
         launch_methods.add(self._cfg.get('mpi_launch_method'))
@@ -263,14 +262,14 @@ class LRMS(object):
             try:
                 from .... import pilot as rp
                 ru.dict_merge(self.lm_info,
-                rp.agent.LM.lrms_shutdown_hook(lm, self._cfg, self,
-                                                self.lm_info, self._log,
-                                                self._prof))
+                rp.agent.LM.rm_shutdown_hook(lm, self._cfg, self,
+                                             self.lm_info, self._log,
+                                             self._prof))
             except Exception as e:
-                self._log.exception("lrms shutdown hook failed: %s" % e)
+                self._log.exception("rm shutdown hook failed: %s" % e)
                 raise
 
-            self._log.info("lrms shutdown hook succeeded (%s)" % lm)
+            self._log.info("rm shutdown hook succeeded (%s)" % lm)
 
 
     # --------------------------------------------------------------------------

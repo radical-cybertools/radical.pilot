@@ -6,7 +6,7 @@ __license__   = "MIT"
 import pprint
 import radical.utils as ru
 
-from .base import LaunchMethod
+from .base import LM
 
 # maximum length of command line arguments we support. Beyond that we use
 # a hostfile to specify the process layout.
@@ -15,13 +15,13 @@ ARG_MAX = 4096
 
 # ------------------------------------------------------------------------------
 #
-class APRun(LaunchMethod):
+class APRun(LM):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        LM.__init__(self, name, cfg, session)
 
 
     # --------------------------------------------------------------------------

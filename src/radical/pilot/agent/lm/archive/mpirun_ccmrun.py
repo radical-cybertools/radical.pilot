@@ -5,20 +5,20 @@ __license__   = "MIT"
 
 import radical.utils as ru
 
-from .base import LaunchMethod
+from .base import LM
 
 
 # ------------------------------------------------------------------------------
 #
 # ccmrun: Cluster Compatibility Mode job launcher for Cray systems
 #
-class MPIRunCCMRun(LaunchMethod):
+class MPIRunCCMRun(LM):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        LM.__init__(self, name, cfg, session)
 
 
     # --------------------------------------------------------------------------

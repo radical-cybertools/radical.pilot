@@ -9,20 +9,20 @@ import threading     as mt
 import subprocess    as mp
 import radical.utils as ru
 
-from .base import LaunchMethod
+from .base import LM
 
 
 # ------------------------------------------------------------------------------
 #
 # NOTE: This requires a development version of Open MPI available.
 #
-class ORTE(LaunchMethod):
+class ORTE(LM):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        LM.__init__(self, name, cfg, session)
 
         # We remove all ORTE related environment variables from the launcher
         # environment, so that we can use ORTE for both launch of the
@@ -33,11 +33,11 @@ class ORTE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, log, profiler):
+    def rm_config_hook(cls, name, cfg, rm, log, profiler):
         """
-        FIXME: this config hook will manipulate the LRMS nodelist.  Not a nice
+        FIXME: this config hook will manipulate the RM nodelist.  Not a nice
                thing to do, but hey... :P
-               What really should be happening is that the LRMS digs information
+               What really should be happening is that the RM digs information
                on node reservation out of the config and configures the node
                list accordingly.  This config hook should be limited to starting
                the DVM.
@@ -92,7 +92,7 @@ class ORTE(LaunchMethod):
 
         cmdline += ' '.join(debug_strings)
 
-        vm_size = len(lrms.node_list)
+        vm_size = len(rm.node_list)
         log.info("Start DVM on %d nodes ['%s']", vm_size, ' '.join(cmdline))
         profiler.prof(event='dvm_start', uid=cfg['pid'])
 
@@ -169,7 +169,7 @@ class ORTE(LaunchMethod):
                    'version_info': {name: orte_info}}
 
         # we need to inform the actual LM instance about the DVM URI.  So we
-        # pass it back to the LRMS which will keep it in an 'lm_info', which
+        # pass it back to the RM which will keep it in an 'lm_info', which
         # will then be passed as part of the slots via the scheduler
         return lm_info
 
@@ -177,7 +177,7 @@ class ORTE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, log, profiler):
+    def rm_shutdown_hook(cls, name, cfg, rm, lm_info, log, profiler):
         """
         This hook is symmetric to the config hook above, and is called during
         shutdown sequence, for the sake of freeing allocated resources.

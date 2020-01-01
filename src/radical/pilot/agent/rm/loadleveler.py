@@ -12,13 +12,13 @@ from ... import constants as rpc
 
 from ..scheduler.torus import Torus
 
-from .base import LRMS
+from .base import RM
 from functools import reduce
 
 
 # ------------------------------------------------------------------------------
 #
-class LoadLeveler(LRMS):
+class LoadLeveler(RM):
 
     # --------------------------------------------------------------------------
     #
@@ -159,7 +159,8 @@ class LoadLeveler(LRMS):
         self.shape_table            = None
         self.torus_dimension_labels = None
 
-        LRMS.__init__(self, cfg, session)
+        RM.__init__(self, cfg, session)
+
 
     # --------------------------------------------------------------------------
     #

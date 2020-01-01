@@ -6,18 +6,18 @@ __license__   = "MIT"
 import os
 import radical.utils as ru
 
-from .base import LaunchMethod
+from .base import LM
 
 
 # ------------------------------------------------------------------------------
 #
-class RSH(LaunchMethod):
+class RSH(LM):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        LM.__init__(self, name, cfg, session)
 
         # Instruct the ExecWorkers to unset this environment variable.
         # Otherwise this will break nested RSH with SHELL spawner, i.e. when
@@ -63,14 +63,14 @@ class RSH(LaunchMethod):
         host = slots['nodes'][0]['name']
 
         # Pass configured and available environment variables to the remote shell
-        export_vars  = ' '.join(['%s=%s' % (var, os.environ[var]) 
-                                 for var in self.EXPORT_ENV_VARIABLES 
+        export_vars  = ' '.join(['%s=%s' % (var, os.environ[var])
+                                 for var in self.EXPORT_ENV_VARIABLES
                                   if var in os.environ])
-        export_vars += ' '.join(['%s=%s' % (var, task_env[var]) 
-                                 for var in task_env]) 
+        export_vars += ' '.join(['%s=%s' % (var, task_env[var])
+                                 for var in task_env])
 
         # Command line to execute launch script via rsh on host
-        rsh_hop_cmd = "%s %s %s %s" % (self.launch_command, host, 
+        rsh_hop_cmd = "%s %s %s %s" % (self.launch_command, host,
                                        export_vars, launch_script_hop)
 
         return task_command, rsh_hop_cmd

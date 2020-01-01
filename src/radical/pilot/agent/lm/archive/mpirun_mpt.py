@@ -5,18 +5,18 @@ __license__   = "MIT"
 
 import radical.utils as ru
 
-from .base import LaunchMethod
+from .base import LM
 
 
 # ------------------------------------------------------------------------------
 #
-class MPIRun_MPT(LaunchMethod):
+class MPIRun_MPT(LM):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        LM.__init__(self, name, cfg, session)
 
 
     # --------------------------------------------------------------------------

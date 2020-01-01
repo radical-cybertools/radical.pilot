@@ -6,13 +6,13 @@ __license__ = "MIT"
 import os
 import pprint
 
-from .base import LRMS
+from .base import RM
 import radical.utils as ru
 
 
 # ------------------------------------------------------------------------------
 #
-class LSF_SUMMIT(LRMS):
+class LSF_SUMMIT(RM):
 
     # --------------------------------------------------------------------------
     #
@@ -40,7 +40,7 @@ class LSF_SUMMIT(LRMS):
         # advantage that we have the code content that will be required when
         # we implement 3, the long term approach.
 
-        # LRMS.__init__(self, cfg, session)
+        # RM.__init__(self, cfg, session)
 
         self.name            = type(self).__name__
         self._cfg            = cfg
@@ -49,10 +49,10 @@ class LSF_SUMMIT(LRMS):
         self._prof           = self._session._prof
         self.requested_cores = self._cfg['cores']
 
-        self._log.info("Configuring LRMS %s.", self.name)
+        self._log.info("Configuring RM %s.", self.name)
 
         self.lm_info            = dict()
-        self.lrms_info          = dict()
+        self.rm_info            = dict()
         self.slot_list          = list()
         self.node_list          = list()
         self.agent_nodes        = dict()
@@ -63,7 +63,7 @@ class LSF_SUMMIT(LRMS):
         self.mem_per_node       = None
         self.smt                = int(os.environ.get('RADICAL_SAGA_SMT', 1))
 
-        # The LRMS will possibly need to reserve nodes for the agent, according
+        # The RM will possibly need to reserve nodes for the agent, according
         # to the agent layout.  We dig out the respective requirements from the
         # config right here.
         self._agent_reqs = []
@@ -86,7 +86,7 @@ class LSF_SUMMIT(LRMS):
                 raise ValueError("ill-formatted agent target '%s'" % target)
 
         # We are good to get rolling, and to detect the runtime environment of
-        # the local LRMS.
+        # the local RM.
         self._configure()
         self._log.info("Discovered execution environment: %s", self.node_list)
 
@@ -95,11 +95,11 @@ class LSF_SUMMIT(LRMS):
         if not self.node_list        or\
            self.sockets_per_node < 1 or \
            self.cores_per_socket < 1:
-            raise RuntimeError('LRMS configuration invalid (%s)(%s)(%s)' %
+            raise RuntimeError('RM configuration invalid (%s)(%s)(%s)' %
                     (self.node_list, self.sockets_per_node,
                      self.cores_per_socket))
 
-        # Check if the LRMS implementation reserved agent nodes.  If not, pick
+        # Check if the RM implementation reserved agent nodes.  If not, pick
         # the first couple of nodes from the nodelist as a fallback.
         if self._agent_reqs and not self.agent_nodes:
             self._log.info('Determine list of agent nodes generically.')
@@ -118,10 +118,10 @@ class LSF_SUMMIT(LRMS):
 
         # Check if we can do any work
         if not self.node_list:
-            raise RuntimeError('LRMS has no nodes left to run units')
+            raise RuntimeError('RM has no nodes left to run units')
 
-        # After LRMS configuration, we call any existing config hooks on the
-        # launch methods.  Those hooks may need to adjust the LRMS settings
+        # After RM configuration, we call any existing config hooks on the
+        # launch methods.  Those hooks may need to adjust the RM settings
         # (hello ORTE).  We only call LM hooks *once*
         launch_methods = set()  # set keeps entries unique
         if 'mpi_launch_method' in self._cfg:
@@ -134,14 +134,14 @@ class LSF_SUMMIT(LRMS):
                 try:
                     from .... import pilot as rp
                     ru.dict_merge(self.lm_info,
-                            rp.agent.LM.lrms_config_hook(lm, self._cfg, self,
+                            rp.agent.LM.rm_config_hook(lm, self._cfg, self,
                                 self._log, self._prof))
 
                 except:
-                    self._log.exception("lrms config hook failed")
+                    self._log.exception("rm config hook failed")
                     raise
 
-                self._log.info("lrms config hook succeeded (%s)" % lm)
+                self._log.info("rm config hook succeeded (%s)" % lm)
 
       # # For now assume that all nodes have equal amount of cores and gpus
       # cores_avail = (len(self.node_list) + len(self.agent_nodes)) \
@@ -150,12 +150,12 @@ class LSF_SUMMIT(LRMS):
       #             * self.gpus_per_socket * self.sockets_per_node
 
 
-        # NOTE: self.lrms_info is what scheduler and launch method can
+        # NOTE: self.rm_info is what scheduler and launch method can
         #       ultimately use, as it is included into the cfg passed to all
         #       components.
         #
         # it defines
-        #   lm_info:            dict received via the LM's lrms_config_hook
+        #   lm_info:            dict received via the LM's rm_config_hook
         #   node_list:          list of node names to be used for unit execution
         #   sockets_per_node:   integer number of sockets on a node
         #   cores_per_socket:   integer number of cores per socket
@@ -166,7 +166,7 @@ class LSF_SUMMIT(LRMS):
         #   smt:                threads per core (exposed as core in RP)
         #
 
-        self.lrms_info = {
+        self.rm_info = {
             'name'             : self.name,
             'lm_info'          : self.lm_info,
             'node_list'        : self.node_list,

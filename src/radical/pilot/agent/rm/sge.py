@@ -8,18 +8,18 @@ import signal
 
 import radical.utils as ru
 
-from .base import LRMS
+from .base import RM
 
 
 # ------------------------------------------------------------------------------
 #
-class SGE(LRMS):
+class SGE(RM):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, session):
 
-        LRMS.__init__(self, cfg, session)
+        RM.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
