@@ -11,12 +11,12 @@ millions of tasks.  We compare the following approaches:
   - `TDD`  : typed python dictionary (via mypy)
   - `GOD`  : `good` module (schema validator)
   - `SCH`  : `schema` module (schema validator)
-  - `PYD`  : `pydantic` module (type anotator)
-  - `CUD`  : `radica.pilot.ComputeUnitDescription` (new implementation)
+  - `PYD`  : `pydantic` module (type annotator)
+  - `CUD`  : `radical.pilot.ComputeUnitDescription` (new implementation)
   - `CFG`  : `radical.utils.Config` (munched dictionary)
-  - `RUD`  : `radicals.utils.DictMixin` (RU dict implementation)
-  - `RUM`  : `radicals.utils.Munch` (munched dict with typed schema)
-  - `RSA`  : `radica.saga.attributes` (current SAGA based implementation)
+  - `RUD`  : `radical.utils.DictMixin` (RU dict implementation)
+  - `RUM`  : `radical.utils.Munch` (munched dict with typed schema)
+  - `RSA`  : `radical.saga.attributes` (current SAGA based implementation)
 
 The following performance metrics are considered:
 
@@ -59,7 +59,7 @@ PYD   : #############|#############|##############|#############|###############
 ```
 
 Based on these data, two classes of implementations can be distinguished: those
-which do proper runtime type checking (and find all 88192 errors in the `check`
+which do proper runtime type checking (and find all 8192 errors in the `check`
 column), and those which don't (only static type checking during a linter run
 supported).  For the type checking ones, the type check itself usually dominates
 (for SAGA, the type check is done during construction / filling).  `copy`
