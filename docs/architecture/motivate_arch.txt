@@ -1,0 +1,63 @@
+
+  * We consider RP to perform a series of operations / transformations
+    on entities (Pilots, CUs, [DUs]):
+  
+    - Pilot:
+      - create
+      - submit
+      - bootstrap
+      - run
+      - finalize
+  
+    - CUs:
+      - create
+      - bind to pilot
+      - stage data
+      - assign to core(s)
+      - execute
+      - stage data
+      - finalize
+  
+  
+  * Architecture Constraints
+  
+    - heterogeneous, distributed resources
+    - all software lives in userspace
+      - no system services
+      - no persistent entities
+      - submission host might be a small machine
+      - network connectivity might be high latency / low bandwidth
+      - data can originally sit anywhere
+  
+  
+  * We will not solve:
+  
+    - data transfer over weak links
+    - tunnelling through firewall
+  
+  
+  * We want to handle a few pilots, but *many* CUs.
+  
+    - many ops are I/O bound
+    - some ops are CPU bound 
+      - scheduling many units (most relevant ATM)
+      - compressing data 
+      - string parsing
+      - event filtering
+  
+  
+  * Architecture Options:
+  
+    - tight loop / event loop: single thread, single process
+      - blocks on data staging (event loop can handle parts of that)
+      - blocks on CPU bound activity
+      - does not scale with #Pilots/#CUs
+  
+    - multithreading
+      - Python supports multithreading, but
+      --> detour 'threading_in_python.txt'
+      --> detour 'threads_and_signals.txt'
+  
+  
+  
+  

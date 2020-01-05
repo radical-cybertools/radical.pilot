@@ -3,11 +3,13 @@
 # but forces te ZMQ bridges to bind to the local network interface 'lo'.
 
 {
+    "target"               : "local",
     "staging_area"         : "staging_area",
     "staging_schema"       : "staging",
     "max_io_loglength"     : 1024,
     "db_poll_sleeptime"    : 1.0,
     "network_interface"    : "lo",
+
 
     "bulk_time"    : 1.0,
     "bulk_size"    : 1024,
@@ -16,12 +18,6 @@
         "interval" :  1.0,
         "timeout"  : 60.0
     },
-
-    # agent.0 must always have target 'local' at this point
-    # mode 'shared'   : local node is also used for CUs
-    # mode 'reserved' : local node is reserved for the agent
-    "target" : "local",
-    "mode"   : "shared",
 
     "agents"   : {
         "agent.1" : {

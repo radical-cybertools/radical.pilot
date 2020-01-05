@@ -1,0 +1,164 @@
+
+Layers:
+
+  - comm layer 1: network connectivity
+    - ssh/gsissh tunnel/channel setup, connect, reconnect, recover
+    - provide endpoint information for all reachable network nodes
+    - can we utilize some VPN software? (gsissh, keyfobs)
+
+  - comm layer 2: ZMQ protocols
+    - bootstrap over layer 1 endpoint information
+    - always connect all endpoints via command bus
+      - command bus:
+        - run commands on endpoints
+        - place components on endpoints
+        - keep state for reconnect / recover
+        - endpoint heartbeat sender / monitor
+    - provide channel information
+
+  - controller network
+    - initial user level controller defines a user session
+    - initiate or confirm existence of comm overlays (leyer 1)
+    - initiate or confirm comm setup on that overlay (layer 2)
+    - place components and controllers via command bus
+    - watch all three layers, and restart elements as needed
+    - controllers can be restarted and recover state (from disk)
+    - sub-controllers act as comm bridges from parent controller to their own
+      network
+      - simplest approach: controllers host all comm bridges *locally* 
+
+      Example: client controller spans laptop + two.rp.org + summit login node
+               agent controller spans summit login node + mom node
+               agent controller also bridges between those two networks
+               exec controller spans mom node + comput node
+               exec controller bridges agent network and exec network
+               result: a message (error log) can be routed from executor to
+                       client
+
+  - component
+    - microservice 
+    - connects to command bus, input streams, output streams
+    - command bus doubles as heartbeat channel
+
+
+Software Modules:
+
+  - repo radical.overlay (layer 1)
+    - provide means (tools, methods) to 
+      - establish an overlay channel between two endpoints
+      - watch such a channel and recover if needed
+    - unit tests
+      - test case:   overlay description / method call
+      - test result: commands to establish overlay channels
+    - integration tests
+      - test case:   commands to establish overlay channels
+      - test result: endpoints can be accessed (create, connect, reconnect)
+      - test case:   overlay exists but is disturbed
+      - test result: state is recovered
+
+
+  - repo: radical.comm (layer 2)
+    - given an overlay, ensure ZMQ channels are accessible on requested
+      endpoints
+    - unit tests
+      - test case:   channel description
+      - test result: commands / calls to establish channels
+    - integration tests
+      - test case:   commands / calls to establish channels
+      - test result: channels are created, connected or reconnected
+
+
+  - repo: radical.controller
+    - API / DSL to define overlay, comm and component network
+    - establish that network
+    - watch for health, restart any failing element
+    - bridge messages to sub-networks
+    - expose state and health information
+    - unit tests
+      - test case:   overlay, channel and component description
+      - test result: commands / calls to establish overlays, channels,
+                     components
+    - integration tests
+      - test case:   network description
+      - test result: network is created, all heartbeats are received once
+      - test case:   randomly element dies / is killed
+      - test result: recover
+      - test case:   terminate all layers
+      - test result: all layers are terminated
+      - test case:   establish to networks
+      - test result: messages can be routed from any controller to any other
+
+
+  - repo: radical.agent
+    - a component sub-network, running on a resource
+    - used from radical.pilot or alone
+    - an API to communicate from/to those components
+    - semantic scope: see RP agent
+
+  - repo: radical.client
+    - a component sub-network, running on some resource (close to user)
+    - used from radical.pilot or alone
+    - an API to communicate from/to those components
+    - semantic scope: consume workload descriptions via API, feed radical.agent
+
+
+  - repo: radical.pilot
+    - a component network relying on all the above
+    - RP API to communicate from/to those components
+
+  - radical.entk
+    - a component network relying on all the above
+    - EnTK API to communicate from/to those components
+
+
+  - repo: radical.launcher
+    - separate repo hosting current RP launch methods / executors
+    - 2-step:
+      - prepare (launch method)
+      - spawn   (execute / lib call)
+    - tests:
+      - unit tests
+        - test cases : scheduled tasks
+        - test result: LM specific commands / call specs
+      - integration tests
+        - test cases : LM commands / call specs
+        - test result: correctly placed tasks in expected environment, args
+                       task / call results are correctly collected
+
+
+  - repo: radical.staging
+    - on-resource data management
+      - copy, link, replicate, purge, cache
+    - tests:
+      - unit tests:
+        - test cases:  data management requests
+        - test result: data manipulation description (commands)
+      - integration tests:
+        - test cases:  data manipulation descriptions
+        - test result: data manipulations`
+
+
+  - repo: radical.resource
+    - resource configurations
+    - rm
+      - collect information about resources
+        - number nodes, node layout, homo/heterogeneous, ...
+      - partition resources
+    - tests:
+      - unit tests:
+        - test cases:  resource information
+        - test result: parsed information, partitioned resources
+      - integration tests:
+        - test cases:  resources + batch system
+        - test result: resource information
+
+
+  - repo: radical.scheduling
+    - placement decisions for a workload
+    - test:
+      - unit tests:
+        - test cases:  resources + workload
+                       resources + task
+        - test result: placement
+
+

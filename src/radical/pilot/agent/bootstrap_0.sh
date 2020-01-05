@@ -1782,7 +1782,7 @@ then
 fi
 
 # start the master agent instance (zero)
-profile_event 'sync_rel' 'agent.0'
+profile_event 'sync_rel' 'bootstrap_0'
 
 
 # # I am ashamed that we have to resort to this -- lets hope it's temporary...
@@ -1830,13 +1830,11 @@ profile_event 'sync_rel' 'agent.0'
 # PACKER_ID=$!
 
 if test -z "$CCM"; then
-    ./bootstrap_2.sh 'agent.0'    \
-                   1> agent.0.bootstrap_2.out \
-                   2> agent.0.bootstrap_2.err &
+    ./bootstrap_2.sh 1> bootstrap_2.out \
+                     2> bootstrap_2.err &
 else
-    ccmrun ./bootstrap_2.sh 'agent.0'    \
-                   1> agent.0.bootstrap_2.out \
-                   2> agent.0.bootstrap_2.err &
+    ccmrun ./bootstrap_2.sh  1> bootstrap_2.out \
+                             2> bootstrap_2.err &
 fi
 AGENT_PID=$!
 
@@ -1983,7 +1981,7 @@ echo "# -------------------------------------------------------------------"
 echo "# push final pilot state: $SESSION_ID $PILOT_ID $final_state"
 sp=$(which radical-pilot-agent-statepush)
 test -z "$sp" && echo "statepush not found"
-test -z "$sp" || $PYTHON "$sp" agent.0.cfg "$final_state"
+test -z "$sp" || $PYTHON "$sp" agent.cfg "$final_state"
 
 echo
 echo "# -------------------------------------------------------------------"
