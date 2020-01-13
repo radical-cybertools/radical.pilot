@@ -252,23 +252,6 @@ class Agent_0(rpu.Worker):
         # NOTE: we do not push the final pilot state, as that is done by the
         #       bootstrapper *after* this pilot *actually* finished.
 
-        self._log.info('pilot state: %s [%s]', state, self._final_cause)
-
-        out, out, err = None, None, None
-
-        try   : out = open('./agent.0.out', 'r').read(1024)
-        except: pass
-        try   : err = open('./agent.0.err', 'r').read(1024)
-        except: pass
-        try   : log = open('./agent.0.log', 'r').read(1024)
-        except: pass
-
-        self._dbs._c.update({'type': 'pilot',
-                             'uid' : self._pid},
-                            {'$set': {'stdout' : rpu.tail(out),
-                                      'stderr' : rpu.tail(err),
-                                      'logfile': rpu.tail(log)} })
-
 
     # --------------------------------------------------------------------------
     #

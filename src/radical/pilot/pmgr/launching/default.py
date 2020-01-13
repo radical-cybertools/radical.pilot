@@ -492,6 +492,11 @@ class Default(PMGRLaunchingComponent):
                     pilot = self._pilots[pid]['pilot']
                     job   = self._pilots[pid]['job']
 
+                    # don't overwrite resource_details from the agent
+                    #
+                    if 'resource_details' in pilot:
+                        del(pilot['resource_details'])
+
                     if pilot['state'] in rp.FINAL:
                         continue
 
