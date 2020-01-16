@@ -7,25 +7,25 @@ import os
 import subprocess
 import sys
 
-from .base import LaunchMethod
+from .base import LM
 
 
 # ------------------------------------------------------------------------------
 #
 # The Launch Method Implementation for Running Spark applications
 #
-class Spark(LaunchMethod):
+class Spark(LM):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        LM.__init__(self, name, cfg, session)
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, log, profiler=None):
+    def rm_config_hook(cls, name, cfg, rm, log, profiler=None):
 
         import radical.utils as ru
 
@@ -70,11 +70,11 @@ class Spark(LaunchMethod):
 
         spark_conf_slaves = open(spark_home + "/conf/slaves",'w')
 
-        if len(lrms.node_list) == 1:
-            spark_conf_slaves.write(lrms.node_list[0])
+        if len(rm.node_list) == 1:
+            spark_conf_slaves.write(rm.node_list[0])
             spark_conf_slaves.write('\n')
         else:
-            for nodename in lrms.node_list[1:]:
+            for nodename in rm.node_list[1:]:
                 spark_conf_slaves.write(nodename)
                 spark_conf_slaves.write('\n')
 
@@ -82,8 +82,8 @@ class Spark(LaunchMethod):
 
         # put Master Ip in spark-env.sh file -
 
-        if len(lrms.node_list) == 1:
-            master_ip = lrms.node_list[0]
+        if len(rm.node_list) == 1:
+            master_ip = rm.node_list[0]
         else:
             try:
                 master_ip = subprocess.check_output('hostname -f'.split()).strip()
@@ -121,17 +121,17 @@ class Spark(LaunchMethod):
         log.info('Start Spark Cluster')
         launch_command = spark_home + '/bin'
 
-        # The LRMS instance is only available here -- everything which is later
+        # The RM instance is only available here -- everything which is later
         # needed by the scheduler or launch method is stored in an 'lm_info'
-        # dict.  That lm_info dict will be attached to the scheduler's lrms_info
+        # dict.  That lm_info dict will be attached to the scheduler's rm_info
         # dict, and will be passed around as part of the slots structure,
         # so it is available on all LM create_command calls.
         lm_info = {'spark_home'    : spark_home,
                    'master_ip'     : master_ip,
                    'lm_detail'     : spark_master_string,
-                   'name'          : lrms.name,
+                   'name'          : rm.name,
                    'launch_command': launch_command,
-                   'nodename'      : lrms.node_list[0]}
+                   'nodename'      : rm.node_list[0]}
 
         return lm_info
 
@@ -139,11 +139,11 @@ class Spark(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, log, profiler=None):
+    def rm_shutdown_hook(cls, name, cfg, rm, lm_info, log, profiler=None):
         if 'name' not in lm_info:
             raise RuntimeError('name not in lm_info for %s' % name)
 
-        if lm_info['name'] != 'SPARKLRMS':
+        if lm_info['name'] != 'SPARKRM':
             log.info('Stoping SPARK')
             stop_spark = subprocess.check_output(lm_info['spark_home'] + '/sbin/stop-all.sh')
             if 'Error' in stop_spark:
@@ -158,8 +158,8 @@ class Spark(LaunchMethod):
     #
     def _configure(self):
 
-        self._log.info(self._cfg['lrms_info']['lm_info'])
-        self.launch_command = self._cfg['lrms_info']['lm_info']['launch_command']
+        self._log.info(self._cfg['rm_info']['lm_info'])
+        self.launch_command = self._cfg['rm_info']['lm_info']['launch_command']
         self._log.info('SPARK was called')
 
     # --------------------------------------------------------------------------

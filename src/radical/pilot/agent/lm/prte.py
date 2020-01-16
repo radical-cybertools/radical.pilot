@@ -11,18 +11,18 @@ import threading     as mt
 import subprocess    as mp
 import radical.utils as ru
 
-from .base import LaunchMethod
+from .base import LM
 
 
 # ------------------------------------------------------------------------------
 #
-class PRTE(LaunchMethod):
+class PRTE(LM):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        LM.__init__(self, name, cfg, session)
 
         # We remove all PRUN related environment variables from the launcher
         # environment, so that we can use PRUN for both launch of the
@@ -35,7 +35,7 @@ class PRTE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, log, profiler):
+    def rm_config_hook(cls, name, cfg, rm, log, profiler):
 
         prte = ru.which('prte')
         if not prte:
@@ -61,12 +61,12 @@ class PRTE(LaunchMethod):
         # write hosts file
         furi    = '%s/prrte.uri'   % os.getcwd()
         fhosts  = '%s/prrte.hosts' % os.getcwd()
-        vm_size = len(lrms.node_list)
+        vm_size = len(rm.node_list)
 
         with open(fhosts, 'w') as fout:
-            for node in lrms.node_list:
+            for node in rm.node_list:
                 fout.write('%s slots=%d\n' % (node[0],
-                                              lrms.cores_per_node * lrms.smt))
+                                              rm.cores_per_node * rm.smt))
 
         pre   = os.environ['PRRTE_PREFIX']
         prte += ' --prefix %s'     % pre
@@ -192,7 +192,7 @@ class PRTE(LaunchMethod):
                    'version_info': prte_info}
 
         # we need to inform the actual LM instance about the prte URI.  So we
-        # pass it back to the LRMS which will keep it in an 'lm_info', which
+        # pass it back to the RM which will keep it in an 'lm_info', which
         # will then be passed as part of the slots via the scheduler
         return lm_info
 
@@ -200,7 +200,7 @@ class PRTE(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, log, profiler):
+    def rm_shutdown_hook(cls, name, cfg, rm, lm_info, log, profiler):
         """
         This hook is symmetric to the config hook above, and is called during
         shutdown sequence, for the sake of freeing allocated resources.

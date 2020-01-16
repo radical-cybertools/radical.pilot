@@ -89,7 +89,7 @@ class FUNCS(AgentExecutingComponent) :
         if not exe:
             exe = '%s/rp_install/bin/radical-pilot-agent-funcs' % self._pwd
 
-        for idx, node in enumerate(self._cfg['lrms_info']['node_list']):
+        for idx, node in enumerate(self._cfg['rm_info']['node_list']):
             uid   = 'func_exec.%04d' % idx
             pwd   = '%s/%s' % (self._pwd, uid)
             funcs = {'uid'        : uid,

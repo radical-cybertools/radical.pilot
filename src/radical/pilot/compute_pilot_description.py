@@ -21,16 +21,12 @@ RUNTIME           = 'runtime'
 APP_COMM          = 'app_comm'
 CLEANUP           = 'cleanup'
 EXIT_ON_ERROR     = 'exit_on_error'
-CONFIG            = '_config'
 
 LAYOUT            = 'layout'
 
 NODES             = 'nodes'
-CORES_PER_NODE    = 'cores_per_node'
 CORES             = 'cores'
 GPUS              = 'gpus'
-GPUS_PER_NODE     = 'gpus_per_node'
-MEMORY            = 'memory'
 
 INPUT_STAGING     = 'input_staging'
 OUTPUT_STAGING    = 'output_staging'
@@ -51,9 +47,8 @@ class ComputePilotDescription(ru.Description):
     **Example**::
 
           pm = radical.pilot.PilotManager(session=s)
-
           pd = radical.pilot.ComputePilotDescription()
-          pd.resource = "local.localhost"  # defined in futuregrid.json
+          pd.resource = "local.localhost"
           pd.cores    = 16
           pd.runtime  = 5 # minutes
 
@@ -99,11 +94,6 @@ class ComputePilotDescription(ru.Description):
        NOTE: for local pilots, you can set a number larger than the physical
        machine limit when setting `RADICAL_PILOT_PROFILE` in your environment.
 
-    .. data:: memory
-
-       [Type: `int`] [**optional**] The amount of memorty (in MB) the pilot
-       should allocate on the target resource.
-
     .. data:: queue
 
        [Type: `string`] [optional] The name of the job queue the pilot should
@@ -142,26 +132,31 @@ class ComputePilotDescription(ru.Description):
        ComputeUnit sandboxes and all generated output data. Only log files will
        remain in the sandbox directory.
 
+    .. data:: layout
+
+       [Type: `str` or `dict`] [optional] Point to a json file or an explicit
+       (dict) description of the pilot layout: number and size partitions and
+       their configuration.
+
     """
 
     _schema = {
-        RESOURCE        : str   ,
-        ACCESS_SCHEMA   : str   ,
-        RUNTIME         : int   ,
-        APP_COMM        : [str] ,
-        SANDBOX         : str   ,
-        CORES           : int   ,
-        GPUS            : int   ,
-        MEMORY          : int   ,
-        QUEUE           : str   ,
-        PROJECT         : str   ,
-        CLEANUP         : bool  ,
-        CANDIDATE_HOSTS : [str] ,
-        EXIT_ON_ERROR   : bool  ,
-        INPUT_STAGING   : [str] ,
-        OUTPUT_STAGING  : [str] ,
+        RESOURCE        : str       ,
+        ACCESS_SCHEMA   : str       ,
+        RUNTIME         : int       ,
+        APP_COMM        : [str]     ,
+        SANDBOX         : str       ,
+        CORES           : int       ,
+        GPUS            : int       ,
+        QUEUE           : str       ,
+        PROJECT         : str       ,
+        CLEANUP         : bool      ,
+        CANDIDATE_HOSTS : [str]     ,
+        EXIT_ON_ERROR   : bool      ,
+        INPUT_STAGING   : [str]     ,
+        OUTPUT_STAGING  : [str]     ,
+        LAYOUT          : None      ,
     }
-
 
     _defaults = {
         RESOURCE        : None      ,
@@ -171,7 +166,6 @@ class ComputePilotDescription(ru.Description):
         SANDBOX         : None      ,
         CORES           : 1         ,
         GPUS            : 0         ,
-        MEMORY          : None      ,
         QUEUE           : None      ,
         PROJECT         : None      ,
         CLEANUP         : False     ,
@@ -179,7 +173,7 @@ class ComputePilotDescription(ru.Description):
         EXIT_ON_ERROR   : True      ,
         INPUT_STAGING   : []        ,
         OUTPUT_STAGING  : []        ,
-        CONFIG          : 'default' ,
+        LAYOUT          : 'default' ,
     }
 
 

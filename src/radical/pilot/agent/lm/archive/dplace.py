@@ -5,18 +5,18 @@ __license__   = "MIT"
 
 import radical.utils as ru
 
-from .base import LaunchMethod
+from .base import LM
 
 
 # ------------------------------------------------------------------------------
 #
-class DPlace(LaunchMethod):
+class DPlace(LM):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, session):
 
-        LaunchMethod.__init__(self, cfg, session)
+        LM.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------

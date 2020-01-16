@@ -39,11 +39,11 @@ class Torus(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        if not self._lrms_cores_per_node:
-            raise RuntimeError("LRMS %s didn't _configure cores_per_node." %
-                               self._lrms_info['name'])
+        if not self._rm_cores_per_node:
+            raise RuntimeError("RM %s didn't _configure cores_per_node." %
+                               self._rm_info['name'])
 
-        self._cores_per_node = self._lrms_cores_per_node
+        self._cores_per_node = self._rm_cores_per_node
 
         # TODO: get rid of field below
         self.nodes = 'bogus'
@@ -56,12 +56,12 @@ class Torus(AgentSchedulingComponent):
         """
 
         slot_matrix = ""
-        for slot in self._lrms.torus_block:
+        for slot in self._rm.torus_block:
             slot_matrix += "|"
             if slot[self.TORUS_BLOCK_STATUS] == rpc.FREE:
-                slot_matrix += "-" * self._lrms_cores_per_node
+                slot_matrix += "-" * self._rm_cores_per_node
             else:
-                slot_matrix += "+" * self._lrms_cores_per_node
+                slot_matrix += "+" * self._rm_cores_per_node
         slot_matrix += "|"
         return {'timestamp': time.time(),
                 'slotstate': slot_matrix}
@@ -76,21 +76,21 @@ class Torus(AgentSchedulingComponent):
     #
     def _allocate_slot(self, cores_requested, gpus_requested):
 
-        block = self._lrms.torus_block
-        sub_block_shape_table = self._lrms.shape_table
+        block = self._rm.torus_block
+        sub_block_shape_table = self._rm.shape_table
 
         self._log.info("Trying to allocate %d core(s / %d gpus.",
                 cores_requested, gpus_requested)
 
         # FIXME GPU
 
-        if cores_requested % self._lrms_cores_per_node:
-            num_cores = int(math.ceil(cores_requested / float(self._lrms_cores_per_node))) \
-                        * self._lrms_cores_per_node
+        if cores_requested % self._rm_cores_per_node:
+            num_cores = int(math.ceil(cores_requested / float(self._rm_cores_per_node))) \
+                        * self._rm_cores_per_node
             self._log.error('Core not multiple of %d, increasing to %d!',
-                           self._lrms_cores_per_node, num_cores)
+                           self._rm_cores_per_node, num_cores)
 
-        num_nodes = cores_requested / self._lrms_cores_per_node
+        num_nodes = cores_requested / self._rm_cores_per_node
 
         offset = self._alloc_sub_block(block, num_nodes)
 
@@ -100,22 +100,22 @@ class Torus(AgentSchedulingComponent):
 
         # TODO: return something else than corner location? Corner index?
         sub_block_shape     = sub_block_shape_table[num_nodes]
-        sub_block_shape_str = self._lrms.shape2str(sub_block_shape)
+        sub_block_shape_str = self._rm.shape2str(sub_block_shape)
         corner              = block[offset][self.TORUS_BLOCK_COOR]
-        corner_offset       = self.corner2offset(self._lrms.torus_block, corner)
-        corner_node         = self._lrms.torus_block[corner_offset][self.TORUS_BLOCK_NAME]
+        corner_offset       = self.corner2offset(self._rm.torus_block, corner)
+        corner_node         = self._rm.torus_block[corner_offset][self.TORUS_BLOCK_NAME]
 
         end = self.get_last_node(corner, sub_block_shape)
         self._log.debug('Allocating sub-block of %d node(s) with dimensions %s'
                        ' at offset %d with corner %s and end %s.',
                         num_nodes, sub_block_shape_str, offset,
-                        self._lrms.loc2str(corner), self._lrms.loc2str(end))
+                        self._rm.loc2str(corner), self._rm.loc2str(end))
 
-        return {'cores_per_node'      : self._lrms_cores_per_node,
-                'loadl_bg_block'      : self._lrms.loadl_bg_block,
+        return {'cores_per_node'      : self._rm_cores_per_node,
+                'loadl_bg_block'      : self._rm.loadl_bg_block,
                 'sub_block_shape_str' : sub_block_shape_str,
                 'corner_node'         : corner_node,
-                'lm_info'             : self._lrms_lm_info}
+                'lm_info'             : self._rm_lm_info}
 
 
     # --------------------------------------------------------------------------
@@ -186,7 +186,7 @@ class Torus(AgentSchedulingComponent):
     #
     def _release_slot(self, xxx_todo_changeme):
         (corner, shape) = xxx_todo_changeme
-        self._free_cores(self._lrms.torus_block, corner, shape)
+        self._free_cores(self._rm.torus_block, corner, shape)
 
 
     # --------------------------------------------------------------------------
@@ -217,7 +217,7 @@ class Torus(AgentSchedulingComponent):
 
         ret = dict()
 
-        for dim in self._lrms.torus_dimension_labels:
+        for dim in self._rm.torus_dimension_labels:
             ret[dim] = origin[dim] + shape[dim] - 1
         return ret
 
@@ -229,7 +229,7 @@ class Torus(AgentSchedulingComponent):
     def _shape2num_nodes(self, shape):
 
         nodes = 1
-        for dim in self._lrms.torus_dimension_labels:
+        for dim in self._rm.torus_dimension_labels:
             nodes *= shape[dim]
 
         return nodes

@@ -3,18 +3,18 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-from .base import LaunchMethod
+from .base import LM
 
 
 # ------------------------------------------------------------------------------
 #
-class Fork(LaunchMethod):
+class Fork(LM):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        LM.__init__(self, name, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -26,7 +26,7 @@ class Fork(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, log, profiler):
+    def rm_config_hook(cls, name, cfg, rm, log, profiler):
         return {'version_info': {
             name: {'version': '0.42', 'version_detail': 'There is no spoon'}}}
 

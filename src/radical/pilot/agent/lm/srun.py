@@ -6,12 +6,12 @@ import math
 
 import radical.utils as ru
 
-from .base import LaunchMethod
+from .base import LM
 
 
 # ------------------------------------------------------------------------------
 #
-class Srun(LaunchMethod):
+class Srun(LM):
     '''
     This launch method uses `srun` to place tasks into a slurm allocation.
 
@@ -34,7 +34,7 @@ class Srun(LaunchMethod):
     #
     def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        LM.__init__(self, name, cfg, session)
 
 
     # --------------------------------------------------------------------------

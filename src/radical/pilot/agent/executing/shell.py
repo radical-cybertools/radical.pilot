@@ -403,7 +403,7 @@ prof(){
         run_cmd   = "BULK\nLRUN\n%s\nLRUN_EOT\nBULK_RUN\n" % cmd
 
       # TODO: Remove this commented out block?
-      # if  self.lrms.target_is_macos :
+      # if  self.rm.target_is_macos :
       #     run_cmd = run_cmd.replace ("\\", "\\\\\\\\") # hello MacOS
 
         self._prof.prof('exec_start', uid=cu['uid'])

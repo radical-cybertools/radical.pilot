@@ -6,12 +6,12 @@ __license__   = "MIT"
 
 import radical.utils as ru
 
-from .base import LaunchMethod
+from .base import LM
 
 
 # ------------------------------------------------------------------------------
 #
-class IBRun(LaunchMethod):
+class IBRun(LM):
 
     # NOTE: Don't think that with IBRUN it is possible to have
     #       processes != cores ...
@@ -20,7 +20,7 @@ class IBRun(LaunchMethod):
     #
     def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        LM.__init__(self, name, cfg, session)
 
 
     # --------------------------------------------------------------------------

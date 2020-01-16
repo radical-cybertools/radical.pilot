@@ -91,7 +91,7 @@ class ORTE(AgentExecutingComponent):
         self.task_map = {}
         self.task_map_lock = ru.Lock()
 
-        # we needs the LaunchMethods to construct commands.
+        # we needs the LMs to construct commands.
         assert(self._cfg['task_launch_method'] ==
                self._cfg['mpi_launch_method' ] == "ORTE_LIB"), \
                "ORTE_LIB spawner only works with ORTE_LIB LM's."
