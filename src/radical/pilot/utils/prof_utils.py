@@ -586,6 +586,9 @@ def get_consumed_resources(session):
 
         for unit in session.get(etype='unit'):
 
+            if unit.cfg.get('pilot') != pid:
+                continue
+
             try:
                 snodes = unit.cfg['slots']['nodes']
                 ut     = unit.timestamps
