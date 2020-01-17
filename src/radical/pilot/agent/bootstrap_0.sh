@@ -1209,16 +1209,6 @@ rp_install()
     rm    -rf  "$RP_INSTALL/"
     mkdir -p   "$RP_INSTALL/"
 
-    # NOTE: we need to add the radical name __init__.py manually here --
-    #       distutil is broken and will not install it.
-    mkdir -p   "$RADICAL_MOD_PREFIX/"
-    ru_ns_init="$RADICAL_MOD_PREFIX/__init__.py"
-    echo                                              >  $ru_ns_init
-    echo 'import pkg_resources'                       >> $ru_ns_init
-    echo 'pkg_resources.declare_namespace (__name__)' >> $ru_ns_init
-    echo                                              >> $ru_ns_init
-    echo "created radical namespace in $RADICAL_MOD_PREFIX/__init__.py"
-
   # # NOTE: if we find a system level RP install, then pip install will not work
   # #       w/o the upgrade flag -- unless we install from sdist.  It may not
   # #       work with update flag either though...
