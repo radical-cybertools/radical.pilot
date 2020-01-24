@@ -1258,7 +1258,7 @@ class Default(PMGRLaunchingComponent):
 
         jd.name                  = pid
         jd.executable            = "/bin/bash"
-        jd.arguments             = ['-l %s' % bootstrap_tgt, bootstrap_args]
+        jd.arguments             = ['-l %s %s' % (bootstrap_tgt, bootstrap_args)]
         jd.working_directory     = pilot_sandbox
         jd.project               = project
         jd.output                = "bootstrap_0.out"
