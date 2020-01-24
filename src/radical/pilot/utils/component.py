@@ -411,7 +411,8 @@ class Component(object):
         self._workers    = dict()       # methods to work on things
         self._publishers = dict()       # channels to send notifications to
         self._threads    = dict()       # subscriber and idler threads
-        self._cb_lock    = ru.RLock('comp.cb_lock.%s' % self._name)   # guard threaded callback invokations
+        self._cb_lock    = ru.RLock('comp.cb_lock.%s' % self._name)
+                                        # guard threaded callback invokations
 
         self._subscribers = dict()      # ZMQ Subscriber classes
 
@@ -597,7 +598,7 @@ class Component(object):
 
         # set controller callback to handle cancellation requests
         self._cancel_list = list()
-        self._cancel_lock = ru.RLock('comp.cancel_lock')
+        self._cancel_lock = ru.RLock('comp.cancel_lock.%s' % self._name)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._cancel_monitor_cb)
 
         # call component level initialize
