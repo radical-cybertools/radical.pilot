@@ -49,7 +49,7 @@ def pilot_state_cb (pilot, state):
     if not pilot:
         return
 
-    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+    print( "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
 
     if state == rp.FAILED:
         sys.exit (1)
@@ -62,7 +62,7 @@ def unit_state_cb (unit, state):
     if not unit:
         return
 
-    print "[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state)
+    print( "[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state))
 
     if state == rp.FAILED:
         print "stderr: %s" % unit.stderr
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
     session = rp.Session()
-    print "session id: %s" % session.uid
+    print( "session id: %s" % session.uid)
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
@@ -88,7 +88,7 @@ if __name__ == "__main__":
         args = sys.argv[1:]
 
         if len(args) < 6:
-            print "Usage: python %s imgX imgY xBeg xEnd yBeg yEnd" % __file__
+            print( "Usage: python %s imgX imgY xBeg xEnd yBeg yEnd" % __file__)
             sys.exit(-1)
 
         imgX =   int(sys.argv[1])
@@ -104,7 +104,7 @@ if __name__ == "__main__":
       # session.add_context(c)
   
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        print "Initiliazing Pilot Manager..."
+        print( "Initiliazing Pilot Manager...")
         pmgr = rp.PilotManager(session=session)
   
         # Register our callback with our Pilot Manager. This callback will get
@@ -121,22 +121,22 @@ if __name__ == "__main__":
         pdesc.cleanup = True  # delete all the files that are created automatically and we don't need anymore  when the job is done
       # pdesc.project  = 'TG-MCB090174'
 
-        print "Submitting Compute Pilot to PilotManager"
+        print( "Submitting Compute Pilot to PilotManager")
         pilot = pmgr.submit_pilots(pdesc)
 
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
-        print "Initializing Unit Manager"
+        print( "Initializing Unit Manager")
         umgr = rp.UnitManager(session=session, scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
         # change their state.
-        print 'Registering the callbacks so we can keep an eye on the CUs'
+        print( 'Registering the callbacks so we can keep an eye on the CUs')
         umgr.register_callback(unit_state_cb)
 
-        print "Registering Compute Pilot with Unit Manager"
+        print( "Registering Compute Pilot with Unit Manager")
         umgr.add_pilots(pilot)
 
         mylist = []
@@ -156,18 +156,18 @@ if __name__ == "__main__":
             cudesc.output_staging = output_file
             mylist.append(cudesc)
 
-        print 'Submitting the CU to the Unit Manager...'
+        print( 'Submitting the CU to the Unit Manager...')
         mylist_units = umgr.submit_units(mylist)
 
         # wait for all units to finish
         umgr.wait_units()
 
-        print "All Compute Units completed successfully! Now.."
+        print( "All Compute Units completed successfully! Now..")
 
         # stitch together the final image
         full = Image.new("RGB", (imgX, imgY))
 
-        print "Stitching together the whole fractal to: mandelbrot_full.gif"
+        print( "Stitching together the whole fractal to: mandelbrot_full.gif")
 
         y_pixel_slice = int(imgY / pdesc.cores)
 
@@ -178,12 +178,12 @@ if __name__ == "__main__":
 
         full.save("mandelbrot_full.gif", "GIF")
 
-        print 'Images is now saved at the working directory..'
+        print( 'Images is now saved at the working directory..')
 
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        print "caught Exception: %s" % e
+        print( "caught Exception: %s" % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -191,12 +191,12 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        print "need to exit now: %s" % e
+        print( "need to exit now: %s" % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.
-        print "closing session"
+        print( "closing session")
         session.close (cleanup=False, terminate=False)
 
         # the above is equivalent to

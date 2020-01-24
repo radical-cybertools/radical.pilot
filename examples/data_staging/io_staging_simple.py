@@ -48,7 +48,7 @@ if __name__ == "__main__":
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
     session = rp.Session(uid=session_name)
-    print "session id: %s" % session.uid
+    print( "session id: %s" % session.uid)
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
@@ -107,15 +107,15 @@ if __name__ == "__main__":
         # Wait for the compute unit to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
     
-        print "* Task %s (executed @ %s) state: %s, exit code: %s, started: %s, " \
+        print( "* Task %s (executed @ %s) state: %s, exit code: %s, started: %s, " \
               "finished: %s, output file: %s" % \
               (unit.uid, unit.execution_locations, unit.state,
                unit.exit_code,  unit.start_time, unit.stop_time,
-               unit.description.output_staging[0]['target'])
+               unit.description.output_staging[0]['target']))
     
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        print "caught Exception: %s" % e
+        print( "caught Exception: %s" % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -123,12 +123,12 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        print "need to exit now: %s" % e
+        print( "need to exit now: %s" % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.
-        print "closing session"
+        print( "closing session")
         session.close ()
 
         # the above is equivalent to

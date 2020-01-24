@@ -19,7 +19,7 @@ def pilot_state_cb (pilot, state):
     if not pilot:
         return
 
-    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+    print( "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
 
     if state == rp.FAILED:
         sys.exit (1)
@@ -32,7 +32,7 @@ def unit_state_cb (unit, state):
     if not unit:
         return
 
-    print "[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state)
+    print( "[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state))
 
     if state == rp.FAILED:
         print "stderr: %s" % unit.stderr
@@ -43,7 +43,7 @@ def unit_state_cb (unit, state):
 #
 def wait_queue_size_cb(umgr, wait_queue_size):
 
-    print "[Callback]: wait_queue_size: %s." % wait_queue_size
+    print( "[Callback]: wait_queue_size: %s." % wait_queue_size)
 
 
 #------------------------------------------------------------------------------
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
     session = rp.Session()
-    print "session id: %s" % session.uid
+    print( "session id: %s" % session.uid)
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
@@ -97,7 +97,7 @@ if __name__ == "__main__":
         session.add_context(c)
         
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        print "Initiliazing Pilot Manager..."
+        print( "Initiliazing Pilot Manager...")
         pmgr = rp.PilotManager(session=session)
 
         # Register our callback with our Pilot Manager. This callback will get
@@ -113,11 +113,11 @@ if __name__ == "__main__":
         pdesc.runtime = 10 # minutes
         pdesc.cores = 4
 
-        print "Submitting Compute Pilot to PilotManager"
+        print( "Submitting Compute Pilot to PilotManager")
         pilot = pmgr.submit_pilots(pdesc)
 
         # Combine all the units
-        print "Initiliazing Unit Manager"
+        print( "Initiliazing Unit Manager")
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
@@ -128,23 +128,23 @@ if __name__ == "__main__":
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
         # change their state.
-        print 'Registering the callbacks so we can keep an eye on the CUs'
+        print( 'Registering the callbacks so we can keep an eye on the CUs')
         umgr.register_callback(unit_state_cb)
 
-        print "Registering Compute Pilot with Unit Manager"
+        print( "Registering Compute Pilot with Unit Manager")
         umgr.add_pilots(pilot) 
         # need to read the number of the k division the user want to do: that's also the only argument
         args = sys.argv[1:]
         if len(args) < 1:
-            print "Usage: python %s needs the k-variable. Please run again" % __file__
-            print "python k-means k"
+            print( "Usage: python %s needs the k-variable. Please run again" % __file__)
+            print( "python k-means k")
             sys.exit(-1)
         k = int(sys.argv[1])  # k is the number of clusters i want to create
         # read the dataset from dataset.data file and pass the elements to x list
         try:
             data = open("dataset4.in",'r')
         except IOError:
-            print "Missing dataset. file! Run:"
+            print( "Missing dataset. file! Run:")
             sys.exit(-1)
 
         dataset_as_string_array = data.readline().split(',')
@@ -206,11 +206,11 @@ if __name__ == "__main__":
                 cudesc.output_staging = 'centroid_cu_%d.data' % i
                 mylist.append(cudesc)
                 
-            print 'Submitting the CU to the Unit Manager...'
+            print( 'Submitting the CU to the Unit Manager...')
             mylist_units = umgr.submit_units(mylist)
             # wait for all units to finish
             umgr.wait_units()
-            print "All Compute Units completed PhaseA successfully! Now.." 
+            print( "All Compute Units completed PhaseA successfully! Now.." )
             #print " We compose the files into k files "
 
             # END OF PHASE A - NOW WE HAVE THE CLUSTERS CALCULATED IN THE CU FILES
@@ -255,11 +255,11 @@ if __name__ == "__main__":
                 cudesc.output_staging = 'centroid_cu_%d.data' % i
                 mylist.append(cudesc)
                 
-            print 'Submitting the CU to the Unit Manager...'
+            print( 'Submitting the CU to the Unit Manager...')
             mylist_units = umgr.submit_units(mylist)
             # wait for all units to finish
             umgr.wait_units()
-            print "All Compute Units completed PhaseB successfully! Now.." 
+            print( "All Compute Units completed PhaseB successfully! Now.." )
             #print " We compose the files into k files "
 
             
@@ -286,11 +286,11 @@ if __name__ == "__main__":
             # CHECKING FOR CONVERGENCE
             
             # now we check for convergence - the prev centroids are in !centroid! and the new are in !new_centroids! 
-            print "Now we check the converge"
-            print 'new centroids:'
-            print new_centroids
-            print 'Old centroids:'
-            print centroid
+            print( "Now we check the converge")
+            print( 'new centroids:')
+            print( new_centroids)
+            print( 'Old centroids:')
+            print( centroid)
            # print 'element list'
            # print x
             convergence = True
@@ -312,21 +312,21 @@ if __name__ == "__main__":
             
             # END OF CHECKING FOR CONVERGENCE
 
-        print 'K-means algorithm ended successfully after %d iterations' % m
+        print( 'K-means algorithm ended successfully after %d iterations' % m)
         # the only thing i have to do here is to check for convergence & add the file- arguments into the enviroments
         #print 'Thre centroids are in the cetroidss.txt file, and the elements of each centroid at centroid_x.data file'
-        print 'The centroids of these elements are: \n'
-        print new_centroids
+        print( 'The centroids of these elements are: \n')
+        print( new_centroids)
         
         # END OF K-MEANS ALGORITHM
         finish_time = time.time()
         total_time = finish_time - start_time  # total execution time
-        print 'The total execution time is: %f seconds' % total_time
+        print( 'The total execution time is: %f seconds' % total_time)
         total_time /= 60
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        print "caught Exception: %s" % e
+        print( "caught Exception: %s" % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -334,12 +334,12 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        print "need to exit now: %s" % e
+        print( "need to exit now: %s" % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.
-        print "closing session"
+        print( "closing session")
         session.close ()
 
         # the above is equivalent to

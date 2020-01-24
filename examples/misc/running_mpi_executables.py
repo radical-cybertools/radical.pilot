@@ -18,7 +18,7 @@ import radical.pilot as rp
 def pilot_state_cb (pilot, state):
     """ this callback is invoked on all pilot state changes """
 
-    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+    print( "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
 
     if state == rp.FAILED:
         sys.exit (1)
@@ -29,7 +29,7 @@ def pilot_state_cb (pilot, state):
 def unit_state_cb (unit, state):
     """ this callback is invoked on all unit state changes """
 
-    print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
+    print( "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state))
 
     if state == rp.FAILED:
         sys.exit (1)
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
     session = rp.Session(name=session_name)
-    print "session id: %s" % session.uid
+    print( "session id: %s" % session.uid)
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
@@ -118,12 +118,14 @@ if __name__ == "__main__":
         if not isinstance(units, list):
             units = [units]
         for unit in units:
-            print "* Task %s - state: %s, exit code: %s, started: %s, finished: %s, stdout: %s" \
-                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time, unit.stdout)
+            print( "* Task %s - state: %s, exit code: %s, started: %s, \
+                   finished: %s, stdout: %s" % (unit.uid, unit.state,
+                                                unit.exit_code, unit.start_time,
+                                                unit.stop_time, unit.stdout))
     
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        print "caught Exception: %s" % e
+        print( "caught Exception: %s" % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -131,12 +133,12 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        print "need to exit now: %s" % e
+        print( "need to exit now: %s" % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.
-        print "closing session"
+        print( "closing session")
         session.close ()
 
         # the above is equivalent to

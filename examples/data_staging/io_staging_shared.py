@@ -24,7 +24,7 @@ if __name__ == "__main__":
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
     session = rp.Session(uid=session_name)
-    print "session id: %s" % session.uid
+    print( "session id: %s" % session.uid)
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
@@ -58,9 +58,9 @@ if __name__ == "__main__":
         shared_input_file_url = 'file://%s/%s' % (os.getcwd(), SHARED_INPUT_FILE)
 
         staged_file = "%s%s" % (MY_STAGING_AREA, SHARED_INPUT_FILE)
-        print "##########################"
+        print( "##########################")
         print staged_file
-        print "##########################"
+        print( "##########################")
 
         # Configure the staging directive for to insert the shared file into
         # the pilot staging directory.
@@ -117,12 +117,12 @@ if __name__ == "__main__":
         for unit in umgr.get_units():
 
             # Get the stdout and stderr streams of the ComputeUnit.
-            print " STDOUT: %s" % unit.stdout
-            print " STDERR: %s" % unit.stderr
+            print( " STDOUT: %s" % unit.stdout)
+            print( " STDERR: %s" % unit.stderr)
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        print "caught Exception: %s" % e
+        print( "caught Exception: %s" % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -130,12 +130,12 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        print "need to exit now: %s" % e
+        print( "need to exit now: %s" % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.
-        print "closing session"
+        print( "closing session")
         session.close ()
 
         # the above is equivalent to

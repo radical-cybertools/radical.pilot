@@ -111,10 +111,10 @@ def start_cr():
             rid = sys.argv[1]
 
             # reconnect to the given resource
-            print 'reconnecting to %s' % rid
+            print( 'reconnecting to %s' % rid)
             cr = rs.resource.Compute(id=rid, session=session)
-            print 'reconnected  to %s' % rid
-            print "  state : %s (%s)" % (cr.state, cr.state_detail)
+            print( 'reconnected  to %s' % rid)
+            print( "  state : %s (%s)" % (cr.state, cr.state_detail))
 
 
         # ----------------------------------------------------------------------
@@ -136,7 +136,7 @@ def start_cr():
             # Create a VM instance from that description.
             cr = rm.acquire(cd)
 
-            print "\nWaiting for VM to become active..."
+            print( "\nWaiting for VM to become active...")
 
 
         # ----------------------------------------------------------------------
@@ -147,9 +147,9 @@ def start_cr():
         cr.wait(rs.resource.ACTIVE)
 
         # Query some information about the newly created VM
-        print "Created VM: %s"      %  cr.id
-        print "  state   : %s (%s)" % (cr.state, cr.state_detail)
-        print "  access  : %s"      %  cr.access
+        print( "Created VM: %s"      %  cr.id)
+        print( "  state   : %s (%s)" % (cr.state, cr.state_detail))
+        print( "  access  : %s"      %  cr.access)
 
         # give the VM some time to start up comlpetely, otherwise the subsequent
         # job submission might end up failing...
@@ -160,7 +160,7 @@ def start_cr():
 
     except Exception as e:
         # Catch all other exceptions
-        print "An Exception occured: %s " % e
+        print( "An Exception occured: %s " % e)
         raise
 
 
@@ -172,8 +172,8 @@ def stop_cr(cr):
         return
 
     cr.destroy()
-    print "\nDestroyed VM: %s" % cr.id
-    print "  state : %s (%s)" % (cr.state, cr.state_detail)
+    print( "\nDestroyed VM: %s" % cr.id)
+    print( "  state : %s (%s)" % (cr.state, cr.state_detail))
 
 
 # --------------------------------------------------------------------------
@@ -288,7 +288,7 @@ def stop_pilot(pilot):
         return
 
     pilot.pilot_manager.cancel_pilots(pilot.uid)
-    print "\nCancel Pilot: %s" % pilot.uid
+    print( "\nCancel Pilot: %s" % pilot.uid)
 
 
 # ------------------------------------------------------------------------------

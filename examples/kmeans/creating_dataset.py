@@ -11,8 +11,8 @@ if __name__ == "__main__":
 
     args = sys.argv[1:]
     if len(args) < 1:
-        print "Usage: python %s needs the  number of the dataset. Please run again" % __file__
-        print "python create_dataset.py n"
+        print( "Usage: python %s needs the  number of the dataset. Please run again" % __file__)
+        print( "python create_dataset.py n")
         sys.exit(-1)
     
     n = int(sys.argv[1])  # k is the number of clusters i want to create

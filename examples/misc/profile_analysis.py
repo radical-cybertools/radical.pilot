@@ -34,7 +34,7 @@ def profile_analysis(sid):
 
     # fetch profiles for all pilots
     profiles   = rpu.fetch_profiles(sid=sid, tgt='/tmp/')
-    print profiles
+    print( profiles)
 
     # combine into a single profile
     profile    = rpu.combine_profiles(profiles)
@@ -45,13 +45,13 @@ def profile_analysis(sid):
     # split into session / pilot / unit frames
     sf, pf, uf = rpu.split_frame(frame)
 
-    print len(sf)
-    print len(pf)
-    print len(uf)
+    print( len(sf))
+    print( len(pf))
+    print( len(uf))
     
-    print sf[0:10]
-    print pf[0:10]
-    print uf[0:10]
+    print( sf[0:10])
+    print( pf[0:10])
+    print( uf[0:10])
 
 
     # derive some additional 'info' columns, which contains some commonly used
@@ -60,26 +60,26 @@ def profile_analysis(sid):
 
     for index, row in uf.iterrows():
         if str(row['info']) != 'nan':
-            print "%-20s : %-10s : %-25s : %-20s" % \
-                    (row['time'], row['uid'], row['state'], row['info'])
+            print( "%-20s : %-10s : %-25s : %-20s" % \
+                    (row['time'], row['uid'], row['state'], row['info']))
 
     # add a 'state_from' columns which signals a state transition
     rpu.add_states(uf)
     adv = uf[uf['event'].isin(['advance'])]
-    print '---------------'
-    print len(adv)
-    print uf[uf['uid'] == 'unit.000001']
-    print list(pf['event'])
+    print( '---------------')
+    print( len(adv))
+    print( uf[uf['uid'] == 'unit.000001'])
+    print( list(pf['event']))
 
     tmp = uf[uf['uid'] == 'unit.000001'].dropna()
-    print tmp[['time', 'uid', 'state', 'state_from']]
+    print( tmp[['time', 'uid', 'state', 'state_from']])
 
     # add a columns 'rate_out' which contains the rate (1/s) of the event
     # 'advance to state STAGING_OUTPUT'
-    print '---------------'
+    print( '---------------')
     rpu.add_frequency(adv, 'rate_out', 0.5, {'state' : 'StagingOutput', 'event' : 'advance'})
-    print adv[['time', 'rate_out']].dropna(subset=['rate_out'])
-    print '---------------'
+    print( adv[['time', 'rate_out']].dropna(subset=['rate_out']))
+    print( '---------------')
 
     fig, plot = rpu.create_plot()
     plot.set_title('rate of ouput staging transitions', y=1.05, fontsize=18)
