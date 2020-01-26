@@ -8,31 +8,31 @@ import subprocess
 
 import radical.utils as ru
 
-from .base import LaunchMethod
+from .base import LM
 
 
 # ------------------------------------------------------------------------------
 #
 # The Launch Method Implementation for Running YARN applications
 #
-class Yarn(LaunchMethod):
+class Yarn(LM):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        LM.__init__(self, name, cfg, session)
 
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, log, profiler=None):
+    def rm_config_hook(cls, name, cfg, rm, log, profiler=None):
         """
-        this config hook will inspect the LRMS nodelist and, if needed,
+        this config hook will inspect the RM nodelist and, if needed,
         will start the YARN cluster on node[0].
         """
-        log.info('Hook called by YARN LRMS with the name %s' % lrms.name)
+        log.info('Hook called by YARN RM with the name %s' % rm.name)
 
         def config_core_site(node):
 
@@ -173,22 +173,22 @@ class Yarn(LaunchMethod):
 
             scheduler_file.close()
 
-        # If the LRMS used is not YARN the namenode url is going to be
+        # If the RM used is not YARN the namenode url is going to be
         # the first node in the list and the port is the default one, else
-        # it is the one that the YARN LRMS returns
+        # it is the one that the YARN RM returns
         hadoop_home = None
-        if lrms.name == 'YARNLRMS':  # FIXME: use constant
-            log.info('Hook called by YARN LRMS')
-            log.info('NameNode: %s', lrms.namenode_url)
-            service_url    = lrms.namenode_url
-            rm_url         = "%s:%s" % (lrms.rm_ip, lrms.rm_port)
-            rm_ip          = lrms.rm_ip
+        if rm.name == 'YARNRM':  # FIXME: use constant
+            log.info('Hook called by YARN RM')
+            log.info('NameNode: %s', rm.namenode_url)
+            service_url    = rm.namenode_url
+            rm_url         = "%s:%s" % (rm.rm_ip, rm.rm_port)
+            rm_ip          = rm.rm_ip
             launch_command = ru.which('yarn')
 
         else:
             # Here are the necessary commands to start the cluster.
-            if lrms.node_list[0] == 'localhost':
-                node_name = lrms.node_list[0]
+            if rm.node_list[0] == 'localhost':
+                node_name = rm.node_list[0]
             else:
                 node = subprocess.check_output('/bin/hostname')
                 log.info('Entered Else creation')
@@ -227,12 +227,12 @@ class Yarn(LaunchMethod):
             for line in hadoop_env_file_lines:
                 hadoop_env_file.write(line)
             hadoop_env_file.close()
-            host = node_name.split(lrms.node_list[0])[1]
+            host = node_name.split(rm.node_list[0])[1]
 
             config_core_site(node_name)
             config_hdfs_site()
             config_mapred_site()
-            config_yarn_site(lrms.cores_per_node, lrms.node_list, host)  # FIXME GPU
+            config_yarn_site(rm.cores_per_node, rm.node_list, host)  # FIXME GPU
 
             log.info('Start Formatting DFS')
             namenode_format = os.system(hadoop_home + '/bin/hdfs namenode -format -force')
@@ -267,18 +267,18 @@ class Yarn(LaunchMethod):
             rm_ip = node_name
 
 
-        # The LRMS instance is only available here -- everything which is later
+        # The RM instance is only available here -- everything which is later
         # needed by the scheduler or launch method is stored in an 'lm_info'
-        # dict.  That lm_info dict will be attached to the scheduler's lrms_info
+        # dict.  That lm_info dict will be attached to the scheduler's rm_info
         # dict, and will be passed around as part of the slots structure,
         # so it is available on all LM create_command calls.
         lm_info = {'service_url'   : service_url,
                    'rm_url'        : rm_url,
                    'hadoop_home'   : hadoop_home,
                    'rm_ip'         : rm_ip,
-                   'name'          : lrms.name,
+                   'name'          : rm.name,
                    'launch_command': launch_command,
-                   'nodename'      : lrms.node_list[0] }
+                   'nodename'      : rm.node_list[0] }
 
         return lm_info
 
@@ -286,11 +286,11 @@ class Yarn(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_shutdown_hook(cls, name, cfg, lrms, lm_info, log, profiler=None):
+    def rm_shutdown_hook(cls, name, cfg, rm, lm_info, log, profiler=None):
         if 'name' not in lm_info:
             raise RuntimeError('name not in lm_info for %s' % name)
 
-        if lm_info['name'] != 'YARNLRMS':  # FIXME: use constant
+        if lm_info['name'] != 'YARNRM':  # FIXME: use constant
             log.info('Stoping YARN')
             os.system(lm_info['hadoop_home'] + '/sbin/stop-yarn.sh')
 
@@ -309,8 +309,8 @@ class Yarn(LaunchMethod):
 
         # Single Node configuration
         # FIXME : Upload App to another server, which will be always alive
-        self._log.info(self._cfg['lrms_info']['lm_info'])
-        self.launch_command = self._cfg['lrms_info']['lm_info']['launch_command']
+        self._log.info(self._cfg['rm_info']['lm_info'])
+        self.launch_command = self._cfg['rm_info']['lm_info']['launch_command']
         self._log.info('YARN was called')
 
 

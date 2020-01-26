@@ -7,18 +7,18 @@ import multiprocessing
 
 import radical.utils as ru
 
-from .base import LRMS
+from .base import RM
 
 
 # ------------------------------------------------------------------------------
 #
-class Fork(LRMS):
+class Fork(RM):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, session):
 
-        LRMS.__init__(self, cfg, session)
+        RM.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -27,7 +27,7 @@ class Fork(LRMS):
 
         self._log.info("Using fork on localhost.")
 
-        # For the fork LRMS (ie. on localhost), we fake an infinite number of
+        # For the fork RM (ie. on localhost), we fake an infinite number of
         # cores, so don't perform any sanity checks.
         detected_cpus = multiprocessing.cpu_count()
 

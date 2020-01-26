@@ -5,7 +5,7 @@ __license__   = "MIT"
 
 import radical.utils as ru
 
-from .base import LaunchMethod
+from .base import LM
 
 
 
@@ -14,13 +14,13 @@ from .base import LaunchMethod
 # dplace: job launcher for SGI systems (e.g. on Blacklight)
 # https://www.nas.nasa.gov/hecc/support/kb/Using-SGIs-dplace-Tool-for-Pinning_284.html
 #
-class MPIRunDPlace(LaunchMethod):
+class MPIRunDPlace(LM):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        LM.__init__(self, name, cfg, session)
 
 
     # --------------------------------------------------------------------------

@@ -35,7 +35,7 @@ HPC resources, focusing on the following aspects:
 .. #. abstract the heterogeneity of distributed resources, so that running
 ..    applications is uniform across them, from a users perspective;
 
-Summarizing, RP is the right tool if, for example, you want to: 
+Summarizing, RP is the right tool if, for example, you want to:
 
 #. perform whatever type of simulation or analysis via a bag of up to tens of
    thousand of tasks, homogeneous or heterogeneous in size and duration.
@@ -91,7 +91,7 @@ What is a Pilot?
 As an abstraction, a pilot is a placeholder for resources on a given platform
 and is capable of executing tasks of a workload on those resources. As a
 system, pilot is a type of middleware software that implements the pilot
-abstraction. 
+abstraction.
 
 RP is a pilot system, capable of (1) acquiring resources by submitting jobs to
 HPC platforms; (2) managing those resources on the user's (or application's)
@@ -112,14 +112,14 @@ circles). Application contains pilot and CU descriptions; RP Client has two
 components: Pilot Manager and Unit Manager. Pilot descriptions are passed to
 the Pilot Manager and Unit descriptions to the Unit Manager. The Pilot Manager
 uses Pilot Launcher to launch 2 of the 5 described pilots. One pilot is
-submitted to the Local Resource Management System (LRMS) of Resource A, the
-other pilot to the LRMS of Resource B. Once instantiated, each pilot becomes
+submitted to the local Resource Management system (RM) of Resource A, the
+other pilot to the RM of Resource B. Once instantiated, each pilot becomes
 available for CU execution. At that point, RP Unit Manager sends 2 units to
 Resource A and 5 units to Resource B.
 
 .. figure:: architecture.png
    :width: 600pt
-   :alt: RP architecture 
+   :alt: RP architecture
 
    Figure 1. High-level view of RP architecture when deployed on a simplified
    view of two HPC platforms.
@@ -202,7 +202,7 @@ written during runtime. You can set the following environment variables in the
 shell from which the RP application is executed:
 
 .. code-block:: bash
-   
+
    RADICAL_LOG_LVL=DEBUG
    RADICAL_LOG_TGT=/tmp/rp.log
 
@@ -224,7 +224,7 @@ Profiling must be explicitly enabled by exporting the following environment
 variable in the shell from which the RP application is executed:
 
 .. code-block:: bash
-   
+
    RADICAL_PROF=True
 
 Further, the argument ``download=True`` must be passed to the ``method

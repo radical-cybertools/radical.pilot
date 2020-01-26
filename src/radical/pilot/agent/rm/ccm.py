@@ -7,17 +7,17 @@ import os
 
 import radical.utils as ru
 
-from .base import LRMS
+from .base import RM
 
 
 # ------------------------------------------------------------------------------
 #
-class CCM(LRMS):
+class CCM(RM):
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, session):
 
-        LRMS.__init__(self, cfg, session)
+        RM.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------

@@ -3,12 +3,12 @@ __copyright__ = "Copyright 2018, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 
-from .base import LRMS
+from .base import RM
 
 
 # ------------------------------------------------------------------------------
 #
-class Debug(LRMS):
+class Debug(RM):
 
     # --------------------------------------------------------------------------
     #
@@ -20,7 +20,7 @@ class Debug(LRMS):
         for k,v in list(cfg['resource_cfg'].items()):
             cfg[k] = v
 
-        LRMS.__init__(self, cfg, session)
+        RM.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -50,18 +50,18 @@ class Debug(LRMS):
 
         self.cores_per_node   = spn * cps
 
-        self.lrms_info = {'name'               : self.name,
-                          'lm_info'            : self.lm_info,
-                          'node_list'          : self.node_list,
-                          'agent_nodes'        : self.agent_nodes,
-                          'sockets_per_node'   : self.sockets_per_node,
-                          'cores_per_socket'   : self.cores_per_socket,
-                          'gpus_per_socket'    : self.gpus_per_socket,
-                          'lfs_per_node'       : self.lfs_per_node,
-                          }
+        self.rm_info = {'name'               : self.name,
+                        'lm_info'            : self.lm_info,
+                        'node_list'          : self.node_list,
+                        'agent_nodes'        : self.agent_nodes,
+                        'sockets_per_node'   : self.sockets_per_node,
+                        'cores_per_socket'   : self.cores_per_socket,
+                        'gpus_per_socket'    : self.gpus_per_socket,
+                        'lfs_per_node'       : self.lfs_per_node,
+                       }
 
         import pprint
-        pprint.pprint(self.lrms_info)
+        pprint.pprint(self.rm_info)
 
 
 # ------------------------------------------------------------------------------

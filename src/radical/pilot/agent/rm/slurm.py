@@ -8,18 +8,18 @@ import hostlist
 
 import radical.utils as ru
 
-from .base import LRMS
+from .base import RM
 
 
 # ------------------------------------------------------------------------------
 #
-class Slurm(LRMS):
+class Slurm(RM):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, session):
 
-        LRMS.__init__(self, cfg, session)
+        RM.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------

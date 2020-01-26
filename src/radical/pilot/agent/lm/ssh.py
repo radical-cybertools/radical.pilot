@@ -7,18 +7,18 @@ import os
 
 import radical.utils as ru
 
-from .base import LaunchMethod
+from .base import LM
 
 
 # ------------------------------------------------------------------------------
 #
-class SSH(LaunchMethod):
+class SSH(LM):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        LM.__init__(self, name, cfg, session)
 
         # Instruct the ExecWorkers to unset this environment variable.
         # Otherwise this will break nested SSH with SHELL spawner, i.e. when
@@ -65,7 +65,7 @@ class SSH(LaunchMethod):
         else          : task_command = task_exec
 
         if not launch_script_hop :
-            raise ValueError ("LaunchMethodSSH.construct_command needs launch_script_hop!")
+            raise ValueError ("LMSSH.construct_command needs launch_script_hop!")
 
         if 'nodes' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'

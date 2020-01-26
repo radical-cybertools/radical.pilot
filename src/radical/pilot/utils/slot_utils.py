@@ -8,7 +8,7 @@ __license__   = "MIT"
 #
 # This file contains methods to support the transition of the non-gpu aware
 # scheduling data structures to a gpu aware version.  It is used to allow
-# combine new AgentScheduling implementations with 'old' LaunchMethods in the
+# combine new AgentScheduling implementations with 'old' LM in the
 # AgentExecutingComponent. The LMs have to make sure to end up with a version of
 # the slot structure they can handle.
 #
@@ -37,9 +37,9 @@ def slots2opaque(slots, nodes):
     #
     # task_slots = [self.nodes[x]['name'] for x in offsets]
     # opaque_slots = {
-    #     'task_slots'   : task_slots,         # [node:core]
-    #     'task_offsets' : offsets,            # [core] (global)
-    #     'lm_info'      : self._lrms_lm_info  # unchanged
+    #     'task_slots'   : task_slots,       # [node:core]
+    #     'task_offsets' : offsets,          # [core] (global)
+    #     'lm_info'      : self._rm_lm_info  # unchanged
     # }
     #
     task_slots    = list()
@@ -56,7 +56,7 @@ def slots2opaque(slots, nodes):
 
     return {'task_slots'   : task_slots,
             'task_offsets' : task_offsets,
-            'lm_info'      : slots['lrms_lm_info']}
+            'lm_info'      : slots['rm_lm_info']}
 
 
 # --------------------------------------------------------------------------
