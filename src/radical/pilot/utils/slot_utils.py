@@ -8,7 +8,7 @@ __license__   = "MIT"
 #
 # This file contains methods to support the transition of the non-gpu aware
 # scheduling data structures to a gpu aware version.  It is used to allow
-# combine new AgentScheduling implementations with 'old' LM in the
+# combine new AgentScheduling implementations with 'old' LaunchMethod in the
 # AgentExecutingComponent. The LMs have to make sure to end up with a version of
 # the slot structure they can handle.
 #

@@ -74,7 +74,7 @@ class Yarn(AgentSchedulingComponent):
 
         self._last_update = time.time()  # time of last update to self.avail_*
 
-        self._log.debug('YARN Service and RM URLs: %s - %s' \
+        self._log.debug('YARN Service and ResourceManager URLs: %s - %s' \
                      % (self._service_url, self._rm_url))
 
 

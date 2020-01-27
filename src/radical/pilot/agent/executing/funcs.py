@@ -77,7 +77,7 @@ class FUNCS(AgentExecutingComponent) :
 
         # we need to launch the executors on all nodes, and use the
         # agent_launcher for that
-        self._launcher = rp.agent.LM.create(
+        self._launcher = rp.agent.LaunchMethod.create(
                 name    = self._cfg.get('agent_launch_method'),
                 cfg     = self._cfg,
                 session = self._session)

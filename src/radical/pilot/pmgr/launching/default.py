@@ -57,7 +57,7 @@ class Default(PMGRLaunchingComponent):
     def initialize(self):
 
         # we don't really have an output queue, as we pass control over the
-        # pilot jobs to the resource management system (RM).
+        # pilot jobs to the resource management system (ResourceManager).
 
         self._pilots        = dict()      # dict for all known pilots
         self._pilots_lock   = ru.RLock()  # lock on maipulating the above
@@ -755,7 +755,7 @@ class Default(PMGRLaunchingComponent):
         js_url = ru.Url(pilots[0]['js_url'])
 
         # well, we actually don't need to talk to the rm, but only need
-        # a shell on the headnode.  That seems true for all RMs we use right
+        # a shell on the headnode.  That seems true for all ResourceManager we use right
         # now.  So, lets convert the URL:
         if '+' in js_url.scheme:
             parts = js_url.scheme.split('+')
@@ -1071,7 +1071,7 @@ class Default(PMGRLaunchingComponent):
         if not virtenv_dist       : raise RuntimeError("missing virtualenv distribution")
         if not agent_spawner      : raise RuntimeError("missing agent spawner")
         if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
-        if not resource_manager   : raise RuntimeError("missing RM")
+        if not resource_manager   : raise RuntimeError("missing resource manager")
         if not agent_launch_method: raise RuntimeError("missing agentlaunch method")
         if not task_launch_method : raise RuntimeError("missing task launch method")
 

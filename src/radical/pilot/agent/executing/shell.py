@@ -73,12 +73,12 @@ class Shell(AgentExecutingComponent):
         # simplify shell startup / prompt detection
         os.environ['PS1'] = '$ '
 
-        self._task_launcher = rp.agent.LM.create(
+        self._task_launcher = rp.agent.LaunchMethod.create(
                 name    = self._cfg['task_launch_method'],
                 cfg     = self._cfg,
                 session = self._session)
 
-        self._mpi_launcher = rp.agent.LM.create(
+        self._mpi_launcher = rp.agent.LaunchMethod.create(
                 name    = self._cfg['mpi_launch_method'],
                 cfg     = self._cfg,
                 session = self._session)
