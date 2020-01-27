@@ -2,7 +2,7 @@
 import radical.pilot as rp
 
 
-class CUD(rp.ComputeUnitDescription):
+class NEW_CUD(rp.ComputeUnitDescription):
     pass
 
 

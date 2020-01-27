@@ -112,7 +112,7 @@ circles). Application contains pilot and CU descriptions; RP Client has two
 components: Pilot Manager and Unit Manager. Pilot descriptions are passed to
 the Pilot Manager and Unit descriptions to the Unit Manager. The Pilot Manager
 uses Pilot Launcher to launch 2 of the 5 described pilots. One pilot is
-submitted to the local Resource Management system (RM) of Resource A, the
+submitted to the local Resource Management (RM) system of Resource A, the
 other pilot to the RM of Resource B. Once instantiated, each pilot becomes
 available for CU execution. At that point, RP Unit Manager sends 2 units to
 Resource A and 5 units to Resource B.

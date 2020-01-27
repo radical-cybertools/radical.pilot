@@ -3,7 +3,7 @@ import radical.utils as ru
 import spec_attribs  as a
 
 
-class RUM(ru.Description):
+class RU_MUNCH(ru.Description):
 
     _schema = {
                a.EXECUTABLE      : str         ,

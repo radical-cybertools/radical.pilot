@@ -12,7 +12,7 @@ import spec_attribs  as a
 import radical.utils as ru
 
 
-class PYD(pydantic.BaseModel):
+class PYDANTIC(pydantic.BaseModel):
 
     kernel            : Optional[str]                = None
     name              : Optional[str]                = None

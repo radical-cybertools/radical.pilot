@@ -12,7 +12,7 @@ schema = Schema([{'name': And(str, len),
                                           lambda s: s in ('squid', 'kid'))}])
 
 
-class SCH(dict):
+class SCHEMA(dict):
 
     _any    = Or(object, int, float, None)
     _schema = Schema({
