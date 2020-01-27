@@ -5,7 +5,6 @@ __license__   = 'MIT'
 
 import os
 import sys
-import time
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -29,9 +28,8 @@ if __name__ == '__main__':
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
-    if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
-    elif len(sys.argv) == 2: resource = sys.argv[1]
-    else                   : resource = 'local.localhost_funcs'
+    if len(sys.argv) == 2: resource = sys.argv[1]
+    else                 : resource = 'local.localhost_funcs'
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -45,7 +43,7 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
+        config = ru.read_json('%s/config.json' % os.path.dirname(__file__))
         report.ok('>>ok\n')
 
         report.header('submit pilots')
@@ -109,11 +107,11 @@ if __name__ == '__main__':
 
         for unit in (units[:10] + units[-10:]):
             if unit.state == rp.DONE:
-                print( '\t+ %s: %-10s: %10s: %s' \
-                    % (unit.uid, unit.state, unit.pilot, unit.stdout))
+                print('\t+ %s: %-10s: %10s: %s'
+                     % (unit.uid, unit.state, unit.pilot, unit.stdout))
             else:
-                print( '\t- %s: %-10s: %10s: %s' \
-                    % (unit.uid, unit.state, unit.pilot, unit.stderr))
+                print('\t- %s: %-10s: %10s: %s'
+                     % (unit.uid, unit.state, unit.pilot, unit.stderr))
 
 
     except Exception as e:
