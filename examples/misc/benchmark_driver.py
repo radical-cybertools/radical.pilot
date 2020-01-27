@@ -15,29 +15,29 @@ import radical.pilot as rp
 # you want to see what happens behind the scences!
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def pilot_state_cb (pilot, state):
     """ this callback is invoked on all pilot state changes """
 
-    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+    print("[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
 
     if state == rp.FAILED:
         sys.exit (1)
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def unit_state_cb (unit, state):
     """ this callback is invoked on all unit state changes """
 
-    print "[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state)
+    print("[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state))
 
     if state == rp.FAILED:
         sys.exit (1)
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
     session = rp.Session(name=session_name)
-    print "session id: %s" % session.uid
+    print("session id: %s" % session.uid)
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
         rp_cores    = int(os.getenv ("RP_CORES",    16))
         rp_cu_cores = int(os.getenv ("RP_CU_CORES", 1))
-        rp_units    = int(os.getenv ("RP_UNITS",    rp_cores * 3 * 3 * 2)) # 3 units/core/pilot
+        rp_units    = int(os.getenv ("RP_UNITS",    rp_cores * 3 * 3 * 2))  # 3 units/core/pilot
         rp_runtime  = int(os.getenv ("RP_RUNTIME",  15))
         rp_user     = str(os.getenv ("RP_USER",     ""))
         rp_host     = str(os.getenv ("RP_HOST",     "xsede.stampede"))
@@ -87,7 +87,7 @@ if __name__ == "__main__":
             pdesc = rp.ComputePilotDescription()
             pdesc.resource = rp_host
             pdesc.runtime  = rp_runtime
-            pdesc.cores    = i*rp_cores
+            pdesc.cores    = i * rp_cores
             pdesc.cleanup  = False
             if rp_queue  : pdesc.queue    = rp_queue
             if rp_project: pdesc.project  = rp_project
@@ -97,7 +97,7 @@ if __name__ == "__main__":
 
         # Launch the pilots.
         pilots = pmgr.submit_pilots (pdescriptions)
-        print "pilots: %s" % pilots
+        print("pilots: %s" % pilots)
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
@@ -132,29 +132,31 @@ if __name__ == "__main__":
         # Submit the ComputeUnit descriptions to the UnitManager. This will trigger
         # the selected scheduler to start assigning the units to the pilots.
         units = umgr.submit_units(cu_descriptions)
-        print "units: %s" % umgr.list_units ()
+        print("units: %s" % umgr.list_units ())
 
         # Wait for all compute units to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
 
         if not isinstance (units, list):
-            units=[units]
-        
+            units = [units]
+
         for unit in units:
-            print "* Task %s (executed @ %s) state %s, exit code: %s, started: %s, finished: %s" \
-                % (unit.uid, unit.execution_locations, unit.state, unit.exit_code, unit.start_time, unit.stop_time)
+            print("* Task %s (executed @ %s) state %s, exit code: %s, \
+                   started: %s, finished: %s" % (unit.uid,
+                   unit.execution_locations, unit.state, unit.exit_code,
+                   unit.start_time, unit.stop_time))
 
         # Close automatically cancels the pilot(s).
         pmgr.cancel_pilots ()
         time.sleep (3)
-  
+
         # run the stats plotter
         os.system ("bin/radicalpilot-stats -m plot -s %s" % session.uid) 
         os.system ("cp -v %s.png report/rp.benchmark.png" % session.uid) 
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        print "caught Exception: %s" % e
+        print("caught Exception: %s" % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -162,12 +164,12 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        print "need to exit now: %s" % e
+        print("need to exit now: %s" % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.
-        print "closing session"
+        print("closing session")
         session.close ()
 
         # the above is equivalent to
@@ -178,5 +180,5 @@ if __name__ == "__main__":
         # all remaining pilots (none in our example).
 
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
