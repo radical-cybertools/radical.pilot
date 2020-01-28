@@ -88,6 +88,4 @@ Contents:
    faq.rst
    developer.rst
    release_notes.rst
-   intro.rst
-   profiles.rst
 
