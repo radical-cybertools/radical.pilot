@@ -172,11 +172,11 @@ class LaunchMethod(object):
 
         except KeyError:
             session._log.exception('invalid lm %s' % name)
-            raise ValueError('invalid lm %s' % name)
+            return None
 
         except Exception:
             session._log.exception('unusable lm %s' % name)
-            raise RuntimeError('unusable lm %s' % name)
+            return None
 
 
     # --------------------------------------------------------------------------
