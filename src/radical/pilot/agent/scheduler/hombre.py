@@ -90,8 +90,8 @@ class Hombre(AgentSchedulingComponent):
                        'gpu_thread_type'  : cud['gpu_thread_type' ],
                        }
 
-        self.cpn     = self._lrms_cores_per_node
-        self.gpn     = self._lrms_gpus_per_node
+        self.cpn     = self._rm_cores_per_node
+        self.gpn     = self._rm_gpus_per_node
 
         self.free    = list()     # list of free chunks
         self.lock    = ru.Lock()  # lock for the above list
@@ -147,7 +147,7 @@ class Hombre(AgentSchedulingComponent):
             return {'nodes'         : list(),
                     'cores_per_node': self.cpn,
                     'gpus_per_node' : self.gpn,
-                    'lm_info'       : self._lrms_lm_info,
+                    'lm_info'       : self._rm_lm_info,
                     'ncblocks'      : 0,
                     'ngblocks'      : 0}
         # ---------------------------------------------------------------------
