@@ -4,7 +4,7 @@ import radical.utils as ru
 import spec_attribs  as a
 
 
-class CFG(ru.Config):
+class RU_CFG(ru.Config):
 
     def validate(self):
         pass

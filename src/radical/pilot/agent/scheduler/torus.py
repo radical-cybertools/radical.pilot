@@ -40,7 +40,7 @@ class Torus(AgentSchedulingComponent):
     #
     def _configure(self):
         if not self._rm_cores_per_node:
-            raise RuntimeError("RM %s didn't _configure cores_per_node." %
+            raise RuntimeError("ResourceManager %s didn't _configure cores_per_node." %
                                self._rm_info['name'])
 
         self._cores_per_node = self._rm_cores_per_node

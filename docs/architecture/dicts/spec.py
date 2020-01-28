@@ -19,26 +19,29 @@ import time
 
 import radical.utils as ru
 
-from spec_rs         import RSA
-from spec_rp         import CUD
-from spec_typed_dict import TDD  # pip install mypy
-from spec_pydantic   import PYD  # pip install pydantic
-from spec_good       import GOD  # pip install good
-from spec_schema     import SCH  # pip install schema
-from spec_rudict     import RUD
-from spec_rumunch    import RUM
-from spec_config     import CFG
+from spec_rs         import OLD_CUD
+from spec_rp         import NEW_CUD
+from spec_typed_dict import MYDICT  # pip install mypy
+from spec_pydantic   import PYDANTIC  # pip install pydantic
+from spec_good       import GOOD  # pip install good
+from spec_schema     import SCHEMA  # pip install schema
+from spec_rudict     import RU_DICT
+from spec_rumunch    import RU_MUNCH
+from spec_config     import RU_CFG
 
 import spec_attribs as a
 
-class DIC(dict):
+
+class PYDICT(dict):
     pass
+
 
 # ------------------------------------------------------------------------------
 #
-checks = [RSA, GOD, SCH, RUM, DIC, TDD, CFG, CUD, RUD, PYD]
-checks = [               RUM, DIC, TDD, CFG, CUD, RUD, PYD]
-checks = [               RUM,                CUD          ]
+checks = [
+       #  OLD_CUD, GOOD, SCHEMA,
+          RU_MUNCH, PYDICT, MYDICT, RU_CFG, NEW_CUD, RU_DICT, PYDANTIC
+         ]
 
 data   = list()
 
@@ -139,17 +142,17 @@ for check in checks:
     print()
 
 
-print('+------+--------+--------+--------+--------+--------+--------+--------+--------+')
-print('| name | create |   fill | change |   copy |  check |  found |  total |   size |')
-print('|      |  [sec] |  [sec] |  [sec] |  [sec] |  [sec] |    [n] |  [sec] |   [MB] |')
-print('+------+--------+--------+--------+--------+--------+--------+--------+--------+')
+print('+----------+--------+--------+--------+--------+--------+--------+--------+--------+')
+print('|     name | create |   fill | change |   copy |  check |  found |  total |   size |')
+print('|          |  [sec] |  [sec] |  [sec] |  [sec] |  [sec] |    [n] |  [sec] |   [MB] |')
+print('+----------+--------+--------+--------+--------+--------+--------+--------+--------+')
 
 data.sort(key=lambda x: x[7])
 for results in data:
-    print('| %-4s | %6.2f | %6.2f | %6.2f | %6.2f | %6.2f | %6d | %6.2f | %6d |'
+    print('| %-8s | %6.2f | %6.2f | %6.2f | %6.2f | %6.2f | %6d | %6.2f | %6d |'
             % tuple(results))
 
-print('+------+--------+--------+--------+--------+--------+--------+--------+--------+')
+print('+----------+--------+--------+--------+--------+--------+--------+--------+--------+')
 
 # ------------------------------------------------------------------------------
 

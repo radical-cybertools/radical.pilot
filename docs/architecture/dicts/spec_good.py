@@ -7,7 +7,7 @@ import radical.utils as ru
 
 from good.voluptuous import *
 
-class GOD(ru.DictMixin):
+class GOOD(ru.DictMixin):
 
     _schema = Schema({
                       a.EXECUTABLE                   : str           ,

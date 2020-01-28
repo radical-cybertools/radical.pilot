@@ -2,7 +2,7 @@
 import radical.utils as ru
 
 
-class RUD(ru.DictMixin):
+class RU_DICT(ru.DictMixin):
 
     # --------------------------------------------------------------------------
     #

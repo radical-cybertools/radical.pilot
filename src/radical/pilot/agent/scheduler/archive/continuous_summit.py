@@ -119,7 +119,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         self.register_publisher(rpc.AGENT_SCHEDULE_PUBSUB)
         self.register_subscriber(rpc.AGENT_SCHEDULE_PUBSUB, self.schedule_cb)
 
-        # The scheduler needs the RM information which have been collected
+        # The scheduler needs the ResourceManager information which have been collected
         # during agent startup.  We dig them out of the config at this point.
         #
         # NOTE: this information is insufficient for the torus scheduler!
@@ -133,19 +133,19 @@ class ContinuousSummit(AgentSchedulingComponent):
         self._rm_lfs_per_node     = self._cfg['rm_info']['lfs_per_node']
 
         if not self._rm_node_list:
-            raise RuntimeError("RM %s didn't _configure node_list."
+            raise RuntimeError("ResourceManager %s didn't _configure node_list."
                               % self._rm_info['name'])
 
         if self._rm_cores_per_socket is None:
-            raise RuntimeError("RM %s didn't _configure cores_per_socket."
+            raise RuntimeError("ResourceManager %s didn't _configure cores_per_socket."
                               % self._rm_info['name'])
 
         if self._rm_sockets_per_node is None:
-            raise RuntimeError("RM %s didn't _configure sockets_per_node."
+            raise RuntimeError("ResourceManager %s didn't _configure sockets_per_node."
                               % self._rm_info['name'])
 
         if self._rm_gpus_per_socket is None:
-            raise RuntimeError("RM %s didn't _configure gpus_per_socket."
+            raise RuntimeError("ResourceManager %s didn't _configure gpus_per_socket."
                               % self._rm_info['name'])
 
         # create and initialize the wait pool

@@ -6,7 +6,7 @@ from typing          import Dict, List, Any
 import spec_attribs  as a
 
 
-class TDD(TypedDict):
+class MYDICT(TypedDict):
 
     _init = {
              a.KERNEL            : str,
@@ -80,6 +80,6 @@ class TDD(TypedDict):
 
         if from_dict:
             for k, v in from_dict.items:
-                self[k] = v 
+                self[k] = v
 
 

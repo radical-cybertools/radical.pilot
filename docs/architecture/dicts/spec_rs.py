@@ -6,7 +6,7 @@ import spec_attribs as a
 
 # ------------------------------------------------------------------------------
 #
-class RSA(rsa.Attributes):
+class OLD_CUD(rsa.Attributes):
 
     def validate(self):
         pass

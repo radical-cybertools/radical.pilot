@@ -19,8 +19,8 @@ from ..   import states    as rps
 from ..   import constants as rpc
 from ..db import DBSession
 
-from .rm  import RM
-from .lm  import LM
+from .resource_manager import ResourceManager
+from .launch_method    import LaunchMethod
 
 
 # ------------------------------------------------------------------------------
@@ -62,8 +62,8 @@ class Agent_0(rpu.Worker):
         # connect to MongoDB for state push/pull
         self._connect_db()
 
-        # configure RM before component startup, as components need RM
-        # information for function (scheduler, executor)
+        # configure ResourceManager before component startup, as components need
+        # ResourceManager information for function (scheduler, executor)
         self._configure_rm()
 
         # ensure that app communication channels are visible to workload
@@ -128,11 +128,12 @@ class Agent_0(rpu.Worker):
     #
     def _configure_rm(self):
 
-        # Create RM which will give us the set of agent_nodes to use for
-        # sub-agent startup.  Add the remaining RM information to the
-        # config, for the benefit of the scheduler).
-        self._rm = RM.create(name=self._cfg.resource_manager, cfg=self._cfg,
-                             session=self._session)
+        # Create ResourceManager which will give us the set of agent_nodes to
+        # use for sub-agent startup.  Add the remaining ResourceManager
+        # information to the config, for the benefit of the scheduler).
+
+        self._rm = ResourceManager.create(name=self._cfg.resource_manager,
+                                           cfg=self._cfg, session=self._session)
 
         # add the resource manager information to our own config
         self._cfg['rm_info'] = self._rm.rm_info
@@ -368,7 +369,7 @@ class Agent_0(rpu.Worker):
             elif target == 'node':
 
                 if not agent_lm:
-                    agent_lm = LM.create(
+                    agent_lm = LaunchMethod.create(
                         name    = self._cfg['agent_launch_method'],
                         cfg     = self._cfg,
                         session = self._session)
@@ -383,7 +384,7 @@ class Agent_0(rpu.Worker):
                 #        usually done by the schedulers.  So we leave that
                 #        out for the moment, which will make this unable to
                 #        work with a number of launch methods.  Can the
-                #        offset computation be moved to the RM?
+                #        offset computation be moved to the ResourceManager?
                 bs_name = "%s/bootstrap_2.sh" % (self._pwd)
                 ls_name = "%s/%s.sh" % (self._pwd, sa)
                 slots = {
