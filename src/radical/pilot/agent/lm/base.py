@@ -370,6 +370,9 @@ class LM(object):
         returns version and flavor of MPI version.
         '''
 
+        if not exe:
+            raise ValueError('no executable found')
+
         version = None
         flavor  = self.MPI_FLAVOR_UNKNOWN
 
