@@ -22,7 +22,7 @@ def test_configure(mocked_init, mocked_raise_on):
 
     component = Yarn(name=None, cfg=None, session=None)
     component._log = ru.Logger('dummy')
-    component._cfg = {'lrms_info':{'lm_info':{'launch_command':'yarn'}}}
+    component._cfg = {'rm_info':{'lm_info':{'launch_command':'yarn'}}}
     component._configure()
     assert('yarn' == component.launch_command)
 
