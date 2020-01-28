@@ -19,8 +19,8 @@ from ..   import states    as rps
 from ..   import constants as rpc
 from ..db import DBSession
 
-from .    import rm        as rpa_rm
-from .    import lm        as rpa_lm
+from .resource_manager import ResourceManager
+from .launch_method    import LaunchMethod
 
 
 # ------------------------------------------------------------------------------
@@ -62,8 +62,8 @@ class Agent_0(rpu.Worker):
         # connect to MongoDB for state push/pull
         self._connect_db()
 
-        # configure RM before component startup, as components need RM
-        # information for function (scheduler, executor)
+        # configure ResourceManager before component startup, as components need
+        # ResourceManager information for function (scheduler, executor)
         self._configure_rm()
 
         # ensure that app communication channels are visible to workload
@@ -128,14 +128,15 @@ class Agent_0(rpu.Worker):
     #
     def _configure_rm(self):
 
-        # Create LRMS which will give us the set of agent_nodes to use for
-        # sub-agent startup.  Add the remaining LRMS information to the
-        # config, for the benefit of the scheduler).
-        self._lrms = rpa_rm.RM.create(name=self._cfg.lrms, cfg=self._cfg,
-                                      session=self._session)
+        # Create ResourceManager which will give us the set of agent_nodes to
+        # use for sub-agent startup.  Add the remaining ResourceManager
+        # information to the config, for the benefit of the scheduler).
+
+        self._rm = ResourceManager.create(name=self._cfg.resource_manager,
+                                           cfg=self._cfg, session=self._session)
 
         # add the resource manager information to our own config
-        self._cfg['lrms_info'] = self._lrms.lrms_info
+        self._cfg['rm_info'] = self._rm.rm_info
 
 
     # --------------------------------------------------------------------------
@@ -194,9 +195,9 @@ class Agent_0(rpu.Worker):
                  'uid'              : self._pid,
                  'state'            : rps.PMGR_ACTIVE,
                  'resource_details' : {
-                     'lm_info'      : self._lrms.lm_info.get('version_info'),
-                     'lm_detail'    : self._lrms.lm_info.get('lm_detail'),
-                     'rm_info'      : self._lrms.lrms_info},
+                     'lm_info'      : self._rm.lm_info.get('version_info'),
+                     'lm_detail'    : self._rm.lm_info.get('lm_detail'),
+                     'rm_info'      : self._rm.rm_info},
                  '$set'             : ['resource_details']}
         self.advance(pilot, publish=True, push=False)
 
@@ -236,8 +237,8 @@ class Agent_0(rpu.Worker):
         self._hb.stop()
         self._cmgr.close()
 
-        if self._lrms:
-            self._lrms.stop()
+        if self._rm:
+            self._rm.stop()
 
         if   self._final_cause == 'timeout'  : state = rps.DONE
         elif self._final_cause == 'cancel'   : state = rps.CANCELED
@@ -351,12 +352,12 @@ class Agent_0(rpu.Worker):
             elif target == 'node':
 
                 if not agent_lm:
-                    agent_lm = rpa_lm.LaunchMethod.create(
+                    agent_lm = LaunchMethod.create(
                         name    = self._cfg['agent_launch_method'],
                         cfg     = self._cfg,
                         session = self._session)
 
-                node = self._cfg['lrms_info']['agent_nodes'][sa]
+                node = self._cfg['rm_info']['agent_nodes'][sa]
                 # start agent remotely, use launch method
                 # NOTE:  there is some implicit assumption that we can use
                 #        the 'agent_node' string as 'agent_string:0' and
@@ -366,7 +367,7 @@ class Agent_0(rpu.Worker):
                 #        usually done by the schedulers.  So we leave that
                 #        out for the moment, which will make this unable to
                 #        work with a number of launch methods.  Can the
-                #        offset computation be moved to the LRMS?
+                #        offset computation be moved to the ResourceManager?
                 bs_name = "%s/bootstrap_2.sh" % (self._pwd)
                 ls_name = "%s/%s.sh" % (self._pwd, sa)
                 slots = {
@@ -381,9 +382,9 @@ class Agent_0(rpu.Worker):
                                            'gpu_map' : [],
                                            'lfs'     : {'path': '/tmp', 'size': 0}
                                          }],
-                    'cores_per_node'   : self._cfg['lrms_info']['cores_per_node'],
-                    'gpus_per_node'    : self._cfg['lrms_info']['gpus_per_node'],
-                    'lm_info'          : self._cfg['lrms_info']['lm_info'],
+                    'cores_per_node'   : self._cfg['rm_info']['cores_per_node'],
+                    'gpus_per_node'    : self._cfg['rm_info']['gpus_per_node'],
+                    'lm_info'          : self._cfg['rm_info']['lm_info'],
                 }
                 agent_cmd = {
                     'uid'              : sa,

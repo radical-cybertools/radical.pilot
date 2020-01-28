@@ -57,7 +57,7 @@ class Default(PMGRLaunchingComponent):
     def initialize(self):
 
         # we don't really have an output queue, as we pass control over the
-        # pilot jobs to the resource management system (RM).
+        # pilot jobs to the resource management system (ResourceManager).
 
         self._pilots        = dict()      # dict for all known pilots
         self._pilots_lock   = ru.RLock()  # lock on maipulating the above
@@ -759,8 +759,8 @@ class Default(PMGRLaunchingComponent):
         # we now need to untar on the target machine.
         js_url = ru.Url(pilots[0]['js_url'])
 
-        # well, we actually don't need to talk to the lrms, but only need
-        # a shell on the headnode.  That seems true for all LRMSs we use right
+        # well, we actually don't need to talk to the rm, but only need
+        # a shell on the headnode.  That seems true for all ResourceManager we use right
         # now.  So, lets convert the URL:
         if '+' in js_url.scheme:
             parts = js_url.scheme.split('+')
@@ -768,7 +768,7 @@ class Default(PMGRLaunchingComponent):
             elif  'ssh' in parts: js_url.scheme = 'ssh'
         else:
             # In the non-combined '+' case we need to distinguish between
-            # a url that was the result of a hop or a local lrms.
+            # a url that was the result of a hop or a local rm.
             if js_url.scheme not in ['ssh', 'gsissh']:
                 js_url.scheme = 'fork'
                 js_url.host   = 'localhost'
@@ -879,7 +879,6 @@ class Default(PMGRLaunchingComponent):
         queue           = pilot['description']['queue']
         project         = pilot['description']['project']
         cleanup         = pilot['description']['cleanup']
-        memory          = pilot['description']['memory']
         candidate_hosts = pilot['description']['candidate_hosts']
 
         # ----------------------------------------------------------------------
@@ -892,7 +891,7 @@ class Default(PMGRLaunchingComponent):
         tunnel_bind_device      = rcfg.get('tunnel_bind_device')
         default_queue           = rcfg.get('default_queue')
         forward_tunnel_endpoint = rcfg.get('forward_tunnel_endpoint')
-        lrms                    = rcfg.get('lrms')
+        resource_manager        = rcfg.get('resource_manager')
         mpi_launch_method       = rcfg.get('mpi_launch_method', '')
         pre_bootstrap_0         = rcfg.get('pre_bootstrap_0', [])
         pre_bootstrap_1         = rcfg.get('pre_bootstrap_1', [])
@@ -1077,7 +1076,7 @@ class Default(PMGRLaunchingComponent):
         if not virtenv_dist       : raise RuntimeError("missing virtualenv distribution")
         if not agent_spawner      : raise RuntimeError("missing agent spawner")
         if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
-        if not lrms               : raise RuntimeError("missing LRMS")
+        if not resource_manager   : raise RuntimeError("missing resource manager")
         if not agent_launch_method: raise RuntimeError("missing agentlaunch method")
         if not task_launch_method : raise RuntimeError("missing task launch method")
 
@@ -1139,12 +1138,12 @@ class Default(PMGRLaunchingComponent):
         bootstrap_args += " -y '%d'" % runtime
 
         # set optional args
-        if lrms == "CCM":           bootstrap_args += " -c"
-        if forward_tunnel_endpoint: bootstrap_args += " -f '%s'" % forward_tunnel_endpoint
-        if forward_tunnel_endpoint: bootstrap_args += " -h '%s'" % db_hostport
-        if python_interpreter:      bootstrap_args += " -i '%s'" % python_interpreter
-        if tunnel_bind_device:      bootstrap_args += " -t '%s'" % tunnel_bind_device
-        if cleanup:                 bootstrap_args += " -x '%s'" % cleanup
+        if resource_manager == "CCM": bootstrap_args += " -c"
+        if forward_tunnel_endpoint:   bootstrap_args += " -f '%s'" % forward_tunnel_endpoint
+        if forward_tunnel_endpoint:   bootstrap_args += " -h '%s'" % db_hostport
+        if python_interpreter:        bootstrap_args += " -i '%s'" % python_interpreter
+        if tunnel_bind_device:        bootstrap_args += " -t '%s'" % tunnel_bind_device
+        if cleanup:                   bootstrap_args += " -x '%s'" % cleanup
 
         for arg in pre_bootstrap_0:
             bootstrap_args += " -e '%s'" % arg
@@ -1154,7 +1153,6 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['owner']               = 'agent.0'
         agent_cfg['cores']               = number_cores
         agent_cfg['gpus']                = number_gpus
-        agent_cfg['lrms']                = lrms
         agent_cfg['spawner']             = agent_spawner
         agent_cfg['scheduler']           = agent_scheduler
         agent_cfg['runtime']             = runtime
@@ -1167,6 +1165,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['pilot_sandbox']       = pilot_sandbox
         agent_cfg['session_sandbox']     = session_sandbox
         agent_cfg['resource_sandbox']    = resource_sandbox
+        agent_cfg['resource_manager']    = resource_manager
         agent_cfg['agent_launch_method'] = agent_launch_method
         agent_cfg['task_launch_method']  = task_launch_method
         agent_cfg['mpi_launch_method']   = mpi_launch_method
@@ -1263,7 +1262,7 @@ class Default(PMGRLaunchingComponent):
 
         jd.name                  = pid
         jd.executable            = "/bin/bash"
-        jd.arguments             = ['-l %s' % bootstrap_tgt, bootstrap_args]
+        jd.arguments             = ['-l %s %s' % (bootstrap_tgt, bootstrap_args)]
         jd.working_directory     = pilot_sandbox
         jd.project               = project
         jd.output                = "bootstrap_0.out"
@@ -1273,7 +1272,6 @@ class Default(PMGRLaunchingComponent):
         jd.processes_per_host    = cores_per_node
         jd.spmd_variation        = spmd_variation
         jd.wall_time_limit       = runtime
-        jd.total_physical_memory = memory
         jd.queue                 = queue
         jd.candidate_hosts       = candidate_hosts
         jd.environment           = dict()
