@@ -1505,9 +1505,9 @@ rmdir "$VIRTENV" 2>/dev/null
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
-if test -z "$RUNTIME"     ; then  echo "missing RUNTIME"   ; return 1;  fi
-if test -z "$PILOT_ID"    ; then  echo "missing PILOT_ID"  ; return 1;  fi
-if test -z "$RP_VERSION"  ; then  echo "missing RP_VERSION"; return 1;  fi
+if test -z "$RUNTIME"     ; then  echo "missing RUNTIME"   ; exit 1;  fi
+if test -z "$PILOT_ID"    ; then  echo "missing PILOT_ID"  ; exit 1;  fi
+if test -z "$RP_VERSION"  ; then  echo "missing RP_VERSION"; exit 1;  fi
 
 # pilot runtime is specified in minutes -- on shell level, we want seconds
 RUNTIME=$((RUNTIME * 60))

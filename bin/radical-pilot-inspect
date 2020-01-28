@@ -48,8 +48,8 @@ def usage (msg=None, noexit=False) :
         -s <sid>  : apply mode to session with given ID
         -d <url>  : use given database URL instead of default (%s).
 
-      The default mode is 'help'.  
-      
+      The default mode is 'help'.
+
 """ % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL))
 
     if  msg :
@@ -137,22 +137,6 @@ def find_sid_by_uid (dbclient, dbname, uid) :
 #
 def list_resources (verbose) :
 
-# VALID_KEYS = [
-#               PYTHON_INTERPRETER,
-#               PRE_BOOTSTRAP,
-#               VALID_ROOTS,
-#               BOOTSTRAPPER,
-#               PILOT_AGENT,
-#               PILOT_AGENT_WORKER,
-#               GLOBAL_VIRTENV,
-#               LRMS,
-#               TASK_LAUNCH_METHOD,
-#               MPI_LAUNCH_METHOD,
-#               FORWARD_TUNNEL_ENDPOINT,
-#               AGENT_MONGODB_ENDPOINT,
-#               DEFAULT_REMOTE_WORKDIR,
-#               ]
-
     session = rp.Session ()
 
     for name in session._resource_configs :
@@ -171,9 +155,9 @@ def list_resources (verbose) :
         else :
             job_manager_url = cfg['job_manager_endpoint']
 
-        print("    %-25s : %s" % ('hostname'      , ru.Url (job_manager_url).host))
-        print("    %-25s : %s" % ('lrms'          , cfg['lrms']))
-        print("    %-25s : %s" % ('default queue' , cfg['default_queue' ]))
+        print("    %-25s : %s" % ('host',  ru.Url(job_manager_url).host))
+        print("    %-25s : %s" % ('rm',    cfg['resource_manager']))
+        print("    %-25s : %s" % ('queue', cfg['default_queue' ]))
 
         if  verbose :
             print("    %-25s : %s" % ('spmd variation'         , cfg['spmd_variation']))
@@ -213,7 +197,7 @@ def list_resources (verbose) :
 
 
 # ------------------------------------------------------------------------------
-# 
+#
 def parse_commandline():
 
     return options
@@ -241,17 +225,17 @@ if __name__ == '__main__' :
     if  options.help :
         usage ()
 
-    if  options.mode in ['help'] : 
+    if  options.mode in ['help'] :
         usage ()
 
     if  not options.mode :
         usage ("No mode specified")
 
-    if  not options.url : 
-        options.url = _DEFAULT_DBURL 
+    if  not options.url :
+        options.url = _DEFAULT_DBURL
 
 
-    mode    = options.mode 
+    mode    = options.mode
     url     = options.url
     pid     = options.pid
     uid     = options.uid
@@ -272,7 +256,7 @@ if __name__ == '__main__' :
 
     for m in mode.split (',') :
 
-        if  m not in ['pid2sid', 'uid2sid', 'resources', 'help'] : 
+        if  m not in ['pid2sid', 'uid2sid', 'resources', 'help'] :
             usage ("Unsupported mode '%s'" % m)
 
         if   m == 'pid2sid'   : find_sid_by_pid (dbclient, dbname, pid)

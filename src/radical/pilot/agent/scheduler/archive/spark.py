@@ -33,10 +33,10 @@ class Spark(AgentSchedulingComponent):
         # this check happened to update it accordingly
 
         self._log.info('Checking rm_ip %s',
-                            self._cfg['lrms_info']['lm_info']['rm_ip'])
-        self._rm_ip       = self._cfg['lrms_info']['lm_info']['rm_ip']
-        self._rm_url      = self._cfg['lrms_info']['lm_info']['rm_url']
-        self._client_node = self._cfg['lrms_info']['lm_info']['nodename']
+                            self._cfg['rm_info']['lm_info']['rm_ip'])
+        self._rm_ip       = self._cfg['rm_info']['lm_info']['rm_ip']
+        self._rm_url      = self._cfg['rm_info']['lm_info']['rm_url']
+        self._client_node = self._cfg['rm_info']['lm_info']['nodename']
 
         sample_time = time.time()
 

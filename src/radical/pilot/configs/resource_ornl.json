@@ -17,7 +17,7 @@
             "filesystem_endpoint"     : "go://olcf#dtn/"
         },
         "default_queue"               : "batch",
-        "lrms"                        : "TORQUE",
+        "resource_manager"            : "TORQUE",
         "agent_type"                  : "multicore",
         "agent_config"                : "rhea",
         "agent_scheduler"             : "CONTINUOUS",
@@ -67,7 +67,7 @@
         "default_queue"               : "batch",
         "cores_per_node"              : "16",
         "gpus_per_node"               : 1,
-        "lrms"                        : "SLURM",
+        "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -100,7 +100,7 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "batch",
-        "lrms"                        : "LSF_SUMMIT",
+        "resource_manager"            : "LSF_SUMMIT",
         "lfs_per_node"                : "/tmp",
         "agent_type"                  : "multicore",
         "agent_config"                : "default",
@@ -139,7 +139,7 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "batch",
-        "lrms"                        : "LSF_SUMMIT",
+        "resource_manager"            : "LSF_SUMMIT",
         "lfs_per_node"                : "/tmp",
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
@@ -189,7 +189,7 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "batch",
-        "lrms"                        : "LSF_SUMMIT",
+        "resource_manager"            : "LSF_SUMMIT",
         "lfs_per_node"                : "/tmp",
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
