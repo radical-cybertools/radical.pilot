@@ -73,12 +73,12 @@ class Shell(AgentExecutingComponent):
         # simplify shell startup / prompt detection
         os.environ['PS1'] = '$ '
 
-        self._task_launcher = rp.agent.LM.create(
+        self._task_launcher = rp.agent.LaunchMethod.create(
                 name    = self._cfg['task_launch_method'],
                 cfg     = self._cfg,
                 session = self._session)
 
-        self._mpi_launcher = rp.agent.LM.create(
+        self._mpi_launcher = rp.agent.LaunchMethod.create(
                 name    = self._cfg['mpi_launch_method'],
                 cfg     = self._cfg,
                 session = self._session)
@@ -403,7 +403,7 @@ prof(){
         run_cmd   = "BULK\nLRUN\n%s\nLRUN_EOT\nBULK_RUN\n" % cmd
 
       # TODO: Remove this commented out block?
-      # if  self.lrms.target_is_macos :
+      # if  self.rm.target_is_macos :
       #     run_cmd = run_cmd.replace ("\\", "\\\\\\\\") # hello MacOS
 
         self._prof.prof('exec_start', uid=cu['uid'])

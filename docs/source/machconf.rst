@@ -67,13 +67,13 @@ your user-id on the remote resource, use the following construct:
 
 Configuring GSISSH Access for XSEDE resources
 =============================================
-The XSEDE resources require using gsissh tool to access. 
-Once the gsissh and myproxy are successfully installed, 
+The XSEDE resources require using gsissh tool to access.
+Once the gsissh and myproxy are successfully installed,
 one need to aquire a X509 certificate:
 
 .. code-block:: bash
 
-    $ export MYPROXY_SERVER_PORT=7512 
+    $ export MYPROXY_SERVER_PORT=7512
     $ export MYPROXY_SERVER=myproxy.xsede.org
     $ myproxy-logon -l <user_name> -T -b -t 1000
     $ [Enter MyProxy pass phrase]
@@ -115,7 +115,7 @@ provided resource configuration files, you can write your own, and drop it in
 ``$HOME/.radical/pilot/configs/<your_resource_configuration_file_name>.json``.
 
 .. note::
-    
+
    The remote resource configuration file name has to start with "resource\_"
    and end with ".json" suffix. Within each resource file, multiple resources
    could be listed. For example, the `resource_xsede.json
@@ -123,7 +123,7 @@ provided resource configuration files, you can write your own, and drop it in
    file contains many different hpc resources from XSEDE.
 
 .. note::
-    
+
    Be advised that you may need specific knowledge about the target resource to
    do so.  Also, while RADICAL-Pilot can handle very different types of systems
    and batch system, it may run into trouble on specific configurations or
@@ -155,7 +155,7 @@ A configuration file has to be valid JSON. The structure is as follows:
                 "filesystem_endpoint"     : "gsisftp://supermuc.lrz.de:2222/"
             },
             "default_queue"               : "test",
-            "lrms"                        : "LOADL",
+            "resource_manager"            : "LOADL",
             "task_launch_method"          : "SSH",
             "mpi_launch_method"           : "MPIEXEC",
             "forward_tunnel_endpoint"     : "login03",
@@ -192,7 +192,7 @@ All fields are mandatory, unless indicated otherwise below.
 * ``job_manager_endpoint``: access url for pilot submission (interpreted by SAGA).
 * ``filesystem_endpoint``: access url for file staging (interpreted by SAGA).
 * ``default_queue``: queue to use for pilot submission (optional).
-* ``lrms``: type of job management system. Valid values are: ``LOADL``, ``LSF``, ``PBSPRO``, ``SGE``, ``SLURM``, ``TORQUE``, ``FORK``.
+* ``resource_manager``: type of job management system. Valid values are: ``LOADL``, ``LSF``, ``PBSPRO``, ``SGE``, ``SLURM``, ``TORQUE``, ``FORK``.
 * ``task_launch_method``: type of compute node access, required for non-MPI units. Valid values are: ``SSH``,``APRUN`` or ``LOCAL``.
 * ``mpi_launch_method``: type of MPI support, required for MPI units. Valid values are: ``MPIRUN``, ``MPIEXEC``, ``APRUN``, ``IBRUN`` or ``POE``.
 * ``python_interpreter``: path to python (optional).

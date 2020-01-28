@@ -65,14 +65,14 @@ class Popen(AgentExecutingComponent) :
         self._watcher.daemon = True
         self._watcher.start()
 
-        # The AgentExecutingComponent needs the LaunchMethods to construct
+        # The AgentExecutingComponent needs the LaunchMethod to construct
         # commands.
-        self._task_launcher = rp.agent.LM.create(
+        self._task_launcher = rp.agent.LaunchMethod.create(
                 name    = self._cfg.get('task_launch_method'),
                 cfg     = self._cfg,
                 session = self._session)
 
-        self._mpi_launcher = rp.agent.LM.create(
+        self._mpi_launcher = rp.agent.LaunchMethod.create(
                 name    = self._cfg.get('mpi_launch_method'),
                 cfg     = self._cfg,
                 session = self._session)
@@ -268,7 +268,7 @@ prof(){
 }
 '''
 
-            # FIXME: this should be set by an LM filter or something (GPU)
+            # FIXME: this should be set by an LaunchMethod filter or something (GPU)
             env_string += 'export OMP_NUM_THREADS="%s"\n' % descr['cpu_threads']
 
             # The actual command line, constructed per launch-method
