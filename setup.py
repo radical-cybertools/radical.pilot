@@ -251,8 +251,7 @@ setup_args = {
                             'python-hostlist',
                             'netifaces',
                             'setproctitle',
-                            'ntplib',
-                            'msgpack-python'
+                            'ntplib'
                            ],
     'extras_require'     : {'autopilot' : ['github3.py']},
     'tests_require'      : ['pytest',
