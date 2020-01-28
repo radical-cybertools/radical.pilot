@@ -14,7 +14,7 @@
             "job_manager_endpoint": "condor+gsissh://xd-login.opensciencegrid.org",
             "filesystem_endpoint" : "gsisftp://xd-login.opensciencegrid.org/"
         },
-        "lrms"               : "FORK",
+        "resource_manager"   : "FORK",
         "agent_type"         : "multicore",
         "shared_filesystem"  : false,
         "health_check"       : false,
@@ -68,7 +68,7 @@
             "job_manager_endpoint": "condor+gsissh://login.osgconnect.net",
             "filesystem_endpoint" : "gsisftp://login.osgconnect.net/"
         },
-        "lrms"               : "FORK",
+        "resource_manager"   : "FORK",
         "agent_type"         : "multicore",
         "shared_filesystem"  : false,
         "health_check"       : false,

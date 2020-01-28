@@ -95,7 +95,7 @@ bootstrapping stages.  Specifically, the stage will:
 The second stage enters Python, and will:
 
   - pull pilot partition creation and termination requests from MongoDB;
-  - invoke LRMS specific code parts of RP to set up the requested partitions;
+  - invoke RM specific code parts of RP to set up the requested partitions;
   - run `bootstrap_2.sh` for each partition to get the partition's pilot agent
     started.
 

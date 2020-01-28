@@ -66,14 +66,14 @@ class ABDS(AgentExecutingComponent):
         self._watcher.daemon = True
         self._watcher.start ()
 
-        # The AgentExecutingComponent needs the LaunchMethods to construct
+        # The AgentExecutingComponent needs the LaunchMethod to construct
         # commands.
-        self._task_launcher = rp.agent.LM.create(
+        self._task_launcher = rp.agent.LaunchMethod.create(
                 name    = self._cfg['task_launch_method'],
                 cfg     = self._cfg,
                 session = self._session)
 
-        self._mpi_launcher = rp.agent.LM.create(
+        self._mpi_launcher = rp.agent.LaunchMethod.create(
                 name    = self._cfg['mpi_launch_method'],
                 cfg     = self._cfg,
                 session = self._session)
