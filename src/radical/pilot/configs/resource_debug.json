@@ -10,7 +10,7 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "",
-        "lrms"                        : "FORK",
+        "resource_manager"            : "FORK",
         "lfs_per_node"                : "/tmp",
         "agent_config"                : "default_sa",
         "agent_scheduler"             : "CONTINUOUS",
@@ -44,7 +44,7 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "",
-        "lrms"                        : "DEBUG",
+        "resource_manager"            : "DEBUG",
         "lfs_per_node"                : "/tmp",
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS_SUMMIT",

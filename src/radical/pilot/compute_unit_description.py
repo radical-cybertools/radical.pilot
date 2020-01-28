@@ -3,7 +3,7 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import radical.saga.attributes as attributes
+import radical.utils as ru
 
 
 # ------------------------------------------------------------------------------
@@ -51,7 +51,7 @@ FUNC                   = 'FUNC'
 
 # ------------------------------------------------------------------------------
 #
-class ComputeUnitDescription(attributes.Attributes):
+class ComputeUnitDescription(ru.Description):
     """
     A ComputeUnitDescription object describes the requirements and properties
     of a :class:`radical.pilot.ComputeUnit` and is passed as a parameter to
@@ -223,7 +223,9 @@ class ComputeUnitDescription(attributes.Attributes):
 
     .. data:: kernel
 
-       Name of a simulation kernel which expands to description attributes once the unit is scheduled to a pilot and resource. TODO: explain in detail, referencing ENMDTK.
+       Name of a simulation kernel which expands to description attributes once
+       the unit is scheduled to a pilot and resource. TODO: explain in detail,
+       referencing ENMDTK.
 
        default: `None`
 
@@ -322,152 +324,88 @@ class ComputeUnitDescription(attributes.Attributes):
 
     """
 
+    _schema = {
+               EXECUTABLE      : str         ,
+               KERNEL          : str         ,
+               NAME            : str         ,
+               SANDBOX         : str         ,
+               ARGUMENTS       : [str]       ,
+               ENVIRONMENT     : {str: str}  ,
+               PRE_EXEC        : [str]       ,
+               POST_EXEC       : [str]       ,
+               STDOUT          : str         ,
+               STDERR          : str         ,
+               INPUT_STAGING   : [str]       ,
+               OUTPUT_STAGING  : [str]       ,
+
+               CPU_PROCESSES   : int         ,
+               CPU_PROCESS_TYPE: str         ,
+               CPU_THREADS     : int         ,
+               CPU_THREAD_TYPE : str         ,
+               GPU_PROCESSES   : int         ,
+               GPU_PROCESS_TYPE: str         ,
+               GPU_THREADS     : int         ,
+               GPU_THREAD_TYPE : str         ,
+               LFS_PER_PROCESS : int         ,
+               MEM_PER_PROCESS : int         ,
+
+               RESTARTABLE     : bool        ,
+               TAGS            : {None: None},
+               METADATA        : None        ,
+               CLEANUP         : bool        ,
+               PILOT           : str         ,
+    }
+
+    _defaults = {
+               EXECUTABLE      : None        ,
+               KERNEL          : None        ,
+               NAME            : None        ,
+               SANDBOX         : None        ,
+               ARGUMENTS       : list()      ,
+               ENVIRONMENT     : dict()      ,
+               PRE_EXEC        : list()      ,
+               POST_EXEC       : list()      ,
+               STDOUT          : None        ,
+               STDERR          : None        ,
+               INPUT_STAGING   : list()      ,
+               OUTPUT_STAGING  : list()      ,
+
+               CPU_PROCESSES   : 1           ,
+               CPU_PROCESS_TYPE: ''          ,
+               CPU_THREADS     : 1           ,
+               CPU_THREAD_TYPE : ''          ,
+               GPU_PROCESSES   : 0           ,
+               GPU_PROCESS_TYPE: ''          ,
+               GPU_THREADS     : 1           ,
+               GPU_THREAD_TYPE : ''          ,
+               LFS_PER_PROCESS : 0           ,
+               MEM_PER_PROCESS : 0           ,
+
+               RESTARTABLE     : False       ,
+               TAGS            : dict()      ,
+               METADATA        : None        ,
+               CLEANUP         : False       ,
+               PILOT           : ''          ,
+    }
+
+
     # --------------------------------------------------------------------------
     #
     def __init__(self, from_dict=None):
 
-        # initialize attributes
-        attributes.Attributes.__init__(self)
+        ru.Description.__init__(self, from_dict=ComputeUnitDescription._defaults)
 
-        # set attribute interface properties
-        self._attributes_extensible  (False)
-        self._attributes_camelcasing (True)
-
-        # register properties with the attribute interface
-        # action description
-        self._attributes_register(KERNEL,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(NAME,             None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(EXECUTABLE,       None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(ARGUMENTS,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        self._attributes_register(ENVIRONMENT,      None, attributes.STRING, attributes.DICT,   attributes.WRITEABLE)
-        self._attributes_register(SANDBOX,          None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(PRE_EXEC,         None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        self._attributes_register(POST_EXEC,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-        self._attributes_register(RESTARTABLE,      None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(TAGS,             None, attributes.ANY,    attributes.DICT,   attributes.WRITEABLE)
-        self._attributes_register(METADATA,         None, attributes.ANY,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(CLEANUP,          None, attributes.BOOL,   attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(PILOT,            None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-
-
-        # I/O
-        self._attributes_register(STDOUT,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(STDERR,           None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(INPUT_STAGING,    None, attributes.ANY,    attributes.VECTOR, attributes.WRITEABLE)
-        self._attributes_register(OUTPUT_STAGING,   None, attributes.ANY,    attributes.VECTOR, attributes.WRITEABLE)
-
-        # resource requirements
-        self._attributes_register(CPU_PROCESSES,    None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(CPU_PROCESS_TYPE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(CPU_THREADS,      None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(CPU_THREAD_TYPE,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(GPU_PROCESSES,    None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(GPU_PROCESS_TYPE, None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(GPU_THREADS,      None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(GPU_THREAD_TYPE,  None, attributes.STRING, attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(LFS_PER_PROCESS,  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-        self._attributes_register(MEM_PER_PROCESS,  None, attributes.INT,    attributes.SCALAR, attributes.WRITEABLE)
-
-        # dependencies
-      # self._attributes_register(RUN_AFTER,        None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-      # self._attributes_register(START_AFTER,      None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-      # self._attributes_register(CONCURRENT_WITH,  None, attributes.STRING, attributes.VECTOR, attributes.WRITEABLE)
-      # self._attributes_register(START_TIME,       None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
-      # self._attributes_register(RUN_TIME,         None, attributes.TIME,   attributes.SCALAR, attributes.WRITEABLE)
-
-        # explicitly set attrib defaults so they get listed and included via as_dict()
-        self.set_attribute (KERNEL,           None)
-        self.set_attribute (NAME,             None)
-        self.set_attribute (EXECUTABLE,       None)
-        self.set_attribute (SANDBOX,          None)
-        self.set_attribute (ARGUMENTS,      list())
-        self.set_attribute (ENVIRONMENT,    dict())
-        self.set_attribute (PRE_EXEC,       list())
-        self.set_attribute (POST_EXEC,      list())
-        self.set_attribute (STDOUT,           None)
-        self.set_attribute (STDERR,           None)
-        self.set_attribute (INPUT_STAGING,  list())
-        self.set_attribute (OUTPUT_STAGING, list())
-
-        self.set_attribute (CPU_PROCESSES,       1)
-        self.set_attribute (CPU_PROCESS_TYPE,   '')
-        self.set_attribute (CPU_THREADS,         1)
-        self.set_attribute (CPU_THREAD_TYPE,    '')
-        self.set_attribute (GPU_PROCESSES,       0)
-        self.set_attribute (GPU_PROCESS_TYPE,   '')
-        self.set_attribute (GPU_THREADS,         1)
-        self.set_attribute (GPU_THREAD_TYPE,    '')
-        self.set_attribute (GPU_THREAD_TYPE,    '')
-        self.set_attribute (LFS_PER_PROCESS,     0)
-        self.set_attribute (MEM_PER_PROCESS,     0)
-
-        self.set_attribute (RESTARTABLE,     False)
-        self.set_attribute (TAGS,           dict())
-        self.set_attribute (METADATA,         None)
-        self.set_attribute (CLEANUP,         False)
-        self.set_attribute (PILOT,              '')
-
-        self._attributes_register_deprecated(CORES, CPU_PROCESSES)
-        self._attributes_register_deprecated(MPI,   CPU_PROCESS_TYPE)
-
-        # apply initialization dict
         if from_dict:
-            self.from_dict(from_dict)
+            self.update(from_dict)
 
 
     # --------------------------------------------------------------------------
     #
-    def __deepcopy__ (self, memo):
+    def _verify(self):
 
-        other = ComputeUnitDescription ()
-
-        for key in self.list_attributes ():
-            other.set_attribute(key, self.get_attribute (key))
-
-        return other
-
-
-    # --------------------------------------------------------------------------
-    #
-    def __str__(self):
-        """Returns a string representation of the object.
-        """
-        return str(self.as_dict())
-
-
-    # --------------------------------------------------------------------------
-    #
-    def verify(self):
-        '''
-        Verify that the description is syntactically and semantically correct.
-        This method encapsulates checks beyond the SAGA attribute level checks.
-        '''
-
-        # replace 'None' values for strng types with '', etc
-        if self.get(KERNEL          ) is None: self[KERNEL          ] = ''
-        if self.get(NAME            ) is None: self[NAME            ] = ''
-        if self.get(EXECUTABLE      ) is None: self[EXECUTABLE      ] = ''
-        if self.get(ARGUMENTS       ) is None: self[ARGUMENTS       ] = list()
-        if self.get(ENVIRONMENT     ) is None: self[ENVIRONMENT     ] = dict()
-        if self.get(PRE_EXEC        ) is None: self[PRE_EXEC        ] = list()
-        if self.get(POST_EXEC       ) is None: self[POST_EXEC       ] = list()
-        if self.get(PILOT           ) is None: self[PILOT           ] = ''
-        if self.get(STDOUT          ) is None: self[STDOUT          ] = ''
-        if self.get(STDERR          ) is None: self[STDERR          ] = ''
-        if self.get(CPU_PROCESS_TYPE) is None: self[CPU_PROCESS_TYPE] = ''
-        if self.get(CPU_THREAD_TYPE ) is None: self[CPU_THREAD_TYPE ] = ''
-        if self.get(GPU_PROCESS_TYPE) is None: self[GPU_PROCESS_TYPE] = ''
-        if self.get(GPU_THREAD_TYPE ) is None: self[GPU_THREAD_TYPE ] = ''
-        if self.get(CPU_PROCESSES   ) is None: self[CPU_PROCESSES   ] = 0
-        if self.get(CPU_THREADS     ) is None: self[CPU_THREADS     ] = 0
-        if self.get(GPU_PROCESSES   ) is None: self[GPU_PROCESSES   ] = 0
-        if self.get(GPU_THREADS     ) is None: self[GPU_THREADS     ] = 0
-        if self.get(MEM_PER_PROCESS)  is None: self[MEM_PER_PROCESS ] = 0
-
-        if  not self.get('executable') and \
-            not self.get('kernel')     :
+        if not self.get('executable') and \
+           not self.get('kernel')     :
             raise ValueError("CU description needs 'executable' or 'kernel'")
-
 
 
 # ------------------------------------------------------------------------------
