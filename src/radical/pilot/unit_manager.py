@@ -659,8 +659,6 @@ class UnitManager(rpu.Component):
         if len(pilots) == 0:
             raise ValueError('cannot add no pilots')
 
-        self._rep.info('<<add %d pilot(s)' % len(pilots))
-
         with self._pilots_lock:
 
             # sanity check, and keep pilots around for inspection
@@ -679,7 +677,6 @@ class UnitManager(rpu.Component):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'add_pilots',
                                           'arg' : {'pilots': pilot_docs,
                                                    'umgr'  : self.uid}})
-        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
@@ -740,8 +737,6 @@ class UnitManager(rpu.Component):
         if len(pilot_ids) == 0:
             raise ValueError('cannot remove no pilots')
 
-        self._rep.info('<<rem %d pilot(s)' % len(pilot_ids))
-
         with self._pilots_lock:
 
             # sanity check, and keep pilots around for inspection
@@ -754,7 +749,6 @@ class UnitManager(rpu.Component):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'remove_pilots',
                                           'arg' : {'pids'  : pilot_ids,
                                                    'umgr'  : self.uid}})
-        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
@@ -798,9 +792,8 @@ class UnitManager(rpu.Component):
         if len(descriptions) == 0:
             raise ValueError('cannot submit no unit descriptions')
 
-        self._rep.info('<<submit %d unit(s)\n\t' % len(descriptions))
-
         # we return a list of compute units
+        self._rep.progress_tgt(len(descriptions), label='submit')
         units = list()
         for ud in descriptions:
 
@@ -820,6 +813,8 @@ class UnitManager(rpu.Component):
 
             self._rep.progress()
 
+        self._rep.progress_done()
+
         if self._session._rec:
             self._rec_id += 1
 
@@ -831,7 +826,6 @@ class UnitManager(rpu.Component):
         # components (ie. advance state).
         self.advance(unit_docs, rps.UMGR_SCHEDULING_PENDING,
                      publish=True, push=True)
-        self._rep.ok('>>ok\n')
 
         if ret_list: return units
         else       : return units[0]
@@ -933,8 +927,6 @@ class UnitManager(rpu.Component):
             ret_list = False
             uids = [uids]
 
-        self._rep.info('<<wait for %d unit(s)\n\t' % len(uids))
-
         start    = time.time()
         to_check = None
 
@@ -945,7 +937,7 @@ class UnitManager(rpu.Component):
         # duplicate checks on units which were found in matching states.  So we
         # create a list from which we drop the units as we find them in
         # a matching state
-        self._rep.idle(mode='start')
+        self._rep.progress_tgt(len(to_check), label='wait')
         while to_check and not self._terminate.is_set():
 
             # check timeout
@@ -956,7 +948,6 @@ class UnitManager(rpu.Component):
             time.sleep (0.1)
 
             # FIXME: print percentage...
-            self._rep.idle()
           # print 'wait units: %s' % [[u.uid, u.state] for u in to_check]
 
             check_again = list()
@@ -973,15 +964,15 @@ class UnitManager(rpu.Component):
                 else:
                     # stop watching this unit
                     if unit.state in [rps.FAILED]:
-                        self._rep.idle(color='error', c='-')
+                        self._rep.progress()  # (color='error', c='-')
                     elif unit.state in [rps.CANCELED]:
-                        self._rep.idle(color='warn', c='*')
+                        self._rep.progress()  # (color='warn', c='*')
                     else:
-                        self._rep.idle(color='ok', c='+')
+                        self._rep.progress()  # (color='ok', c='+')
 
             to_check = check_again
 
-        self._rep.idle(mode='stop')
+        self._rep.progress_done()
 
         if to_check: self._rep.warn('>>timeout\n')
         else       : self._rep.ok  ('>>ok\n')
