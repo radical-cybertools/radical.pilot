@@ -1,5 +1,3 @@
-
-
 .. _chapter_resources:
 
 List of Pre-Configured Resources
@@ -7,22 +5,6 @@ List of Pre-Configured Resources
 
 RESOURCE_PRINCETON
 ==================
-
-TIGER_GPU
-*********
-
-
-
-* **Resource label**    : ``princeton.tiger_gpu``
-* **Raw config**        : :download:`resource_princeton.json <../../src/radical/pilot/configs/resource_princeton.json>`
-* **Note**              : 
-* **Default values** for ComputePilotDescription attributes:
-
- * ``queue         :gpu``
- * ``sandbox       :/scratch/gpfs/$USER/``
- * ``access_schema :local``
-
-* **Available schemas** : ``local, ssh``
 
 TIGER_CPU
 *********
@@ -35,6 +17,22 @@ TIGER_CPU
 * **Default values** for ComputePilotDescription attributes:
 
  * ``queue         :cpu``
+ * ``sandbox       :/scratch/gpfs/$USER/``
+ * ``access_schema :local``
+
+* **Available schemas** : ``local, ssh``
+
+TIGER_GPU
+*********
+
+
+
+* **Resource label**    : ``princeton.tiger_gpu``
+* **Raw config**        : :download:`resource_princeton.json <../../src/radical/pilot/configs/resource_princeton.json>`
+* **Note**              : 
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         :gpu``
  * ``sandbox       :/scratch/gpfs/$USER/``
  * ``access_schema :local``
 
@@ -97,12 +95,12 @@ OSG Connect. (https://osgconnect.net).
 RESOURCE_ORNL
 =============
 
-RHEA
-****
+RHEA_APRUN
+**********
 
-The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/rhea/)
+The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)
 
-* **Resource label**    : ``ornl.rhea``
+* **Resource label**    : ``ornl.rhea_aprun``
 * **Raw config**        : :download:`resource_ornl.json <../../src/radical/pilot/configs/resource_ornl.json>`
 * **Note**              : Requires the use of an RSA SecurID on every connection.
 * **Default values** for ComputePilotDescription attributes:
@@ -113,21 +111,21 @@ The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facilit
 
 * **Available schemas** : ``local, ssh, go``
 
-SUMMIT_PRTE
-***********
+RHEA_SSH
+********
 
-ORNL's summit, a Cray XK7
+The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/rhea/)
 
-* **Resource label**    : ``ornl.summit_prte``
+* **Resource label**    : ``ornl.rhea_ssh``
 * **Raw config**        : :download:`resource_ornl.json <../../src/radical/pilot/configs/resource_ornl.json>`
-* **Note**              : None
+* **Note**              : Requires the use of an RSA SecurID on every connection.
 * **Default values** for ComputePilotDescription attributes:
 
  * ``queue         :batch``
- * ``sandbox       :$MEMBERWORK/bip178``
+ * ``sandbox       :$MEMBERWORK/`groups | cut -d' ' -f2```
  * ``access_schema :local``
 
-* **Available schemas** : ``local``
+* **Available schemas** : ``local, ssh, go``
 
 SUMMITDEV
 *********
@@ -145,22 +143,6 @@ The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facilit
 
 * **Available schemas** : ``local``
 
-RHEA_APRUN
-**********
-
-The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)
-
-* **Resource label**    : ``ornl.rhea_aprun``
-* **Raw config**        : :download:`resource_ornl.json <../../src/radical/pilot/configs/resource_ornl.json>`
-* **Note**              : Requires the use of an RSA SecurID on every connection.
-* **Default values** for ComputePilotDescription attributes:
-
- * ``queue         :batch``
- * ``sandbox       :$MEMBERWORK/`groups | cut -d' ' -f2```
- * ``access_schema :local``
-
-* **Available schemas** : ``local``
-
 SUMMIT
 ******
 
@@ -172,7 +154,23 @@ ORNL's summit, a Cray XK7
 * **Default values** for ComputePilotDescription attributes:
 
  * ``queue         :batch``
- * ``sandbox       :$MEMBERWORK/bip178``
+ * ``sandbox       :$MEMBERWORK/%(pd.project)s``
+ * ``access_schema :local``
+
+* **Available schemas** : ``local``
+
+SUMMIT_PRTE
+***********
+
+ORNL's summit, a Cray XK7
+
+* **Resource label**    : ``ornl.summit_prte``
+* **Raw config**        : :download:`resource_ornl.json <../../src/radical/pilot/configs/resource_ornl.json>`
+* **Note**              : None
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         :batch``
+ * ``sandbox       :$MEMBERWORK/%(pd.project)s``
  * ``access_schema :local``
 
 * **Available schemas** : ``local``
@@ -199,12 +197,12 @@ An SGI ICE XA Cluster located at the National Center for Atmospheric Research (N
 RESOURCE_LOCAL
 ==============
 
-LOCALHOST_SPARK_ANACONDA
-************************
+LOCALHOST
+*********
 
-Your local machine gets spark.
+Your local machine.
 
-* **Resource label**    : ``local.localhost_spark_anaconda``
+* **Resource label**    : ``local.localhost``
 * **Raw config**        : :download:`resource_local.json <../../src/radical/pilot/configs/resource_local.json>`
 * **Note**              : To use the ssh schema, make sure that ssh access to localhost is enabled.
 * **Default values** for ComputePilotDescription attributes:
@@ -215,12 +213,28 @@ Your local machine gets spark.
 
 * **Available schemas** : ``local, ssh``
 
-LOCALHOST_ORTELIB
-*****************
+LOCALHOST_APRUN
+***************
 
 Your local machine.
 
-* **Resource label**    : ``local.localhost_ortelib``
+* **Resource label**    : ``local.localhost_aprun``
+* **Raw config**        : :download:`resource_local.json <../../src/radical/pilot/configs/resource_local.json>`
+* **Note**              : To use the ssh schema, make sure that ssh access to localhost is enabled.
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         :None``
+ * ``sandbox       :$HOME``
+ * ``access_schema :local``
+
+* **Available schemas** : ``local, ssh``
+
+LOCALHOST_YARN
+**************
+
+Your local machine.
+
+* **Resource label**    : ``local.localhost_yarn``
 * **Raw config**        : :download:`resource_local.json <../../src/radical/pilot/configs/resource_local.json>`
 * **Note**              : To use the ssh schema, make sure that ssh access to localhost is enabled.
 * **Default values** for ComputePilotDescription attributes:
@@ -263,76 +277,12 @@ Your local machine gets spark.
 
 * **Available schemas** : ``local, ssh``
 
-LOCALHOST_PRTE
-**************
+LOCALHOST_SPARK_ANACONDA
+************************
 
-Your local machine.
+Your local machine gets spark.
 
-* **Resource label**    : ``local.localhost_prte``
-* **Raw config**        : :download:`resource_local.json <../../src/radical/pilot/configs/resource_local.json>`
-* **Note**              : To use the ssh schema, make sure that ssh access to localhost is enabled.
-* **Default values** for ComputePilotDescription attributes:
-
- * ``queue         :None``
- * ``sandbox       :$HOME``
- * ``access_schema :local``
-
-* **Available schemas** : ``local, ssh``
-
-LOCALHOST_FUNCS
-***************
-
-
-
-* **Resource label**    : ``local.localhost_funcs``
-* **Raw config**        : :download:`resource_local.json <../../src/radical/pilot/configs/resource_local.json>`
-* **Note**              : 
-* **Default values** for ComputePilotDescription attributes:
-
- * ``queue         :None``
- * ``sandbox       :$HOME``
- * ``access_schema :local``
-
-* **Available schemas** : ``local, ssh``
-
-LOCALHOST
-*********
-
-Your local machine.
-
-* **Resource label**    : ``local.localhost``
-* **Raw config**        : :download:`resource_local.json <../../src/radical/pilot/configs/resource_local.json>`
-* **Note**              : To use the ssh schema, make sure that ssh access to localhost is enabled.
-* **Default values** for ComputePilotDescription attributes:
-
- * ``queue         :None``
- * ``sandbox       :$HOME``
- * ``access_schema :local``
-
-* **Available schemas** : ``local, ssh``
-
-LOCALHOST_YARN
-**************
-
-Your local machine.
-
-* **Resource label**    : ``local.localhost_yarn``
-* **Raw config**        : :download:`resource_local.json <../../src/radical/pilot/configs/resource_local.json>`
-* **Note**              : To use the ssh schema, make sure that ssh access to localhost is enabled.
-* **Default values** for ComputePilotDescription attributes:
-
- * ``queue         :None``
- * ``sandbox       :$HOME``
- * ``access_schema :local``
-
-* **Available schemas** : ``local, ssh``
-
-LOCALHOST_APRUN
-***************
-
-Your local machine.
-
-* **Resource label**    : ``local.localhost_aprun``
+* **Resource label**    : ``local.localhost_spark_anaconda``
 * **Raw config**        : :download:`resource_local.json <../../src/radical/pilot/configs/resource_local.json>`
 * **Note**              : To use the ssh schema, make sure that ssh access to localhost is enabled.
 * **Default values** for ComputePilotDescription attributes:
@@ -359,23 +309,56 @@ Your local machine.
 
 * **Available schemas** : ``local, ssh``
 
-RESOURCE_RADICAL
-================
+LOCALHOST_PRTE
+**************
 
-TWO
-***
+Your local machine.
 
-radical server 2
-
-* **Resource label**    : ``radical.two``
-* **Raw config**        : :download:`resource_radical.json <../../src/radical/pilot/configs/resource_radical.json>`
+* **Resource label**    : ``local.localhost_prte``
+* **Raw config**        : :download:`resource_local.json <../../src/radical/pilot/configs/resource_local.json>`
+* **Note**              : To use the ssh schema, make sure that ssh access to localhost is enabled.
 * **Default values** for ComputePilotDescription attributes:
 
- * ``queue         :batch``
+ * ``queue         :None``
  * ``sandbox       :$HOME``
- * ``access_schema :ssh``
+ * ``access_schema :local``
 
-* **Available schemas** : ``ssh, local``
+* **Available schemas** : ``local, ssh``
+
+LOCALHOST_ORTELIB
+*****************
+
+Your local machine.
+
+* **Resource label**    : ``local.localhost_ortelib``
+* **Raw config**        : :download:`resource_local.json <../../src/radical/pilot/configs/resource_local.json>`
+* **Note**              : To use the ssh schema, make sure that ssh access to localhost is enabled.
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         :None``
+ * ``sandbox       :$HOME``
+ * ``access_schema :local``
+
+* **Available schemas** : ``local, ssh``
+
+LOCALHOST_FUNCS
+***************
+
+
+
+* **Resource label**    : ``local.localhost_funcs``
+* **Raw config**        : :download:`resource_local.json <../../src/radical/pilot/configs/resource_local.json>`
+* **Note**              : 
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         :None``
+ * ``sandbox       :$HOME``
+ * ``access_schema :local``
+
+* **Available schemas** : ``local, ssh``
+
+RESOURCE_RADICAL
+================
 
 TUTORIAL
 ********
@@ -407,104 +390,23 @@ radical server 1
 
 * **Available schemas** : ``ssh, local``
 
+TWO
+***
+
+radical server 2
+
+* **Resource label**    : ``radical.two``
+* **Raw config**        : :download:`resource_radical.json <../../src/radical/pilot/configs/resource_radical.json>`
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         :batch``
+ * ``sandbox       :$HOME``
+ * ``access_schema :ssh``
+
+* **Available schemas** : ``ssh, local``
+
 RESOURCE_XSEDE
 ==============
-
-COMET_SPARK
-***********
-
-The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).
-
-* **Resource label**    : ``xsede.comet_spark``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
-* **Default values** for ComputePilotDescription attributes:
-
- * ``queue         :compute``
- * ``sandbox       :$HOME``
- * ``access_schema :ssh``
-
-* **Available schemas** : ``ssh, gsissh``
-
-COMET_SSH_FUNCS
-***************
-
-The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).
-
-* **Resource label**    : ``xsede.comet_ssh_funcs``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
-* **Default values** for ComputePilotDescription attributes:
-
- * ``queue         :compute``
- * ``sandbox       :$HOME``
- * ``access_schema :ssh``
-
-* **Available schemas** : ``ssh, gsissh``
-
-FRONTERA
-********
-
-
-
-* **Resource label**    : ``xsede.frontera``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : 
-* **Default values** for ComputePilotDescription attributes:
-
- * ``queue         :normal``
- * ``sandbox       :$SCRATCH``
- * ``access_schema :gsissh``
-
-* **Available schemas** : ``gsissh, ssh, local``
-
-BRIDGES
-*******
-
-The XSEDE 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).
-
-* **Resource label**    : ``xsede.bridges``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : Always set the ``project`` attribute in the ComputePilotDescription.
-* **Default values** for ComputePilotDescription attributes:
-
- * ``queue         :RM``
- * ``sandbox       :$SCRATCH``
- * ``access_schema :gsissh``
-
-* **Available schemas** : ``gsissh, ssh, go``
-
-STAMPEDE2_SSH
-*************
-
-The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).
-
-* **Resource label**    : ``xsede.stampede2_ssh``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
-* **Default values** for ComputePilotDescription attributes:
-
- * ``queue         :normal``
- * ``sandbox       :$WORK``
- * ``access_schema :gsissh``
-
-* **Available schemas** : ``gsissh, ssh``
-
-COMET_SSH
-*********
-
-The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).
-
-* **Resource label**    : ``xsede.comet_ssh``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
-* **Default values** for ComputePilotDescription attributes:
-
- * ``queue         :compute``
- * ``sandbox       :$HOME``
- * ``access_schema :ssh``
-
-* **Available schemas** : ``ssh, gsissh``
 
 WRANGLER_SSH
 ************
@@ -522,53 +424,21 @@ The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).
 
 * **Available schemas** : ``gsissh, ssh, go``
 
-SUPERMIC_ORTE
+WRANGLER_YARN
 *************
 
-SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)
+The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).
 
-* **Resource label**    : ``xsede.supermic_orte``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.
-* **Default values** for ComputePilotDescription attributes:
-
- * ``queue         :workq``
- * ``sandbox       :/work/$USER``
- * ``access_schema :local``
-
-* **Available schemas** : ``local, gsissh, ssh``
-
-COMET_ORTELIB
-*************
-
-The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).
-
-* **Resource label**    : ``xsede.comet_ortelib``
+* **Resource label**    : ``xsede.wrangler_yarn``
 * **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
 * **Note**              : Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
 * **Default values** for ComputePilotDescription attributes:
 
- * ``queue         :compute``
- * ``sandbox       :$HOME``
- * ``access_schema :ssh``
-
-* **Available schemas** : ``ssh, gsissh``
-
-SUPERMIC_SPARK
-**************
-
-SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)
-
-* **Resource label**    : ``xsede.supermic_spark``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.
-* **Default values** for ComputePilotDescription attributes:
-
- * ``queue         :workq``
- * ``sandbox       :/work/$USER``
+ * ``queue         :hadoop``
+ * ``sandbox       :$WORK``
  * ``access_schema :gsissh``
 
-* **Available schemas** : ``gsissh, ssh``
+* **Available schemas** : ``gsissh, ssh, go``
 
 WRANGLER_SPARK
 **************
@@ -586,6 +456,38 @@ The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).
 
 * **Available schemas** : ``gsissh, ssh, go``
 
+FRONTERA
+********
+
+
+
+* **Resource label**    : ``xsede.frontera``
+* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
+* **Note**              : 
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         :normal``
+ * ``sandbox       :$SCRATCH``
+ * ``access_schema :gsissh``
+
+* **Available schemas** : ``gsissh, ssh, local``
+
+STAMPEDE2_SSH
+*************
+
+The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).
+
+* **Resource label**    : ``xsede.stampede2_ssh``
+* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
+* **Note**              : Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         :normal``
+ * ``sandbox       :$WORK``
+ * ``access_schema :gsissh``
+
+* **Available schemas** : ``gsissh, ssh``
+
 STAMPEDE2_SRUN
 **************
 
@@ -602,12 +504,12 @@ The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).
 
 * **Available schemas** : ``gsissh, ssh``
 
-COMET_ORTE
-**********
+COMET_SSH
+*********
 
-The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).
+The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).
 
-* **Resource label**    : ``xsede.comet_orte``
+* **Resource label**    : ``xsede.comet_ssh``
 * **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
 * **Note**              : Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
 * **Default values** for ComputePilotDescription attributes:
@@ -618,37 +520,37 @@ The Comet HPC resource at SDSC 'HPC for the 99%' (http://www.sdsc.edu/services/h
 
 * **Available schemas** : ``ssh, gsissh``
 
-SUPERMIC_ORTELIB
-****************
+COMET_SSH_FUNCS
+***************
 
-SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)
+The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).
 
-* **Resource label**    : ``xsede.supermic_ortelib``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.
-* **Default values** for ComputePilotDescription attributes:
-
- * ``queue         :workq``
- * ``sandbox       :/work/$USER``
- * ``access_schema :gsissh``
-
-* **Available schemas** : ``gsissh, ssh``
-
-WRANGLER_YARN
-*************
-
-The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).
-
-* **Resource label**    : ``xsede.wrangler_yarn``
+* **Resource label**    : ``xsede.comet_ssh_funcs``
 * **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
 * **Note**              : Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
 * **Default values** for ComputePilotDescription attributes:
 
- * ``queue         :hadoop``
- * ``sandbox       :$WORK``
- * ``access_schema :gsissh``
+ * ``queue         :compute``
+ * ``sandbox       :$HOME``
+ * ``access_schema :ssh``
 
-* **Available schemas** : ``gsissh, ssh, go``
+* **Available schemas** : ``ssh, gsissh``
+
+COMET_SPARK
+***********
+
+The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).
+
+* **Resource label**    : ``xsede.comet_spark``
+* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
+* **Note**              : Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         :compute``
+ * ``sandbox       :$HOME``
+ * ``access_schema :ssh``
+
+* **Available schemas** : ``ssh, gsissh``
 
 SUPERMIC_SSH
 ************
@@ -666,8 +568,88 @@ SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest 
 
 * **Available schemas** : ``gsissh, ssh``
 
+SUPERMIC_ORTE
+*************
+
+SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)
+
+* **Resource label**    : ``xsede.supermic_orte``
+* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
+* **Note**              : Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         :workq``
+ * ``sandbox       :/work/$USER``
+ * ``access_schema :local``
+
+* **Available schemas** : ``local, gsissh, ssh``
+
+SUPERMIC_ORTELIB
+****************
+
+SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)
+
+* **Resource label**    : ``xsede.supermic_ortelib``
+* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
+* **Note**              : Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         :workq``
+ * ``sandbox       :/work/$USER``
+ * ``access_schema :gsissh``
+
+* **Available schemas** : ``gsissh, ssh``
+
+BRIDGES
+*******
+
+The XSEDE 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).
+
+* **Resource label**    : ``xsede.bridges``
+* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
+* **Note**              : Always set the ``project`` attribute in the ComputePilotDescription.
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         :RM``
+ * ``sandbox       :$SCRATCH``
+ * ``access_schema :gsissh``
+
+* **Available schemas** : ``gsissh, ssh, go``
+
+SUPERMIC_SPARK
+**************
+
+SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)
+
+* **Resource label**    : ``xsede.supermic_spark``
+* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
+* **Note**              : Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         :workq``
+ * ``sandbox       :/work/$USER``
+ * ``access_schema :gsissh``
+
+* **Available schemas** : ``gsissh, ssh``
+
 RESOURCE_DEBUG
 ==============
+
+LOCAL
+*****
+
+
+
+* **Resource label**    : ``debug.local``
+* **Raw config**        : :download:`resource_debug.json <../../src/radical/pilot/configs/resource_debug.json>`
+* **Note**              : 
+* **Default values** for ComputePilotDescription attributes:
+
+ * ``queue         :``
+ * ``sandbox       :$HOME/``
+ * ``access_schema :local``
+
+* **Available schemas** : ``local``
 
 SUMMIT
 ******
