@@ -38,7 +38,7 @@ def unit_state_cb (unit, state):
 
     if state in [rp.FAILED, rp.DONE, rp.CANCELED]:
 
-        print "* unit %s (%s) state %s (%s) %s - %s, out/err: %s / %s" \
+        print("* unit %s (%s) state %s (%s) %s - %s, out/err: %s / %s" \
                  % (unit.uid,
                     unit.execution_locations,
                     unit.state,
@@ -46,7 +46,7 @@ def unit_state_cb (unit, state):
                     unit.start_time,
                     unit.stop_time,
                     unit.stdout,
-                    unit.stderr)
+                    unit.stderr))
 
 
 # ------------------------------------------------------------------------------
