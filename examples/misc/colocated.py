@@ -69,7 +69,7 @@ if __name__ == '__main__':
                 cud.tags             = {'colocate': {'bag' : b,
                                                      'size': bag_size}}
                 cud.name             =  'b%03d-t%03d' % (b, tid)
-                print cud.name
+                print(cud.name)
                 cuds.append(cud)
                 report.progress()
 

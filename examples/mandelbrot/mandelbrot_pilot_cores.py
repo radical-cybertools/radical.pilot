@@ -64,7 +64,7 @@ def unit_state_cb (unit, state):
     print("[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state))
 
     if state == rp.FAILED:
-        print "stderr: %s" % unit.stderr
+        print("stderr: %s" % unit.stderr)
         sys.exit (2)
 
 
