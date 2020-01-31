@@ -52,7 +52,7 @@ def main():
         run_workload (pilot)
 
     except Exception as e:
-        print 'Exception: %s' % e
+        print('Exception: %s' % e)
         raise
 
     finally:
