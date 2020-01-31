@@ -13,13 +13,13 @@ Sessions and Security Contexts
 Sessions
 --------
 .. autoclass:: radical.pilot.Session
-   :members: Session
+   :members: 
    :special-members: __init__
 
 Security Contexts
 -----------------
 .. autoclass:: radical.pilot.Context
-   :members: Context
+   :members: 
    :special-members: __init__
 
 Pilots and PilotManagers
@@ -28,18 +28,18 @@ Pilots and PilotManagers
 PilotManagers
 -------------
 .. autoclass:: radical.pilot.PilotManager
-   :members: PilotManager
+   :members: 
    :special-members: __init__
 
 ComputePilotDescription
 -----------------------
 .. autoclass:: radical.pilot.ComputePilotDescription
-   :members: ComputePilotDescription
+   :members: 
 
 Pilots
 ------
 .. autoclass:: radical.pilot.ComputePilot
-   :members: ComputePilot
+   :members: 
 
 ComputeUnits and UnitManagers
 =============================
@@ -47,27 +47,19 @@ ComputeUnits and UnitManagers
 UnitManager
 -----------
 .. autoclass:: radical.pilot.UnitManager
-   :members: UnitManager
+   :members: 
    :special-members: __init__
 
 ComputeUnitDescription
 -----------------------
 .. autoclass:: radical.pilot.ComputeUnitDescription
-   :members: ComputeUnitDescription
+   :members: 
 
 ComputeUnit
 -----------
 .. autoclass:: radical.pilot.ComputeUnit
-   :members: ComputeUnit
+   :members: 
 
-Exceptions
-==========
-
-.. autoclass:: radical.pilot.PilotException
-   :members: PilotException
-
-.. autoclass:: radical.pilot.DatabaseError
-   :members: DatabaseError
 
 .. comment
 
