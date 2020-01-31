@@ -13,10 +13,7 @@ features of RADICAL-Pilot in more realistic environments.
    :maxdepth: 1
 
    simple_bot.rst
-   simple_bot_multi.rst
    chained_tasks.rst
    coupled_tasks.rst
    mpi_tasks.rst
-   mandelbrot.rst
-   kmeans.rst
 
