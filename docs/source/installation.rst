@@ -22,9 +22,8 @@ Software
 RADICAL-Pilot requires the following packages:
 
 * Python >= 3.7
+* virtualenv >= 16
 * pip >= 20
-
-.. * virtualenv >= 16
 
 or
 
@@ -121,11 +120,11 @@ via PyPi
 --------
 .. code-block:: bash
 
-    python3 -m venv $HOME/ve
+    virtualenv --system-site-packages $HOME/ve
     source $HOME/ve/bin/activate
     pip install radical.pilot
 
-.. virtualenv --system-site-packages $HOME/ve
+.. python3 -m venv $HOME/ve
 
 via Conda-Forge
 ---------------
