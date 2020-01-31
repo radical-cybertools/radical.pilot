@@ -21,13 +21,14 @@ Software
 
 RADICAL-Pilot requires the following packages:
 
-* Python >= 2.7
-* virtualenv >= 16
-* pip >= 19
+* Python >= 3.7
+* pip >= 20
+
+.. * virtualenv >= 16
 
 or
 
-* Anaconda Python >= 2.7
+* Anaconda Python >= 3.7
 
 All other dependencies are installed automatically by RADICAL-Pilot installer.
 
@@ -120,15 +121,17 @@ via PyPi
 --------
 .. code-block:: bash
 
-    virtualenv --system-site-packages $HOME/ve
+    python3 -m venv $HOME/ve
     source $HOME/ve/bin/activate
     pip install radical.pilot
+
+.. virtualenv --system-site-packages $HOME/ve
 
 via Conda-Forge
 ---------------
 .. code-block:: bash
 
-    conda create -n ve -y python=2.7
+    conda create -n ve -y python=3.7
     source activate ve
     conda install radical.pilot -c conda-forge
 
@@ -138,7 +141,7 @@ properly, run:
 .. code-block:: bash
 
     $ radical-pilot-version
-    0.50.21
+    1.0.2
 
 The exact output will obviously depend on the exact version of RADICAL-Pilot which got
 installed.
