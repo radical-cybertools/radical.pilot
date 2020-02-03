@@ -1810,6 +1810,7 @@ do
     sleep 3
     if kill -0 $AGENT_PID 2>/dev/null
     then
+        echo -n '.'
         if test -e "./killme.signal"
         then
             profile_event 'killme' "`date --rfc-3339=ns | cut -c -23`"
@@ -1824,6 +1825,7 @@ do
             kill  -9 $AGENT_PID
         fi
     else
+        echo
         profile_event 'agent_gone' "`date --rfc-3339=ns | cut -c -23`"
         echo "agent $AGENT_PID is gone"
         break
