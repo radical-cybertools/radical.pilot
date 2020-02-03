@@ -506,7 +506,7 @@
         "valid_roots"                 : ["/home", "/pylon1", "/pylon5"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "default",
+        "python_dist"                 : "anaconda",
         "export_to_cu"                : [],
         "cu_pre_exec"                 : [],
         "saga_jd_supplement"          : {"cpu_architecture" : ["p100"]},
