@@ -205,7 +205,6 @@ class PilotManager(rpu.Component):
         if self._closed:
             return
 
-        self._terminate.set()
         self._rep.info('<<close pilot manager')
 
         # disable callbacks during shutdown
@@ -216,11 +215,11 @@ class PilotManager(rpu.Component):
 
       # # If terminate is set, we cancel all pilots.
       # if terminate:
-      #     self.cancel_pilots(_timeout=10)
+      #     self.cancel_pilots(_timeout=20)
       #     # if this cancel op fails and the pilots are s till alive after
       #     # timeout, the pmgr.launcher termination will kill them
 
-
+        self._terminate.set()
         self._cmgr.close()
 
         self._log.info("Closed PilotManager %s." % self._uid)
@@ -756,8 +755,7 @@ class PilotManager(rpu.Component):
                     self._log.debug ("wait timed out")
                     break
 
-                time.sleep (0.1)
-
+            time.sleep (0.1)
 
         self._rep.idle(mode='stop')
 
