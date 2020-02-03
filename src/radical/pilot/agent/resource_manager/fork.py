@@ -29,11 +29,16 @@ class Fork(ResourceManager):
 
         # For the fork ResourceManager (ie. on localhost), we fake an infinite
         # number of cores, so don't perform any sanity checks.
-        detected_cpus = multiprocessing.cpu_count()
+        detected_cores = multiprocessing.cpu_count()
 
-        if detected_cpus != self.requested_cores:
-            self._log.info("using %d instead of physically available %d cores.",
-                    self.requested_cores, detected_cpus)
+        if detected_cores != self.requested_cores:
+            if self._cfg.resource_cfg.fake_resources:
+                self._log.info("using %d instead of available %d cores.",
+                               self.requested_cores, detected_cores)
+            else:
+                if self.requested_cores > detected_cores:
+                    raise RuntimeError('insufficient cores found (%d < %d'
+                            % (detected_cores, self.requested_cores))
 
         # if cores_per_node is set in the agent config, we slice the number of
         # cores into that many virtual nodes.  cpn defaults to requested_cores,
