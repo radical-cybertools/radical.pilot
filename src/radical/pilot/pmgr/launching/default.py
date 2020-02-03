@@ -702,7 +702,7 @@ class Default(PMGRLaunchingComponent):
             tgt_dir = os.path.dirname(tgt)
 
             if tgt_dir.startswith('..'):
-              # raise ValueError('staging target %s outside of pilot sandbox: %s' % (ft['tgt'], tgt))
+              # raise ValueError('staging tgt %s outside pilot sbox: %s' % (ft['tgt'], tgt))
                 tgt = ft['tgt']
                 tgt_dir = os.path.dirname(tgt)
 

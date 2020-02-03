@@ -73,6 +73,7 @@ class Agent_0(rpu.Worker):
         # and start those
         self._cmgr = rpu.ComponentManager(self._cfg)
         self._cfg.heartbeat = self._cmgr.cfg.heartbeat
+
         self._cmgr.start_bridges()
         self._cmgr.start_components()
 
@@ -227,6 +228,8 @@ class Agent_0(rpu.Worker):
                     self._log.error('output tarring failed: %s', cmd)
 
 
+    # --------------------------------------------------------------------------
+    #
     def finalize(self):
 
         # tar up output staging data
@@ -245,45 +248,32 @@ class Agent_0(rpu.Worker):
         elif self._final_cause == 'sys.exit' : state = rps.CANCELED
         else                                 : state = rps.FAILED
 
+        # NOTE: we do not push the final pilot state, as that is done by the
+        #       bootstrapper *after* this pilot *actually* finished.
+        with open('./killme.signal', 'w') as fout:
+            fout.write('%s\n' % state)
+
         # we don't rely on the existence / viability of the update worker at
         # that point.
         self._log.debug('update db state: %s: %s', state, self._final_cause)
-        self._update_db(state, self._final_cause)
-
-        # NOTE: we do not push the final pilot state, as that is done by the
-        #       bootstrapper *after* this pilot *actually* finished.
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _update_db(self, state, msg=None):
-
-        # NOTE: we do not push the final pilot state, as that is done by the
-        #       bootstrapper *after* this poilot *actually* finished.
-
-        self._log.info('pilot state: %s', state)
         self._log.info('rusage: %s', rpu.get_rusage())
-        self._log.info(msg)
 
-        if state == rps.FAILED:
-            self._log.info(ru.get_trace())
+        out, out, err = '', '', ''
 
-        out = None
-        err = None
-        log = None
-
-        try   : out = open('./agent_0.out', 'r').read(1024)
+        try   : out   = open('./agent.0.out', 'r').read(1024)
         except: pass
-        try   : err = open('./agent_0.err', 'r').read(1024)
+        try   : err   = open('./agent.0.err', 'r').read(1024)
         except: pass
-        try   : log = open('./agent_0.log', 'r').read(1024)
+        try   : log   = open('./agent.0.log', 'r').read(1024)
         except: pass
 
-        ret = self._dbs._c.update({'type': 'pilot',
-                                   'uid' : self._pid},
-                                  {'$set': {'stdout' : rpu.tail(out),
-                                            'stderr' : rpu.tail(err),
-                                            'logfile': rpu.tail(log)}
+        ret = self._dbs._c.update({'type' : 'pilot',
+                                   'uid'  : self._pid},
+                                  {'$set' : {'stdout' : rpu.tail(out),
+                                             'stderr' : rpu.tail(err),
+                                             'logfile': rpu.tail(log),
+                                             'state'  : state},
+                                   '$push': {'states' : state}
                                   })
         self._log.debug('update ret: %s', ret)
 
