@@ -441,8 +441,7 @@ class Session(rs.Session):
 
         if not self._reporter:
             self._reporter = ru.Reporter(name=name, ns='radical.pilot',
-                                         path=self._cfg.path,
-                                         targets=['stdout'])
+                                         path=self._cfg.path)
         return self._reporter
 
 
