@@ -980,7 +980,7 @@ virtenv_create()
     elif test "$python_dist" = "anaconda"
     then
         run_cmd "Create virtualenv" \
-                "conda create -y -p $virtenv python=3"
+                "conda create -y -p $virtenv python=3.8"
         if test $? -ne 0
         then
             echo "ERROR: Couldn't create virtualenv"
