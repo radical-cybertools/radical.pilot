@@ -248,16 +248,14 @@ class Agent_0(rpu.Worker):
         elif self._final_cause == 'sys.exit' : state = rps.CANCELED
         else                                 : state = rps.FAILED
 
-        # we don't rely on the existence / viability of the update worker at
-        # that point.
-        self._log.debug('update db state: %s: %s', state, self._final_cause)
-
         # NOTE: we do not push the final pilot state, as that is done by the
         #       bootstrapper *after* this pilot *actually* finished.
         with open('./killme.signal', 'w') as fout:
             fout.write('%s\n' % state)
 
-        self._log.info('pilot state: %s [%s]', state, self._final_cause)
+        # we don't rely on the existence / viability of the update worker at
+        # that point.
+        self._log.debug('update db state: %s: %s', state, self._final_cause)
         self._log.info('rusage: %s', rpu.get_rusage())
 
         out, out, err = '', '', ''
