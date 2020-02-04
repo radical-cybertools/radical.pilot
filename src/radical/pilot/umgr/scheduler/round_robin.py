@@ -75,15 +75,6 @@ class RoundRobin(UMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def update_units(self, uids):
-
-        # RR scheduling is not concerned about unit states
-        pass
-
-
-
-    # --------------------------------------------------------------------------
-    #
     def _work(self, units):
 
         unscheduled = list()
