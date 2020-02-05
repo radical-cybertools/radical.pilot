@@ -38,7 +38,7 @@ in your Python script or application:
     import radical.pilot as rp
 
 
-All example scripts used in this user guide use the ``LogReporter``
+All example scripts used in this user guide use the ``Reporter``
 facility (of RADICAL-Utils) to print runtime and progress information.  You can
 control that output with the ``RADICAL_PILOT_VERBOSE`` variable, which can be set
 to the normal Python logging levels, and to the value ``REPORT`` to obtain well
@@ -52,7 +52,7 @@ any output in this chapter.
     import radical.pilot as rp
     import radical.utils as ru
 
-    report = ru.LogReporter(name='radical.pilot')
+    report = ru.Reporter(name='radical.pilot')
     report.title('Getting Started (RP version %s)' % rp.version)
 
 
@@ -61,7 +61,7 @@ Creating a Session
 ------------------
 
 A :class:`radical.pilot.Session` is the root object for all other objects in
-RADICAL- Pilot.  :class:`radical.pilot.PilotManager` and
+RADICAL-Pilot.  :class:`radical.pilot.PilotManager` and
 :class:`radical.pilot.UnitManager` instances are always attached to a Session,
 and their lifetime is controlled by the session.
 
@@ -99,27 +99,29 @@ a :class:`radical.pilot.ComputePilotDescription`.  The most important elements
 of the ``ComputePilotDescription`` are
 
     * `resource`: a label which specifies the target resource to run the pilot
-      on, ie. the location of the pilot;
-    * `cores`   : the number of CPU cores the pilot is expected to manage, ie.
+      on, i.e., the location of the pilot;
+    * `cores`   : the number of CPU cores the pilot is expected to manage, i.e.,
       the size of the pilot;
-    * `runtime` : the numbers of minutes the pilot is expected to be active, ie.
-      the runtime of the pilot.
+    * `runtime` : the numbers of minutes the pilot is expected to be active,
+      i.e., the runtime of the pilot.
 
 Depending on the specific target resource and use case, other properties need
 to be specified.  In our user guide examples, we use a separate
-`config.json<../../../examples/config.json>` file to store a number of
-properties per resource label, to simplify the example code.  The examples
-themselves then accept one or more resource labels, and create the pilots on
-those resources:
-
+:download:`config.json <../../../examples/config.json>` file to store a
+number of properties per resource label, to simplify the example code. The
+examples themselves then accept one or more resource labels, and create the
+pilots on those resources:
 
 .. code-block:: python
 
-    # use the resource specified as argument, fall back to localhost
+    # read the config
+    config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
+
+    # use the resource specified as an argument, fall back to localhost
     try   : resource = sys.argv[1]
     except: resource = 'local.localhost'
 
-    # create a pilot manage in the session
+    # create a pilot manager in the session
     pmgr = rp.PilotManager(session=session)
 
     # define an [n]-core local pilot that runs for [x] minutes
@@ -130,14 +132,14 @@ those resources:
             'project'       : config[resource]['project'],
             'queue'         : config[resource]['queue'],
             'access_schema' : config[resource]['schema']
-            }
+            })
 
     # submit the pilot for launching
     pilot = pmgr.submit_pilots(pdesc)
 
 
 For a list of available resource labels, see :ref:`chapter_resources` (not all
-of those resources are configured for the userguide examples).  For further
+of those resources are configured for the user guide examples).  For further
 details on the pilot description, please check the :class:`API Documentation
 <radical.pilot.ComputePilotDescription>`.
 
@@ -146,8 +148,8 @@ details on the pilot description, please check the :class:`API Documentation
     when your Python scripts finishes. Pilot agents terminate only after
     they have reached their ``runtime`` limit, are killed by the target system,
     or if you explicitly cancel them via :func:`radical.pilot.Pilot.cancel`,
-    :func:`radical.pilot.PilotManager.cancel_pilots`, or
-    :func:`radical.pilot.Session.close(terminate=True)`.
+    :func:`radical.pilot.PilotManager.cancel_pilots`, or with the parameter
+    ``terminate=True`` in :func:`radical.pilot.Session.close`.
 
 
 Submitting ComputeUnits
@@ -166,7 +168,7 @@ that you need to define are:
    * ``executable`` - the executable to launch
    * ``cores``      - the number of cores required by the executable
 
-Our basic example creates 128 units which each run `/bin/date`:
+Our basic example creates 128 units which each runs `/bin/date`:
 
 .. code-block:: python
 
@@ -179,7 +181,7 @@ Our basic example creates 128 units which each run `/bin/date`:
             cuds.append(cud)
 
 
-Units are executed by pilots.  The `:class:radical.pilot.UnitManager`
+Units are executed by pilots. The :class:`radical.pilot.UnitManager`
 class is responsible for routing those units from the application to the
 available pilots.  The ``UnitManager`` accepts ``ComputeUnitDescriptions`` as we
 created above and assigns them, according to some scheduling algorithm, to the
