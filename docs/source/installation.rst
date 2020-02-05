@@ -42,11 +42,11 @@ SSH
 RADICAL-Pilot requires to setup a password-less ``ssh`` login between the
 machine where your application is executed and the machine where the tasks of
 your application will be executed. For example, if you execute your
-application written with RADICAL-Pilot API on a virtual machine hosted on a
-public or private cloud provider and you want to execute your application's
+application written with the RADICAL-Pilot API on a virtual machine hosted on a
+public or private cloud provider, and you want to execute your application's
 tasks on an XSEDE HPC machine, you will have to configure a password-less
-``(gsi)ssh`` login between those virtual machine and HPC machine. (Here one of
-the many guides available about how `How to Setup Passwordless SSH Login
+``(gsi)ssh`` login between the virtual and the HPC machine. (Here one of
+the many guides available about `How to Setup Passwordless SSH Login
 <https://linuxize.com/post/how-to-setup-passwordless-ssh-login/>`_).
 
 
