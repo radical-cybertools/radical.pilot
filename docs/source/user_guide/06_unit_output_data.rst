@@ -5,21 +5,22 @@
 Staging Unit Output Data
 ************************
 
-Upon completion, CUs have often creates some amount of data. We have seen in
-:ref:`chapter_user_guide_01` how we can inspect the CU's ``stdout`` string -- but
-that will not be useful beyond the most trivial workloads.  This section
-introduces how created data can be staged back to the RP application, and/or
-staged to 3rd party storage.
+Upon completion, units have often creates some amount of data. We have seen in
+:ref:`chapter_user_guide_01` how we can inspect the unit's ``stdout`` string,
+but that will not be useful beyond the most trivial workloads. This section
+shows how to stage the output data of units back to the RP application, and/or
+to arbitrary storage locations and devices.
 
-Output staging is in principle specified just like the input staging discussed
-in the :ref:`previous <chapter_user_guide_05>` section:
+In principle, output staging is specified as the input staging discussed in
+the :ref:`previous <chapter_user_guide_05>` section:
 
-  * ``source``: what data files need to be staged from the context of the finished CU;
-  * ``target``: where should the data be staged to;
-  * ``action``: how should data be staged.
+  * ``source``: what files need to be staged from the context of the unit that
+                terminated execution;
+  * ``target``: where should the files be staged to;
+  * ``action``: how should files be staged.
 
-In this example we actually use the long form, and specify the output file name
-to be changed to a unique name during staging:
+Note that in this example we specify the output file name to be changed to a
+unique name during staging:
 
 .. code-block:: python
 
@@ -32,8 +33,9 @@ to be changed to a unique name during staging:
                               'action': rp.TRANSFER}
 
 :download:`06_unit_output_data.py <../../../examples/06_unit_output_data.py>`
-contains an example application which uses the above code block.  It otherwise
-does not significantly differ from our previous example.
+is an example application which uses the code block above. 
+
+.. It otherwise does not significantly differ from our previous example.
 
 
 Running the Example
@@ -48,8 +50,7 @@ renamed during the output-staging phase:
 What's Next?
 ------------
 
-As we are now comfortable with input and output staging, we will next look into
-an optimization which is important for a large set of use cases: the
-:ref:`sharing of input data <chapter_user_guide_07>` between multiple compute
-units.
+We look into an optimization which is important for a large set of use cases:
+the :ref:`sharing of input data <chapter_user_guide_07>` among multiple
+compute units.
 
