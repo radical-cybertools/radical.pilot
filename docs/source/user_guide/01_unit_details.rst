@@ -26,7 +26,7 @@ will *always* have a state though, according to the state model discussed in
 :ref:`chapter_overview`.
 
 
-The code block below contains what most applications are interested is: unit
+The code block below contains what most applications are interested in: unit
 state, exit code, and standard output (we'll see :ref:`later <chapter_user_guide_02>` that stderr is handled equivalently):
 
 .. code-block:: python
@@ -40,7 +40,7 @@ state, exit code, and standard output (we'll see :ref:`later <chapter_user_guide
     will be shortened on very long outputs (longer than 1kB by default), and it
     may contain information from RP which are not strictly part of the
     application stdout messages.  The proper staging of output file will be
-    discussed in a :ref:later <chapter_user_guide_06>` example.
+    discussed in a :ref:`later <chapter_user_guide_06>` example.
 
 
 
