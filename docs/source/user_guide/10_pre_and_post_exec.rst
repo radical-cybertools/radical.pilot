@@ -50,5 +50,6 @@ The RP User-Guide concludes with this section.  We recommend to check out the RP
 API documentation next, and use it to write an RP application to run your own
 workload.  Ii is easiest to do so by starting off with the 
 :download:`canonical example <../../../examples/10_pre_and_post_exec.py>`, and
-then add bits and pieces from the various user :ref:<chapter_user_guide>` sections as needed.
+then add bits and pieces from the various user :ref:`<chapter_user_guide>`
+sections as needed.
 

@@ -12,7 +12,7 @@ introduces how created data can be staged back to the RP application, and/or
 staged to 3rd party storage.
 
 Output staging is in principle specified just like the input staging discussed
-in the ref:`previous <chapter_user_guide_05>` section:
+in the :ref:`previous <chapter_user_guide_05>` section:
 
   * ``source``: what data files need to be staged from the context of the finished CU;
   * ``target``: where should the data be staged to;

@@ -39,7 +39,5 @@ uses the above blob to run a bag of duplicated `echo` commands:
 What's Next?
 ------------
 
-:ref:`Running MPI applications <chapter_user_guide_09>`, and 
-:ref:providing more generic environment setup <chapter_user_guide_10>`, are the
-topics for the next two sections.
+:ref:`Generic environment setup <chapter_user_guide_10>`.
 

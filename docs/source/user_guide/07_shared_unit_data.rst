@@ -11,7 +11,7 @@ input data.  We have seen :ref:`earlier <chapter_user_guide_05>` that input
 staging can incur a significant runtime overhead -- but that can be
 significantly reduced by avoiding redundant staging operations.
 
-For this purpose, each RP `pilot` manages a spaces of shared data, and any data
+For this purpose, each RP `pilot` manages a space of shared data, and any data
 put into that space by the application can later be symlinked into the unit's
 workdir, for consumption:
 
@@ -32,8 +32,7 @@ workdir, for consumption:
         cud.arguments      = ['-c', 'input.dat']
         cud.input_staging  = {'source': 'staging:///input.dat', 
                               'target': 'input.dat',
-                              'action': rp.LINK
-                             }
+                              'action': rp.LINK}
 
 The `rp.LINK` staging action requests a symlink to be created by RP, instead of
 the copy operation used on the default `rp.TRANSFER` action.  The full example
