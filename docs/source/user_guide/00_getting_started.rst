@@ -39,18 +39,18 @@ for the module name:
     import radical.pilot as rp
 
 
-All code examples of this guide use the 
-`reporter <https://github.com/radical-cybertools/radical.utils/blob/devel/src/radical/utils/reporter.py>`_ 
-facility of 
-`RADICAL-Utils <https://github.com/radical-cybertools/radical.utils/>`_ 
-to print runtime and progress information.  You can control that output with the 
-``RADICAL_PILOT_VERBOSE`` variable, which can be set to the normal Python logging 
-levels, and to the value ``REPORT`` to obtain well formatted output.  We assume the 
-``REPORT`` setting to be used when referencing any output in this chapter.
+All code examples of this guide use the `reporter
+<https://github.com/radical-cybertools/radical.utils/blob/devel/src/radical/utils/reporter.py>`_
+facility of `RADICAL-Utils
+<https://github.com/radical-cybertools/radical.utils/>`_ to print well formatted
+runtime and progress information.  You can control that output with the
+``RADICAL_PILOT_REPORT`` variable, which can be set to `TRUE` or `FALSE` to
+enable / disable reporter output.  We assume the setting to be ``TRUE`` when
+referencing any output in this chapter.
 
 .. code-block:: python
 
-    os.environ['RADICAL_PILOT_VERBOSE'] = 'REPORT'
+    os.environ['RADICAL_REPORT'] = 'TRUE'
 
     import radical.pilot as rp
     import radical.utils as ru
@@ -132,12 +132,12 @@ pilots on those resources:
     # define an [n]-core pilot that runs for [x] minutes
     pdesc = rp.ComputePilotDescription({
             'resource'      : resource,
-            'cores'         : 64,  # pilot size
-            'runtime'       : 10,  # pilot runtime (min)
+            'runtime'       : 10,                         # pilot runtime (min)
+            'cores'         : config[resource]['cores'],  # pilot size
             'project'       : config[resource]['project'],
             'queue'         : config[resource]['queue'],
             'access_schema' : config[resource]['schema']
-            })
+    })
 
     # submit the pilot for launching
     pilot = pmgr.submit_pilots(pdesc)
@@ -151,7 +151,7 @@ details on the pilot description, please check the :class:`API Documentation
 
 .. note:: Pilots terminate when calling the function
           :func:`radical.pilot.Session.close` or
-          :func:`radical.pilot.Pilot.cancel`. The argument ``terminate=False``          
+          :func:`radical.pilot.Pilot.cancel`. The argument ``terminate=False``
           of :func:`radical.pilot.Session.close` let the pilot run for all its
           indicated duration, possibly after that the Python application has
           exited.
@@ -162,7 +162,7 @@ Submitting ComputeUnits
 
 .. After launching a pilot, you can generate
 .. :class:`radical.pilot.ComputeUnit`  objects for the pilot to execute. You
-.. can think of 
+.. can think of
 
 Each ``ComputeUnit`` is similar to an operating system process, consisting of
 an ``executable``, a list of ``arguments``, and an ``environment`` along with

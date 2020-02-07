@@ -2,13 +2,13 @@
 .. _chapter_developers:
 
 ***********************
-Developer Documentation 
+Developer Documentation
 ***********************
 
 Installation from Source
 ========================
 
-If you are planning to contribute to the RADICAL-Pilot codebase, or if you want 
+If you are planning to contribute to the RADICAL-Pilot codebase, or if you want
 to use the latest and greatest development features, you can download
 and install RADICAL-Pilot directly from the sources.
 
@@ -18,14 +18,14 @@ First, you need to check out the sources from GitHub.
 
     git clone https://github.com/radical-cybertools/radical.pilot.git
 
-Next, run the installer directly from the source directoy (assuming you have 
+Next, run the installer directly from the source directoy (assuming you have
 set up a vritualenv):
 
 .. code-block:: bash
- 
+
     pip install --upgrade .
-    
-    
+
+
 License
 =======
 
@@ -42,20 +42,22 @@ We generally follow PEP 8 (http://legacy.python.org/dev/peps/pep-0008/), with cu
   - When alignment of assignments improves readability.
 
 
-Debugging 
+Debugging
 =========
 
-The `RADICAL_PILOT_VERBOSE` environment variable controls the debug output of 
+The `RADICAL_PILOT_LOG_LVL` environment variable controls the debug output of
 a RADICAL-Pilot application. Possible values are:
 
-  * `debug`
-  * `info`
-  * `warning`
-  * `error`
+  * `DEBUG`
+  * `INFO`
+  * `WARNING`
+  * `ERROR`
+  * `CRITICAL`
 
-The environment variable `RADICAL_PILOT_AGENT_VERBOSE` controls the debug log
-level of the agent process on the target resource.  If it is not set, the log
-level from `RADICAL_PILOT_VERBOSE` is used.
+The environment variable `RADICAL_LOG_LVL` controls the log output from the
+lower levels of the software stack.  The variable `RADICAL_LOG_TGT` and
+`RADICAL_PILOT_LOG_TGT` can be used to specify a filename in which the log
+messages will be stored (default target is STDERR).
 
 
 RADICAL-Pilot Architecture
