@@ -44,7 +44,7 @@ Download the file ``helloworld_mpi.py`` with the following command:
 Execution
 ----------
 
-** This assumes you have installed RADICAL-Pilot either globally or in a
+** This assumes you have installed RADICAL-Pilot in a
 Python virtualenv. You also need access to a MongoDB server.**
 
 Set the `RADICAL_PILOT_DBURL` environment variable in your shell to the
@@ -52,7 +52,7 @@ MongoDB server you want to use, for example:
 
 .. code-block:: bash
 
-        export RADICAL_PILOT_DBURL=mongodb://<user>:<pass>@<mongodb_server>:27017/
+        export RADICAL_PILOT_DBURL=mongodb://<user>:<pass>@<hostname>:<port>/
 
 If RADICAL-Pilot is installed and the MongoDB URL is set, you should be good
 to run your program:
