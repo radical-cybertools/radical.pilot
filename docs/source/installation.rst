@@ -259,8 +259,8 @@ Support
 RADICAL-Pilot undergoes constant evolution, implementing new capabilities,
 supporting new resources and keeping up with the progressing of its
 dependencies. If you encounter any error, please do not hesitate to contact the
-RADICAL lab team by opening a `support ticket
-<https://github.com/radical-cybertools/radical.pilot/issues>`_.
+RADICAL lab team by opening an 
+`issue <https://github.com/radical-cybertools/radical.pilot/issues>`_.
 
 .. via the
 .. mailing list:

@@ -67,7 +67,7 @@ Configuring GSISSH Access for XSEDE resources
 =============================================
 
 XSEDE resources require using gsissh instead of ssh. Once the gsissh and
-myproxy are successfully installed, one need to aquire a X509 certificate:
+myproxy are successfully installed, one need to acquire a X509 certificate:
 
 .. code-block:: bash
 
@@ -118,16 +118,15 @@ provided resource configuration files, you can write your own, and save it in
           "resource\_" and end with the ".json" suffix. Within each resource
           file, multiple resources can be listed. For example, the
           `resource_xsede.json <https://radicalpilot.readthedocs.io/en/latest/_downloads/resource_xsede.json>`_
-          file contains many different hpc resources from XSEDE.
+          file contains many different HPC resources from XSEDE.
 
 .. note:: Be advised that you may need specific knowledge about the target
           resource to do so.  Also, while RADICAL-Pilot can handle very
           different types of systems and batch system, it may run into trouble
           on specific configurations or software versions we did not encounter
           before.  If you run into trouble using a resource not in our list of
-          officially supported ones, please drop us a note on the
-          RADICAL-Pilot users 
-          `mailing list <https://groups.google.com/d/forum/radical-pilot-users>`_.
+          officially supported ones, please open 
+          `an issue <https://github.com/radical-cybertools/radical.pilot/issues>`_.
 
 A configuration file has to be valid JSON. The structure is as follows:
 
@@ -192,7 +191,7 @@ All fields are mandatory, unless indicated otherwise below.
 * ``task_launch_method``: type of compute node access, required for non-MPI units. Valid values are: ``SSH``,``APRUN`` or ``LOCAL``.
 * ``mpi_launch_method``: type of MPI support, required for MPI units. Valid values are: ``MPIRUN``, ``MPIEXEC``, ``APRUN``, ``IBRUN`` or ``POE``.
 * ``python_interpreter``: path to python (optional).
-* ``python_dist``: `anaconda` or `default`, ie. not `anaconda` (mandatory).
+* ``python_dist``: `anaconda` or `default`, i.e., not `anaconda` (mandatory).
 * ``pre_bootstrap_0``: list of commands to execute for initialization of main agent (optional).
 * ``pre_bootstrap_1``: list of commands to execute for initialization of sub-agent (optional).
 * ``valid_roots``: list of shared file system roots (optional). Note: pilot sandboxes must lie under these roots.
