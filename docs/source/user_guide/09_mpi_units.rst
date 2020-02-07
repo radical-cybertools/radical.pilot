@@ -5,11 +5,11 @@
 MPI Applications
 ****************
 
-CUs which execute MPI applications are, from an RP application perspective, not
-really different from other CUs -- but the application needs to communicate to
-RP that the unit will (a) allocate a number of cores, and (b) needs to be
-started under an MPI regime.  The respective CU description entries are shown
-below:
+From a RP perspective, units that execute MPI applications are analogous to
+non-MPI units: they define an executable alongside its arguments and other
+related parameters. MPI units have two main characteristics: (a) allocating a
+specified number of cores; and (b) needing to be started under an MPI regime.
+The respective unit description entries are shown below:
 
 .. code-block:: python
 
@@ -23,15 +23,17 @@ below:
 This example should result in the unit ID echo'ed *twice*, once per MPI rank.
 
 .. note:: Some RP configurations require MPI applications to be linked against
-          a specific version of OpenMPI.  This is the case when using `orte` or
-          `orte_lib` launch methods in the agent.  Please contact the mailing
-          list if you need support with relinking your application.
+          a specific version of OpenMPI. Please 
+          `open a ticket <https://github.com/radical-cybertools/radical.pilot/issues>`_ 
+          if you need support with relinking your application.
+
+.. This is the case when using `orte` or `orte_lib` launch methods in the agent.
 
 Running the Example
 -------------------
 
 :download:`09_mpi_units.py <../../../examples/09_mpi_units.py>`.
-uses the above blob to run a bag of duplicated `echo` commands:
+uses the code above to run a bag of duplicated `echo` commands:
 
 .. image:: 09_mpi_units.png
 
@@ -39,7 +41,5 @@ uses the above blob to run a bag of duplicated `echo` commands:
 What's Next?
 ------------
 
-:ref:`Running MPI applications <chapter_user_guide_09>`, and 
-:ref:providing more generic environment setup <chapter_user_guide_10>`, are the
-topics for the next two sections.
-
+The next section describes how to insert arbitrary setup commands :ref:`before
+and after .. <chapter_user_guide_10>` the execution of a unit.
