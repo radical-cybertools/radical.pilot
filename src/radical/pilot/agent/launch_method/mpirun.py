@@ -19,8 +19,10 @@ class MPIRun(LaunchMethod):
 
         LaunchMethod.__init__(self, name, cfg, session)
 
-        self._mpt = False
-        self._rsh = False
+        self._mpt    = False
+        self._rsh    = False
+        self._ccmrun = ''
+        self._dplace = ''
 
 
     # --------------------------------------------------------------------------
@@ -57,13 +59,13 @@ class MPIRun(LaunchMethod):
 
         # do we need ccmrun or dplace?
         if '_ccmrun' in self.name:
-            self.ccmrun_command = ru.which('ccmrun')
-            if not self.ccmrun_command:
+            self._ccmrun = ru.which('ccmrun')
+            if not self._ccmrun:
                 raise RuntimeError("ccmrun not found!")
 
         if '_dplace' in self.name:
-            self.dplace_command = ru.which('dplace')
-            if not self.dplace_command:
+            self._dplace = ru.which('dplace')
+            if not self._dplace:
                 raise RuntimeError("dplace not found!")
 
         self.mpi_version, self.mpi_flavor = \
@@ -128,8 +130,8 @@ class MPIRun(LaunchMethod):
                 save_list = core_list
 
         if '_dplace' in self.name:
-            self.dplace_command += ' -c '
-            self.dplace_command += ','.join(core_list)
+            self._dplace += ' -c '
+            self._dplace += ','.join(core_list)
 
 
         # If we have a CU with many cores, we will create a hostfile and pass
@@ -162,8 +164,8 @@ class MPIRun(LaunchMethod):
             np = len(host_list)
 
         command = ("%s %s %s -np %d %s %s %s %s" %
-                   (self.ccmrun_command, self.launch_command, mpt_hosts_string,
-                    np, self.dplace_command, hosts_string, env_string,
+                   (self._ccmrun, self.launch_command, mpt_hosts_string,
+                    np, self._dplace, hosts_string, env_string,
                     task_command)).strip()
 
         return command, None
