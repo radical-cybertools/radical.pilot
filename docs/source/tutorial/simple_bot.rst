@@ -67,7 +67,7 @@ MongoDB server you want to use, for example:
 
 .. code-block:: bash
 
-        export RADICAL_PILOT_DBURL=mongodb://<user>:<pass>@<hostname>:<port>/<database>
+        export RADICAL_PILOT_DBURL=mongodb://<user>:<pass>@<host>:<port>/<database>
 
 If RADICAL-Pilot is installed and the MongoDB URL is set, you should be good
 to run your program (the database is created on the fly):
