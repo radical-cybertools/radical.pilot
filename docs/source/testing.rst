@@ -56,7 +56,7 @@ For example, if you want to run the unit tests on the XSEDE _Bridges_ cluster
 .. code-block:: bash
 
     RADICAL_PILOT_LOG_LVl=DEBUG \
-    RADICAL_PILOT_TEST_REMOTE_SSH_USER_ID=<your_user_id> # optional \
+    RADICAL_PILOT_TEST_REMOTE_SSH_USER_ID=<your_user_id> \ # optional
     RADICAL_PILOT_TEST_REMOTE_RESOURCE=xsede.bridges \
     RADICAL_PILOT_TEST_REMOTE_WORKDIR=<absolute_path> \
     RADICAL_PILOT_TEST_REMOTE_CORES=16 \

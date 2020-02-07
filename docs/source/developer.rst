@@ -18,7 +18,7 @@ First, you need to check out the source code from GitHub.
 
     git clone https://github.com/radical-cybertools/radical.pilot.git
 
-Next, set up a vritualenv and run the installer directly from the root
+Next, set up a virtualenv and run the installer directly from the root
 directory of the repository you just cloned:
 
 .. code-block:: bash

@@ -10,7 +10,7 @@ Unit Scheduler
 Introduction
 ------------
 
-The `class:radical.pilot.UnitManager` dispatches compute units to available
+The :class:`radical.pilot.UnitManager` dispatches compute units to available
 pilots for execution.  It does so according to some scheduling algorithm,
 which can be selected when instantiating the manager.  Momentarily we support
 two scheduling algorithms: 'Round-Robin' and 'Backfilling'.  New schedulers

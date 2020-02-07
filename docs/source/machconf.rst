@@ -177,7 +177,7 @@ A configuration file has to be valid JSON. The structure is as follows:
 
 The name of your file (here ``lrz.json``) together with the name of the resource
 (``supermuc``) form the resource key which is used in the
-`class:ComputePilotDescription` resource attribute (``lrz.supermuc``).
+:class:`ComputePilotDescription` resource attribute (``lrz.supermuc``).
 
 All fields are mandatory, unless indicated otherwise below.
 
