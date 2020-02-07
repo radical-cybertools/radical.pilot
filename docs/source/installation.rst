@@ -6,9 +6,9 @@ Installation
 ************
 
 RADICAL-Pilot is a Python module which can be installed either via the python
-package installed ``pip`` or as part of the ``Ananconda`` distribution.
+package installed ``pip`` or as part of the ``Anaconda`` distribution.
 RADICAL-Pilot **must** be installed in a virtual environment and **cannot** be
-installed a a system-wide Python package.
+installed as a system-wide Python package.
 
 Requirements 
 ============
@@ -42,11 +42,11 @@ SSH
 RADICAL-Pilot requires to setup a password-less ``ssh`` login between the
 machine where your application is executed and the machine where the tasks of
 your application will be executed. For example, if you execute your
-application written with RADICAL-Pilot API on a virtual machine hosted on a
-public or private cloud provider and you want to execute your application's
+application written with the RADICAL-Pilot API on a virtual machine hosted on a
+public or private cloud provider, and you want to execute your application's
 tasks on an XSEDE HPC machine, you will have to configure a password-less
-``(gsi)ssh`` login between those virtual machine and HPC machine. Here one of
-the many guides available about how (`How to Setup Passwordless SSH Login
+``(gsi)ssh`` login between the virtual and the HPC machine. (Here one of
+the many guides available about `How to Setup Passwordless SSH Login
 <https://linuxize.com/post/how-to-setup-passwordless-ssh-login/>`_).
 
 
@@ -103,8 +103,8 @@ after RADICAL-Pilot session IDs.
 Once you have identified a host that can serve as the new home for MongoDB,
 installation is straight forward. You can either install the MongoDB server
 package that is provided by most Linux distributions, or follow the
-installation instructions on the (MongoDB website
-<http://docs.mongodb.org/manual/installation/>`_).
+installation instructions on the `MongoDB website
+<http://docs.mongodb.org/manual/installation/>`_.
 
 If you don't have access to a suitable machine with a public IP, you can open
 a ticket with RADICAL lab and we will provide a testing MongoDB instance for
@@ -131,10 +131,10 @@ via Conda-Forge
 .. code-block:: bash
 
     conda create -n ve -y python=3.7
-    source activate ve
+    conda activate ve
     conda install radical.pilot -c conda-forge
 
-For a quick sanity check, to make sure that the the packages have been installed
+For a quick sanity check, to make sure that the packages have been installed
 properly, run:
 
 .. code-block:: bash
@@ -146,7 +146,7 @@ The exact output will obviously depend on the exact version of RADICAL-Pilot whi
 installed.
 
 
-** Installation is complete !**
+**Installation is complete!**
 
 
 .. Preparing the Environment
@@ -198,7 +198,7 @@ installed.
 .. ===============
 
 .. Here a collection of common problems with installing RADICAL-Pilot. Please
-.. open a (support ticket
+.. open a (`support ticket
 .. <https://github.com/radical-cybertools/radical.pilot/issues>`_) with RADICAL
 .. Lab if your issue is not addressed by the following.
 
@@ -258,9 +258,9 @@ Support
 
 RADICAL-Pilot undergoes constant evolution, implementing new capabilities,
 supporting new resources and keeping up with the progressing of its
-dependences. If you encounter any error, please do not hesitate to contact the
-RADICAL lab team by opening a (support ticket
-<https://github.com/radical-cybertools/radical.pilot/issues>`_).
+dependencies. If you encounter any error, please do not hesitate to contact the
+RADICAL lab team by opening an 
+`issue <https://github.com/radical-cybertools/radical.pilot/issues>`_.
 
 .. via the
 .. mailing list:

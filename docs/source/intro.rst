@@ -13,7 +13,7 @@ different distributed resources, like  HPC clusters and Clouds.
 In this model, a part (slice) of a resource is acquired by a user's application
 so that the application can directly schedule ``ComputeUnits`` into that
 resource slice, rather than going through the system's job scheduler.  In many
-cases, this can drastically shorten overall exeuction time as the individual
+cases, this can drastically shorten overall execution time as the individual
 ``ComputeUnits`` don't have to wait in the system's scheduler queue but can
 execute directly on the ``ComputePilots``.
 
