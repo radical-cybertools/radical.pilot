@@ -24,6 +24,7 @@ RADICAL-Pilot requires the following packages:
 * Python >= 3.7
 * virtualenv >= 16
 * pip >= 20
+* setuptools >= 45.2.0
 
 or
 
