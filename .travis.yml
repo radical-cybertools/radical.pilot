@@ -16,7 +16,7 @@ env:
     - RADICAL_PILOT_TEST_DBNAME=rct_test
 
   matrix:
-    - MAIN_CMD="$PYTEST tests/"
+    - MAIN_CMD="$PYTEST tests/" COVERAGE=true
     - MAIN_CMD="ru-runcheck.sh flake8 diff"
     - MAIN_CMD="ru-runcheck.sh pylint diff"
     - MAIN_CMD="ru-runcheck.sh flake8 tests/ bin/ examples/"
