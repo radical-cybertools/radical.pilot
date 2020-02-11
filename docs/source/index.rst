@@ -46,7 +46,6 @@ section before starting to use RP.
 .. It allows a user to run large numbers of computational tasks (called
 .. ``ComputeUnits``) concurrently and sequentially, on one or more remote
 .. ``ComputePilots`` that RADICAL-Pilot can start transparently on a multitude
-B
 .. of different distributed resources, like HPC clusters and Clouds.
 
 .. In this model, a part (slice) of a resource is acquired by a user's
@@ -88,6 +87,5 @@ Contents:
    benchmarks.rst
    faq.rst
    developer.rst
+   release_notes.rst
 
-.. intro.rst
-.. profiles.rst

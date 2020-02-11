@@ -75,7 +75,7 @@ class ShellFS(AgentExecutingComponent):
         self._mpi_launcher  = None
 
         try:
-            self._task_launcher = rp.agent.LM.create(
+            self._task_launcher = rp.agent.LaunchMethod.create(
                     name    = self._cfg['task_launch_method'],
                     cfg     = self._cfg,
                     session = self._session)
@@ -83,7 +83,7 @@ class ShellFS(AgentExecutingComponent):
             self._log.warn('no task launcher found')
 
         try:
-            self._mpi_launcher = rp.agent.LM.create(
+            self._mpi_launcher = rp.agent.LaunchMethod.create(
                     name    = self._cfg['mpi_launch_method'],
                     cfg     = self._cfg,
                     session = self._session)

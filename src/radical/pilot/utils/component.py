@@ -232,8 +232,9 @@ class ComponentManager(object):
 
         # all components should start now, for their heartbeats
         # to appear.
-        failed = self._hb.wait_startup(self._uids, timeout=timeout)
+        failed = self._hb.wait_startup(self._uids, timeout=timeout * 10)
         if failed:
+            self._log.error(   'could not start all components %s' % failed)
             raise RuntimeError('could not start all components %s' % failed)
 
         self._prof.prof('start_components_stop', uid=self._uid)
@@ -596,7 +597,7 @@ class Component(object):
 
         # set controller callback to handle cancellation requests
         self._cancel_list = list()
-        self._cancel_lock = ru.RLock('comp.cancel_lock')
+        self._cancel_lock = ru.RLock('comp.cancel_lock.%s' % self._uid)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._cancel_monitor_cb)
 
         # call component level initialize

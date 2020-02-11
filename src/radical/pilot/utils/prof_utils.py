@@ -99,12 +99,12 @@ UNIT_DURATIONS_PRTE = {
                              {ru.EVENT: 'cu_exec_start'          }],
             'prte_phase_1': [{ru.EVENT: 'cu_exec_start'          },
                              {ru.EVENT: 'prte_init_complete'     }],
-          # 'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
-          #                  {ru.EVENT: 'prte_sending_launch_msg'}],
-          # 'exec_cmd'    : [{ru.EVENT: 'prte_sending_launch_msg'},
-          #                  {ru.EVENT: 'prte_iof_complete'      }],
-          # 'prte_phase_3': [{ru.EVENT: 'prte_iof_complete'      },
-          #                  {ru.EVENT: 'prte_notify_completed'  }],
+            'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
+                             {ru.EVENT: 'prte_sending_launch_msg'}],
+            'exec_cmd'    : [{ru.EVENT: 'prte_sending_launch_msg'},
+                             {ru.EVENT: 'prte_iof_complete'      }],
+            'prte_phase_3': [{ru.EVENT: 'prte_iof_complete'      },
+                             {ru.EVENT: 'prte_notify_completed'  }],
             'term_sh'     : [{ru.EVENT: 'prte_notify_completed'  },
                              {ru.EVENT: 'cu_stop'                }],
             'term_rp'     : [{ru.EVENT: 'cu_stop'                },
@@ -522,6 +522,8 @@ def get_consumed_resources(session):
         }
     '''
 
+    log = ru.Logger('radical.pilot.utils')
+
     consumed = dict()
     for e in session.get(etype=['pilot', 'unit']):
 
@@ -552,9 +554,15 @@ def get_consumed_resources(session):
             unit_durations = UNIT_DURATIONS_DEFAULT
 
         pt    = pilot.timestamps
+        log.debug('timestamps:')
+        for ts in pt():
+            log.debug('    %10.2f  %-20s  %-15s  %-15s  %-15s  %-15s  %s',
+                           ts[0],  ts[1], ts[2], ts[3], ts[4], ts[5], ts[6])
+
         p_min = pt(event=PILOT_DURATIONS['consume']['ignore'][0]) [0]
         p_max = pt(event=PILOT_DURATIONS['consume']['ignore'][1])[-1]
       # p_max = pilot.events[-1][ru.TIME]
+        log.debug('pmin, pmax: %10.2f / %10.2f', p_min, p_max)
 
         pid = pilot.uid
         cpn = pilot.cfg['resource_details']['rm_info']['cores_per_node']
@@ -577,6 +585,9 @@ def get_consumed_resources(session):
 
 
         for unit in session.get(etype='unit'):
+
+            if unit.cfg.get('pilot') != pid:
+                continue
 
             try:
                 snodes = unit.cfg['slots']['nodes']

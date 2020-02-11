@@ -24,7 +24,7 @@ from .base import AgentSchedulingComponent
 #
 # Local Storage:
 #
-# The storage availability will be obtained from the lrms_node_list and assigned
+# The storage availability will be obtained from the rm_node_list and assigned
 # to the node list of the class. The lfs requirement will be obtained from the
 # cud in the alloc_nompi and alloc_mpi methods. Using the availability and
 # requirement, the _find_resources method will return the core and gpu ids.
@@ -95,17 +95,17 @@ class Continuous(AgentSchedulingComponent):
         self._scattered = self._cfg.get('scattered', False)
 
         self.nodes = []
-        for node, node_uid in self._lrms_node_list:
+        for node, node_uid in self._rm_node_list:
 
             node_entry = {'name'   : node,
                           'uid'    : node_uid,
-                          'cores'  : [rpc.FREE] * self._lrms_cores_per_node,
-                          'gpus'   : [rpc.FREE] * self._lrms_gpus_per_node,
-                          'lfs'    :              self._lrms_lfs_per_node,
-                          'mem'    :              self._lrms_mem_per_node}
+                          'cores'  : [rpc.FREE] * self._rm_cores_per_node,
+                          'gpus'   : [rpc.FREE] * self._rm_gpus_per_node,
+                          'lfs'    :              self._rm_lfs_per_node,
+                          'mem'    :              self._rm_mem_per_node}
 
             # summit
-            if  self._lrms_cores_per_node > 40 and \
+            if  self._rm_cores_per_node > 40 and \
                 self._cfg['task_launch_method'] == 'JSRUN':
 
                 # Summit cannot address the last core of the second socket at
@@ -121,7 +121,7 @@ class Continuous(AgentSchedulingComponent):
                 # "jsrun explicit resource file (ERF) allocates incorrect
                 # resources"
                 #
-                smt = self._lrms_info.get('smt', 1)
+                smt = self._rm_info.get('smt', 1)
 
                 # only socket `1` is affected at the moment
               # for s in [0, 1]:
@@ -132,9 +132,9 @@ class Continuous(AgentSchedulingComponent):
 
             self.nodes.append(node_entry)
 
-        if self._lrms_cores_per_node > 40 and \
+        if self._rm_cores_per_node > 40 and \
            self._cfg['task_launch_method'] == 'JSRUN':
-            self._lrms_cores_per_node -= 1
+            self._rm_cores_per_node -= 1
 
 
     # --------------------------------------------------------------------------
@@ -257,12 +257,15 @@ class Continuous(AgentSchedulingComponent):
                     gpus.append(gpu_idx)
                 gpu_idx += 1
 
+            core_map = [cores]
+            gpu_map  = [[gpu] for gpu in gpus]
+
             slots.append({'uid'     : node_uid,
                           'name'    : node_name,
-                          'core_map': [cores],  # FIXME: reconsider layout
-                          'gpu_map' : [gpus],   # FIXME: reconsider layout
+                          'core_map': core_map,
+                          'gpu_map' : gpu_map,
                           'lfs'     : {'size': lfs_per_slot,
-                                       'path': self._lrms_lfs_per_node['path']},
+                                       'path': self._rm_lfs_per_node['path']},
                           'mem'     : mem_per_slot})
 
         # consistency check
@@ -326,10 +329,10 @@ class Continuous(AgentSchedulingComponent):
         #
         # FIXME: persistent node index
 
-        cores_per_node = self._lrms_cores_per_node
-        gpus_per_node  = self._lrms_gpus_per_node
-        lfs_per_node   = self._lrms_lfs_per_node['size']
-        mem_per_node   = self._lrms_mem_per_node
+        cores_per_node = self._rm_cores_per_node
+        gpus_per_node  = self._rm_gpus_per_node
+        lfs_per_node   = self._rm_lfs_per_node['size']
+        mem_per_node   = self._rm_mem_per_node
 
         # we always fail when too many threads are requested
         assert(cores_per_slot <= cores_per_node), 'too many threads per proc'
@@ -454,11 +457,11 @@ class Continuous(AgentSchedulingComponent):
             return None  # signal failure
 
         slots = {'nodes'         : alc_slots,
-                 'cores_per_node': self._lrms_cores_per_node,
-                 'gpus_per_node' : self._lrms_gpus_per_node,
-                 'lfs_per_node'  : self._lrms_lfs_per_node,
-                 'mem_per_node'  : self._lrms_mem_per_node,
-                 'lm_info'       : self._lrms_lm_info,
+                 'cores_per_node': self._rm_cores_per_node,
+                 'gpus_per_node' : self._rm_gpus_per_node,
+                 'lfs_per_node'  : self._rm_lfs_per_node,
+                 'mem_per_node'  : self._rm_mem_per_node,
+                 'lm_info'       : self._rm_lm_info,
                 }
 
       # self._log.debug('success -------------------------\n%s',

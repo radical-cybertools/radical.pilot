@@ -130,8 +130,6 @@ class Session(rs.Session):
         self._log.info('radical.utils version: %s' % ru.version_detail)
 
         self._prof.prof('session_start', uid=self._uid, msg=int(_primary))
-        self._rep.info ('<<new session: ')
-        self._rep.plain('[%s]' % self._uid)
 
         # now we have config and uid - initialize base class (saga session)
         rs.Session.__init__(self, uid=self._uid)
@@ -143,20 +141,20 @@ class Session(rs.Session):
                             'pilot_sandbox'    : dict(),
                             'client_sandbox'   : self._cfg.client_sandbox,
                             'js_shells'        : dict(),
-                            'fs_dirs'          : dict()
-                            }
-
+                            'fs_dirs'          : dict()}
 
         if _primary:
             self._initialize_primary(dburl)
 
         # at this point we have a DB connection, logger, etc, and are done
         self._prof.prof('session_ok', uid=self._uid, msg=int(_primary))
-        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
     def _initialize_primary(self, dburl):
+
+        self._rep.info ('<<new session: ')
+        self._rep.plain('[%s]' % self._uid)
 
         # create db connection - need a dburl to connect to
         if not dburl: dburl = self._cfg.dburl
@@ -191,12 +189,7 @@ class Session(rs.Session):
         # heartbeat.  'self._cmgr.close()` should be called during termination
         self._cmgr = rpu.ComponentManager(self._cfg)
         self._cmgr.start_bridges()
-
-        try:
-            self._cmgr.start_components()
-        except:
-            raise
-
+        self._cmgr.start_components()
 
         # expose the cmgr's heartbeat channel to anyone who wants to use it
         self._cfg.heartbeat = self._cmgr.cfg.heartbeat
@@ -213,6 +206,8 @@ class Session(rs.Session):
                           "%s/session.json" % self._rec)
             self._log.info("recording session in %s" % self._rec)
 
+        self._rep.ok('>>ok\n')
+
 
     # --------------------------------------------------------------------------
     # context manager `with` clause
@@ -228,19 +223,20 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def close(self, cleanup=False, terminate=True, download=False):
-        '''Closes the session.
+        '''
 
-        All subsequent attempts access objects attached to the session will
-        result in an error. If cleanup is set to True (default) the session
-        data is removed from the database.
+        Closes the session.  All subsequent attempts access objects attached to
+        the session will result in an error. If cleanup is set to True (default)
+        the session data is removed from the database.
 
         **Arguments:**
-            * **cleanup** (`bool`): Remove session from MongoDB (implies * terminate)
-            * **terminate** (`bool`): Shut down all pilots associated with the session.
+            * **cleanup**   (`bool`):
+              Remove session from MongoDB (implies * terminate)
+            * **terminate** (`bool`):
+              Shut down all pilots associated with the session.
+            * **download** (`bool`):
+              Fetch pilot profiles and database entries.
 
-        **Raises:**
-            * :class:`radical.pilot.IncorrectState` if the session is closed
-              or doesn't exist.
         '''
 
         # close only once
@@ -302,7 +298,8 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def as_dict(self):
-        '''Returns a Python dictionary representation of the object.
+        '''
+        Returns a Python dictionary representation of the object.
         '''
 
         object_dict = {
@@ -331,7 +328,7 @@ class Session(rs.Session):
         return self._uid
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def base(self):
@@ -404,7 +401,7 @@ class Session(rs.Session):
         else        : return None
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @property
     def is_connected(self):
@@ -578,7 +575,7 @@ class Session(rs.Session):
         else            : return umgrs
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def list_resources(self):
         '''
@@ -596,7 +593,7 @@ class Session(rs.Session):
         return sorted(resources)
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def add_resource_config(self, resource_config):
         '''
@@ -635,7 +632,7 @@ class Session(rs.Session):
             self._rcfgs[resource_config.label] = resource_config.as_dict()
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def get_resource_config(self, resource, schema=None):
         '''
@@ -673,7 +670,7 @@ class Session(rs.Session):
         return resource_cfg
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def fetch_profiles(self, tgt=None, fetch_client=False):
 
@@ -681,7 +678,7 @@ class Session(rs.Session):
                                   session=self)
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def fetch_logfiles(self, tgt=None, fetch_client=False):
 
@@ -689,7 +686,7 @@ class Session(rs.Session):
                                   session=self)
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def fetch_json(self, tgt=None, fetch_client=False):
 
@@ -697,7 +694,7 @@ class Session(rs.Session):
                               session=self)
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _get_client_sandbox(self):
         '''
@@ -713,7 +710,7 @@ class Session(rs.Session):
         return self._cache['client_sandbox']
 
 
-    # -------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def _get_resource_sandbox(self, pilot):
         '''
@@ -819,7 +816,8 @@ class Session(rs.Session):
                 js_url.hostname = 'localhost'
 
             self._log.debug("rsup.PTYShell('%s')", js_url)
-            self._cache['js_shells'][resource][schema] = rsup.PTYShell(js_url, self)
+            shell = rsup.PTYShell(js_url, self)
+            self._cache['js_shells'][resource][schema] = shell
 
         return self._cache['js_shells'][resource][schema]
 
@@ -830,7 +828,7 @@ class Session(rs.Session):
 
         if url not in self._cache['fs_dirs']:
             self._cache['fs_dirs'][url] = rsfs.Directory(url,
-                    flags=rsfs.CREATE_PARENTS)
+                                               flags=rsfs.CREATE_PARENTS)
 
         return self._cache['fs_dirs'][url]
 

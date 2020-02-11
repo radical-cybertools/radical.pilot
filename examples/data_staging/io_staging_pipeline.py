@@ -11,7 +11,8 @@ INPUT_FILE = 'input_file.txt'
 INTERMEDIATE_FILE = 'intermediate_file.txt'
 OUTPUT_FILE = 'output_file.txt'
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 def pilot_state_cb (pilot, state):
     """ this callback is invoked on all pilot state changes """
@@ -19,36 +20,36 @@ def pilot_state_cb (pilot, state):
     if not pilot:
         return
 
-    print "[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state)
+    print("[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
 
     if state == rp.FAILED:
         sys.exit (1)
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def unit_state_cb (unit, state):
     """ this callback is invoked on all unit state changes """
 
-    print "[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state)
+    print("[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state))
 
     if not unit:
         return
 
     if state in [rp.FAILED, rp.DONE, rp.CANCELED]:
 
-        print "* unit %s (%s) state %s (%s) %s - %s, out/err: %s / %s" \
-                 % (unit.uid, 
-                    unit.execution_locations, 
-                    unit.state, 
-                    unit.exit_code, 
-                    unit.start_time, 
-                    unit.stop_time, 
+        print("* unit %s (%s) state %s (%s) %s - %s, out/err: %s / %s" \
+                 % (unit.uid,
+                    unit.execution_locations,
+                    unit.state,
+                    unit.exit_code,
+                    unit.start_time,
+                    unit.stop_time,
                     unit.stdout,
-                    unit.stderr)
+                    unit.stderr))
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
@@ -61,7 +62,7 @@ if __name__ == "__main__":
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
     session = rp.Session(uid=session_name)
-    print "session id: %s" % session.uid
+    print("session id: %s" % session.uid)
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
@@ -143,7 +144,7 @@ if __name__ == "__main__":
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        print "caught Exception: %s" % e
+        print("caught Exception: %s" % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -151,12 +152,12 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        print "need to exit now: %s" % e
+        print("need to exit now: %s" % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.
-        print "closing session"
+        print("closing session")
         session.close ()
 
         # the above is equivalent to
@@ -167,5 +168,5 @@ if __name__ == "__main__":
         # all remaining pilots (none in our example).
 
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 

@@ -117,6 +117,11 @@ fi
 #
 export PYTHONNOUSERSITE=True
 
+# we someetimes need to install modules via pip, and some need to be compiled
+# during installation.  To speed this up (specifically on cluster compute
+# nodes), we try to convince PIP to run parallel `make`
+export MAKEFLAGS="-j"
+
 # ------------------------------------------------------------------------------
 #
 # If profiling is enabled, compile our little gtod app and take the first time
@@ -882,6 +887,7 @@ virtenv_activate()
     # to derive the PYTHONPATH into the sandbox rp_install, if needed.
     RP_MOD_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$virtenv|$virtenv/rp_install|"`
     VE_PYTHONPATH="$PYTHONPATH"
+    RP_PATH="$virtenv/bin"
 
     # NOTE: this should not be necessary, but we explicit set PYTHONPATH to
     #       include the VE module tree, because some systems set a PYTHONPATH on
@@ -890,11 +896,15 @@ virtenv_activate()
     PYTHONPATH="$VE_MOD_PREFIX:$VE_PYTHONPATH"
     export PYTHONPATH
 
+    PATH="$RP_PATH:$PATH"
+    export $PATH
+
     echo "activated virtenv"
     echo "VIRTENV      : $virtenv"
+    echo "VE_PYTHONPATH: $VE_PYTHONPATH"
     echo "VE_MOD_PREFIX: $VE_MOD_PREFIX"
     echo "RP_MOD_PREFIX: $RP_MOD_PREFIX"
-    echo "PYTHONPATH   : $PYTHONPATH"
+    echo "RP_PATH      : $RP_PATH"
 
     profile_event 've_activate_stop'
 }
@@ -1080,15 +1090,18 @@ virtenv_update()
 #       pip install -t $SANDBOX/rp_install/ radical.pilot.src
 #       rm -rf radical.pilot.src
 #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
+#       export PATH=$SANDBOX/rp_install/bin:$PATH
 #
 #   release: # no sdist staging
 #       pip install -t $SANDBOX/rp_install radical.pilot
 #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
+#       export PATH=$SANDBOX/rp_install/bin:$PATH
 #
 #   local: # needs sdist staging
 #       tar zxmf $sdist.tgz
 #       pip install -t $SANDBOX/rp_install $sdist/
 #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
+#       export PATH=$SANDBOX/rp_install/bin:$PATH
 #
 #   installed: # no sdist staging
 #       true
@@ -1195,16 +1208,6 @@ rp_install()
     #       not be any eggs in the first place, but...
     rm    -rf  "$RP_INSTALL/"
     mkdir -p   "$RP_INSTALL/"
-
-    # NOTE: we need to add the radical name __init__.py manually here --
-    #       distutil is broken and will not install it.
-    mkdir -p   "$RADICAL_MOD_PREFIX/"
-    ru_ns_init="$RADICAL_MOD_PREFIX/__init__.py"
-    echo                                              >  $ru_ns_init
-    echo 'import pkg_resources'                       >> $ru_ns_init
-    echo 'pkg_resources.declare_namespace (__name__)' >> $ru_ns_init
-    echo                                              >> $ru_ns_init
-    echo "created radical namespace in $RADICAL_MOD_PREFIX/__init__.py"
 
   # # NOTE: if we find a system level RP install, then pip install will not work
   # #       w/o the upgrade flag -- unless we install from sdist.  It may not
@@ -1502,9 +1505,9 @@ rmdir "$VIRTENV" 2>/dev/null
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
-if test -z "$RUNTIME"     ; then  echo "missing RUNTIME"   ; return 1;  fi
-if test -z "$PILOT_ID"    ; then  echo "missing PILOT_ID"  ; return 1;  fi
-if test -z "$RP_VERSION"  ; then  echo "missing RP_VERSION"; return 1;  fi
+if test -z "$RUNTIME"     ; then  echo "missing RUNTIME"   ; exit 1;  fi
+if test -z "$PILOT_ID"    ; then  echo "missing PILOT_ID"  ; exit 1;  fi
+if test -z "$RP_VERSION"  ; then  echo "missing RP_VERSION"; exit 1;  fi
 
 # pilot runtime is specified in minutes -- on shell level, we want seconds
 RUNTIME=$((RUNTIME * 60))
@@ -1714,6 +1717,7 @@ fi
 
 # make sure rp_install is used
 export PYTHONPATH=$PYTHONPATH
+export PATH=$PATH
 
 # run agent in debug mode
 # FIXME: make option again?
