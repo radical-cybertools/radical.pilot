@@ -335,8 +335,8 @@ class ComputeUnitDescription(ru.Description):
                POST_EXEC       : [str]       ,
                STDOUT          : str         ,
                STDERR          : str         ,
-               INPUT_STAGING   : [str]       ,
-               OUTPUT_STAGING  : [str]       ,
+               INPUT_STAGING   : None        ,
+               OUTPUT_STAGING  : None        ,
 
                CPU_PROCESSES   : int         ,
                CPU_PROCESS_TYPE: str         ,
