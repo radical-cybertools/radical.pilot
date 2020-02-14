@@ -34,14 +34,14 @@ class MPIRun(LaunchMethod):
 
         if '_rsh' in self.name.lower():
             self._rsh = True
-            self.launch_command = ru.which(['mpirun_rsh',         # Gordon (SDSC)
-                                            'mpirun'              # general case
+            self.launch_command = ru.which(['mpirun_rsh',  # Gordon (SDSC)
+                                            'mpirun'       # general case
                                            ])
 
         elif '_mpt' in self.name.lower():
             self._mpt = True
-            self.launch_command = ru.which(['mpirun_mpt',         # Cheyenne (NCAR)
-                                            'mpirun'              # general case
+            self.launch_command = ru.which(['mpirun_mpt',  # Cheyenne (NCAR)
+                                            'mpirun'       # general case
                                            ])
         else:
             self.launch_command = ru.which(['mpirun-mpich-mp',    # Mac OSX
@@ -136,34 +136,26 @@ class MPIRun(LaunchMethod):
 
         # If we have a CU with many cores, we will create a hostfile and pass
         # that as an argument instead of the individual hosts
+        hosts_string     = ''
+        mpt_hosts_string = ''
         if len(host_list) > 42:
 
             # Create a hostfile from the list of hosts
             hostfile = self._create_hostfile(sandbox, uid, host_list,
                                              impaired=True)
-            if self._mpt:
-                hosts_string     = '-file %s' % hostfile
-                mpt_hosts_string = ''
-            else:
-                hosts_string     = '-hostfile %s' % hostfile
-                mpt_hosts_string = ''
+            if self._mpt: hosts_string = '-file %s'     % hostfile
+            else        : hosts_string = '-hostfile %s' % hostfile
 
         else:
             # Construct the hosts_string ('h1,h2,..,hN')
-            if self._mpt:
-                mpt_hosts_string = '%s' % ",".join(host_list)
-                hosts_string     = ''
-            else:
-                mpt_hosts_string = ''
-                hosts_string     = '-host %s' % ",".join(host_list)
+            if self._mpt: mpt_hosts_string = '%s'       % ",".join(host_list)
+            else        : hosts_string     = '-host %s' % ",".join(host_list)
 
         # -np:  usually len(host_list), meaning N processes over N hosts, but
         # for Cheyenne (mpt) the specification of -host lands N processes on
         # EACH host, where N is specified as arg to -np
-        if self._mpt:
-            np = 1
-        else:
-            np = len(host_list)
+        if self._mpt: np = 1
+        else        : np = len(host_list)
 
         command = ("%s %s %s -np %d %s %s %s %s" %
                    (self._ccmrun, self.launch_command, mpt_hosts_string,
