@@ -142,9 +142,11 @@ class MPIRun(LaunchMethod):
             hostfile = self._create_hostfile(sandbox, uid, host_list,
                                              impaired=True)
             if self._mpt:
-                hosts_string = '-file %s' % hostfile
+                hosts_string     = '-file %s' % hostfile
+                mpt_hosts_string = ''
             else:
-                hosts_string = '-hostfile %s' % hostfile
+                hosts_string     = '-hostfile %s' % hostfile
+                mpt_hosts_string = ''
 
         else:
             # Construct the hosts_string ('h1,h2,..,hN')
