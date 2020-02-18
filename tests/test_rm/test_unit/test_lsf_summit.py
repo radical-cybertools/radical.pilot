@@ -3,7 +3,7 @@
 import os
 import pytest
 import radical.utils as ru
-from radical.pilot.agent.rm.lsf_summit import LSF_SUMMIT
+from radical.pilot.agent.resource_manager.lsf_summit import LSF_SUMMIT
 
 try:
     import mock
@@ -59,7 +59,8 @@ def test_configure(mocked_init, mocked_raise_on):
 def test_configure_error(mocked_init, mocked_raise_on):
 
     # Test 1 no config file
-    del os.environ['LSB_DJOB_HOSTFILE']
+    if 'LSB_DJOB_HOSTFILE' in os.environ:
+        del os.environ['LSB_DJOB_HOSTFILE']
 
     component = LSF_SUMMIT(cfg=None, session=None)
     component._log = ru.Logger('dummy')

@@ -2,7 +2,7 @@
 # pylint: disable=protected-access, unused-argument
 
 from   .test_common                   import setUp
-from   radical.pilot.agent.lm.ccmrun import CCMRun
+from   radical.pilot.agent.launch_method.ccmrun import CCMRun
 
 import radical.utils as ru
 
