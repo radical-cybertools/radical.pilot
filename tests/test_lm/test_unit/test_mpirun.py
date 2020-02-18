@@ -2,7 +2,7 @@
 # pylint: disable=protected-access, unused-argument
 
 from   .test_common                   import setUp
-from   radical.pilot.agent.lm.mpirun import MPIRun
+from   radical.pilot.agent.launch_method.mpirun import MPIRun
 
 import radical.utils as ru
 
@@ -126,8 +126,8 @@ def test_construct_command(mocked_init,
     component._log           = ru.Logger('dummy')
     component.mpi_flavor     = None
     component.launch_command = 'mpirun'
-    component.ccmrun_command = ''
-    component.dplace_command = ''
+    component._ccmrun = ''
+    component._dplace = ''
 
     for unit, result in test_cases:
         command, hop = component.construct_command(unit, None)

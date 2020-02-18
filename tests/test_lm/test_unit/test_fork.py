@@ -2,7 +2,7 @@
 # pylint: disable=protected-access, unused-argument
 
 from   .test_common                 import setUp
-from   radical.pilot.agent.lm.fork import Fork
+from   radical.pilot.agent.launch_method.fork import Fork
 
 import radical.utils as ru
 
