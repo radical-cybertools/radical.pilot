@@ -4,7 +4,7 @@
 import os
 
 from   .test_common                 import setUp
-from   radical.pilot.agent.lm.rsh import RSH
+from   radical.pilot.agent.launch_method.rsh import RSH
 import pytest
 
 import radical.utils as ru
@@ -47,8 +47,9 @@ def test_configure_fail(mocked_init, mocked_raise_on, mocked_which):
 #
 @mock.patch.object(RSH, '__init__',   return_value=None)
 @mock.patch.object(RSH, '_configure', return_value=None)
-@mock.patch.dict(os.environ,{'PATH'           :'test_path',
-                             'LD_LIBRARY_PATH':'/usr/local/lib/'})
+@mock.patch.dict(os.environ,
+                 {'PATH': 'test_path', 'LD_LIBRARY_PATH': '/usr/local/lib/'},
+                 clear=True)
 @mock.patch('radical.utils.raise_on')
 def test_construct_command(mocked_init,
                            mocked_configure,
@@ -56,7 +57,6 @@ def test_construct_command(mocked_init,
 
     test_cases = setUp('lm', 'rsh')
     component  = RSH(name=None, cfg=None, session=None)
-
     component._log           = ru.Logger('dummy')
     component.name           = 'RSH'
     component.mpi_flavor     = None
