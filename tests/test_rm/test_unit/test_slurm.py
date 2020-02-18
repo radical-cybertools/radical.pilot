@@ -64,7 +64,9 @@ def test_configure(mocked_init, mocked_raise_on, mocked_expand_hostlist):
 def test_configure_error(mocked_init, mocked_raise_on, mocked_expand_hostlist):
 
     # Test 1 no config file
-    del os.environ['SLURM_NODELIST']
+    if 'SLURM_NODELIST' in os.environ:
+        del os.environ['SLURM_NODELIST']
+
     os.environ['SLURM_NPROCS'] = '48'
     os.environ['SLURM_NNODES'] = '2'
     os.environ['SLURM_CPUS_ON_NODE'] = '24'
