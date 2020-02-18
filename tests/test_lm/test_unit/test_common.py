@@ -1,7 +1,6 @@
 
 # pylint: disable=protected-access, unused-argument
 
-import os
 import glob
 
 import radical.utils as ru
@@ -11,9 +10,8 @@ import radical.utils as ru
 # 
 def setUp(test_type, test_name):
 
-    pwd = os.path.dirname(__file__)
     ret = list()
-    for fin in glob.glob('%s/../../test_cases/unit.*.json' % pwd):
+    for fin in glob.glob('tests/test_cases/unit.*.json'):
 
         tc                = ru.read_json(fin)
         unit              = tc['unit'   ]
