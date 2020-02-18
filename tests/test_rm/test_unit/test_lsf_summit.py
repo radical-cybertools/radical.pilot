@@ -18,7 +18,7 @@ except ImportError:
 def test_configure(mocked_init, mocked_raise_on):
 
     # Test 1 no config file
-    os.environ['LSB_DJOB_HOSTFILE'] = '../../test_cases/rm/nodelist.lsf'
+    os.environ['LSB_DJOB_HOSTFILE'] = 'tests/test_cases/rm/nodelist.lsf'
 
     component = LSF_SUMMIT(cfg=None, session=None)
     component._log = ru.Logger('dummy')
@@ -33,7 +33,7 @@ def test_configure(mocked_init, mocked_raise_on):
     assert component.mem_per_node     == 0
 
     # Test 2 config file
-    os.environ['LSB_DJOB_HOSTFILE'] = '../../test_cases/rm/nodelist.lsf'
+    os.environ['LSB_DJOB_HOSTFILE'] = 'tests/test_cases/rm/nodelist.lsf'
 
     component = LSF_SUMMIT(cfg=None, session=None)
     component._log = ru.Logger('dummy')
@@ -70,7 +70,7 @@ def test_configure_error(mocked_init, mocked_raise_on):
         component._configure()
 #
 #    # Test 2 config file
-    os.environ['LSB_DJOB_HOSTFILE'] = '../../test_cases/rm/nodelist.lsf'
+    os.environ['LSB_DJOB_HOSTFILE'] = 'tests/test_cases/rm/nodelist.lsf'
 
     component = LSF_SUMMIT(cfg=None, session=None)
     component._log = ru.Logger('dummy')
