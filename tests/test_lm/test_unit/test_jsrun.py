@@ -4,7 +4,7 @@ import os
 import glob
 import radical.utils as ru
 from .test_common                  import setUp
-from radical.pilot.agent.lm.jsrun import JSRUN
+from radical.pilot.agent.launch_method.jsrun import JSRUN
 
 try:
     import mock
