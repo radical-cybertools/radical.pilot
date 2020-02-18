@@ -4,7 +4,7 @@ import os
 import pytest
 import warnings
 import radical.utils as ru
-from radical.pilot.agent.rm.pbspro import PBSPro
+from radical.pilot.agent.resource_manager.pbspro import PBSPro
 
 try:
     import mock
@@ -54,7 +54,7 @@ def test_configure(mocked_init, mocked_raise_on, mocked_parse_pbspro_vnodes):
     component.lm_info = {'cores_per_node': None}
     component._configure()
 
-    assert component.node_list == [['nodes1', 'nodes1'],['nodes2','nodes2']]    
+    assert component.node_list == [['nodes1', 'nodes1'],['nodes2','nodes2']]
     assert component.cores_per_node == 4
     assert component.gpus_per_node == 1
     assert component.lfs_per_node == {'path': 'test/', 'size': 100}
@@ -88,7 +88,7 @@ def test_configure_error(mocked_init, mocked_raise_on, mocked_parse_pbspro_vnode
     if 'NUM_PPN' in os.environ:
         del os.environ['NUM_PPN']
     if 'SAGA_PPN' in os.environ:
-        del os.environ['SAGA_PPN'] 
+        del os.environ['SAGA_PPN']
     os.environ['NODE_COUNT'] = '2'
     os.environ['NUM_PES'] = '1'
     os.environ['PBS_JOBID'] = '482125'
