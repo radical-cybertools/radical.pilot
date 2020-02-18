@@ -3,7 +3,7 @@
 import os
 import pytest
 import radical.utils as ru
-from radical.pilot.agent.rm.lsf_summit import LSF_SUMMIT
+from radical.pilot.agent.resource_manager.lsf_summit import LSF_SUMMIT
 
 try:
     import mock

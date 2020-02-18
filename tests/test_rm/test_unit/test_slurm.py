@@ -3,7 +3,7 @@
 import os
 import pytest
 import radical.utils as ru
-from radical.pilot.agent.rm.slurm import Slurm
+from radical.pilot.agent.resource_manager.slurm import Slurm
 
 try:
     import mock
