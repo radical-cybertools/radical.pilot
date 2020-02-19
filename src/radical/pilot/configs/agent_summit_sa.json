@@ -4,7 +4,7 @@
 # a functional pilot agent, without any component redundency.
 
 {
-    "staging_area"         : "staging_area",
+    "staging_area"         : "",
     "staging_schema"       : "staging",
     "max_io_loglength"     : 1024,
     "db_poll_sleeptime"    :  5.0,

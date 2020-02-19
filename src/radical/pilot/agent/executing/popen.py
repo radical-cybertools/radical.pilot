@@ -244,7 +244,7 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_UNIT_NAME="%s"\n'    % cu['description'].get('name')
             env_string += 'export RP_GTOD="%s"\n'         % self.gtod
             env_string += 'export RP_TMP="%s"\n'          % self._cu_tmp
-            env_string += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
+            env_string += 'export RP_PILOT_STAGING="%s"\n' \
                                                           % self._pwd
             if self._prof.enabled:
                 env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])

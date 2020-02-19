@@ -1,5 +1,5 @@
 {
-    "staging_area"         : "staging_area",
+    "staging_area"         : "",
     "staging_schema"       : "staging",
     "max_io_loglength"     : 1024,
     "bulk_collection_size" :  100,

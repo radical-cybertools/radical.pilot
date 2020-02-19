@@ -176,22 +176,35 @@ def complete_url(path, context, log=None):
             purl.schema = 'file'
         else:
             purl.schema = 'pwd'
+    log.debug(' 0 %s', path)
+    log.debug(' 0 %s', purl)
+    log.debug(' 0 %s', purl.path)
 
     schema = purl.schema
 
     if schema == 'client':
         # 'client' is 'pwd' in client context.
-        # We don't check context though.
+        # FIXME: We don't check context though.
         schema = 'pwd'
 
     log.debug('   %s', schema)
     if schema in list(context.keys()):
 
         # we interpret any hostname as part of the path element
-        if   purl.host and purl.path: ppath = '%s/%s' % (purl.host, purl.path)
-        elif purl.host              : ppath =    '%s' %            (purl.host)
-        elif purl.path              : ppath =    '%s' %            (purl.path)
-        else                        : ppath =     '.'
+        if   purl.host and purl.path:
+            ppath = '%s/%s' % (purl.host, purl.path)
+            log.debug(' a %s', ppath)
+        elif purl.host              :
+            ppath =    '%s' %            (purl.host)
+            log.debug(' b %s', ppath)
+        elif purl.path              :
+            ppath =    '%s' %            (purl.path)
+            log.debug(' c %s', ppath)
+        else                        :
+            ppath =     '.'
+            log.debug(' d %s', ppath)
+
+        log.debug(' 1 %s', ppath)
 
         if schema not in context:
             raise ValueError('cannot expand schema (%s) for staging' % schema)
@@ -199,12 +212,16 @@ def complete_url(path, context, log=None):
         log.debug('   expand with %s', context[schema])
         ret = ru.Url(context[schema])
 
-        if schema in ['resource', 'pilot']:
-            # use a dedicated staging area dir
-            ret.path += '/staging_area'
+      # if schema in ['resource', 'pilot']:
+      #     # use a dedicated staging area dir
+      #     ret.path += '/staging_area'
 
+        log.debug(' 2 %s', ret)
         ret.path += '/%s' % ppath
         purl      = ret
+        log.debug(' 3 %s', purl)
+
+    log.debug(' 4 %s', purl)
 
     # if not schema is set, assume file:// on localhost
     if not purl.schema:
