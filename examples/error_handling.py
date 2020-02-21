@@ -22,9 +22,6 @@ def pilot_state_cb(pilots):
     this callback is invoked on all pilot state changes
     """
 
-    if not isinstance(pilots, list):
-        pilots = [pilots]
-
     # Callbacks happen in a different thread than the main application thread --
     # they are truly asynchronous.  That means, however, that a 'sys.exit()'
     # will not end the application, but will end the thread (in this case the
@@ -55,9 +52,6 @@ def pilot_state_cb(pilots):
 def unit_state_cb(units):
     """ this callback is invoked on all unit state changes """
 
-    if not isinstance(units, list):
-        units = [units]
-
     # The principle for unit state callbacks is exactly the same as for the
     # pilot state callbacks -- only that they are invoked by the unit manager on
     # changes of compute unit states.
@@ -70,12 +64,12 @@ def unit_state_cb(units):
     # compute units, or spawn a pilot on a different resource which might be
     # better equipped to handle the unit payload.
 
-    print('unit cb for %d units' % len(units))
-    for unit in units:
-        print('  unit %s: %s' % (unit.uid, unit.state))
-
-        if unit.state == rp.FAILED:
-            print('                  : %s' % unit.stderr)
+    print('unit cb for %d units [%s]' % (len(units), set([u.state for u in units])))
+  # for unit in units:
+  #     print('  unit %s: %s' % (unit.uid, unit.state))
+  #
+  #     if unit.state == rp.FAILED:
+  #         print('                  : %s' % unit.stderr)
 
     return True
 
@@ -119,7 +113,7 @@ if __name__ == "__main__":
 
 
         # we submit n tasks, some of which will fail
-        n    = 128
+        n    = 10
         cuds = list()
         for _ in range(n):
             cud = rp.ComputeUnitDescription()

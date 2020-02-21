@@ -519,6 +519,8 @@ class UnitManager(rpu.Component):
     #
     def _unit_cb(self, unit, state):
 
+        self._log.debug('=== single cb')
+
         with self._cb_lock:
 
             uid      = unit.uid
@@ -550,14 +552,16 @@ class UnitManager(rpu.Component):
     #
     def _bulk_cbs(self, units,  metrics=None):
 
-        if not metrics: metrics = rpc.UNIT_STATE
+
+        if not metrics: metrics = [rpc.UNIT_STATE]
         else          : metrics = ru.as_list(metrics)
+
+        self._log.debug('=== bulk cb: %s', metrics)
 
         with self._cb_lock:
 
             for metric in metrics:
 
-                cb_dicts = dict()  # cb dict pointing to cb_data and unit bulks
                 cbs = dict()  # bulked callbacks to call
 
                 # get wildcard callbacks
@@ -586,14 +590,14 @@ class UnitManager(rpu.Component):
                                             'cb_data': cb_dict[cb_name]['cb_data'],
                                             'units'  : [unit]}
 
-                for cb_name in cbs:
+            for cb_name in cbs:
 
-                    cb      = cbs[cb_name]['cb']
-                    cb_data = cbs[cb_name]['cb_data']
-                    objs    = cbs[cb_name]['units']
+                cb      = cbs[cb_name]['cb']
+                cb_data = cbs[cb_name]['cb_data']
+                objs    = cbs[cb_name]['units']
 
-                    if cb_data: cb(list(objs), cb_data)
-                    else      : cb(list(objs))
+                if cb_data: cb(list(objs), cb_data)
+                else      : cb(list(objs))
 
 
     # --------------------------------------------------------------------------
@@ -1114,11 +1118,8 @@ class UnitManager(rpu.Component):
     #
     def unregister_callback(self, cb=None, metrics=None, uid=None):
 
-        if not metrics:
-            metrics = rpc.UMGR_METRICS
-
-        if not isinstance(metrics, list):
-            metrics = [metrics]
+        if not metrics: metrics = [rpc.UMGR_METRICS]
+        else          : metrics = ru.as_list(metrics)
 
         if not uid:
             uid = '*'

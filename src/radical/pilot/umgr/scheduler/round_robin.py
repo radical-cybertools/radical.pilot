@@ -87,6 +87,9 @@ class RoundRobin(UMGRSchedulingComponent):
     def _work(self, units):
 
         unscheduled = list()
+        scheduled   = list()
+        failed      = list()
+
         with self._pilots_lock:
 
             for unit in units:
@@ -99,20 +102,23 @@ class RoundRobin(UMGRSchedulingComponent):
                     # make sure we know this pilot
                     if pid not in self._pilots:
                         self._log.error('unknown pilot %s (unit %s)', uid, pid)
-                        self.advance(unit, rps.FAILED, publish=True, push=True)
+                        failed.append(unit)
                         continue
 
                     pilot = self._pilots[pid]['pilot']
 
                     self._assign_pilot(unit, pilot)
-                    self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING,
-                                 publish=True, push=True)
+                    scheduled.append(unit)
 
                 else:
                     # not yet scheduled - put in wait pool
                     unscheduled.append(unit)
 
-        self._schedule_units(unscheduled)
+        if failed     : self.advance(failed, rps.FAILED,
+                                     publish=True, push=True)
+        if scheduled  : self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING,
+                                     publish=True, push=True)
+        if unscheduled: self._schedule_units(unscheduled)
 
 
     # --------------------------------------------------------------------------
