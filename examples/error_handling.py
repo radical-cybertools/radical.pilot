@@ -113,7 +113,7 @@ if __name__ == "__main__":
 
 
         # we submit n tasks, some of which will fail
-        n    = 10
+        n    = 1024 * 3
         cuds = list()
         for _ in range(n):
             cud = rp.ComputeUnitDescription()
