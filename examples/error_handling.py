@@ -3,16 +3,15 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import sys
 import random
 
 import radical.pilot as rp
 
 # READ: The RADICAL-Pilot documentation:
-#   http://radicalpilot.readthedocs.org/en/latest
+#   https://radicalpilot.readthedocs.io/en/stable/
 #
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if
-# you want to see what happens behind the scences!
+# you want to see what happens behind the scenes!
 
 
 # ------------------------------------------------------------------------------
