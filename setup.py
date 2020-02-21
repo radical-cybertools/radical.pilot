@@ -139,7 +139,7 @@ def get_version(_mod_root):
 
 
 # ------------------------------------------------------------------------------
-# check python version. we need >= 2.7, <3.x
+# check python version. we need >= 3.5
 if  sys.hexversion <= 0x03050000:
     raise RuntimeError('%s requires Python 3.5 or higher' % name)
 

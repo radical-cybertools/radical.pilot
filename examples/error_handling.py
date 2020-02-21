@@ -17,7 +17,7 @@ import radical.pilot as rp
 
 # ------------------------------------------------------------------------------
 #
-def pilot_state_cb(pilots, state=None):
+def pilot_state_cb(pilots):
     """
     this callback is invoked on all pilot state changes
     """
@@ -54,7 +54,7 @@ def pilot_state_cb(pilots, state=None):
 
 # -----------------------------------------------------------------------------
 #
-def unit_state_cb(units, state=None):
+def unit_state_cb(units):
     """ this callback is invoked on all unit state changes """
 
     if not isinstance(units, list):
