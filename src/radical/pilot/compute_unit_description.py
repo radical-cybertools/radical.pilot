@@ -335,8 +335,8 @@ class ComputeUnitDescription(ru.Description):
                POST_EXEC       : [str]       ,
                STDOUT          : str         ,
                STDERR          : str         ,
-               INPUT_STAGING   : [str]       ,
-               OUTPUT_STAGING  : [str]       ,
+               INPUT_STAGING   : None        ,
+               OUTPUT_STAGING  : None        ,
 
                CPU_PROCESSES   : int         ,
                CPU_PROCESS_TYPE: str         ,
@@ -357,16 +357,16 @@ class ComputeUnitDescription(ru.Description):
     }
 
     _defaults = {
-               EXECUTABLE      : None        ,
-               KERNEL          : None        ,
-               NAME            : None        ,
-               SANDBOX         : None        ,
+               EXECUTABLE      : ''          ,
+               KERNEL          : ''          ,
+               NAME            : ''          ,
+               SANDBOX         : ''          ,
                ARGUMENTS       : list()      ,
                ENVIRONMENT     : dict()      ,
                PRE_EXEC        : list()      ,
                POST_EXEC       : list()      ,
-               STDOUT          : None        ,
-               STDERR          : None        ,
+               STDOUT          : ''          ,
+               STDERR          : ''          ,
                INPUT_STAGING   : list()      ,
                OUTPUT_STAGING  : list()      ,
 

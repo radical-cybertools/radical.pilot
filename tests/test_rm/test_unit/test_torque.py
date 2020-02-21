@@ -6,7 +6,7 @@ import os
 import warnings
 import pytest
 import radical.utils as ru
-from radical.pilot.agent.rm.torque import Torque
+from radical.pilot.agent.resource_manager.torque import Torque
 
 try:
     import mock

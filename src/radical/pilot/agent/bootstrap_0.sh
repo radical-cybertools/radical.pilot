@@ -97,10 +97,10 @@ VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/66/f0/6867af06d2e2f511e
 VIRTENV_IS_ACTIVATED=FALSE
 
 VIRTENV_RADICAL_DEPS="pymongo colorama python-hostlist ntplib "\
-"pyzmq netifaces setproctitle orte_cffi msgpack-python future regex munch"
+"pyzmq netifaces setproctitle msgpack future regex munch"
 
-VIRTENV_RADICAL_MODS="pymongo colorama hostlist "\
-"ntplib zmq netifaces setproctitle msgpack future regex"
+VIRTENV_RADICAL_MODS="pymongo colorama hostlist ntplib "\
+"zmq netifaces setproctitle msgpack future regex"
 
 if ! test -z "$RADICAL_DEBUG"
 then
@@ -128,77 +128,54 @@ export MAKEFLAGS="-j"
 #
 create_gtod()
 {
-    # we "should" be able to build this everywhere ...
-
-    cat > gtod.c <<EOT
-#include <stdio.h>
-#include <sys/time.h>
-
-int main ()
-{
-    struct timeval tv;
-    (void) gettimeofday (&tv, NULL);
-    fprintf (stdout, "%ld.%06ld\n", tv.tv_sec, tv.tv_usec);
-    return (0);
-}
-EOT
-
-    if ! test -e "./gtod"
+    tmp=`date '+%s.%N' | grep N`
+    if test "$?" = 0
     then
-        echo -n "build gtod with gcc... $(which gcc)"
-        echo
-        gcc -o gtod gtod.c
-    fi
-
-    if ! test -e "./gtod"
-    then
-        echo "failed"
-        echo -n "build gtod with cc... $(which cc) "
-        cc -o gtod gtod.c
-    fi
-
-    if ! test -e "./gtod"
-    then
-        tmp=`date '+%s.%N'`
-        if test "$?" = 0
+        if ! contains "$tmp" '%'
         then
-            if ! contains "$tmp" '%'
-            then
-                # we can use the system tool
-                echo "#!/bin/sh"      > ./gtod
-                echo "date '+%s.%N'" >> ./gtod
-                chmod 0755              ./gtod
-            fi
+            # we can use the system tool
+            echo "#!/bin/sh"       > ./gtod
+            echo "date '+%s.%6N'" >> ./gtod
         fi
+    else
+        shell=/bin/sh
+        test -x '/bin/bash' && shell=/bin/bash
+
+        echo "#!$SHELL"                                                > ./gtod
+        echo "if test -z \"\$EPOCHREALTIME\""                         >> ./gtod
+        echo "then"                                                   >> ./gtod
+        echo "  python3 -c 'import time;print(\"%.6f\"%time.time())'" >> ./gtod
+        echo "else"                                                   >> ./gtod
+        echo "  echo \${EPOCHREALTIME:0:20}"                          >> ./gtod
+        echo "fi"                                                     >> ./gtod
     fi
 
-    if ! test -e "./gtod"
-    then
-        echo "failed - giving up"
-        exit 1
-    fi
+    chmod 0755 ./gtod
 
-    echo "success"
-
+    set -x
     TIME_ZERO=`./gtod`
     export TIME_ZERO
+    set +x
 }
+
 
 # ------------------------------------------------------------------------------
 #
 profile_event()
 {
-    PROFILE="bootstrap_0.prof"
-
+    set -x
     if test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
     then
         return
     fi
 
+    PROFILE="bootstrap_0.prof"
+
     event=$1
     msg=$2
 
-    NOW=`echo \`./gtod\` - "$TIME_ZERO" | bc`
+    epoch=`./gtod`
+    now=$(awk "BEGIN{print($epoch - $TIME_ZERO)}")
 
     if ! test -f "$PROFILE"
     then
@@ -215,8 +192,9 @@ profile_event()
     # MSG    = 6  # message describing the event                optional
     # ENTITY = 7  # type of entity involved                     optional
     printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
-        "$NOW" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "PMGR_ACTIVE_PENDING" "$msg" \
+        "$now" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "PMGR_ACTIVE_PENDING" "$msg" \
         | tee -a "$PROFILE"
+    set +x
 }
 
 
@@ -1002,7 +980,7 @@ virtenv_create()
     elif test "$python_dist" = "anaconda"
     then
         run_cmd "Create virtualenv" \
-                "conda create -y -p $virtenv python=3"
+                "conda create -y -p $virtenv python=3.8"
         if test $? -ne 0
         then
             echo "ERROR: Couldn't create virtualenv"
@@ -1835,6 +1813,7 @@ do
     sleep 3
     if kill -0 $AGENT_PID 2>/dev/null
     then
+        echo -n '.'
         if test -e "./killme.signal"
         then
             profile_event 'killme' "`date --rfc-3339=ns | cut -c -23`"
@@ -1849,6 +1828,7 @@ do
             kill  -9 $AGENT_PID
         fi
     else
+        echo
         profile_event 'agent_gone' "`date --rfc-3339=ns | cut -c -23`"
         echo "agent $AGENT_PID is gone"
         break

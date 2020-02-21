@@ -1,6 +1,16 @@
 
-  - For a list of bug fixes, see: https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aclosed+sort%3Aupdated-desc
-  - For a list of open issues and known problems, see: https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aissue+is%3Aopen+
+
+For a list of open issues and known problems, see:
+https://github.com/radical-cybertools/radical.pilot/issues/
+
+
+1.1 Release                                                           2020-02-11
+--------------------------------------------------------------------------------
+
+1.1.1 Hotfix Release                                                  2020-02-11
+--------------------------------------------------------------------------------
+
+  - fix dependency version for radical.utils
 
 
 1.0.0   Release                                                       2019-12-24
@@ -1146,4 +1156,5 @@ API Changes:
 
   - Closed tickets:
     - https://github.com/saga-project/saga-pilot/issues?milestone=4&state=closed
+
 

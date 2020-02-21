@@ -492,6 +492,11 @@ class Default(PMGRLaunchingComponent):
                     pilot = self._pilots[pid]['pilot']
                     job   = self._pilots[pid]['job']
 
+                    # don't overwrite resource_details from the agent
+                    #
+                    if 'resource_details' in pilot:
+                        del(pilot['resource_details'])
+
                     if pilot['state'] in rp.FINAL:
                         continue
 
@@ -697,7 +702,7 @@ class Default(PMGRLaunchingComponent):
             tgt_dir = os.path.dirname(tgt)
 
             if tgt_dir.startswith('..'):
-              # raise ValueError('staging target %s outside of pilot sandbox: %s' % (ft['tgt'], tgt))
+              # raise ValueError('staging tgt %s outside pilot sbox: %s' % (ft['tgt'], tgt))
                 tgt = ft['tgt']
                 tgt_dir = os.path.dirname(tgt)
 
