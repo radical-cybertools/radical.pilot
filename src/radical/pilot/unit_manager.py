@@ -550,57 +550,47 @@ class UnitManager(rpu.Component):
     #
     def _bulk_cbs(self, units,  metrics=None):
 
-        if not metrics:
-            metrics = rpc.UNIT_STATE
-
-        if not isinstance(metrics, list):
-            metrics = [metrics]
+        if not metrics: metrics = rpc.UNIT_STATE
+        else          : metrics = ru.as_list(metrics)
 
         with self._cb_lock:
 
             for metric in metrics:
 
-                for cb_name, cb_val in self._callbacks[metric].items():
+                cb_dicts = dict()  # cb dict pointing to cb_data and unit bulks
+                cbs = dict()  # bulked callbacks to call
 
-                    cbs = dict()  # cb dict pointing to cb_data and unit bulks
+                # get wildcard callbacks
+                if '*' in self._callbacks:
+                    cb_dict = self._callbacks['*'].get(rpc.UNIT_STATE, {})
+                    for cb_name in cb_dict:
+                        cbs[cb_name] = {'cb'     : cb_dict[cb_name]['cb'],
+                                        'cb_data': cb_dict[cb_name]['cb_data'],
+                                        'units'  : units}
 
-                    for unit in units:
+                # add unit specific callbacks if needed
+                for unit in units:
 
-                        uid = unit.uid
-                        cb_dicts = list()
+                    uid = unit.uid
+                    if uid not in self._callbacks:
+                        continue
 
-                        # get wildcard callbacks
-                        if '*' in self._callbacks:
-                            cb_dict = self._callbacks['*'].get(rpc.UNIT_STATE)
-                            if cb_dict:
-                                cb_dicts.append(cb_dict)
+                    cb_dict = self._callbacks[uid].get(rpc.UNIT_STATE, {})
+                    for cb_name in cb_dict:
 
-                        if uid in self._callbacks:
-                            cb_dict = self._callbacks[uid].get(rpc.UNIT_STATE)
-                            if cb_dict:
-                                cb_dicts.append(cb_dict)
-
-                        for cb_dict in cb_dicts:
-
-                            for cb_name in cb_dict:
-
-                                if cb_name not in cbs:
-                                    cb           = cb_dict[cb_name]['cb']
-                                    cb_data      = cb_dict[cb_name]['cb_data']
-                                    cbs[cb_name] = {'cb'     : cb,
-                                                    'cb_data': cb_data,
-                                                    'units'  : set()}
-
-                                cbs[cb_name]['units'].add(unit)
+                        if cb_name in cbs:
+                            if unit not in cbs[cb_name]['units']:
+                                cbs[cb_name]['units'].append(unit)
+                        else:
+                            cbs[cb_name] = {'cb'     : cb_dict[cb_name]['cb'],
+                                            'cb_data': cb_dict[cb_name]['cb_data'],
+                                            'units'  : [unit]}
 
                 for cb_name in cbs:
 
                     cb      = cbs[cb_name]['cb']
                     cb_data = cbs[cb_name]['cb_data']
                     objs    = cbs[cb_name]['units']
-
-                    self._log.debug('call %s cb %s for %d units', metric,
-                                    cb_name, len(objs))
 
                     if cb_data: cb(list(objs), cb_data)
                     else      : cb(list(objs))
@@ -1119,7 +1109,6 @@ class UnitManager(rpu.Component):
 
             self._callbacks[uid][metric][cb_name] = {'cb'      : cb,
                                                      'cb_data' : cb_data}
-
 
     # --------------------------------------------------------------------------
     #

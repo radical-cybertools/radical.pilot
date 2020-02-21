@@ -44,10 +44,8 @@ def pilot_state_cb(pilots):
     for pilot in pilots:
         print("[Callback]: Pilot '%s' state: %s." % (pilot.uid, pilot.state))
 
-        print('=== Pilot state: %s' % pilot.state)
         if pilot.state == rp.FAILED:
-            print('=== Pilot failed')
-            print(pilot.log[-1]  # Get the last log message)
+            print(pilot.log[-1])  # Get the last log message
 
     return True
 
@@ -72,13 +70,12 @@ def unit_state_cb(units):
     # compute units, or spawn a pilot on a different resource which might be
     # better equipped to handle the unit payload.
 
-    print('=== unit cb for %d units' % len(units))
+    print('unit cb for %d units' % len(units))
     for unit in units:
-        print('  === unit %s: %s' % (unit.uid, unit.state))
+        print('  unit %s: %s' % (unit.uid, unit.state))
 
         if unit.state == rp.FAILED:
-            print('  === Unit failed!')
-            print('  === stderr: %s' % unit.stderr  # Get the unit's stderr)
+            print('                  : %s' % unit.stderr)
 
     return True
 
@@ -88,43 +85,33 @@ def unit_state_cb(units):
 if __name__ == "__main__":
 
     # This example shows how simple error handling can be implemented
-    # synchronously using blocking wait() calls.
-    #
-    # The code launches a pilot with 128 cores on 'localhost'. Unless localhost
-    # has 128 or more cores available, this is bound to fail. This example shows
-    # how this error can be caught and handled.
-
-    # we can optionally pass session name to RP
-    if len(sys.argv) > 1:
-        session_name = sys.argv[1]
-    else:
-        session_name = None
+    # asynchronously using callbacks (see above)
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    session = rp.Session(uid=session_name)
+    session = rp.Session()
     print("session id: %s" % session.uid)
 
-    # all other pilot code is now tried/excepted.  If an exception is caught, we
+    # all other RP code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
     # the whole RP stack down via a 'session.close()' call in the 'finally'
     # clause...
     try:
 
-        # do pilot thingies
+        # create the managers
         umgr = rp.UnitManager(session=session)
         pmgr = rp.PilotManager(session=session)
 
         # Register our callbacks with the managers. The callbacks will get
         # called every time any of the pilots or units change their state
-        # -- in particular also on failing ones.
+        # -- in particular also on FAILED states.
         umgr.register_callback(unit_state_cb)
         pmgr.register_callback(pilot_state_cb)
 
         # Create a local pilot.
         pd = rp.ComputePilotDescription()
         pd.resource  = "local.localhost"
-        pd.cores     = 1
+        pd.cores     = 64
         pd.runtime   = 60
 
         pilot = pmgr.submit_pilots(pd)
@@ -132,18 +119,15 @@ if __name__ == "__main__":
 
 
         # we submit n tasks, some of which will fail
-        n    = 10
+        n    = 128
         cuds = list()
         for _ in range(n):
             cud = rp.ComputeUnitDescription()
             if random.random() < 0.5:
                 cud.executable = '/bin/true'
-                print('+', end=' ')
             else:
                 cud.executable = '/bin/fail'
-                print('-', end=' ')
             cuds.append(cud)
-        print()
 
         # submit the units...
         cus = umgr.submit_units(cuds)
