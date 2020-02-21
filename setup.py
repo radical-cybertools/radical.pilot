@@ -139,9 +139,9 @@ def get_version(_mod_root):
 
 
 # ------------------------------------------------------------------------------
-# check python version. we need >= 3.5
-if  sys.hexversion <= 0x03050000:
-    raise RuntimeError('%s requires Python 3.5 or higher' % name)
+# check python version. we need >= 3.6
+if  sys.hexversion < 0x03060000:
+    raise RuntimeError('%s requires Python 3.6 or higher' % name)
 
 
 # ------------------------------------------------------------------------------
@@ -201,7 +201,7 @@ setup_args = {
     'url'                : 'https://www.github.com/radical-cybertools/radical.pilot/',
     'license'            : 'MIT',
     'keywords'           : 'radical pilot job saga',
-    'python_requires'    : '>=3.5',
+    'python_requires'    : '>=3.6',
     'classifiers'        : [
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
