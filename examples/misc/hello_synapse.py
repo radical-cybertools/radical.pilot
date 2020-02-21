@@ -19,7 +19,7 @@ BYTES_MEM = 1 * 1000 * 1000  # not yet used
 
 # ------------------------------------------------------------------------------
 #
-# READ the RADICAL-Pilot documentation: http://radicalpilot.readthedocs.org/
+# READ the RADICAL-Pilot documentation: https://radicalpilot.readthedocs.io/
 #
 # ------------------------------------------------------------------------------
 
