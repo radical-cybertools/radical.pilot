@@ -14,7 +14,7 @@ dh = ru.DebugHelper()
 
 # ------------------------------------------------------------------------------
 #
-# READ the RADICAL-Pilot documentation: http://radicalpilot.readthedocs.org/
+# READ the RADICAL-Pilot documentation: https://radicalpilot.readthedocs.io/
 #
 # ------------------------------------------------------------------------------
 
