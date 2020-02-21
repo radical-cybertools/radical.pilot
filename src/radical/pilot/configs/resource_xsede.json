@@ -132,19 +132,9 @@
     "frontera": {
         "description"                 : "",
         "notes"                       : "",
-        "schemas"                     : ["gsissh", "ssh", "local"],
+        "schemas"                     : ["local"],
         "mandatory_args"              : ["project"],
-        "gsissh"                      :
-        {
-            "job_manager_endpoint"    : "slurm+gsissh://frontera.tacc.utexas.edu:2222/",
-            "filesystem_endpoint"     : "gsisftp://frontera.tacc.utexas.edu:2222/"
-        },
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://frontera.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://frontera.tacc.utexas.edu/"
-        },
-        "local"                         :
+        "local"                       :
         {
             "job_manager_endpoint"    : "slurm://frontera.tacc.utexas.edu/",
             "filesystem_endpoint"     : "file://frontera.tacc.utexas.edu/"
