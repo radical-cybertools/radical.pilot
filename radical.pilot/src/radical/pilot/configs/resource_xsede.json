@@ -1,0 +1,544 @@
+
+{
+
+    "wrangler_ssh": {
+        "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["gsissh", "ssh", "go"],
+        "mandatory_args"              : ["project"],
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://wrangler.tacc.utexas.edu:2222/",
+            "filesystem_endpoint"     : "gsisftp://wrangler.tacc.utexas.edu:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://wrangler.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://wrangler.tacc.utexas.edu/"
+        },
+        "go":
+        {
+            "job_manager_endpoint"    : "slurm+ssh://wrangler.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "go://xsede#wrangler/"
+        },
+        "default_queue"               : "normal",
+        "resource_manager"            : "SLURM",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN_RSH",
+        "pre_bootstrap_0"             : [
+                                       # "module load python",
+                                         "export TACC_DELETE_FILES=TRUE"
+                                        ],
+        "pre_bootstrap_1"             : ["export PATH=$PATH",
+                                         "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+                                        ],
+        "default_remote_workdir"      : "$WORK",
+        "valid_roots"                 : ["/work", "$WORK", "/data", "$DATA"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
+    },
+
+    "wrangler_yarn": {
+        "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["gsissh", "ssh", "go"],
+        "mandatory_args"              : ["project"],
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://wrangler.tacc.utexas.edu:2222/",
+            "filesystem_endpoint"     : "gsisftp://wrangler.tacc.utexas.edu:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://wrangler.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://wrangler.tacc.utexas.edu/"
+        },
+        "go":
+        {
+            "job_manager_endpoint"    : "slurm+ssh://wrangler.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "go://xsede#wrangler/"
+        },
+        "default_queue"               : "hadoop",
+        "resource_manager"            : "YARN",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "YARN",
+        "agent_spawner"               : "ABDS",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "YARN",
+        "mpi_launch_method"           : "MPIRUN_RSH",
+        "pre_bootstrap_0"             : ["module load python",
+                                         "export TACC_DELETE_FILES=TRUE"
+                                        ],
+        "pre_bootstrap_1"             : ["export PATH=$PATH",
+                                         "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+                                        ],
+        "default_remote_workdir"      : "$WORK",
+        "valid_roots"                 : ["/work", "$WORK"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
+    },
+
+
+    "wrangler_spark": {
+        "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["gsissh", "ssh", "go"],
+        "mandatory_args"              : ["project"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://wrangler.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://wrangler.tacc.utexas.edu/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://wrangler.tacc.utexas.edu:2222/",
+            "filesystem_endpoint"     : "gsisftp://wrangler.tacc.utexas.edu:2222/"
+        },
+        "go":
+        {
+            "job_manager_endpoint"    : "slurm+ssh://wrangler.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "go://xsede#wrangler/"
+        },
+        "default_queue"               : "normal",
+        "resource_manager"            : "SLURM",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SPARK",
+        "mpi_launch_method"           : "MPIRUN_RSH",
+        "pre_bootstrap_0"             : [
+                                        "module load python" ,
+                                        "export TACC_DELETE_FILES=TRUE",
+                                        "module load jdk64/1.8.0"
+                                        ],
+        "pre_bootstrap_1"             : ["export PATH=$PATH",
+                                         "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+                                        ],
+        "default_remote_workdir"      : "$WORK",
+        "valid_roots"                 : ["/work", "$WORK"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
+    },
+
+
+    "frontera": {
+        "description"                 : "",
+        "notes"                       : "",
+        "schemas"                     : ["local"],
+        "mandatory_args"              : ["project"],
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://frontera.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "file://frontera.tacc.utexas.edu/"
+        },
+        "default_queue"               : "normal",
+        "resource_manager"            : "SLURM",
+        "cores_per_node"              : 56,
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SRUN",
+        "task_launch_method"          : "SRUN",
+        "mpi_launch_method"           : "SRUN",
+        "pre_bootstrap_0"             :["module load TACC",
+                                        "module unload intel",
+                                        "module unload impi",
+                                        "module load   intel",
+                                        "module load   python3/3.7.0"
+                                        ],
+        "default_remote_workdir"      : "$SCRATCH",
+        "valid_roots"                 : ["$SCRATCH", "$WORK"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default",
+        "export_to_cu"                : ["LMOD_CMD",
+                                         "LMOD_SYSTEM_DEFAULT_MODULES",
+                                         "LD_LIBRARY_PATH"],
+        "cu_pre_exec"                 : []
+    },
+
+    "stampede2_ssh": {
+        "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["local", "gsissh", "ssh"],
+        "mandatory_args"              : ["project"],
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://stampede2.tacc.utexas.edu:2222/",
+            "filesystem_endpoint"     : "gsisftp://stampede2.tacc.utexas.edu:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://stampede2.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://stampede2.tacc.utexas.edu/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://stampede2.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "file://stampede2.tacc.utexas.edu/"
+        },
+        "default_queue"               : "normal",
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "IBRUN",
+        "pre_bootstrap_0"             :["module load TACC",
+                                         "module load intel/18.0.0",
+                                         "module load python3/3.7.0"
+                                        ],
+        "default_remote_workdir"      : "$WORK",
+        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default",
+        "export_to_cu"                : ["LMOD_CMD",
+                                         "LMOD_SYSTEM_DEFAULT_MODULES",
+                                         "LD_LIBRARY_PATH"],
+        "cu_pre_exec"                 : ["module restore"]
+    },
+
+    "stampede2_srun": {
+        "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["local", "gsissh", "ssh"],
+        "mandatory_args"              : ["project"],
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://stampede2.tacc.utexas.edu:2222/",
+            "filesystem_endpoint"     : "gsisftp://stampede2.tacc.utexas.edu:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://stampede2.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://stampede2.tacc.utexas.edu/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://stampede2.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "file://stampede2.tacc.utexas.edu/"
+        },
+        "default_queue"               : "normal",
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SRUN",
+        "task_launch_method"          : "SRUN",
+        "mpi_launch_method"           : "SRUN",
+        "pre_bootstrap_0"             :["module load TACC",
+                                         "module load intel/18.0.0",
+                                         "module load python3/3.7.0"
+                                        ],
+        "default_remote_workdir"      : "$WORK",
+        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default",
+        "export_to_cu"                : ["LMOD_CMD",
+                                         "LMOD_SYSTEM_DEFAULT_MODULES",
+                                         "LD_LIBRARY_PATH"],
+        "cu_pre_exec"                 : ["module restore"]
+    },
+
+    "comet_ssh": {
+        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["ssh", "gsissh"],
+        "mandatory_args"              : ["project"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://comet.sdsc.xsede.org/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "gsisftp://comet.sdsc.xsede.org/"
+        },
+        "default_queue"               : "compute",
+        "cores_per_node"              : 24,
+        "lfs_path_per_node"           : "/scratch/$USER/$SLURM_JOB_ID",
+        "lfs_size_per_node"           : 176105,
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "IBRUN",
+        "pre_bootstrap_0"             : ["module load python"],
+       #"default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
+       #"valid_roots"                 : ["/oasis/scratch/comet"],
+        "valid_roots"                 : ["/home"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default",
+        "cu_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
+    },
+
+    "comet_ssh_funcs": {
+        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["ssh", "gsissh"],
+        "mandatory_args"              : ["project"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://comet.sdsc.xsede.org/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "gsisftp://comet.sdsc.xsede.org/"
+        },
+        "default_queue"               : "compute",
+        "cores_per_node"              : 24,
+        "lfs_path_per_node"           : "/scratch/$USER/$SLURM_JOB_ID",
+        "lfs_size_per_node"           : 176105,
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "NOOP",
+        "agent_spawner"               : "FUNCS",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "FUNCS",
+        "pre_bootstrap_0"             : ["module load python"],
+       #"default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
+       #"valid_roots"                 : ["/oasis/scratch/comet"],
+        "valid_roots"                 : ["/home"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default",
+        "cu_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
+    },
+
+    "comet_spark": {
+        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["ssh", "gsissh"],
+        "mandatory_args"              : ["project"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://comet.sdsc.xsede.org/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "gsisftp://comet.sdsc.xsede.org/"
+        },
+        "default_queue"               : "compute",
+        "cores_per_node"              : 24,
+        "lfs_path_per_node"           : "/scratch/$USER/$SLURM_JOB_ID",
+        "lfs_size_per_node"           : 176105,
+        "resource_manager"            : "SLURM",
+        "agent_type"                  : "multicore",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "FORK",
+        "task_launch_method"          : "SPARK",
+        "mpi_launch_method"           : "MPIRUN_RSH",
+        "pre_bootstrap_0"             : ["module load python"],
+        "pre_bootstrap_1"             : [
+            "export PATH=$PATH",
+            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+        ],
+       #"default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
+       #"valid_roots"                 : ["/oasis/scratch/comet"],
+        "valid_roots"                 : ["/home"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
+    },
+
+    "supermic_ssh": {
+        "description"                 : "SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)",
+        "notes"                       : "Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.",
+        "schemas"                     : ["gsissh", "ssh"],
+        "gsissh"                      : {
+            "job_manager_endpoint"    : "torque+gsissh://supermic.cct-lsu.xsede.org:2222/",
+            "filesystem_endpoint"     : "gsisftp://supermic.cct-lsu.xsede.org:2222/"
+        },
+        "ssh"                         : {
+            "job_manager_endpoint"    : "torque+ssh://supermic.cct-lsu.xsede.org/",
+            "filesystem_endpoint"     : "sftp://supermic.cct-lsu.xsede.org/"
+        },
+        "default_queue"               : "workq",
+        "cores_per_node"              : 20,
+        "lfs_path_per_node"           : "/var/scratch/",
+        "lfs_size_per_node"           : 200496,
+        "resource_manager"            : "TORQUE",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIEXEC",
+        "pre_bootstrap_0"             : ["module load python/2.7.7-anaconda"],
+        "default_remote_workdir"      : "/work/$USER",
+        "valid_roots"                 : ["/work"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
+    },
+
+    "supermic_orte": {
+        "description"                 : "SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)",
+        "notes"                       : "Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.",
+        "schemas"                     : ["local", "gsissh", "ssh"],
+        "local"                      : {
+            "job_manager_endpoint"    : "torque://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "gsissh"                      : {
+            "job_manager_endpoint"    : "torque+gsissh://supermic.cct-lsu.xsede.org:2222/",
+            "filesystem_endpoint"     : "gsisftp://supermic.cct-lsu.xsede.org:2222/"
+        },
+        "ssh"                         : {
+            "job_manager_endpoint"    : "torque+ssh://supermic.cct-lsu.xsede.org/",
+            "filesystem_endpoint"     : "sftp://supermic.cct-lsu.xsede.org/"
+        },
+        "default_queue"               : "workq",
+        "cores_per_node"              : 20,
+        "lfs_path_per_node"           : "/var/scratch/",
+        "lfs_size_per_node"           : 200496,
+        "resource_manager"            : "TORQUE",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "ORTE",
+        "task_launch_method"          : "ORTE",
+        "mpi_launch_method"           : "ORTE",
+        "pre_bootstrap_0"             : [
+            "module load python/2.7.7-anaconda",
+            "module use -a /worka/work/amerzky/radical.pilot.sandbox/openmpi/modules/",
+            "module load openmpi/2017_03_13_6da4dbb"
+        ],
+        "pre_bootstrap_1"             : ["export PATH=$PATH",
+            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+        ],
+        "default_remote_workdir"      : "/work/$USER",
+        "valid_roots"                 : ["/work"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
+    },
+
+    "supermic_ortelib": {
+        "description"                 : "SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)",
+        "notes"                       : "Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.",
+        "schemas"                     : ["gsissh", "ssh"],
+        "gsissh"                      : {
+            "job_manager_endpoint"    : "torque+gsissh://supermic.cct-lsu.xsede.org:2222/",
+            "filesystem_endpoint"     : "gsisftp://supermic.cct-lsu.xsede.org:2222/"
+        },
+        "ssh"                         : {
+            "job_manager_endpoint"    : "torque+ssh://supermic.cct-lsu.xsede.org/",
+            "filesystem_endpoint"     : "sftp://supermic.cct-lsu.xsede.org/"
+        },
+        "default_queue"               : "workq",
+        "cores_per_node"              : 20,
+        "lfs_path_per_node"           : "/var/scratch/",
+        "lfs_size_per_node"           : 200496,
+        "resource_manager"            : "TORQUE",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "ORTE",
+        "agent_launch_method"         : "ORTE",
+        "task_launch_method"          : "ORTE_LIB",
+        "mpi_launch_method"           : "ORTE_LIB",
+        "pre_bootstrap_0"             : [
+            "module load python/2.7.7-anaconda",
+            "module use -a /worka/work/amerzky/radical.pilot.sandbox/openmpi/modules/",
+            "module load openmpi/2017_03_13_6da4dbb"
+        ],
+        "pre_bootstrap_1"             : ["export PATH=$PATH",
+            "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+        ],
+        "default_remote_workdir"      : "/work/$USER",
+        "valid_roots"                 : ["/work"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
+    },
+
+    "bridges": {
+        "description"                 : "The XSEDE 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription.",
+        "schemas"                     : ["gsissh", "ssh", "go"],
+      # "mandatory_args"              : [],
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://bridges.psc.xsede.org:2222/",
+            "filesystem_endpoint"     : "gsisftp://bridges.psc.xsede.org:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://bridges.psc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://bridges.psc.xsede.org/"
+        },
+        "go":
+        {
+            "job_manager_endpoint"    : "slurm+ssh://bridges.psc.xsede.org/",
+            "filesystem_endpoint"     : "go://xsede#bridges/"
+        },
+        "default_queue"               : "RM",
+        "resource_manager"            : "SLURM",
+        "lfs_path_per_node"           : "$LOCAL",
+        "lfs_size_per_node"           : 3713368,
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN",
+        "pre_bootstrap_0"             : ["module purge",
+                                         "module load gcc",
+                                         "module load mpi/gcc_openmpi",
+                                         "module load slurm",
+                                         "module load anaconda3"
+                                        ],
+        "default_remote_workdir"      : "$SCRATCH",
+        "valid_roots"                 : ["/home", "/pylon1", "/pylon5"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "anaconda",
+        "export_to_cu"                : [],
+        "cu_pre_exec"                 : [],
+        "saga_jd_supplement"          : {"cpu_architecture" : ["p100"]},
+        "gpus_per_node"               : 2
+    },
+
+    "supermic_spark": {
+        "description"                 : "SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)",
+        "notes"                       : "Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.",
+        "schemas"                     : ["gsissh", "ssh"],
+        "gsissh"                      : {
+            "job_manager_endpoint"    : "torque+gsissh://supermic.cct-lsu.xsede.org:2222/",
+            "filesystem_endpoint"     : "gsisftp://supermic.cct-lsu.xsede.org:2222/"
+        },
+        "ssh"                         : {
+            "job_manager_endpoint"    : "torque+ssh://supermic.cct-lsu.xsede.org/",
+            "filesystem_endpoint"     : "sftp://supermic.cct-lsu.xsede.org/"
+        },
+        "default_queue"               : "workq",
+        "cores_per_node"              : 20,
+        "lfs_path_per_node"           : "/var/scratch/",
+        "lfs_size_per_node"           : 200496,
+        "resource_manager"            : "TORQUE",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SPARK",
+        "mpi_launch_method"           : "MPIEXEC",
+        "pre_bootstrap_0"             : ["module load python"],
+        "default_remote_workdir"      : "/work/$USER",
+        "valid_roots"                 : ["/work"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default"
+    }
+}
+
