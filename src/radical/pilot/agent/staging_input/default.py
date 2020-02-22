@@ -42,6 +42,8 @@ class Default(AgentStagingInputComponent):
     #
     def initialize(self):
 
+        AgentStagingInputComponent.initialize(self)
+
         self._pwd = os.getcwd()
 
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
@@ -53,12 +55,7 @@ class Default(AgentStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
-
-        if not isinstance(units, list):
-            units = [units]
-
-        self.advance(units, rps.AGENT_STAGING_INPUT, publish=True, push=False)
+    def _work(self, units):
 
         # we first filter out any units which don't need any input staging, and
         # advance them again as a bulk.  We work over the others one by one, and

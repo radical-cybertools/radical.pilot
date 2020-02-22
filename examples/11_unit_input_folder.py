@@ -20,7 +20,7 @@ import radical.utils as ru
 # ------------------------------------------------------------------------------
 
 
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
+        config = ru.read_json('%s/config.json' % os.path.dirname(__file__))
         report.ok('>>ok\n')
 
         report.header('submit pilots')
@@ -56,18 +56,17 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {
-                'resource'      : resource,
-                'runtime'       : 15,  # pilot runtime (min)
-                'exit_on_error' : True,
-                'project'       : config[resource]['project'],
-                'queue'         : config[resource]['queue'],
-                'access_schema' : config[resource]['schema'],
-                'cores'         : config[resource]['cores'],
-                }
+                   'resource'      : resource,
+                   'runtime'       : 15,  # pilot runtime (min)
+                   'exit_on_error' : True,
+                   'project'       : config[resource]['project'],
+                   'queue'         : config[resource]['queue'],
+                   'access_schema' : config[resource]['schema'],
+                   'cores'         : config[resource]['cores'],
+                  }
 
         pdesc = rp.ComputePilotDescription(pd_init)
         pilot = pmgr.submit_pilots(pdesc)
-
 
         report.header('submit units')
 
@@ -75,50 +74,40 @@ if __name__ == '__main__':
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-
-
-
-
         n = 4   # number of units to run
 
         # create a folder to the remote machine
-        cu = rp.ComputeUnitDescription()
-        cu.executable = 'python'
-        cu.arguments = ['make_folders.py', n ]
+        cu               = rp.ComputeUnitDescription()
+        cu.executable    = 'python'
+        cu.arguments     = ['make_folders.py', n]
         cu.input_staging = ['make_folders.py']
-        umgr.submit_units([cu])
 
         print("Creating dummy folder")
-
-        folder_cus =  umgr.wait_units()
+        umgr.submit_units([cu])
+        umgr.wait_units()
         print('Dummy folder created')
 
-
         report.info('create %d unit description(s)\n\t' % n)
-
         cuds = list()
         for i in range(0, n):
 
-            filename = '/tmp/stage_in_folder_%d/input_file.dat'%i
+            path  = '/tmp/stage_in_folder_%d/' % i
+            fname = 'input_file.dat'
+            full  = '%s/%s'  % (path, fname)
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable     = '/usr/bin/wc'
-            cud.arguments      = ['-c', os.path.join(os.path.split(os.path.dirname(filename))[1],os.path.basename(filename))]   # add folder
-            cud.input_staging  = {'source': os.path.dirname(filename),
-                                  'target': 'unit:///%s'%os.path.split(os.path.dirname(filename))[1] ,
+            cud.arguments      = ['-c', fname]
+            cud.input_staging  = {'source': full,
+                                  'target': 'unit:///%s' % fname,
                                   'action': rp.MOVE
                                   }
 
-            cud.output_staging = {'source': 'unit:///%s'% os.path.split(os.path.dirname(filename))[1], 
-                                  'target': 'pilot:///folder_%d_moved'%i,
+            cud.output_staging = {'source': 'unit:///%s' % fname,
+                                  'target': 'pilot:///input_%d_moved' % i,
                                   'action': rp.MOVE
                                  }
-            
-          # this is a shortcut for:
-          # cud.input_staging  = {'source': 'client:///input.dat', 
-          #                       'target': 'unit:///input.dat',
-          #                       'action': rp.Transfer}
 
             cuds.append(cud)
             report.progress()
@@ -132,14 +121,14 @@ if __name__ == '__main__':
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
-    
+
         report.info('\n')
         for unit in units:
-            report.plain('  * %s: %s, exit: %3s, out: %s\n' \
-                    % (unit.uid, unit.state[:4], 
+            report.plain('  * %s: %s, exit: %3s, out: %s\n'
+                    % (unit.uid, unit.state[:4],
                         unit.exit_code, unit.stdout.strip()[:35]))
-    
-        #delete sample files and folders
+
+        # delete sample files and folders
         # TODO:
 
 
@@ -148,7 +137,7 @@ if __name__ == '__main__':
         report.error('caught Exception: %s\n' % e)
         raise
 
-    except (KeyboardInterrupt, SystemExit) as e:
+    except (KeyboardInterrupt, SystemExit):
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
@@ -164,5 +153,5 @@ if __name__ == '__main__':
     report.header()
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 

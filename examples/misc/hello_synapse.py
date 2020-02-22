@@ -24,7 +24,7 @@ BYTES_MEM = 1 * 1000 * 1000  # not yet used
 # ------------------------------------------------------------------------------
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
@@ -61,14 +61,14 @@ if __name__ == '__main__':
         pdescs = list()
         for resource in resources:
             pd_init = {
-                    'resource'      : resource,
-                    'cores'         : 64,  # pilot size
-                    'runtime'       : 15,  # pilot runtime (min)
-                    'exit_on_error' : True,
-                    'project'       : config[resource]['project'],
-                    'queue'         : config[resource]['queue'],
-                    'access_schema' : config[resource]['schema']
-                    }
+                       'resource'      : resource,
+                       'cores'         : 64,  # pilot size
+                       'runtime'       : 15,  # pilot runtime (min)
+                       'exit_on_error' : True,
+                       'project'       : config[resource]['project'],
+                       'queue'         : config[resource]['queue'],
+                       'access_schema' : config[resource]['schema']
+                      }
             pdescs.append(rp.ComputePilotDescription(pd_init))
 
         # Launch the pilots.
@@ -89,7 +89,6 @@ if __name__ == '__main__':
                            ". /tmp/rp_synapse_ve_$USER/bin/activate",
                            "pip install --upgrade radical.synapse"]
         cud.executable  = "radical-synapse-version"
-        cud.post_exec   = ["python -c 'import radical.synapse as ry; print ry.__file__'"]
         cud.cores       = 1
 
         cu = umgr.submit_units(cud)
@@ -124,15 +123,15 @@ if __name__ == '__main__':
         # assigning ComputeUnits to the ComputePilots.
         units = umgr.submit_units(cuds)
 
-        # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+        # Wait for all compute units to reach a final state
+        # (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
-    
+
         report.info('\n')
         for unit in units:
-            report.plain('  * %s: %s, exit: %3s\n' \
-                    % (unit.uid, unit.state[:4], 
-                        unit.exit_code))
+            report.plain('  * %s: %s, exit: %3s\n' % (unit.uid, unit.state[:4],
+                                                      unit.exit_code))
 
 
     except Exception as e:
@@ -140,7 +139,7 @@ if __name__ == '__main__':
         report.error('caught Exception: %s\n' % e)
         raise
 
-    except (KeyboardInterrupt, SystemExit) as e:
+    except (KeyboardInterrupt, SystemExit):
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
@@ -156,5 +155,5 @@ if __name__ == '__main__':
     report.header()
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
