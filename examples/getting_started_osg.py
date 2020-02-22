@@ -146,7 +146,7 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        print("need to exit now: %s" % e)
+        print("need to exit now")
 
     finally:
         # always clean up the session, no matter if we caught an exception or

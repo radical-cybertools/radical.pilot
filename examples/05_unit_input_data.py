@@ -91,7 +91,7 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
             cud.executable     = '/usr/bin/wc'
             cud.arguments      = ['-c', 'input.dat']
-            #cud.input_staging  = ['input.dat']
+          # cud.input_staging  = ['input.dat']
 
           # this is a shortcut for:
             cud.input_staging  = {'source': 'client:///input.dat',
