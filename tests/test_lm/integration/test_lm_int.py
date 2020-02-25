@@ -4,7 +4,7 @@ import glob
 import shutil
 import radical.pilot as rp
 import radical.utils as ru
-from radical.pilot.agent import lm as rpa_lm
+from radical.pilot.agent import LaunchMethod as rpa_lm
 
 try:
     import mock

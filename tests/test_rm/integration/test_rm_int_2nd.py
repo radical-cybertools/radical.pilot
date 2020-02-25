@@ -9,7 +9,7 @@ def test_slurm():
     excluded_list = []
     cmd_to_run = "srun -t 00:00:10 -N 1 /bin/env|egrep 'SLURM_NODELIST|SLURM_NPROCS|SLURM_NNODES|SLURM_CPUS_ON_NODE'"
     for resource_name, values in session._resource_configs.items():
-        if values['lrms'] != 'SLURM':
+        if values['resource_manager'] != 'SLURM':
             """
             xsede.frontera
             xsede.comet_ssh

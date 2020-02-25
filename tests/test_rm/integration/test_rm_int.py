@@ -4,8 +4,7 @@ import glob
 import shutil
 import radical.pilot as rp
 import radical.utils as ru
-from radical.pilot.agent import rm as rpa_rm
-from radical.pilot.agent.rm.pbspro import PBSPro
+from radical.pilot.agent import ResourceManager as rpa_rm
 
 try:
     import mock
@@ -58,7 +57,7 @@ def test_rm_fork():
     cfg['cores'] = 1
     cfg['gpus'] = 0
 
-    lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
+    lrms = rpa_rm.ResourceManager.create(name=cfg['resource_manager'], cfg=cfg, session=session)
 
     assert lrms.lrms_info == {'agent_nodes'     : {},
                               'gpus_per_node'   : 1,
@@ -86,7 +85,7 @@ def test_rm_pbspro(resource='ncar.cheyenne'):
     assert 'NUM_PES' in os.environ
     assert 'PBS_JOBID' in os.environ
 
-    lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
+    lrms = rpa_rm.ResourceManager.create(name=cfg['resource_manager'], cfg=cfg, session=session)
 
     node_list = lrms.lrms_info['node_list']
     # cheyenne at NCAR
@@ -124,7 +123,7 @@ def test_rm_torque(resource='xsede.supermic_ssh'):
     assert 'PBS_NUM_PPN' in os.environ
     assert 'PBS_NUM_NODES' in os.environ
 
-    lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
+    lrms = rpa_rm.ResourceManager.create(name=cfg['resource_manager'], cfg=cfg, session=session)
 
     node_list = lrms.lrms_info['node_list']
     # qb373 at supermic
@@ -158,7 +157,7 @@ def test_rm_lsf_summit(resource='ornl.summit'):
 
     os.environ['LSB_DJOB_HOSTFILE'] = 'tests/test_cases/rm/nodelist.lsf'
 
-    lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
+    lrms = rpa_rm.ResourceManager.create(name=cfg['resource_manager'], cfg=cfg, session=session)
     assert lrms.lrms_info == {'mem_per_node': 0, 
             'cores_per_node': 20,
             'lfs_per_node': {'path': None, 'size': 0}, 
@@ -181,7 +180,7 @@ def test_rm_slurm(resource='xsede.wrangler_ssh'):
     cfg['cores'] = 1
     cfg['gpus'] = 0
 
-    lrms = rpa_rm.RM.create(name=cfg['lrms'], cfg=cfg, session=session)
+    lrms = rpa_rm.ResourceManager.create(name=cfg['resource_manager'], cfg=cfg, session=session)
 
     assert 'SLURM_NODELIST' in os.environ
     assert 'SLURM_NPROCS' in os.environ
