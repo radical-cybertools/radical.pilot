@@ -379,10 +379,10 @@ class PilotManager(rpu.Component):
 
         with self._pcb_lock:
 
-            for cb_name, cb_val in self._callbacks[rpc.PILOT_STATE].items():
+            for cb_dict in self._callbacks[rpc.PILOT_STATE].values():
 
-                cb      = cb_val['cb']
-                cb_data = cb_val['cb_data']
+                cb      = cb_dict['cb']
+                cb_data = cb_dict['cb_data']
 
               # print ' ~~~ call PCBS: %s -> %s : %s [%s]' \
               #         % (self.uid, pilot.state, cb_name, cb_data)

@@ -361,7 +361,7 @@ class UMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def update_units(self, uids):
+    def update_units(self, units):
         raise NotImplementedError("update_units() missing for '%s'" % self.uid)
 
 
@@ -424,7 +424,7 @@ class UMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _work(self, units=None):
+    def _work(self, units):
 
         raise NotImplementedError("work() missing for '%s'" % self.uid)
 

@@ -75,7 +75,7 @@ class RoundRobin(UMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def update_units(self, uids):
+    def update_units(self, units):
 
         # RR scheduling is not concerned about unit states
         pass
@@ -116,7 +116,7 @@ class RoundRobin(UMGRSchedulingComponent):
 
         if failed     : self.advance(failed, rps.FAILED,
                                      publish=True, push=True)
-        if scheduled  : self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING,
+        if scheduled  : self.advance(scheduled, rps.UMGR_STAGING_INPUT_PENDING,
                                      publish=True, push=True)
         if unscheduled: self._schedule_units(unscheduled)
 

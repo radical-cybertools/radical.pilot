@@ -189,7 +189,6 @@ class UnitManager(rpu.Component):
     def finalize(self):
 
         self._cmgr.close()
-        self._fail_missing_pilots()
 
 
     # --------------------------------------------------------------------------
