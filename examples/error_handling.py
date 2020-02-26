@@ -5,7 +5,7 @@ __license__   = "MIT"
 
 import os
 
-os.envrion['RADICAL_PILOT_BULK_CB'] = 'True'
+os.environ['RADICAL_PILOT_BULK_CB'] = 'True'
 
 import random
 
