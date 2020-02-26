@@ -18,7 +18,7 @@ from . import compute_unit_description as rpcud
 
 # bulk callbacks are implemented, but are currently not used nor exposed.
 _USE_BULK_CB = False
-if os.environ.get('RP_USE_BULK_CB', '').lower() in ['true', 'yes', '1']:
+if os.environ.get('RADICAL_PILOT_BULK_CB', '').lower() in ['true', 'yes', '1']:
     _USE_BULK_CB = True
 
 
@@ -212,6 +212,8 @@ class UnitManager(rpu.Component):
         # disable callbacks during shutdown
         with self._cb_lock:
             self._callbacks = dict()
+            for m in rpc.UMGR_METRICS:
+                self._callbacks[m] = dict()
 
         self._cmgr.close()
 
@@ -519,76 +521,64 @@ class UnitManager(rpu.Component):
     #
     def _unit_cb(self, unit, state):
 
-        self._log.debug('=== single cb')
-
         with self._cb_lock:
 
             uid      = unit.uid
             cb_dicts = list()
+            metric   = rpc.UNIT_STATE
 
             # get wildcard callbacks
-            if '*' in self._callbacks:
-                cb_dict = self._callbacks['*'].get(rpc.UNIT_STATE)
-                if cb_dict:
-                    cb_dicts.append(cb_dict)
-
-            if uid in self._callbacks:
-                cb_dict = self._callbacks[uid].get(rpc.UNIT_STATE)
-                if cb_dict:
-                    cb_dicts.append(cb_dict)
+            cb_dicts += self._callbacks[metric].get('*', {}).values()
+            cb_dicts += self._callbacks[metric].get(uid, {}).values()
 
             for cb_dict in cb_dicts:
 
-                for cb_name in cb_dict:
+                cb           = cb_dict['cb']
+                cb_data      = cb_dict['cb_data']
 
-                    cb           = cb_dict[cb_name]['cb']
-                    cb_data      = cb_dict[cb_name]['cb_data']
-
+                try:
                     if cb_data: cb(unit, state, cb_data)
                     else      : cb(unit, state)
+                except:
+                    self._log.exception('cb error (%s)', cb.__name__)
 
 
     # --------------------------------------------------------------------------
     #
     def _bulk_cbs(self, units,  metrics=None):
 
-
         if not metrics: metrics = [rpc.UNIT_STATE]
         else          : metrics = ru.as_list(metrics)
 
-        self._log.debug('=== bulk cb: %s', metrics)
+        cbs = dict()  # bulked callbacks to call
 
         with self._cb_lock:
 
             for metric in metrics:
 
-                cbs = dict()  # bulked callbacks to call
-
                 # get wildcard callbacks
-                if '*' in self._callbacks:
-                    cb_dict = self._callbacks['*'].get(rpc.UNIT_STATE, {})
-                    for cb_name in cb_dict:
-                        cbs[cb_name] = {'cb'     : cb_dict[cb_name]['cb'],
-                                        'cb_data': cb_dict[cb_name]['cb_data'],
-                                        'units'  : units}
+                cb_dicts = self._callbacks[metric].get('*')
+                for cb_name in cb_dicts:
+                    cbs[cb_name] = {'cb'     : cb_dicts[cb_name]['cb'],
+                                    'cb_data': cb_dicts[cb_name]['cb_data'],
+                                    'units'  : set(units)}
 
                 # add unit specific callbacks if needed
                 for unit in units:
 
                     uid = unit.uid
-                    if uid not in self._callbacks:
+                    if uid not in self._callbacks[metric]:
                         continue
 
-                    cb_dict = self._callbacks[uid].get(rpc.UNIT_STATE, {})
-                    for cb_name in cb_dict:
+                    cb_dicts = self._callbacks[metric].get(uid, {})
+                    for cb_name in cb_dicts:
 
                         if cb_name in cbs:
-                            if unit not in cbs[cb_name]['units']:
-                                cbs[cb_name]['units'].append(unit)
+                            cbs[cb_name]['units'].add(unit)
                         else:
-                            cbs[cb_name] = {'cb'     : cb_dict[cb_name]['cb'],
-                                            'cb_data': cb_dict[cb_name]['cb_data'],
-                                            'units'  : [unit]}
+                            cbs[cb_name] = {'cb'     : cb_dicts[cb_name]['cb'],
+                                            'cb_data': cb_dicts[cb_name]['cb_data'],
+                                            'units'  : set([unit])}
 
             for cb_name in cbs:
 
@@ -1105,14 +1095,15 @@ class UnitManager(rpu.Component):
         with self._cb_lock:
             cb_name = cb.__name__
 
-            if uid not in self._callbacks:
-                self._callbacks[uid] = dict()
+            if metric not in self._callbacks:
+                self._callbacks[metric] = dict()
 
-            if metric not in self._callbacks[uid]:
-                self._callbacks[uid][metric] = dict()
+            if uid not in self._callbacks[metric]:
+                self._callbacks[metric][uid] = dict()
 
-            self._callbacks[uid][metric][cb_name] = {'cb'      : cb,
+            self._callbacks[metric][uid][cb_name] = {'cb'      : cb,
                                                      'cb_data' : cb_data}
+
 
     # --------------------------------------------------------------------------
     #
@@ -1138,18 +1129,21 @@ class UnitManager(rpu.Component):
                 if metric not in rpc.UMGR_METRICS :
                     raise ValueError("cb metric '%s' unknown" % metric)
 
-                if metric not in self._callbacks[uid]:
+                if metric not in self._callbacks:
                     raise ValueError("cb metric '%s' invalid" % metric)
+
+                if uid not in self._callbacks[metric]:
+                    raise ValueError("cb target '%s' invalid" % uid)
 
                 if cb:
                     to_delete = [cb.__name__]
                 else:
-                    to_delete = list(self._callbacks[uid][metric].keys())
+                    to_delete = list(self._callbacks[metric][uid].keys())
 
                 for cb_name in to_delete:
 
                     if cb_name not in self._callbacks[uid][metric]:
-                        raise ValueError("Callback %s not registered" % cb_name)
+                        raise ValueError("cb %s not registered" % cb_name)
 
                     del(self._callbacks[uid][metric][cb_name])
 

@@ -18,7 +18,7 @@ from .staging_directives import expand_staging_directives
 
 # bulk callbacks are implemented, but are currently not used nor exposed.
 _USE_BULK_CB = False
-if os.environ.get('RP_USE_BULK_CB', '').lower() in ['true', 'yes', '1']:
+if os.environ.get('RADICAL_PILOT_BULK_CB', '').lower() in ['true', 'yes', '1']:
     _USE_BULK_CB = True
 
 
