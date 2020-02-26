@@ -3,6 +3,10 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os
+
+os.envrion['RADICAL_PILOT_BULK_CB'] = 'True'
+
 import random
 
 import radical.pilot as rp
@@ -43,8 +47,6 @@ def pilot_state_cb(pilots):
         if pilot.state == rp.FAILED:
             print(pilot.log[-1])  # Get the last log message
 
-    return True
-
 
 # -----------------------------------------------------------------------------
 #
@@ -65,15 +67,12 @@ def unit_state_cb(units):
     # application could spawn replacement units, or spawn a pilot on a
     # different resource which might be better equipped to handle the unit
     # payload.
- 
-    print('unit cb for %d units [%s]' % (len(units), set([u.state for u in units])))
-  # for unit in units:
-  #     print('  unit %s: %s' % (unit.uid, unit.state))
-  #
-  #     if unit.state == rp.FAILED:
-  #         print('                  : %s' % unit.stderr)
 
-    return True
+    for unit in units:
+        print('  unit %s: %s' % (unit.uid, unit.state))
+
+        if unit.state == rp.FAILED:
+            print('                  : %s' % unit.stderr)
 
 
 # ------------------------------------------------------------------------------
