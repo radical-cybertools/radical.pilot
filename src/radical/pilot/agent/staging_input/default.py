@@ -40,21 +40,6 @@ class Default(AgentStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
-
-        AgentStagingInputComponent.initialize(self)
-
-        self._pwd = os.getcwd()
-
-        self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
-                            rpc.AGENT_STAGING_INPUT_QUEUE, self.work)
-
-        self.register_output(rps.AGENT_SCHEDULING_PENDING,
-                             rpc.AGENT_SCHEDULING_QUEUE)
-
-
-    # --------------------------------------------------------------------------
-    #
     def _work(self, units):
 
         # we first filter out any units which don't need any input staging, and
