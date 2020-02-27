@@ -61,9 +61,7 @@ class AgentStagingInputComponent(rpu.Component):
     #
     def initialize(self):
 
-        AgentStagingInputComponent.initialize(self)
-
-        self._pwd     = os.getcwd()
+        self._pwd = os.getcwd()
 
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
                             rpc.AGENT_STAGING_INPUT_QUEUE, self.work)
