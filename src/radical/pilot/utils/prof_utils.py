@@ -38,8 +38,10 @@ PILOT_DURATIONS = {
             'setup_1'   : [{ru.EVENT: 'sync_rel'         },
                            {ru.STATE: rps.PMGR_ACTIVE    }],
             'ignore'    : [{ru.STATE: rps.PMGR_ACTIVE    },
-                           {ru.EVENT: 'cmd'              }],
-            'term'      : [{ru.EVENT: 'cmd'              },
+                           {ru.EVENT: 'cmd'              ,
+                            ru.MSG  : 'cancel_pilot'     }],
+            'term'      : [{ru.EVENT: 'cmd'              ,
+                            ru.MSG  : 'cancel_pilot'     },
                            {ru.EVENT: 'bootstrap_0_stop' }],
         },
 
