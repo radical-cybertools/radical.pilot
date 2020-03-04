@@ -20,7 +20,7 @@ import radical.utils as ru
 # ------------------------------------------------------------------------------
 
 
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
@@ -57,14 +57,14 @@ if __name__ == '__main__':
         pdescs = list()
         for resource in resources:
             pd_init = {
-                    'resource'      : resource,
-                    'runtime'       : 15,  # pilot runtime (min)
-                    'exit_on_error' : True,
-                    'project'       : config[resource]['project'],
-                    'queue'         : config[resource]['queue'],
-                    'access_schema' : config[resource]['schema'],
-                    'cores'         : config[resource]['cores'],
-                    }
+                       'resource'      : resource,
+                       'runtime'       : 15,  # pilot runtime (min)
+                       'exit_on_error' : True,
+                       'project'       : config[resource]['project'],
+                       'queue'         : config[resource]['queue'],
+                       'access_schema' : config[resource]['schema'],
+                       'cores'         : config[resource]['cores'],
+                      }
             pdescs.append(rp.ComputePilotDescription(pd_init))
 
         # Launch the pilots.
@@ -80,7 +80,7 @@ if __name__ == '__main__':
         else:
             SCHED = rp.SCHEDULER_BACKFILLING
         report.ok('>>%s\n' % SCHED)
-    
+
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
         umgr = rp.UnitManager(session=session, scheduler=SCHED)
@@ -89,7 +89,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit reports the id of the pilot it runs on.
 
-        n = 256 # number of units to run
+        n = 256  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
         cuds = list()
@@ -113,13 +113,13 @@ if __name__ == '__main__':
         # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
-    
+
         report.info('\n')
         counts = dict()
         for unit in units:
             out_str = unit.stdout.strip()[:35]
-            report.plain('  * %s: %s, exit: %3s, out: %s\n' \
-                    % (unit.uid, unit.state[:4], 
+            report.plain('  * %s: %s, exit: %3s, out: %s\n'
+                    % (unit.uid, unit.state[:4],
                         unit.exit_code, out_str))
             if out_str not in counts:
                 counts[out_str] = 0
@@ -129,14 +129,14 @@ if __name__ == '__main__':
         for out_str in counts:
             report.info("  * %-20s: %3d\n" % (out_str, counts[out_str]))
         report.info("  * %-20s: %3d\n" % ('total', sum(counts.values())))
-    
+
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
         report.error('caught Exception: %s\n' % e)
         raise
 
-    except (KeyboardInterrupt, SystemExit) as e:
+    except (KeyboardInterrupt, SystemExit):
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
@@ -152,5 +152,5 @@ if __name__ == '__main__':
     report.header()
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 

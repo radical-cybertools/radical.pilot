@@ -4,7 +4,6 @@
 # a functional pilot agent, without any component redundency.
 
 {
-
     # max number of updates to put into a db bulk
     "bulk_collection_size" :  1024,
 
