@@ -13,6 +13,7 @@ RUNTIME  =    60
 SLEEP    =    10
 PILOTS   =     2
 UNITS    =    10
+CNT      =     0
 SCHED    = rp.umgr.scheduler.SCHEDULER_BACKFILLING
 
 resources = {
@@ -27,7 +28,9 @@ resources = {
         'schema'   : 'ssh'
     }
 }
-#------------------------------------------------------------------------------
+
+
+# ------------------------------------------------------------------------------
 #
 def pilot_state_cb (pilot, state):
 
@@ -36,14 +39,9 @@ def pilot_state_cb (pilot, state):
 
     print("[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
 
-    # Hello HTC :-)
-    #if state == rp.FAILED:
-    #    sys.exit (1)
 
-
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
-CNT = 0
 def unit_state_cb (unit, state):
 
     if not unit:
@@ -57,20 +55,15 @@ def unit_state_cb (unit, state):
         CNT += 1
         print("[Callback]: # %6d" % CNT)
 
-    # Hello HTC :-)
-    #if state == rp.FAILED:
-    #    print "stderr: %s" % unit.stderr
-    #    sys.exit(2)
 
-
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def wait_queue_size_cb(umgr, wait_queue_size):
 
     print("[Callback]: wait_queue_size: %s." % wait_queue_size)
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
@@ -118,13 +111,14 @@ if __name__ == "__main__":
         pdesc.runtime         = RUNTIME
         pdesc.cleanup         = False
         pdesc.access_schema   = resources[resource]['schema']
-        pdesc.candidate_hosts = [#'MIT_CMS',
-                                 #'UConn-OSG',
-                               # '!SU-OG', # No compiler
-                                 '!FIU_HPCOSG_CE', # zeromq build fails
-                                 #'BU_ATLAS_Tier2',
-                               # '!UCSDT2', # Failing because of format character ...
-                               # '~(HAS_CVMFS_oasis_opensciencegrid_org =?= TRUE)'
+        pdesc.candidate_hosts = [
+                              # 'MIT_CMS',
+                              # 'UConn-OSG',
+                              # '!SU-OG',          # No compiler
+                                '!FIU_HPCOSG_CE',  # zeromq build fails
+                              # 'BU_ATLAS_Tier2',
+                              # '!UCSDT2',         # format character fails
+                              # '~(HAS_CVMFS_oasis_opensciencegrid_org =?= TRUE)'
                                 ]
 
         # TODO: bulk submit pilots here
@@ -135,10 +129,11 @@ if __name__ == "__main__":
         umgr.wait_units()
 
         for cu in units:
-            print("* Task %s state %s, exit code: %s, stdout: %s, pilot: %s" \
+            print("* Task %s state %s, exit code: %s, stdout: %s, pilot: %s"
                 % (cu.uid, cu.state, cu.exit_code, cu.stdout, cu.pilot))
 
-      # os.system ("radicalpilot-stats -m stat,plot -s %s > %s.stat" % (session.uid, session_name))
+      # os.system("radicalpilot-stats -m stat,plot -s %s > %s.stat"
+      #          % (session.uid, session_name))
 
 
     except Exception as e:
@@ -146,12 +141,12 @@ if __name__ == "__main__":
         print("caught Exception: %s" % e)
         raise
 
-    except (KeyboardInterrupt, SystemExit) as e:
+    except (KeyboardInterrupt, SystemExit):
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        print("need to exit now: %s" % e)
+        print("need to exit now")
 
     finally:
         # always clean up the session, no matter if we caught an exception or
@@ -167,5 +162,5 @@ if __name__ == "__main__":
         # all remaining pilots (none in our example).
 
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
