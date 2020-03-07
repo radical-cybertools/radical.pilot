@@ -1,6 +1,6 @@
 
 language: python
-python:   "3.5"
+python:   "3.6"
 sudo:     disabled
 os:       linux
 
@@ -47,7 +47,7 @@ install:
   - pip install pytest-timeout
 
 before_script:
-  - LOC=/home/travis/virtualenv/python3.5  # Location where VE is created on travis
+  - LOC=/home/travis/virtualenv/python3.6  # Location where VE is created on travis
 # - sed -i 's|VENV|'"$LOC"'|g' .coveragerc  # Update source in coveragerc
 # - cat .coveragerc
 

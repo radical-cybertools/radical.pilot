@@ -12,10 +12,10 @@ A Simple Workload consisting one task of parallel k-means clustering.
 """
 
 # READ: The RADICAL-Pilot documentation:
-#   http://radicalpilot.readthedocs.org/en/latest
+#   https://radicalpilot.readthedocs.io/en/stable/
 #
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if
-# you want to see what happens behind the scences!
+# you want to see what happens behind the scenes!
 
 
 # ------------------------------------------------------------------------------

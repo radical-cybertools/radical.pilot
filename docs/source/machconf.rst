@@ -117,7 +117,7 @@ provided resource configuration files, you can write your own, and save it in
 .. note:: The remote resource configuration file name must start with
           "resource\_" and end with the ".json" suffix. Within each resource
           file, multiple resources can be listed. For example, the
-          `resource_xsede.json <https://radicalpilot.readthedocs.io/en/latest/_downloads/resource_xsede.json>`_
+          :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
           file contains many different HPC resources from XSEDE.
 
 .. note:: Be advised that you may need specific knowledge about the target

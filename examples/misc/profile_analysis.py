@@ -15,7 +15,7 @@ import radical.utils as ru
 
 # ------------------------------------------------------------------------------
 #
-# READ the RADICAL-Pilot documentation: http://radicalpilot.readthedocs.org/
+# READ the RADICAL-Pilot documentation: https://radicalpilot.readthedocs.io/
 #
 # ------------------------------------------------------------------------------
 
@@ -99,8 +99,6 @@ def profile_analysis(sid):
     fig.savefig('profile.png', bbox_inches='tight')
 
 
-# -------------------------------------------------------------------------------
-
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
@@ -141,14 +139,14 @@ if __name__ == '__main__':
         # Here we use a dict to initialize the description object
         report.info('create pilot description')
         pd_init = {
-                'resource'      : resource,
-                'cores'         : 64,  # pilot size
-                'runtime'       : 15,  # pilot runtime (min)
-                'exit_on_error' : True,
-                'project'       : config[resource]['project'],
-                'queue'         : config[resource]['queue'],
-                'access_schema' : config[resource]['schema']
-                }
+                   'resource'      : resource,
+                   'cores'         : 64,  # pilot size
+                   'runtime'       : 15,  # pilot runtime (min)
+                   'exit_on_error' : True,
+                   'project'       : config[resource]['project'],
+                   'queue'         : config[resource]['queue'],
+                   'access_schema' : config[resource]['schema']
+                  }
         pdesc = rp.ComputePilotDescription(pd_init)
         report.ok('>>ok\n')
 
@@ -175,7 +173,7 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             # trigger an error now and then
-            if not i % 10: cud.executable = '/bin/data' # does not exist
+            if not i % 10: cud.executable = '/bin/data'  # does not exist
             else         : cud.executable = '/bin/date'
 
             cuds.append(cud)
@@ -194,12 +192,12 @@ if __name__ == '__main__':
         report.info('\n')
         for unit in units:
             if unit.state == rp.FAILED:
-                report.plain('  * %s: %s, exit: %3s, err: %s' \
+                report.plain('  * %s: %s, exit: %3s, err: %s'
                         % (unit.uid, unit.state[:4],
                            unit.exit_code, unit.stderr.strip()[-35:]))
                 report.error('>>err\n')
             else:
-                report.plain('  * %s: %s, exit: %3s, out: %s' \
+                report.plain('  * %s: %s, exit: %3s, out: %s'
                         % (unit.uid, unit.state[:4],
                             unit.exit_code, unit.stdout.strip()[:35]))
                 report.ok('>>ok\n')
@@ -210,7 +208,7 @@ if __name__ == '__main__':
         report.error('caught Exception: %s\n' % e)
         raise
 
-    except (KeyboardInterrupt, SystemExit) as e:
+    except (KeyboardInterrupt, SystemExit):
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other

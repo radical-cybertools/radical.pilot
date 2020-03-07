@@ -2,15 +2,15 @@ import os
 import sys
 
 
-number_of_folders = int(sys.argv[1])
+nfolders = int(sys.argv[1])
 
-for i in range(number_of_folders):
-    directory = '/tmp/stage_in_folder_%d' % i
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+for i in range(nfolders):
 
-    filename = '/tmp/stage_in_folder_%d/input_file.dat' % i
-    afile = open(filename,'w')
-    afile.write('hello world!')
-    afile.close()
+    path = '/tmp/stage_in_folder_%d' % i
+
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    with open('/tmp/stage_in_folder_%d/input_file.dat' % i, 'w') as fin:
+        fin.write('hello world!')
 
