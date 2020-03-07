@@ -137,12 +137,16 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def _default_state_cb(self, pilot, state):
+    def _default_state_cb(self, pilot, state=None):
 
-        self._log.info("[Callback]: pilot %s state: %s.", self.uid, self.state)
 
-        if self.state == rps.FAILED and self._exit_on_error:
-            self._log.error("[Callback]: pilot '%s' failed - exit", self.uid)
+        uid   = self.uid
+        state = self.state
+
+        self._log.info("[Callback]: pilot %s state: %s.", uid, state)
+
+        if state == rps.FAILED and self._exit_on_error:
+            self._log.error("[Callback]: pilot '%s' failed (exit)", uid)
 
             # There are different ways to tell main...
             ru.cancel_main_thread('int')
@@ -175,15 +179,12 @@ class ComputePilot(object):
 
         if target not in [rps.FAILED, rps.CANCELED]:
 
-            try:
-                cur_state_val = rps._pilot_state_value(current)
-                tgt_state_val = rps._pilot_state_value(target)
-                assert(tgt_state_val - cur_state_val), 'invalid state transition'
-
-            except:
-                self._log.error('%s: invalid state transition %s -> %s',
-                        self.uid, current, target)
-                raise
+            # ensure valid state transition
+            state_diff = rps._pilot_state_value(target) - \
+                         rps._pilot_state_value(current)
+            if state_diff != 1:
+                raise RuntimeError('%s: invalid state transition %s -> %s',
+                                   self.uid, current, target)
 
         self._state = target
 
@@ -201,11 +202,11 @@ class ComputePilot(object):
 
             self._log.debug('%s calls cb %s', self.uid, cb)
 
-            if cb_data: cb(self, self.state, cb_data)
-            else      : cb(self, self.state)
+            if cb_data: cb([self], cb_data)
+            else      : cb([self])
 
         # ask pmgr to invoke any global callbacks
-        self._pmgr._call_pilot_callbacks(self, self.state)
+        self._pmgr._call_pilot_callbacks(self)
 
 
     # --------------------------------------------------------------------------
@@ -454,7 +455,7 @@ class ComputePilot(object):
         '''
 
         if metric not in rpc.PMGR_METRICS :
-            raise ValueError ("Metric '%s' not available on pmgr" % metric)
+            raise ValueError ("invalid pmgr metric '%s'" % metric)
 
         with self._cb_lock:
             cb_name = cb.__name__
@@ -467,7 +468,7 @@ class ComputePilot(object):
     def unregister_callback(self, cb, metric=rpc.PILOT_STATE):
 
         if metric and metric not in rpc.UMGR_METRICS :
-            raise ValueError ("Metric '%s' not available on pmgr" % metric)
+            raise ValueError ("invalid pmgr metric '%s'" % metric)
 
         if   not metric                  : metrics = rpc.PMGR_METRICS
         elif not isinstance(metric, list): metrics = [metric]
@@ -483,7 +484,7 @@ class ComputePilot(object):
                 for cb_name in to_delete:
 
                     if cb_name not in self._callbacks[metric]:
-                        raise ValueError("Callback '%s' is not registered" % cb_name)
+                        raise ValueError("unknown callback '%s'" % cb_name)
 
                     del(self._callbacks[metric][cb_name])
 
