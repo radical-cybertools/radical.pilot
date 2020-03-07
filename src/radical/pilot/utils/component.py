@@ -598,7 +598,7 @@ class Component(object):
 
         # set controller callback to handle cancellation requests
         self._cancel_list = list()
-        self._cancel_lock = ru.RLock('comp.cancel_lock.%s' % self._name)
+        self._cancel_lock = ru.RLock('comp.cancel_lock.%s' % self._uid)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._cancel_monitor_cb)
 
         # call component level initialize

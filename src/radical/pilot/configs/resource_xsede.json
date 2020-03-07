@@ -22,7 +22,7 @@
             "filesystem_endpoint"     : "go://xsede#wrangler/"
         },
         "default_queue"               : "normal",
-        "lrms"                        : "SLURM",
+        "resource_manager"            : "SLURM",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
@@ -64,7 +64,7 @@
             "filesystem_endpoint"     : "go://xsede#wrangler/"
         },
         "default_queue"               : "hadoop",
-        "lrms"                        : "YARN",
+        "resource_manager"            : "YARN",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "YARN",
         "agent_spawner"               : "ABDS",
@@ -106,7 +106,7 @@
             "filesystem_endpoint"     : "go://xsede#wrangler/"
         },
         "default_queue"               : "normal",
-        "lrms"                        : "SLURM",
+        "resource_manager"            : "SLURM",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
@@ -132,27 +132,17 @@
     "frontera": {
         "description"                 : "",
         "notes"                       : "",
-        "schemas"                     : ["gsissh", "ssh", "local"],
+        "schemas"                     : ["local"],
         "mandatory_args"              : ["project"],
-        "gsissh"                      :
-        {
-            "job_manager_endpoint"    : "slurm+gsissh://frontera.tacc.utexas.edu:2222/",
-            "filesystem_endpoint"     : "gsisftp://frontera.tacc.utexas.edu:2222/"
-        },
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://frontera.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://frontera.tacc.utexas.edu/"
-        },
-        "local"                         :
+        "local"                       :
         {
             "job_manager_endpoint"    : "slurm://frontera.tacc.utexas.edu/",
             "filesystem_endpoint"     : "file://frontera.tacc.utexas.edu/"
         },
         "default_queue"               : "normal",
-        "lrms"                        : "SLURM",
+        "resource_manager"            : "SLURM",
         "cores_per_node"              : 56,
-        "agent_config"                : "cray",
+        "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SRUN",
@@ -178,7 +168,7 @@
     "stampede2_ssh": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["gsissh", "ssh"],
+        "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
         "gsissh"                      :
         {
@@ -190,9 +180,13 @@
             "job_manager_endpoint"    : "slurm+ssh://stampede2.tacc.utexas.edu/",
             "filesystem_endpoint"     : "sftp://stampede2.tacc.utexas.edu/"
         },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://stampede2.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "file://stampede2.tacc.utexas.edu/"
+        },
         "default_queue"               : "normal",
-        "lrms"                        : "SLURM",
-        "cores_per_node"              : 68,
+        "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -216,7 +210,7 @@
     "stampede2_srun": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["gsissh", "ssh"],
+        "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
         "gsissh"                      :
         {
@@ -228,9 +222,13 @@
             "job_manager_endpoint"    : "slurm+ssh://stampede2.tacc.utexas.edu/",
             "filesystem_endpoint"     : "sftp://stampede2.tacc.utexas.edu/"
         },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://stampede2.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "file://stampede2.tacc.utexas.edu/"
+        },
         "default_queue"               : "normal",
-        "lrms"                        : "SLURM",
-        "cores_per_node"              : 68,
+        "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SRUN",
@@ -270,7 +268,7 @@
         "cores_per_node"              : 24,
         "lfs_path_per_node"           : "/scratch/$USER/$SLURM_JOB_ID",
         "lfs_size_per_node"           : 176105,
-        "lrms"                        : "SLURM",
+        "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -305,7 +303,7 @@
         "cores_per_node"              : 24,
         "lfs_path_per_node"           : "/scratch/$USER/$SLURM_JOB_ID",
         "lfs_size_per_node"           : 176105,
-        "lrms"                        : "SLURM",
+        "resource_manager"            : "SLURM",
         "agent_scheduler"             : "NOOP",
         "agent_spawner"               : "FUNCS",
         "agent_launch_method"         : "SSH",
@@ -339,7 +337,7 @@
         "cores_per_node"              : 24,
         "lfs_path_per_node"           : "/scratch/$USER/$SLURM_JOB_ID",
         "lfs_size_per_node"           : 176105,
-        "lrms"                        : "SLURM",
+        "resource_manager"            : "SLURM",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
@@ -375,7 +373,7 @@
         "cores_per_node"              : 20,
         "lfs_path_per_node"           : "/var/scratch/",
         "lfs_size_per_node"           : 200496,
-        "lrms"                        : "TORQUE",
+        "resource_manager"            : "TORQUE",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
@@ -409,7 +407,7 @@
         "cores_per_node"              : 20,
         "lfs_path_per_node"           : "/var/scratch/",
         "lfs_size_per_node"           : 200496,
-        "lrms"                        : "TORQUE",
+        "resource_manager"            : "TORQUE",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "ORTE",
@@ -446,7 +444,7 @@
         "cores_per_node"              : 20,
         "lfs_path_per_node"           : "/var/scratch/",
         "lfs_size_per_node"           : 200496,
-        "lrms"                        : "TORQUE",
+        "resource_manager"            : "TORQUE",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "ORTE",
         "agent_launch_method"         : "ORTE",
@@ -488,7 +486,7 @@
             "filesystem_endpoint"     : "go://xsede#bridges/"
         },
         "default_queue"               : "RM",
-        "lrms"                        : "SLURM",
+        "resource_manager"            : "SLURM",
         "lfs_path_per_node"           : "$LOCAL",
         "lfs_size_per_node"           : 3713368,
         "agent_scheduler"             : "CONTINUOUS",
@@ -506,7 +504,7 @@
         "valid_roots"                 : ["/home", "/pylon1", "/pylon5"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "default",
+        "python_dist"                 : "anaconda",
         "export_to_cu"                : [],
         "cu_pre_exec"                 : [],
         "saga_jd_supplement"          : {"cpu_architecture" : ["p100"]},
@@ -529,7 +527,7 @@
         "cores_per_node"              : 20,
         "lfs_path_per_node"           : "/var/scratch/",
         "lfs_size_per_node"           : 200496,
-        "lrms"                        : "TORQUE",
+        "resource_manager"            : "TORQUE",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",

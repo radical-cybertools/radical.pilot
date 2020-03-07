@@ -89,7 +89,7 @@ def create_tar(tgt, dnames):
         cksum = 256 + sum(ord(h) for h in data)
         data  = rpad(data  , 512)
         data  = data  [:-364] + '%06o\0' % cksum + data[-357:]
-        fout.write(ru.to_byte(data))
+        fout.write(ru.as_bytes(data))
 
     for dname in dnames:
         write_dir(dname)

@@ -2,7 +2,7 @@
 # pylint: disable=protected-access, unused-argument
 
 from   .test_common                  import setUp
-from   radical.pilot.agent.lm.spark import Spark
+from   radical.pilot.agent.launch_method.spark import Spark
 
 import radical.utils as ru
 
@@ -22,7 +22,7 @@ def test_configure(mocked_init, mocked_raise_on):
 
     component      = Spark(name=None, cfg=None, session=None)
     component._log = ru.Logger('dummy')
-    component._cfg = {'lrms_info':{'lm_info':{'launch_command':'spark-submit'}}}
+    component._cfg = {'rm_info':{'lm_info':{'launch_command':'spark-submit'}}}
     component._configure()
     assert('spark-submit' == component.launch_command)
 

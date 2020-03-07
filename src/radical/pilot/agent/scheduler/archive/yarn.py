@@ -20,7 +20,7 @@ from ... import constants as rpc
 from .base import AgentSchedulingComponent
 
 
-# -----------------------------------------------------------------------------=
+# -----------------------------------------------------------------------------
 #
 class Yarn(AgentSchedulingComponent):
 
@@ -40,15 +40,15 @@ class Yarn(AgentSchedulingComponent):
         # this check happened to update it accordingly
 
 
-        #if 'rm_ip' not in self._cfg['lrms_info']:
+        #if 'rm_ip' not in self._cfg['rm_info']:
         #    raise RuntimeError('rm_ip not in lm_info for %s' \
         #            % (self.uid))
 
-        self._log.info('Checking rm_ip %s' % self._cfg['lrms_info']['lm_info']['rm_ip'])
-        self._rm_ip       = self._cfg['lrms_info']['lm_info']['rm_ip']
-        self._service_url = self._cfg['lrms_info']['lm_info']['service_url']
-        self._rm_url      = self._cfg['lrms_info']['lm_info']['rm_url']
-        self._client_node = self._cfg['lrms_info']['lm_info']['nodename']
+        self._log.info('Checking rm_ip %s' % self._cfg['rm_info']['lm_info']['rm_ip'])
+        self._rm_ip       = self._cfg['rm_info']['lm_info']['rm_ip']
+        self._service_url = self._cfg['rm_info']['lm_info']['service_url']
+        self._rm_url      = self._cfg['rm_info']['lm_info']['rm_url']
+        self._client_node = self._cfg['rm_info']['lm_info']['nodename']
 
         sample_time = time.time()
         yarn_status = ul.urlopen('http://{0}:8088/ws/v1/cluster/scheduler'.format(self._rm_ip))
@@ -74,7 +74,7 @@ class Yarn(AgentSchedulingComponent):
 
         self._last_update = time.time()  # time of last update to self.avail_*
 
-        self._log.debug('YARN Service and RM URLs: %s - %s' \
+        self._log.debug('YARN Service and ResourceManager URLs: %s - %s' \
                      % (self._service_url, self._rm_url))
 
 

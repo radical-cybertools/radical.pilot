@@ -2,7 +2,7 @@
 # pylint: disable=protected-access, unused-argument
 
 
-from radical.pilot.agent.lm.base import LaunchMethod
+from radical.pilot.agent.launch_method.base import LaunchMethod
 
 import radical.utils as ru
 import pytest

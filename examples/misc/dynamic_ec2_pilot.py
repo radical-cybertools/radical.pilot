@@ -1,5 +1,5 @@
 
-""" 
+"""
 
     This is an example which shows how to access Amazon EC2 clouds via the
     RADICAL-SAGA resource package and RADICAL-Pilot.  We use SAGA to create
@@ -19,7 +19,6 @@
 import os
 import sys
 import time
-import pprint
 
 import radical.saga  as rs
 import radical.utils as ru
@@ -37,7 +36,7 @@ report.title('Getting Started (RP version %s)' % rp.version)
 #
 def main():
     """
-    We first use the RADIAL-SAGA resource package to start a CR.  
+    We first use the RADIAL-SAGA resource package to start a CR.
     On that CR we run a pilot.
     On that pilot we run the workload.
     The we shut things down in inverse order.
@@ -53,7 +52,7 @@ def main():
         run_workload (pilot)
 
     except Exception as e:
-        print 'Exception: %s' % e
+        print('Exception: %s' % e)
         raise
 
     finally:
@@ -107,14 +106,14 @@ def start_cr():
         # reconnect to VM (ID given in ARGV[1])
         #
         if len(sys.argv) > 1:
-            
+
             rid = sys.argv[1]
 
             # reconnect to the given resource
-            print 'reconnecting to %s' % rid
+            print('reconnecting to %s' % rid)
             cr = rs.resource.Compute(id=rid, session=session)
-            print 'reconnected  to %s' % rid
-            print "  state : %s (%s)" % (cr.state, cr.state_detail)
+            print('reconnected  to %s' % rid)
+            print("  state : %s (%s)" % (cr.state, cr.state_detail))
 
 
         # ----------------------------------------------------------------------
@@ -136,7 +135,7 @@ def start_cr():
             # Create a VM instance from that description.
             cr = rm.acquire(cd)
 
-            print "\nWaiting for VM to become active..."
+            print("\nWaiting for VM to become active...")
 
 
         # ----------------------------------------------------------------------
@@ -147,9 +146,9 @@ def start_cr():
         cr.wait(rs.resource.ACTIVE)
 
         # Query some information about the newly created VM
-        print "Created VM: %s"      %  cr.id
-        print "  state   : %s (%s)" % (cr.state, cr.state_detail)
-        print "  access  : %s"      %  cr.access
+        print("Created VM: %s"      %  cr.id)
+        print("  state   : %s (%s)" % (cr.state, cr.state_detail))
+        print("  access  : %s"      %  cr.access)
 
         # give the VM some time to start up comlpetely, otherwise the subsequent
         # job submission might end up failing...
@@ -160,7 +159,7 @@ def start_cr():
 
     except Exception as e:
         # Catch all other exceptions
-        print "An Exception occured: %s " % e
+        print("An Exception occured: %s " % e)
         raise
 
 
@@ -172,8 +171,8 @@ def stop_cr(cr):
         return
 
     cr.destroy()
-    print "\nDestroyed VM: %s" % cr.id
-    print "  state : %s (%s)" % (cr.state, cr.state_detail)
+    print("\nDestroyed VM: %s" % cr.id)
+    print("  state : %s (%s)" % (cr.state, cr.state_detail))
 
 
 # --------------------------------------------------------------------------
@@ -203,8 +202,8 @@ def start_pilot(cr=None):
     new_cfg['ssh']['filesystem_endpoint']  = cr.access
 
     # the new config needs to make sure we can bootstrap on the VM
-    new_cfg['pre_bootstrap_0'] = ['sudo apt-get update', 
-                                  'sudo apt-get install -y python-virtualenv python-dev dnsutils bc']
+    new_cfg['pre_bootstrap_0'] = ['sudo apt-get update',
+            'sudo apt-get install -y python-virtualenv python-dev dnsutils bc']
     session.add_resource_config(new_cfg)
 
     # use the *same* ssh key for ssh access to the VM
@@ -247,7 +246,7 @@ def run_workload(pilot):
         # Here we don't use dict initialization.
         cud = rp.ComputeUnitDescription()
         # trigger an error now and then
-        if not i % 10: cud.executable = '/bin/data' # does not exist
+        if not i % 10: cud.executable = '/bin/data'  # does not exist
         else         : cud.executable = '/bin/hostname'
 
         cuds.append(cud)
@@ -262,20 +261,20 @@ def run_workload(pilot):
     # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
     report.header('gather results')
     umgr.wait_units()
-    
+
     report.info('\n')
     for unit in units:
         if unit.state == rp.FAILED:
-            report.plain('  * %s: %s, exit: %3s, err: %s' \
-                    % (unit.uid, unit.state[:4], 
+            report.plain('  * %s: %s, exit: %3s, err: %s'
+                    % (unit.uid, unit.state[:4],
                        unit.exit_code, unit.stderr.strip()[-35:]))
             report.error('>>err\n')
         else:
-            report.plain('  * %s: %s, exit: %3s, out: %s' \
-                    % (unit.uid, unit.state[:4], 
+            report.plain('  * %s: %s, exit: %3s, out: %s'
+                    % (unit.uid, unit.state[:4],
                         unit.exit_code, unit.stdout.strip()[:35]))
             report.ok('>>ok\n')
-    
+
 
     report.header()
 
@@ -288,13 +287,13 @@ def stop_pilot(pilot):
         return
 
     pilot.pilot_manager.cancel_pilots(pilot.uid)
-    print "\nCancel Pilot: %s" % pilot.uid
+    print("\nCancel Pilot: %s" % pilot.uid)
 
 
 # ------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
-    
+
     main()
     sys.exit(0)
 

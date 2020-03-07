@@ -72,7 +72,7 @@ application should make efficient use of the allocated resources.
    :width: 600pt
    :align: center
 
-Note that the plotting capability needs an up-to-date installation of gnuoplot
+Note that the plotting capability needs an up-to-date installation of gnuplot
 with the cairo-png backend.  For Linux, that can be installed from the usual
 package repositories.  For MacOS, the following should take care of the
 installation:

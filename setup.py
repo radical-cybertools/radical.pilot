@@ -139,9 +139,9 @@ def get_version(_mod_root):
 
 
 # ------------------------------------------------------------------------------
-# check python version. we need >= 2.7, <3.x
-if  sys.hexversion <= 0x03050000:
-    raise RuntimeError('%s requires Python 3.5 or higher' % name)
+# check python version. we need >= 3.6
+if  sys.hexversion < 0x03060000:
+    raise RuntimeError('%s requires Python 3.6 or higher' % name)
 
 
 # ------------------------------------------------------------------------------
@@ -201,7 +201,7 @@ setup_args = {
     'url'                : 'https://www.github.com/radical-cybertools/radical.pilot/',
     'license'            : 'MIT',
     'keywords'           : 'radical pilot job saga',
-    'python_requires'    : '>=3.5',
+    'python_requires'    : '>=3.6',
     'classifiers'        : [
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
@@ -209,7 +209,7 @@ setup_args = {
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Topic :: Utilities',
         'Topic :: System :: Distributed Computing',
         'Topic :: Scientific/Engineering',
@@ -245,14 +245,13 @@ setup_args = {
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.c',
                                  '*.md', 'VERSION', 'SDIST', sdist_name]},
   # 'setup_requires'     : ['pytest-runner'],
-    'install_requires'   : ['radical.utils>=0.90',
-                            'radical.saga>=0.90',
+    'install_requires'   : ['radical.utils>=1.1',
+                            'radical.saga>=1.0',
                             'pymongo',
                             'python-hostlist',
                             'netifaces',
                             'setproctitle',
-                            'ntplib',
-                            'msgpack-python'
+                            'ntplib'
                            ],
     'extras_require'     : {'autopilot' : ['github3.py']},
     'tests_require'      : ['pytest',
