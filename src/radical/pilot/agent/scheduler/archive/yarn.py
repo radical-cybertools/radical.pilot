@@ -20,7 +20,7 @@ from ... import constants as rpc
 from .base import AgentSchedulingComponent
 
 
-# -----------------------------------------------------------------------------=
+# -----------------------------------------------------------------------------
 #
 class Yarn(AgentSchedulingComponent):
 
