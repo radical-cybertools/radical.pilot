@@ -9,7 +9,7 @@
     "bridges" : {
         "pmgr_launching_queue" : {"kind"      : "queue",
                                   "log_level" : "error",
-                                  "stall_hwm" : 1,
+                                  "stall_hwm" : 0,
                                   "bulk_size" : 0}
     },
 

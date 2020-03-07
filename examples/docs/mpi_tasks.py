@@ -12,10 +12,10 @@ import radical.pilot as rp
 """
 
 # READ: The RADICAL-Pilot documentation:
-#   http://radicalpilot.readthedocs.org/en/latest
+#   https://radicalpilot.readthedocs.io/en/stable/
 #
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if
-# you want to see what happens behind the scences!
+# you want to see what happens behind the scenes!
 
 
 # ------------------------------------------------------------------------------
@@ -97,7 +97,7 @@ if __name__ == "__main__":
         # your remote resource requires so.
         #
         # A list of pre-configured resources can be found at:
-        # http://radicalpilot.readthedocs.org/en/latest/ \
+        # https://radicalpilot.readthedocs.io/en/stable/ \
         #        machconf.html#preconfigured-resources
         #
         pdesc = rp.ComputePilotDescription ()

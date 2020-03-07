@@ -14,10 +14,10 @@ import radical.pilot as rp
 # It is thus not part of the RP test suite.
 
 # READ: The RADICAL-Pilot documentation: 
-#   http://radicalpilot.readthedocs.org/en/latest
+#   https://radicalpilot.readthedocs.io/en/stable/
 #
 # Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
-# you want to see what happens behind the scences!
+# you want to see what happens behind the scenes!
 
 
 # ------------------------------------------------------------------------------

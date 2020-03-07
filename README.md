@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/radical-cybertools/radical.pilot.svg?branch=devel)](https://travis-ci.org/radical-cybertools/radical.pilot)
 [![codecov](https://codecov.io/gh/radical-cybertools/radical.pilot/branch/devel/graph/badge.svg)](https://codecov.io/gh/radical-cybertools/radical.pilot)
 
-**Documentation:** http://radicalpilot.readthedocs.org/en/latest/
+**Documentation:** https://radicalpilot.readthedocs.io/en/stable/
 
 **Mailinglists:** 
 
