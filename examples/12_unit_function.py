@@ -14,7 +14,7 @@ dh = ru.DebugHelper()
 
 # ------------------------------------------------------------------------------
 #
-# READ the RADICAL-Pilot documentation: http://radicalpilot.readthedocs.org/
+# READ the RADICAL-Pilot documentation: https://radicalpilot.readthedocs.io/
 #
 # ------------------------------------------------------------------------------
 
@@ -120,7 +120,7 @@ if __name__ == '__main__':
         ru.print_exception_trace()
         raise
 
-    except (KeyboardInterrupt, SystemExit) as e:
+    except (KeyboardInterrupt, SystemExit):
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other

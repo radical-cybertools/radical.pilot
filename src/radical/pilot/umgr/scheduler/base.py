@@ -49,11 +49,13 @@ class UMGRSchedulingComponent(rpu.Component):
 
         self._umgr = self._cfg.owner
 
-        self._early       = dict()      # early-bound units, pid-sorted
-        self._pilots      = dict()      # dict of known pilots
-        self._pilots_lock = ru.RLock()  # lock on the above dict
-        self._units       = dict()      # dict of scheduled unit IDs
-        self._units_lock  = ru.RLock()  # lock on the above dict
+        self._early        = dict()      # early-bound units, pid-sorted
+        self._pilots       = dict()      # dict of known pilots
+        self._pilots_lock  = ru.RLock()  # lock on the above dict
+        self._units        = dict()      # dict of scheduled unit IDs
+        self._units_lock   = ru.RLock()  # lock on the above dict
+        self._waiting      = dict()      # dict for units waiting on deps
+        self._waiting_lock = dict()      # lock on the above dict
 
         # configure the scheduler instance
         self._configure()
@@ -361,7 +363,7 @@ class UMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def update_units(self, uids):
+    def update_units(self, units):
         raise NotImplementedError("update_units() missing for '%s'" % self.uid)
 
 
@@ -384,6 +386,50 @@ class UMGRSchedulingComponent(rpu.Component):
 
         if not isinstance(units, list):
             units = [units]
+
+        # some task may have staging directives which reference sandboxes of
+        # other tasks.  Those directives can only be expanded with actual
+        # physical path's once both tasks are known to the scheduler, so we
+        # check this here and (a) let all units wait until the references are
+        # resolved, and (b) check if the units resolve any references
+        #
+        # The `waiting` data structure has the following format:
+        #
+        #   {
+        #     'waiting': {
+        #         <uid_a> : {
+        #             'unit': <unit>,
+        #             'deps': [<uid_1>, <uid_2>, ...]
+        #         },
+        #         ...
+        #       },
+        #     'deps': {
+        #       <uid_1> : [<uid_a>, <uid_b>, ...]
+        #       ...
+        #   }
+        #
+        # for each incoming tasks <uid_1>, we check in `deps` if depending tasks
+        # are known, then remove <uid_1> from the global `deps` dict and also
+        # from the `deps` list of each of those waiting tasks.  If any of those
+        # waiting tasks then ends up with an empty `deps` list, then that task
+        # will not be waiting anymore and can be scheduled.  We mark both
+        # participating tasks so that the scheduler can ensure they end up on
+        # the same pilot.
+        #
+        # NOTE: cross-pilot data dependencies are not yet supported
+        #
+        # The task staging directives are expected to be expanded to their
+        # dictionary format already, and will check for `src` or `tgt` URLs with
+        # a `sandbox://` schema, where the `host` element can reference
+        #
+        #   client:   the client application pwd
+        #   resource: the target resource sandbox
+        #   pilot:    the target pilot's sandbox
+        #   <uid>:    the sandbox of the respective task
+        #
+        # This implies that `client`, `resource` and `pilot` are reserved names
+        # for task IDs, and that tasks which use invalid / non-existing IDs in
+        # sandbox references will never be eligible for scheduling.
 
         self.advance(units, rps.UMGR_SCHEDULING, publish=True, push=False)
 
@@ -424,7 +470,7 @@ class UMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _work(self, units=None):
+    def _work(self, units):
 
         raise NotImplementedError("work() missing for '%s'" % self.uid)
 
