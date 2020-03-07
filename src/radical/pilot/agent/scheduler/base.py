@@ -589,8 +589,8 @@ class AgentSchedulingComponent(rpu.Component):
         resources = True  # fresh start, all is free
         while not self._proc_term.is_set():
 
-            self._log.debug('=== schedule units  : %s, w: %d', resources,
-                    len(self._waitpool))
+          # self._log.debug('=== schedule units 0: %s, w: %d', resources,
+          #         len(self._waitpool))
 
             active = 0  # see if we do anything in this iteration
 
@@ -599,14 +599,14 @@ class AgentSchedulingComponent(rpu.Component):
             if resources:
                 r_wait, a = self._schedule_waitpool()
                 active += int(a)
-                self._log.debug('=== schedule units w: %s %s', r_wait, a)
+              # self._log.debug('=== schedule units w: %s %s', r_wait, a)
 
             # always try to schedule newly incoming tasks
             # running out of resources for incoming could still mean we have
             # smaller slots for waiting tasks, so ignore `r` for now.
             r_inc, a = self._schedule_incoming()
             active += int(a)
-            self._log.debug('=== schedule units i: %s %s', r_inc, a)
+          # self._log.debug('=== schedule units i: %s %s', r_inc, a)
 
             # if we had resources, but could not schedule any incoming not any
             # waiting, then we effectively ran out of *useful* resources
@@ -621,10 +621,12 @@ class AgentSchedulingComponent(rpu.Component):
             if not resources and r:
                 resources = True
             active += int(a)
-            self._log.debug('=== schedule units c: %s %s', r, a)
+          # self._log.debug('=== schedule units c: %s %s', r, a)
 
             if not active:
                 time.sleep(0.1)  # FIXME: configurable
+
+          # self._log.debug('=== schedule units x: %s %s', resources, active)
 
 
     # --------------------------------------------------------------------------
