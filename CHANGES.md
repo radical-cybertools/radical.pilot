@@ -4,13 +4,29 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
-1.1 Release                                                           2020-02-11
+1.2.0 Release                                                         2020-02-11
 --------------------------------------------------------------------------------
 
+  - support for bulk callbacks
+  - fixed package paths for launch methods (radical.pilot.agent.launch_method)
+  - updated documentation references
+  - raise minimum Python version to 3.6
+  - local submit configuration for Frontera
+  - switch frontera to default agent cfg
+  - fix cray agent config
+  - fix issue #2075 part 2
+
+      
 1.1.1 Hotfix Release                                                  2020-02-11
 --------------------------------------------------------------------------------
 
   - fix dependency version for radical.utils
+
+      
+1.1 Release                                                           2020-02-11
+--------------------------------------------------------------------------------
+
+  - code cleanup
 
 
 1.0.0   Release                                                       2019-12-24
@@ -1157,4 +1173,6 @@ API Changes:
   - Closed tickets:
     - https://github.com/saga-project/saga-pilot/issues?milestone=4&state=closed
 
+        
+--------------------------------------------------------------------------------
 
