@@ -15,7 +15,7 @@ import radical.utils as ru
 
 # ------------------------------------------------------------------------------
 #
-# READ the RADICAL-Pilot documentation: http://radicalpilot.readthedocs.org/
+# READ the RADICAL-Pilot documentation: https://radicalpilot.readthedocs.io/
 #
 # ------------------------------------------------------------------------------
 
@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
+        config = ru.read_json('%s/config.json' % os.path.dirname(__file__))
         report.ok('>>ok\n')
 
         report.header('submit pilots')
@@ -56,14 +56,14 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {
-                'resource'      : resource,
-                'runtime'       : 15,  # pilot runtime (min)
-                'exit_on_error' : True,
-                'project'       : config[resource]['project'],
-                'queue'         : config[resource]['queue'],
-                'access_schema' : config[resource]['schema'],
-                'cores'         : config[resource]['cores'],
-        }
+                   'resource'      : resource,
+                   'runtime'       : 15,  # pilot runtime (min)
+                   'exit_on_error' : True,
+                   'project'       : config[resource]['project'],
+                   'queue'         : config[resource]['queue'],
+                   'access_schema' : config[resource]['schema'],
+                   'cores'         : config[resource]['cores'],
+                  }
         pdesc = rp.ComputePilotDescription(pd_init)
 
         # Launch the pilot.

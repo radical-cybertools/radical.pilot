@@ -16,6 +16,12 @@ from . import constants as rpc
 from . import compute_unit_description as rpcud
 
 
+# bulk callbacks are implemented, but are currently not used nor exposed.
+_USE_BULK_CB = False
+if os.environ.get('RADICAL_PILOT_BULK_CB', '').lower() in ['true', 'yes', '1']:
+    _USE_BULK_CB = True
+
+
 # ------------------------------------------------------------------------------
 #
 class UnitManager(rpu.Component):
@@ -195,7 +201,6 @@ class UnitManager(rpu.Component):
     def finalize(self):
 
         self._cmgr.close()
-        self._fail_missing_pilots()
 
 
     # --------------------------------------------------------------------------
@@ -256,7 +261,7 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _pilot_state_cb(self, pilot, state):
+    def _pilot_state_cb(self, pilots, state=None):
 
         if self._terminate.is_set():
             return False
@@ -281,66 +286,74 @@ class UnitManager(rpu.Component):
         #        we are in the cb.
         # FIXME: `self._closed` is not an `mt.Event`!
         if self._closed:
-            self._log.debug('umgr closed, ignore pilot state (%s: %s)',
-                            pilot.uid, pilot.state)
+            self._log.debug('umgr closed, ignore pilot cb %s',
+                            ['%s:%s' % (p.uid, p.state) for p in pilots])
             return True
 
+        if not isinstance(pilots, list):
+            pilots = [pilots]
 
-        if state in rps.FINAL:
+        for pilot in pilots:
 
-            self._log.debug('pilot %s is final - pull units', pilot.uid)
+            state = pilot.state
 
-            unit_cursor = self.session._dbs._c.find({
-                'type'    : 'unit',
-                'pilot'   : pilot.uid,
-                'umgr'    : self.uid,
-                'control' : {'$in' : ['agent_pending', 'agent']}})
+            if state in rps.FINAL:
 
-            if not unit_cursor.count():
-                units = list()
-            else:
-                units = list(unit_cursor)
+                self._log.debug('pilot %s is final - pull units', pilot.uid)
 
-            self._log.debug("units pulled: %3d (pilot dead)", len(units))
+                unit_cursor = self.session._dbs._c.find({
+                    'type'    : 'unit',
+                    'pilot'   : pilot.uid,
+                    'umgr'    : self.uid,
+                    'control' : {'$in' : ['agent_pending', 'agent']}})
 
-            if not units:
-                return True
+                if not unit_cursor.count():
+                    units = list()
+                else:
+                    units = list(unit_cursor)
 
-            # update the units to avoid pulling them again next time.
-            # NOTE:  this needs not locking with the unit pulling in the
-            #        _unit_pull_cb, as that will only pull umgr_pending
-            #        units.
-            uids = [unit['uid'] for unit in units]
+                self._log.debug("units pulled: %3d (pilot dead)", len(units))
 
-            self._session._dbs._c.update({'type'  : 'unit',
-                                          'uid'   : {'$in'     : uids}},
-                                         {'$set'  : {'control' : 'umgr'}},
-                                         multi=True)
-            to_restart = list()
-            for unit in units:
-
-                unit['state'] = rps.FAILED
-                if not unit['description'].get('restartable'):
-                    self._log.debug('unit %s not restartable', unit['uid'])
+                if not units:
                     continue
 
-                self._log.debug('unit %s is  restartable', unit['uid'])
-                unit['restarted'] = True
-                ud = rpcud.ComputeUnitDescription(unit['description'])
-                to_restart.append(ud)
-                # FIXME: increment some restart counter in the description?
-                # FIXME: reference the resulting new uid in the old unit.
+                # update the units to avoid pulling them again next time.
+                # NOTE:  this needs not locking with the unit pulling in the
+                #        _unit_pull_cb, as that will only pull umgr_pending
+                #        units.
+                uids = [unit['uid'] for unit in units]
 
-            if to_restart and not self._closed:
-                self._log.debug('restart %s units', len(to_restart))
-                restarted = self.submit_units(to_restart)
-                for u in restarted:
-                    self._log.debug('restart unit %s', u.uid)
+                self._session._dbs._c.update({'type'  : 'unit',
+                                              'uid'   : {'$in'     : uids}},
+                                             {'$set'  : {'control' : 'umgr'}},
+                                             multi=True)
+                to_restart = list()
+                for unit in units:
 
-            # final units are not pushed
-            self.advance(units, publish=True, push=False)
+                    unit['state'] = rps.FAILED
+                    if not unit['description'].get('restartable'):
+                        self._log.debug('unit %s not restartable', unit['uid'])
+                        continue
 
-            return True
+                    self._log.debug('unit %s is  restartable', unit['uid'])
+                    unit['restarted'] = True
+                    ud = rpcud.ComputeUnitDescription(unit['description'])
+                    to_restart.append(ud)
+                    # FIXME: increment some restart counter in the description?
+                    # FIXME: reference the resulting new uid in the old unit.
+
+                if to_restart and not self._closed:
+                    self._log.debug('restart %s units', len(to_restart))
+                    restarted = self.submit_units(to_restart)
+                    for u in restarted:
+                        self._log.debug('restart unit %s', u.uid)
+
+                # final units are not pushed
+                self.advance(units, publish=True, push=False)
+
+
+        # keep cb registered
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -439,20 +452,28 @@ class UnitManager(rpu.Component):
         if isinstance(arg, list): things =  arg
         else                    : things = [arg]
 
+        cb_requests = list()
+
         for thing in things:
 
             if thing.get('type') == 'unit':
 
-                self._log.debug('umgr state cb for unit: %s', thing['uid'])
-
                 # we got the state update from the state callback - don't
                 # publish it again
-                self._update_unit(thing, publish=False, advance=False)
-
+                to_notify = self._update_unit(thing, publish=False,
+                                              advance=False)
+                if to_notify:
+                    cb_requests += to_notify
             else:
-
                 self._log.debug('umgr state cb ignores %s/%s', thing.get('uid'),
                         thing.get('state'))
+
+        if cb_requests:
+            if _USE_BULK_CB:
+                self._bulk_cbs(set([unit for unit,state in cb_requests]))
+            else:
+                for unit,state in cb_requests:
+                    self._unit_cb(unit, state)
 
         return True
 
@@ -461,21 +482,30 @@ class UnitManager(rpu.Component):
     #
     def _update_unit(self, unit_dict, publish=False, advance=False):
 
-        # FIXME: this is breaking the bulk!
-
         uid = unit_dict['uid']
+
+        # return information about needed callback and advance activities, so
+        # that we don't break bulks here.
+        # note however that individual unit callbacks are still being called on
+        # each unit (if any are registered), which can lead to arbitrary,
+        # application defined delays.
+        to_notify = list()
 
         with self._units_lock:
 
             # we don't care about units we don't know
             if uid not in self._units:
-                return True
+                self._log.debug('umgr: unknown: %s', uid)
+                return None
+
+            unit = self._units[uid]
 
             # only update on state changes
-            current = self._units[uid].state
+            current = unit.state
             target  = unit_dict['state']
             if current == target:
-                return True
+                self._log.debug('umgr: static: %s', uid)
+                return None
 
             target, passed = rps._unit_state_progress(uid, current, target)
 
@@ -486,6 +516,7 @@ class UnitManager(rpu.Component):
             for s in passed:
                 unit_dict['state'] = s
                 self._units[uid]._update(unit_dict)
+                to_notify.append([unit, s])
 
                 # we don't usually advance state at this point, but just keep up
                 # with state changes reported from elsewhere
@@ -493,32 +524,89 @@ class UnitManager(rpu.Component):
                     self.advance(unit_dict, s, publish=publish, push=False,
                                  prof=False)
 
-            return True
+            self._log.debug('umgr: notify: %s', len(to_notify))
+            return to_notify
 
 
     # --------------------------------------------------------------------------
     #
-    def _call_unit_callbacks(self, unit_obj, state):
+    def _unit_cb(self, unit, state):
 
         with self._cb_lock:
-            for cb_name, cb_val in self._callbacks[rpc.UNIT_STATE].items():
 
-                self._log.debug('%s calls state cb %s for %s',
-                                self.uid, cb_name, unit_obj.uid)
+            uid      = unit.uid
+            cb_dicts = list()
+            metric   = rpc.UNIT_STATE
 
-                cb      = cb_val['cb']
-                cb_data = cb_val['cb_data']
+            # get wildcard callbacks
+            cb_dicts += self._callbacks[metric].get('*', {}).values()
+            cb_dicts += self._callbacks[metric].get(uid, {}).values()
 
-                if cb_data: cb(unit_obj, state, cb_data)
-                else      : cb(unit_obj, state)
+            for cb_dict in cb_dicts:
+
+                cb           = cb_dict['cb']
+                cb_data      = cb_dict['cb_data']
+
+                try:
+                    if cb_data: cb(unit, state, cb_data)
+                    else      : cb(unit, state)
+                except:
+                    self._log.exception('cb error (%s)', cb.__name__)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _bulk_cbs(self, units,  metrics=None):
+
+        if not metrics: metrics = [rpc.UNIT_STATE]
+        else          : metrics = ru.as_list(metrics)
+
+        cbs = dict()  # bulked callbacks to call
+
+        with self._cb_lock:
+
+            for metric in metrics:
+
+                # get wildcard callbacks
+                cb_dicts = self._callbacks[metric].get('*')
+                for cb_name in cb_dicts:
+                    cbs[cb_name] = {'cb'     : cb_dicts[cb_name]['cb'],
+                                    'cb_data': cb_dicts[cb_name]['cb_data'],
+                                    'units'  : set(units)}
+
+                # add unit specific callbacks if needed
+                for unit in units:
+
+                    uid = unit.uid
+                    if uid not in self._callbacks[metric]:
+                        continue
+
+                    cb_dicts = self._callbacks[metric].get(uid, {})
+                    for cb_name in cb_dicts:
+
+                        if cb_name in cbs:
+                            cbs[cb_name]['units'].add(unit)
+                        else:
+                            cbs[cb_name] = {'cb'     : cb_dicts[cb_name]['cb'],
+                                            'cb_data': cb_dicts[cb_name]['cb_data'],
+                                            'units'  : set([unit])}
+
+            for cb_name in cbs:
+
+                cb      = cbs[cb_name]['cb']
+                cb_data = cbs[cb_name]['cb_data']
+                objs    = cbs[cb_name]['units']
+
+                if cb_data: cb(list(objs), cb_data)
+                else      : cb(list(objs))
 
 
     # --------------------------------------------------------------------------
     #
     # FIXME: this needs to go to the scheduler
     def _default_wait_queue_size_cb(self, umgr, wait_queue_size):
-        # FIXME: this needs to come from the scheduler?
 
+        # FIXME: this needs to come from the scheduler?
         if self._terminate.is_set():
             return False
 
@@ -575,7 +663,7 @@ class UnitManager(rpu.Component):
                     raise ValueError('pilot %s already added' % pid)
                 self._pilots[pid] = pilot
 
-                # sinscribe for state updates
+                # subscribe for state updates
                 pilot.register_callback(self._pilot_state_cb)
 
         pilot_docs = [pilot.as_dict() for pilot in pilots]
@@ -986,7 +1074,7 @@ class UnitManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def register_callback(self, cb, metric=rpc.UNIT_STATE, cb_data=None):
+    def register_callback(self, cb, cb_data=None, metric=None, uid=None):
         """
         Registers a new callback function with the UnitManager.  Manager-level
         callbacks get called if the specified metric changes.  The default
@@ -995,13 +1083,23 @@ class UnitManager(rpu.Component):
 
         All callback functions need to have the same signature::
 
-            def cb(obj, value, cb_data)
+            def cb(obj, value)
 
         where ``object`` is a handle to the object that triggered the callback,
         ``value`` is the metric, and ``data`` is the data provided on
         callback registration..  In the example of `UNIT_STATE` above, the
         object would be the unit in question, and the value would be the new
         state of the unit.
+
+        If 'cb_data' is given, then the 'cb' signature changes to
+
+            def cb(obj, state, cb_data)
+
+        and 'cb_data' are passed unchanged.
+
+        If 'uid' is given, the callback will invoked only for the specified
+        unit.
+
 
         Available metrics are:
 
@@ -1016,45 +1114,73 @@ class UnitManager(rpu.Component):
 
         # FIXME: the signature should be (self, metrics, cb, cb_data)
 
-        if  metric not in rpc.UMGR_METRICS :
+        if not metric:
+            metric = rpc.UNIT_STATE
+
+        if  metric not in rpc.UMGR_METRICS:
             raise ValueError ("Metric '%s' not available on the umgr" % metric)
+
+        if not uid:
+            uid = '*'
+
+        elif uid not in self._units:
+            raise ValueError('no such unit %s' % uid)
+
 
         with self._cb_lock:
             cb_name = cb.__name__
-            self._callbacks[metric][cb_name] = {'cb'      : cb,
-                                                'cb_data' : cb_data}
+
+            if metric not in self._callbacks:
+                self._callbacks[metric] = dict()
+
+            if uid not in self._callbacks[metric]:
+                self._callbacks[metric][uid] = dict()
+
+            self._callbacks[metric][uid][cb_name] = {'cb'      : cb,
+                                                     'cb_data' : cb_data}
 
 
     # --------------------------------------------------------------------------
     #
-    def unregister_callback(self, cb=None, metric=None):
+    def unregister_callback(self, cb=None, metrics=None, uid=None):
 
+        if not metrics: metrics = [rpc.UMGR_METRICS]
+        else          : metrics = ru.as_list(metrics)
 
-        if metric and metric not in rpc.UMGR_METRICS :
-            raise ValueError ("Metric '%s' not available on the umgr" % metric)
+        if not uid:
+            uid = '*'
 
-        if not metric:
-            metrics = rpc.UMGR_METRICS
-        elif isinstance(metric, list):
-            metrics = metric
-        else:
-            metrics = [metric]
+        elif uid not in self._units:
+            raise ValueError('no such unit %s' % uid)
+
+        for metric in metrics:
+            if metric not in rpc.UMGR_METRICS :
+                raise ValueError ("invalid umgr metric '%s'" % metric)
 
         with self._cb_lock:
 
             for metric in metrics:
 
+                if metric not in rpc.UMGR_METRICS :
+                    raise ValueError("cb metric '%s' unknown" % metric)
+
+                if metric not in self._callbacks:
+                    raise ValueError("cb metric '%s' invalid" % metric)
+
+                if uid not in self._callbacks[metric]:
+                    raise ValueError("cb target '%s' invalid" % uid)
+
                 if cb:
                     to_delete = [cb.__name__]
                 else:
-                    to_delete = list(self._callbacks[metric].keys())
+                    to_delete = list(self._callbacks[metric][uid].keys())
 
                 for cb_name in to_delete:
 
-                    if cb_name not in self._callbacks[metric]:
-                        raise ValueError("Callback %s not registered" % cb_name)
+                    if cb_name not in self._callbacks[uid][metric]:
+                        raise ValueError("cb %s not registered" % cb_name)
 
-                    del(self._callbacks[metric][cb_name])
+                    del(self._callbacks[uid][metric][cb_name])
 
 
 # ------------------------------------------------------------------------------
