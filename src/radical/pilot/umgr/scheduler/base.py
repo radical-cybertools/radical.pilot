@@ -118,18 +118,14 @@ class UMGRSchedulingComponent(rpu.Component):
         arg = msg.get('arg')
 
         self._log.info('scheduler state_cb: %s', cmd)
-      # self._log.debug('base state cb: %s', cmd)
 
         # FIXME: get cmd string consistent throughout the code
         if cmd not in ['update', 'state_update']:
-          # self._log.debug('base state cb: ignore %s', cmd)
             self._log.debug('ignore cmd %s', cmd)
             return True
 
         if not isinstance(arg, list): things = [arg]
         else                        : things =  arg
-
-      # self._log.debug('base state cb: things %s', things)
 
         pilots = [t for t in things if t['type'] == 'pilot']
         units  = [t for t in things if t['type'] == 'unit' ]
@@ -148,8 +144,6 @@ class UMGRSchedulingComponent(rpu.Component):
     def _update_pilot_states(self, pilots):
 
         self._log.debug('update pilot states for %s', [p['uid'] for p in pilots])
-
-      # self._log.debug('update pilot states for %s', [p['uid'] for p in pilots])
 
         if not pilots:
             return
@@ -176,15 +170,15 @@ class UMGRSchedulingComponent(rpu.Component):
                 target, passed = rps._pilot_state_progress(pid, current, target)
 
                 if current != target:
-                  # self._log.debug('%s: %s -> %s', pid,  current, target)
+                    self._log.debug('%s: %s -> %s', pid,  current, target)
                     to_update.append(pid)
                     self._pilots[pid]['state'] = target
                     self._log.debug('update pilot state: %s -> %s', current, passed)
 
-      # self._log.debug('to update: %s', to_update)
+        self._log.debug('to update: %s', to_update)
         if to_update:
             self.update_pilots(to_update)
-      # self._log.debug('updated  : %s', to_update)
+        self._log.debug('updated  : %s', to_update)
 
 
     # --------------------------------------------------------------------------
@@ -327,6 +321,8 @@ class UMGRSchedulingComponent(rpu.Component):
         pid = pilot['uid']
         uid = unit['uid']
 
+        self._log.debug('assign %s to %s', uid, pid)
+
         unit['pilot'           ] = pid
         unit['client_sandbox'  ] = str(self._session._get_client_sandbox())
         unit['resource_sandbox'] = str(self._session._get_resource_sandbox(pilot))
@@ -419,6 +415,7 @@ class UMGRSchedulingComponent(rpu.Component):
                 else:
                     to_schedule.append(unit)
 
+        self._log.debug('to_schedule: %d', len(to_schedule))
         self._work(to_schedule)
 
 

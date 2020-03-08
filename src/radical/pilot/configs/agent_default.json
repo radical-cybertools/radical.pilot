@@ -37,19 +37,19 @@
     #
     "bridges" : {
         "agent_staging_input_queue"  : { "kind"      : "queue",
-                                         "log_level" : "error",
+                                         "log_level" : "debug",
                                          "stall_hwm" : 0,
                                          "bulk_size" : 0},
         "agent_scheduling_queue"     : { "kind"      : "queue",
-                                         "log_level" : "error",
+                                         "log_level" : "debug",
                                          "stall_hwm" : 0,
                                          "bulk_size" : 0},
         "agent_executing_queue"      : { "kind"      : "queue",
-                                         "log_level" : "error",
+                                         "log_level" : "debug",
                                          "stall_hwm" : 0,
                                          "bulk_size" : 0},
         "agent_staging_output_queue" : { "kind"      : "queue",
-                                         "log_level" : "error",
+                                         "log_level" : "debug",
                                          "stall_hwm" : 0,
                                          "bulk_size" : 0},
 
@@ -63,16 +63,16 @@
                                          "bulk_size" : 0},
 
         "agent_unschedule_pubsub"    : { "kind"      : "pubsub",
-                                         "log_level" : "error"},
+                                         "log_level" : "debug"},
         "agent_schedule_pubsub"      : { "kind"      : "pubsub",
-                                         "log_level" : "error"},
+                                         "log_level" : "debug"},
 
         "control_pubsub"             : { "kind"      : "pubsub",
-                                         "log_level" : "error"},
+                                         "log_level" : "debug"},
         "state_pubsub"               : { "kind"      : "pubsub",
-                                         "log_level" : "error"},
+                                         "log_level" : "debug"},
         "log_pubsub"                 : { "kind"      : "pubsub",
-                                         "log_level" : "error"}
+                                         "log_level" : "debug"}
     },
 
     "components" : {

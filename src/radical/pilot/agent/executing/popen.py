@@ -8,6 +8,7 @@ import copy
 import stat
 import time
 import queue
+import atexit
 import signal
 import tempfile
 import threading as mt
@@ -22,6 +23,22 @@ from ...  import states    as rps
 from ...  import constants as rpc
 
 from .base import AgentExecutingComponent
+
+
+# ------------------------------------------------------------------------------
+# ensure tasks are killed on termination
+_pids = list()
+
+
+def _kill():
+    print('==== atexit')
+    for pid in _pids:
+        print('==== kill %s' % pid)
+        os.killpg(pid, signal.SIGTERM)
+
+
+atexit.register(_kill)
+# ------------------------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------------
@@ -62,7 +79,7 @@ class Popen(AgentExecutingComponent) :
 
         # run watcher thread
         self._watcher = mt.Thread(target=self._watch)
-        self._watcher.daemon = True
+      # self._watcher.daemon = True
         self._watcher.start()
 
         # The AgentExecutingComponent needs the LaunchMethod to construct
@@ -361,6 +378,9 @@ prof(){
                                       shell      = True,
                                       cwd        = sandbox)
         self._prof.prof('exec_ok', uid=cu['uid'])
+
+        # store pid for last-effort termination
+        _pids.append(cu['proc'].pid)
 
         self._watch_queue.put(cu)
 

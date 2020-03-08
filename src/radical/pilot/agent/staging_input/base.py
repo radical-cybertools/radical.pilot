@@ -3,9 +3,9 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import radical.utils as ru
+import radical.utils  as ru
 
-from ... import utils     as rpu
+from ... import utils as rpu
 
 
 # ------------------------------------------------------------------------------

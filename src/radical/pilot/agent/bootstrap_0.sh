@@ -152,10 +152,8 @@ create_gtod()
 
     chmod 0755 ./gtod
 
-    set -x
     TIME_ZERO=`./gtod`
     export TIME_ZERO
-    set +x
 }
 
 
@@ -163,7 +161,6 @@ create_gtod()
 #
 profile_event()
 {
-    set -x
     if test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
     then
         return
@@ -194,7 +191,6 @@ profile_event()
     printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
         "$now" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "PMGR_ACTIVE_PENDING" "$msg" \
         | tee -a "$PROFILE"
-    set +x
 }
 
 

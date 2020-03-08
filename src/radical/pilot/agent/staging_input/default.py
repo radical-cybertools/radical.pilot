@@ -55,6 +55,8 @@ class Default(AgentStagingInputComponent):
     #
     def work(self, units):
 
+        self._log.debug('=== work in: %s', [u['uid'] for u in units])
+
         if not isinstance(units, list):
             units = [units]
 

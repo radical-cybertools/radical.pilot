@@ -2,6 +2,7 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
+import pprint
 
 import math as m
 
@@ -161,8 +162,8 @@ class Continuous(AgentSchedulingComponent):
         `schedule_unit()`.
         '''
 
-      # self._log.debug('unschedule ----------------------\n%s',
-      #                 pprint.pformat(unit['slots']))
+        self._log.debug('unschedule ----------------------\n%s',
+                        pprint.pformat(unit['slots']))
 
         # reflect the request in the nodelist state (set to `FREE`)
         self._change_slot_states(unit['slots'], rpc.FREE)
@@ -300,8 +301,8 @@ class Continuous(AgentSchedulingComponent):
         on a single node.
         '''
 
-      # self._log.debug('-------------------------')
-      # self._log.debug('find_resources %s (mpi)', unit['uid'])
+        self._log.debug('-------------------------')
+        self._log.debug('find_resources %s (mpi)', unit['uid'])
 
         cud = unit['description']
         mpi = bool('mpi' in cud['cpu_process_type'].lower())
@@ -317,8 +318,8 @@ class Continuous(AgentSchedulingComponent):
         if not cores_per_slot:
             cores_per_slot = 1
 
-      # self._log.debug('req : %s %s %s %s %s', req_slots, cores_per_slot,
-      #                 gpus_per_slot, lfs_per_slot, mem_per_slot)
+        self._log.debug('req : %s %s %s %s %s', req_slots, cores_per_slot,
+                        gpus_per_slot, lfs_per_slot, mem_per_slot)
 
         # First and last nodes can be a partial allocation - all other nodes
         # can only be partial when `scattered` is set.
@@ -371,11 +372,11 @@ class Continuous(AgentSchedulingComponent):
         for node in self._iterate_nodes():
 
             node_uid  = node['uid']
-          # node_name = node['name']
+            node_name = node['name']
 
-          # self._log.debug('next %s : %s', node_uid, node_name)
-          # self._log.debug('req1: %s = %s + %s', req_slots, rem_slots,
-          #                                       len(alc_slots))
+            self._log.debug('next %s : %s', node_uid, node_name)
+            self._log.debug('req1: %s = %s + %s', req_slots, rem_slots,
+                                                  len(alc_slots))
 
             # Check if a unit is tagged to use this node.  This means we check
             #   - if a tag exists
@@ -408,7 +409,7 @@ class Continuous(AgentSchedulingComponent):
             # now we know how many slots we still need at this point - but
             # we only search up to node-size on this node.  Duh!
             find_slots = min(rem_slots, slots_per_node)
-          # self._log.debug('find: %s', find_slots)
+            self._log.debug('find: %s', find_slots)
 
             # under the constraints so derived, check what we find on this node
             new_slots = self._find_resources(node           = node,
@@ -431,7 +432,7 @@ class Continuous(AgentSchedulingComponent):
                     is_last         = False
 
                 # try next node
-              # self._log.debug('all1: -2')
+                self._log.debug('all1: -2')
                 continue
 
             # this node got a match, store away the found slots and continue
@@ -439,10 +440,10 @@ class Continuous(AgentSchedulingComponent):
             rem_slots -= len(new_slots)
             alc_slots.extend(new_slots)
 
-          # self._log.debug('new slots: %s', pprint.pformat(new_slots))
+            self._log.debug('new slots: %s', pprint.pformat(new_slots))
 
-          # self._log.debug('req2: %s = %s + %s <> %s', req_slots, rem_slots,
-          #                                       len(new_slots), len(alc_slots))
+            self._log.debug('req2: %s = %s + %s <> %s', req_slots, rem_slots,
+                                                  len(new_slots), len(alc_slots))
 
             # we are young only once.  kinda...
             is_first = False
@@ -453,7 +454,7 @@ class Continuous(AgentSchedulingComponent):
 
         # if we did not find enough, there is not much we can do at this point
         if  rem_slots > 0:
-          # self._log.debug('negative -------------------------')
+            self._log.debug('negative -------------------------')
             return None  # signal failure
 
         slots = {'nodes'         : alc_slots,
@@ -464,8 +465,8 @@ class Continuous(AgentSchedulingComponent):
                  'lm_info'       : self._rm_lm_info,
                 }
 
-      # self._log.debug('success -------------------------\n%s',
-      #                 pprint.pformat(slots))
+        self._log.debug('success -------------------------\n%s',
+                        pprint.pformat(slots))
 
         # allocation worked!  If the unit was tagged, store the node IDs for
         # this tag, so that later units can reuse that information

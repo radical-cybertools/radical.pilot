@@ -538,7 +538,7 @@ class Component(object):
         #        currently have no abstract 'cancel' command, but instead use
         #        'cancel_units'.
 
-      # self._log.debug('command incoming: %s', msg)
+        self._log.debug('command incoming: %s', msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -1068,8 +1068,7 @@ class Component(object):
         if not ts:
             ts = time.time()
 
-        if not isinstance(things, list):
-            things = [things]
+        things = ru.as_list(things)
 
         if not things:
             return
@@ -1080,15 +1079,15 @@ class Component(object):
         buckets = dict()
         for thing in things:
 
-            uid   = thing['uid']
-            ttype = thing['type']
+            uid = thing['uid']
 
-            if ttype not in ['unit', 'pilot']:
-                raise TypeError("thing has unknown type (%s)" % uid)
+          # if thing['type'] not in ['unit', 'pilot']:
+          #     raise TypeError("thing has unknown type (%s)" % uid)
 
             if state:
                 # state advance done here
                 thing['state'] = state
+
             _state = thing['state']
 
             if prof:
@@ -1145,27 +1144,29 @@ class Component(object):
 
               # ts = time.time()
                 if _state in rps.FINAL:
-                  # # things in final state are dropped
-                  # for thing in _things:
-                  #     self._log.debug('final %s [%s]', thing['uid'], _state)
-                  #     self._prof.prof('drop', uid=thing['uid'], state=_state,
-                  #                     ts=ts)
+                    # things in final state are dropped
+                    for thing in _things:
+                        self._log.debug('final %s [%s]', thing['uid'], _state)
+                        self._prof.prof('drop', uid=thing['uid'], state=_state,
+                                        ts=ts)
                     continue
 
                 if _state not in self._outputs:
                     # unknown target state -- error
-                  # for thing in _things:
-                  #     self._log.debug("lost  %s [%s]", thing['uid'], _state)
-                  #     self._prof.prof('lost', uid=thing['uid'], state=_state,
-                  #                     ts=ts)
+                    for thing in _things:
+                        import pprint
+                        self._log.debug('%s', pprint.pformat(self._outputs))
+                        self._log.debug("lost  %s [%s]", thing['uid'], _state)
+                        self._prof.prof('lost', uid=thing['uid'], state=_state,
+                                        ts=ts)
                     continue
 
                 if not self._outputs[_state]:
                     # empty output -- drop thing
-                  # for thing in _things:
-                  #     self._log.debug('drop  %s [%s]', thing['uid'], _state)
-                  #     self._prof.prof('drop', uid=thing['uid'], state=_state,
-                  #                     ts=ts)
+                    for thing in _things:
+                        self._log.debug('drop  %s [%s]', thing['uid'], _state)
+                        self._prof.prof('drop', uid=thing['uid'], state=_state,
+                                        ts=ts)
                     continue
 
                 output = self._outputs[_state]
