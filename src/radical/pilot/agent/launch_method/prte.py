@@ -188,8 +188,11 @@ class PRTE(LaunchMethod):
         profiler.prof(event='dvm_ok', uid=cfg['pid'])
 
 
-        lm_info = {'dvm_uri'     : dvm_uri,
-                   'version_info': prte_info}
+        lm_info = {
+                   'dvm_uri'     : dvm_uri,
+                   'version_info': prte_info, 
+                   'cvd_id_mode' : 'physical'
+                  }
 
         # we need to inform the actual LaunchMethod instance about the prte URI.
         # So we pass it back to the ResourceManager which will keep it in an

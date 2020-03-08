@@ -833,7 +833,7 @@ class AgentSchedulingComponent(rpu.Component):
         self._change_slot_states(slots, rpc.BUSY)
         unit['slots'] = slots
 
-      # self._handle_cuda(unit)
+        self._handle_cuda(unit)
 
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=uid)
@@ -841,66 +841,67 @@ class AgentSchedulingComponent(rpu.Component):
         return True
 
 
-  # # --------------------------------------------------------------------------
-  # #
-  # def _handle_cuda(self, unit):
-  #
-  #     # Check if unit requires GPUs.  If so, set CUDA_VISIBLE_DEVICES to the
-  #     # list of assigned  GPU IDs.  We only handle uniform GPU setting for
-  #     # now, and will isse a warning on non-uniform ones.
-  #     #
-  #     # The default setting is ``
-  #     #
-  #     # FIXME: This code should probably live elsewhere, not in this
-  #     #        performance critical scheduler base class
-  #     #
-  #     # FIXME: The specification for `CUDA_VISIBLE_DEVICES` is actually LM
-  #     #        dependent.  Assume the scheduler assigns the second GPU.
-  #     #        Manually, one would set `CVD=1`.  That also holds for launch
-  #     #        methods like `fork` which leave GPU indexes unaltered.  Other
-  #     #        launch methods like `jsrun` mask the system GPUs and only the
-  #     #        second GPU is visible, at all, to the task.  To CUDA the system
-  #     #        now seems to have only one GPU, and we need to be set `CVD=0`.
-  #     #
-  #     #        In other words, CVD sometimes needs to be set to the physical
-  #     #        GPU IDs, and at other times to the logical GPU IDs (IDs as
-  #     #        visible to the task).  This also implies that this code should
-  #     #        actually live within the launch method.  On the upside, the LM
-  #     #        should also be able to handle heterogeneus tasks.
-  #     #
-  #     #        For now, we hardcode the CVD ID mode to `logical`, thus
-  #     #        assuming that unassigned GPUs are masked away, as for example
-  #     #        with `jsrun`.
-  #     cvd_id_mode = 'logical'
-  #
-  #     unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = ''
-  #     gpu_maps = list()
-  #     for node in unit['slots']['nodes']:
-  #         if node['gpu_map'] not in gpu_maps:
-  #             gpu_maps.append(node['gpu_map'])
-  #
-  #     if not gpu_maps:
-  #         # no gpu maps, nothing to do
-  #         pass
-  #
-  #     elif len(gpu_maps) > 1:
-  #         # FIXME: this does not actually check for uniformity
-  #         self._log.warn('cannot set CUDA_VISIBLE_DEVICES for non-uniform'
-  #                        'GPU schedule (%s)' % gpu_maps)
-  #
-  #     else:
-  #         gpu_map = gpu_maps[0]
-  #         if gpu_map:
-  #             # uniform, non-zero gpu map
-  #             if cvd_id_mode == 'physical':
-  #                 unit['description']['environment']['CUDA_VISIBLE_DEVICES']\
-  #                         = ','.join(str(gpu_set[0]) for gpu_set in gpu_map)
-  #             elif cvd_id_mode == 'logical':
-  #                 unit['description']['environment']['CUDA_VISIBLE_DEVICES']\
-  #                         = ','.join(str(x) for x in range(len(gpu_map)))
-  #             else:
-  #                 raise ValueError('invalid CVD mode %s' % cvd_id_mode)
-
+    # --------------------------------------------------------------------------
+    #
+    def _handle_cuda(self, unit):
+   
+        # Check if unit requires GPUs.  If so, set CUDA_VISIBLE_DEVICES to the
+        # list of assigned  GPU IDs.  We only handle uniform GPU setting for
+        # now, and will isse a warning on non-uniform ones.
+        #
+        # The default setting is ``
+        #
+        # FIXME: This code should probably live elsewhere, not in this
+        #        performance critical scheduler base class
+        #
+        # FIXME: The specification for `CUDA_VISIBLE_DEVICES` is actually LM
+        #        dependent.  Assume the scheduler assigns the second GPU.
+        #        Manually, one would set `CVD=1`.  That also holds for launch
+        #        methods like `fork` which leave GPU indexes unaltered.  Other
+        #        launch methods like `jsrun` mask the system GPUs and only the
+        #        second GPU is visible, at all, to the task.  To CUDA the system
+        #        now seems to have only one GPU, and we need to be set `CVD=0`.
+        #
+        #        In other words, CVD sometimes needs to be set to the physical
+        #        GPU IDs, and at other times to the logical GPU IDs (IDs as
+        #        visible to the task).  This also implies that this code should
+        #        actually live within the launch method.  On the upside, the LM
+        #        should also be able to handle heterogeneus tasks.
+        #
+        #        For now, we default the CVD ID mode to `physical`, thus
+        #        assuming that unassigned GPUs are not masked away, as for
+        #        example with `fork` and 'prte'.
+        lm_info     = self._cfg['rm_info']['lm_info']
+        cvd_id_mode = lm_info.get('cvd_id_mode', 'physical')
+   
+        unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = ''
+        gpu_maps = list()
+        for node in unit['slots']['nodes']:
+            if node['gpu_map'] not in gpu_maps:
+                gpu_maps.append(node['gpu_map'])
+   
+        if not gpu_maps:
+            # no gpu maps, nothing to do
+            pass
+   
+        elif len(gpu_maps) > 1:
+            # FIXME: this does not actually check for uniformity
+            self._log.warn('cannot set CUDA_VISIBLE_DEVICES for non-uniform'
+                           'GPU schedule (%s)' % gpu_maps)
+   
+        else:
+            gpu_map = gpu_maps[0]
+            if gpu_map:
+                # uniform, non-zero gpu map
+                if cvd_id_mode == 'physical':
+                    unit['description']['environment']['CUDA_VISIBLE_DEVICES']\
+                            = ','.join(str(gpu_set[0]) for gpu_set in gpu_map)
+                elif cvd_id_mode == 'logical':
+                    unit['description']['environment']['CUDA_VISIBLE_DEVICES']\
+                            = ','.join(str(x) for x in range(len(gpu_map)))
+                else:
+                    raise ValueError('invalid CVD mode %s' % cvd_id_mode)
+   
 
     # --------------------------------------------------------------------------
     #

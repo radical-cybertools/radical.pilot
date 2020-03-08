@@ -26,6 +26,15 @@ class JSRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
+    @classmethod
+    def rm_config_hook(cls, name, cfg, rm, log, profiler):
+
+        lm_info = {'cvd_id_mode': 'logical'}
+        return lm_info
+
+
+    # --------------------------------------------------------------------------
+    #
     def _create_resource_set_file(self, slots, uid, sandbox):
         """
         This method takes as input a CU slots and creates the necessary
