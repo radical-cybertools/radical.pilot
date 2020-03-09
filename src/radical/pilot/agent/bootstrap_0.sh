@@ -141,13 +141,13 @@ create_gtod()
         shell=/bin/sh
         test -x '/bin/bash' && shell=/bin/bash
 
-        echo "#!$SHELL"                                                > ./gtod
-        echo "if test -z \"\$EPOCHREALTIME\""                         >> ./gtod
-        echo "then"                                                   >> ./gtod
-        echo "  python3 -c 'import time;print(\"%.6f\"%time.time())'" >> ./gtod
-        echo "else"                                                   >> ./gtod
-        echo "  echo \${EPOCHREALTIME:0:20}"                          >> ./gtod
-        echo "fi"                                                     >> ./gtod
+        echo "#!$SHELL"                                > ./gtod
+        echo "if test -z \"\$EPOCHREALTIME\""         >> ./gtod
+        echo "then"                                   >> ./gtod
+        echo "  awk 'BEGIN {srand(); print srand()}'" >> ./gtod
+        echo "else"                                   >> ./gtod
+        echo "  echo \${EPOCHREALTIME:0:20}"          >> ./gtod
+        echo "fi"                                     >> ./gtod
     fi
 
     chmod 0755 ./gtod
