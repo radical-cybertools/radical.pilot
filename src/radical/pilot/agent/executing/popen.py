@@ -8,6 +8,7 @@ import copy
 import stat
 import time
 import queue
+import pprint
 import signal
 import tempfile
 import threading as mt
@@ -223,13 +224,18 @@ class Popen(AgentExecutingComponent) :
         self._prof.prof('exec_mkdir', uid=cu['uid'])
         rpu.rec_makedir(sandbox)
         self._prof.prof('exec_mkdir_done', uid=cu['uid'])
+
         launch_script_name = '%s/%s.sh' % (sandbox, cu['uid'])
+        slots_fname        = '%s/%s.sl' % (sandbox, cu['uid'])
 
         self._log.debug("Created launch_script: %s", launch_script_name)
 
         # prep stdout/err so that we can append w/o checking for None
         cu['stdout'] = ''
         cu['stderr'] = ''
+
+        with open(slots_fname, "w") as launch_script:
+            launch_script.write('\n%s\n\n' % pprint.pformat(cu['slots']))
 
         with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/sh\n\n')
