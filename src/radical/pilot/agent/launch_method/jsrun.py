@@ -23,6 +23,8 @@ class JSRUN(LaunchMethod):
     def _configure(self):
 
         self.launch_command = ru.which('jsrun')
+        assert(self.launch_command)
+
 
     # --------------------------------------------------------------------------
     #

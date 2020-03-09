@@ -844,7 +844,7 @@ class AgentSchedulingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _handle_cuda(self, unit):
-   
+
         # Check if unit requires GPUs.  If so, set CUDA_VISIBLE_DEVICES to the
         # list of assigned  GPU IDs.  We only handle uniform GPU setting for
         # now, and will isse a warning on non-uniform ones.
@@ -873,7 +873,7 @@ class AgentSchedulingComponent(rpu.Component):
         #        example with `fork` and 'prte'.
         lm_info     = self._cfg['rm_info']['lm_info']
         cvd_id_mode = lm_info.get('cvd_id_mode', 'physical')
-   
+
         unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = ''
         gpu_maps = list()
         for node in unit['slots']['nodes']:
@@ -883,12 +883,12 @@ class AgentSchedulingComponent(rpu.Component):
         if not gpu_maps:
             # no gpu maps, nothing to do
             pass
-   
+
         elif len(gpu_maps) > 1:
             # FIXME: this does not actually check for uniformity
             self._log.warn('cannot set CUDA_VISIBLE_DEVICES for non-uniform'
                            'GPU schedule (%s)' % gpu_maps)
-   
+
         else:
             gpu_map = gpu_maps[0]
             if gpu_map:
@@ -901,7 +901,7 @@ class AgentSchedulingComponent(rpu.Component):
                             = ','.join(str(x) for x in range(len(gpu_map)))
                 else:
                     raise ValueError('invalid CVD mode %s' % cvd_id_mode)
-   
+
 
     # --------------------------------------------------------------------------
     #
