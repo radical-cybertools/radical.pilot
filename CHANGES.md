@@ -4,6 +4,12 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
+1.2.1 Hotfix Release                                                  2020-02-11
+--------------------------------------------------------------------------------
+
+  - scattered fixes cfor summit
+
+      
 1.2.0 Release                                                         2020-02-11
 --------------------------------------------------------------------------------
 
