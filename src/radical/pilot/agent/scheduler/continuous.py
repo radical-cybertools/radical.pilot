@@ -210,7 +210,9 @@ class Continuous(AgentSchedulingComponent):
         free_mem   = node['mem']
 
         # check how many slots we can serve, at most
-        alc_slots = int(m.floor(free_cores / cores_per_slot))
+        alc_slots = 1
+        if cores_per_slot:
+            alc_slots = int(m.floor(free_cores / cores_per_slot))
 
         if gpus_per_slot:
             alc_slots = min(alc_slots, int(m.floor(free_gpus / gpus_per_slot )))
@@ -294,7 +296,8 @@ class Continuous(AgentSchedulingComponent):
         resources on the respective node.
 
         Contrary to the documentation, this scheduler interprets `gpu_processes`
-        as number of GPUs that need to be available to each process.
+        as number of GPUs that need to be available to each process, i.e., as
+        `gpus_per_process'.
 
         Note that all resources for non-MPI tasks will always need to be placed
         on a single node.
