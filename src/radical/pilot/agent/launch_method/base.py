@@ -194,6 +194,7 @@ class LaunchMethod(object):
 
         from .fork           import Fork
         from .prte           import PRTE
+        from .jsrun          import JSRUN
         from .yarn           import Yarn
         from .spark          import Spark
 
@@ -203,6 +204,7 @@ class LaunchMethod(object):
         impl = {
             LM_NAME_FORK          : Fork,
             LM_NAME_PRTE          : PRTE,
+            LM_NAME_JSRUN         : JSRUN,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
 
