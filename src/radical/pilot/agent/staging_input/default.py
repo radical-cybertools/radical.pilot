@@ -53,14 +53,7 @@ class Default(AgentStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
-
-        self._log.debug('=== work in: %s', [u['uid'] for u in units])
-
-        if not isinstance(units, list):
-            units = [units]
-
-        self.advance(units, rps.AGENT_STAGING_INPUT, publish=True, push=False)
+    def _work(self, units):
 
         # we first filter out any units which don't need any input staging, and
         # advance them again as a bulk.  We work over the others one by one, and

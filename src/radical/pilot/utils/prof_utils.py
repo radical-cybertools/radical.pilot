@@ -38,8 +38,10 @@ PILOT_DURATIONS = {
             'setup_1'   : [{ru.EVENT: 'sync_rel'         },
                            {ru.STATE: rps.PMGR_ACTIVE    }],
             'ignore'    : [{ru.STATE: rps.PMGR_ACTIVE    },
-                           {ru.EVENT: 'cmd'              }],
-            'term'      : [{ru.EVENT: 'cmd'              },
+                           {ru.EVENT: 'cmd'              ,
+                            ru.MSG  : 'cancel_pilot'     }],
+            'term'      : [{ru.EVENT: 'cmd'              ,
+                            ru.MSG  : 'cancel_pilot'     },
                            {ru.EVENT: 'bootstrap_0_stop' }],
         },
 
@@ -539,11 +541,11 @@ def get_consumed_resources(session):
                 consumed[metric][uid] = data[metric][uid]
 
 
-    # we defined two additional metricsL 'warmup' and 'drain', which are defined
+    # we defined two additional metrics, 'warmup' and 'drain', which are defined
     # for all resources of the pilot.  `warmup` is defined as the time from
     # when the pilot becomes active, to the time the resource is first consumed
     # by a unit.  `drain` is the inverse: the  time from when any unit last
-    # consumed the resource to the time when the pilot terminates.
+    # consumed the resource to the time when the pilot begins termination.
     for pilot in session.get(etype='pilot'):
 
         if pilot.cfg['task_launch_method'] == 'PRTE':

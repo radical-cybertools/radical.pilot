@@ -414,11 +414,10 @@ rehash()
         gunzip "$CA_CERT_GZ"
     fi
 
+    PIP="$PYTHON -m pip"
     if test -f "$CA_CERT_PEM"
     then
-        PIP="`which pip` --cert $CA_CERT_PEM"
-    else
-        PIP="`which pip`"
+        PIP="$PIP --cert $CA_CERT_PEM"
     fi
 
     # NOTE: some resources define a function pip() to implement the same cacert
@@ -999,7 +998,7 @@ virtenv_create()
                 "easy_install pip" \
              || echo "Couldn't install pip! Uh oh...."
     fi
-    PIP="$(which pip)"
+    PIP="$PYTHON -m pip"
 
     # make sure the new pip version is used (but keep the python executable)
     rehash "$PYTHON"
