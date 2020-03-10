@@ -78,23 +78,8 @@ class Popen(AgentExecutingComponent) :
                 cfg     = self._cfg,
                 session = self._session)
 
-        self._cu_environment = self._populate_cu_environment()
-
         self.gtod   = "%s/gtod" % self._pwd
         self.tmpdir = tempfile.gettempdir()
-
-        # if we need to transplant any original env into the CU, we dig the
-        # respective keys from the dump made by bootstrap_0.sh
-        self._env_cu_export = dict()
-        if self._cfg.get('export_to_cu'):
-            with open('env.orig', 'r') as f:
-                for line in f.readlines():
-                    if '=' in line:
-                        k,v = line.split('=', 1)
-                        key = k.strip()
-                        val = v.strip()
-                        if key in self._cfg['export_to_cu']:
-                            self._env_cu_export[key] = val
 
 
     # --------------------------------------------------------------------------
@@ -113,48 +98,6 @@ class Popen(AgentExecutingComponent) :
                 self._cus_to_cancel.extend(arg['uids'])
 
         return True
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _populate_cu_environment(self):
-        """Derive the environment for the cu's from our own environment."""
-
-        # Get the environment of the agent
-        new_env = copy.deepcopy(os.environ)
-
-        #
-        # Mimic what virtualenv's "deactivate" would do
-        #
-        old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
-        if old_path:
-            new_env['PATH'] = old_path
-
-        old_ppath = new_env.pop('_OLD_VIRTUAL_PYTHONPATH', None)
-        if old_ppath:
-            new_env['PYTHONPATH'] = old_ppath
-
-        old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
-        if old_home:
-            new_env['PYTHON_HOME'] = old_home
-
-        old_ps = new_env.pop('_OLD_VIRTUAL_PS1', None)
-        if old_ps:
-            new_env['PS1'] = old_ps
-
-        new_env.pop('VIRTUAL_ENV', None)
-
-        # Remove the configured set of environment variables from the
-        # environment that we pass to Popen.
-        for e in list(new_env.keys()):
-            env_removables = list()
-            if self._mpi_launcher : env_removables += self._mpi_launcher.env_removables
-            if self._task_launcher: env_removables += self._task_launcher.env_removables
-            for r in  env_removables:
-                if e.startswith(r):
-                    new_env.pop(e, None)
-
-        return new_env
 
 
     # --------------------------------------------------------------------------
@@ -242,6 +185,7 @@ class Popen(AgentExecutingComponent) :
 
             # Create string for environment variable setting
             env_string = ''
+            env_string += '. %s/env.orig\n'               % self._pwd
             env_string += 'export RP_SESSION_ID="%s"\n'   % self._cfg['sid']
             env_string += 'export RP_PILOT_ID="%s"\n'     % self._cfg['pid']
             env_string += 'export RP_AGENT_ID="%s"\n'     % self._cfg['aid']
@@ -288,10 +232,6 @@ prof(){
                 msg = "Error in spawner (%s)" % e
                 self._log.exception(msg)
                 raise RuntimeError(msg)
-
-            # also add any env vars requested for export by the resource config
-            for k,v in self._env_cu_export.items():
-                env_string += "export %s=%s\n" % (k,v)
 
             # also add any env vars requested in the unit description
             if descr['environment']:
