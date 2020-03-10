@@ -141,21 +141,19 @@ create_gtod()
         shell=/bin/sh
         test -x '/bin/bash' && shell=/bin/bash
 
-        echo "#!$SHELL"                                                > ./gtod
-        echo "if test -z \"\$EPOCHREALTIME\""                         >> ./gtod
-        echo "then"                                                   >> ./gtod
-        echo "  python3 -c 'import time;print(\"%.6f\"%time.time())'" >> ./gtod
-        echo "else"                                                   >> ./gtod
-        echo "  echo \${EPOCHREALTIME:0:20}"                          >> ./gtod
-        echo "fi"                                                     >> ./gtod
+        echo "#!$SHELL"                                > ./gtod
+        echo "if test -z \"\$EPOCHREALTIME\""         >> ./gtod
+        echo "then"                                   >> ./gtod
+        echo "  awk 'BEGIN {srand(); print srand()}'" >> ./gtod
+        echo "else"                                   >> ./gtod
+        echo "  echo \${EPOCHREALTIME:0:20}"          >> ./gtod
+        echo "fi"                                     >> ./gtod
     fi
 
     chmod 0755 ./gtod
 
-    set -x
     TIME_ZERO=`./gtod`
     export TIME_ZERO
-    set +x
 }
 
 
@@ -163,7 +161,6 @@ create_gtod()
 #
 profile_event()
 {
-    set -x
     if test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
     then
         return
@@ -194,7 +191,6 @@ profile_event()
     printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
         "$now" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "PMGR_ACTIVE_PENDING" "$msg" \
         | tee -a "$PROFILE"
-    set +x
 }
 
 
@@ -1363,7 +1359,7 @@ echo "Environment of bootstrap_0 process:"
 
 # print the sorted env for logging, but also keep a copy so that we can dig
 # original env settings for any CUs, if so specified in the resource config.
-env | sort | grep '=' | tee env.orig
+env | sort | grep '=' | grep -v -e ' ' -e ';' -e '|' > env.orig
 echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
