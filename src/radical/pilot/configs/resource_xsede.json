@@ -217,6 +217,48 @@
         "cu_pre_exec"                 : ["module restore"]
     },
 
+    "stampede2_ibrun": {
+        "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "schemas"                     : ["local", "gsissh", "ssh"],
+        "mandatory_args"              : ["project"],
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://stampede2.tacc.utexas.edu:2222/",
+            "filesystem_endpoint"     : "gsisftp://stampede2.tacc.utexas.edu:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://stampede2.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://stampede2.tacc.utexas.edu/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://stampede2.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "file://stampede2.tacc.utexas.edu/"
+        },
+        "default_queue"               : "normal",
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "IBRUN",
+        "task_launch_method"          : "IBRUN",
+        "mpi_launch_method"           : "IBRUN",
+        "pre_bootstrap_0"             :["module load TACC",
+                                         "module load intel/18.0.0",
+                                         "module load python3/3.7.0"
+                                        ],
+        "default_remote_workdir"      : "$WORK",
+        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default",
+        "export_to_cu"                : ["LMOD_CMD",
+                                         "LMOD_SYSTEM_DEFAULT_MODULES",
+                                         "LD_LIBRARY_PATH"],
+        "cu_pre_exec"                 : ["module restore"]
+    },
+
     "stampede2_srun": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",

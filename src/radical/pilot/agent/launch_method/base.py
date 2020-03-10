@@ -204,7 +204,7 @@ class LaunchMethod(object):
             LM_NAME_FORK          : Fork,
             LM_NAME_PRTE          : PRTE,
             LM_NAME_YARN          : Yarn,
-            LM_NAME_SPARK         : Spark
+            LM_NAME_SPARK         : Spark,
 
             # # deprecated
             # LM_NAME_ORTE          : ORTE,
