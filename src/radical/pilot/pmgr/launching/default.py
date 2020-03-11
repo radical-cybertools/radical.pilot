@@ -684,7 +684,7 @@ class Default(PMGRLaunchingComponent):
 
             for fname in ru.as_list(pilot['description'].get('input_staging')):
                 ft_list.append({'src': fname,
-                                'tgt': '%s/staging_area/%s'
+                                'tgt': '%s/%s'
                                      % (pilot['uid'], os.path.basename(fname)),
                                 'rem': False})
 

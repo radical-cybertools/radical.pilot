@@ -201,7 +201,7 @@ def complete_url(path, context, log=None):
 
         if schema in ['resource', 'pilot']:
             # use a dedicated staging area dir
-            ret.path += '/staging_area'
+            ret.path += '/'
 
         ret.path += '/%s' % ppath
         purl      = ret

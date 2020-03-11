@@ -242,15 +242,14 @@ class ABDS(AgentExecutingComponent):
             if cu['description']['environment']:
                 for key,val in cu['description']['environment'].items():
                     env_string += 'export %s="%s"\n' % (key, val)
-            env_string += 'export RP_SESSION_ID="%s"\n'   % self._cfg['sid']
-            env_string += 'export RP_PILOT_ID="%s"\n'     % self._cfg['pid']
-            env_string += 'export RP_AGENT_ID="%s"\n'     % self._cfg['aid']
-            env_string += 'export RP_SPAWNER_ID="%s"\n'   % self.uid
-            env_string += 'export RP_UNIT_ID="%s"\n'      % cu['uid']
-            env_string += 'export RP_UNIT_NAME="%s"\n'    % cu['description'].get('name')
-            env_string += 'export RP_GTOD="%s"\n'         % self.gtod
-            env_string += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
-                                                          % self._pwd
+            env_string += 'export RP_SESSION_ID="%s"\n'    % self._cfg['sid']
+            env_string += 'export RP_PILOT_ID="%s"\n'      % self._cfg['pid']
+            env_string += 'export RP_AGENT_ID="%s"\n'      % self._cfg['aid']
+            env_string += 'export RP_SPAWNER_ID="%s"\n'    % self.uid
+            env_string += 'export RP_UNIT_ID="%s"\n'       % cu['uid']
+            env_string += 'export RP_UNIT_NAME="%s"\n'     % cu['description'].get('name')
+            env_string += 'export RP_GTOD="%s"\n'          % self.gtod
+            env_string += 'export RP_PILOT_STAGING="%s"\n' % self._pwd
             if self._prof.enabled:
                 env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
 

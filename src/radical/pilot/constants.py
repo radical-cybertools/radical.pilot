@@ -95,7 +95,7 @@ GPU_OpenMP     = 'GPU_OpenMP'
 DEFAULT_ACTION   = TRANSFER
 DEFAULT_PRIORITY = 0
 DEFAULT_FLAGS    = CREATE_PARENTS
-STAGING_AREA     = 'staging_area'
+STAGING_AREA     = ''
 
 
 # scheduler names (and backwards compat)

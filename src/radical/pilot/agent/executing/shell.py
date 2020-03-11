@@ -285,15 +285,14 @@ class Shell(AgentExecutingComponent):
         sandbox = cu['unit_sandbox_path']
 
         env  += "# CU environment\n"
-        env  += "export RP_SESSION_ID=%s\n"     % self._cfg['sid']
-        env  += "export RP_PILOT_ID=%s\n"       % self._cfg['pid']
-        env  += "export RP_AGENT_ID=%s\n"       % self._cfg['aid']
-        env  += "export RP_SPAWNER_ID=%s\n"     % self.uid
-        env  += "export RP_UNIT_ID=%s\n"        % cu['uid']
-        env  += 'export RP_UNIT_NAME="%s"\n'    % cu['description'].get('name')
-        env  += 'export RP_GTOD="%s"\n'         % cu['gtod']
-        env  += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
-                                                % self._pwd
+        env  += "export RP_SESSION_ID=%s\n"      % self._cfg['sid']
+        env  += "export RP_PILOT_ID=%s\n"        % self._cfg['pid']
+        env  += "export RP_AGENT_ID=%s\n"        % self._cfg['aid']
+        env  += "export RP_SPAWNER_ID=%s\n"      % self.uid
+        env  += "export RP_UNIT_ID=%s\n"         % cu['uid']
+        env  += 'export RP_UNIT_NAME="%s"\n'     % cu['description'].get('name')
+        env  += 'export RP_GTOD="%s"\n'          % cu['gtod']
+        env  += 'export RP_PILOT_STAGING="%s"\n' % self._pwd
         if self._prof.enabled:
             env += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
         env  += '''
