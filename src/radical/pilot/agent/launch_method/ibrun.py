@@ -51,15 +51,18 @@ class IBRun(LaunchMethod):
         offsets = list()
 
         import pprint
+        self._log.debug('cpn  : %s', cpn)
+        self._log.debug('slots: %s', pprint.pformat(slots))
         for node in self._node_list:
             for slot_node in slots['nodes']:
                 if slot_node['uid'] == node[0]:
                     for core_map in slot_node['core_map']:
                         for core_idx in core_map:
                             offsets.append(index + core_idx)
-    
+
             index += cpn
 
+        self._log.debug('offs : %s', offsets)
         ibrun_offset = min(offsets)
 
         if task_argstr:
@@ -67,7 +70,8 @@ class IBRun(LaunchMethod):
         else:
             task_command = task_exec
 
-        ibrun_command = "%s -n %s -o %d %s" % \
+      # ibrun_command = "%s -n %s -o %d %s" % \
+        ibrun_command = "%s -n %s %s" % \
                         (self.launch_command, task_cores,
                          ibrun_offset, task_command)
 
