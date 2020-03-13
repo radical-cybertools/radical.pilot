@@ -237,6 +237,7 @@
             "job_manager_endpoint"    : "slurm://stampede2.tacc.utexas.edu/",
             "filesystem_endpoint"     : "file://stampede2.tacc.utexas.edu/"
         },
+        "cores_per_node"              : 68,
         "default_queue"               : "normal",
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
