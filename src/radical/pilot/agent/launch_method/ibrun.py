@@ -50,7 +50,7 @@ class IBRun(LaunchMethod):
         index   = 0
         offsets = list()
 
-      # import pprint
+        import pprint
       # self._log.error('cpn  : %s', cpn)
       # self._log.error('slots: %s', pprint.pformat(slots))
         print('\n\ncpn  : %s' % cpn)
