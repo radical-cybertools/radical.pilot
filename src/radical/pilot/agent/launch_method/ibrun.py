@@ -50,10 +50,10 @@ class IBRun(LaunchMethod):
         index   = 0
         offsets = list()
 
-        import pprint
-        self._log.error('cpn  : %s', cpn)
-        self._log.error('slots: %s', pprint.pformat(slots))
-        print('cpn  : %s' % cpn)
+      # import pprint
+      # self._log.error('cpn  : %s', cpn)
+      # self._log.error('slots: %s', pprint.pformat(slots))
+        print('\n\ncpn  : %s' % cpn)
         print('slots: %s' % pprint.pformat(slots))
         for node in self._node_list:
             for slot_node in slots['nodes']:
@@ -64,20 +64,18 @@ class IBRun(LaunchMethod):
 
             index += cpn
 
-        self._log.error('offs : %s', offsets)
+      # self._log.error('offs : %s', offsets)
         print('offs : %s' % offsets)
         ibrun_offset = min(offsets)
 
-        if task_argstr:
-            task_command = "%s %s" % (task_exec, task_argstr)
-        else:
-            task_command = task_exec
+        if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
+        else          : task_command = task_exec
 
-      # ibrun_command = "%s -n %s -o %d %s" % \
-      #                 (self.launch_command, task_cores,
-      #                  ibrun_offset, task_command)
-        ibrun_command = "%s -n %s %s" % \
-                        (self.launch_command, task_cores, task_command)
+        ibrun_command = "%s -n %s -o %d %s" % \
+                        (self.launch_command, task_cores,
+                         ibrun_offset, task_command)
+      # ibrun_command = "%s -n %s %s" % \
+      #                 (self.launch_command, task_cores, task_command)
 
         return ibrun_command, None
 
