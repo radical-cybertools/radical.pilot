@@ -1360,7 +1360,8 @@ echo "Environment of bootstrap_0 process:"
 
 # print the sorted env for logging, but also keep a copy so that we can dig
 # original env settings for any CUs, if so specified in the resource config.
-env | sort | grep '=' | grep -v -e ' ' -e ';' -e '|' > env.orig
+env | sort | grep '=' | grep -v -e ' ' -e ';' -e '|' \
+    | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g'  > env.orig
 echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
