@@ -71,9 +71,10 @@ class IBRun(LaunchMethod):
             task_command = task_exec
 
       # ibrun_command = "%s -n %s -o %d %s" % \
+      #                 (self.launch_command, task_cores,
+      #                  ibrun_offset, task_command)
         ibrun_command = "%s -n %s %s" % \
-                        (self.launch_command, task_cores,
-                         ibrun_offset, task_command)
+                        (self.launch_command, task_cores, task_command)
 
         return ibrun_command, None
 
