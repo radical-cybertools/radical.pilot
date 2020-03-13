@@ -53,6 +53,8 @@ class IBRun(LaunchMethod):
         import pprint
         self._log.error('cpn  : %s', cpn)
         self._log.error('slots: %s', pprint.pformat(slots))
+        print('cpn  : %s' % cpn)
+        print('slots: %s' % pprint.pformat(slots))
         for node in self._node_list:
             for slot_node in slots['nodes']:
                 if slot_node['uid'] == node[0]:
@@ -63,6 +65,7 @@ class IBRun(LaunchMethod):
             index += cpn
 
         self._log.error('offs : %s', offsets)
+        print('offs : %s' % offsets)
         ibrun_offset = min(offsets)
 
         if task_argstr:
