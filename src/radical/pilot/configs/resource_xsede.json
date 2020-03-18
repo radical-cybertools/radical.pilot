@@ -216,6 +216,8 @@
         },
         "default_queue"               : "normal",
         "resource_manager"            : "SLURM",
+        "cores_per_node"              : 40,
+        "gpus_per_node"               : 4,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SRUN",
