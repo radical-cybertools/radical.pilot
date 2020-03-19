@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 
+import os
 import math as m
 
 from ...   import constants as rpc
@@ -129,6 +130,11 @@ class Continuous(AgentSchedulingComponent):
                     for i in range(smt):
                         idx = s * 21 * smt + i
                         node_entry['cores'][idx] = rpc.DOWN
+
+            elif self._cfg.blocked_cores:
+                for idx in self._cfg.blocked_cores:
+                    node_entry['cores'][idx] = rpc.DOWN
+
 
             self.nodes.append(node_entry)
 
