@@ -2,7 +2,8 @@
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import math
+
+import os
 
 import radical.utils as ru
 
@@ -57,6 +58,7 @@ class Srun(LaunchMethod):
     def construct_command(self, cu, launch_script_hop):
 
         slots        = cu.get('slots')
+        uid          = cu['uid']
         cud          = cu['description']
         task_exec    = cud['executable']
         task_env     = cud.get('environment') or dict()
@@ -64,64 +66,46 @@ class Srun(LaunchMethod):
         task_argstr  = self._create_arg_string(task_args)
         sbox         = cu['unit_sandbox_path']
 
-        # Construct the executable and arguments
+        # construct the task executable and arguments
         if task_argstr: task_cmd = "%s %s" % (task_exec, task_argstr)
         else          : task_cmd = task_exec
 
+        # use `ALL` to export vars pre_exec and RP, and add task env explicitly
         env = '--export=ALL'
+        for k,v in task_env.items():
+            env += ",'%s'='%s'" % (k, v)
 
-        if not slots:
-            # leave placement to srun
-            ncores    = cud['cpu_threads']
-            nprocs    = cud['cpu_processes']
-            cpn       = self._cfg.get('cores_per_node', 1)
-            nnodes    = int(math.ceil(nprocs / float(cpn)))
 
-        else:
-            # Extract all the hosts from the slots
-            hostlist = list()
-            uniform  = True
-            chunk    = None
-            for node in slots['nodes']:
+        # Alas, exact rank-to-core mapping seems only be availabe in Slurm when
+        # tasks use full nodes - which in RP is rarely the case.  We thus are
+        # limited to specifying the list of nodes we want the processes to be
+        # placed on, and otherwise have to rely on the `--exclusive` flag to get
+        # a decent auto mapping.  In cvases where the scheduler did not place
+        # the task we leave the node placement to srun as well.
+        #
+        # debug mapping
+        os.environ['SLURM_CPU_BIND'] = 'verbose'
 
-                this_chunk = [len(node['core_map']),
-                              len(node['gpu_map' ])]
+        n_tasks          = cud['cpu_processes']
+        threads_per_task = cud['cpu_threads']
+        gpus_per_task    = cud['gpu_processes']
 
-                if not chunk:
-                    chunk = this_chunk
+        # use `--exclusive` to ensure all tasks get individual resources.
+        mapping = '--exclusive --ntasks %d --cpus-per-task %s --gpus-per-task' \
+                % (n_tasks, threads_per_task, gpus_per_task)
 
-                if chunk != this_chunk:
-                    uniform = False
-                    break
+        if slots:
 
-                for _ in node['core_map']:
-                    hostlist.append(node['name'])
+            # the scheduler *did* place tasks - at least honor the nodelist.
+            nodelist = [node['name'] for node in slots['nodes']]
+            nodefile = '%s/%s.nodes' % (sbox, uid)
+            with open(nodefile, 'w') as fout:
+                fout.write(','.join(nodelist))
+                fout.write('\n')
 
-                for _ in node['gpu_map']:
-                    hostlist.append(node['name'])
+            mapping += ' --nodelist=%s' % nodefile
 
-            if uniform:
-
-                # we can attempt placement - flag it and prepare SLURM_HOSTFILE
-                hostfile = '%s/slurm_hostfile' % sbox
-                with open(hostfile, 'w') as fout:
-                    fout.write(','.join(hostlist))
-                    fout.write('\n')
-
-                if not cu['description'].get('pre_exec'):
-                    cu['description']['pre_exec'] = list()
-                cu['description']['pre_exec'].append(
-                                  'export SLURM_HOSTFILE="%s"' % hostfile)
-
-            ncores = len(slots['nodes'][0]['core_map'][0])
-            nnodes = len(set(hostlist))
-            nprocs = len(hostlist)
-
-        placement = '-N %d -n %d' % (nnodes, nprocs)
-        if ncores > 1:
-            placement += ' -c %d' % ncores
-
-        cmd = '%s %s %s %s' % (self.launch_command, placement, env, task_cmd)
+        cmd = '%s %s %s %s' % (self.launch_command, mapping, env, task_cmd)
         return cmd, None
 
 
