@@ -91,12 +91,15 @@ class Srun(LaunchMethod):
         gpus_per_task    = cud['gpu_processes']
 
         # use `--exclusive` to ensure all tasks get individual resources.
-        mapping = '--exclusive --ntasks %d --cpus-per-task %s --gpus-per-task' \
-                % (n_tasks, threads_per_task, gpus_per_task)
+        mapping = '--exclusive --cpu-bind=none '           \
+                + '--ntasks %d '        % n_tasks          \
+                + '--cpus-per-task %d ' % threads_per_task \
+                + '--gpus-per-task %d'  % gpus_per_task
 
         if slots:
 
-            # the scheduler *did* place tasks - at least honor the nodelist.
+            # the scheduler *did* place tasks - we can't honor the core and gpu
+            # mapping (see above), but we at least honor the nodelist.
             nodelist = [node['name'] for node in slots['nodes']]
             nodefile = '%s/%s.nodes' % (sbox, uid)
             with open(nodefile, 'w') as fout:
