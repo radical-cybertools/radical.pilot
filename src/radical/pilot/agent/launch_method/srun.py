@@ -80,7 +80,7 @@ class Srun(LaunchMethod):
         # tasks use full nodes - which in RP is rarely the case.  We thus are
         # limited to specifying the list of nodes we want the processes to be
         # placed on, and otherwise have to rely on the `--exclusive` flag to get
-        # a decent auto mapping.  In cvases where the scheduler did not place
+        # a decent auto mapping.  In cases where the scheduler did not place
         # the task we leave the node placement to srun as well.
         #
         # debug mapping
