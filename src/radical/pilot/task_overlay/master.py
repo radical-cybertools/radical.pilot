@@ -97,7 +97,7 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def submit(self, script, info, count=1):
+    def submit(self, script, info, count=1, descr):
         '''
         submit n workers, do *not* wait for them to come up
         '''
@@ -120,11 +120,12 @@ class Master(rpu.Component):
             ru.rec_makedir(sbox)
             ru.write_json(cfg, fname)
 
-            cud = ComputeUnitDescription({'executable': script})
+            # grab default settings via CUD construction
+            descr = ComputeUnitDescription(descr).as_dict()
 
             # create task dict
             task = dict()
-            task['description']       = copy.deepcopy(cud.as_dict())
+            task['description']       = copy.deepcopy(descr)
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
             task['type']              = 'unit'
             task['uid']               = uid

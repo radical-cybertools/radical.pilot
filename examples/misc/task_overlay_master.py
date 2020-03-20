@@ -170,7 +170,8 @@ class MyMaster(rp.task_overlay.Master):
         submit n workers, and pass the queue info as configuration file
         '''
 
-        return rp.task_overlay.Master.submit(self, worker, self._info, count)
+        descr = {'executable': worker}
+        return rp.task_overlay.Master.submit(self, descr, self._info, count)
 
 
     # --------------------------------------------------------------------------
