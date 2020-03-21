@@ -1,4 +1,5 @@
 
+import os
 import copy
 import time
 
@@ -48,14 +49,13 @@ class Master(rpu.Component):
         #        base config from scratch on startup.
 
         cfg = ru.read_json('../control_pubsub.json')
-        tmp = ru.read_json('../update.0000.json')
 
         del(cfg['channel'])
         del(cfg['cmgr'])
 
         cfg['log_lvl'] = 'debug'
         cfg['kind'] = 'master'
-        cfg['base'] = tmp['base']
+        cfg['base'] = os.getcwd()
         cfg['uid']  = ru.generate_id('master')
 
         return ru.Config(cfg=cfg)
@@ -97,7 +97,7 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def submit(self, script, info, count=1, descr):
+    def submit(self, info, descr, count=1):
         '''
         submit n workers, do *not* wait for them to come up
         '''
@@ -115,7 +115,6 @@ class Master(rpu.Component):
             cfg['kind'] = 'worker'
             cfg['uid']  = uid
             cfg['base'] = sbox
-          # cfg['path'] = sbox
 
             ru.rec_makedir(sbox)
             ru.write_json(cfg, fname)
@@ -137,7 +136,6 @@ class Master(rpu.Component):
             self._workers[uid] = task
 
         # insert the task
-        print('ntasks: %s', len(tasks))
         self.advance(tasks, publish=False, push=True)
 
 

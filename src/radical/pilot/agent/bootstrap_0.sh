@@ -6,6 +6,20 @@ export PS1='#'
 unset PROMPT_COMMAND
 unset -f cd ls uname pwd date bc cat echo
 
+
+# Report where we are, as this is not always what you expect ;-)
+# Save environment, useful for debugging
+echo "---------------------------------------------------------------------"
+echo "bootstrap_0 running on host: `hostname -f`."
+echo "bootstrap_0 started as     : '$0 $@'"
+echo "safe environment of bootstrap_0"
+
+# print the sorted env for logging, but also keep a copy so that we can dig
+# original env settings for any CUs, if so specified in the resource config.
+env | sort | grep '=' | sed -e 's/^([^=]*)=(.*)$/\1="\2"/' > env.orig
+echo "# -------------------------------------------------------------------"
+
+
 # interleave stdout and stderr, to get a coherent set of log messages
 if test -z "$RP_BOOTSTRAP_0_REDIR"
 then
@@ -1349,18 +1363,6 @@ $cmd"
 #
 # MAIN
 #
-
-# Report where we are, as this is not always what you expect ;-)
-# Print environment, useful for debugging
-echo "---------------------------------------------------------------------"
-echo "bootstrap_0 running on host: `hostname -f`."
-echo "bootstrap_0 started as     : '$0 $@'"
-echo "Environment of bootstrap_0 process:"
-
-# print the sorted env for logging, but also keep a copy so that we can dig
-# original env settings for any CUs, if so specified in the resource config.
-env | sort | grep '=' | grep -v -e ' ' -e ';' -e '|' > env.orig
-echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
 #
