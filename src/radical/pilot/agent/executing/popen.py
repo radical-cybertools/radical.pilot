@@ -8,6 +8,7 @@ import copy
 import stat
 import time
 import queue
+import atexit
 import pprint
 import signal
 import tempfile
@@ -23,6 +24,22 @@ from ...  import states    as rps
 from ...  import constants as rpc
 
 from .base import AgentExecutingComponent
+
+
+# ------------------------------------------------------------------------------
+# ensure tasks are killed on termination
+_pids = list()
+
+
+def _kill():
+    print('==== atexit')
+    for pid in _pids:
+        print('==== kill %s' % pid)
+        os.killpg(pid, signal.SIGTERM)
+
+
+atexit.register(_kill)
+# ------------------------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------------
@@ -63,7 +80,7 @@ class Popen(AgentExecutingComponent) :
 
         # run watcher thread
         self._watcher = mt.Thread(target=self._watch)
-        self._watcher.daemon = True
+      # self._watcher.daemon = True
         self._watcher.start()
 
         # The AgentExecutingComponent needs the LaunchMethod to construct
@@ -185,7 +202,7 @@ class Popen(AgentExecutingComponent) :
 
             # Create string for environment variable setting
             env_string = ''
-            env_string += '. %s/env.orig\n'               % self._pwd
+          # env_string += '. %s/env.orig\n'               % self._pwd
             env_string += 'export RP_SESSION_ID="%s"\n'   % self._cfg['sid']
             env_string += 'export RP_PILOT_ID="%s"\n'     % self._cfg['pid']
             env_string += 'export RP_AGENT_ID="%s"\n'     % self._cfg['aid']
@@ -216,6 +233,7 @@ prof(){
     now=$($RP_GTOD)
     echo "$now,$event,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING,$msg" >> $RP_PROF
 }
+export -f prof
 '''
 
             # FIXME: this should be set by an LaunchMethod filter or something (GPU)
@@ -307,6 +325,9 @@ prof(){
                                       shell      = True,
                                       cwd        = sandbox)
         self._prof.prof('exec_ok', uid=cu['uid'])
+
+        # store pid for last-effort termination
+        _pids.append(cu['proc'].pid)
 
         self._watch_queue.put(cu)
 
