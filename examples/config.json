@@ -78,6 +78,13 @@
         "cores"    : 64
     },
 
+    "xsede.longhorn" : {
+        "project"  : "FTA-Jha",
+        "queue"    : "development",
+        "schema"   : "local",
+        "cores"    : 40
+    },
+
     "xsede.bridges" : {
         "project"  : null,
         "queue"    : "RM-small",
