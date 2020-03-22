@@ -84,7 +84,6 @@
         "python_dist"                 : "default"
     },
 
-
     "wrangler_spark": {
         "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
