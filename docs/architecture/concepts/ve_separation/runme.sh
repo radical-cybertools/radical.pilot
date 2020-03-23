@@ -37,6 +37,11 @@ echo
 echo
 
 # remove traces of this test
-rm -rvf ve ve_test "$CONDA_ROOT/envs/conda_test" | progress "cleanup"
+(
+    . $CONDA_ROOT/etc/profile.d/conda.sh
+    conda env remove -n conda_test 2>&1
+)               | progress "remove conda env"
+rm -rvf ve_test | progress "remove ve_test"
+rm -rvf ve      | progress "remove ve"
 echo
 
