@@ -34,7 +34,7 @@ class Master(rpu.Component):
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
         # connect to the local agent
-        self._log.debug('=== 1')
+        self._log.debug('startup complete')
 
 
     # --------------------------------------------------------------------------
@@ -75,7 +75,7 @@ class Master(rpu.Component):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        self._log.debug('=== control: %s: %s', cmd, arg)
+        self._log.debug('control: %s: %s', cmd, arg)
 
         if cmd == 'worker_register':
 
@@ -85,7 +85,7 @@ class Master(rpu.Component):
             with self._lock:
                 self._workers[uid]['info']  = info
                 self._workers[uid]['state'] = 'ACTIVE'
-                self._log.debug('=== info: %s', info)
+                self._log.debug('info: %s', info)
 
         elif cmd == 'worker_unregister':
 
@@ -147,22 +147,27 @@ class Master(rpu.Component):
         workers to become available, then return.
         '''
 
-        return
-
         if count:
+            self._log.debug('wait for %d workers', count)
             while True:
                 with self._lock:
                     states = [w['state'] for w in self._workers.values()]
                 n = states.count('ACTIVE')
+                self._log.debug('states [%d]: %s', n, states)
                 if n >= count:
+                    self._log.debug('wait ok')
                     return
                 time.sleep(0.1)
 
         elif uids:
+            self._log.debug('wait for workers: %s', uids)
             while True:
                 with self._lock:
                     states = [self._workers[uid]['state'] for uid in uids]
-                if states.count('ACTIVE') == len(states):
+                n = states.count('ACTIVE')
+                self._log.debug('states [%d]: %s', n, states)
+                if n == len(uids):
+                    self._log.debug('wait ok')
                     return
                 time.sleep(0.1)
 

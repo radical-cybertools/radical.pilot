@@ -171,7 +171,7 @@ class MyMaster(rp.task_overlay.Master):
         '''
 
         descr = {'executable': worker}
-        return rp.task_overlay.Master.submit(self, descr, self._info, count)
+        return rp.task_overlay.Master.submit(self, self._info, descr, count)
 
 
     # --------------------------------------------------------------------------
@@ -225,17 +225,17 @@ if __name__ == '__main__':
 
     # insert `n` worker tasks into the agent.  The agent will schedule (place)
     # those workers and execute them.
-    master.submit(count=64, worker=worker)
+    master.submit(count=2, worker=worker)
 
     # wait until `m` of those workers are up
     # This is optional, work requests can be submitted before and will wait in
     # a work queue.
-    master.wait(count=64)
+    master.wait(count=2)
 
     # submit work requests.  The returned request objects behave like Futures
     # (they will be implemented as proper Futures in the future - ha!)
     req = list()
-    for n in range(1024 * 32):
+    for n in range(32):
         req.append(master.request('hello', n))
 
     # wait for request completion and print the results
