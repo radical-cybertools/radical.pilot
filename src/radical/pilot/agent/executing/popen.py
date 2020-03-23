@@ -233,7 +233,8 @@ prof(){
     now=$($RP_GTOD)
     echo "$now,$event,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING,$msg" >> $RP_PROF
 }
-export -f prof
+prof="$(typeset -f prof)"
+export prof
 '''
 
             # FIXME: this should be set by an LaunchMethod filter or something (GPU)
