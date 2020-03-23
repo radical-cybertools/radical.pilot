@@ -3,7 +3,7 @@
 CONDA_ROOT='/home/merzky/.miniconda3/'
 
 progress(){
-    printf "%-20s: " "$*"
+    printf "%-20s: ." "$*"
     i=0
     while read X
     do
@@ -20,6 +20,11 @@ virtualenv -p python3 ve | progress 'create ve'
 
 # create a ve for a test workload
 virtualenv -p python3 ve_test | progress 'create ve_test'
+
+# prepare a module libdir
+os_path=$(python -c 'import os; print(os.__file__)')
+cp $os_path modules/my_python_dir/lib/ | progress 'create module'
+
 
 # create a conda env for another test workload
 # run in subshell to maintain the shell env
@@ -40,8 +45,9 @@ echo
 (
     . $CONDA_ROOT/etc/profile.d/conda.sh
     conda env remove -n conda_test 2>&1
-)               | progress "remove conda env"
-rm -rvf ve_test | progress "remove ve_test"
-rm -rvf ve      | progress "remove ve"
+)                                            | progress "remove conda env"
+cp /dev/null modules/my_python_dir/lib/os.py | progress "remove module"
+rm -rvf ve_test                              | progress "remove ve_test"
+rm -rvf ve                                   | progress "remove ve"
 echo
 
