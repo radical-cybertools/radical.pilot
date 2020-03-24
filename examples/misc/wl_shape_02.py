@@ -5,7 +5,6 @@ __license__   = 'MIT'
 
 import os
 import sys
-import time
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -85,8 +84,8 @@ if __name__ == '__main__':
           # cud.arguments        = args.split()
             cud.tags             = tags
             cud.gpu_processes    = 0
-            cud.cpu_processes    = 2  #'1-32'
-            cud.cpu_threads      = 2  #'1-16'
+            cud.cpu_processes    = 2  # '1-32'
+            cud.cpu_threads      = 2  # '1-16'
             cud.cpu_process_type = rp.MPI
             cud.cpu_thread_type  = rp.OpenMP
       #     cud.input_staging    = cudis

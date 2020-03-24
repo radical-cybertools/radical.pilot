@@ -97,7 +97,7 @@ if __name__ == '__main__':
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
         ru.print_exception_trace()
-        report.warn('exit requested\n')
+        report.warn('exit requested with %s\n' % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or

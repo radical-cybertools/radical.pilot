@@ -95,7 +95,7 @@ if __name__ == "__main__":
         # FUNCTIONS OF RADICAL PILOT
         # don't forget to change the localhost label
         c = rp.Context('ssh')
-        #c.user_id = 'userid'
+        # c.user_id = 'userid'
         session.add_context(c)
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -135,7 +135,8 @@ if __name__ == "__main__":
 
         print("Registering Compute Pilot with Unit Manager")
         umgr.add_pilots(pilot)
-        # need to read the number of the k division the user want to do: that's also the only argument
+        # need to read the number of the k division the user want to 
+        # do: that's also the only argument
         args = sys.argv[1:]
         if len(args) < 1:
             print("Usage: python %s needs the k-variable. Please run again" % __file__)
@@ -156,7 +157,6 @@ if __name__ == "__main__":
         # from the element list (x)
         # FUNCTIONS OF RADICAL PILOT
 
-
         #  CHOOSING THE CENTROIDS
         centroid = []
         size = len(x)
@@ -175,7 +175,6 @@ if __name__ == "__main__":
         centroid_file.close()
         # END OF PUTTING CENTROIDS IN A FILE CENTROIDS.DATA
 
-
         # VARIABLE DEFINITIONS
         p           = pdesc.cores  # NUMBER OF CORES OF THE SYSTEM I USE
         convergence = False        # We have no convergence yet
@@ -183,7 +182,6 @@ if __name__ == "__main__":
         maxIt       = 20           # the maximum number of iteration
         part_length = len(x) / p   # this is the length of the part that each unit is going to control
         # END OF VARIABLE DEFINITIONS
-
 
         while ((m < maxIt) and (convergence is False)):
 
@@ -201,7 +199,6 @@ if __name__ == "__main__":
                 input_file.write(input_string)
                 input_file.close()
             # END OF PUTTING CENTROIDS INTO DIFFERENT FILES
-
 
             # GIVE THE FILES INTO CUS TO START CALCULATING THE CLUSTERS - PHASE A
             mylist = []

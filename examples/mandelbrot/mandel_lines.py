@@ -36,9 +36,11 @@ __license__   = "MIT"
 import sys
 from PIL import Image
 
+
 # ------------------------------------------------------------------------------
 #
-def makemandel(x_pixel_max, y_pixel_max, x_real_beg, x_real_end, y_real_beg, y_real_end, cores, index):
+def makemandel(x_pixel_max, y_pixel_max, x_real_beg, x_real_end, y_real_beg,
+               y_real_end, cores, index):
 
     maxIt  = 128 
     image  = Image.new("RGB", (x_pixel_max, y_pixel_max))
@@ -48,17 +50,15 @@ def makemandel(x_pixel_max, y_pixel_max, x_real_beg, x_real_end, y_real_beg, y_r
     y_real_offset  = float(y_real_slice) * float(index)
 
     y_pixel_slice  = int(y_pixel_max / cores)
-    y_pixel_offset = y_pixel_slice * index
 
     x_real_range   = x_real_end - x_real_beg
     x_real_slice   = float(x_real_range)
     x_pixel_slice  = int(x_pixel_max)
-    x_pixel_offset = 0
 
     for y in range(y_pixel_slice):
-        cy = y_real_beg + y_real_offset + (y_real_slice/y_pixel_slice*y)
+        cy = y_real_beg + y_real_offset + (y_real_slice / y_pixel_slice * y)
         for x in range(x_pixel_slice):
-            cx = x_real_beg + (x_real_slice/x_pixel_slice*x)
+            cx = x_real_beg + (x_real_slice / x_pixel_slice * x)
 
             c = complex(cx, cy)
             z = 0
@@ -68,11 +68,12 @@ def makemandel(x_pixel_max, y_pixel_max, x_real_beg, x_real_end, y_real_beg, y_r
             r = i % 4 * 16
             g = i % 6 * 16
             b = i % 16 * 16
-            image.putpixel((x, y_pixel_slice*index+y), b * 65536 + g * 256 + r)
- 
+            image.putpixel((x, y_pixel_slice * index + y), b * 65536 + g * 256 + r)
+
     image.save('mandel_%d.gif' % index , "GIF")
-    
+
     return image
+
 
 # ------------------------------------------------------------------------------
 #

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
@@ -25,47 +23,34 @@ resources = {
             'project'  : None,
             'queue'    : None,
             'schema'   : None
-            },
-
+                            },
         'epsrc.archer' : {
             'project'  : 'e290',
             'queue'    : 'short',
             'schema'   : None
-            },
-
+                         },
         'xsede.stampede' : {
             'project'  : 'TG-MCB090174',
             'queue'    : 'development',
             'schema'   : None
-            },
-
-        }
+                           },
+            }
 
 remote_env = {
-    
-
     'amber': {
-
-        'local.localhost': [],      #For the user to fill in order to run on localhost
-
+        'local.localhost': [],  # For the user to fill in order to run on localhost
         'epsrc.archer': [
                             "module load packages-archer",
                             "module load amber"
                         ],
-
         'xsede.stampede': [
                             "module load TACC", 
                             "module load amber/12.0"
                         ],
-
-    },
-
+              },
     'coco': {
-
-        'local.localhost': [],      #For the user to fill in order to run on localhost
-
+        'local.localhost': [],  # For the user to fill in order to run on localhost
         'epsrc.archer': [
-
                            "module load python-compute/2.7.6",
                             "module load pc-numpy/1.8.0-libsci",
                             "module load pc-scipy/0.13.3-libsci",
@@ -73,8 +58,6 @@ remote_env = {
                             "module load pc-netcdf4-python/1.1.0",
                             "module load amber"
                         ],
-
-            
         'xsede.stampede': [
                             "module load TACC",
                             "module load intel/13.0.2.146",
@@ -86,71 +69,71 @@ remote_env = {
                             "module load amber"
                         ],
 
-    },
-}
+             },
+             }
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 #
 def pilot_state_cb (pilot, state):
 
     if pilot:
 
-        print "[Callback]: ComputePilot '{0}' state changed to {1}.".format(
-            pilot.uid, state)
+        print("[Callback]: ComputePilot '{0}' state changed to {1}.".format(
+            pilot.uid, state))
 
         if state == radical.pilot.states.FAILED:
-            print "#######################"
-            print "##       ERROR       ##"
-            print "#######################"
-            print "Pilot {0} has FAILED. Can't recover.".format(pilot.uid)
-            print "Pilot log:- "
+            print("#######################")
+            print("##       ERROR       ##")
+            print("#######################")
+            print("Pilot {0} has FAILED. Can't recover.".format(pilot.uid))
+            print("Pilot log:- ")
             for log in pilot.log:
                 print log.as_dict()
-            print u'Pilot STDOUT : {0}'.format(pilot.stdout)
-            print u'Pilot STDERR : {0}'.format(pilot.stderr)
+            print(u'Pilot STDOUT : {0}'.format(pilot.stdout))
+            print(u'Pilot STDERR : {0}'.format(pilot.stderr))
             sys.exit(1)
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def unit_state_cb (unit, state):
 
-    
     if unit:
-        print "[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
-            unit.uid, state)
+        print("[Callback]: ComputeUnit '{0}' state changed to {1}.".format(
+            unit.uid, state))
 
         if state == radical.pilot.states.FAILED:
-            print "#######################"
-            print "##       ERROR       ##"
-            print "#######################"
-            print "ComputeUnit {0} has FAILED. Can't recover.".format(unit.uid)
-            print "ComputeUnit log:- "
+            print("#######################")
+            print("##       ERROR       ##")
+            print("#######################")
+            print("ComputeUnit {0} has FAILED. Can't recover.".format(unit.uid))
+            print("ComputeUnit log:- ")
             for log in unit.log:
                 print log.as_dict()
-            print u"STDERR : {0}".format(unit.stderr)
-            print u"STDOUT : {0}".format(unit.stdout)
+            print(u"STDERR : {0}".format(unit.stderr))
+            print(u"STDOUT : {0}".format(unit.stdout))
             sys.exit(1)
 
         elif state == radical.pilot.states.CANCELED:
-            print "#######################"
-            print "##       ERROR       ##"
-            print "#######################"
-            print "ComputeUnit {0} was canceled prematurely because the pilot was terminated. Can't recover.".format(unit.uid)
+            print("#######################"
+            print("##       ERROR       ##"
+            print("#######################"
+            print("ComputeUnit {0} was canceled prematurely because the \
+                   pilot was terminated. Can't recover.".format(unit.uid))
             sys.exit(1)
-
     else:
         return
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 def wait_queue_size_cb(umgr, wait_queue_size):
 
-    print "[Callback]: wait_queue_size: %s." % wait_queue_size
+    print("[Callback]: wait_queue_size: %s." % wait_queue_size)
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
@@ -160,7 +143,7 @@ if __name__ == "__main__":
     else:
         resource = 'local.localhost'
 
-    print 'running on %s' % resource
+    print('running on %s' % resource)
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -170,7 +153,7 @@ if __name__ == "__main__":
     cred.user_id = 'vivek91'
     session.add_context(cred)
 
-    print "session id: %s" % session.uid
+    print("session id: %s" % session.uid)
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
@@ -194,7 +177,7 @@ if __name__ == "__main__":
         pilot = pmgr.submit_pilots(pdesc)
 
 
-        #------------------------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         # Data staging with pilot
         pilot_stagein_files = [
                                 'mdshort.in',
@@ -209,22 +192,22 @@ if __name__ == "__main__":
         sd_pilot_list = list()
         for item in pilot_stagein_files:
             sd_pilot = {
-                        'source': 'file://{0}/{1}'.format(os.getcwd(),item),
-                        'target': '{0}{1}'.format(MY_STAGING_AREA,item),
+                        'source': 'file://{0}/{1}'.format(os.getcwd(), item),
+                        'target': '{0}{1}'.format(MY_STAGING_AREA, item),
                         'action': radical.pilot.TRANSFER
                         }
             sd_pilot_list.append(sd_pilot)
 
         sd_pilot = {
-                        'source': 'file://{0}/{1}'.format(os.getcwd(),crd_file),
-                        'target': '{0}iter0/{1}'.format(MY_STAGING_AREA,crd_file),
+                        'source': 'file://{0}/{1}'.format(os.getcwd(), crd_file),
+                        'target': '{0}iter0/{1}'.format(MY_STAGING_AREA, crd_file),
                         'action': radical.pilot.TRANSFER
                     }
         sd_pilot_list.append(sd_pilot)
 
         pilot.stage_in(sd_pilot_list)
 
-        #------------------------------------------------------------------------------------
+        # ----------------------------------------------------------------------
 
         umgr = radical.pilot.UnitManager(session=session, scheduler=SCHED)
         umgr.register_callback(unit_state_cb,      radical.pilot.UNIT_STATE)
@@ -232,19 +215,19 @@ if __name__ == "__main__":
         umgr.add_pilots(pilot)
 
         cycle=0
-        
+
         for cycle in range(0,CYCLES):
 
-            print 'Cycle %s'%(cycle+1)
-            print '======================'
+            print('Cycle %s'%(cycle + 1))
+            print('======================')
 
-            print 'Simulation Step'
-            print '----------------------'
+            print('Simulation Step')
+            print('----------------------')
             # Minimization Step
             cudesc_list_A = list()
             for i in range(0, SIM_INSTANCES):
 
-                #==================================================================
+                # --------------------------------------------------------------
                 # CU Definition for Amber - Stage 1
 
                 cud = radical.pilot.ComputeUnitDescription()
@@ -262,10 +245,10 @@ if __name__ == "__main__":
                                     ]
                 cud.cores          = 1
 
-                #==================================================================
+                # --------------------------------------------------------------
                 # Data Staging for the CU
 
-                #------------------------------------------------------------------
+                # --------------------------------------------------------------
                 # Coordinate file staging
 
                 if(cycle==0):
@@ -283,9 +266,9 @@ if __name__ == "__main__":
                                 'action': radical.pilot.LINK
                                 }
 
-                #------------------------------------------------------------------
+                # --------------------------------------------------------------
 
-                #------------------------------------------------------------------
+                # --------------------------------------------------------------
                 # Configure the staging directive for shared input file.
                 top_stage = {
                             'source': MY_STAGING_AREA + top_file,
@@ -303,9 +286,9 @@ if __name__ == "__main__":
                             'target': crd_file,
                             'action': radical.pilot.LINK
                             }
-                #------------------------------------------------------------------
+                # --------------------------------------------------------------
 
-                #------------------------------------------------------------------
+                # --------------------------------------------------------------
                 # Stage OUT the output to the staging area
 
                 md_stage_out = {
@@ -320,12 +303,11 @@ if __name__ == "__main__":
 
                 cudesc_list_A.append(cud)
 
-
             # MD step
             cudesc_list_B = []
             for i in range(0,SIM_INSTANCES):
 
-                #==================================================================
+                # --------------------------------------------------------------
                 # CU Definition for Amber - Stage 2
 
                 cud = radical.pilot.ComputeUnitDescription()
@@ -343,10 +325,10 @@ if __name__ == "__main__":
                                     ]
                 cud.cores          = 1
 
-                #==================================================================
+                # --------------------------------------------------------------
                 # Data Staging
 
-                #------------------------------------------------------------------
+                # --------------------------------------------------------------
                 # Link to output from first-stage of Amber
                 md_stage_in = {
                                 'source': MY_STAGING_AREA + 'iter{0}/md{0}{1}.crd'.format(cycle,i),
@@ -367,10 +349,10 @@ if __name__ == "__main__":
                             }
 
                 cud.input_staging = [md_stage_in,mdin_stage,top_stage]
-                #------------------------------------------------------------------
+                # --------------------------------------------------------------
 
 
-                #------------------------------------------------------------------
+                # --------------------------------------------------------------
                 # Link output data to staging area
                 ncdf_stage_out = {
                                 'source': 'md{0}.ncdf'.format(cycle),
@@ -378,7 +360,7 @@ if __name__ == "__main__":
                                 'action': radical.pilot.COPY
                                 }
                 cud.output_staging = [ncdf_stage_out]
-                #------------------------------------------------------------------
+                # --------------------------------------------------------------
 
                 cudesc_list_B.append(cud) 
 
@@ -399,11 +381,11 @@ if __name__ == "__main__":
             umgr.wait_units()    
 
 
-            #==================================================================
+            # ------------------------------------------------------------------
             # CU Definition for CoCo
 
-            print 'Analysis Step'
-            print '----------------------'
+            print('Analysis Step')
+            print('----------------------')
 
             cud = radical.pilot.ComputeUnitDescription()
             cud.cores = SIM_INSTANCES  #pyCoCo should use as many as cores as the number of frontpoints
@@ -418,14 +400,14 @@ if __name__ == "__main__":
                                 '--output','pdbs',
                                 '--logfile','coco.log',
                             ]
-            cud.post_exec = ['python postexec.py %s %s' % (SIM_INSTANCES,cycle)]
+            cud.post_exec = ['python postexec.py %s %s' % (SIM_INSTANCES, cycle)]
             cud.mpi = False
 
 
-            #==================================================================
+            # ------------------------------------------------------------------
             # Data Staging for the CU
 
-            #------------------------------------------------------------------
+            # ------------------------------------------------------------------
             # postexec and topology file staging
 
             postexec_stage = {
@@ -439,53 +421,51 @@ if __name__ == "__main__":
                             'target': top_file,
                             'action': radical.pilot.LINK
                         }
-            cud.input_staging = [postexec_stage,top_stage]
-            #------------------------------------------------------------------
+            cud.input_staging = [postexec_stage, top_stage]
+            # ------------------------------------------------------------------
 
 
-            #------------------------------------------------------------------
+            # ------------------------------------------------------------------
             # stage in the ncdf files from all previous iterations
-            for iter in range(0,cycle+1):
-                for inst in range(0,SIM_INSTANCES):
+            for iter in range(0,cycle + 1):
+                for inst in range(0, SIM_INSTANCES):
                     dir = {
-                            'source': MY_STAGING_AREA + 'iter{0}/md_{0}_{1}.ncdf'.format(iter,inst),
-                            'target': 'md_{0}_{1}.ncdf'.format(iter,inst),
+                            'source': MY_STAGING_AREA + 'iter{0}/md_{0}_{1}.ncdf'.format(iter, inst),
+                            'target': 'md_{0}_{1}.ncdf'.format(iter, inst),
                             'action': radical.pilot.COPY
                             }
                     cud.input_staging.append(dir)
-            #------------------------------------------------------------------
+            # ------------------------------------------------------------------
 
             cud.output_staging = []
-            #------------------------------------------------------------------
+            # ------------------------------------------------------------------
             # stage out the crd files to staging area
             for inst in range(0,SIM_INSTANCES):
                 dir = {
-                        'source': 'min{0}{1}.crd'.format(cycle,inst),
-                        'target': MY_STAGING_AREA + 'iter{2}/min{0}{1}.crd'.format(cycle,inst,cycle+1),
+                        'source': 'min{0}{1}.crd'.format(cycle, inst),
+                        'target': MY_STAGING_AREA + 'iter{2}/min{0}{1}.crd'.format(cycle, inst, cycle + 1),
                         'action': radical.pilot.LINK
                         }
                 cud.output_staging.append(dir)
-            #------------------------------------------------------------------
+            # ------------------------------------------------------------------
 
-            #------------------------------------------------------------------
+            # ------------------------------------------------------------------
             # stage out the crd files to localhost
             for inst in range(0,SIM_INSTANCES):
                 dir = {
-                        'source': 'min{0}{1}.crd'.format(cycle,inst),
-                        'target': 'backup/iter{1}/min{0}.crd'.format(inst,cycle+1),
+                        'source': 'min{0}{1}.crd'.format(cycle, inst),
+                        'target': 'backup/iter{1}/min{0}.crd'.format(inst, cycle + 1),
                         }
                 cud.output_staging.append(dir)
-            #------------------------------------------------------------------
+            # ------------------------------------------------------------------
 
             unit = umgr.submit_units(cud)
 
             unit.wait()
 
-
-
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        print "caught Exception: %s" % e
+        print( "caught Exception: %s" % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -493,12 +473,12 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        print "need to exit now: %s" % e
+        print( "need to exit now: %s" % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.
-        print "closing session"
+        print("closing session")
         session.close ()
 
         # the above is equivalent to
@@ -507,7 +487,4 @@ if __name__ == "__main__":
         #
         # it will thus both clean out the session's database record, and kill
         # all remaining pilots (none in our example).
-
-
-#-------------------------------------------------------------------------------
-
+# ------------------------------------------------------------------------------

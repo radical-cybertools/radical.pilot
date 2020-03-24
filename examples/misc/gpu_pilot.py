@@ -11,7 +11,7 @@ import radical.utils as ru
 
 PWD = os.path.dirname(os.path.abspath(__file__))
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
@@ -52,7 +52,7 @@ if __name__ == '__main__':
                       'project'       : config[resource]['project'],
                       'queue'         : config[resource]['queue'],
                       'access_schema' : config[resource]['schema'],
-                      'cores'         : 16*10,
+                      'cores'         : 16 * 10,
                       'gpus'          : config[resource]['gpus'],
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
@@ -135,7 +135,7 @@ if __name__ == '__main__':
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        report.warn('exit requested\n')
+        report.warn('exit requested with %s\n' % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or

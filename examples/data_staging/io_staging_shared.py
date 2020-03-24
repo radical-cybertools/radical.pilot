@@ -6,7 +6,6 @@ __license__   = "MIT"
 import os
 import sys
 import radical.pilot as rp
-import copy
 
 SHARED_INPUT_FILE = 'shared_input_file.txt'
 MY_STAGING_AREA = 'staging:///'
@@ -38,7 +37,7 @@ if __name__ == "__main__":
 
         # Create per unit input files
         for idx, occ in enumerate(radical_cockpit_occupants):
-            input_file = 'input_file-%d.txt' % (idx+1)
+            input_file = 'input_file-%d.txt' % (idx + 1)
             os.system('/bin/echo "%s" > %s' % (occ, input_file))
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
@@ -48,8 +47,8 @@ if __name__ == "__main__":
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = rp.ComputePilotDescription()
         pdesc.resource = "local.localhost"
-        pdesc.runtime  = 5 # M minutes
-        pdesc.cores    = 2 # C cores
+        pdesc.runtime  = 5  # M minutes
+        pdesc.cores    = 2  # C cores
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -89,10 +88,10 @@ if __name__ == "__main__":
         for unit_idx in range(len(radical_cockpit_occupants)):
 
             # Configure the per unit input file.
-            input_file = 'input_file-%d.txt' % (unit_idx+1)
+            input_file = 'input_file-%d.txt' % (unit_idx + 1)
 
             # Configure the for per unit output file.
-            output_file = 'output_file-%d.txt' % (unit_idx+1)
+            output_file = 'output_file-%d.txt' % (unit_idx + 1)
 
             # Actual task description.
             # Concatenate the shared input and the task specific input.

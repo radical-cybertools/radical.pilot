@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# pylint: disable=redefined-outer-name
 
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -47,7 +48,7 @@ if __name__ == "__main__":
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    session = rp.Session(name=session_name)
+    session = rp.Session(uid=session_name)
     print("session id: %s" % session.uid)
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
@@ -95,9 +96,7 @@ if __name__ == "__main__":
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
-        umgr = rp.UnitManager(
-            session=session,
-            scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
+        umgr = rp.UnitManager(session=session)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager

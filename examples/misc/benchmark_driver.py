@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+# pylint: disable=redefined-outer-name
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    session = rp.Session(name=session_name)
+    session = rp.Session(uid=session_name)
     print("session id: %s" % session.uid)
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
@@ -58,14 +58,14 @@ if __name__ == "__main__":
     # clause...
     try:
 
-        rp_cores    = int(os.getenv ("RP_CORES",    16))
-        rp_cu_cores = int(os.getenv ("RP_CU_CORES", 1))
-        rp_units    = int(os.getenv ("RP_UNITS",    rp_cores * 3 * 3 * 2))  # 3 units/core/pilot
-        rp_runtime  = int(os.getenv ("RP_RUNTIME",  15))
-        rp_user     = str(os.getenv ("RP_USER",     ""))
-        rp_host     = str(os.getenv ("RP_HOST",     "xsede.stampede"))
-        rp_queue    = str(os.getenv ("RP_QUEUE",    ""))
-        rp_project  = str(os.getenv ("RP_PROJECT",  "TG-MCB090174"))
+        rp_cores    = int(os.getenv("RP_CORES",    '16'))
+        rp_cu_cores = int(os.getenv("RP_CU_CORES", '1'))
+        rp_units    = int(os.getenv("RP_UNITS",    str(rp_cores * 3 * 3 * 2)))  # 3 units/core/pilot
+        rp_runtime  = int(os.getenv("RP_RUNTIME",  '15'))
+        rp_user     = str(os.getenv("RP_USER",     ""))
+        rp_host     = str(os.getenv("RP_HOST",     "xsede.stampede"))
+        rp_queue    = str(os.getenv("RP_QUEUE",    ""))
+        rp_project  = str(os.getenv("RP_PROJECT",  "TG-MCB090174"))
 
         # make jenkins happy
         c         = rp.Context ('ssh')

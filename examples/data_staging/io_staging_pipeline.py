@@ -38,7 +38,7 @@ def unit_state_cb (unit, state):
 
     if state in [rp.FAILED, rp.DONE, rp.CANCELED]:
 
-        print("* unit %s (%s) state %s (%s) %s - %s, out/err: %s / %s" \
+        print("* unit %s (%s) state %s (%s) %s - %s, out/err: %s / %s"
                  % (unit.uid,
                     unit.execution_locations,
                     unit.state,
@@ -83,8 +83,8 @@ if __name__ == "__main__":
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
         pdesc = rp.ComputePilotDescription()
         pdesc.resource = "local.localhost"
-        pdesc.runtime = 15 # M minutes
-        pdesc.cores = 2 # C cores
+        pdesc.runtime = 15  # M minutes
+        pdesc.cores = 2  # C cores
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
