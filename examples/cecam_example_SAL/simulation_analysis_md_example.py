@@ -194,30 +194,30 @@ if __name__ == "__main__":
                         'source': 'file://{0}/{1}'.format(os.getcwd(), item),
                         'target': '{0}{1}'.format(MY_STAGING_AREA, item),
                         'action': radical.pilot.TRANSFER
-                        }
+                       }
             sd_pilot_list.append(sd_pilot)
 
         sd_pilot = {
-                        'source': 'file://{0}/{1}'.format(os.getcwd(), crd_file),
-                        'target': '{0}iter0/{1}'.format(MY_STAGING_AREA, crd_file),
-                        'action': radical.pilot.TRANSFER
-                    }
+                    'source': 'file://{0}/{1}'.format(os.getcwd(), crd_file),
+                    'target': '{0}iter0/{1}'.format(MY_STAGING_AREA, crd_file),
+                    'action': radical.pilot.TRANSFER
+                   }
         sd_pilot_list.append(sd_pilot)
 
         pilot.stage_in(sd_pilot_list)
 
         # ----------------------------------------------------------------------
 
-        umgr = radical.pilot.UnitManager(session=session, scheduler=SCHED)
+        umgr = radical.pilot.UnitManager(session=session)
         umgr.register_callback(unit_state_cb,      radical.pilot.UNIT_STATE)
         umgr.register_callback(wait_queue_size_cb, radical.pilot.WAIT_QUEUE_SIZE)
         umgr.add_pilots(pilot)
 
-        cycle=0
+        cycle = 0
 
         for cycle in range(0,CYCLES):
 
-            print('Cycle %s'%(cycle + 1))
+            print('Cycle %s' % (cycle + 1))
             print('======================')
 
             print('Simulation Step')
@@ -234,13 +234,13 @@ if __name__ == "__main__":
                 cud.pre_exec       = remote_env['amber'][resource]
                 cud.arguments      = [
                                         '-O',
-                                        '-i',min_file,
-                                        '-o','min%s.out'%cycle,
-                                        '-inf','min%s.inf'%cycle,
-                                        '-r','md%s.crd'%cycle,
-                                        '-p',top_file,
-                                        '-c',crd_file,
-                                        '-ref','min%s.crd'%cycle
+                                        '-i', min_file,
+                                        '-o', 'min%s.out' % cycle,
+                                        '-inf', 'min%s.inf' % cycle,
+                                        '-r', 'md%s.crd' % cycle,
+                                        '-p', top_file,
+                                        '-c', crd_file,
+                                        '-ref', 'min%s.crd' % cycle
                                     ]
                 cud.cores          = 1
 
@@ -250,7 +250,7 @@ if __name__ == "__main__":
                 # --------------------------------------------------------------
                 # Coordinate file staging
 
-                if(cycle==0):
+                if(cycle == 0):
 
                     crd_stage = {
                                 'source': MY_STAGING_AREA + 'iter0/' + crd_file,
@@ -295,7 +295,7 @@ if __name__ == "__main__":
                             'target': MY_STAGING_AREA + 'iter{0}/md{0}{1}.crd'.format(cycle,i),
                             'action': radical.pilot.LINK
                             }
-                #----------------------------------------------------------
+                # --------------------------------------------------------------
 
                 cud.input_staging = [crd_stage,top_stage,minin_stage,init_crd_stage]
                 cud.output_staging = [md_stage_out]
@@ -313,15 +313,15 @@ if __name__ == "__main__":
                 cud.executable     = 'pmemd'
                 cud.pre_exec       = remote_env['amber'][resource]
                 cud.arguments      = [
-                                    '-O',
-                                    '-i', md_file,
-                                    '-o', 'md%s.out'%cycle,
-                                    '-inf', 'md%s.inf'%cycle,
-                                    '-x', 'md%s.ncdf'%cycle,
-                                    '-r', 'md%s.rst'%cycle,
-                                    '-p', top_file,
-                                    '-c', 'md%s.crd'%cycle
-                                    ]
+                                     '-O',
+                                     '-i', md_file,
+                                     '-o', 'md%s.out' % cycle,
+                                     '-inf', 'md%s.inf' % cycle,
+                                     '-x', 'md%s.ncdf' % cycle,
+                                     '-r', 'md%s.rst' % cycle,
+                                     '-p', top_file,
+                                     '-c', 'md%s.crd' % cycle
+                                     ]
                 cud.cores          = 1
 
                 # --------------------------------------------------------------
@@ -330,21 +330,21 @@ if __name__ == "__main__":
                 # --------------------------------------------------------------
                 # Link to output from first-stage of Amber
                 md_stage_in = {
-                                'source': MY_STAGING_AREA + 'iter{0}/md{0}{1}.crd'.format(cycle,i),
-                                'target': 'md{0}.crd'.format(cycle),
-                                'action': radical.pilot.LINK
-                                }
+                               'source': MY_STAGING_AREA + 'iter{0}/md{0}{1}.crd'.format(cycle, i),
+                               'target': 'md{0}.crd'.format(cycle),
+                               'action': radical.pilot.LINK
+                              }
 
                 # Link to shared data from staging area
                 mdin_stage = {
-                                'source': MY_STAGING_AREA + md_file,
-                                'target': md_file,
-                                'action': radical.pilot.LINK
-                            }
+                              'source': MY_STAGING_AREA + md_file,
+                              'target': md_file,
+                              'action': radical.pilot.LINK
+                             }
                 top_stage = {
-                                'source': MY_STAGING_AREA + top_file,
-                                'target': top_file,
-                                'action': radical.pilot.LINK
+                             'source': MY_STAGING_AREA + top_file,
+                             'target': top_file,
+                             'action': radical.pilot.LINK
                             }
 
                 cud.input_staging = [md_stage_in,mdin_stage,top_stage]
@@ -354,10 +354,10 @@ if __name__ == "__main__":
                 # --------------------------------------------------------------
                 # Link output data to staging area
                 ncdf_stage_out = {
-                                'source': 'md{0}.ncdf'.format(cycle),
-                                'target': MY_STAGING_AREA + 'iter{0}/md_{0}_{1}.ncdf'.format(cycle, i),
-                                'action': radical.pilot.COPY
-                                }
+                                  'source': 'md{0}.ncdf'.format(cycle),
+                                  'target': MY_STAGING_AREA + 'iter{0}/md_{0}_{1}.ncdf'.format(cycle, i),
+                                  'action': radical.pilot.COPY
+                                 }
                 cud.output_staging = [ncdf_stage_out]
                 # --------------------------------------------------------------
 
@@ -398,7 +398,7 @@ if __name__ == "__main__":
                                 '--mdfile','*.ncdf',
                                 '--output','pdbs',
                                 '--logfile','coco.log',
-                            ]
+                             ]
             cud.post_exec = ['python postexec.py %s %s' % (SIM_INSTANCES, cycle)]
             cud.mpi = False
 
@@ -426,13 +426,13 @@ if __name__ == "__main__":
 
             # ------------------------------------------------------------------
             # stage in the ncdf files from all previous iterations
-            for iter in range(0,cycle + 1):
+            for iter in range(0, cycle + 1):
                 for inst in range(0, SIM_INSTANCES):
                     dir = {
                             'source': MY_STAGING_AREA + 'iter{0}/md_{0}_{1}.ncdf'.format(iter, inst),
                             'target': 'md_{0}_{1}.ncdf'.format(iter, inst),
                             'action': radical.pilot.COPY
-                            }
+                          }
                     cud.input_staging.append(dir)
             # ------------------------------------------------------------------
 
@@ -444,7 +444,7 @@ if __name__ == "__main__":
                         'source': 'min{0}{1}.crd'.format(cycle, inst),
                         'target': MY_STAGING_AREA + 'iter{2}/min{0}{1}.crd'.format(cycle, inst, cycle + 1),
                         'action': radical.pilot.LINK
-                        }
+                      }
                 cud.output_staging.append(dir)
             # ------------------------------------------------------------------
 
@@ -454,7 +454,7 @@ if __name__ == "__main__":
                 dir = {
                         'source': 'min{0}{1}.crd'.format(cycle, inst),
                         'target': 'backup/iter{1}/min{0}.crd'.format(inst, cycle + 1),
-                        }
+                      }
                 cud.output_staging.append(dir)
             # ------------------------------------------------------------------
 
@@ -464,7 +464,7 @@ if __name__ == "__main__":
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        print( "caught Exception: %s" % e)
+        print("caught Exception: %s" % e)
         raise
 
     except (KeyboardInterrupt, SystemExit) as e:
@@ -472,13 +472,13 @@ if __name__ == "__main__":
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
-        print( "need to exit now: %s" % e)
+        print("need to exit now: %s" % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.
         print("closing session")
-        session.close ()
+        session.close()
 
         # the above is equivalent to
         #
