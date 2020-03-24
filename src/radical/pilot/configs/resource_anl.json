@@ -1,0 +1,36 @@
+
+{
+    "theta": {
+        "description"                 : "",
+        "notes"                       : null,
+        "schemas"                     : ["local"],
+        "local"                       : {
+            "job_manager_hop"         : "cobalt://localhost/",
+            "job_manager_endpoint"    : "cobalt://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_queue"               : "debug-flat-quad",
+        "resource_manager"            : "COBALT",
+        "lfs_per_node"                : "/tmp",
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "MPIEXEC",
+        "task_launch_method"          : "MPIEXEC",
+        "mpi_launch_method"           : "MPIEXEC",
+        "pre_bootstrap_0"             : [
+                                        ],
+        "pre_bootstrap_1"             : [
+                                        ],
+        "valid_roots"                 : [],
+        "default_remote_workdir"      : "$HOME",
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "stage_cacerts"               : true,
+        "python_dist"                 : "default",
+        "virtenv_dist"                : "default",
+        "gpus_per_node"               : 0,
+        "cores_per_node"              : 64
+    }
+}
+
