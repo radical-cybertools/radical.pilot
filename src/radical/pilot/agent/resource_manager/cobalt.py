@@ -34,14 +34,14 @@ class Cobalt(ResourceManager):
         # of hostnames.  The number of nodes we receive from `$COBALT_PARTSIZE`.
 
         n_nodes          = int(os.environ('COBALT_PARTSIZE'))
-        out, err, ret    = ru.sh_callout('aprun -n %d -N 1 hostname' % n_nodes)
+        out, err, _      = ru.sh_callout('aprun -n %d -N 1 hostname' % n_nodes)
         node_list        = out.split()
         assert(len(node_list) == n_nodes), node_list
 
         # we also want    to learn the core count per node
         cmd              = 'cat /proc/cpuinfo | grep processor | wc -l'
-        out, err, ret    = ru.sh_callout('aprun -n %d -N 1 %s' % (n_nodes, cmd))
-        core_counts      = set([int(x) for x in out.split()])
+        out, err, _      = ru.sh_callout('aprun -n %d -N 1 %s' % (n_nodes, cmd))
+        core_counts      = list(set([int(x) for x in out.split()]))
         assert(len(core_counts) == 1), core_counts
         cores_per_node   = core_counts[0]
 
