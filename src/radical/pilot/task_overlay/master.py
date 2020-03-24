@@ -103,7 +103,7 @@ class Master(rpu.Component):
         '''
 
         tasks = list()
-        for i in range(count):
+        for _ in range(count):
 
             # write config file for that worker
             cfg   = copy.deepcopy(self._cfg)
