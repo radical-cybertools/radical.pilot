@@ -73,8 +73,7 @@ class Srun(LaunchMethod):
         # use `ALL` to export vars pre_exec and RP, and add task env explicitly
         env = '--export=ALL'
         for k,v in task_env.items():
-            env += ",'%s'='%s'" % (k, v)
-
+            env += ',%s="%s"' % (k, v)
 
         # Alas, exact rank-to-core mapping seems only be availabe in Slurm when
         # tasks use full nodes - which in RP is rarely the case.  We thus are
@@ -91,14 +90,20 @@ class Srun(LaunchMethod):
         gpus_per_task    = cud['gpu_processes']
 
         # use `--exclusive` to ensure all tasks get individual resources.
+        # do not use core binding: it triggers warnings on some installations
+        # FIXME: warnings are triggered anyway :-(
         mapping = '--exclusive --cpu-bind=none '           \
                 + '--ntasks %d '        % n_tasks          \
                 + '--cpus-per-task %d ' % threads_per_task \
                 + '--gpus-per-task %d'  % gpus_per_task
 
-        if slots:
+        if not slots:
+            # leave placement to srun
+            pass
 
-            # the scheduler *did* place tasks - we can't honor the core and gpu
+        else:
+
+            # the scheduler did place tasks - we can't honor the core and gpu
             # mapping (see above), but we at least honor the nodelist.
             nodelist = [node['name'] for node in slots['nodes']]
             nodefile = '%s/%s.nodes' % (sbox, uid)
