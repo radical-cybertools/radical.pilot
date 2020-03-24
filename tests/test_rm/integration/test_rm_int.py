@@ -30,9 +30,9 @@ def setUp(resource):
 
 # ------------------------------------------------------------------------------
 #
-def tearDown(lrms, session):
+def tearDown(rm_obj, session):
 
-    lrms.stop()
+    rm_obj.stop()
     session.close()
 
     cur_dir = os.getcwd()
@@ -57,9 +57,9 @@ def test_rm_fork():
     cfg['cores'] = 1
     cfg['gpus'] = 0
 
-    lrms = rpa_rm.ResourceManager.create(name=cfg['resource_manager'], cfg=cfg, session=session)
+    rm_obj = rpa_rm.create(name=cfg['resource_manager'], cfg=cfg, session=session)
 
-    assert lrms.lrms_info == {'agent_nodes'     : {},
+    assert rm_obj.rm_info == {'agent_nodes'     : {},
                               'gpus_per_node'   : 1,
                               'cores_per_node'  : 8,
                               'lfs_per_node'    : {'path': "/tmp", 'size': 1024},
@@ -69,7 +69,7 @@ def test_rm_fork():
                               'mem_per_node'    : 0,
                               'name'            : 'Fork',
                               'node_list'       : [['localhost', 'localhost_0']]}
-    tearDown(lrms, session)
+    tearDown(rm_obj, session)
 
 
 def test_rm_pbspro(resource='ncar.cheyenne'):
@@ -85,9 +85,9 @@ def test_rm_pbspro(resource='ncar.cheyenne'):
     assert 'NUM_PES' in os.environ
     assert 'PBS_JOBID' in os.environ
 
-    lrms = rpa_rm.ResourceManager.create(name=cfg['resource_manager'], cfg=cfg, session=session)
+    rm_obj = rpa_rm.create(name=cfg['resource_manager'], cfg=cfg, session=session)
 
-    node_list = lrms.lrms_info['node_list']
+    node_list = rm_obb.rm_info['node_list']
     # cheyenne at NCAR
     hostname_templates = [
             "cheyenne[0-9]{3}"]
@@ -99,7 +99,7 @@ def test_rm_pbspro(resource='ncar.cheyenne'):
 
 
     """
-    assert lrms.lrms_info == {'name': 'PBSPro', 
+    assert rm_obj.rm_info == {'name': 'PBSPro', 
             'mem_per_node': 0, 
             'lm_info': {}, 
             'cores_per_node': 4, 
@@ -109,7 +109,7 @@ def test_rm_pbspro(resource='ncar.cheyenne'):
             'gpus_per_node': 0}
     """
 
-    tearDown(lrms, session)
+    tearDown(rm_obj, session)
 
 
 def test_rm_torque(resource='xsede.supermic_ssh'):
@@ -123,9 +123,9 @@ def test_rm_torque(resource='xsede.supermic_ssh'):
     assert 'PBS_NUM_PPN' in os.environ
     assert 'PBS_NUM_NODES' in os.environ
 
-    lrms = rpa_rm.ResourceManager.create(name=cfg['resource_manager'], cfg=cfg, session=session)
+    rm_obj = rpa_rm.create(name=cfg['resource_manager'], cfg=cfg, session=session)
 
-    node_list = lrms.lrms_info['node_list']
+    node_list = rm_obj.rm_info['node_list']
     # qb373 at supermic
     hostname_templates = [
             "[a-zA-Z0-9]{5}"]
@@ -136,7 +136,7 @@ def test_rm_torque(resource='xsede.supermic_ssh'):
     assert res
 
     """
-    assert lrms.lrms_info == {'name': 'Torque', 
+    assert rm_obj.rm_info == {'name': 'Torque', 
             'mem_per_node': 0, 
             'lm_info': {}, 
             'cores_per_node': 24, 
@@ -146,7 +146,7 @@ def test_rm_torque(resource='xsede.supermic_ssh'):
             'gpus_per_node': 0}
     """
 
-    tearDown(lrms, session)
+    tearDown(rm_obj, session)
 
 
 def test_rm_lsf_summit(resource='ornl.summit'):
@@ -157,21 +157,21 @@ def test_rm_lsf_summit(resource='ornl.summit'):
 
     os.environ['LSB_DJOB_HOSTFILE'] = 'tests/test_cases/rm/nodelist.lsf'
 
-    lrms = rpa_rm.ResourceManager.create(name=cfg['resource_manager'], cfg=cfg, session=session)
-    assert lrms.lrms_info == {'mem_per_node': 0, 
+    rm_obj = rpa_rm.create(name=cfg['resource_manager'], cfg=cfg, session=session)
+    assert rm_obj.rm_info == {'mem_per_node': 0, 
             'cores_per_node': 20,
             'lfs_per_node': {'path': None, 'size': 0}, 
             'node_list': [['nodes1', '1'], ['nodes2', '2']], 
             'gpus_per_socket': 3, 
             'name': 'LSF_SUMMIT', 
-            'lm_info': {}, 
+            'lm_info': {'cvd_id_mode':'logical'}, 
             'smt': 1, 
             'cores_per_socket': 10,
             'sockets_per_node': 2, 
             'agent_nodes': {}, 
             'gpus_per_node': 6}
 
-    tearDown(lrms, session)
+    tearDown(rm_obj, session)
 
 
 def test_rm_slurm(resource='xsede.wrangler_ssh'):
@@ -180,14 +180,14 @@ def test_rm_slurm(resource='xsede.wrangler_ssh'):
     cfg['cores'] = 1
     cfg['gpus'] = 0
 
-    lrms = rpa_rm.ResourceManager.create(name=cfg['resource_manager'], cfg=cfg, session=session)
+    rm_obj = rpa_rm.create(name=cfg['resource_manager'], cfg=cfg, session=session)
 
     assert 'SLURM_NODELIST' in os.environ
     assert 'SLURM_NPROCS' in os.environ
     assert 'SLURM_NNODES' in os.environ
     assert 'SLURM_CPUS_ON_NODE' in os.environ
 
-    node_list = lrms.lrms_info['node_list']
+    node_list = rm_obj.rm_info['node_list']
     # comet-03-03 at sdsc
     # r342 at psc
     # c456-041 at tacc (wrangler, stampede2, frontera)
@@ -203,7 +203,7 @@ def test_rm_slurm(resource='xsede.wrangler_ssh'):
         res = res or re.match(expr,node_list[0][0])
     assert res
     '''
-    assert lrms.lrms_info == {'name': 'Slurm', 
+    assert rm_obj.rm_info == {'name': 'Slurm', 
             'mem_per_node': 0, 
             'lm_info': {'cores_per_node': 24}, 
             'cores_per_node': 24, 
@@ -213,6 +213,6 @@ def test_rm_slurm(resource='xsede.wrangler_ssh'):
             'gpus_per_node': 0}
     '''
 
-    tearDown(lrms, session)
+    tearDown(rm_obj, session)
 
 
