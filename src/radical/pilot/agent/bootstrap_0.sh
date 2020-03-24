@@ -9,15 +9,15 @@ unset -f cd ls uname pwd date bc cat echo
 
 # Report where we are, as this is not always what you expect ;-)
 # Save environment, useful for debugging
-echo "---------------------------------------------------------------------"
+echo "-------------------------------------------------------------------------"
 echo "bootstrap_0 running on host: `hostname -f`."
 echo "bootstrap_0 started as     : '$0 $@'"
 echo "safe environment of bootstrap_0"
 
 # print the sorted env for logging, but also keep a copy so that we can dig
 # original env settings for any CUs, if so specified in the resource config.
-env | sort | grep '=' | sed -e 's/^([^=]*)=(.*)$/\1="\2"/' > env.orig
-echo "# -------------------------------------------------------------------"
+env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g'  > env.orig
+echo "# -----------------------------------------------------------------------"
 
 
 # interleave stdout and stderr, to get a coherent set of log messages
