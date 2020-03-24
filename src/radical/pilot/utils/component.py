@@ -234,7 +234,6 @@ class ComponentManager(object):
         # to appear.
         failed = self._hb.wait_startup(self._uids, timeout=timeout * 10)
         if failed:
-            self._log.error(   'could not start all components %s' % failed)
             raise RuntimeError('could not start all components %s' % failed)
 
         self._prof.prof('start_components_stop', uid=self._uid)
