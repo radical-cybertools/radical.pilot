@@ -2,7 +2,6 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
 # ------------------------------------------------------------------------------
 # we *first* import radical.utils, so that the monkeypatching of the logger has
 # a chance to kick in before the logging module is pulled by any other 3rd party
@@ -40,6 +39,8 @@ from . import agent
 
 from .agent import Agent_0
 from .agent import Agent_n
+
+from .task_overlay import Master, Worker
 
 
 # ------------------------------------------------------------------------------
