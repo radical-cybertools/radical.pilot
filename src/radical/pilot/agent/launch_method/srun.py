@@ -69,6 +69,8 @@ class Srun(LaunchMethod):
         else          : task_cmd = task_exec
 
         env = '--export=ALL'
+        for k,v in task_env.items():
+            env += ',%s="%s"' % (k, v)
 
         if not slots:
             # leave placement to srun
