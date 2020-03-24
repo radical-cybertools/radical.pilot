@@ -34,6 +34,8 @@ class Worker(rpu.Component):
 
         info = self.initialize()
 
+        time.sleep(1)
+        self._log.info('register %s', self._uid)
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
                                           'arg': {'uid' : self._uid,
                                                   'info': info}})
@@ -43,10 +45,11 @@ class Worker(rpu.Component):
     #
     def _control_cb(self, topic, msg):
 
-        self._log.debug('got control msg: %s: %s', topic, msg)
-
         if msg['cmd'] == 'worker_terminate':
             if msg['arg']['uid'] == self._uid:
+        
+                self._log.debug('got terminate msg: %s: %s', topic, msg)
+
                 self._term.set()
                 self.stop()
                 sys.exit(0)
@@ -57,7 +60,7 @@ class Worker(rpu.Component):
     def run(self):
 
         while not self._term.is_set():
-            time.sleep(0.1)
+            time.sleep(0.5)
 
 
 # ------------------------------------------------------------------------------
