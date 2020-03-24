@@ -14,7 +14,6 @@ CORES           =   16
 SIM_INSTANCES   =   16
 ANA_INSTANCES   =   1           # DO NOT CHANGE !
 CYCLES          =   2
-SCHED       = radical.pilot.SCHEDULER_DIRECT_SUBMISSION
 
 MY_STAGING_AREA = 'staging:///'
 
@@ -89,7 +88,7 @@ def pilot_state_cb (pilot, state):
             print("Pilot {0} has FAILED. Can't recover.".format(pilot.uid))
             print("Pilot log:- ")
             for log in pilot.log:
-                print log.as_dict()
+                print(log.as_dict())
             print(u'Pilot STDOUT : {0}'.format(pilot.stdout))
             print(u'Pilot STDERR : {0}'.format(pilot.stderr))
             sys.exit(1)
@@ -110,15 +109,15 @@ def unit_state_cb (unit, state):
             print("ComputeUnit {0} has FAILED. Can't recover.".format(unit.uid))
             print("ComputeUnit log:- ")
             for log in unit.log:
-                print log.as_dict()
+                print(log.as_dict())
             print(u"STDERR : {0}".format(unit.stderr))
             print(u"STDOUT : {0}".format(unit.stdout))
             sys.exit(1)
 
         elif state == radical.pilot.states.CANCELED:
-            print("#######################"
-            print("##       ERROR       ##"
-            print("#######################"
+            print("#######################")
+            print("##       ERROR       ##")
+            print("#######################")
             print("ComputeUnit {0} was canceled prematurely because the \
                    pilot was terminated. Can't recover.".format(unit.uid))
             sys.exit(1)
