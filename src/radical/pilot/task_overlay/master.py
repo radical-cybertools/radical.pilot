@@ -75,21 +75,23 @@ class Master(rpu.Component):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        self._log.debug('control: %s: %s', cmd, arg)
-
         if cmd == 'worker_register':
 
             uid  = arg['uid']
             info = arg['info']
+
+            self._log.debug('register %s', uid)
 
             with self._lock:
                 self._workers[uid]['info']  = info
                 self._workers[uid]['state'] = 'ACTIVE'
                 self._log.debug('info: %s', info)
 
+
         elif cmd == 'worker_unregister':
 
             uid = arg['uid']
+            self._log.debug('unregister %s', uid)
 
             with self._lock:
                 self._workers[uid]['state'] = 'DONE'
@@ -107,11 +109,11 @@ class Master(rpu.Component):
 
             # write config file for that worker
             cfg   = copy.deepcopy(self._cfg)
-            cfg['info'] = info
             uid   = ru.generate_id('worker')
             sbox  = '%s/%s'      % (cfg['base'], uid)
             fname = '%s/%s.json' % (sbox, uid)
 
+            cfg['info'] = info
             cfg['kind'] = 'worker'
             cfg['uid']  = uid
             cfg['base'] = sbox
@@ -135,6 +137,8 @@ class Master(rpu.Component):
             tasks.append(task)
             self._workers[uid] = task
 
+            self._log.debug('submit %s', uid)
+
         # insert the task
         self.advance(tasks, publish=False, push=True)
 
@@ -153,7 +157,8 @@ class Master(rpu.Component):
                 with self._lock:
                     states = [w['state'] for w in self._workers.values()]
                 n = states.count('ACTIVE')
-                self._log.debug('states [%d]: %s', n, {k:states.count(k) for k in set(states)})
+                self._log.debug('states [%d]: %s', n,
+                                {k:states.count(k) for k in set(states)})
                 if n >= count:
                     self._log.debug('wait ok')
                     return
@@ -180,7 +185,7 @@ class Master(rpu.Component):
         '''
 
         for uid in self._workers:
-            self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
+            self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_terminate',
                                               'arg': {'uid': uid}})
 
 

@@ -125,14 +125,14 @@ class MyMaster(rp.task_overlay.Master):
                                  'uid'        : self._uid + '.req',
                                  'path'       : os.getcwd(),
                                  'stall_hwm'  : 0,
-                                 'bulk_size'  : 0})
+                                 'bulk_size'  : 1})
 
         res_cfg = ru.Config(cfg={'channel'    : 'to_res',
                                  'type'       : 'queue',
                                  'uid'        : self._uid + '.res',
                                  'path'       : os.getcwd(),
                                  'stall_hwm'  : 0,
-                                 'bulk_size'  : 0})
+                                 'bulk_size'  : 1})
 
         self._req_queue = ru.zmq.Queue(req_cfg)
         self._res_queue = ru.zmq.Queue(res_cfg)

@@ -78,7 +78,8 @@ class MyWorker(rp.task_overlay.Worker):
         important work
         '''
 
-        return 'hello %s @ %s' % (world, time.time())
+        time.sleep(0.5)
+        return 'hello %s @ %s [%s]' % (world, time.time(), self.uid)
 
 
 # ------------------------------------------------------------------------------
