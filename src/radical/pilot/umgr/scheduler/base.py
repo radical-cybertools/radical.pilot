@@ -178,6 +178,7 @@ class UMGRSchedulingComponent(rpu.Component):
 
         if to_update:
             self.update_pilots(to_update)
+        self._log.debug('updated  : %s', to_update)
 
 
     # --------------------------------------------------------------------------
@@ -332,6 +333,8 @@ class UMGRSchedulingComponent(rpu.Component):
         pid = pilot['uid']
         uid = unit['uid']
 
+        self._log.debug('assign %s to %s', uid, pid)
+
         unit['pilot'           ] = pid
         unit['client_sandbox'  ] = str(self._session._get_client_sandbox())
         unit['resource_sandbox'] = str(self._session._get_resource_sandbox(pilot))
@@ -462,6 +465,7 @@ class UMGRSchedulingComponent(rpu.Component):
                 else:
                     to_schedule.append(unit)
 
+        self._log.debug('to_schedule: %d', len(to_schedule))
         self._work(to_schedule)
 
 
