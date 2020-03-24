@@ -96,7 +96,17 @@ class Popen(AgentExecutingComponent) :
                 session = self._session)
 
         self.gtod   = "%s/gtod" % self._pwd
+        self.prof   = "%s/prof" % self._pwd
         self.tmpdir = tempfile.gettempdir()
+
+        with open(self.prof, 'w') as fout:
+            fout.write('''#!/bin/sh
+test -z "$RP_PROF_TGT" && return
+echo "$($RP_GTOD),$1,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING,$2" >> $RP_PROF_TGT
+''')
+        st = os.stat(self.prof)
+        os.chmod(self.prof, st.st_mode | stat.S_IEXEC)
+
 
 
     # --------------------------------------------------------------------------
@@ -210,32 +220,18 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_UNIT_ID="%s"\n'      % cu['uid']
             env_string += 'export RP_UNIT_NAME="%s"\n'    % cu['description'].get('name')
             env_string += 'export RP_GTOD="%s"\n'         % self.gtod
+            env_string += 'export RP_PROF="%s"\n'         % self.prof
             env_string += 'export RP_TMP="%s"\n'          % self._cu_tmp
             env_string += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
                                                           % self._pwd
             if self._prof.enabled:
-                env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
+                env_string += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sandbox, cu['uid'])
 
             else:
-                env_string += 'unset  RP_PROF\n'
+                env_string += 'unset  RP_PROF_TGT\n'
 
             if 'RP_APP_TUNNEL' in os.environ:
                 env_string += 'export RP_APP_TUNNEL="%s"\n' % os.environ['RP_APP_TUNNEL']
-
-            env_string += '''
-prof(){
-    if test -z "$RP_PROF"
-    then
-        return
-    fi
-    event=$1
-    msg=$2
-    now=$($RP_GTOD)
-    echo "$now,$event,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING,$msg" >> $RP_PROF
-}
-prof="$(typeset -f prof)"
-export prof
-'''
 
             # FIXME: this should be set by an LaunchMethod filter or something (GPU)
             env_string += 'export OMP_NUM_THREADS="%s"\n' % descr['cpu_threads']
@@ -258,9 +254,9 @@ export prof
                     env_string += 'export "%s=%s"\n' % (key, val)
 
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
-            launch_script.write('prof cu_start\n')
+            launch_script.write('$RP_PROF cu_start\n')
             launch_script.write('\n# Change to unit sandbox\ncd %s\n' % sandbox)
-            launch_script.write('prof cu_cd_done\n')
+            launch_script.write('$RP_PROF cu_cd_done\n')
 
             # Before the Big Bang there was nothing
             if self._cfg.get('cu_pre_exec'):
@@ -274,15 +270,15 @@ export prof
                     pre += "%s || %s\n" % (elem, fail)
                 # Note: extra spaces below are for visual alignment
                 launch_script.write("\n# Pre-exec commands\n")
-                launch_script.write('prof cu_pre_start\n')
+                launch_script.write('$RP_PROF cu_pre_start\n')
                 launch_script.write(pre)
-                launch_script.write('prof cu_pre_stop\n')
+                launch_script.write('$RP_PROF cu_pre_stop\n')
 
             launch_script.write("\n# The command to run\n")
-            launch_script.write('prof cu_exec_start\n')
+            launch_script.write('$RP_PROF cu_exec_start\n')
             launch_script.write('%s\n' % launch_command)
             launch_script.write('RETVAL=$?\n')
-            launch_script.write('prof cu_exec_stop\n')
+            launch_script.write('$RP_PROF cu_exec_stop\n')
 
             # After the universe dies the infrared death, there will be nothing
             if descr['post_exec']:
@@ -291,12 +287,12 @@ export prof
                 for elem in descr['post_exec']:
                     post += "%s || %s\n" % (elem, fail)
                 launch_script.write("\n# Post-exec commands\n")
-                launch_script.write('prof cu_post_start\n')
+                launch_script.write('$RP_PROF cu_post_start\n')
                 launch_script.write('%s\n' % post)
-                launch_script.write('prof cu_post_stop "$ret=RETVAL"\n')
+                launch_script.write('$RP_PROF cu_post_stop "$ret=RETVAL"\n')
 
             launch_script.write("\n# Exit the script with the return code from the command\n")
-            launch_script.write("prof cu_stop\n")
+            launch_script.write("$RP_PROF cu_stop\n")
             launch_script.write("exit $RETVAL\n")
 
         # done writing to launch script, get it ready for execution.
