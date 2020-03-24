@@ -3,12 +3,12 @@ import radical.utils as ru
 import subprocess
 
 session      = rp.Session()
-config = ru.read_json('../../../examples/config.json')
+config = ru.read_json('examples/config.json')
 
 def test_slurm():
     excluded_list = []
     cmd_to_run = "srun -t 00:00:10 -N 1 /bin/env|egrep 'SLURM_NODELIST|SLURM_NPROCS|SLURM_NNODES|SLURM_CPUS_ON_NODE'"
-    for resource_name, values in session._resource_configs.items():
+    for resource_name, values in session._rcfgs.items():
         if values['resource_manager'] != 'SLURM':
             """
             xsede.frontera
@@ -38,6 +38,26 @@ def test_slurm():
         actual_output = subprocess.check_output(cmd.split())
         expected_output = "SLURM_NPROCS=1\nSLURM_NNODES=1\nSLURM_NODELIST=\nSLURM_CPUS_ON_NODE={}".format(values['cores_per_node'])
         assert actual_output == expected_output
+
+
+def test_slurm_xsede_stampede2():
+
+    resource_group = "xsede"
+    resource_name = "stampede2_srun"
+    values = session._rcfgs[resource_group][resource_name]
+    cfg = config["{}.{}".format(resource_group, resource_name)]
+    cmd_to_run = ("{} -t 00:00:10 -N 1 -n 1 -p {} " + \
+            "/bin/env").format(values['task_launch_method'].lower(),
+                    values['default_queue'])
+
+    env = subprocess.Popen(cmd_to_run.split(), stdout=subprocess.PIPE)
+    actual_output = subprocess.check_output(("egrep",
+        "'SLURM_NPROCS|SLURM_NNODES'"), #|SLURM_CPUS_ON_NODE'"),
+        stdin=env.stdout) 
+    expected_output = \
+            "SLURM_NPROCS=1\nSLURM_NNODES=1\n" #SLURM_NODELIST=\nSLURM_CPUS_ON_NODE={}".format(cfg['cores'])
+    assert actual_output == expected_output
+
 
 def test_lsf_summit():
     pass
