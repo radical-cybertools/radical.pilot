@@ -16,6 +16,7 @@ RM_NAME_PBSPRO      = 'PBSPRO'
 RM_NAME_SGE         = 'SGE'
 RM_NAME_SLURM       = 'SLURM'
 RM_NAME_TORQUE      = 'TORQUE'
+RM_NAME_COBALT      = 'COBALT'
 RM_NAME_YARN        = 'YARN'
 RM_NAME_SPARK       = 'SPARK'
 RM_NAME_DEBUG       = 'DEBUG'
@@ -218,6 +219,7 @@ class ResourceManager(object):
         from .sge         import SGE
         from .slurm       import Slurm
         from .torque      import Torque
+        from .cobalt      import Cobalt
         from .yarn        import Yarn
         from .spark       import Spark
         from .debug       import Debug
@@ -237,6 +239,7 @@ class ResourceManager(object):
                 RM_NAME_SGE         : SGE,
                 RM_NAME_SLURM       : Slurm,
                 RM_NAME_TORQUE      : Torque,
+                RM_NAME_COBALT      : Cobalt,
                 RM_NAME_YARN        : Yarn,
                 RM_NAME_SPARK       : Spark,
                 RM_NAME_DEBUG       : Debug
