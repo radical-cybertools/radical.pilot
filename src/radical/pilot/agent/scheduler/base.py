@@ -231,7 +231,7 @@ class AgentSchedulingComponent(rpu.Component):
         # during agent startup.  We dig them out of the config at this point.
         #
         # NOTE: this information is insufficient for the torus scheduler!
-        self._pid                 = self._cfg['pid']
+        self._pid               = self._cfg['pid']
         self._rm_info           = self._cfg['rm_info']
         self._rm_lm_info        = self._cfg['rm_info']['lm_info']
         self._rm_node_list      = self._cfg['rm_info']['node_list']
@@ -258,7 +258,8 @@ class AgentSchedulingComponent(rpu.Component):
         # sufficient, only rebuild when we run dry
         self._waitpool = dict()  # map uid:task
         self._ts_map   = dict()
-        self._ts_valid = False  # set to False to trigger re-binning
+        self._ts_valid = False   # set to False to trigger re-binning
+        self._skipped  = 0       # schedule attempts skipped by bisect
 
         # the scheduler algorithms have two inputs: tasks to be scheduled, and
         # slots becoming available (after tasks complete).
@@ -300,6 +301,7 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def finalize(self):
 
+        self._prof.prof('schedule_skipped', uid=self._uid, msg=self._skipped)
         self._p.terminate()
 
 
@@ -630,7 +632,9 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def _prof_sched_skip(self, task):
 
-        self._prof.prof('schedule_skip', uid=task['uid'])
+        self._skipped += 1
+
+        # self._prof.prof('schedule_skip', uid=task['uid'])
 
 
     # --------------------------------------------------------------------------
