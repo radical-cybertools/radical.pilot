@@ -103,6 +103,10 @@ class Default(PMGRLaunchingComponent):
             for url,js in self._saga_js_cache.items():
                 js.close()
 
+        self.unregister_timed_cb(self._pilot_watcher_cb)
+        self.unregister_input(rps.PMGR_LAUNCHING_PENDING,
+                              rpc.PMGR_LAUNCHING_QUEUE, self.work)
+
 
     # --------------------------------------------------------------------------
     #
