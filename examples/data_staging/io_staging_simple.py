@@ -3,22 +3,20 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import os
 import sys
 import radical.pilot as rp
 
-INPUT_FILE = 'input_file.txt'
-INTERMEDIATE_FILE = 'intermediate_file.txt'
-OUTPUT_FILE = 'output_file.txt'
+# READ: The RADICAL-Pilot documentation:
+#   https://radicalpilot.readthedocs.io/en/stable/
+#
+# Try running this example with RADICAL_PILOT_VERBOSE=debug set if
+# you want to see what happens behind the scenes!
 
 
 # ------------------------------------------------------------------------------
 #
 def pilot_state_cb (pilot, state):
     """ this callback is invoked on all pilot state changes """
-
-    if not pilot:
-        return
 
     print("[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
 
@@ -31,22 +29,10 @@ def pilot_state_cb (pilot, state):
 def unit_state_cb (unit, state):
     """ this callback is invoked on all unit state changes """
 
-    print("[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state))
+    print("[Callback]: ComputeUnit '%s' state: %s." % (unit.uid, state))
 
-    if not unit:
-        return
-
-    if state in [rp.FAILED, rp.DONE, rp.CANCELED]:
-
-        print("* unit %s (%s) state %s (%s) %s - %s, out/err: %s / %s" \
-                 % (unit.uid,
-                    unit.execution_locations,
-                    unit.state,
-                    unit.exit_code,
-                    unit.start_time,
-                    unit.stop_time,
-                    unit.stdout,
-                    unit.stderr))
+    if state == rp.FAILED:
+        sys.exit (1)
 
 
 # ------------------------------------------------------------------------------
@@ -70,75 +56,58 @@ if __name__ == "__main__":
     # clause...
     try:
 
-        # Create input file
-        radical_cockpit_occupants = ['Carol', 'Eve', 'Alice', 'Bob']
-        for occ in radical_cockpit_occupants:
-            os.system('/bin/echo "%s" >> %s' % (occ, INPUT_FILE))
-
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
-        pmgr = rp.PilotManager(session)
+        pmgr = rp.PilotManager(session=session)
+
+        # Register our callback with the PilotManager. This callback will get
+        # called every time any of the pilots managed by the PilotManager
+        # change their state.
         pmgr.register_callback(pilot_state_cb)
 
-        # Define a C-core on stamped that runs for M minutes and
-        # uses $HOME/radical.pilot.sandbox as sandbox directory.
+        # Define a single-core local pilot that runs for 5 minutes and cleans up
+        # after itself.
         pdesc = rp.ComputePilotDescription()
         pdesc.resource = "local.localhost"
-        pdesc.runtime = 15 # M minutes
-        pdesc.cores = 2 # C cores
+        pdesc.cores    = 1
+        pdesc.runtime  = 5
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
+        # Create a Compute Unit that sorts the local password file and writes the
+        # output to result.dat.
+        #
+        #  The exact command that is executed by the agent is:
+        #    "/usr/bin/sort -o result.dat passwd"
+        #
+        cud = rp.ComputeUnitDescription()
+        cud.executable     = "/usr/bin/sort"
+        cud.arguments      = ["-o", "result.dat", "passwd"]
+        cud.input_staging  = "/etc/passwd"
+        cud.output_staging = "result.dat"
+
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
         umgr = rp.UnitManager(session=session)
-        umgr.register_callback(unit_state_cb, rp.UNIT_STATE)
+
+        # Register our callback with the UnitManager. This callback will get
+        # called every time any of the units managed by the UnitManager
+        # change their state.
+        umgr.register_callback(unit_state_cb)
 
         # Add the previously created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)
 
-        # Configure the staging directive for intermediate data
-        sd_inter_out = {
-            'source': INTERMEDIATE_FILE,
-            # Note the triple slash, because of URL peculiarities
-            'target': 'staging:///%s' % INTERMEDIATE_FILE,
-            'action': rp.COPY
-        }
+        # Submit the previously created ComputeUnit description to the
+        # PilotManager. This will trigger the selected scheduler to start
+        # assigning the ComputeUnit to the ComputePilot.
+        unit = umgr.submit_units(cud)
 
-        # Task 1: Sort the input file and output to intermediate file
-        cud1 = rp.ComputeUnitDescription()
-        cud1.executable = 'sort'
-        cud1.arguments = ['-o', INTERMEDIATE_FILE, INPUT_FILE]
-        cud1.input_staging = INPUT_FILE
-        cud1.output_staging = sd_inter_out
-
-        # Submit the first task for execution.
-        umgr.submit_units(cud1)
-
-        # Wait for the compute unit to finish.
+        # Wait for the compute unit to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
 
-        # Configure the staging directive for input intermediate data
-        sd_inter_in = {
-            # Note the triple slash, because of URL peculiarities
-            'source': 'staging:///%s' % INTERMEDIATE_FILE,
-            'target': INTERMEDIATE_FILE,
-            'action': rp.LINK
-        }
-
-        # Task 2: Take the first line of the sort intermediate file and write to output
-        cud2 = rp.ComputeUnitDescription()
-        cud2.executable = '/bin/bash'
-        cud2.arguments = ['-c', 'head -n1 %s > %s' %
-                          (INTERMEDIATE_FILE, OUTPUT_FILE)]
-        cud2.input_staging = sd_inter_in
-        cud2.output_staging = OUTPUT_FILE
-
-        # Submit the second CU for execution.
-        umgr.submit_units(cud2)
-
-        # Wait for the compute unit to finish.
-        umgr.wait_units()
+        print("* Task %s state: %s, exit code: %s,"
+              % (unit.uid, unit.state, unit.exit_code))
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
