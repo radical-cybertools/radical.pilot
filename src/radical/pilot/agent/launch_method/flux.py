@@ -76,7 +76,6 @@ class Flux(LaunchMethod):
 
         profiler.prof('flux_started')
 
-
         # ----------------------------------------------------------------------
         def _watch_flux(flux_env):
 
@@ -120,22 +119,22 @@ class Flux(LaunchMethod):
         pass
 
 
-    # --------------------------------------------------------------------------
-    #
-    def construct_command(self, unit, launch_script_hop=None):
-
-        uid          = unit['uid']
-        cud          = unit['description']
-        procs        = cud['cpu_processes']
-        cpn          = cud['cpu_threads']
-        gpn          = cud['gpu_processes']
-        task_exec    = cud['executable']
-        task_args    = cud.get('arguments') or list()
-        task_sandbox = unit['unit_sandbox_path']
-
-        self._log.debug('prep %s', uid)
-
-        return spec, None
+  # # --------------------------------------------------------------------------
+  # #
+  # def construct_command(self, unit, launch_script_hop=None):
+  #
+  #     uid          = unit['uid']
+  #     cud          = unit['description']
+  #     procs        = cud['cpu_processes']
+  #     cpn          = cud['cpu_threads']
+  #     gpn          = cud['gpu_processes']
+  #     task_exec    = cud['executable']
+  #     task_args    = cud.get('arguments') or list()
+  #     task_sandbox = unit['unit_sandbox_path']
+  #
+  #     self._log.debug('prep %s', uid)
+  #
+  #     return spec, None
 
 
 # ------------------------------------------------------------------------------

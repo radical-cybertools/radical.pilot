@@ -96,7 +96,7 @@ class Flux(AgentExecutingComponent) :
         self._log.info('command_cb [%s]: %s', topic, msg)
 
         cmd = msg['cmd']
-        arg = msg['arg']
+      # arg = msg['arg']
 
         if cmd == 'cancel_units':
 
@@ -124,7 +124,6 @@ class Flux(AgentExecutingComponent) :
         flux_handle = None
 
         try:
-
             # thread local initialization
             import flux
 
