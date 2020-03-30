@@ -95,6 +95,9 @@ class Continuous(AgentSchedulingComponent):
         #
         self._scattered = self._cfg.get('scattered', False)
 
+        import pprint
+        print('=== cfg: %s' % pprint.pformat(self._cfg))
+
         self.nodes = []
         for node, node_uid in self._rm_node_list:
 
@@ -131,7 +134,8 @@ class Continuous(AgentSchedulingComponent):
                         idx = s * 21 * smt + i
                         node_entry['cores'][idx] = rpc.DOWN
 
-            elif self._cfg.blocked_cores:
+            if self._cfg.resource_cfg.blocked_cores:
+                print('blocked: %s' % self._cfg.resource_cfg.blocked_cores)
                 for idx in self._cfg.blocked_cores:
                     node_entry['cores'][idx] = rpc.DOWN
 
