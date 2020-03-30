@@ -251,8 +251,7 @@ class PRTE(LaunchMethod):
         task_argstr  = self._create_arg_string(task_args)
 
         n_threads = cu['description'].get('cpu_threads',   1)
-        n_procs   = cu['description'].get('cpu_processes', 0) \
-                  + cu['description'].get('gpu_processes', 0)
+        n_procs   = cu['description'].get('cpu_processes', 1)
 
         if not n_procs  : n_procs   = 1
         if not n_threads: n_threads = 1
@@ -299,8 +298,8 @@ class PRTE(LaunchMethod):
             # FIXME: ensure correct binding for procs and threads via slotfile
 
             # enact the scheduler's host placement.  For now, we leave socket,
-            # core and thread placement to the prted, and just add all cpu and
-            # gpu process slots to the host list.
+            # core and thread placement to the prted, and just add all process
+            # slots to the host list.
             hosts = ''
 
             for node in slots['nodes']:
