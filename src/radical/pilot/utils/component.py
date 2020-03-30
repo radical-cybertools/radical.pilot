@@ -591,7 +591,7 @@ class Component(object):
         initialization of component base class goes here
         '''
         # components can always publish logs, state updates and control messages
-        self.register_publisher(rpc.LOG_PUBSUB)
+     #  self.register_publisher(rpc.LOG_PUBSUB)
         self.register_publisher(rpc.STATE_PUBSUB)
         self.register_publisher(rpc.CONTROL_PUBSUB)
 
