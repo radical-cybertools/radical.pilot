@@ -60,9 +60,12 @@ class IBRun(LaunchMethod):
                 if slot_node['uid'] == node[0]:
                     for core_map in slot_node['core_map']:
                         for core_idx in core_map:
+                            print('add offset %s' % index + core_idx)
                             offsets.append(index + core_idx)
 
+            print('inc index  %s' % index)
             index += cpn
+            print('inc index! %s' % index)
 
       # self._log.error('offs : %s', offsets)
         print('offs : %s' % offsets)
