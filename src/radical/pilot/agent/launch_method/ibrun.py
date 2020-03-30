@@ -49,6 +49,7 @@ class IBRun(LaunchMethod):
         cpn     = self._cfg.cores_per_node
         index   = 0
         offsets = list()
+        print('offs : %s' % offsets)
 
         import pprint
       # self._log.error('cpn  : %s', cpn)
@@ -60,13 +61,15 @@ class IBRun(LaunchMethod):
                 if slot_node['uid'] == node[0]:
                     for core_map in slot_node['core_map']:
                         for core_idx in core_map:
-                            print('add offset %s [%s + %s]' %
-                                     (index + core_idx, index, core_idx))
+                            print('add 0 offset %s [%s + %s] %s' %
+                                     (index + core_idx, index, core_idx, offsets))
                             offsets.append(index + core_idx)
+                            print('add 1 offset %s [%s + %s] %s\n' %
+                                     (index + core_idx, index, core_idx, offsets))
 
-            print('inc index  %s' % index)
+            print('inc index 0 %s %s'   % (index, offsets))
             index += cpn
-            print('inc index! %s' % index)
+            print('inc index 1 %s %s\n' % (index, offsets))
 
       # self._log.error('offs : %s', offsets)
         print('offs : %s' % offsets)
