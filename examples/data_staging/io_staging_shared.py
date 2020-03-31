@@ -78,7 +78,8 @@ if __name__ == "__main__":
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
-        umgr = rp.UnitManager(session, rp.SCHEDULER_BACKFILLING)
+        #umgr = rp.UnitManager(session, rp.SCHEDULER_BACKFILLING)
+        umgr = rp.UnitManager(session=session)
 
         # Add the previously created ComputePilot to the UnitManager.
         umgr.add_pilots(pilot)
@@ -99,7 +100,7 @@ if __name__ == "__main__":
             cud.executable = '/bin/bash'
             cud.arguments = ['-c', 'cat %s %s > %s' %
                              (SHARED_INPUT_FILE, input_file, output_file)]
-            cud.cores = 1
+            #cud.cores = 1
             cud.input_staging = [sd_shared, input_file]
             cud.output_staging = output_file
 

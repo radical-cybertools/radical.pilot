@@ -242,7 +242,7 @@ if __name__ == "__main__":
                                         '-c', crd_file,
                                         '-ref', 'min%s.crd' % cycle
                                     ]
-                cud.cores          = 1
+                #cud.cores          = 1
 
                 # --------------------------------------------------------------
                 # Data Staging for the CU
@@ -322,7 +322,7 @@ if __name__ == "__main__":
                                      '-p', top_file,
                                      '-c', 'md%s.crd' % cycle
                                      ]
-                cud.cores          = 1
+                #cud.cores          = 1
 
                 # --------------------------------------------------------------
                 # Data Staging
