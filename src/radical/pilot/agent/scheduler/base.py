@@ -929,7 +929,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # make sure the core sets can host the requested number of threads
         assert(not len(cores) % threads_per_proc)
-        n_procs =  len(cores) / threads_per_proc
+        n_procs =  int(len(cores) / threads_per_proc)
 
         idx = 0
         for _ in range(n_procs):
