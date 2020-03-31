@@ -11,6 +11,7 @@ try:
 except ImportError:
     from unittest import mock
 
+
 # ------------------------------------------------------------------------------
 #
 @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
@@ -175,6 +176,8 @@ def test_try_allocation(mocked_init, mocked_schedule_unit, mocked_handle_cuda,
                              "lm_info": "INFO",
                              "gpus_per_node": 6,
                              }
+
+
 # ------------------------------------------------------------------------------
 #
 @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
@@ -266,6 +269,8 @@ def test_handle_cuda(mocked_init):
 
     with pytest.raises(ValueError):
         component._handle_cuda(unit)
+
+
 # ------------------------------------------------------------------------------
 #
 @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)

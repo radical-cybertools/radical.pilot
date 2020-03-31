@@ -39,10 +39,9 @@ def test_configure(mocked_init, mocked_init_continuous, mocked_subscriber):
 
     component._configure()
 
+
 # ------------------------------------------------------------------------------
 #
-
-
 @mock.patch.object(ContinuousOrdered, '__init__', return_value=None)
 @mock.patch.object(ContinuousOrdered, '_try_schedule', return_value=None)
 @mock.patch.object(Continuous, 'advance')
@@ -56,8 +55,7 @@ def test_schedule_units(mocked_init, mocked_try_schedule, mocked_advance):
     component._lock = mt.RLock()
     component._log = ru.Logger('dummy')
     component._unordered = list()
-    units = {
-        "uid"        : "unit.000001",
+    units = [{"uid"        : "unit.000001",
         "description":
             {
                 "executable"    : "/bin/sleep",
@@ -68,8 +66,8 @@ def test_schedule_units(mocked_init, mocked_try_schedule, mocked_advance):
                 "gpu_threads"   : 1,
                 "mem_per_process": 128,
                 "lfs_per_process":2
-            },
-        "uid"        : "unit.000002",
+            }},
+        {"uid"        : "unit.000002",
         "description":
             {
                 "executable"    : "/bin/sleep",
@@ -81,7 +79,7 @@ def test_schedule_units(mocked_init, mocked_try_schedule, mocked_advance):
                 "mem_per_process": 128,
                 "lfs_per_process":2
             },
-    }
+        }]
     component._schedule_units(units)
 
 # ------------------------------------------------------------------------------
