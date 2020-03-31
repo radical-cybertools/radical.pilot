@@ -174,7 +174,7 @@ def test_rm_lsf_summit(resource='ornl.summit'):
     tearDown(rm_obj, session)
 
 
-def test_rm_slurm(resource='xsede.wrangler_ssh'):
+def test_rm_slurm(resource='xsede.bridges'):
 
     cfg, session = setUp(resource)
     cfg['cores'] = 1
