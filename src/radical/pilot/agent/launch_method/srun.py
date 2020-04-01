@@ -2,7 +2,7 @@
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
+import math
 import os
 
 import radical.utils as ru
@@ -20,7 +20,7 @@ class Srun(LaunchMethod):
     does not allow to place a task on a specific set of nodes and cores, at
     least not in the general case.  It is possible to select nodes as long as
     the task uses (a part of) a single node, or the task is using multiple nodes
-    uniformely.  Core pinning is only available on tasks which use exactly one
+    uniformly.  Core pinning is only available on tasks which use exactly one
     full node (and in that case becomes useless for our purposes).
 
     We use srun in the following way:
@@ -72,10 +72,10 @@ class Srun(LaunchMethod):
 
         # use `ALL` to export vars pre_exec and RP, and add task env explicitly
         env = '--export=ALL'
-        for k,v in task_env.items():
+        for k, v in task_env.items():
             env += ',%s="%s"' % (k, v)
 
-        # Alas, exact rank-to-core mapping seems only be availabe in Slurm when
+        # Alas, exact rank-to-core mapping seems only be available in Slurm when
         # tasks use full nodes - which in RP is rarely the case.  We thus are
         # limited to specifying the list of nodes we want the processes to be
         # placed on, and otherwise have to rely on the `--exclusive` flag to get
@@ -85,24 +85,25 @@ class Srun(LaunchMethod):
         # debug mapping
         os.environ['SLURM_CPU_BIND'] = 'verbose'
 
-        n_tasks          = cud['cpu_processes']
+        n_tasks = cud['cpu_processes']
+        n_nodes = int(math.ceil(float(n_tasks) /
+                                self._cfg.get('cores_per_node', 1))) \
+                  if not slots else len(slots['nodes'])
         threads_per_task = cud['cpu_threads']
-        gpus_per_task    = cud['gpu_processes']
 
         # use `--exclusive` to ensure all tasks get individual resources.
         # do not use core binding: it triggers warnings on some installations
         # FIXME: warnings are triggered anyway :-(
-        mapping = '--exclusive --cpu-bind=none '           \
-                + '--ntasks %d '        % n_tasks          \
-                + '--cpus-per-task %d ' % threads_per_task \
-                + '--gpus-per-task %d'  % gpus_per_task
+        mapping = '--exclusive --cpu-bind=none ' \
+                + '--nodes %d '        % n_nodes \
+                + '--ntasks %d '       % n_tasks \
+                + '--cpus-per-task %d' % threads_per_task
 
-        if not slots:
-            # leave placement to srun
-            pass
+        # check that gpus were requested to be allocated
+        if self._cfg.get('gpus'):
+            mapping += ' --gpus-per-task %d' % cud['gpu_processes']
 
-        else:
-
+        if slots:
             # the scheduler did place tasks - we can't honor the core and gpu
             # mapping (see above), but we at least honor the nodelist.
             nodelist = [node['name'] for node in slots['nodes']]
@@ -118,4 +119,3 @@ class Srun(LaunchMethod):
 
 
 # ------------------------------------------------------------------------------
-
