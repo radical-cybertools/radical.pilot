@@ -73,16 +73,17 @@ class PRTE(LaunchMethod):
         prte += ' --report-uri %s' % furi
         prte += ' --hostfile %s'   % fhosts
 
-        if profiler.enabled:
+        if profiler.enabled or True:
             prte += ' --pmca orte_state_base_verbose 1'  # prte profiling
 
         # large tasks imply large message sizes, and we need to account for that
         # FIXME: we should derive the message size from DVM size - smaller DVMs
         #        will never need large messages, as they can't run large tasks)
         prte += ' --pmca ptl_base_max_msg_size %d' % (1024 * 1024 * 1024 * 1)
+        prte += ' --pmca rmaps_base_verbose 5'
 
         # debug mapper problems for large tasks
-        if log.isEnabledFor(logging.DEBUG):
+        if log.isEnabledFor(logging.DEBUG) or True:
             prte += ' -pmca orte_rmaps_base_verbose 100'
 
         # we apply two temporary tweaks on Summit which should not be needed in
@@ -110,7 +111,7 @@ class PRTE(LaunchMethod):
 
         # Additional (debug) arguments to prte
         verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
-        if verbose:
+        if verbose or True:
             debug_strings = [
                              '--debug-devel',
                              '--pmca odls_base_verbose 100',
@@ -289,6 +290,7 @@ class PRTE(LaunchMethod):
 
         # see DVM startup
         map_flag += ' --pmca ptl_base_max_msg_size %d' % (1024 * 1024 * 1024 * 1)
+        map_flag += ' --pmca rmaps_base_verbose 5'
 
         if 'nodes' not in slots:
             # this task is unscheduled - we leave it to PRRTE/PMI-X to
@@ -311,7 +313,7 @@ class PRTE(LaunchMethod):
 
         # Additional (debug) arguments to prun
         debug_string = ''
-        if self._verbose:
+        if self._verbose or True:
             debug_string += ' '.join([
                                         '-verbose',
                                       # '--debug-devel',

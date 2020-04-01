@@ -90,18 +90,36 @@ class Default(PMGRLaunchingComponent):
     #
     def finalize(self):
 
-        # FIXME: always kill all saga jobs for non-final pilots at termination,
-        #        and set the pilot states to CANCELED.  This will confluct with
-        #        disconnect/reconnect semantics.
-        with self._pilots_lock:
-            pids = list(self._pilots.keys())
+        try:
+            self._log.debug('=== finalize 0')
+            self._log.debug('=== close js %s', self._saga_js_cache.keys())
 
-        self._cancel_pilots(pids)
-        self._kill_pilots(pids)
+            self.unregister_timed_cb(self._pilot_watcher_cb)
+            self.unregister_input(rps.PMGR_LAUNCHING_PENDING,
+                                  rpc.PMGR_LAUNCHING_QUEUE, self.work)
+            self._log.debug('=== finalize 1')
 
-        with self._cache_lock:
-            for url,js in self._saga_js_cache.items():
-                js.close()
+
+            # FIXME: always kill all saga jobs for non-final pilots at termination,
+            #        and set the pilot states to CANCELED.  This will confluct with
+            #        disconnect/reconnect semantics.
+            with self._pilots_lock:
+                pids = list(self._pilots.keys())
+            self._log.debug('=== finalize 2')
+
+            self._cancel_pilots(pids)
+            self._kill_pilots(pids)
+            self._log.debug('=== finalize 3')
+
+            with self._cache_lock:
+                self._log.debug('=== finalize 4')
+                for url,js in self._saga_js_cache.items():
+                    self._log.debug('=== close js %s', url)
+                    js.close()
+            self._log.debug('=== finalize 5')
+
+        except:
+            self._log.exception('=== finalization error')
 
 
     # --------------------------------------------------------------------------
@@ -779,6 +797,7 @@ class Default(PMGRLaunchingComponent):
             else:
                 js_tmp  = rs.job.Service(js_url, session=self._session)
                 self._saga_js_cache[js_url] = js_tmp
+                self._log.debug('=== create js 1: %s %s', js_url, self._saga_js_cache.keys())
 
       # cmd = "tar zmxvf %s/%s -C / ; rm -f %s" % \
         cmd = "tar zmxvf %s/%s -C %s" % \
@@ -802,6 +821,7 @@ class Default(PMGRLaunchingComponent):
             else:
                 js = rs.job.Service(js_ep, session=self._session)
                 self._saga_js_cache[js_ep] = js
+                self._log.debug('=== create js 2: %s %s', js_ep, self._saga_js_cache.keys())
 
         # now that the scripts are in place and configured,
         # we can launch the agent
