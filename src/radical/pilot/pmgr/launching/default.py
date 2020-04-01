@@ -293,6 +293,7 @@ class Default(PMGRLaunchingComponent):
                 self._prof.prof('staging_out_stop', uid=pid, msg=did)
 
             except:
+                self._log.exception('pilot level staging failed')
                 self._prof.prof('staging_out_fail', uid=pid, msg=did)
                 sd['state'] = rps.FAILED
 

@@ -232,6 +232,19 @@ echo "$($RP_GTOD),$1,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING,$2" >> $
             if 'RP_APP_TUNNEL' in os.environ:
                 env_string += 'export RP_APP_TUNNEL="%s"\n' % os.environ['RP_APP_TUNNEL']
 
+            env_string += '''
+prof(){
+    if test -z "$RP_PROF"
+    then
+        return
+    fi
+    event=$1
+    msg=$2
+    now=$($RP_GTOD)
+    echo "$now,$event,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING,$msg" >> $RP_PROF
+}
+'''
+
             # FIXME: this should be set by an LaunchMethod filter or something (GPU)
             env_string += 'export OMP_NUM_THREADS="%s"\n' % descr['cpu_threads']
 
