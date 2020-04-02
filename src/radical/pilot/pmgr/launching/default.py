@@ -90,18 +90,27 @@ class Default(PMGRLaunchingComponent):
     #
     def finalize(self):
 
-        # FIXME: always kill all saga jobs for non-final pilots at termination,
-        #        and set the pilot states to CANCELED.  This will confluct with
-        #        disconnect/reconnect semantics.
-        with self._pilots_lock:
-            pids = list(self._pilots.keys())
+        try:
+            self.unregister_timed_cb(self._pilot_watcher_cb)
+            self.unregister_input(rps.PMGR_LAUNCHING_PENDING,
+                                  rpc.PMGR_LAUNCHING_QUEUE, self.work)
 
-        self._cancel_pilots(pids)
-        self._kill_pilots(pids)
+            # FIXME: always kill all saga jobs for non-final pilots at termination,
+            #        and set the pilot states to CANCELED.  This will conflict with
+            #        disconnect/reconnect semantics.
+            with self._pilots_lock:
+                pids = list(self._pilots.keys())
 
-        with self._cache_lock:
-            for url,js in self._saga_js_cache.items():
-                js.close()
+            self._cancel_pilots(pids)
+            self._kill_pilots(pids)
+
+            with self._cache_lock:
+                for url,js in self._saga_js_cache.items():
+                    self._log.debug('close js %s', url)
+                    js.close()
+
+        except:
+            self._log.exception('finalization error')
 
 
     # --------------------------------------------------------------------------
