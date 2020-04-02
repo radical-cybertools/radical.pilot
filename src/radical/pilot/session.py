@@ -850,7 +850,8 @@ class Session(rs.Session):
     def get_fs_dir(self, url):
 
         if url not in self._cache['fs_dirs']:
-            self._cache['fs_dirs'][url] = rsfs.Directory(url)
+            self._cache['fs_dirs'][url] = rsfs.Directory(url,
+                                               flags=rsfs.CREATE_PARENTS)
 
         return self._cache['fs_dirs'][url]
 

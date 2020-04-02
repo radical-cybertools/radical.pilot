@@ -90,9 +90,27 @@ class Default(PMGRLaunchingComponent):
     #
     def finalize(self):
 
-        with self._cache_lock:
-            for url,js in self._saga_js_cache.items():
-                js.close()
+        try:
+            self.unregister_timed_cb(self._pilot_watcher_cb)
+            self.unregister_input(rps.PMGR_LAUNCHING_PENDING,
+                                  rpc.PMGR_LAUNCHING_QUEUE, self.work)
+
+            # FIXME: always kill all saga jobs for non-final pilots at termination,
+            #        and set the pilot states to CANCELED.  This will conflict with
+            #        disconnect/reconnect semantics.
+            with self._pilots_lock:
+                pids = list(self._pilots.keys())
+
+            self._cancel_pilots(pids)
+            self._kill_pilots(pids)
+
+            with self._cache_lock:
+                for url,js in self._saga_js_cache.items():
+                    self._log.debug('close js %s', url)
+                    js.close()
+
+        except:
+            self._log.exception('finalization error')
 
 
     # --------------------------------------------------------------------------
@@ -280,6 +298,7 @@ class Default(PMGRLaunchingComponent):
                 self._prof.prof('staging_out_stop', uid=pid, msg=did)
 
             except:
+                self._log.exception('pilot level staging failed')
                 self._prof.prof('staging_out_fail', uid=pid, msg=did)
                 sd['state'] = rps.FAILED
 

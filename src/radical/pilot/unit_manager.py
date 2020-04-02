@@ -157,8 +157,12 @@ class UnitManager(rpu.Component):
 
         # the umgr will also collect units from the agent again, for output
         # staging and finalization
-        self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING,
-                             rpc.UMGR_STAGING_OUTPUT_QUEUE)
+        if self._cfg.bridges.umgr_staging_output_queue:
+            self._has_sout = True
+            self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING,
+                                 rpc.UMGR_STAGING_OUTPUT_QUEUE)
+        else:
+            self._has_sout = False
 
         # register the state notification pull cb
         # FIXME: this should be a tailing cursor in the update worker
@@ -398,12 +402,17 @@ class UnitManager(rpu.Component):
 
         if not unit_cursor.count():
             # no units whatsoever...
-            self._log.info("units pulled:    0")
+          # self._log.info("units pulled:    0")
             return True  # this is not an error
 
         # update the units to avoid pulling them again next time.
         units = list(unit_cursor)
         uids  = [unit['uid'] for unit in units]
+
+        self._log.info("units pulled:    %d", len(uids))
+
+        for unit in units:
+            unit['control'] = 'umgr'
 
         self._session._dbs._c.update({'type'  : 'unit',
                                       'uid'   : {'$in'     : uids}},
@@ -424,13 +433,42 @@ class UnitManager(rpu.Component):
             if old != new:
                 self._log.debug("unit  pulled %s: %s / %s", uid, old, new)
 
-            unit['state']   = new
-            unit['control'] = 'umgr'
+            unit['state'] = new
 
         # now we really own the CUs, and can start working on them (ie. push
-        # them into the pipeline).  We don't record state transition profile
-        # events though - the transition has already happened.
-        self.advance(units, publish=True, push=True, prof=False)
+        # them into the pipeline).
+
+        to_stage    = list()
+        to_finalize = list()
+
+        for unit in units:
+            # only advance units to data stager if we need data staging
+            # = otherwise finalize them right away
+            if unit['description'].get('output_staging'):
+                to_stage.append(unit)
+            else:
+                to_finalize.append(unit)
+
+        # don't profile state transitions - those happened in the past
+        if to_stage:
+            if self._has_sout:
+                # normal route: needs data stager
+                self.advance(to_stage, publish=True, push=True, prof=False)
+            else:
+                self._log.error('output staging needed but not available!')
+                for unit in to_stage:
+                    unit['target_state'] = rps.FAILED
+                    to_finalize.append(unit)
+
+        if to_finalize:
+            # shortcut, skip the data stager, but fake state transition
+            self.advance(to_finalize, state=rps.UMGR_STAGING_OUTPUT,
+                                      publish=True, push=False)
+
+            # move to final stata
+            for unit in to_finalize:
+                unit['state'] = unit['target_state']
+            self.advance(to_finalize, publish=True, push=False)
 
         return True
 
@@ -524,7 +562,8 @@ class UnitManager(rpu.Component):
                     self.advance(unit_dict, s, publish=publish, push=False,
                                  prof=False)
 
-            self._log.debug('umgr: notify: %s', len(to_notify))
+            self._log.debug('umgr: notify: %s %s %s', len(to_notify), unit_dict,
+                    unit_dict['state'])
             return to_notify
 
 
