@@ -6,6 +6,20 @@ export PS1='#'
 unset PROMPT_COMMAND
 unset -f cd ls uname pwd date bc cat echo
 
+
+# Report where we are, as this is not always what you expect ;-)
+# Save environment, useful for debugging
+echo "-------------------------------------------------------------------------"
+echo "bootstrap_0 running on host: `hostname -f`."
+echo "bootstrap_0 started as     : '$0 $@'"
+echo "safe environment of bootstrap_0"
+
+# print the sorted env for logging, but also keep a copy so that we can dig
+# original env settings for any CUs, if so specified in the resource config.
+env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g'  > env.orig
+echo "# -----------------------------------------------------------------------"
+
+
 # interleave stdout and stderr, to get a coherent set of log messages
 if test -z "$RP_BOOTSTRAP_0_REDIR"
 then
@@ -414,11 +428,10 @@ rehash()
         gunzip "$CA_CERT_GZ"
     fi
 
+    PIP="$PYTHON -m pip"
     if test -f "$CA_CERT_PEM"
     then
-        PIP="`which pip` --cert $CA_CERT_PEM"
-    else
-        PIP="`which pip`"
+        PIP="$PIP --cert $CA_CERT_PEM"
     fi
 
     # NOTE: some resources define a function pip() to implement the same cacert
@@ -999,7 +1012,7 @@ virtenv_create()
                 "easy_install pip" \
              || echo "Couldn't install pip! Uh oh...."
     fi
-    PIP="$(which pip)"
+    PIP="$PYTHON -m pip"
 
     # make sure the new pip version is used (but keep the python executable)
     rehash "$PYTHON"
@@ -1350,19 +1363,6 @@ $cmd"
 #
 # MAIN
 #
-
-# Report where we are, as this is not always what you expect ;-)
-# Print environment, useful for debugging
-echo "---------------------------------------------------------------------"
-echo "bootstrap_0 running on host: `hostname -f`."
-echo "bootstrap_0 started as     : '$0 $@'"
-echo "Environment of bootstrap_0 process:"
-
-# print the sorted env for logging, but also keep a copy so that we can dig
-# original env settings for any CUs, if so specified in the resource config.
-env | sort | grep '=' | grep -v -e ' ' -e ';' -e '|' \
-    | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g'  > env.orig
-echo "# -------------------------------------------------------------------"
 
 # parse command line arguments
 #

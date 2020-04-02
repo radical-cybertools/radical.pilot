@@ -23,6 +23,17 @@ class JSRUN(LaunchMethod):
     def _configure(self):
 
         self.launch_command = ru.which('jsrun')
+        assert(self.launch_command)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def rm_config_hook(cls, name, cfg, rm, log, profiler):
+
+        lm_info = {'cvd_id_mode': 'logical'}
+        return lm_info
+
 
     # --------------------------------------------------------------------------
     #

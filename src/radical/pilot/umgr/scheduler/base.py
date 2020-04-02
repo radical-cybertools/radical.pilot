@@ -49,11 +49,13 @@ class UMGRSchedulingComponent(rpu.Component):
 
         self._umgr = self._cfg.owner
 
-        self._early       = dict()      # early-bound units, pid-sorted
-        self._pilots      = dict()      # dict of known pilots
-        self._pilots_lock = ru.RLock()  # lock on the above dict
-        self._units       = dict()      # dict of scheduled unit IDs
-        self._units_lock  = ru.RLock()  # lock on the above dict
+        self._early        = dict()      # early-bound units, pid-sorted
+        self._pilots       = dict()      # dict of known pilots
+        self._pilots_lock  = ru.RLock()  # lock on the above dict
+        self._units        = dict()      # dict of scheduled unit IDs
+        self._units_lock   = ru.RLock()  # lock on the above dict
+        self._waiting      = dict()      # dict for units waiting on deps
+        self._waiting_lock = dict()      # lock on the above dict
 
         # configure the scheduler instance
         self._configure()
@@ -110,26 +112,22 @@ class UMGRSchedulingComponent(rpu.Component):
     def _base_state_cb(self, topic, msg):
 
         # the base class will keep track of pilot state changes and updates
-        # self._pilots accordingly.  Unit state changes will be ignored -- if
-        # a scheduler needs to keep track of those, it will need to add its own
-        # callback.
+        # self._pilots accordingly.  Unit state changes will also be collected,
+        # but not stored - if a scheduler needs to keep track of unit state
+        # changes, it needs to overload `update_units()`.
 
         cmd = msg.get('cmd')
         arg = msg.get('arg')
 
         self._log.info('scheduler state_cb: %s', cmd)
-      # self._log.debug('base state cb: %s', cmd)
 
         # FIXME: get cmd string consistent throughout the code
         if cmd not in ['update', 'state_update']:
-          # self._log.debug('base state cb: ignore %s', cmd)
             self._log.debug('ignore cmd %s', cmd)
             return True
 
         if not isinstance(arg, list): things = [arg]
         else                        : things =  arg
-
-      # self._log.debug('base state cb: things %s', things)
 
         pilots = [t for t in things if t['type'] == 'pilot']
         units  = [t for t in things if t['type'] == 'unit' ]
@@ -148,8 +146,6 @@ class UMGRSchedulingComponent(rpu.Component):
     def _update_pilot_states(self, pilots):
 
         self._log.debug('update pilot states for %s', [p['uid'] for p in pilots])
-
-      # self._log.debug('update pilot states for %s', [p['uid'] for p in pilots])
 
         if not pilots:
             return
@@ -176,15 +172,13 @@ class UMGRSchedulingComponent(rpu.Component):
                 target, passed = rps._pilot_state_progress(pid, current, target)
 
                 if current != target:
-                  # self._log.debug('%s: %s -> %s', pid,  current, target)
                     to_update.append(pid)
                     self._pilots[pid]['state'] = target
                     self._log.debug('update pilot state: %s -> %s', current, passed)
 
-      # self._log.debug('to update: %s', to_update)
         if to_update:
             self.update_pilots(to_update)
-      # self._log.debug('updated  : %s', to_update)
+        self._log.debug('updated  : %s', to_update)
 
 
     # --------------------------------------------------------------------------
@@ -196,12 +190,24 @@ class UMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def update_units(self, uids):
+        '''
+        any scheduler that cares about unit state changes should implement this
+        method to keep track of those
+        '''
+
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
     def _base_command_cb(self, topic, msg):
 
         # we'll wait for commands from the umgr, to learn about pilots we can
-        # use or we should stop using.
+        # use or we should stop using. We also track unit cancelation, as all
+        # components do.
         #
-        # make sure command is for *this* scheduler, and from *that* umgr
+        # make sure command is for *this* scheduler by matching the umgr uid.
 
         cmd = msg['cmd']
 
@@ -290,7 +296,7 @@ class UMGRSchedulingComponent(rpu.Component):
 
             uids = arg['uids']
 
-            # find the pilots handling these units and forward the caancellation
+            # find the pilots handling these units and forward the cancellation
             # request
             to_cancel = dict()
 
@@ -327,6 +333,8 @@ class UMGRSchedulingComponent(rpu.Component):
         pid = pilot['uid']
         uid = unit['uid']
 
+        self._log.debug('assign %s to %s', uid, pid)
+
         unit['pilot'           ] = pid
         unit['client_sandbox'  ] = str(self._session._get_client_sandbox())
         unit['resource_sandbox'] = str(self._session._get_resource_sandbox(pilot))
@@ -361,16 +369,10 @@ class UMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def update_units(self, uids):
-        raise NotImplementedError("update_units() missing for '%s'" % self.uid)
-
-
-    # --------------------------------------------------------------------------
-    #
     def work(self, units):
         '''
         We get a number of units, and filter out those which are already bound
-        to a pilot.  Those will get adavnced to UMGR_STAGING_INPUT_PENDING
+        to a pilot.  Those will get advanced to UMGR_STAGING_INPUT_PENDING
         straight away.  All other units are passed on to `self._work()`, which
         is the scheduling routine as implemented by the deriving scheduler
         classes.
@@ -385,6 +387,50 @@ class UMGRSchedulingComponent(rpu.Component):
         if not isinstance(units, list):
             units = [units]
 
+        # some task may have staging directives which reference sandboxes of
+        # other tasks.  Those directives can only be expanded with actual
+        # physical path's once both tasks are known to the scheduler, so we
+        # check this here and (a) let all units wait until the references are
+        # resolved, and (b) check if the units resolve any references
+        #
+        # The `waiting` data structure has the following format:
+        #
+        #   {
+        #     'waiting': {
+        #         <uid_a> : {
+        #             'unit': <unit>,
+        #             'deps': [<uid_1>, <uid_2>, ...]
+        #         },
+        #         ...
+        #       },
+        #     'deps': {
+        #       <uid_1> : [<uid_a>, <uid_b>, ...]
+        #       ...
+        #   }
+        #
+        # for each incoming tasks <uid_1>, we check in `deps` if depending tasks
+        # are known, then remove <uid_1> from the global `deps` dict and also
+        # from the `deps` list of each of those waiting tasks.  If any of those
+        # waiting tasks then ends up with an empty `deps` list, then that task
+        # will not be waiting anymore and can be scheduled.  We mark both
+        # participating tasks so that the scheduler can ensure they end up on
+        # the same pilot.
+        #
+        # NOTE: cross-pilot data dependencies are not yet supported
+        #
+        # The task staging directives are expected to be expanded to their
+        # dictionary format already, and will check for `src` or `tgt` URLs with
+        # a `sandbox://` schema, where the `host` element can reference
+        #
+        #   client:   the client application pwd
+        #   resource: the target resource sandbox
+        #   pilot:    the target pilot's sandbox
+        #   <uid>:    the sandbox of the respective task
+        #
+        # This implies that `client`, `resource` and `pilot` are reserved names
+        # for task IDs, and that tasks which use invalid / non-existing IDs in
+        # sandbox references will never be eligible for scheduling.
+
         self.advance(units, rps.UMGR_SCHEDULING, publish=True, push=False)
 
         to_schedule = list()
@@ -397,8 +443,8 @@ class UMGRSchedulingComponent(rpu.Component):
                 pid = unit.get('pilot')
 
                 if pid:
-                    # this unit is bound already (it is early-bound), so we don't
-                    # need to pass it to the actual schedulng algorithymus
+                    # this unit is bound already (it is early-bound), so we
+                    # don't need to pass it to the actual scheduling algorithm
 
                     # check if we know about the pilot, so that we can advance
                     # the unit to data staging
@@ -419,12 +465,13 @@ class UMGRSchedulingComponent(rpu.Component):
                 else:
                     to_schedule.append(unit)
 
+        self._log.debug('to_schedule: %d', len(to_schedule))
         self._work(to_schedule)
 
 
     # --------------------------------------------------------------------------
     #
-    def _work(self, units=None):
+    def _work(self, units):
 
         raise NotImplementedError("work() missing for '%s'" % self.uid)
 

@@ -84,7 +84,6 @@
         "python_dist"                 : "default"
     },
 
-
     "wrangler_spark": {
         "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
@@ -128,23 +127,12 @@
         "python_dist"                 : "default"
     },
 
-
     "frontera": {
         "description"                 : "",
         "notes"                       : "",
-        "schemas"                     : ["gsissh", "ssh", "local"],
+        "schemas"                     : ["local"],
         "mandatory_args"              : ["project"],
-        "gsissh"                      :
-        {
-            "job_manager_endpoint"    : "slurm+gsissh://frontera.tacc.utexas.edu:2222/",
-            "filesystem_endpoint"     : "gsisftp://frontera.tacc.utexas.edu:2222/"
-        },
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://frontera.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://frontera.tacc.utexas.edu/"
-        },
-        "local"                         :
+        "local"                       :
         {
             "job_manager_endpoint"    : "slurm://frontera.tacc.utexas.edu/",
             "filesystem_endpoint"     : "file://frontera.tacc.utexas.edu/"
@@ -152,7 +140,7 @@
         "default_queue"               : "normal",
         "resource_manager"            : "SLURM",
         "cores_per_node"              : 56,
-        "agent_config"                : "cray",
+        "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SRUN",
@@ -173,6 +161,84 @@
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
         "cu_pre_exec"                 : []
+    },
+
+    "frontera_rtx": {
+        "description"                 : "",
+        "notes"                       : "",
+        "schemas"                     : ["local"],
+        "mandatory_args"              : ["project"],
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://frontera.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "file://frontera.tacc.utexas.edu/"
+        },
+        "default_queue"               : "rtx",
+        "resource_manager"            : "SLURM",
+        "cores_per_node"              : 16,
+        "gpus_per_node"               : 4,
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SRUN",
+        "task_launch_method"          : "SRUN",
+        "mpi_launch_method"           : "SRUN",
+        "pre_bootstrap_0"             :["module load TACC",
+                                        "module unload intel",
+                                        "module unload impi",
+                                        "module load   intel",
+                                        "module load   python3/3.7.0"
+                                        ],
+        "default_remote_workdir"      : "$SCRATCH",
+        "valid_roots"                 : ["$SCRATCH", "$WORK"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default",
+        "export_to_cu"                : ["LMOD_CMD",
+                                         "LMOD_SYSTEM_DEFAULT_MODULES",
+                                         "LD_LIBRARY_PATH"],
+        "cu_pre_exec"                 : []
+    },
+
+    "longhorn": {
+        "description"                 : "The TACC resource 'Longhorn' (https://portal.tacc.utexas.edu/user-guides/longhorn)",
+        "notes"                       : "",
+        "schemas"                     : ["local", "ssh"],
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://longhorn.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "file://longhorn.tacc.utexas.edu/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://longhorn.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://longhorn.tacc.utexas.edu/"
+        },
+        "default_queue"               : "normal",
+        "resource_manager"            : "SLURM",
+        "cores_per_node"              : 40,
+        "gpus_per_node"               : 4,
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SRUN",
+        "task_launch_method"          : "SRUN",
+        "mpi_launch_method"           : "MPIRUN",
+        "pre_bootstrap_0"             :["module load TACC",
+                                        "module unload gcc",
+                                        "module load gcc/7.3.0",
+                                        "module load python3/3.8.1",
+                                        "module load openmpi/3.1.2"
+                                        ],
+        "default_remote_workdir"      : "$SCRATCH",
+        "valid_roots"                 : ["$SCRATCH", "$WORK"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default",
+        "export_to_cu"                : ["LMOD_CMD",
+                                         "LMOD_SYSTEM_DEFAULT_MODULES",
+                                         "LD_LIBRARY_PATH"
+                                        ],
+        "cu_pre_exec"                 : ["module restore"]
     },
 
     "stampede2_ssh": {
@@ -329,9 +395,9 @@
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "IBRUN",
         "pre_bootstrap_0"             : ["module load python"],
-       #"default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
-       #"valid_roots"                 : ["/oasis/scratch/comet"],
-        "valid_roots"                 : ["/home"],
+        "default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
+        "valid_roots"                 : ["/oasis/scratch/comet"],
+      # "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
@@ -363,9 +429,9 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "FUNCS",
         "pre_bootstrap_0"             : ["module load python"],
-       #"default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
-       #"valid_roots"                 : ["/oasis/scratch/comet"],
-        "valid_roots"                 : ["/home"],
+        "default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
+        "valid_roots"                 : ["/oasis/scratch/comet"],
+      # "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
@@ -403,9 +469,9 @@
             "export PATH=$PATH",
             "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
         ],
-       #"default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
-       #"valid_roots"                 : ["/oasis/scratch/comet"],
-        "valid_roots"                 : ["/home"],
+        "default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
+        "valid_roots"                 : ["/oasis/scratch/comet"],
+      # "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"

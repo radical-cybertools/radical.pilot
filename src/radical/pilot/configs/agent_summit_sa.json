@@ -5,7 +5,6 @@
 
 {
     "staging_area"         : "",
-    "staging_schema"       : "staging",
     "max_io_loglength"     : 1024,
     "db_poll_sleeptime"    :  5.0,
   # "network_interface"    : "ipogif0",

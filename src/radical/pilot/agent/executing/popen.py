@@ -4,10 +4,11 @@ __license__   = "MIT"
 
 
 import os
-import copy
 import stat
 import time
 import queue
+import atexit
+import pprint
 import signal
 import tempfile
 import threading as mt
@@ -22,6 +23,22 @@ from ...  import states    as rps
 from ...  import constants as rpc
 
 from .base import AgentExecutingComponent
+
+
+# ------------------------------------------------------------------------------
+# ensure tasks are killed on termination
+_pids = list()
+
+
+def _kill():
+    print('==== atexit')
+    for pid in _pids:
+        print('==== kill %s' % pid)
+        os.killpg(pid, signal.SIGTERM)
+
+
+atexit.register(_kill)
+# ------------------------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------------
@@ -62,7 +79,7 @@ class Popen(AgentExecutingComponent) :
 
         # run watcher thread
         self._watcher = mt.Thread(target=self._watch)
-        self._watcher.daemon = True
+      # self._watcher.daemon = True
         self._watcher.start()
 
         # The AgentExecutingComponent needs the LaunchMethod to construct
@@ -166,7 +183,9 @@ class Popen(AgentExecutingComponent) :
         self._prof.prof('exec_mkdir', uid=cu['uid'])
         rpu.rec_makedir(sandbox)
         self._prof.prof('exec_mkdir_done', uid=cu['uid'])
+
         launch_script_name = '%s/%s.sh' % (sandbox, cu['uid'])
+        slots_fname        = '%s/%s.sl' % (sandbox, cu['uid'])
 
         self._log.debug("Created launch_script: %s", launch_script_name)
 
@@ -174,21 +193,28 @@ class Popen(AgentExecutingComponent) :
         cu['stdout'] = ''
         cu['stderr'] = ''
 
+        with open(slots_fname, "w") as launch_script:
+            launch_script.write('\n%s\n\n' % pprint.pformat(cu['slots']))
+
         with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/sh\n\n')
 
             # Create string for environment variable setting
             env_string = ''
-            env_string += '. %s/env.orig\n'                % self._pwd
-            env_string += 'export RP_SESSION_ID="%s"\n'    % self._cfg['sid']
-            env_string += 'export RP_PILOT_ID="%s"\n'      % self._cfg['pid']
-            env_string += 'export RP_AGENT_ID="%s"\n'      % self._cfg['aid']
-            env_string += 'export RP_SPAWNER_ID="%s"\n'    % self.uid
-            env_string += 'export RP_UNIT_ID="%s"\n'       % cu['uid']
-            env_string += 'export RP_UNIT_NAME="%s"\n'     % cu['description'].get('name')
-            env_string += 'export RP_GTOD="%s"\n'          % self.gtod
-            env_string += 'export RP_TMP="%s"\n'           % self._cu_tmp
+
+          # env_string += '. %s/env.orig\n'               % self._pwd
+            env_string += 'export RP_SESSION_ID="%s"\n'   % self._cfg['sid']
+            env_string += 'export RP_PILOT_ID="%s"\n'     % self._cfg['pid']
+            env_string += 'export RP_AGENT_ID="%s"\n'     % self._cfg['aid']
+            env_string += 'export RP_SPAWNER_ID="%s"\n'   % self.uid
+            env_string += 'export RP_UNIT_ID="%s"\n'      % cu['uid']
+            env_string += 'export RP_UNIT_NAME="%s"\n'    % cu['description'].get('name')
+            env_string += 'export RP_GTOD="%s"\n'         % self.gtod
+            env_string += 'export RP_TMP="%s"\n'          % self._cu_tmp
             env_string += 'export RP_PILOT_STAGING="%s"\n' % self._pwd
+          # env_string += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
+          #                                               % self._pwd
+
             if self._prof.enabled:
                 env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
 
@@ -300,6 +326,9 @@ prof(){
                                       shell      = True,
                                       cwd        = sandbox)
         self._prof.prof('exec_ok', uid=cu['uid'])
+
+        # store pid for last-effort termination
+        _pids.append(cu['proc'].pid)
 
         self._watch_queue.put(cu)
 
