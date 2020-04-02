@@ -83,7 +83,6 @@ class RoundRobin(UMGRSchedulingComponent):
         pass
 
 
-
     # --------------------------------------------------------------------------
     #
     def _work(self, units):
