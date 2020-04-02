@@ -28,6 +28,7 @@ class PMGRLaunchingComponent(rpu.Component):
 
         self._pmgr = self._owner
 
+
     # --------------------------------------------------------------------------
     #
     # This class-method creates the appropriate sub-class for the Launcher.
