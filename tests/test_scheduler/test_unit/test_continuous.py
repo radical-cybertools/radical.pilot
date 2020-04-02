@@ -1,8 +1,13 @@
 # pylint: disable=protected-access, unused-argument
 # pylint: disable=no-value-for-parameter
-"""This is a unit test for the continuous"""
+__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
+__license__ = "MIT"
+import os
+import json
+import glob
 import pytest
-import radical.utils as ru
+import shutil
+import unittest
 from radical.pilot.agent.scheduler.continuous import Continuous
 
 try:
@@ -11,408 +16,102 @@ except ImportError:
     from unittest import mock
 
 
-@mock.patch.object(Continuous, '__init__', return_value=None)
-@mock.patch('radical.pilot.agent.scheduler.base.AgentSchedulingComponent')
-def test_configure(mocked_init, mocked_agent):
-    '''
-    Test 1 check configuration setup
-    '''
-    component = Continuous()
-    component.__oversubscribe = True
-    component._cfg = {}
-    component._lrms_cores_per_node = 4
-    component._lrms_gpus_per_node = 2
-    component._lrms_lfs_per_node = 128
-    component._lrms_mem_per_node = 128
-    component._lrms_node_list = [['a', 1], ['b', 2], ['c', 3],
-                                 ['d', 4], ['e', 5]]
-    assert component._lrms_cores_per_node == 4
-    assert component._lrms_gpus_per_node == 2
-    assert component._lrms_lfs_per_node == 128
-    assert component._lrms_mem_per_node == 128
+# ------------------------------------------------------------------------------
+#
+def setUp():
+    test_cases = json.load(open(os.path.abspath('unit_test_cases_continous_scheduler.json')))
 
-    if component.__oversubscribe:
-        component._configure()
-
-
-@mock.patch.object(Continuous, '__init__', return_value=None)
-@mock.patch('radical.pilot.agent.scheduler.base.AgentSchedulingComponent')
-def test_configure_err(mocked_init, mocked_agent):
-    '''
-    Test 2 check configuration setup `oversubscribe`
-    is set to False (which is the default for now)
-    '''
-    component = Continuous()
-    component._cfg = {}
-    component.__oversubscribe = True
-    component._lrms_cores_per_node = 2
-    component._lrms_gpus_per_node = 8
-    component._lrms_lfs_per_node = 128
-    component._lrms_mem_per_node = 128
-    assert component._lrms_cores_per_node == 2
-    assert component._lrms_gpus_per_node == 8
-    assert component._lrms_lfs_per_node == 128
-    assert component._lrms_mem_per_node == 128
-
-    if not component.__oversubscribe:
-        with pytest.raises(RuntimeError):
-            component._configure()
-
-
-@mock.patch.object(Continuous, '__init__', return_value=None)
-@mock.patch('radical.pilot.agent.scheduler.base.AgentSchedulingComponent')
-def test_pass_find_resources(mocked_init, mocked_agent):
-    '''
-    Test 1 check functionality
-    '''
-    component = Continuous()
-    component.node = {
-        'name': 'node_1',
-        'uid': 1,
-        'cores': [1, 2, 4, 5],
-        'gpus': [1, 2],
-        'lfs': {'size': 128},
-        'mem': 128
-    }
-    component.requested_cores = 4
-    component.requested_gpus = 4
-    component.requested_lfs = 2
-    component.requested_mem = 2
-    component.core_chunk = 0
-    component.lfs_chunk = 0
-    component.gpu_chunk = 0
-    component.mem_chunk = 0
-    component._find_resources(component.node, component.requested_cores,
-                              component.requested_gpus,
-                              component.requested_lfs,
-                              component.requested_mem, component.core_chunk,
-                              component.lfs_chunk, component.gpu_chunk,
-                              component.mem_chunk)
+    return test_cases.pop('cfg'),test_cases['allocate']['nodes'],test_cases['allocate']['slots']
 
 
 # ------------------------------------------------------------------------------
 #
-@mock.patch.object(Continuous, '__init__', return_value=None)
-@mock.patch('radical.pilot.agent.scheduler.base.AgentSchedulingComponent')
-def test_pass_find_resources_err(mocked_init, mocked_agent):
-
-    '''
-    Test 2 check division error rasie (Div by zero)
-    '''
-    component = Continuous()
-    component.node = {
-        'name': 'node_1',
-        'uid': 1,
-        'cores': [1, 2, 4, 5],
-        'gpus': [1, 2],
-        'lfs': {'size': 128},
-        'mem': 128
-    }
-    component.requested_cores = None
-    component.requested_gpus = None
-    component.requested_lfs = 2
-    component.requested_mem = 2
-    component.core_chunk = 0
-    component.lfs_chunk = 0
-    component.gpu_chunk = 0
-    component.mem_chunk = 0
-    with pytest.raises(ZeroDivisionError):
-        component._find_resources(component.node, component.requested_cores,
-                                  component.requested_gpus,
-                                  component.requested_lfs,
-                                  component.requested_mem,
-                                  component.core_chunk,
-                                  component.lfs_chunk, component.gpu_chunk,
-                                  component.mem_chunk)
+def tearDown():
 
 
-# ------------------------------------------------------------------------------
-#
-@mock.patch.object(Continuous, '__init__', return_value=None)
-def test_get_node_maps(mocked_init):
-
-    '''
-    Test 1 unit_test for the structure of
-    the returned cores and gpus map
-    '''
-    component = Continuous()
-    cores = [0, 0, 0, 0, 0, 0, 0, 0,
-             0, 0, 0, 0, 0, 0, 0, 0]
-    gpus = [1, 1, 1]
-    tpp = 16
-    expected_map = ([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
-                    [[1], [1], [1]])
-    component._log = ru.Logger('dummy')
-    assert  component._get_node_maps(cores, gpus, tpp) == expected_map
+    rp = glob.glob('%s/rp.session.*' % os.getcwd())
+    for fold in rp:
+        shutil.rmtree(fold)
 
 
-@mock.patch.object(Continuous, '__init__', return_value=None)
-def test_get_node_maps_err(mocked_init):
+class TestContinuous(unittest.TestCase):
 
-    '''
-    Test 2 unit_test for raising error if make sure the
-    core sets can host the requested number of threads
-    '''
-    component = Continuous()
-    cores = [0, 0, 0, 0, 0, 0, 0, 0,
-             0, 0, 0, 0, 0, 0, 0, 0]
-    gpus = [1, 1, 1]
-    expected_map = ([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
-                    [[1], [1], [1]])
-    tpp = 24
-    with pytest.raises(Exception):
-        assert component._get_node_maps(cores, gpus, tpp) == expected_map
+    # ------------------------------------------------------------------------------
+    #
+    @mock.patch.object(Continuous, '__init__', return_value=None)
+    @mock.patch('radical.pilot.agent.scheduler.base.AgentSchedulingComponent')
+    def test_configure(mocked_init, mocked_agent, mocked_method):
+
+
+        cfg,_,_ = setUp()
+        component = Continuous(cfg=cfg, session=None)
+        component._cfg = cfg
+        component._rm_node_list = [["a", 1],
+                                   ["b", 2],["c",3]]
+        component._rm_cores_per_node = 8
+        component._rm_gpus_per_node  = 2
+        component._rm_lfs_per_node   = {"path": "/dev/null", "size": 0}
+        component._rm_mem_per_node   = 128
+
+        for i in range (len(cfg['rm_info'])):
+            try:
+                assert component._rm_node_list == cfg['rm_info'][i]['node_list']
+                assert component._rm_cores_per_node == cfg['rm_info'][i]['cores_per_node']
+                assert component._rm_gpus_per_node == cfg['rm_info'][i]['gpus_per_node']
+                assert component._rm_lfs_per_node == cfg['rm_info'][i]['lfs_per_node']
+                assert component._rm_mem_per_node == cfg['rm_info'][i]['mem_per_node']
+                component._configure()
+
+            except :
+                with pytest.raises(AssertionError) as e:
+                    component._configure()
+                    raise
+        tearDown()
 
 
 # ------------------------------------------------------------------------------
 #
-@mock.patch.object(Continuous, '__init__', return_value=None)
-@mock.patch.object(Continuous, '_configure', return_value=None)
-def test_alloc_nompi_fit(mocked_init, mocked_configure):
-
-    '''
-    Test 1 make sure that the requested
-    allocation fits on a single node
-    '''
-    component = Continuous()
-    component._lrms_cores_per_node = 1
-    component._lrms_gpus_per_node = 1
-    component._lrms_lfs_per_node = {'size': 128}
-    component._lrms_mem_per_node = 128
-    component._log = ru.Logger('dummy')
-    component.nodes = []
-    unit = {
-        "uid"        : "unit.000001",
-        "description":
-            {
-                "executable"    : "/bin/sleep",
-                "arguments"     : ["10"],
-                "gpu_processes" : 1,
-                "cpu_processes" : 1,
-                "cpu_threads"   : 1,
-                "gpu_threads"   : 1,
-                "mem_per_process": 128,
-                "lfs_per_process":2
-            },
-    }
-
-    component._alloc_nompi(unit)
+    @mock.patch.object(Continuous, '__init__', return_value=None)
+    @mock.patch('radical.pilot.agent.scheduler.base.AgentSchedulingComponent')
+    @mock.patch.object(Continuous, '_configure', return_value=None)
+    def test_find_resources(mocked_init, mocked_agent, mocked_configure, mocked_method):
 
 
-@mock.patch.object(Continuous, '__init__', return_value=None)
-@mock.patch.object(Continuous, '_configure', return_value=None)
-def test_alloc_nompi_no_fit(mocked_init, mocked_configure):
+        _,_,cfg = setUp()
+        component = Continuous(cfg=cfg, session=None)
+        component.node = {'name' : 'a',
+                          'uid': 2,
+                          'cores': [0, 0, 0, 0, 0, 0, 0, 0,
+                                    0, 0, 0, 0, 0, 0, 0, 0],
+                          'lfs': {"size": 1234, "path": "/dev/null"},
+                          'mem': 1024,
+                          'gpus': [0, 0]}
+        component._rm_lfs_per_node   = {"path": "/dev/null", "size": 1234}
+        component.cores_per_slot = 16
+        component.gpus_per_slot = 2
+        component.lfs_per_slot = 1234
+        component.mem_per_slot = 1024
+        component.find_slot = 1
 
-    '''
-    Test 2 umake sure that the requested
-    allocation fits on a single node (cpu_processes)and rasis error
-    '''
-    component = Continuous()
-    component._lrms_cores_per_node = 1
-    component._lrms_gpus_per_node = 1
-    component._lrms_lfs_per_node = {'size': 128}
-    component._lrms_mem_per_node = 128
-    component._log = ru.Logger('dummy')
-    component.nodes = []
-    unit = {
-        "uid"        : "unit.000002",
-        "description":
-        {
-            "executable"    : "/bin/sleep",
-            "arguments"     : ["10"],
-            "gpu_processes" : 1,
-            "cpu_processes" : 16,
-            "cpu_threads"   : 1,
-            "gpu_threads"   : 1,
-            "mem_per_process": 128,
-            "lfs_per_process":2
-        },
-    }
+        test_slot = component._find_resources(node           =component.node,
+                                              find_slots     =component.find_slot,
+                                              cores_per_slot =component.cores_per_slot,
+                                              gpus_per_slot  =component.gpus_per_slot,
+                                              lfs_per_slot   =component.lfs_per_slot,
+                                              mem_per_slot   =component.mem_per_slot,
+                                              partial        ='None')
+        component.slot = [{'name': 'a',
+                           'uid': 2,
+                           'core_map': [[0, 1, 2, 3, 4, 5, 6, 7, 8,
+                                         9, 10, 11, 12, 13, 14, 15]],
+                           'gpu_map': [[0], [1]],
+                           'lfs': {'path': '/dev/null', 'size': 1234},
+                           'mem': 1024}]
 
-    with pytest.raises(ValueError):
-        component._alloc_nompi(unit)
-
-    # Test 3 umake sure that the requested
-    # allocation fits on a single node (gpu_processes)and raise error
-
-    component = Continuous()
-    component._lrms_cores_per_node = 1
-    component._lrms_gpus_per_node = 1
-    component._lrms_lfs_per_node = {'size': 128}
-    component._lrms_mem_per_node = 128
-    component._log = ru.Logger('dummy')
-    component.nodes = []
-    unit = {
-        "uid"        : "unit.000003",
-        "description":
-        {
-            "executable"    : "/bin/sleep",
-            "arguments"     : ["10"],
-            "gpu_processes" : 2,
-            "cpu_processes" : 1,
-            "cpu_threads"   : 1,
-            "gpu_threads"   : 1,
-            "mem_per_process": 128,
-            "lfs_per_process":2
-        },
-    }
-
-    with pytest.raises(ValueError):
-        component._alloc_nompi(unit)
-
-
-    # Test 4 umake sure that the requested
-    # allocation fits on a single node (requested mem)and raise error
-    component = Continuous()
-    component._lrms_cores_per_node = 1
-    component._lrms_gpus_per_node = 1
-    component._lrms_lfs_per_node = {'size': 128}
-    component._lrms_mem_per_node = 128
-    component._log = ru.Logger('dummy')
-    component.nodes = []
-    unit = {
-        "uid"        : "unit.000004",
-        "description":
-        {
-            "executable"    : "/bin/sleep",
-            "arguments"     : ["10"],
-            "gpu_processes" : 2,
-            "cpu_processes" : 1,
-            "cpu_threads"   : 1,
-            "gpu_threads"   : 1,
-            "mem_per_process": 1024,
-            "lfs_per_process":2
-        },
-    }
-
-    with pytest.raises(ValueError):
-        component._alloc_nompi(unit)
-
-
-@mock.patch.object(Continuous, '__init__', return_value=None)
-@mock.patch.object(Continuous, '_configure', return_value=None)
-def test_alloc_mpi(mocked_init, mocked_configure):
-    '''
-    Test 1 check MPI unit fitting into node
-    '''
-    component = Continuous()
-    component.nodes = []
-    component._lrms_cores_per_node = 1
-    component._lrms_gpus_per_node = 1
-    component._lrms_lfs_per_node = {'size': 128}
-    component._lrms_mem_per_node = 128
-    component._lrms_info = ''
-    component._lrms_lm_info = ''
-    component._log = ru.Logger('dummy')
-
-    unit = {
-        "uid"        : "unit.000005",
-        "description":
-        {
-            "executable"    : "/bin/sleep",
-            "arguments"     : ["10"],
-            "gpu_processes" : 1,
-            'cpu_process_type': 'MPI',
-            "cpu_processes" : 1,
-            "cpu_threads"   : 1,
-            "gpu_threads"   : 1,
-            "mem_per_process": 128,
-            "lfs_per_process":2
-        },
-    }
-    component._alloc_mpi(unit)
-
-
-@mock.patch.object(Continuous, '__init__', return_value=None)
-@mock.patch.object(Continuous, '_configure', return_value=None)
-def test_alloc_mpi_no_fit(mocked_init, mocked_configure):
-    '''
-    Test 1 Too many threads requested
-    '''
-    component = Continuous()
-    component.nodes = []
-    component._lrms_cores_per_node = 1
-    component._lrms_gpus_per_node = 1
-    component._lrms_lfs_per_node = {'size': 128}
-    component._lrms_mem_per_node = 128
-    component._lrms_info = ''
-    component._lrms_lm_info = ''
-    component._log = ru.Logger('dummy')
-
-    unit = {
-        "uid"        : "unit.000006",
-        "description":
-            {
-                "executable"    : "/bin/sleep",
-                "arguments"     : ["10"],
-                "gpu_processes" : 1,
-                'cpu_process_type': 'MPI',
-                "cpu_processes" : 1,
-                "cpu_threads"   : 16,
-                "gpu_threads"   : 1,
-                "mem_per_process": 128,
-                "lfs_per_process":2
-            },
-    }
-    with pytest.raises(ValueError):
-        component._alloc_mpi(unit)
-
-    # Test 2 Too much LFS requeted
-
-    component = Continuous()
-    component.nodes = []
-    component._lrms_cores_per_node = 1
-    component._lrms_gpus_per_node = 1
-    component._lrms_lfs_per_node = {'size': 128}
-    component._lrms_mem_per_node = 128
-    component._lrms_info = ''
-    component._lrms_lm_info = ''
-    component._log = ru.Logger('dummy')
-
-    unit = {
-        "uid"        : "unit.000006",
-        "description":
-            {
-                "executable"    : "/bin/sleep",
-                "arguments"     : ["10"],
-                "gpu_processes" : 1,
-                'cpu_process_type': 'MPI',
-                "cpu_processes" : 1,
-                "cpu_threads"   : 1,
-                "gpu_threads"   : 1,
-                "mem_per_process": 128,
-                "lfs_per_process":3047
-            },
-    }
-    with pytest.raises(ValueError):
-        component._alloc_mpi(unit)
-
-    # Test 3 Too much MEM requeted
-
-    component = Continuous()
-    component.nodes = []
-    component._lrms_cores_per_node = 1
-    component._lrms_gpus_per_node = 1
-    component._lrms_lfs_per_node = {'size': 128}
-    component._lrms_mem_per_node = 128
-    component._lrms_info = ''
-    component._lrms_lm_info = ''
-    component._log = ru.Logger('dummy')
-
-    unit = {
-        "uid"        : "unit.000006",
-        "description":
-            {
-                "executable"    : "/bin/sleep",
-                "arguments"     : ["10"],
-                "gpu_processes" : 1,
-                'cpu_process_type': 'MPI',
-                "cpu_processes" : 1,
-                "cpu_threads"   : 1,
-                "gpu_threads"   : 1,
-                "mem_per_process": 1024,
-                "lfs_per_process":2
-            },
-    }
-    with pytest.raises(ValueError):
-        component._alloc_mpi(unit)
+        for i in range (len(cfg)):
+            try:
+                assert [cfg[i]] == test_slot
+            except:
+                with pytest.raises(AssertionError) as e:
+                    raise
+        tearDown()
