@@ -136,7 +136,7 @@ class Continuous(AgentSchedulingComponent):
 
             if self._cfg.resource_cfg.blocked_cores:
                 print('blocked: %s' % self._cfg.resource_cfg.blocked_cores)
-                for idx in self.resource_cfg._cfg.blocked_cores:
+                for idx in self._cfg.resource_cfg.blocked_cores:
                     node_entry['cores'][idx] = rpc.DOWN
 
 
