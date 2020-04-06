@@ -61,7 +61,8 @@
         "project"  : "tromp",
         "queue"    : "all",
         "schema"   : "local",
-        "cores"    : 32
+        "cores"    : 32,
+        "gpus"     : 4
     },
 
     "princeton.tiger_cpu" : {
