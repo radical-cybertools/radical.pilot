@@ -811,7 +811,7 @@ virtenv_activate()
     else
         unset VIRTUAL_ENV
         . "$virtenv/bin/activate"
-        if test -z "$VIRTUAL_ENV"
+        if test -z "$VIRTUAL_ENV" && test -z "$CONDA_PREFIX"
         then
             echo "Loading of virtual env failed!"
             exit 1
