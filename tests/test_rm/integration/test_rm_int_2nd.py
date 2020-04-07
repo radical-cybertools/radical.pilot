@@ -5,40 +5,6 @@ import subprocess
 session      = rp.Session()
 config = ru.read_json('examples/config.json')
 
-def test_slurm():
-    excluded_list = []
-    cmd_to_run = "srun -t 00:00:10 -N 1 /bin/env|egrep 'SLURM_NODELIST|SLURM_NPROCS|SLURM_NNODES|SLURM_CPUS_ON_NODE'"
-    for resource_name, values in session._rcfgs.items():
-        if values['resource_manager'] != 'SLURM':
-            """
-            xsede.frontera
-            xsede.comet_ssh
-            xsede.bridges
-            fub.allegro_rsh
-            xsede.stampede2_ssh
-            xsede.wrangler_ssh
-            xsede.wrangler_spark
-            xsede.comet_orte
-            xsede.comet_ortelib
-            das5.fs1_ssh
-            vtarc_dt.stampede_ssh
-            princeton.tiger_cpu
-            xsede.comet_spark
-            princeton.tiger_gpu
-            """
-            continue
-        if resource_name in excluded_list:
-            continue
-
-        schema = config[resource_name]
-        job_manager_endpoint = values[schema]['job_manager_endpoint'] # slurm+ssh://
-        m=re.search('(\w+)\+(\w+)://([a-zA-Z.-_?:%]+)*$', job_manager_endpoint)
-        rm, schema, hostname = m.group(1), m.group(2), m.group(3)
-        cmd = "{} {} \"{}\"".format(schema, hostname, cmd_to_run)
-        actual_output = subprocess.check_output(cmd.split())
-        expected_output = "SLURM_NPROCS=1\nSLURM_NNODES=1\nSLURM_NODELIST=\nSLURM_CPUS_ON_NODE={}".format(values['cores_per_node'])
-        assert actual_output == expected_output
-
 
 def test_slurm_xsede_stampede2():
 
@@ -59,14 +25,21 @@ def test_slurm_xsede_stampede2():
     assert actual_output == expected_output
 
 
-def test_lsf_summit():
-    pass
+# python -m pytest tests/test_rm/integration/test_rm_int_2nd.py::test_lsf_summit
+# -vvvvv
+def test_lsf_summit(project="CSC393"):
 
-def test_torque():
-    pass
+    resource_group = "ornl"
+    resource_name = "summit"
+    values = session._rcfgs[resource_group][resource_name]
+    cfg = config["{}.{}".format(resource_group, resource_name)]
+    cmd_to_run = ("bsub -W 1 -nnodes 1 -P {} -q {} -Is {} " + \
+            "/bin/env").format(project, values['default_queue'], values['task_launch_method'].lower())
 
-def test_pbspro():
-    pass
+    env = subprocess.Popen(cmd_to_run.split(), stdout=subprocess.PIPE)
+    actual_output = subprocess.check_output(("egrep", "LSB_HOSTS"),
+            stdin=env.stdout)
+    actual_output_length = len(actual_output.split())
+    expected_output_length = 42
+    assert actual_output_length >= expected_output_length
 
-def test_fork():
-    pass
