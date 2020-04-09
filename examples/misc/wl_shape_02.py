@@ -46,7 +46,7 @@ if __name__ == '__main__':
         pilot = pmgr.submit_pilots(pdesc)
 
         report.header('stage data')
-        pilot.stage_in({'source': 'client:///examples/misc/gromacs/',
+        pilot.stage_in({'source': 'client:///gromacs/',
                         'target': 'pilot:///',
                         'action': rp.TRANSFER})
         report.ok('>>ok\n')

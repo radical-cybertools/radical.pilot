@@ -63,9 +63,8 @@ if __name__ == "__main__":
         rp_units    = int(os.getenv("RP_UNITS",    str(rp_cores * 3 * 3 * 2)))  # 3 units/core/pilot
         rp_runtime  = int(os.getenv("RP_RUNTIME",  '15'))
         rp_user     = str(os.getenv("RP_USER",     ""))
-        rp_host     = str(os.getenv("RP_HOST",     "xsede.stampede"))
+        rp_host     = str(os.getenv("RP_HOST",     "local.localhost"))
         rp_queue    = str(os.getenv("RP_QUEUE",    ""))
-        rp_project  = str(os.getenv("RP_PROJECT",  "TG-MCB090174"))
 
         # make jenkins happy
         c         = rp.Context ('ssh')
@@ -90,7 +89,6 @@ if __name__ == "__main__":
             pdesc.cores    = i * rp_cores
             pdesc.cleanup  = False
             if rp_queue  : pdesc.queue    = rp_queue
-            if rp_project: pdesc.project  = rp_project
 
             pdescriptions.append(pdesc)
 
@@ -101,8 +99,7 @@ if __name__ == "__main__":
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
-        umgr = rp.UnitManager(
-            session=session,
+        umgr = rp.UnitManager(session=session,
             scheduler=rp.SCHEDULER_BACKFILLING)
 
         # Register our callback with the UnitManager. This callback will get
@@ -121,8 +118,6 @@ if __name__ == "__main__":
             cu = rp.ComputeUnitDescription()
             cu.executable  = "/bin/sleep"
             cu.arguments   = ["30"]
-            cu.cores       = rp_cu_cores
-            cu.mpi         = True
 
             import pprint
             pprint.pprint (cu)
@@ -141,18 +136,16 @@ if __name__ == "__main__":
             units = [units]
 
         for unit in units:
-            print("* Task %s (executed @ %s) state %s, exit code: %s, \
-                   started: %s, finished: %s" % (unit.uid,
-                   unit.execution_locations, unit.state, unit.exit_code,
-                   unit.start_time, unit.stop_time))
+            print("* Task %s state: %s, exit code: %s"
+                  % (unit.uid, unit.state, unit.exit_code))
 
         # Close automatically cancels the pilot(s).
         pmgr.cancel_pilots ()
         time.sleep (3)
 
         # run the stats plotter
-        os.system ("bin/radicalpilot-stats -m plot -s %s" % session.uid) 
-        os.system ("cp -v %s.png report/rp.benchmark.png" % session.uid) 
+        #os.system ("bin/radicalpilot-stats -m plot -s %s" % session.uid) 
+        #os.system ("cp -v %s.png report/rp.benchmark.png" % session.uid) 
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

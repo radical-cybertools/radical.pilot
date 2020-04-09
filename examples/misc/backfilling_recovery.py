@@ -67,7 +67,7 @@ if __name__ == "__main__":
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    session = rp.Session(name=session_name)
+    session = rp.Session(uid=session_name)
     print("session id: %s" % session.uid)
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
@@ -90,21 +90,22 @@ if __name__ == "__main__":
 
         # Define a 4-core local pilot that runs for 10 minutes and cleans up
         # after itself.
+        
         pdesc1 = rp.ComputePilotDescription()
-        pdesc1.resource = "localhost"
+        pdesc1.resource = "local.localhost"
         pdesc1.runtime  = 10  # minutes
         pdesc1.cores    =  2
 
         pdesc2 = rp.ComputePilotDescription()
-        pdesc2.resource = "localhost"
+        pdesc2.resource = "local.localhost"
         pdesc2.runtime  = 10  # minutes
         pdesc2.cores    =  2
-
+     
         # Launch the pilots
-        pilots = pmgr.submit_pilots ([pdesc1, pdesc2])
+        pilots = pmgr.submit_pilots([pdesc1, pdesc2])
 
         # wait for them to become active
-        pmgr.wait_pilots (state=[rp.ACTIVE, rp.DONE, rp.FAILED])
+        pmgr.wait_pilots (state=[rp.PMGR_ACTIVE, rp.DONE, rp.FAILED])
 
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
@@ -142,7 +143,6 @@ if __name__ == "__main__":
             cud.executable    = "/bin/sh"
             cud.environment   = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
             cud.arguments     = ["-l", "-c", "cat $INPUT1 $INPUT2; sleep 10"]
-            cud.cores         = 1
             cud.input_staging = ['file1.dat', 'file2.dat']
             cud.restartable   = True
 
@@ -171,10 +171,8 @@ if __name__ == "__main__":
             unit.wait()
 
         for unit in units:
-            print("* Task %s (executed @ %s) state %s, exit code: %s, \
-                  started: %s, finished: %s, stdout: %s" % (unit.uid, 
-                  unit.execution_locations, unit.state, unit.exit_code, 
-                  unit.start_time, unit.stop_time, unit.stdout))
+            print("* Task %s state: %s, exit code: %s"
+                  % (unit.uid, unit.state, unit.exit_code))
 
         # delete the test data files
         os.system('rm file1.dat')

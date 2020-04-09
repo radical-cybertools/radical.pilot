@@ -80,7 +80,7 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable       = '/bin/sh'
-            cud.arguments        = ['/lustre/atlas/scratch/merzky1/csc230/radical.pilot.sandbox/09_mpi_units.sh']
+            cud.arguments        = ['/home/aydins/radical.pilot/examples/misc/09_mpi_units.sh']
             cud.cpu_processes    = 2
             cud.cpu_threads      = 1
           # cud.cpu_process_type = rp.MPI
@@ -98,14 +98,14 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.executable       = '/bin/sh'
-            cud.arguments        = ['/lustre/atlas/scratch/merzky1/csc230/radical.pilot.sandbox/09_mpi_units.sh']
+            cud.arguments        = ['/home/aydins/radical.pilot/examples/misc/09_mpi_units.sh']
             cud.cpu_processes    = 0
             cud.cpu_threads      = 1
-            cud.cpu_process_type = rp.MPI
+            #cud.cpu_process_type = rp.MPI
             cud.cpu_thread_type  = rp.OpenMP
             cud.gpu_processes    = 4
             cud.gpu_threads      = 1
-            cud.gpu_process_type = rp.MPI
+            #cud.gpu_process_type = rp.MPI
             cud.gpu_thread_type  = rp.OpenMP
             cuds.append(cud)
             report.progress()

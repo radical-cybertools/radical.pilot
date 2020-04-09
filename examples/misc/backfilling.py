@@ -82,10 +82,9 @@ if __name__ == "__main__":
 
         # create a second pilot with a new description
         pdesc = rp.ComputePilotDescription()
-        pdesc.resource  = "xsede.stampede"
+        pdesc.resource  = "local.localhost"
         pdesc.runtime   = 40  # minutes
         pdesc.cores     = 32
-        pdesc.project   = "TG-MCB090174"
 
         pilot_2 = pmgr.submit_pilots(pdesc)
 
@@ -107,15 +106,15 @@ if __name__ == "__main__":
         umgr.add_pilots([pilot_1, pilot_2, pilot_3])
 
       # # wait until first pilots become active
-        pilot_1.wait (state=rp.ACTIVE)
+        pilot_1.wait (state=rp.PMGR_ACTIVE)
 
         # Create a workload of 8 ComputeUnits.  
         cus = list()
 
         for unit_count in range(0, 512):
             cu = rp.ComputeUnitDescription()
-            cu.kernel      = 'SLEEP'
-            cu.arguments   = ["300"]
+            cu.executable = '/bin/sleep'
+            cu.arguments = ['300']
             cus.append(cu)
 
         # Submit the previously created ComputeUnit descriptions to the

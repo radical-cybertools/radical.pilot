@@ -4,6 +4,7 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os
 import sys
 import radical.pilot as rp
 
@@ -16,6 +17,8 @@ import radical.pilot as rp
 
 # ------------------------------------------------------------------------------
 #
+pwd = os.path.abspath(os.path.dirname(__file__))
+
 def pilot_state_cb (pilot, state):
     """ this callback is invoked on all pilot state changes """
 
@@ -68,29 +71,23 @@ if __name__ == "__main__":
         # Define a X-core on stamped that runs for N minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directoy.
         pdesc = rp.ComputePilotDescription()
-        pdesc.resource = "xsede.stampede"
+        pdesc.resource = "local.localhost"
         pdesc.runtime  = 15
         pdesc.cores    = 16
-        pdesc.project  = "TG-MCB090174"
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
         cud_list = []
+        
+        cu_arg_name = pwd + "/../helloworld_mpi.py"
 
         for unit_count in range(0, 4):
             cu = rp.ComputeUnitDescription()
             cu.pre_exec      = ["module load python intel mvapich2 mpi4py"]
             cu.executable    = "python"
-            cu.arguments     = ["helloworld_mpi.py"]
-            cu.input_staging = ["helloworld_mpi.py"]
-
-            # These two parameters are relevant to MPI execution:
-            #   'cores' sets the number of cores required by the task
-            #   'mpi' identifies the task as an MPI taskg
-            cu.cores         = 8
-            cu.mpi           = True
-
+            cu.arguments     = [cu_arg_name]
+            cu.input_staging = [cu_arg_name]
 
             cud_list.append(cu)
 
@@ -117,10 +114,8 @@ if __name__ == "__main__":
         if not isinstance(units, list):
             units = [units]
         for unit in units:
-            print("* Task %s - state: %s, exit code: %s, started: %s, \
-                   finished: %s, stdout: %s" % (unit.uid, unit.state,
-                                                unit.exit_code, unit.start_time,
-                                                unit.stop_time, unit.stdout))
+            print("* Task %s - state: %s, exit code: %s"
+                 % (unit.uid, unit.state, unit.exit_code))
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

@@ -9,6 +9,7 @@ import signal
 import threading     as mt
 
 import radical.pilot as rp
+import radical.pilot.task_overlay as rpt
 import radical.utils as ru
 
 
@@ -102,7 +103,7 @@ class Request(object):
 
 # ------------------------------------------------------------------------------
 #
-class MyMaster(rp.task_overlay.Master):
+class MyMaster(rpt.Master):
     '''
     This class provides the communication setup for the task overlay: it will
     set up the request / response communication queus and provide the endpoint
@@ -118,7 +119,7 @@ class MyMaster(rp.task_overlay.Master):
 
         # initialized the task overlay base class.  That base class will ensure
         # proper communication channels to the pilot agent.
-        rp.task_overlay.Master.__init__(self)
+        rpt.Master.__init__(self)
 
         # set up RU ZMQ Queues for request distribution and result collection
         req_cfg = ru.Config(cfg={'channel'    : 'to_req',
@@ -172,7 +173,7 @@ class MyMaster(rp.task_overlay.Master):
         '''
 
         descr = {'executable': worker}
-        return rp.task_overlay.Master.submit(self, self._info, descr, count)
+        return rpt.Master.submit(self, self._info, descr, count)
 
 
     # --------------------------------------------------------------------------
