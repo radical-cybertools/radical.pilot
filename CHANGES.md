@@ -4,6 +4,20 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
+1.3.0 Release                                                         2020-04-10
+--------------------------------------------------------------------------------
+
+  - task overlay + docs
+  - iteration on srun placement
+  - add env support to srun
+  - theta config
+  - clean up launcher termination guard against lower level termination errors
+  - cobalt rm
+  - optional output stager
+  - revive ibrun support
+  - switch comet FS
+
+
 1.2.1 Hotfix Release                                                  2020-02-11
 --------------------------------------------------------------------------------
 
