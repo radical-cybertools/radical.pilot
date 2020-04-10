@@ -89,7 +89,7 @@ if __name__ == '__main__':
                            ". /tmp/rp_synapse_ve_$USER/bin/activate",
                            "pip install --upgrade radical.synapse"]
         cud.executable  = "radical-synapse-version"
-        #cud.cores       = 1
+        cud.cpu_processes = 1
 
         cu = umgr.submit_units(cud)
         umgr.wait_units(cu.uid)

@@ -100,7 +100,7 @@ if __name__ == "__main__":
             cud.executable = '/bin/bash'
             cud.arguments = ['-c', 'cat %s %s > %s' %
                              (SHARED_INPUT_FILE, input_file, output_file)]
-            #cud.cores = 1
+            cud.cpu_processes = 1
             cud.input_staging = [sd_shared, input_file]
             cud.output_staging = output_file
 
