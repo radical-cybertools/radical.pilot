@@ -45,7 +45,7 @@ Note that you have to set-up password-less ssh keys for the resource you want to
 use. If you are not familiar with how to setup password-less ssh keys, check out
 this `guide <https://linuxize.com/post/how-to-setup-passwordless-ssh-login/>`_.
 
-All SSH-specific informations, like remote usernames, passwords, and keyfiles,
+All SSH-specific information, like remote usernames, passwords, and keyfiles,
 are set in a  ``Context`` object. For example, if you want to tell RADICAL-Pilot
 your user-id on the remote resource, use the following construct:
 
@@ -132,7 +132,7 @@ A configuration file has to be valid JSON. The structure is as follows:
 
 .. code-block:: python
 
-    # filename: lrz.json
+    # filename: resource_lrz.json
     {
         "supermuc":
         {
@@ -150,23 +150,20 @@ A configuration file has to be valid JSON. The structure is as follows:
                 "filesystem_endpoint"     : "gsisftp://supermuc.lrz.de:2222/"
             },
             "default_queue"               : "test",
-            "resource_manager"            : "LOADL",
+            "resource_manager"            : "SLURM",
             "task_launch_method"          : "SSH",
             "mpi_launch_method"           : "MPIEXEC",
             "forward_tunnel_endpoint"     : "login03",
-            "global_virtenv"              : "/home/hpc/pr87be/di29sut/pilotve",
+            "virtenv"                     : "/home/hpc/pr87be/di29sut/pilotve",
+            "python_dist"                 : "default",
             "pre_bootstrap_0"             : ["source /etc/profile",
                                              "source /etc/profile.d/modules.sh",
-                                             "module load python/2.7.6",
                                              "module unload mpi.ibm", "module load mpi.intel",
                                              "source /home/hpc/pr87be/di29sut/pilotve/bin/activate"
                                             ],
             "valid_roots"                 : ["/home", "/gpfs/work", "/gpfs/scratch"],
-            "agent_type"                  : "multicore",
             "agent_scheduler"             : "CONTINUOUS",
-            "agent_spawner"               : "POPEN",
-            "pilot_agent"                 : "radical-pilot-agent-multicore.py",
-            "pilot_dist"                  : "default"
+            "agent_spawner"               : "POPEN"
         },
         "ANOTHER_KEY_NAME":
         {
@@ -175,8 +172,8 @@ A configuration file has to be valid JSON. The structure is as follows:
     }
 
 
-The name of your file (here ``lrz.json``) together with the name of the resource
-(``supermuc``) form the resource key which is used in the
+The name of your file (here ``resource_lrz.json``) together with the name of
+the resource (``supermuc``) form the resource key which is used in the
 :class:`ComputePilotDescription` resource attribute (``lrz.supermuc``).
 
 All fields are mandatory, unless indicated otherwise below.
@@ -189,13 +186,12 @@ All fields are mandatory, unless indicated otherwise below.
 * ``default_queue``: queue to use for pilot submission (optional).
 * ``resource_manager``: type of job management system. Valid values are: ``LOADL``, ``LSF``, ``PBSPRO``, ``SGE``, ``SLURM``, ``TORQUE``, ``FORK``.
 * ``task_launch_method``: type of compute node access, required for non-MPI units. Valid values are: ``SSH``,``APRUN`` or ``LOCAL``.
-* ``mpi_launch_method``: type of MPI support, required for MPI units. Valid values are: ``MPIRUN``, ``MPIEXEC``, ``APRUN``, ``IBRUN`` or ``POE``.
+* ``mpi_launch_method``: type of MPI support, required for MPI units. Valid values are: ``MPIRUN``, ``MPIEXEC``, ``APRUN``, ``IBRUN``, etc.
 * ``python_interpreter``: path to python (optional).
 * ``python_dist``: `anaconda` or `default`, i.e., not `anaconda` (mandatory).
 * ``pre_bootstrap_0``: list of commands to execute for initialization of main agent (optional).
 * ``pre_bootstrap_1``: list of commands to execute for initialization of sub-agent (optional).
 * ``valid_roots``: list of shared file system roots (optional). Note: pilot sandboxes must lie under these roots.
-* ``pilot_agent``: type of pilot agent to use. Currently: ``radical-pilot-agent-multicore.py``.
 * ``forward_tunnel_endpoint``: name of the host which can be used to create ssh tunnels from the compute nodes to the outside world (optional).
 
 Several configuration files are part of the RADICAL-Pilot installation, and can be found
