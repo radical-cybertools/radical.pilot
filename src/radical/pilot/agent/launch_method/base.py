@@ -211,7 +211,7 @@ class LaunchMethod(object):
             LM_NAME_FLUX          : Flux,
             LM_NAME_JSRUN         : JSRUN,
             LM_NAME_YARN          : Yarn,
-            LM_NAME_SPARK         : Spark
+            LM_NAME_SPARK         : Spark,
 
             # # deprecated
             # LM_NAME_ORTE          : ORTE,
