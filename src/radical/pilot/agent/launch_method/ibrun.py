@@ -13,6 +13,8 @@ from .base import LaunchMethod
 #
 class IBRun(LaunchMethod):
 
+    node_list = None
+
     # NOTE: Don't think that with IBRUN it is possible to have
     #       processes != cores ...
 
@@ -22,10 +24,13 @@ class IBRun(LaunchMethod):
 
         LaunchMethod.__init__(self, name, cfg, session)
 
+        self._node_list = self._cfg.rm_info.node_list
+
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
+
         # ibrun: wrapper for mpirun at TACC
         self.launch_command = ru.which('ibrun')
 
@@ -41,13 +46,21 @@ class IBRun(LaunchMethod):
         task_args    = cud.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
 
-        if 'task_offsets' not in slots:
-            raise RuntimeError('insufficient information to launch via %s: %s'
-                    % (self.name, slots))
+        cpn     = self._cfg.cores_per_node
+        index   = 0
+        offsets = list()
 
-        task_offsets = slots['task_offsets']        # This needs to revisited
-        assert(len(task_offsets) == 1)              # since slots structure has
-        ibrun_offset = task_offsets[0]              # changed
+        import pprint
+        for node in self._node_list:
+            for slot_node in slots['nodes']:
+                if slot_node['uid'] == node[0]:
+                    for core_map in slot_node['core_map']:
+                        for core_idx in core_map:
+                            offsets.append(index + core_idx)
+    
+            index += cpn
+
+        ibrun_offset = min(offsets)
 
         if task_argstr:
             task_command = "%s %s" % (task_exec, task_argstr)
