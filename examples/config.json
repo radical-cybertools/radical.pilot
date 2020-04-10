@@ -141,6 +141,13 @@
         "cores"    : 204
     },
 
+    "xsede.stampede2_ibrun"  : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "development",
+        "schema"   : "local",
+        "cores"    : 204
+    },
+
     "ncar.cheyenne": {
 	    "project"  : "URTG0014",
 	    "queue"    : "regular",
