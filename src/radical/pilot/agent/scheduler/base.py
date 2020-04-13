@@ -389,11 +389,13 @@ class AgentSchedulingComponent(rpu.Component):
             #       of the node to the location on the list?
 
             node = None
+            node_found = False
             for node in self.nodes:
                 if node['uid'] == slot_node['uid']:
+                    node_found = True
                     break
 
-            if not node:
+            if not node_found:
                 raise RuntimeError('inconsistent node information')
 
             # iterate over cores/gpus in the slot, and update state

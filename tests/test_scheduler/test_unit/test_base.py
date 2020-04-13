@@ -244,7 +244,7 @@ def test_handle_cuda(mocked_init):
                      "nodes": [{"lfs": {"path": "/dev/null", "size": 0},
                                 "core_map": [[0]],
                                 "name": "a",
-                                "gpu_map": [[]],
+                                "gpu_map": [],
                                 "uid": 1,"mem": None}],
                      "lm_info": "INFO",
                      "gpus_per_node": 6,
