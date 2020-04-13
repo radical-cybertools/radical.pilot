@@ -1,7 +1,6 @@
 
 # pylint: disable=protected-access, unused-argument
 import os
-import pytest
 import radical.utils as ru
 from radical.pilot.agent.resource_manager.cobalt import Cobalt
 
@@ -21,7 +20,7 @@ def test_configure(mocked_init, mocked_raise_on, mocked_sh_callout):
 
     # Test 1 no config file
     os.environ['COBALT_PARTSIZE'] = '1'
-    
+
     component = Cobalt(cfg=None, session=None)
     component._log = ru.Logger('dummy')
     component._cfg = {}
