@@ -500,7 +500,8 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
-        "pre_bootstrap_0"             : ["module load intel",
+        "pre_bootstrap_0"             : ["module reset",
+                                         "module load intel",
                                          "module load python"
                                         ],
         "pre_bootstrap_1"             : ["export PATH=/opt/intel/2018.1.163/compilers_and_libraries_2018.1.163/linux/mpi/intel64/bin/:$PATH",
