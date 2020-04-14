@@ -8,6 +8,7 @@ import glob
 import pytest
 import shutil
 import unittest
+import radical.utils as ru
 from radical.pilot.agent.scheduler.continuous import Continuous
 
 try:
@@ -19,9 +20,9 @@ except ImportError:
 # ------------------------------------------------------------------------------
 #
 def setUp():
-    test_cases = json.load(open(os.path.abspath('unit_test_cases_continous_scheduler.json')))
+    test_cases = json.load(open(os.path.abspath('unit_test_cases_continuous_scheduler.json')))
 
-    return test_cases.pop('cfg'),test_cases['allocate']['nodes'],test_cases['allocate']['slots']
+    return test_cases.pop('cfg'),test_cases['allocate']['nodes'],test_cases['allocate']['slots'],test_cases['allocate']['trigger']
 
 
 # ------------------------------------------------------------------------------
@@ -38,12 +39,14 @@ class TestContinuous(unittest.TestCase):
 
     # ------------------------------------------------------------------------------
     #
-    @mock.patch.object(Continuous, '__init__', return_value=None)
     @mock.patch('radical.pilot.agent.scheduler.base.AgentSchedulingComponent')
-    def test_configure(mocked_init, mocked_agent, mocked_method):
+    @mock.patch.object(Continuous, '__init__', return_value=None)
+    def test_configure(mocked_init,
+                       mocked_agent,
+                       mocked_method):
 
 
-        cfg,_,_ = setUp()
+        cfg,_,_,_ = setUp()
         component = Continuous(cfg=cfg, session=None)
         component._cfg = cfg
         component._rm_node_list = [["a", 1],
@@ -71,13 +74,16 @@ class TestContinuous(unittest.TestCase):
 
 # ------------------------------------------------------------------------------
 #
-    @mock.patch.object(Continuous, '__init__', return_value=None)
     @mock.patch('radical.pilot.agent.scheduler.base.AgentSchedulingComponent')
+    @mock.patch.object(Continuous, '__init__', return_value=None)
     @mock.patch.object(Continuous, '_configure', return_value=None)
-    def test_find_resources(mocked_init, mocked_agent, mocked_configure, mocked_method):
+    def test_find_resources(mocked_init,
+                            mocked_agent,
+                            mocked_configure,
+                            mocked_method):
 
 
-        _,_,cfg = setUp()
+        _,_,cfg,_ = setUp()
         component = Continuous(cfg=cfg, session=None)
         component.node = {'name' : 'a',
                           'uid': 2,
@@ -115,3 +121,55 @@ class TestContinuous(unittest.TestCase):
                 with pytest.raises(AssertionError) as e:
                     raise
         tearDown()
+
+
+# ------------------------------------------------------------------------------
+# 
+    @mock.patch('radical.pilot.agent.scheduler.base.AgentSchedulingComponent')
+    @mock.patch.object(Continuous, '__init__', return_value=None)
+    @mock.patch.object(Continuous, '_configure', return_value=None)
+    @mock.patch.object(Continuous, '_iterate_nodes', return_value=None)
+    @mock.patch.object(Continuous, '_find_resources',
+                       return_value=[{'name': 'a',
+                                      'uid': 2,
+                                      'core_map': [[0, 1, 2, 3, 4, 5, 6, 7, 8,
+                                                    9, 10, 11, 12, 13, 14, 15]],
+                                      'gpu_map': [[0], [1]],
+                                      'lfs': {'path': '/dev/null', 'size': 1234},
+                                      'mem': 1024}])
+    def test_schedule_unit(mocked_init,
+                           mocked_agent,
+                           mocked_configure,
+                           mocked_method,
+                           mocked_iterate_nodes,
+                           mocked_find_resources):
+
+        _,_,_,cfg = setUp()
+        component = Continuous(cfg=None, session=None)
+        cud =  {"environment" : {},
+                          "cpu_process_type" : 'null',
+                          "gpu_process_type" : 'null',
+                          "cpu_threads" : 1,
+                          "gpu_processes" : 0,
+                          "cpu_processes" :  1,
+                          "mem_per_process": 128,
+                          "lfs_per_process" : 0}
+
+        component._uid = 1
+        component._log = ru.Logger('dummy')
+        component.req_slots      = cud['cpu_processes']
+        component.cores_per_slot = cud['cpu_threads']
+        component.gpus_per_slot  = cud['gpu_processes']
+        component.lfs_per_slot   = cud['lfs_per_process']
+        component.mem_per_slot   = cud['mem_per_process']
+        component._schedule_units()
+
+        for i in range (len(cfg)):
+            try:
+                assert cfg[i]['cpu_processes']   == component.req_slots     
+                assert cfg[i]['cpu_threads']     == component.cores_per_slot
+                assert cfg[i]['gpu_processes']   == component.gpus_per_slot  
+                assert cfg[i]['lfs_per_process']['size'] == component.lfs_per_slot   
+                assert cfg[i]['mem_per_process'] == component.mem_per_slot  
+            except:
+                pass
