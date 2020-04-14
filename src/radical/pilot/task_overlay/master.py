@@ -3,12 +3,16 @@ import os
 import copy
 import time
 
+import threading         as mt
+
 import radical.utils     as ru
 
 from .. import Session, ComputeUnitDescription
 from .. import utils     as rpu
 from .. import states    as rps
 from .. import constants as rpc
+
+from .request import Request
 
 
 # ------------------------------------------------------------------------------
@@ -21,8 +25,11 @@ class Master(rpu.Component):
 
         self._backend = backend  # FIXME: use
 
-        self._lock    = ru.Lock('master')
-        self._workers = dict()  # wid: worker
+        self._lock     = ru.Lock('master')
+        self._workers  = dict()  # wid: worker
+        self._requests = dict()     # bookkeeping of submitted requests
+        self._lock     = mt.Lock()  # lock the request dist on updates
+
 
         cfg     = self._get_config()
         session = Session(cfg=cfg, _primary=False)
@@ -32,6 +39,50 @@ class Master(rpu.Component):
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
                              rpc.AGENT_STAGING_INPUT_QUEUE)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
+
+
+        # set up RU ZMQ Queues for request distribution and result collection
+        req_cfg = ru.Config(cfg={'channel'    : 'to_req',
+                                 'type'       : 'queue',
+                                 'uid'        : self._uid + '.req',
+                                 'path'       : os.getcwd(),
+                                 'stall_hwm'  : 0,
+                                 'bulk_size'  : 0})
+
+        res_cfg = ru.Config(cfg={'channel'    : 'to_res',
+                                 'type'       : 'queue',
+                                 'uid'        : self._uid + '.res',
+                                 'path'       : os.getcwd(),
+                                 'stall_hwm'  : 0,
+                                 'bulk_size'  : 0})
+
+        self._req_queue = ru.zmq.Queue(req_cfg)
+        self._res_queue = ru.zmq.Queue(res_cfg)
+
+        self._req_queue.start()
+        self._res_queue.start()
+
+        self._req_addr_put = str(self._req_queue.addr_put)
+        self._req_addr_get = str(self._req_queue.addr_get)
+
+        self._res_addr_put = str(self._res_queue.addr_put)
+        self._res_addr_get = str(self._res_queue.addr_get)
+
+        # this master will put requests onto the request queue, and will get
+        # responses from the response queue.  Note that the responses will be
+        # delivered via an async callback (`self._result_cb`).
+        self._req_put = ru.zmq.Putter('to_req', self._req_addr_put)
+        self._res_get = ru.zmq.Getter('to_res', self._res_addr_get,
+                                                cb=self._result_cb)
+
+        # for the workers it is the opposite: they will get requests from the
+        # request queue, and will send responses to the response queue.
+        self._info = {'req_addr_get': self._req_addr_get,
+                      'res_addr_put': self._res_addr_put}
+
+
+        # make sure the channels are up before allowing to submit requests
+        time.sleep(1)
 
         # connect to the local agent
         self._log.debug('startup complete')
@@ -54,9 +105,9 @@ class Master(rpu.Component):
         del(cfg['cmgr'])
 
         cfg['log_lvl'] = 'debug'
-        cfg['kind'] = 'master'
-        cfg['base'] = os.getcwd()
-        cfg['uid']  = ru.generate_id('master')
+        cfg['kind']    = 'master'
+        cfg['base']    = os.getcwd()
+        cfg['uid']     = ru.generate_id('master')
 
         return ru.Config(cfg=cfg)
 
@@ -97,20 +148,29 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def submit(self, info, descr, count=1):
+    def submit(self, worker, count, cpn, gpn):
         '''
-        submit n workers, do *not* wait for them to come up
+        submit n workers, and pass the queue info as configuration file.
+        Do *not* wait for them to come up
         '''
+
+        # each worker gets a full node
+        descr = {'executable': worker,
+                 'cpu_processes'  : 1,
+                 'cpu_threads'    : cpn,
+                 'cpu_thread_type': 'POSIX',
+                 'gpu_processses' : gpn}
+
 
         tasks = list()
         for _ in range(count):
 
             # write config file for that worker
-            cfg   = copy.deepcopy(self._cfg)
-            cfg['info'] = info
-            uid   = ru.generate_id('worker')
-            sbox  = '%s/%s'      % (cfg['base'], uid)
-            fname = '%s/%s.json' % (sbox, uid)
+            cfg         = copy.deepcopy(self._cfg)
+            cfg['info'] = self._info
+            uid         = ru.generate_id('worker')
+            sbox        = '%s/%s'      % (cfg['base'], uid)
+            fname       = '%s/%s.json' % (sbox, uid)
 
             cfg['kind'] = 'worker'
             cfg['uid']  = uid
@@ -170,6 +230,99 @@ class Master(rpu.Component):
                     self._log.debug('wait ok')
                     return
                 time.sleep(0.1)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def create_work_items(self):
+        '''
+        This method MUST be implemented by the child class.  It is expected to
+        return a list of work items.  When calling `run()`, the master will
+        distribute those work items to the workers and collect the results.
+        Run will finish once all work items are collected.
+
+        NOTE: work items are expected to be serializable dictionaries.
+        '''
+
+        raise NotImplementedError('method be implemented by child class')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def run(self):
+
+        # get work from the overloading implementation
+        items = self.create_work_items()
+
+        # submit work requests.  The returned request objects behave like Futures
+        # (they will be implemented as proper Futures in the future - ha!)
+        for item in items:
+            self.request(item)
+
+        while True:
+
+            # count completed items
+            with self._lock:
+                states = [req.state for req in self._requests.values()]
+
+            completed = [s for s in states if s in ['DONE', 'FAILED']]
+
+            self._log.debug('%d =?= %d', len(completed), len(states))
+            if len(completed) == len(states):
+                break
+
+            time.sleep(1)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def request(self, req):
+        '''
+        submit a work request (function call spec) to the request queue
+        '''
+
+        # create request and add to bookkeeping dict.  That response object will
+        # be updated once a response for the respective request UID arrives.
+        req = Request(req=req)
+        with self._lock:
+            self._requests[req.uid] = req
+
+        # push the request message (here and dictionary) onto the request queue
+        self._req_put.put(req.as_dict())
+        self._log.debug('requested %s', req.uid)
+
+        # return the request to the master script for inspection etc.
+        return req
+
+
+    # --------------------------------------------------------------------------
+    #
+    def result_cb(self, msg):
+        '''
+        this method can be overloaded by the deriving class
+        '''
+
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _result_cb(self, msg):
+
+        # update result and error information for the corresponding request UID
+        uid = msg['req']
+        res = msg['res']
+        err = msg['err']
+
+        req = self._requests[uid]
+        req.set_result(res, err)
+
+        try:
+            new_items = ru.as_list(self.result_cb([req]))
+            for item in new_items:
+                self.request(item)
+        except:
+            self._log.exception('result callback failed')
 
 
     # --------------------------------------------------------------------------
