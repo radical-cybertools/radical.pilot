@@ -48,7 +48,7 @@ class Srun(LaunchMethod):
         if ret:
             raise RuntimeError('cannot use srun [%s] [%s]' % (out, err))
 
-        self._version = out.split()[1]
+        self._version = out.split()[-1]
         self._log.debug('using srun from %s [%s]',
                         self.launch_command, self._version)
 
