@@ -26,7 +26,7 @@
         "valid_roots"                 : [],
         "rp_version"                  : "installed",
         "python_dist"                 : "anaconda",
-        "virtenv"                     : "$HOME/radical.pilot.sandbox/ve.rp",
+        "virtenv"                     : "/home/amerzky/radical.pilot.sandbox/ve.rp",
         "virtenv_mode"                : "use",
         "export_to_cu"                : [],
         "cu_pre_exec"                 : [],
