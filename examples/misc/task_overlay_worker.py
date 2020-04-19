@@ -22,19 +22,24 @@ class MyWorker(rp.task_overlay.Worker):
 
         rp.task_overlay.Worker.__init__(self, cfg)
 
-        self.register_method('hello', self.hello)
+        self.register_call('hello', self.hello)
 
 
     # --------------------------------------------------------------------------
     #
-    def hello(self, world):
+    def hello(self, count):
         '''
         important work
         '''
 
-        time.sleep(0.1)
+        time.sleep(1)
 
-        return 'hello %s @ %s' % (world, time.time())
+        self._log.debug('self.hello: %s', count)
+        out = 'hello %s @ %s' % (count, time.time())
+
+        self._log.debug('self.hello: %s -> %s', count, out)
+
+        return out
 
 
 # ------------------------------------------------------------------------------

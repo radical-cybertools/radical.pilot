@@ -53,25 +53,24 @@ class Request(object):
 
         return {'uid'   : self._uid,
                 'state' : self._state,
-                'result': self._result,
-                'call'  : self._work['call'],
-                'args'  : self._work.get('args',   []),
-                'kwargs': self._work.get('kwargs', {}),
-               }
+                'mode'  : self._work['mode'],
+                'data'  : self._work['data'],
+                'result': self._result}
 
 
     # --------------------------------------------------------------------------
     #
-    def set_result(self, result, error):
+    def set_result(self, out, err, ret):
         '''
         This is called by the master to fulfill the future
         '''
 
-        self._result = result
-        self._error  = error
+        self._result = {'out': out,
+                        'err': err,
+                        'ret': ret}
 
-        if error: self._state = 'FAILED'
-        else    : self._state = 'DONE'
+        if ret: self._state = 'FAILED'
+        else  : self._state = 'DONE'
 
 
     # --------------------------------------------------------------------------

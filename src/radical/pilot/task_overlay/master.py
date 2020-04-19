@@ -99,14 +99,15 @@ class Master(rpu.Component):
         #        structure.  It would be better if agent.0 creates the worker
         #        base config from scratch on startup.
 
-        cfg = ru.read_json('../control_pubsub.json')
+        pwd = os.getcwd()
+        cfg = ru.read_json('%s/../control_pubsub.json' % pwd)
 
         del(cfg['channel'])
         del(cfg['cmgr'])
 
         cfg['log_lvl'] = 'debug'
         cfg['kind']    = 'master'
-        cfg['base']    = os.getcwd()
+        cfg['base']    = pwd
         cfg['uid']     = ru.generate_id('master')
 
         return ru.Config(cfg=cfg)
@@ -166,15 +167,17 @@ class Master(rpu.Component):
         for _ in range(count):
 
             # write config file for that worker
-            cfg         = copy.deepcopy(self._cfg)
-            cfg['info'] = self._info
-            uid         = ru.generate_id('worker')
-            sbox        = '%s/%s'      % (cfg['base'], uid)
-            fname       = '%s/%s.json' % (sbox, uid)
+            cfg          = copy.deepcopy(self._cfg)
+            cfg['info']  = self._info
+            uid          = ru.generate_id('worker')
+            sbox         = '%s/%s'      % (cfg['base'], uid)
+            fname        = '%s/%s.json' % (sbox, uid)
 
-            cfg['kind'] = 'worker'
-            cfg['uid']  = uid
-            cfg['base'] = sbox
+            cfg['kind']  = 'worker'
+            cfg['uid']   = uid
+            cfg['base']  = sbox
+            cfg['cores'] = cpn
+            cfg['gpus']  = gpn
 
             ru.rec_makedir(sbox)
             ru.write_json(cfg, fname)
@@ -254,11 +257,14 @@ class Master(rpu.Component):
         # get work from the overloading implementation
         items = self.create_work_items()
 
-        # submit work requests.  The returned request objects behave like Futures
-        # (they will be implemented as proper Futures in the future - ha!)
+        # submit work requests.
+        # The returned request objects behave like Futures (they will be
+        # implemented as proper Futures in the future - ha!)
         for item in items:
             self.request(item)
 
+        # wait for the submitted requests to complete
+        t_start = time.time()
         while True:
 
             # count completed items
@@ -271,7 +277,10 @@ class Master(rpu.Component):
             if len(completed) == len(states):
                 break
 
-            time.sleep(1)
+            time.sleep(0.1)
+        t_stop = time.time()
+
+        self._log.debug('=== master runtime: %.2fs', t_stop - t_start)
 
 
     # --------------------------------------------------------------------------
@@ -311,11 +320,12 @@ class Master(rpu.Component):
 
         # update result and error information for the corresponding request UID
         uid = msg['req']
-        res = msg['res']
+        out = msg['out']
         err = msg['err']
+        ret = msg['ret']
 
         req = self._requests[uid]
-        req.set_result(res, err)
+        req.set_result(out, err, ret)
 
         try:
             new_items = ru.as_list(self.result_cb([req]))

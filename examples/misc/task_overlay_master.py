@@ -1,13 +1,8 @@
 #!/usr/bin/env python3
 
-import os
 import sys
-import time
-import signal
-
 
 import radical.pilot as rp
-import radical.utils as ru
 
 
 # This script has to run as a task within an pilot allocation, and is
@@ -49,8 +44,9 @@ class MyMaster(rp.task_overlay.Master):
         # items MUST be serializable dictionaries.
         items = list()
         for n in range(32):
-            items.append({'call'  : 'hello',
-                          'args'  : [n]})
+            items.append({'mode':  'call',
+                          'data': {'call'  : 'hello',
+                                   'kwargs': {'count': n}}})
 
         return items
 
@@ -62,12 +58,14 @@ class MyMaster(rp.task_overlay.Master):
         # result callbacks can return new work items
         new_requests = list()
         for r in requests:
-            print('item %s: %s [%s]' % (r.uid, r.state, r.result))
+            print('result_cb %s: %s [%s]' % (r.uid, r.state, r.result))
+          # print('work: %s' % r.work)
 
-            count = r.work['args'][0]
+            count = r.work['data']['kwargs']['count']
             if count < 10:
-                new_requests.append({'call'  : 'hello',
-                                     'args'  : [count + 100]})
+                new_requests.append({'mode': 'call',
+                                     'data': {'call'  : 'hello',
+                                              'kwargs': {'count': count + 100}}})
 
         return new_requests
 
