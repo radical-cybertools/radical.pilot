@@ -118,16 +118,14 @@ class Worker(rpu.Component):
         method = getattr(self, data['call'])
         args   = data.get('args',   [])
         kwargs = data.get('kwargs', {})
-        self._log.debug('_call    : %s(%s, %s)' % (method, args, kwargs))
 
         try:
             out = method(*args, **kwargs)
             err = None
             ret = 0
-            self._log.debug('_call ok : %s(%s, %s)' % (method, args, kwargs))
 
         except Exception as e:
-            self._log.exception('_call nok: %s(%s, %s)' % (method, args, kwargs))
+            self._log.exception('_call failed: %s' % (data))
             out = None
             err = str(e)
             ret = 1
@@ -149,6 +147,7 @@ class Worker(rpu.Component):
             ret = 0
 
         except Exception as e:
+            self._log.exception('_eval failed: %s' % (data))
             out = None
             err = str(e)
             ret = 1
@@ -165,18 +164,26 @@ class Worker(rpu.Component):
         command line arguments.  We use `sp.Popen` to run the fork/exec, and to
         collect stdout, stderr and return code
         '''
-        import subprocess as sp
 
-        exe  = data['exe'],
-        args = data.get('args', []),
-        env  = data.get('env',  {}),
+        try:
+            import subprocess as sp
+
+            exe  = data['exe'],
+            args = data.get('args', []),
+            env  = data.get('env',  {}),
 
 
-        proc = sp.Popen(executable=exe, args=args,       env=env,
-                        stdin=None,     stdout=sp.Pipe, stderr=sp.Pipe,
-                        close_fds=True, shell=False)
-        out, err = proc.communicate()
-        ret      = proc.returncode
+            proc = sp.Popen(executable=exe, args=args,       env=env,
+                            stdin=None,     stdout=sp.Pipe, stderr=sp.Pipe,
+                            close_fds=True, shell=False)
+            out, err = proc.communicate()
+            ret      = proc.returncode
+
+        except Exception as e:
+            self._log.exception('_exec failed: %s' % (data))
+            out = None
+            err = str(e)
+            ret = 1
 
         return out, err, ret
 
@@ -189,7 +196,15 @@ class Worker(rpu.Component):
         line to be called as string.
         '''
 
-        out, err, ret = ru.sh_callout(data['cmd'])
+        try:
+            out, err, ret = ru.sh_callout(data['cmd'])
+
+        except Exception as e:
+            self._log.exception('_shell failed: %s' % (data))
+            out = None
+            err = str(e)
+            ret = 1
+
         return out, err, ret
 
 
@@ -214,8 +229,6 @@ class Worker(rpu.Component):
             #
             # FIXME: GPU / CPU accounting and assignment
             # FIXME: async pool assignment + collection in thread
-            self._log.debug('request_cb: %s : %s : %s', mode, self._modes[mode],
-                                                        msg.get('data'))
             out, err, ret = self._modes[mode](msg.get('data'))
 
 
