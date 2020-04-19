@@ -810,7 +810,7 @@ virtenv_activate()
 
     if test "$python_dist" = "anaconda"; then
         test -e "`which conda`" && conda activate "$virtenv" || \
-        (test -e "$virtenv/bin/activate" && source "$virtenv/bin/activate")
+        (test -e "$virtenv/bin/activate" && . "$virtenv/bin/activate")
         if test -z "$CONDA_PREFIX"; then
             echo "ERROR: activating of (conda) virtenv failed - abort"
             exit 1
@@ -1387,7 +1387,7 @@ $cmd"
 #    -x   exit cleanup - delete pilot sandbox, virtualenv etc. after completion
 #    -y   runtime limit
 #
-while getopts "a:b:c:d:e:f:g:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
+while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
     case $OPTION in
         a)  SESSION_SANDBOX="$OPTARG"  ;;
         b)  PYTHON_DIST="$OPTARG"  ;;
@@ -1477,7 +1477,7 @@ echo "VIRTENV           : $VIRTENV"
 if test "$PYTHON_DIST" = "anaconda" && ! test -d "$VIRTENV/"; then
     case "$VIRTENV_MODE" in
         recreate|update|use)
-            VIRTENV=$(cd `conda info --envs | awk -v envname=$VIRTENV \
+            VIRTENV=$(cd `conda info --envs | awk -v envname="$VIRTENV" \
             '{ if ($1 == envname) print $2 }'` && pwd -P)
             ;;
         *)
