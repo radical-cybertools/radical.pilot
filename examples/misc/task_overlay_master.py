@@ -43,7 +43,7 @@ class MyMaster(rp.task_overlay.Master):
         # create an initial list of work items to be distributed to the workers.
         # Work items MUST be serializable dictionaries.
         items = list()
-        for n in range(1024 * 1024):
+        for n in range(1024 * 32):
             items.append({'mode':  'call',
                           'data': {'method': 'hello',
                                    'kwargs': {'count': n}}})
@@ -83,7 +83,11 @@ if __name__ == '__main__':
     cpn      = int(sys.argv[3])
     gpn      = int(sys.argv[4])
 
-    n_workers = n_nodes - 1  # one node is used by master
+    # one node is used by master.  Alternatively (and probably better), we could
+    # reduce one of the worker sizes by one core.  But it somewhat depends on
+    # the worker type and application workload to judge if that makes sense, so
+    # we leave it for now.
+    n_workers = n_nodes - 1
 
     # create a master class instance - this will establish communitation to the
     # pilot agent
@@ -91,11 +95,14 @@ if __name__ == '__main__':
 
     # insert `n` worker tasks into the agent.  The agent will schedule (place)
     # those workers and execute them.
-    master.submit(worker=worker, count=n_workers, cpn=cpn, gpn=gpn)
+    master.submit(worker=worker, count=n_workers, cpn=cpn,     gpn=gpn)
 
-  # # wait until `m` of those workers are up
-  # # This is optional, work requests can be submitted before and will wait in
-  # # a work queue.
+    # insert one smaller worker (see above)
+    master.submit(worker=worker, count=1, cpn=cpn - 1, gpn=gpn)
+
+    # wait until `m` of those workers are up
+    # This is optional, work requests can be submitted before and will wait in
+    # a work queue.
   # master.wait(count=nworkers)
 
     master.run()
