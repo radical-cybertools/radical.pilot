@@ -149,18 +149,19 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def submit(self, worker, count, cpn, gpn):
+    def submit(self, worker, count, cores, gpus):
         '''
         submit n workers, and pass the queue info as configuration file.
         Do *not* wait for them to come up
         '''
 
-        # each worker gets a full node
-        descr = {'executable': worker,
+        # each worker gets the specified number of cores and gpus.  All
+        # resources need to be located on the same node.
+        descr = {'executable'     : worker,
                  'cpu_processes'  : 1,
-                 'cpu_threads'    : cpn,
+                 'cpu_threads'    : cores,
                  'cpu_thread_type': 'POSIX',
-                 'gpu_processses' : gpn}
+                 'gpu_processses' : gpus}
 
 
         tasks = list()
@@ -176,8 +177,8 @@ class Master(rpu.Component):
             cfg['kind']  = 'worker'
             cfg['uid']   = uid
             cfg['base']  = sbox
-            cfg['cores'] = cpn
-            cfg['gpus']  = gpn
+            cfg['cores'] = cores
+            cfg['gpus']  = gpus
 
             ru.rec_makedir(sbox)
             ru.write_json(cfg, fname)

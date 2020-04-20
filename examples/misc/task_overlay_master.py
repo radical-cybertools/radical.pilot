@@ -94,11 +94,9 @@ if __name__ == '__main__':
     master = MyMaster()
 
     # insert `n` worker tasks into the agent.  The agent will schedule (place)
-    # those workers and execute them.
-    master.submit(worker=worker, count=n_workers, cpn=cpn,     gpn=gpn)
-
-    # insert one smaller worker (see above)
-    master.submit(worker=worker, count=1, cpn=cpn - 1, gpn=gpn)
+    # those workers and execute them.  Insert one smaller worker (see above)
+    master.submit(worker=worker, count=n_workers, cores=cpn,     gpus=gpn)
+    master.submit(worker=worker, count=1,         cores=cpn - 1, gpus=gpn)
 
     # wait until `m` of those workers are up
     # This is optional, work requests can be submitted before and will wait in
