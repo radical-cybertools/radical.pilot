@@ -1478,7 +1478,7 @@ if test "$PYTHON_DIST" = "anaconda" && ! test -d "$VIRTENV/"; then
     case "$VIRTENV_MODE" in
         recreate|update|use)
             VIRTENV=$(cd `conda info --envs | awk -v envname="$VIRTENV" \
-            '{ if ($1 == envname) print $2 }'` && pwd -P)
+            '{ if ($1 == envname) print $NF }'`; pwd -P)
             ;;
         *)
             echo "WARNING: conda env is set not as directory ($VIRTENV_MODE)"
