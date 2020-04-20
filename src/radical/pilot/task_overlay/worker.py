@@ -1,6 +1,9 @@
 
+import os
 import sys
 import time
+
+import threading         as mt
 import multiprocessing   as mp
 
 import radical.utils     as ru
@@ -16,42 +19,63 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, info=None):
+    def __init__(self, cfg):
 
         if isinstance(cfg, str): cfg = ru.Config(cfg=ru.read_json(cfg))
         else                   : cfg = ru.Config(cfg=cfg)
 
         self._uid     = cfg.uid
-        self._cpn     = cfg.cpn
-        self._gpn     = cfg.gpn
-        self._info    = info
-        self._term    = mp.Event()
-        self._modes   = dict()
-        self._mdata   = dict()
+        self._n_cores = cfg.cores
+        self._n_gpus  = cfg.gpus
+
         self._info    = ru.Config(cfg=cfg.get('info', {}))
         self._session = Session(cfg=cfg, _primary=False)
+
+        self._term    = mp.Event()          # set to terminate
+        self._res_evt = mp.Event()          # set on free resources
+
+        self._mlock   = ru.Lock(self._uid)  # lock `_modes` and `_mdata`
+        self._modes   = dict()              # call modes (call, exec, eval, ...)
+        self._mdata   = dict()              # call mode meta data
 
         rpu.Component.__init__(self, cfg, self._session)
 
         # We need to make sure to run only up to `gpn` tasks using a gpu
-        # within that pool, so need a separate counter for that.  We use
-        # a `fork` context to inherit log and profile handles.
-        self._cpus_used = 0
-        self._gpus_used = 0
+        # within that pool, so need a separate counter for that.
+        self._resources = {'cores' : [0] * self._n_cores,
+                           'gpus'  : [0] * self._n_gpus}
 
-        # create a multiprocessing pool with `cpn` worker processors.  Set
-        # `maxtasksperchild` to `1` so that we get a fresh process for each
-        # task.  That will also allow us to run command lines via `exec`,
-        # effectively replacing the worker process in the pool for a specific
-        # task.
-        #
-        # NOTE: The mp documentation is wrong; mp.Pool dies *not* have a context
-        #       parameters.  Instead, the Pool has to be created within
-        #       a context.
-        ctx = mp.get_context('fork')
-        self._pool = ctx.Pool(processes=self._cpn,
-                              initializer=None,
-                              maxtasksperchild=1)
+        # resources are initially all free
+        self._res_evt.set()
+
+      # # create a multiprocessing pool with `cpn` worker processors.  Set
+      # # `maxtasksperchild` to `1` so that we get a fresh process for each
+      # # task.  That will also allow us to run command lines via `exec`,
+      # # effectively replacing the worker process in the pool for a specific
+      # # task.
+      # #
+      # # We use a `fork` context to inherit log and profile handles.
+      # #
+      # # NOTE: The mp documentation is wrong; mp.Pool does *not* have a context
+      # #       parameters.  Instead, the Pool has to be created within
+      # #       a context.
+      # ctx = mp.get_context('fork')
+      # self._pool = ctx.Pool(processes=self._n_cores,
+      #                       initializer=None,
+      #                       maxtasksperchild=1)
+      # NOTE: a multiprocessing pool won't work, as pickle is not able to
+      #       serialize our worker object.  So we use our own process pool.
+      #       It's not much of a loss since we want to respawn new processes for
+      #       each task anyway (to improve isolation).
+        self._pool  = dict()  # map task uid to process instance
+        self._plock = ru.Lock('p' + self._uid)  # lock _pool
+
+        # We also create a queue for communicating results back, and a thread to
+        # watch that queue
+        self._result_queue = mp.Queue()
+        self._result_thead = mt.Thread(target=self._result_watcher)
+        self._result_thead.daemon = True
+        self._result_thead.start()
 
         # connect to master
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
@@ -76,7 +100,7 @@ class Worker(rpu.Component):
         # eval:  evaluate a piece of python code
         # exec:  execute  a command line (fork/exec)
         # shell: execute  a shell command
-        # call:  execute  a method call of the worker class implementation
+        # call:  execute  a method or function call
         self.register_mode('call',  self._call)
         self.register_mode('eval',  self._eval)
         self.register_mode('exec',  self._exec)
@@ -110,17 +134,31 @@ class Worker(rpu.Component):
     #
     def _call(self, data):
         '''
-        We expect data to have a three entries: 'method', containing the name of
-        the member method to call, `args`, an optional list of unnamed
-        parameters, and `kwargs`, and optional dictionary of named parameters.
+        We expect data to have a three entries: 'method' or 'function',
+        containing the name of the member method or the name of a free function
+        to call, `args`, an optional list of unnamed parameters, and `kwargs`,
+        and optional dictionary of named parameters.
         '''
 
-        method = getattr(self, data['call'])
+        if 'method' in data:
+            to_call = getattr(self, data['method'], None)
+
+        elif 'function' in data:
+            names   = dict(list(globals().items()) + list(locals().items()))
+            to_call = names.get(data['function'])
+
+        else:
+            raise ValueError('no method or function specified: %s' % data)
+
+        if not to_call:
+            raise ValueError('callable not found: %s' % data)
+
+
         args   = data.get('args',   [])
         kwargs = data.get('kwargs', {})
 
         try:
-            out = method(*args, **kwargs)
+            out = to_call(*args, **kwargs)
             err = None
             ret = 0
 
@@ -210,40 +248,213 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _request_cb(self, msg):
+    def _alloc_task(self, task):
         '''
-        grep call type from msg, check if such a method is registered, and
+        allocate task resources
+        '''
+
+        with self._mlock:
+
+            cores = task.get('cores', 1)
+            gpus  = task.get('gpus' , 0)
+
+            assert(cores >= 1)
+            assert(cores <= self._n_cores)
+            assert(gpus  <= self._n_gpus)
+
+            if cores > self._resources['cores'].count(0): return False
+            if gpus  > self._resources['gpus' ].count(0): return False
+
+            alloc_cores = list()
+            alloc_gpus  = list()
+
+            if cores:
+                for n in range(self._n_cores):
+                    if not self._resources['cores'][n]:
+                        self._resources['cores'][n] = 1
+                        alloc_cores.append(n)
+                        if len(alloc_cores) == cores:
+                            break
+
+            if gpus:
+                for n in range(self._n_gpus):
+                    if not self._resources['gpus'][n]:
+                        self._resources['gpus'][n] = 1
+                        alloc_gpus.append(n)
+                        if len(alloc_gpus) == gpus:
+                            break
+
+            assert(len(alloc_cores) == cores)
+            assert(len(alloc_gpus ) == gpus )
+
+            task['resources'] = {'cores': alloc_cores,
+                                 'gpus' : alloc_gpus}
+            return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _dealloc_task(self, task):
+        '''
+        deallocate task resources
+        '''
+
+        with self._mlock:
+
+            resources = task['resources']
+
+            for n in resources['cores']:
+                assert(self._resources['cores'][n])
+                self._resources['cores'][n] = 0
+
+            for n in resources['gpus']:
+                assert(self._resources['gpus'][n])
+                self._resources['gpus'][n] = 0
+
+            # signal available resources
+            self._res_evt.set()
+
+            return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _request_cb(self, task):
+        '''
+        grep call type from task, check if such a method is registered, and
         invoke it.
         '''
 
-        self._log.debug('requested %s', msg)
+        self._log.debug('requested %s', task)
+        task['worker'] = self._uid
 
         try:
-            mode = msg['mode']
-            assert(mode in self._modes), 'no such call mode %s' % mode
-
-
             # ok, we have work to do.  Check the requirements to see  how many
-            # cpus and gpus we need to mark as busy, and run the request in our
-            # process pool
-            #
-            # FIXME: GPU / CPU accounting and assignment
-            # FIXME: async pool assignment + collection in thread
-            out, err, ret = self._modes[mode](msg.get('data'))
+            # cpus and gpus we need to mark as busy
+            while not self._alloc_task(task):
+                # no resource - wait for new resources
+                #
+                # NOTE: this will block smaller tasks from being executed right
+                #       now.  alloc_task is not a proper scheduler, after all
+                while not self._res_evt.wait(timeout=1.0):
 
+                    # break on termination
+                    if self._term.is_set():
+                        return False
+
+                self._res_evt.clear()
+
+            # we got an allocation for this task, and can run it, so apply to
+            # the process pool.  The callback (`self._result_cb`) will pick the
+            # task up on completion and free resources.
+            # NOTE: we don't use mp.Pool - see __init__ for details
+          # ret = self._pool.apply_async(func=self._dispatch, args=[task],
+          #                              callback=self._result_cb,
+          #                              error_callback=self._error_cb)
+            proc = mp.Process(target=self._dispatch, args=[task])
+
+            with self._plock:
+                # we need to include `proc.start()` in the lock, as otherwise we
+                # may end up getting the `self._result_cb` befor the pid could
+                # be regostered in `self._pool`.
+                proc.start()
+                self._pool[proc.pid] = proc
+                self._log.debug('applied: %s: %s: %s', task['uid'], proc.pid,
+                                                       self._pool.keys())
 
         except Exception as e:
+
             self._log.exception('request failed')
+
+            # free resources again for failed task
+            self._dealloc_task(task)
+
+            res = {'req': task['uid'],
+                   'out': None,
+                   'err': str(e),
+                   'ret': 1}
+
+            self._res_put.put(res)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _dispatch(self, task):
+
+        # this method is running in a process of the process pool, and will now
+        # apply the task to the respective execution mode.
+        #
+        # NOTE: application of pre_exec directives may got here
+
+        task['pid'] = os.getpid()
+
+        try:
+            self._log.debug('dispatch: %s: %d', task['uid'], task['pid'])
+            mode = task['mode']
+            assert(mode in self._modes), 'no such call mode %s' % mode
+
+            out, err, ret = self._modes[mode](task.get('data'))
+            self._log.debug('dispatch done: %s', task['uid'])
+
+        except Exception as e:
+
+            self._log.exception('dispatch failed')
             out = None
             err = str(e)
             ret = 1
 
-        res  = {'req': msg['uid'],
-                'out': out,
-                'err': err,
-                'ret': ret}
+        # the return values of this call will end up in `self._result_cb`, and
+        # that callback will push out results, and deallocates task resources
+        res = [task, str(out), str(err), int(ret)]
+        self._log.debug('put   result: %s', res)
+        self._result_queue.put(res)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _result_watcher(self):
+
+        while True:
+
+            self._log.debug('check result')
+            res = self._result_queue.get()
+            self._log.debug('got   result: %s', res)
+            self._result_cb(res)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _result_cb(self, result):
+
+        self._log.debug('result: %s', result)
+        task, out, err, ret = result
+
+        with self._plock:
+            pid  = task['pid']
+            self._log.debug('join 1 %s: %d: %s', task['uid'], pid, self._pool.keys())
+            proc = self._pool[pid]
+            self._log.debug('join 2 %d', pid)
+            proc.join()
+            self._log.debug('joined %d', pid)
+            del(self._pool[pid])
+
+        # free resources again for the task
+        self._dealloc_task(task)
+
+        res = {'req': task['uid'],
+               'out': out,
+               'err': err,
+               'ret': ret}
 
         self._res_put.put(res)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _error_cb(self, error):
+
+        self._log.debug('error: %s', error)
+        raise RuntimeError(error)
 
 
     # --------------------------------------------------------------------------

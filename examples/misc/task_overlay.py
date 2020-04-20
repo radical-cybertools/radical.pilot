@@ -8,7 +8,7 @@ import radical.pilot as rp
 #
 if __name__ == '__main__':
 
-    n_nodes = 2
+    n_nodes = 4
     cpn     = 8  # cores per node
     gpn     = 1  # gpus  per node
 

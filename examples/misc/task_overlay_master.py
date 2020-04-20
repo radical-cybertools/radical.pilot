@@ -40,12 +40,12 @@ class MyMaster(rp.task_overlay.Master):
     #
     def create_work_items(self):
 
-        # create a list of work items to be distributed to the workers.  Work
-        # items MUST be serializable dictionaries.
+        # create an initial list of work items to be distributed to the workers.
+        # Work items MUST be serializable dictionaries.
         items = list()
-        for n in range(32):
+        for n in range(1024 * 1024):
             items.append({'mode':  'call',
-                          'data': {'call'  : 'hello',
+                          'data': {'method': 'hello',
                                    'kwargs': {'count': n}}})
 
         return items
@@ -64,7 +64,7 @@ class MyMaster(rp.task_overlay.Master):
             count = r.work['data']['kwargs']['count']
             if count < 10:
                 new_requests.append({'mode': 'call',
-                                     'data': {'call'  : 'hello',
+                                     'data': {'method': 'hello',
                                               'kwargs': {'count': count + 100}}})
 
         return new_requests
@@ -79,9 +79,11 @@ if __name__ == '__main__':
     # allocation, (b) to distribute work items (`hello` function calls) to those
     # workers, and (c) to collect the responses again.
     worker   = str(sys.argv[1])
-    nworkers = int(sys.argv[2])
+    n_nodes  = int(sys.argv[2])
     cpn      = int(sys.argv[3])
     gpn      = int(sys.argv[4])
+
+    n_workers = n_nodes - 1  # one node is used by master
 
     # create a master class instance - this will establish communitation to the
     # pilot agent
@@ -89,7 +91,7 @@ if __name__ == '__main__':
 
     # insert `n` worker tasks into the agent.  The agent will schedule (place)
     # those workers and execute them.
-    master.submit(worker=worker, count=nworkers, cpn=cpn, gpn=gpn)
+    master.submit(worker=worker, count=n_workers, cpn=cpn, gpn=gpn)
 
   # # wait until `m` of those workers are up
   # # This is optional, work requests can be submitted before and will wait in

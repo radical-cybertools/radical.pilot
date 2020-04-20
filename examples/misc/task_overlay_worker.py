@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
+import os
 import sys
 import time
 
-import radical.utils as ru
 import radical.pilot as rp
 
 
@@ -32,12 +32,11 @@ class MyWorker(rp.task_overlay.Worker):
         important work
         '''
 
-        time.sleep(1)
+      # time.sleep(1)
 
-        self._log.debug('self.hello: %s', count)
-        out = 'hello %s @ %s' % (count, time.time())
+        out = 'hello %5d @ %.2f [%6d]' % (count, time.time(), os.getpid())
 
-        self._log.debug('self.hello: %s -> %s', count, out)
+        self._log.debug(out)
 
         return out
 
