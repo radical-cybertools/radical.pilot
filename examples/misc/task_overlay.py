@@ -28,14 +28,14 @@ if __name__ == '__main__':
 
     session   = rp.Session()
     try:
-        pd = rp.ComputePilotDescription(cfg.pd)
+        pd = rp.ComputePilotDescription(cfg.pilot_descr)
         pd.cores   = nodes * cpn
         pd.gpus    = nodes * gpn
         pd.runtime = runtime
 
-        td = rp.ComputeUnitDescription(cfg.td)
-        td.arguments     = [master, cfg_fname]
-        td.input_staging = [master, worker, cfg_file]
+        td = rp.ComputeUnitDescription(cfg.master_descr)
+        td.arguments     += [master, cfg_fname]
+        td.input_staging  = [master, worker, cfg_file]
 
         pmgr  = rp.PilotManager(session=session)
         umgr  = rp.UnitManager(session=session)

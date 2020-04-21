@@ -157,12 +157,12 @@ class Master(rpu.Component):
 
         # each worker gets the specified number of cores and gpus.  All
         # resources need to be located on the same node.
-        descr = {'executable'     : 'python3',
-                 'arguments'      : ['%s/%s' % (os.getcwd(), worker)],
-                 'cpu_processes'  : 1,
-                 'cpu_threads'    : cores,
-                 'cpu_thread_type': 'POSIX',
-                 'gpu_processses' : gpus}
+        descr = self._cfg.worker_descr
+        descr['arguments']       = ['%s/%s' % (os.getcwd(), worker)]
+        descr['cpu_processes']   = 1
+        descr['cpu_threads']     = cores
+        descr['cpu_thread_type'] = 'POSIX'
+        descr['gpu_processses']  = gpus
 
 
         tasks = list()
@@ -185,11 +185,11 @@ class Master(rpu.Component):
             ru.write_json(cfg, fname)
 
             # grab default settings via CUD construction
-            descr = ComputeUnitDescription(descr).as_dict()
+            descr_complete = ComputeUnitDescription(descr).as_dict()
 
             # create task dict
             task = dict()
-            task['description']       = copy.deepcopy(descr)
+            task['description']       = copy.deepcopy(descr_complete)
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
             task['type']              = 'unit'
             task['uid']               = uid
