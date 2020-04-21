@@ -21,7 +21,7 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, backend='zmq'):
+    def __init__(self, cfg=None, backend='zmq'):
 
         self._backend = backend  # FIXME: use
 
@@ -31,7 +31,7 @@ class Master(rpu.Component):
         self._lock     = mt.Lock()  # lock the request dist on updates
 
 
-        cfg     = self._get_config()
+        cfg     = self._get_config(cfg)
         session = Session(cfg=cfg, _primary=False)
 
         rpu.Component.__init__(self, cfg, session)
@@ -90,7 +90,7 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _get_config(self):
+    def _get_config(self, cfg=None):
         '''
         derive a worker base configuration from the control pubsub configuration
         '''
@@ -100,7 +100,7 @@ class Master(rpu.Component):
         #        base config from scratch on startup.
 
         pwd = os.getcwd()
-        cfg = ru.read_json('%s/../control_pubsub.json' % pwd)
+        ru.dict_merge(cfg, ru.read_json('%s/../control_pubsub.json' % pwd))
 
         del(cfg['channel'])
         del(cfg['cmgr'])
@@ -157,7 +157,8 @@ class Master(rpu.Component):
 
         # each worker gets the specified number of cores and gpus.  All
         # resources need to be located on the same node.
-        descr = {'executable'     : worker,
+        descr = {'executable'     : 'python3',
+                 'arguments'      : ['%s/%s' % (os.getcwd(), worker)],
                  'cpu_processes'  : 1,
                  'cpu_threads'    : cores,
                  'cpu_thread_type': 'POSIX',
@@ -194,7 +195,7 @@ class Master(rpu.Component):
             task['uid']               = uid
             task['unit_sandbox_path'] = sbox
 
-            task['description']['arguments'] = [fname]
+            task['description']['arguments'] += [fname]
 
             tasks.append(task)
             self._workers[uid] = task

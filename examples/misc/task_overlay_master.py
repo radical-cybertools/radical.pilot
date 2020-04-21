@@ -2,6 +2,7 @@
 
 import sys
 
+import radical.utils as ru
 import radical.pilot as rp
 
 
@@ -29,11 +30,11 @@ class MyMaster(rp.task_overlay.Master):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self):
+    def __init__(self, cfg):
 
         # initialized the task overlay base class.  That base class will ensure
         # proper communication channels to the pilot agent.
-        rp.task_overlay.Master.__init__(self)
+        rp.task_overlay.Master.__init__(self, cfg=cfg)
 
 
     # --------------------------------------------------------------------------
@@ -78,10 +79,13 @@ if __name__ == '__main__':
     # of this master is to (a) spawn a set or workers within the same
     # allocation, (b) to distribute work items (`hello` function calls) to those
     # workers, and (c) to collect the responses again.
-    worker   = str(sys.argv[1])
-    n_nodes  = int(sys.argv[2])
-    cpn      = int(sys.argv[3])
-    gpn      = int(sys.argv[4])
+    cfg_fname = str(sys.argv[1])
+    cfg       = ru.Config(cfg=ru.read_json(cfg_fname))
+
+    n_nodes   = cfg.nodes
+    cpn       = cfg.cpn
+    gpn       = cfg.gpn
+    worker    = cfg.worker
 
     # one node is used by master.  Alternatively (and probably better), we could
     # reduce one of the worker sizes by one core.  But it somewhat depends on
@@ -91,10 +95,11 @@ if __name__ == '__main__':
 
     # create a master class instance - this will establish communitation to the
     # pilot agent
-    master = MyMaster()
+    master = MyMaster(cfg)
 
     # insert `n` worker tasks into the agent.  The agent will schedule (place)
     # those workers and execute them.  Insert one smaller worker (see above)
+    # NOTE: this assumes a certain worker size / layout
     master.submit(worker=worker, count=n_workers, cores=cpn,     gpus=gpn)
     master.submit(worker=worker, count=1,         cores=cpn - 1, gpus=gpn)
 
