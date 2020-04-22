@@ -4,7 +4,7 @@
 # these custom functions can break assumed/expected behavior
 export PS1='#'
 unset PROMPT_COMMAND
-unset -f cd ls uname pwd date bc cat echo
+unset -f cd ls uname pwd date bc cat echo grep
 
 
 # Report where we are, as this is not always what you expect ;-)
@@ -14,10 +14,9 @@ echo "bootstrap_0 running on host: `hostname -f`."
 echo "bootstrap_0 started as     : '$0 $@'"
 echo "safe environment of bootstrap_0"
 
-# print the sorted env for logging, but also keep a copy so that we can dig
-# original env settings for any CUs, if so specified in the resource config.
-env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g'  > env.orig
-echo "# -------------------------------------------------------------------"
+# store the sorted env for logging, but also so that we can dig original env
+# settings for task environments, if needed
+env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' > env.orig
 
 
 # interleave stdout and stderr, to get a coherent set of log messages
@@ -135,6 +134,41 @@ export PYTHONNOUSERSITE=True
 # during installation.  To speed this up (specifically on cluster compute
 # nodes), we try to convince PIP to run parallel `make`
 export MAKEFLAGS="-j"
+
+
+# ------------------------------------------------------------------------------
+#
+# check what env variables changed from the original env, and create a
+# `deactivate` script which resets the original values.
+#
+create_deactivate()
+{
+    # capture the current environment
+    env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' \
+        > env.bs_0
+
+    # find all variables which changed
+    changed=$(diff -w env.orig env.bs_0 | grep '='        \
+                                        | cut -f 3 -d ' ' \
+                                        | cut -f 1 -d '=' \
+                                        | sort -u)
+
+    # capture the original values in `deactivate`.  If no original value exists,
+    # unset the variable
+    for var in $changed
+    do
+        orig=$(grep -e "^export $var=" env.orig)
+        if test -z "$orig"
+        then
+            # var did not exist
+            echo "unset  $var" >> deactivate
+        else
+            # var existed, value may or may not be empty
+            echo "$orig" >> deactivate
+        fi
+    done
+}
+
 
 # ------------------------------------------------------------------------------
 #
@@ -1758,10 +1792,6 @@ then
     echo "# -------------------------------------------------------------------"
 fi
 
-# start the master agent instance (zero)
-profile_event 'sync_rel' 'agent.0'
-
-
 # # I am ashamed that we have to resort to this -- lets hope it's temporary...
 # cat > packer.sh <<EOT
 # #!/bin/sh
@@ -1806,6 +1836,12 @@ profile_event 'sync_rel' 'agent.0'
 # ./packer.sh 2>&1 >> bootstrap_0.out &
 # PACKER_ID=$!
 
+# all env settings are done, bootstrap stages are created - as last action
+# capture the resulting env differences in a deactivate script
+create_deactivate
+
+# start the master agent instance (zero)
+profile_event 'sync_rel' 'agent.0'
 if test -z "$CCM"; then
     ./bootstrap_2.sh 'agent.0'    \
                    1> agent.0.bootstrap_2.out \
