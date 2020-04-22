@@ -151,7 +151,7 @@ create_deactivate()
     changed=$(diff -w env.orig env.bs_0 | grep '='        \
                                         | cut -f 3 -d ' ' \
                                         | cut -f 1 -d '=' \
-                                        | uniq)
+                                        | sort -u)
 
     # capture the original values in `deactivate`.  If no original value exists,
     # unset the variable
