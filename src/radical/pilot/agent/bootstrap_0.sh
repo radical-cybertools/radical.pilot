@@ -4,7 +4,7 @@
 # these custom functions can break assumed/expected behavior
 export PS1='#'
 unset PROMPT_COMMAND
-unset -f cd ls uname pwd date bc cat echo
+unset -f cd ls uname pwd date bc cat echo grep
 
 
 # Report where we are, as this is not always what you expect ;-)
@@ -14,10 +14,20 @@ echo "bootstrap_0 running on host: `hostname -f`."
 echo "bootstrap_0 started as     : '$0 $@'"
 echo "safe environment of bootstrap_0"
 
-# print the sorted env for logging, but also keep a copy so that we can dig
-# original env settings for any CUs, if so specified in the resource config.
-env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g'  > env.orig
-echo "# -------------------------------------------------------------------"
+# store the sorted env for logging, but also so that we can dig original env
+# settings for task environments, if needed
+env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' > env.orig
+
+# create a `deactivate` script
+# FIXME: is this valid for both venv and conda?
+# FIXME: should we do the same for `module load` commands?
+old_path=$(  grep 'export PATH='       env.orig | cut -f 2- -d '=')
+old_pypath=$(grep 'export PYTHONPATH=' env.orig | cut -f 2- -d '=')
+old_pyhome=$(grep 'export PYTHONHOME=' env.orig | cut -f 2- -d '=')
+
+echo "export PATH='$old_path'"          > deactivate
+echo "export PYTHONPATH='$old_pypath'" >> deactivate
+echo "export PYTHONHOME='$old_pyhome'" >> deactivate
 
 
 # interleave stdout and stderr, to get a coherent set of log messages
@@ -1757,6 +1767,9 @@ then
     echo "# Leaving barrier"
     echo "# -------------------------------------------------------------------"
 fi
+
+# capture the new environment
+env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' > env.bs_0
 
 # start the master agent instance (zero)
 profile_event 'sync_rel' 'agent.0'
