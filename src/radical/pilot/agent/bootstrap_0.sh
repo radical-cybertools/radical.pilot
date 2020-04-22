@@ -157,12 +157,14 @@ create_deactivate()
     # unset the variable
     for var in $changed
     do
-        val=$(grep -e "^export $var=" env.orig | cut -f 2- -d '=')
-        if test -z "$val"
+        orig=$(grep -e "^export $var=")
+        if test -z "$orig"
         then
-            echo "export $var='$val'" >> deactivate
+            # var did not exist
+            echo "unset  $var" >> deactivate
         else
-            echo "unset  $var"        >> deactivate
+            # var existed, value may or may not be empty
+            echo "$orig" >> deactivate
         fi
     done
 }
