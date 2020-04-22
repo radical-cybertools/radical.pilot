@@ -18,17 +18,6 @@ echo "safe environment of bootstrap_0"
 # settings for task environments, if needed
 env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' > env.orig
 
-# create a `deactivate` script
-# FIXME: is this valid for both venv and conda?
-# FIXME: should we do the same for `module load` commands?
-old_path=$(  grep 'export PATH='       env.orig | cut -f 2- -d '=')
-old_pypath=$(grep 'export PYTHONPATH=' env.orig | cut -f 2- -d '=')
-old_pyhome=$(grep 'export PYTHONHOME=' env.orig | cut -f 2- -d '=')
-
-echo "export PATH='$old_path'"          > deactivate
-echo "export PYTHONPATH='$old_pypath'" >> deactivate
-echo "export PYTHONHOME='$old_pyhome'" >> deactivate
-
 
 # interleave stdout and stderr, to get a coherent set of log messages
 if test -z "$RP_BOOTSTRAP_0_REDIR"
@@ -145,6 +134,39 @@ export PYTHONNOUSERSITE=True
 # during installation.  To speed this up (specifically on cluster compute
 # nodes), we try to convince PIP to run parallel `make`
 export MAKEFLAGS="-j"
+
+
+# ------------------------------------------------------------------------------
+#
+# check what env variables changed from the original env, and create a
+# `deactivate` script which resets the original values.
+#
+create_deactivate()
+{
+    # capture the current environment
+    env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' \
+        > env.bs_0
+
+    # find all variables which changed
+    changed=$(diff -w env.orig env.bs_0 | grep '='        \
+                                        | cut -f 3 -d ' ' \
+                                        | cut -f 1 -d '=' \
+                                        | uniq)
+
+    # capture the original values in `deactivate`.  If no original value exists,
+    # unset the variable
+    for var in $changed
+    do
+        val=$(grep -e "^export $var=" env.orig | cut -f 2- -d '=')
+        if test -z "$val"
+        then
+            echo "export $var='$val'" >> deactivate
+        else
+            echo "unset  $var"        >> deactivate
+        fi
+    done
+}
+
 
 # ------------------------------------------------------------------------------
 #
@@ -1768,13 +1790,6 @@ then
     echo "# -------------------------------------------------------------------"
 fi
 
-# capture the new environment
-env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' > env.bs_0
-
-# start the master agent instance (zero)
-profile_event 'sync_rel' 'agent.0'
-
-
 # # I am ashamed that we have to resort to this -- lets hope it's temporary...
 # cat > packer.sh <<EOT
 # #!/bin/sh
@@ -1819,6 +1834,12 @@ profile_event 'sync_rel' 'agent.0'
 # ./packer.sh 2>&1 >> bootstrap_0.out &
 # PACKER_ID=$!
 
+# all env settings are done, bootstrap stages are created - as last action
+# capture the resulting env differences in a deactivate script
+create_deactivate
+
+# start the master agent instance (zero)
+profile_event 'sync_rel' 'agent.0'
 if test -z "$CCM"; then
     ./bootstrap_2.sh 'agent.0'    \
                    1> agent.0.bootstrap_2.out \
