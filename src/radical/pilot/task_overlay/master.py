@@ -49,14 +49,14 @@ class Master(rpu.Component):
                                  'uid'        : self._uid + '.req',
                                  'path'       : os.getcwd(),
                                  'stall_hwm'  : 0,
-                                 'bulk_size'  : 128})
+                                 'bulk_size'  : 1024 * 4})
 
         res_cfg = ru.Config(cfg={'channel'    : '%s.to_res' % self._uid,
                                  'type'       : 'queue',
                                  'uid'        : self._uid + '.res',
                                  'path'       : os.getcwd(),
                                  'stall_hwm'  : 0,
-                                 'bulk_size'  : 128})
+                                 'bulk_size'  : 1024 * 4})
 
         self._req_queue = ru.zmq.Queue(req_cfg)
         self._res_queue = ru.zmq.Queue(res_cfg)
@@ -73,9 +73,11 @@ class Master(rpu.Component):
         # this master will put requests onto the request queue, and will get
         # responses from the response queue.  Note that the responses will be
         # delivered via an async callback (`self._result_cb`).
-        self._req_put = ru.zmq.Putter('to_req', self._req_addr_put)
-        self._res_get = ru.zmq.Getter('to_res', self._res_addr_get,
-                                                cb=self._result_cb)
+        self._req_put = ru.zmq.Putter('%s.to_req' % self._uid,
+                                      self._req_addr_put)
+        self._res_get = ru.zmq.Getter('%s.to_res' % self._uid,
+                                      self._res_addr_get,
+                                      cb=self._result_cb)
 
         # for the workers it is the opposite: they will get requests from the
         # request queue, and will send responses to the response queue.
