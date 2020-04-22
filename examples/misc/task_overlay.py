@@ -22,6 +22,7 @@ if __name__ == '__main__':
     nodes     = cfg.nodes
     cpn       = cfg.cpn
     gpn       = cfg.gpn
+    n_masters = cfg.n_masters
 
     master    = '%s/%s' % (cfg_dir, cfg.master)
     worker    = '%s/%s' % (cfg_dir, cfg.worker)
@@ -33,14 +34,23 @@ if __name__ == '__main__':
         pd.gpus    = nodes * gpn
         pd.runtime = runtime
 
-        td = rp.ComputeUnitDescription(cfg.master_descr)
-        td.arguments     += [master, cfg_fname]
-        td.input_staging  = [master, worker, cfg_file]
+        total = 512 * 1024
+        chunk = int(total / n_masters)
+        tds   = list()
+
+        for i in range(n_masters):
+            # TODO: move idx i into custom worker configs
+            print(i, chunk * i, chunk)
+            td = rp.ComputeUnitDescription(cfg.master_descr)
+            td.executable     = "python3"
+            td.arguments      = [master, cfg_fname, chunk * i, chunk]
+            td.input_staging  = [master, worker, cfg_file]
+            tds.append(td)
 
         pmgr  = rp.PilotManager(session=session)
         umgr  = rp.UnitManager(session=session)
         pilot = pmgr.submit_pilots(pd)
-        task  = umgr.submit_units(td)
+        task  = umgr.submit_units(tds)
 
         umgr.add_pilots(pilot)
         umgr.wait_units()

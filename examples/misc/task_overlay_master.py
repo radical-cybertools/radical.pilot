@@ -36,6 +36,8 @@ class MyMaster(rp.task_overlay.Master):
         # proper communication channels to the pilot agent.
         rp.task_overlay.Master.__init__(self, cfg=cfg)
 
+        print('%s: cfg from %s to %s' % (self._uid, cfg.data_idx, cfg.data_len))
+
 
     # --------------------------------------------------------------------------
     #
@@ -44,10 +46,12 @@ class MyMaster(rp.task_overlay.Master):
         # create an initial list of work items to be distributed to the workers.
         # Work items MUST be serializable dictionaries.
         items = list()
-        for n in range(1024 * 32):
+        idx   = self._cfg.data_idx
+        while idx < self._cfg.data_idx + self._cfg.data_len:
             items.append({'mode':  'call',
                           'data': {'method': 'hello',
-                                   'kwargs': {'count': n}}})
+                                   'kwargs': {'count': idx}}})
+            idx += 1
 
         return items
 
@@ -79,19 +83,22 @@ if __name__ == '__main__':
     # of this master is to (a) spawn a set or workers within the same
     # allocation, (b) to distribute work items (`hello` function calls) to those
     # workers, and (c) to collect the responses again.
-    cfg_fname = str(sys.argv[1])
-    cfg       = ru.Config(cfg=ru.read_json(cfg_fname))
+    cfg_fname    = str(sys.argv[1])
+    cfg          = ru.Config(cfg=ru.read_json(cfg_fname))
+    cfg.data_idx = int(sys.argv[2])
+    cfg.data_len = int(sys.argv[3])
 
-    n_nodes   = cfg.nodes
-    cpn       = cfg.cpn
-    gpn       = cfg.gpn
-    worker    = cfg.worker
+    n_nodes    = cfg.nodes
+    cpn        = cfg.cpn
+    gpn        = cfg.gpn
+    worker     = cfg.worker
 
     # one node is used by master.  Alternatively (and probably better), we could
     # reduce one of the worker sizes by one core.  But it somewhat depends on
     # the worker type and application workload to judge if that makes sense, so
     # we leave it for now.
-    n_workers = n_nodes - 1
+    print('workers: ', (n_nodes / cfg.n_masters) - 1)
+    n_workers = int((n_nodes / cfg.n_masters) - 1)
 
     # create a master class instance - this will establish communitation to the
     # pilot agent

@@ -26,15 +26,17 @@ class Master(rpu.Component):
         self._backend = backend  # FIXME: use
 
         self._lock     = ru.Lock('master')
-        self._workers  = dict()  # wid: worker
+        self._workers  = dict()     # wid: worker
         self._requests = dict()     # bookkeeping of submitted requests
         self._lock     = mt.Lock()  # lock the request dist on updates
 
+        cfg.sid        = os.environ['RP_SESSION_ID']
+        cfg.base       = os.environ['RP_PILOT_SANDBOX']
+        cfg.path       = os.environ['RP_PILOT_SANDBOX']
+        self._session  = Session(cfg=cfg, uid=cfg.sid, _primary=False)
+        cfg            = self._get_config(cfg)
 
-        cfg     = self._get_config(cfg)
-        session = Session(cfg=cfg, _primary=False)
-
-        rpu.Component.__init__(self, cfg, session)
+        rpu.Component.__init__(self, cfg, self._session)
 
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
                              rpc.AGENT_STAGING_INPUT_QUEUE)
@@ -42,14 +44,14 @@ class Master(rpu.Component):
 
 
         # set up RU ZMQ Queues for request distribution and result collection
-        req_cfg = ru.Config(cfg={'channel'    : 'to_req',
+        req_cfg = ru.Config(cfg={'channel'    : '%s.to_req' % self._uid,
                                  'type'       : 'queue',
                                  'uid'        : self._uid + '.req',
                                  'path'       : os.getcwd(),
                                  'stall_hwm'  : 0,
                                  'bulk_size'  : 128})
 
-        res_cfg = ru.Config(cfg={'channel'    : 'to_res',
+        res_cfg = ru.Config(cfg={'channel'    : '%s.to_res' % self._uid,
                                  'type'       : 'queue',
                                  'uid'        : self._uid + '.res',
                                  'path'       : os.getcwd(),
@@ -108,7 +110,9 @@ class Master(rpu.Component):
         cfg['log_lvl'] = 'debug'
         cfg['kind']    = 'master'
         cfg['base']    = pwd
-        cfg['uid']     = ru.generate_id('master')
+        cfg['uid']     = ru.generate_id('master.%(item_counter)06d',
+                                        ru.ID_CUSTOM,
+                                        ns=self._session.uid)
 
         return ru.Config(cfg=cfg)
 
@@ -158,6 +162,7 @@ class Master(rpu.Component):
         # each worker gets the specified number of cores and gpus.  All
         # resources need to be located on the same node.
         descr = self._cfg.worker_descr
+        descr['executable']      = "python3"
         descr['arguments']       = ['%s/%s' % (os.getcwd(), worker)]
         descr['cpu_processes']   = 1
         descr['cpu_threads']     = cores
