@@ -34,7 +34,7 @@ if __name__ == '__main__':
         pd.gpus    = nodes * gpn
         pd.runtime = runtime
 
-        total = 512 * 1024
+        total = eval(cfg.total)
         chunk = int(total / n_masters)
         tds   = list()
 
