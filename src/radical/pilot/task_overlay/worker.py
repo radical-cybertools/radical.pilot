@@ -345,7 +345,8 @@ class Worker(rpu.Component):
         invoke it.
         '''
 
-        self._log.debug('requested %s', task)
+      # self._log.debug('requested %s', task)
+        self._prof.prof('reg_start', uid=self._uid, msg=task['uid'])
         task['worker'] = self._uid
 
         try:
@@ -371,7 +372,7 @@ class Worker(rpu.Component):
           # ret = self._pool.apply_async(func=self._dispatch, args=[task],
           #                              callback=self._result_cb,
           #                              error_callback=self._error_cb)
-            proc = mp.Process(target=self._dispatch, args=[task])
+            proc = mp.Process(target=self._dispatch, args=[task], daemon=True)
 
             with self._plock:
                 # we need to include `proc.start()` in the lock, as otherwise we
@@ -379,8 +380,8 @@ class Worker(rpu.Component):
                 # be regostered in `self._pool`.
                 proc.start()
                 self._pool[proc.pid] = proc
-                self._log.debug('applied: %s: %s: %s', task['uid'], proc.pid,
-                                                       self._pool.keys())
+              # self._log.debug('applied: %s: %s: %s', task['uid'], proc.pid,
+              #                                        self._pool.keys())
 
         except Exception as e:
 
@@ -409,12 +410,12 @@ class Worker(rpu.Component):
         task['pid'] = os.getpid()
 
         try:
-            self._log.debug('dispatch: %s: %d', task['uid'], task['pid'])
+          # self._log.debug('dispatch: %s: %d', task['uid'], task['pid'])
             mode = task['mode']
             assert(mode in self._modes), 'no such call mode %s' % mode
 
             out, err, ret = self._modes[mode](task.get('data'))
-            self._log.debug('dispatch done: %s', task['uid'])
+          # self._log.debug('dispatch done: %s', task['uid'])
 
         except Exception as e:
 
@@ -426,7 +427,7 @@ class Worker(rpu.Component):
         # the return values of this call will end up in `self._result_cb`, and
         # that callback will push out results, and deallocates task resources
         res = [task, str(out), str(err), int(ret)]
-        self._log.debug('put   result: %s', res)
+      # self._log.debug('put   result: %s', res)
         self._result_queue.put(res)
 
 
@@ -436,9 +437,9 @@ class Worker(rpu.Component):
 
         while True:
 
-            self._log.debug('check result')
+          # self._log.debug('check result')
             res = self._result_queue.get()
-            self._log.debug('got   result: %s', res)
+          # self._log.debug('got   result: %s', res)
             self._result_cb(res)
 
 
@@ -446,16 +447,13 @@ class Worker(rpu.Component):
     #
     def _result_cb(self, result):
 
-        self._log.debug('result: %s', result)
+      # self._log.debug('result: %s', result)
         task, out, err, ret = result
 
         with self._plock:
             pid  = task['pid']
-            self._log.debug('join 1 %s: %d: %s', task['uid'], pid, self._pool.keys())
             proc = self._pool[pid]
-            self._log.debug('join 2 %d', pid)
-            proc.join()
-            self._log.debug('joined %d', pid)
+          # proc.join()
             del(self._pool[pid])
 
         # free resources again for the task
@@ -467,6 +465,7 @@ class Worker(rpu.Component):
                'ret': ret}
 
         self._res_put.put(res)
+        self._prof.prof('reg_stop', uid=self._uid, msg=task['uid'])
 
 
     # --------------------------------------------------------------------------

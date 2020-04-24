@@ -49,14 +49,14 @@ class Master(rpu.Component):
                                  'uid'        : self._uid + '.req',
                                  'path'       : os.getcwd(),
                                  'stall_hwm'  : 0,
-                                 'bulk_size'  : 1024 * 4})
+                                 'bulk_size'  : 1024})
 
         res_cfg = ru.Config(cfg={'channel'    : '%s.to_res' % self._uid,
                                  'type'       : 'queue',
                                  'uid'        : self._uid + '.res',
                                  'path'       : os.getcwd(),
                                  'stall_hwm'  : 0,
-                                 'bulk_size'  : 1024 * 4})
+                                 'bulk_size'  : 1024})
 
         self._req_queue = ru.zmq.Queue(req_cfg)
         self._res_queue = ru.zmq.Queue(res_cfg)
@@ -277,11 +277,11 @@ class Master(rpu.Component):
 
             completed = [s for s in states if s in ['DONE', 'FAILED']]
 
-            self._log.debug('%d =?= %d', len(completed), len(states))
+          # self._log.debug('%d =?= %d', len(completed), len(states))
             if len(completed) == len(states):
                 break
 
-            time.sleep(0.1)
+            time.sleep(5.0)
         t_stop = time.time()
 
         self._log.debug('=== master runtime: %.2fs', t_stop - t_start)
@@ -302,7 +302,7 @@ class Master(rpu.Component):
 
         # push the request message (here and dictionary) onto the request queue
         self._req_put.put(req.as_dict())
-        self._log.debug('requested %s', req.uid)
+      # self._log.debug('requested %s', req.uid)
 
         # return the request to the master script for inspection etc.
         return req

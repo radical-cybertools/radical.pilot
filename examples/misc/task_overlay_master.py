@@ -66,11 +66,11 @@ class MyMaster(rp.task_overlay.Master):
             print('result_cb %s: %s [%s]' % (r.uid, r.state, r.result))
           # print('work: %s' % r.work)
 
-            count = r.work['data']['kwargs']['count']
-            if count < 10:
-                new_requests.append({'mode': 'call',
-                                     'data': {'method': 'hello',
-                                              'kwargs': {'count': count + 100}}})
+          # count = r.work['data']['kwargs']['count']
+          # if count < 10:
+          #     new_requests.append({'mode': 'call',
+          #                          'data': {'method': 'hello',
+          #                                   'kwargs': {'count': count + 100}}})
 
         return new_requests
 
