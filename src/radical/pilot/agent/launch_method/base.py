@@ -405,13 +405,13 @@ class LaunchMethod(object):
                     flavor  = self.MPI_FLAVOR_HYDRA
                     break
 
-                if 'version:' in line.lower():
-                    version = line.split(':', 1)[1].strip()
+                if '(open mpi)' in line.lower():
+                    version = line.split(')', 1)[1].strip()
                     flavor  = self.MPI_FLAVOR_OMPI
                     break
 
-                if '(open mpi)' in line.lower():
-                    version = line.split(')', 1)[1].strip()
+                if 'version:' in line.lower():
+                    version = line.split(':', 1)[1].strip()
                     flavor  = self.MPI_FLAVOR_OMPI
                     break
 
