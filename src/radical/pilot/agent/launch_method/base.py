@@ -415,10 +415,11 @@ class LaunchMethod(object):
                     flavor  = self.MPI_FLAVOR_OMPI
                     break
 
+        self._log.debug('mpi details [%s]: %s', exe, out)
+        self._log.debug('mpi version: %s [%s]', version, flavor)
+
         if not flavor:
             raise RuntimeError('cannot identify MPI flavor [%s]' % exe)
-
-        self._log.debug('mpi version: %s [%s]', version, flavor)
 
         return version, flavor
 
