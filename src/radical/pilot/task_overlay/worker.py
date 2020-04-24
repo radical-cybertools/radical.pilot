@@ -24,12 +24,13 @@ class Worker(rpu.Component):
         if isinstance(cfg, str): cfg = ru.Config(cfg=ru.read_json(cfg))
         else                   : cfg = ru.Config(cfg=cfg)
 
-        self._uid     = cfg.uid
         self._n_cores = cfg.cores
         self._n_gpus  = cfg.gpus
 
         self._info    = ru.Config(cfg=cfg.get('info', {}))
-        self._session = Session(cfg=cfg, _primary=False)
+        self._session = Session(cfg=cfg, uid=cfg.sid, _primary=False)
+
+        rpu.Component.__init__(self, cfg, self._session)
 
         self._term    = mp.Event()          # set to terminate
         self._res_evt = mp.Event()          # set on free resources
@@ -37,8 +38,6 @@ class Worker(rpu.Component):
         self._mlock   = ru.Lock(self._uid)  # lock `_modes` and `_mdata`
         self._modes   = dict()              # call modes (call, exec, eval, ...)
         self._mdata   = dict()              # call mode meta data
-
-        rpu.Component.__init__(self, cfg, self._session)
 
         # We need to make sure to run only up to `gpn` tasks using a gpu
         # within that pool, so need a separate counter for that.
@@ -105,6 +104,20 @@ class Worker(rpu.Component):
         self.register_mode('eval',  self._eval)
         self.register_mode('exec',  self._exec)
         self.register_mode('shell', self._shell)
+
+        # run worker initialization
+        self.pre_exec()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def pre_exec(self):
+        '''
+        This method can be overloaded by the Worker implementation to run any
+        pre_exec commands before spawning worker processes.
+        '''
+
+        pass
 
 
     # --------------------------------------------------------------------------
@@ -214,8 +227,15 @@ class Worker(rpu.Component):
             proc = sp.Popen(executable=exe, args=args,       env=env,
                             stdin=None,     stdout=sp.Pipe, stderr=sp.Pipe,
                             close_fds=True, shell=False)
-            out, err = proc.communicate()
-            ret      = proc.returncode
+            try:
+                out, err = proc.communicate(timeout=self.cfg.workload.timeout)
+                ret      = proc.returncode
+
+            except sp.TimeoutExpired:
+                proc.kill()
+                out, err = proc.communicate()
+                ret      = -1
+
 
         except Exception as e:
             self._log.exception('_exec failed: %s' % (data))

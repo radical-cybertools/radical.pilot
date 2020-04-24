@@ -155,7 +155,7 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def submit(self, worker, count, cores, gpus):
+    def submit(self, descr, count, cores, gpus):
         '''
         submit n workers, and pass the queue info as configuration file.
         Do *not* wait for them to come up
@@ -163,9 +163,6 @@ class Master(rpu.Component):
 
         # each worker gets the specified number of cores and gpus.  All
         # resources need to be located on the same node.
-        descr = self._cfg.worker_descr
-        descr['executable']      = "python3"
-        descr['arguments']       = ['%s/%s' % (os.getcwd(), worker)]
         descr['cpu_processes']   = 1
         descr['cpu_threads']     = cores
         descr['cpu_thread_type'] = 'POSIX'
@@ -201,6 +198,10 @@ class Master(rpu.Component):
             task['type']              = 'unit'
             task['uid']               = uid
             task['unit_sandbox_path'] = sbox
+            task['unit_sandbox']      = 'file://localhost/' + sbox
+            task['pilot_sandbox']     = cfg.base
+            task['session_sandbox']   = cfg.base + '/../'
+            task['resource_sandbox']  = cfg.base + '/../../'
 
             task['description']['arguments'] += [fname]
 
@@ -264,13 +265,7 @@ class Master(rpu.Component):
     def run(self):
 
         # get work from the overloading implementation
-        items = self.create_work_items()
-
-        # submit work requests.
-        # The returned request objects behave like Futures (they will be
-        # implemented as proper Futures in the future - ha!)
-        for item in items:
-            self.request(item)
+        self.create_work_items()
 
         # wait for the submitted requests to complete
         t_start = time.time()
