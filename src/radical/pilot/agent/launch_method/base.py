@@ -389,6 +389,12 @@ class LaunchMethod(object):
 
         if not ret:
             for line in out.splitlines():
+                if 'Intel(R) MPI Library for Linux' in line.lower():
+                    # Intel MPI is hydra based
+                    version = line.split(',')[1].strip()
+                    flavor  = self.MPI_FLAVOR_HYDRA
+                    break
+
                 if 'hydra build details:' in line.lower():
                     version = line.split(':', 1)[1].strip()
                     flavor  = self.MPI_FLAVOR_HYDRA
