@@ -326,6 +326,7 @@ class Worker(rpu.Component):
         '''
 
       # self._log.debug('requested %s', task)
+        self._prof.prof('reg_start', uid=self._uid, msg=task['uid'])
         task['worker'] = self._uid
 
         try:
@@ -444,6 +445,7 @@ class Worker(rpu.Component):
                'ret': ret}
 
         self._res_put.put(res)
+        self._prof.prof('reg_stop', uid=self._uid, msg=task['uid'])
 
 
     # --------------------------------------------------------------------------
