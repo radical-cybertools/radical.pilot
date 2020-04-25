@@ -80,6 +80,19 @@ class Worker(rpu.Component):
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
         self.register_publisher(rpc.CONTROL_PUBSUB)
 
+        # run worker initialization *before* starting to work on requests.
+        # the worker provides three builtin methods:
+        #     eval:  evaluate a piece of python code
+        #     exec:  execute  a command line (fork/exec)
+        #     shell: execute  a shell command
+        #     call:  execute  a method or function call
+        self.register_mode('call',  self._call)
+        self.register_mode('eval',  self._eval)
+        self.register_mode('exec',  self._exec)
+        self.register_mode('shell', self._shell)
+
+        self.pre_exec()
+
         # connect to the request / response ZMQ queues
         self._req_get = ru.zmq.Getter('to_req', self._info.req_addr_get,
                                                 cb=self._request_cb)
@@ -94,19 +107,6 @@ class Worker(rpu.Component):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
                                           'arg': {'uid' : self._uid,
                                                   'info': self._info}})
-
-        # the worker provides three builtin methods:
-        # eval:  evaluate a piece of python code
-        # exec:  execute  a command line (fork/exec)
-        # shell: execute  a shell command
-        # call:  execute  a method or function call
-        self.register_mode('call',  self._call)
-        self.register_mode('eval',  self._eval)
-        self.register_mode('exec',  self._exec)
-        self.register_mode('shell', self._shell)
-
-        # run worker initialization
-        self.pre_exec()
 
 
     # --------------------------------------------------------------------------
@@ -222,18 +222,19 @@ class Worker(rpu.Component):
             exe  = data['exe'],
             args = data.get('args', []),
             env  = data.get('env',  {}),
-
+            tout = self.cfg.workload.timeout
 
             proc = sp.Popen(executable=exe, args=args,       env=env,
                             stdin=None,     stdout=sp.Pipe, stderr=sp.Pipe,
                             close_fds=True, shell=False)
             try:
-                out, err = proc.communicate(timeout=self.cfg.workload.timeout)
+                out, err = proc.communicate(timeout=tout)
                 ret      = proc.returncode
 
             except sp.TimeoutExpired:
                 proc.kill()
                 out, err = proc.communicate()
+                err      = '%s: timeout [%ss]' % (err, tout)
                 ret      = -1
 
 

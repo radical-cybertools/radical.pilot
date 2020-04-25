@@ -49,14 +49,14 @@ class Master(rpu.Component):
                                  'uid'        : self._uid + '.req',
                                  'path'       : os.getcwd(),
                                  'stall_hwm'  : 0,
-                                 'bulk_size'  : 1024})
+                                 'bulk_size'  : 56})
 
         res_cfg = ru.Config(cfg={'channel'    : '%s.to_res' % self._uid,
                                  'type'       : 'queue',
                                  'uid'        : self._uid + '.res',
                                  'path'       : os.getcwd(),
                                  'stall_hwm'  : 0,
-                                 'bulk_size'  : 1024})
+                                 'bulk_size'  : 56})
 
         self._req_queue = ru.zmq.Queue(req_cfg)
         self._res_queue = ru.zmq.Queue(res_cfg)
