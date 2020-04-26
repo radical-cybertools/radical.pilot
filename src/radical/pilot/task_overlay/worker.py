@@ -2,6 +2,8 @@
 import os
 import sys
 import time
+import queue
+import signal
 
 import threading         as mt
 import multiprocessing   as mp
@@ -94,9 +96,9 @@ class Worker(rpu.Component):
         self.pre_exec()
 
         # connect to the request / response ZMQ queues
+        self._res_put = ru.zmq.Putter('to_res', self._info.res_addr_put)
         self._req_get = ru.zmq.Getter('to_req', self._info.req_addr_get,
                                                 cb=self._request_cb)
-        self._res_put = ru.zmq.Putter('to_res', self._info.res_addr_put)
 
         # the worker can return custom information which will be made available
         # to the master.  This can be used to communicate, for example, worker
@@ -222,21 +224,12 @@ class Worker(rpu.Component):
             exe  = data['exe'],
             args = data.get('args', []),
             env  = data.get('env',  {}),
-            tout = self.cfg.workload.timeout
 
             proc = sp.Popen(executable=exe, args=args,       env=env,
                             stdin=None,     stdout=sp.Pipe, stderr=sp.Pipe,
                             close_fds=True, shell=False)
-            try:
-                out, err = proc.communicate(timeout=tout)
-                ret      = proc.returncode
-
-            except sp.TimeoutExpired:
-                proc.kill()
-                out, err = proc.communicate()
-                err      = '%s: timeout [%ss]' % (err, tout)
-                ret      = -1
-
+            out, err = proc.communicate()
+            ret      = proc.returncode
 
         except Exception as e:
             self._log.exception('_exec failed: %s' % (data))
@@ -381,8 +374,8 @@ class Worker(rpu.Component):
                 # be regostered in `self._pool`.
                 proc.start()
                 self._pool[proc.pid] = proc
-              # self._log.debug('applied: %s: %s: %s', task['uid'], proc.pid,
-              #                                        self._pool.keys())
+                self._log.debug('applied: %s: %s: %s', task['uid'], proc.pid,
+                                                       self._pool.keys())
 
         except Exception as e:
 
@@ -410,12 +403,47 @@ class Worker(rpu.Component):
 
         task['pid'] = os.getpid()
 
+        # ----------------------------------------------------------------------
+        def _dispatch_thread(tlock):
+            out, err, ret = self._modes[mode](task.get('data'))
+            with tlock:
+                res = [task, str(out), str(err), int(ret)]
+                self._log.debug('put 1 result: task %s', task['uid'])
+                self._result_queue.put(res)
+        # ----------------------------------------------------------------------
+
+
         try:
           # self._log.debug('dispatch: %s: %d', task['uid'], task['pid'])
             mode = task['mode']
             assert(mode in self._modes), 'no such call mode %s' % mode
 
-            out, err, ret = self._modes[mode](task.get('data'))
+            tout = self._cfg.workload.timeout
+            self._log.debug('dispatch with tout %s', tout)
+
+            tlock  = mt.Lock()
+            thread = mt.Thread(target=_dispatch_thread,
+                               args=[tlock])
+            thread.daemon = True
+            thread.start()
+            thread.join(timeout=tout)
+
+            with tlock:
+                if thread.is_alive():
+                    out = None
+                    err = 'timeout (>%s)' % tout
+                    ret = 1
+                    res = [task, str(out), str(err), int(ret)]
+                    self._log.debug('put 2 result: task %s', task['uid'])
+                    self._result_queue.put(res)
+
+                    # if we kill the process too quickly, the result put above
+                    # will not make it out, thus make sure the queue is empty
+                    # first.
+                    self._result_queue.close()
+                    self._result_queue.join_thread()
+                    os.kill(os.getpid(), signal.SIGTERM)
+
           # self._log.debug('dispatch done: %s', task['uid'])
 
         except Exception as e:
@@ -424,12 +452,9 @@ class Worker(rpu.Component):
             out = None
             err = str(e)
             ret = 1
-
-        # the return values of this call will end up in `self._result_cb`, and
-        # that callback will push out results, and deallocates task resources
-        res = [task, str(out), str(err), int(ret)]
-      # self._log.debug('put   result: %s', res)
-        self._result_queue.put(res)
+            res = [task, str(out), str(err), int(ret)]
+            self._log.debug('put 3 result: task %s', task['uid'])
+            self._result_queue.put(res)
 
 
     # --------------------------------------------------------------------------
@@ -438,35 +463,41 @@ class Worker(rpu.Component):
 
         while True:
 
-          # self._log.debug('check result')
-            res = self._result_queue.get()
-          # self._log.debug('got   result: %s', res)
-            self._result_cb(res)
+            try:
+                res = self._result_queue.get()
+                self._log.debug('got   result: %s', res)
+                self._result_cb(res)
+            except:
+                self._log.exception('queue error')
+                raise
 
 
     # --------------------------------------------------------------------------
     #
     def _result_cb(self, result):
 
-      # self._log.debug('result: %s', result)
-        task, out, err, ret = result
+        try:
+            task, out, err, ret = result
+          # self._log.debug('result cb: task %s', task['uid'])
 
-        with self._plock:
-            pid  = task['pid']
-            proc = self._pool[pid]
-          # proc.join()
-            del(self._pool[pid])
+            with self._plock:
+                pid  = task['pid']
+                del(self._pool[pid])
 
-        # free resources again for the task
-        self._dealloc_task(task)
+            # free resources again for the task
+            self._dealloc_task(task)
 
-        res = {'req': task['uid'],
-               'out': out,
-               'err': err,
-               'ret': ret}
+            res = {'req': task['uid'],
+                   'out': out,
+                   'err': err,
+                   'ret': ret}
 
-        self._res_put.put(res)
-        self._prof.prof('reg_stop', uid=self._uid, msg=task['uid'])
+            self._res_put.put(res)
+            self._prof.prof('reg_stop', uid=self._uid, msg=task['uid'])
+        except:
+            self._log.exception('result cb failed')
+            raise
+
 
 
     # --------------------------------------------------------------------------

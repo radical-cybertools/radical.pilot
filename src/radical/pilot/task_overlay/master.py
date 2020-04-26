@@ -284,7 +284,7 @@ class Master(rpu.Component):
             time.sleep(5.0)
         t_stop = time.time()
 
-        self._log.debug('=== master runtime: %.2fs', t_stop - t_start)
+        self._log.debug('master runtime: %.2fs', t_stop - t_start)
 
 
     # --------------------------------------------------------------------------
@@ -321,6 +321,8 @@ class Master(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _result_cb(self, msg):
+
+      # self._log.debug('master _result_cb: %s', msg)
 
         # update result and error information for the corresponding request UID
         uid = msg['req']
