@@ -16,10 +16,12 @@ class Request(object):
     #
     def __init__(self, req):
 
-        self._uid    = ru.generate_id('request')
         self._work   = req
         self._state  = 'NEW'
         self._result = None
+
+        if 'uid' in req: self._uid = req['uid']
+        else           : self._uid = ru.generate_id('request')
 
 
     # --------------------------------------------------------------------------
