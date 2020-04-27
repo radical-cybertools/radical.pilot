@@ -16,7 +16,6 @@
             "slots": {
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
-                "task_offsets"  : [0],
                 "lm_info"       : null,
                 "lfs_per_node"  : 0,
                 "nodes"         : [{"name"    : "node1",
