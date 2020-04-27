@@ -13,9 +13,6 @@ class IBRun(LaunchMethod):
 
     node_list = None
 
-    # NOTE: Don't think that with IBRUN it is possible to have
-    #       processes != cores ...
-
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, cfg, session):
@@ -45,17 +42,14 @@ class IBRun(LaunchMethod):
         task_argstr  = self._create_arg_string(task_args)
         task_env     = cud.get('environment') or dict()
 
-        n_tasks      = cud['cpu_processes']  # FIXME: handle cpu_threads
+        n_tasks      = cud['cpu_processes']
 
         # Usage of env variable TACC_TASKS_PER_NODE is purely for MPI tasks,
         #  and threads are not considered (info provided by TACC support)
         n_node_tasks = int(task_env.get('TACC_TASKS_PER_NODE') or
                            self._cfg.get('cores_per_node', 1))
 
-        if not self._node_list:
-            raise RuntimeError('attribute "_node_list" (from RM) is not set')
-        if not slots.get('nodes'):
-            raise RuntimeError('unit.slots.nodes is not set')
+        assert (slots.get('nodes') is not None), 'unit.slots.nodes is not set'
 
         ibrun_offset = 0
         offsets      = list()
@@ -65,11 +59,10 @@ class IBRun(LaunchMethod):
             for slot_node in slots['nodes']:
                 if slot_node['uid'] == node[0]:
                     for core_map in slot_node['core_map']:
-                        if core_map:
-                            # core_map contains core ids for each thread,
-                            # but threads are ignored for offsets
-                            offsets.append(node_id +
-                                           (core_map[0] // len(core_map)))
+                        assert core_map, 'core_map is not set'
+                        # core_map contains core ids for each thread,
+                        # but threads are ignored for offsets
+                        offsets.append(node_id + (core_map[0] // len(core_map)))
             node_id += n_node_tasks
 
         if offsets:

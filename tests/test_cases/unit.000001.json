@@ -29,7 +29,7 @@
     "results": {
         "lm": {
             "yarn"  : ["echo '#!/usr/bin/env bash'>>ExecScript.sh\necho ''>>ExecScript.sh\necho ''>>ExecScript.sh\necho '#---------------------------------------------------------'>>ExecScript.sh\necho '# Staging Input Files'>>ExecScript.sh\necho ''>>ExecScript.sh\necho ''>>ExecScript.sh\necho '#---------------------------------------------------------'>>ExecScript.sh\necho '# Creating Executing Command'>>ExecScript.sh\necho 'start=`date +%s.%3N`'>>ExecScript.sh\necho 'python \"test.py\"  1>Ystdout 2>Ystderr'>>ExecScript.sh\necho 'stop=`date +%s.%3N`'>>ExecScript.sh\necho 'time_spent=$(echo $stop - $start | bc)'>>ExecScript.sh\necho 'echo $time_spent >>Yprof'>>ExecScript.sh\necho ''>>ExecScript.sh\necho ''>>ExecScript.sh\necho '#---------------------------------------------------------'>>ExecScript.sh\necho '# Staging Output Files'>>ExecScript.sh\necho 'start=`date +%s.%3N`'>>ExecScript.sh\necho 'YarnUser=$(whoami)'>>ExecScript.sh\necho 'scp -v Ystderr Ystdout $YarnUser@test_ip:/tmp'>>ExecScript.sh\necho 'stop=`date +%s.%3N`'>>ExecScript.sh\necho 'time_spent=$(echo $stop - $start | bc)'>>ExecScript.sh\necho 'echo $time_spent >>Yprof'>>ExecScript.sh\necho 'scp -v Yprof $YarnUser@test_ip:/tmp'>>ExecScript.sh\necho ''>>ExecScript.sh\necho ''>>ExecScript.sh\necho '#End of File'>>ExecScript.sh\n\n\nyarn -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar com.radical.pilot.Client -jar ../Pilot-YARN-0.1-jar-with-dependencies.jar -shell_script ExecScript.sh  -container_vcores 8 -service_url yarn://test_ip?fs=hdfs://test_ip:54170", null],
-            "ibrun" : "RuntimeError"
+            "ibrun" : "AssertionError"
         }
     }
 }

@@ -45,6 +45,9 @@ def test_construct_command(mocked_init, mocked_configure, mocked_raise_on):
         if result == 'RuntimeError':
             with pytest.raises(RuntimeError):
                 command, hop = component.construct_command(unit, None)
+        elif result == 'AssertionError':
+            with pytest.raises(AssertionError):
+                command, hop = component.construct_command(unit, None)
         else:
             command, hop = component.construct_command(unit, None)
             assert([command, hop] == result), unit['uid']
