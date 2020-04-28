@@ -1,0 +1,27 @@
+
+{
+    "unit": {
+        "uid":         "unit.000000",
+        "description": {"input_staging": [{"source": "client:///file1",
+                                           "target": "unit:///file1",
+                                           "action": "Transfer"},
+                                          {"source": "unit:///file2",
+                                           "target": "pilot:///file2",
+                                           "action": "Link"}]
+                                                      }
+    },
+
+    "results": [[[{"uid": "unit.000000",
+                   "description": {"input_staging": [{"source": "client:///file1",
+                                                      "target": "unit:///file1",
+                                                      "action": "Transfer"},
+                                                     {"source": "unit:///file2",
+                                                      "target": "pilot:///file2",
+                                                      "action": "Link"}]}}, 
+                                                    [{"source": "unit:///file2",
+                                                      "target": "pilot:///file2",
+                                                      "action": "Link"}]]],
+                                                      []
+                                                    ]
+}
+

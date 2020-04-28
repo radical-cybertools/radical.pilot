@@ -77,6 +77,10 @@ class Default(AgentStagingInputComponent):
             else:
                 no_staging_units.append(unit)
 
+        unit_testing = os.environ.get('RP_UNIT_TESTING', 'false')
+
+        if unit_testing.lower() == 'true':
+            return staging_units, no_staging_units
 
         if no_staging_units:
             self.advance(no_staging_units, rps.AGENT_SCHEDULING_PENDING,
