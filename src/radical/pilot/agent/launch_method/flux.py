@@ -26,7 +26,7 @@ class Flux(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def lrms_config_hook(cls, name, cfg, lrms, logger, profiler):
+    def rm_config_hook(cls, name, cfg, rm, logger, profiler):
 
         profiler.prof('flux_start')
 

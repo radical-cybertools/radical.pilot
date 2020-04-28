@@ -127,8 +127,8 @@ class Flux(AgentExecutingComponent) :
             # thread local initialization
             import flux
 
-            flux_url    = self._cfg['lrms_info']['lm_info']\
-                                                ['flux_env']['FLUX_URI']
+            flux_url    = self._cfg['rm_info']['lm_info']\
+                                              ['flux_env']['FLUX_URI']
             flux_handle = flux.Flux(url=flux_url)
             flux_handle.event_subscribe('job-state')
 
@@ -152,7 +152,7 @@ class Flux(AgentExecutingComponent) :
                 event = flux_handle.event_recv()
 
                 if 'transitions' not in event.payload:
-                    self._log.warn('unexpected flux event: %s',
+                    self._log.warn('unexpected flux event: %s' %
                                     event.payload)
                     continue
 
@@ -188,8 +188,8 @@ class Flux(AgentExecutingComponent) :
 
             if state is None:
                 # ignore this state transition
-                self._log.debug('ignore flux event %s:%s',
-                                task['uid'], flux_state)
+                self._log.debug('ignore flux event %s:%s' %
+                                (task['uid'], flux_state))
 
             # FIXME: how to get actual event transition timestamp?
           # ts = event.time
