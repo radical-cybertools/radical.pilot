@@ -303,11 +303,6 @@ class Worker(rpu.Component):
 
             task['resources'] = {'cores': alloc_cores,
                                  'gpus' : alloc_gpus}
-            self._log.debug('alloc: |%s%s|%s%s|', 
-                    '+' * self._resources['cores'].count(1),
-                    '-' * self._resources['cores'].count(0),
-                    '+' * self._resources['gpus' ].count(1),
-                    '-' * self._resources['gpus' ].count(0))
             return True
 
 
@@ -345,7 +340,7 @@ class Worker(rpu.Component):
         '''
 
       # self._log.debug('requested %s', task)
-        self._prof.prof('req_get', uid=task['uid'])
+        self._prof.prof('reg_start', uid=self._uid, msg=task['uid'])
         task['worker'] = self._uid
 
         try:
@@ -367,8 +362,6 @@ class Worker(rpu.Component):
             # we got an allocation for this task, and can run it, so apply to
             # the process pool.  The callback (`self._result_cb`) will pick the
             # task up on completion and free resources.
-            self._prof.prof('req_alloc', uid=task['uid'])
-
             # NOTE: we don't use mp.Pool - see __init__ for details
           # ret = self._pool.apply_async(func=self._dispatch, args=[task],
           #                              callback=self._result_cb,
@@ -380,8 +373,9 @@ class Worker(rpu.Component):
                 # may end up getting the `self._result_cb` befor the pid could
                 # be regostered in `self._pool`.
                 proc.start()
-                self._prof.prof('req_start', uid=task['uid'])
                 self._pool[proc.pid] = proc
+                self._log.debug('applied: %s: %s: %s', task['uid'], proc.pid,
+                                                       self._pool.keys())
 
         except Exception as e:
 
@@ -484,7 +478,7 @@ class Worker(rpu.Component):
 
         try:
             task, out, err, ret = result
-            self._prof.prof('req_stop', uid=task['uid'])
+          # self._log.debug('result cb: task %s', task['uid'])
 
             with self._plock:
                 pid  = task['pid']
@@ -492,7 +486,6 @@ class Worker(rpu.Component):
 
             # free resources again for the task
             self._dealloc_task(task)
-            self._prof.prof('req_dealloc', uid=task['uid'])
 
             res = {'req': task['uid'],
                    'out': out,
@@ -500,6 +493,7 @@ class Worker(rpu.Component):
                    'ret': ret}
 
             self._res_put.put(res)
+            self._prof.prof('reg_stop', uid=self._uid, msg=task['uid'])
         except:
             self._log.exception('result cb failed')
             raise
@@ -518,10 +512,11 @@ class Worker(rpu.Component):
     #
     def _control_cb(self, topic, msg):
 
-        self._log.debug('got control msg: %s: %s', topic, msg)
-
         if msg['cmd'] == 'worker_terminate':
             if msg['arg']['uid'] == self._uid:
+
+                self._log.debug('got terminate msg: %s: %s', topic, msg)
+
                 self._term.set()
                 self.stop()
                 sys.exit(0)
