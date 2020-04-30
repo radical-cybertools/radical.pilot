@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
+import os
 import sys
 import time
 
-import radical.utils as ru
 import radical.pilot as rp
 
 
@@ -20,66 +20,28 @@ class MyWorker(rp.task_overlay.Worker):
     #
     def __init__(self, cfg):
 
-        # ensure that communication to the pilot agent is up and running, so
-        # that the worker can respond to management commands (termination).
-        # This will also read the passed config file and make it available as
-        # `self._cfg`.
         rp.task_overlay.Worker.__init__(self, cfg)
 
-
-    # --------------------------------------------------------------------------
-    #
-    def initialize(self):
-        '''
-        This method is called during base class construction.  All agent
-        communication channels are available at this point.
-
-        We use this point to connect to the request / response ZMQ queues.  Note
-        that incoming requests will trigger an async callback `self.request_cb`.
-        '''
-
-        self._req_get = ru.zmq.Getter('to_req', self._info.req_addr_get,
-                                                cb=self.request_cb)
-        self._res_put = ru.zmq.Putter('to_res', self._info.res_addr_put)
-
-        # the worker can return custom information which will be made available
-        # to the master.  This can be used to communicate, for example, worker
-        # specific communication endpoints.
-        return {'foo': 'bar'}
+        self.register_call('hello', self.hello)
 
 
     # --------------------------------------------------------------------------
     #
-    def request_cb(self, msg):
-        '''
-        This implementation only understands a single request type: 'hello'.
-        It will run that request and immediately return a respone message.
-        All other requests will immediately trigger an error response.
-        '''
-
-        if msg['call'] == 'hello':
-            ret = self.hello(*msg['args'], **msg['kwargs'])
-            res = {'req': msg['uid'],
-                   'res': ret,
-                   'err': None}
-            self._res_put.put(res)
-
-        else:
-            res = {'req': msg['uid'],
-                   'res': None,
-                   'err': 'no such call %s' % msg['call']}
-            self._res_put.put(res)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def hello(self, world):
+    def hello(self, count, uid):
         '''
         important work
         '''
 
-        time.sleep(0.5)
-        return 'hello %s @ %s [%s]' % (world, time.time(), self.uid)
+        self._prof.prof('dock_start', uid=uid)
+
+        out = 'hello %5d @ %.2f [%6d]' % (count, time.time(), os.getpid())
+
+        self._prof.prof('dock_io_start', uid=uid)
+        self._log.debug(out)
+        self._prof.prof('dock_io_stop', uid=uid)
+
+        self._prof.prof('dock_stop', uid=uid)
+        return out
 
 
 # ------------------------------------------------------------------------------
