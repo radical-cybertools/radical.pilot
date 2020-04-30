@@ -1,4 +1,5 @@
 
+
 import os
 import copy
 import time
@@ -49,14 +50,14 @@ class Master(rpu.Component):
                                  'uid'        : self._uid + '.req',
                                  'path'       : os.getcwd(),
                                  'stall_hwm'  : 0,
-                                 'bulk_size'  : 56})
+                                 'bulk_size'  : 16})
 
         res_cfg = ru.Config(cfg={'channel'    : '%s.to_res' % self._uid,
                                  'type'       : 'queue',
                                  'uid'        : self._uid + '.res',
                                  'path'       : os.getcwd(),
                                  'stall_hwm'  : 0,
-                                 'bulk_size'  : 56})
+                                 'bulk_size'  : 16})
 
         self._req_queue = ru.zmq.Queue(req_cfg)
         self._res_queue = ru.zmq.Queue(res_cfg)
@@ -265,9 +266,11 @@ class Master(rpu.Component):
     def run(self):
 
         # get work from the overloading implementation
+        self._prof.prof('run_prepare')
         self.create_work_items()
 
         # wait for the submitted requests to complete
+        self._prof.prof('run_start')
         t_start = time.time()
         while True:
 
@@ -284,6 +287,7 @@ class Master(rpu.Component):
             time.sleep(5.0)
         t_stop = time.time()
 
+        self._prof.prof('run_stop')
         self._log.debug('master runtime: %.2fs', t_stop - t_start)
 
 
@@ -302,7 +306,7 @@ class Master(rpu.Component):
 
         # push the request message (here and dictionary) onto the request queue
         self._req_put.put(req.as_dict())
-      # self._log.debug('requested %s', req.uid)
+        self._prof.prof('req_put', uid=req.uid)
 
         # return the request to the master script for inspection etc.
         return req
@@ -330,6 +334,7 @@ class Master(rpu.Component):
         err = msg['err']
         ret = msg['ret']
 
+        self._prof.prof('req_get', uid=uid)
         req = self._requests[uid]
         req.set_result(out, err, ret)
 
@@ -339,6 +344,8 @@ class Master(rpu.Component):
                 self.request(item)
         except:
             self._log.exception('result callback failed')
+
+        self._prof.prof('req_final', uid=uid)
 
 
     # --------------------------------------------------------------------------
