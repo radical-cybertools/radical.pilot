@@ -71,14 +71,14 @@
         "cores"    : 56
     },
 
-    "xsede.frontera" : {
+    "tacc.frontera" : {
         "project"  : "FTA-Jha",
         "queue"    : "development",
         "schema"   : "local",
         "cores"    : 64
     },
 
-    "xsede.longhorn" : {
+    "tacc.longhorn" : {
         "project"  : "FTA-Jha",
         "queue"    : "development",
         "schema"   : "local",
