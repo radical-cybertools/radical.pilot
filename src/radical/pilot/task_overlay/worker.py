@@ -24,8 +24,7 @@ class Worker(rpu.Component):
     #
     def __init__(self, cfg):
 
-        pipes = len(list(glob.glob('/proc/%d/fd/*' % os.getpid())))
-        self._log.debug('=== 0 pipes: %d' % pipes)
+        pipes0 = len(list(glob.glob('/proc/%d/fd/*' % os.getpid())))
 
         if isinstance(cfg, str): cfg = ru.Config(cfg=ru.read_json(cfg))
         else                   : cfg = ru.Config(cfg=cfg)
@@ -54,6 +53,7 @@ class Worker(rpu.Component):
         self._res_evt.set()
 
         pipes = len(list(glob.glob('/proc/%d/fd/*' % os.getpid())))
+        self._log.debug('=== 0 pipes: %d' % pipes0)
         self._log.debug('=== 1 pipes: %d' % pipes)
 
       # # create a multiprocessing pool with `cpn` worker processors.  Set
