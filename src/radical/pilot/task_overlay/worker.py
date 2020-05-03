@@ -439,13 +439,6 @@ class Worker(rpu.Component):
                     self._log.debug('put 2 result: task %s', task['uid'])
                     self._result_queue.put(res)
 
-                    # if we kill the process too quickly, the result put above
-                    # will not make it out, thus make sure the queue is empty
-                    # first.
-                    self._result_queue.close()
-                    self._result_queue.join_thread()
-                    os.kill(os.getpid(), signal.SIGTERM)
-
           # self._log.debug('dispatch done: %s', task['uid'])
 
         except Exception as e:
@@ -457,6 +450,16 @@ class Worker(rpu.Component):
             res = [task, str(out), str(err), int(ret)]
             self._log.debug('put 3 result: task %s', task['uid'])
             self._result_queue.put(res)
+
+        finally:
+            # if we kill the process too quickly, the result put above
+            # will not make it out, thus make sure the queue is empty
+            # first.
+            self._result_queue.close()
+            self._result_queue.join_thread()
+            sys.exit(ret)
+          # os.kill(os.getpid(), signal.SIGTERM)
+
 
 
     # --------------------------------------------------------------------------
