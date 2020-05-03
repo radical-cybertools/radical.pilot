@@ -180,7 +180,7 @@ class Worker(rpu.Component):
         except Exception as e:
             self._log.exception('_call failed: %s' % (data))
             out = None
-            err = str(e)
+            err = 'call failed: %s' % e
             ret = 1
 
         return out, err, ret
@@ -202,7 +202,7 @@ class Worker(rpu.Component):
         except Exception as e:
             self._log.exception('_eval failed: %s' % (data))
             out = None
-            err = str(e)
+            err = 'eval failed: %s' % e
             ret = 1
 
         return out, err, ret
@@ -234,7 +234,7 @@ class Worker(rpu.Component):
         except Exception as e:
             self._log.exception('_exec failed: %s' % (data))
             out = None
-            err = str(e)
+            err = 'exec failed: %s' % e
             ret = 1
 
         return out, err, ret
@@ -254,7 +254,7 @@ class Worker(rpu.Component):
         except Exception as e:
             self._log.exception('_shell failed: %s' % (data))
             out = None
-            err = str(e)
+            err = 'shell failed: %s' % e
             ret = 1
 
         return out, err, ret
@@ -380,13 +380,15 @@ class Worker(rpu.Component):
         except Exception as e:
 
             self._log.exception('request failed')
+            now = int(time.time())
+            os.system('sh -c "free -h > %s.out; ps -ef --forest | grep rpilot >> %s.out"' % (now, now))
 
             # free resources again for failed task
             self._dealloc_task(task)
 
             res = {'req': task['uid'],
                    'out': None,
-                   'err': str(e),
+                   'err': 'req_cb error: %s' % e,
                    'ret': 1}
 
             self._res_put.put(res)
@@ -450,7 +452,7 @@ class Worker(rpu.Component):
 
             self._log.exception('dispatch failed')
             out = None
-            err = str(e)
+            err = 'dispatch failed: %s' % e
             ret = 1
             res = [task, str(out), str(err), int(ret)]
             self._log.debug('put 3 result: task %s', task['uid'])
