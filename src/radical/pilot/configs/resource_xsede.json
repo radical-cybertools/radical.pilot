@@ -579,6 +579,52 @@
         "python_dist"                 : "default"
     },
 
+    "bridges_intel": {
+        "description"                 : "The XSEDE 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription.",
+        "schemas"                     : ["gsissh", "ssh", "go"],
+      # "mandatory_args"              : [],
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://bridges.psc.xsede.org:2222/",
+            "filesystem_endpoint"     : "gsisftp://bridges.psc.xsede.org:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://bridges.psc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://bridges.psc.xsede.org/"
+        },
+        "go":
+        {
+            "job_manager_endpoint"    : "slurm+ssh://bridges.psc.xsede.org/",
+            "filesystem_endpoint"     : "go://xsede#bridges/"
+        },
+        "default_queue"               : "RM",
+        "resource_manager"            : "SLURM",
+        "lfs_path_per_node"           : "$LOCAL",
+        "lfs_size_per_node"           : 3713368,
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN",
+        "pre_bootstrap_0"             : ["module purge",
+                                         "module load intel",
+                                         "module loadmpi/intel_openmpi",
+                                         "module load slurm",
+                                         "module load anaconda3"
+                                        ],
+        "default_remote_workdir"      : "$SCRATCH",
+        "valid_roots"                 : ["/home", "/pylon1", "/pylon5"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "anaconda",
+        "export_to_cu"                : [],
+        "cu_pre_exec"                 : [],
+        "saga_jd_supplement"          : {"cpu_architecture" : ["p100"]},
+        "gpus_per_node"               : 2
+    },
+
     "bridges": {
         "description"                 : "The XSEDE 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription.",
