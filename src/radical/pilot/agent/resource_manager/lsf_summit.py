@@ -216,6 +216,15 @@ class LSF_SUMMIT(ResourceManager):
                     if node not in lsf_nodes: lsf_nodes[node]  = 1
                     else                    : lsf_nodes[node] += 1
 
+        # It is possible that login/batch nodes were not marked at hostfile
+        # and were not filtered out, thus we assume that there is only one
+        # such node with 1 core (otherwise assertion error will be raised later)
+        # *) affected machine(s): Lassen@LLNL
+        for node, node_cores in lsf_nodes.items():
+            if node_cores == 1:
+                del lsf_nodes[node]
+                break
+
         self._log.debug('found %d nodes: %s', len(lsf_nodes), lsf_nodes)
 
         # RP currently requires uniform node configuration, so we expect the
