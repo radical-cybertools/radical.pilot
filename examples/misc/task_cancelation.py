@@ -32,27 +32,27 @@ if __name__ == '__main__':
         print('pilot state: %s' % pilot.state)
 
         # submit 32 tasks, each running for 120 seconds.  We have 8 cores, so the
-        # tasks will run in 8 batches at a time, in a total of 4 batches (aka
-        # generations).
+        # tasks will run in 4 batches of 8 at a time.
         t_start = time.time()
         cuds    = list()
         for _ in range(32):
 
             cud = rp.ComputeUnitDescription()
             cud.executable = '%s/examples/hello_rp.sh' % os.getcwd()
-            cud.arguments  = [120]
+            cud.arguments  = [10]
             cuds.append(cud)
 
         tasks = umgr.submit_units(cuds)
 
         # wait until 8 tasks are done (16 cores: should take about 120 seconds
+        print('%d total  - wait for 8 tasks' % len(tasks))
         while True:
             time.sleep(1)
             states = [t.state for t in tasks]
             count  =  states.count(rp.DONE)
-            print('%d total  %d DONE' % (len(states), count))
             if count >= 8:
                 break
+        print('%d total  %d DONE' % (len(states), count))
 
         t_gen_1 = time.time()
 
@@ -76,8 +76,8 @@ if __name__ == '__main__':
 
         t_cancel = time.time()
 
-        # 4 tasks should be left which fit on the available core, and we should
-        # wait for another 120 seconds or so
+        # 12 tasks should be left which fit on the available cores in two
+        # batches (8 + 4), and we should wait for about 20 seconds or so
         umgr.wait_units()
         t_done = time.time()
 
@@ -89,9 +89,9 @@ if __name__ == '__main__':
         print('  canceled: %d tasks' % n_canceled)
 
         print('times:')
-        print('  gen 1 : %10.1f sec (exp: 120 sec)' % (t_gen_1  - t_start))
-        print('  cancel: %10.1f sec (exp:   0 sec)' % (t_cancel - t_gen_1))
-        print('  gen x : %10.1f sec (exp: 120 sec)' % (t_done   - t_cancel))
+        print('  gen 1 : %10.1f sec (exp: 10 sec)' % (t_gen_1  - t_start))
+        print('  cancel: %10.1f sec (exp:  0 sec)' % (t_cancel - t_gen_1))
+        print('  gen x : %10.1f sec (exp: 20 sec)' % (t_done   - t_cancel))
 
         session.close(download=True)
 
