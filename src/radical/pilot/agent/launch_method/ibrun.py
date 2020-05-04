@@ -49,6 +49,12 @@ class IBRun(LaunchMethod):
         n_node_tasks = int(task_env.get('TACC_TASKS_PER_NODE') or
                            self._cfg.get('cores_per_node', 1))
 
+        # TACC_TASKS_PER_NODE is used to set the actual number of running tasks,
+        # if not set, then ibrun script will use the default slurm setting for
+        # the number of tasks per node to build the hostlist (for TACC machines)
+        #   NOTE: in case of performance issue please consider this parameter
+        #   at the first place
+
         assert (slots.get('nodes') is not None), 'unit.slots.nodes is not set'
 
         ibrun_offset = 0
