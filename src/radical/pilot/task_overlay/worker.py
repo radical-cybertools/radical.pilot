@@ -24,8 +24,6 @@ class Worker(rpu.Component):
     #
     def __init__(self, cfg):
 
-        pipes0 = len(list(glob.glob('/proc/%d/fd/*' % os.getpid())))
-
         if isinstance(cfg, str): cfg = ru.Config(cfg=ru.read_json(cfg))
         else                   : cfg = ru.Config(cfg=cfg)
 
@@ -51,10 +49,6 @@ class Worker(rpu.Component):
 
         # resources are initially all free
         self._res_evt.set()
-
-        pipes = len(list(glob.glob('/proc/%d/fd/*' % os.getpid())))
-        self._log.debug('=== 0 pipes: %d' % pipes0)
-        self._log.debug('=== 1 pipes: %d' % pipes)
 
       # # create a multiprocessing pool with `cpn` worker processors.  Set
       # # `maxtasksperchild` to `1` so that we get a fresh process for each
@@ -85,9 +79,6 @@ class Worker(rpu.Component):
         self._result_thead.daemon = True
         self._result_thead.start()
 
-        pipes = len(list(glob.glob('/proc/%d/fd/*' % os.getpid())))
-        self._log.debug('=== 2 pipes: %d' % pipes)
-
         # connect to master
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
         self.register_publisher(rpc.CONTROL_PUBSUB)
@@ -103,17 +94,12 @@ class Worker(rpu.Component):
         self.register_mode('exec',  self._exec)
         self.register_mode('shell', self._shell)
 
-        pipes = len(list(glob.glob('/proc/%d/fd/*' % os.getpid())))
-        self._log.debug('=== 3 pipes: %d' % pipes)
         self.pre_exec()
 
         # connect to the request / response ZMQ queues
         self._res_put = ru.zmq.Putter('to_res', self._info.res_addr_put)
         self._req_get = ru.zmq.Getter('to_req', self._info.req_addr_get,
                                                 cb=self._request_cb)
-
-        pipes = len(list(glob.glob('/proc/%d/fd/*' % os.getpid())))
-        self._log.debug('=== 4 pipes: %d' % pipes)
 
         # the worker can return custom information which will be made available
         # to the master.  This can be used to communicate, for example, worker
@@ -124,8 +110,6 @@ class Worker(rpu.Component):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
                                           'arg': {'uid' : self._uid,
                                                   'info': self._info}})
-        pipes = len(list(glob.glob('/proc/%d/fd/*' % os.getpid())))
-        self._log.debug('=== 5 pipes: %d' % pipes)
 
 
     # --------------------------------------------------------------------------
@@ -356,9 +340,6 @@ class Worker(rpu.Component):
         invoke it.
         '''
 
-        pipes = len(list(glob.glob('/proc/%d/fd/*' % os.getpid())))
-        self._log.debug('=== 7 pipes: %d' % pipes)
-
       # self._log.debug('requested %s', task)
         self._prof.prof('reg_start', uid=self._uid, msg=task['uid'])
         task['worker'] = self._uid
@@ -400,8 +381,6 @@ class Worker(rpu.Component):
         except Exception as e:
 
             self._log.exception('request failed')
-            now = int(time.time())
-            os.system('sh -c "free -h > %s.out; ps -ef --forest | grep rpilot >> %s.out"' % (now, now))
 
             # free resources again for failed task
             self._dealloc_task(task)
@@ -413,8 +392,6 @@ class Worker(rpu.Component):
 
             self._res_put.put(res)
 
-        pipes = len(list(glob.glob('/proc/%d/fd/*' % os.getpid())))
-        self._log.debug('=== 8 pipes: %d' % pipes)
 
     # --------------------------------------------------------------------------
     #
@@ -436,7 +413,7 @@ class Worker(rpu.Component):
                 self._result_queue.put(res)
         # ----------------------------------------------------------------------
 
-
+        ret = 0
         try:
           # self._log.debug('dispatch: %s: %d', task['uid'], task['pid'])
             mode = task['mode']
