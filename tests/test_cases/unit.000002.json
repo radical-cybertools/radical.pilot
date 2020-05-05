@@ -11,7 +11,6 @@
     "setup" : {
         "lm" : {
              "slots" :{
-                 "nodes"         : [["test", "test", [], []]],
                  "cores_per_node": 24,
                  "gpus_per_node" : 0,
                  "lm_info"       : {"spark_home"     : "/",
@@ -28,7 +27,7 @@
     "results": {
         "lm": {
             "spark"  : ["/spark-submit    test.py", null],
-            "ibrun"  : "RuntimeError",
+            "ibrun"  : "AssertionError",
             # "orte"   : "RuntimeError",
             "prte"   : "RuntimeError"
         }
