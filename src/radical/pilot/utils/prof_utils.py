@@ -681,7 +681,7 @@ def get_consumed_resources(session):
 def _get_nodes(pilot):
 
     pnodes = pilot.cfg['resource_details']['rm_info']['node_list']
-    agents = pilot.cfg['resource_details']['rm_info'].get('agent_nodes')
+    agents = pilot.cfg['resource_details']['rm_info'].get('agent_nodes', [])
     anodes = list()
     nodes  = list()
 
