@@ -5,6 +5,8 @@
         "description": {"input_staging": []}
     },
 
-    "results": [[],[{"uid": "unit.000001", "description": {"input_staging": []}}]]
+    "results": [[[{"uid": "unit.000001",
+                   "description": {"input_staging": []}}]],
+                ["AGENT_SCHEDULING_PENDING"]]
 }
 
