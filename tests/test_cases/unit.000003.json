@@ -15,7 +15,6 @@
             "slots": {
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
-                "task_offsets"   : [4],
                 "lm_info"       : {
                                    # for LM ORTE
                                    "dvm_uri" : "dvm_uri"
@@ -39,7 +38,7 @@
             # "orte"    : ["orterun  --hnp \"dvm_uri\" -np 1 --bind-to none -host node1 -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep \"10\" ", null],
             "aprun"   : ["aprun -n 1 -N 1 -L node1 -d 4 -cc 0,1,2,3 /bin/sleep \"10\"  ", null],
             "mpirun"  : ["mpirun  -np 1  -host node1  /bin/sleep \"10\"", null],
-            "ibrun"   : ["ibrun -n 1 -o 4 /bin/sleep \"10\" ", null],
+            "ibrun"   : ["ibrun -n 1 -o 0 /bin/sleep \"10\" ", null],
             "ssh"     : ["/bin/sleep \"10\" ","ssh node1 LD_LIBRARY_PATH=/usr/local/lib/ PATH=test_path 1"],
             "rsh"     : ["/bin/sleep \"10\" ","rsh node1 LD_LIBRARY_PATH=/usr/local/lib/ PATH=test_path 1"],
             "spark"   : "RuntimeError",

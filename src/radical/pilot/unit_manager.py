@@ -1032,13 +1032,18 @@ class UnitManager(rpu.Component):
 
         self._rep.progress_done()
 
-        if to_check: self._rep.warn('>>timeout\n')
-        else       : self._rep.ok  ('>>ok\n')
 
         # grab the current states to return
         state = None
         with self._units_lock:
             states = [self._units[uid].state for uid in uids]
+
+        sdict = {state: states.count(state) for state in set(states)}
+        for state in sorted(set(states)):
+            self._rep.info('\t%-10s: %5d\n' % (state, sdict[state]))
+
+        if to_check: self._rep.warn('>>timeout\n')
+        else       : self._rep.ok  ('>>ok\n')
 
         # done waiting
         if ret_list: return states
