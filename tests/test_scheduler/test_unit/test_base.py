@@ -3,6 +3,7 @@
 
 import pytest
 import threading
+from glob import glob
 import radical.utils as ru
 from radical.pilot.agent.scheduler.base import AgentSchedulingComponent
 
@@ -11,129 +12,35 @@ try:
 except ImportError:
     from unittest import mock
 
+# ------------------------------------------------------------------------------
+#
+def setUp(test):
+
+    tc = ru.read_json('tests/test_scheduler/test_unit/test_cases/test_base.json')
+
+    return tc[test]
 
 # ------------------------------------------------------------------------------
 #
 @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
 def test_change_slot_states(mocked_init):
 
+    tests      = setUp('change_slots')
+    nodes      = tests['nodes']
+    slots      = tests['slots']
+    new_states = tests['new_state']
+    results    = tests['results']
+
     component = AgentSchedulingComponent()
-    component.nodes = [{'uid': 1,
-                        'cores': [0, 0, 0, 0, 0, 0, 0, 0,
-                                  0, 0, 0, 0, 0, 0, 0, 0],
-                        'lfs': {'size': 100, 'path': 'test'},
-                        'mem': 1024}]
 
-    slots = {"cores_per_node": 16,
-             "lfs_per_node": {"size": 0, "path": "/dev/null"},
-             "nodes": [{"lfs": {"path": "/dev/null", "size": 0},
-                        "core_map": [[0]],
-                        "name": "a",
-                        "gpu_map": [],
-                        "uid": 1,"mem": None}],
-             "lm_info": "INFO",
-             "gpus_per_node": 6,
-             }
-
-    component._change_slot_states(slots=slots, new_state=1)
-    assert component.nodes == [{'mem': 1024,
-                                'cores': [1, 0, 0, 0, 0, 0, 0, 0, 
-                                          0, 0, 0, 0, 0, 0, 0, 0],
-                                'uid': 1,
-                                'lfs': {'path': 'test', 'size': 100}}]
-
-    component.nodes = [{'uid': 2,
-                        'cores': [0, 0, 0, 0, 0, 0, 0, 0,
-                                  0, 0, 0, 0, 0, 0, 0, 0],
-                        'lfs': {'size': 100, 'path': 'test'},
-                        'mem': 1024,
-                        'gpus': [0, 0, 0]}]
-
-    slots = {"cores_per_node": 16,
-             "lfs_per_node": {"size": 0, "path": "/dev/null"},
-             "nodes": [{"lfs": {"path": "/dev/null", "size": 0},
-                        "core_map": [[0]],
-                        "name": "a",
-                        "gpu_map": [[1]],
-                        "uid": 2,"mem": 10}],
-             "lm_info": "INFO",
-             "gpus_per_node": 6,
-             }
-
-    component._change_slot_states(slots=slots, new_state=1)
-    assert component.nodes == [{'mem': 1014,
-                                'cores': [1, 0, 0, 0, 0, 0, 0, 0, 
-                                          0, 0, 0, 0, 0, 0, 0, 0],
-                                'uid': 2,
-                                'lfs': {'path': 'test', 'size': 100},
-                                'gpus':[0,1,0]}]
-
-    component.nodes = [{'uid': 2,
-                        'cores': [0, 0, 0, 0, 0, 0, 0, 0,
-                                  0, 0, 0, 0, 0, 0, 0, 0],
-                        'lfs': {'size': 100, 'path': 'test'},
-                        'mem': 1024,
-                        'gpus': [0, 0, 0]}]
-
-    slots = {"cores_per_node": 16,
-             "lfs_per_node": {"size": 0, "path": "/dev/null"},
-             "nodes": [{"lfs": {"path": "/dev/null", "size": 0},
-                        "core_map": [[0]],
-                        "name": "a",
-                        "gpu_map": [[1]],
-                        "uid": 2,"mem": 10}],
-             "lm_info": "INFO",
-             "gpus_per_node": 6,
-             }
-
-    component._change_slot_states(slots=slots, new_state=1)
-    assert component.nodes == [{'mem': 1014,
-                                'cores': [1, 0, 0, 0, 0, 0, 0, 0, 
-                                          0, 0, 0, 0, 0, 0, 0, 0],
-                                'uid': 2,
-                                'lfs': {'path': 'test', 'size': 100},
-                                'gpus':[0,1,0]}]
-
-    slots = {"cores_per_node": 16,
-             "lfs_per_node": {"size": 0, "path": "/dev/null"},
-             "nodes": [{"lfs": {"path": "/dev/null", "size": 0},
-                        "core_map": [[0]],
-                        "name": "a",
-                        "gpu_map": [[1]],
-                        "uid": 2,"mem": 10}],
-             "lm_info": "INFO",
-             "gpus_per_node": 6,
-             }
-
-    component._change_slot_states(slots=slots, new_state=0)
-    assert component.nodes == [{'mem': 1024,
-                                'cores': [0, 0, 0, 0, 0, 0, 0, 0, 
-                                          0, 0, 0, 0, 0, 0, 0, 0],
-                                'uid': 2,
-                                'lfs': {'path': 'test', 'size': 100},
-                                'gpus':[0,0,0]}]
-
-
-    component.nodes = [{'uid': 2,
-                        'cores': [0, 0, 0, 0, 0, 0, 0, 0,
-                                  0, 0, 0, 0, 0, 0, 0, 0],
-                        'lfs': {'size': 100, 'path': 'test'},
-                        'mem': 1024,
-                        'gpus': [0, 0, 0]}]
-
-    slots = {"cores_per_node": 16,
-             "lfs_per_node": {"size": 0, "path": "/dev/null"},
-             "nodes": [{"lfs": {"path": "/dev/null", "size": 0},
-                        "core_map": [[0]],
-                        "name": "a",
-                        "gpu_map": [],
-                        "uid": 1,"mem": None}],
-             "lm_info": "INFO",
-             "gpus_per_node": 6,
-             }
-
-    with pytest.raises(RuntimeError):
-        component._change_slot_states(slots=slots, new_state=1)
+    for node, slot, new_state, result in zip(nodes, slots, new_states, results):
+        component.nodes = node
+        if result == 'RuntimeError':
+            with pytest.raises(RuntimeError):
+                component._change_slot_states(slots=slot, new_state=new_state)
+        else:
+            component._change_slot_states(slots=slot, new_state=new_state)
+            assert component.nodes == result
 
 
 # ------------------------------------------------------------------------------
