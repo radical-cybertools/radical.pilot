@@ -16,7 +16,6 @@
             "slots": {
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
-                "task_offsets"  : [16],
                 "lfs_per_node"  : 0,
                 "nodes"         : [{"name"    : "node1",
                                     "uid"     : "node1",
@@ -38,7 +37,7 @@
     },
 
     "results": {
-        "lm": { "ibrun"  : ["ibrun -n 2 -o 16 /bin/sleep \"10\" ",null],
+        "lm": { "ibrun"  : ["ibrun -n 2 -o 0 /bin/sleep \"10\" ",null],
                 "ssh"    : "RuntimeError",
                 "spark"  : "RuntimeError",
                 # "orte"   : "RuntimeError",

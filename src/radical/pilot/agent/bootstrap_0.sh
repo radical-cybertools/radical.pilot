@@ -1,23 +1,22 @@
 #!/bin/bash -l
 
-# Unset functions/aliases of commands that will be used during bootsrap as
+# Unset functions/aliases of commands that will be used during bootstrap as
 # these custom functions can break assumed/expected behavior
 export PS1='#'
 unset PROMPT_COMMAND
-unset -f cd ls uname pwd date bc cat echo
+unset -f cd ls uname pwd date bc cat echo grep
 
 
 # Report where we are, as this is not always what you expect ;-)
 # Save environment, useful for debugging
-echo "-------------------------------------------------------------------------"
+echo "# -------------------------------------------------------------------"
 echo "bootstrap_0 running on host: `hostname -f`."
 echo "bootstrap_0 started as     : '$0 $@'"
 echo "safe environment of bootstrap_0"
 
-# print the sorted env for logging, but also keep a copy so that we can dig
-# original env settings for any CUs, if so specified in the resource config.
-env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g'  > env.orig
-echo "# -----------------------------------------------------------------------"
+# store the sorted env for logging, but also so that we can dig original env
+# settings for task environments, if needed
+env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' > env.orig
 
 
 # interleave stdout and stderr, to get a coherent set of log messages
@@ -135,6 +134,41 @@ export PYTHONNOUSERSITE=True
 # during installation.  To speed this up (specifically on cluster compute
 # nodes), we try to convince PIP to run parallel `make`
 export MAKEFLAGS="-j"
+
+
+# ------------------------------------------------------------------------------
+#
+# check what env variables changed from the original env, and create a
+# `deactivate` script which resets the original values.
+#
+create_deactivate()
+{
+    # capture the current environment
+    env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' \
+        > env.bs_0
+
+    # find all variables which changed
+    changed=$(diff -w env.orig env.bs_0 | grep '='        \
+                                        | cut -f 3 -d ' ' \
+                                        | cut -f 1 -d '=' \
+                                        | sort -u)
+
+    # capture the original values in `deactivate`.  If no original value exists,
+    # unset the variable
+    for var in $changed
+    do
+        orig=$(grep -e "^export $var=" env.orig)
+        if test -z "$orig"
+        then
+            # var did not exist
+            echo "unset  $var" >> deactivate
+        else
+            # var existed, value may or may not be empty
+            echo "$orig" >> deactivate
+        fi
+    done
+}
+
 
 # ------------------------------------------------------------------------------
 #
@@ -318,7 +352,7 @@ lock()
         if contains "$err" 'no such file or directory'
         then
             # there is something wrong with the lockfile path...
-            echo "can't create lockfile at '$lockfile' - invalid directory?"
+            echo "ERROR: can't create lockfile at '$lockfile' - invalid directory?"
             exit 1
         fi
 
@@ -368,14 +402,14 @@ unlock()
 
     if ! test -f $lockfile
     then
-        echo "ERROR: cannot unlock $entry for $pid: missing lock $lockfile"
+        echo "ERROR: can't unlock $entry for $pid: missing lock $lockfile"
         exit 1
     fi
 
     owner=`cat $lockfile`
     if ! test "$owner" = "`echo $pid`"
     then
-        echo "ERROR: cannot unlock $entry for $pid: owner is $owner"
+        echo "ERROR: can't unlock $entry for $pid: owner is $owner"
         exit 1
     fi
 
@@ -405,6 +439,7 @@ rehash()
     else
         PYTHON="$explicit_python"
     fi
+    PYTHON_VERSION=`$PYTHON -c 'from distutils.sysconfig import get_python_version; print(get_python_version())'`
 
     # NOTE: if a cacert.pem.gz was staged, we unpack it and use it for all pip
     #       commands (It means that the pip cacert [or the system's, dunno]
@@ -439,8 +474,10 @@ rehash()
     #       thus we undefine that function here.
     unset -f pip
 
-    echo "PYTHON: $PYTHON"
-    echo "PIP   : $PIP"
+    echo "PYTHON            : $PYTHON"
+    echo "PYTHON_VERSION    : $PYTHON_VERSION"
+    echo "PIP               : $PIP"
+    echo "PIP version       : `$PIP --version`"
 }
 
 
@@ -469,7 +506,6 @@ verify_install()
             exit 1
         fi
         echo ' ok'
-
     done
 }
 
@@ -560,7 +596,7 @@ run_cmd()
 #   'recreate': delete if it exists, otherwise create, then use
 #
 # create and update ops will be locked and thus protected against concurrent
-# bootstrap_0 invokations.
+# bootstrap_0 invocations.
 #
 # (private + location in pilot sandbox == old behavior)
 #
@@ -598,6 +634,7 @@ virtenv_setup()
         ve_create=FALSE
         ve_update=TRUE
         test -d "$virtenv/" || ve_create=TRUE
+
     elif test "$virtenv_mode" = "create"
     then
         ve_create=TRUE
@@ -618,6 +655,7 @@ virtenv_setup()
         test -d "$virtenv/" && rm -r "$virtenv"
         ve_create=TRUE
         ve_update=FALSE
+
     else
         ve_create=FALSE
         ve_update=FALSE
@@ -631,8 +669,8 @@ virtenv_setup()
         ve_update=FALSE
     fi
 
-    echo "virtenv_create   : $ve_create"
-    echo "virtenv_update   : $ve_update"
+    echo "virtenv_create    : $ve_create"
+    echo "virtenv_update    : $ve_update"
 
 
     # radical_pilot installation and update is governed by PILOT_VERSION.  If
@@ -737,14 +775,14 @@ virtenv_setup()
     then
         if ! test -d "$virtenv/"
         then
-            echo 'rp lock for ve create'
+            echo 'rp lock for virtenv create'
             lock "$pid" "$virtenv" # use default timeout
             virtenv_create "$virtenv" "$python_dist" "$virtenv_dist"
             if ! test "$?" = 0
             then
-               echo "Error on virtenv creation -- abort"
-               unlock "$pid" "$virtenv"
-               exit 1
+                echo "ERROR: couldn't create virtenv - abort"
+                unlock "$pid" "$virtenv"
+                exit 1
             fi
             unlock "$pid" "$virtenv"
         else
@@ -761,14 +799,14 @@ virtenv_setup()
     # update virtenv if needed.  This also activates the virtenv.
     if test "$ve_update" = "TRUE"
     then
-        echo 'rp lock for ve update'
+        echo 'rp lock for virtenv update'
         lock "$pid" "$virtenv" # use default timeout
         virtenv_update "$virtenv" "$python_dist"
         if ! test "$?" = 0
         then
-           echo "Error on virtenv update -- abort"
-           unlock "$pid" "$virtenv"
-           exit 1
+            echo "ERROR: couldn't update virtenv - abort"
+            unlock "$pid" "$virtenv"
+            exit 1
        fi
        unlock "$pid" "$virtenv"
     else
@@ -795,30 +833,39 @@ virtenv_setup()
 #
 virtenv_activate()
 {
+    if test "$VIRTENV_IS_ACTIVATED" = "TRUE"; then
+        return
+    fi
+
     profile_event 've_activate_start'
 
     virtenv="$1"
     python_dist="$2"
 
-    if test "$VIRTENV_IS_ACTIVATED" = "TRUE"
-    then
-        return
-    fi
-
-    if test "$python_dist" = "anaconda"
-    then
-        source activate $virtenv/
+    if test "$python_dist" = "anaconda"; then
+        test -e "`which conda`" && conda activate "$virtenv" || \
+        (test -e "$virtenv/bin/activate" && . "$virtenv/bin/activate")
+        if test -z "$CONDA_PREFIX"; then
+            echo "ERROR: activating of (conda) virtenv failed - abort"
+            exit 1
+        fi
     else
         unset VIRTUAL_ENV
         . "$virtenv/bin/activate"
-        if test -z "$VIRTUAL_ENV"
-        then
-            echo "Loading of virtual env failed!"
+        if test -z "$VIRTUAL_ENV"; then
+            echo "ERROR: activating of virtenv failed - abort"
             exit 1
         fi
-
     fi
+
     VIRTENV_IS_ACTIVATED=TRUE
+    echo "VIRTENV activated : $virtenv"
+
+    RP_PATH="$virtenv/bin"
+    echo "RP_PATH           : $RP_PATH"
+
+    PATH="$RP_PATH:$PATH"
+    export PATH
 
     # make sure we use the new python binary
     rehash
@@ -833,17 +880,11 @@ virtenv_activate()
   #     SYSTEM_RP='TRUE'
   # fi
 
-    prefix="$virtenv/rp_install"
+  # prefix="$virtenv/rp_install"
 
     # make sure the lib path into the prefix conforms to the python conventions
-    PYTHON_VERSION=`$PYTHON -c 'import distutils.sysconfig as sc; print(sc.get_python_version())'`
-    VE_MOD_PREFIX=` $PYTHON -c 'import distutils.sysconfig as sc; print(sc.get_python_lib())'`
-    echo "PYTHON INTERPRETER: $PYTHON"
-    echo "PYTHON_VERSION    : $PYTHON_VERSION"
-    echo "VE_MOD_PREFIX     : $VE_MOD_PREFIX"
-    echo "PIP installer     : $PIP"
-    echo "PIP version       : `$PIP --version`"
-
+    VE_MOD_PREFIX=`$PYTHON -c 'from distutils.sysconfig import get_python_lib; print(get_python_lib())'`
+    echo "VE_MOD_PREFIX init: $VE_MOD_PREFIX"
     # NOTE: distutils.sc.get_python_lib() behaves different on different
     #       systems: on some systems (versions?) it returns a normalized path,
     #       on some it does not.  As we need consistent behavior to have
@@ -868,30 +909,23 @@ virtenv_activate()
 
     TMP_BASE=`(cd $TMP_BASE; pwd -P)`
     VE_MOD_PREFIX="$TMP_BASE/$TMP_TAIL"
+    echo "VE_MOD_PREFIX     : $VE_MOD_PREFIX"
 
     # we can now derive the pythonpath into the rp_install portion by replacing
     # the leading path elements.  The same mechanism is used later on
     # to derive the PYTHONPATH into the sandbox rp_install, if needed.
     RP_MOD_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$virtenv|$virtenv/rp_install|"`
-    VE_PYTHONPATH="$PYTHONPATH"
-    RP_PATH="$virtenv/bin"
+    echo "RP_MOD_PREFIX     : $RP_MOD_PREFIX"
 
     # NOTE: this should not be necessary, but we explicit set PYTHONPATH to
     #       include the VE module tree, because some systems set a PYTHONPATH on
     #       'module load python', and that would supersede the VE module tree,
     #       leading to unusable versions of setuptools.
+    VE_PYTHONPATH="$PYTHONPATH"
+    echo "VE_PYTHONPATH     : $VE_PYTHONPATH"
+
     PYTHONPATH="$VE_MOD_PREFIX:$VE_PYTHONPATH"
     export PYTHONPATH
-
-    PATH="$RP_PATH:$PATH"
-    export $PATH
-
-    echo "activated virtenv"
-    echo "VIRTENV      : $virtenv"
-    echo "VE_PYTHONPATH: $VE_PYTHONPATH"
-    echo "VE_MOD_PREFIX: $VE_MOD_PREFIX"
-    echo "RP_MOD_PREFIX: $RP_MOD_PREFIX"
-    echo "RP_PATH      : $RP_PATH"
 
     profile_event 've_activate_stop'
 }
@@ -940,7 +974,7 @@ virtenv_create()
 
             if ! test "$?" = 0
             then
-                echo "WARNING: Couldn't download virtualenv via curl! Using system version."
+                echo "WARNING: couldn't download virtualenv via curl! Using system version"
                 virtenv_dist="system"
 
             else :
@@ -949,8 +983,8 @@ virtenv_create()
 
                 if test $? -ne 0
                 then
-                    echo "Couldn't unpack virtualenv! Using systemv version"
-                    virtenv_dist="default"
+                    echo "Couldn't unpack virtualenv! Using system version"
+                    virtenv_dist="system"
                 else
                     VIRTENV_CMD="$PYTHON $VIRTENV_DIR/virtualenv.py"
                 fi
@@ -975,7 +1009,7 @@ virtenv_create()
 
         if test $? -ne 0
         then
-            echo "ERROR: Couldn't create virtualenv"
+            echo "ERROR: couldn't create virtualenv"
             return 1
         fi
 
@@ -985,14 +1019,13 @@ virtenv_create()
             rm -rf "$VIRTENV_DIR" "$VIRTENV_TGZ"
         fi
 
-
     elif test "$python_dist" = "anaconda"
     then
         run_cmd "Create virtualenv" \
                 "conda create -y -p $virtenv python=3.8"
         if test $? -ne 0
         then
-            echo "ERROR: Couldn't create virtualenv"
+            echo "ERROR: couldn't create (conda) virtualenv"
             return 1
         fi
 
@@ -1040,6 +1073,8 @@ virtenv_update()
 
     virtenv="$1"
     pytohn_dist="$2"
+
+    # activate the virtualenv
     virtenv_activate "$virtenv" "$python_dist"
 
     # we upgrade all dependencies of the RADICAL stack, one by one.
@@ -1147,9 +1182,9 @@ rp_install()
             # ignore any errors
 
             echo "using virtenv install tree"
-            echo "PYTHONPATH: $PYTHONPATH"
-            echo "rp_install: $RP_MOD_PREFIX"
-            echo "radicalmod: $RADICAL_MOD_PREFIX"
+            echo "PYTHONPATH        : $PYTHONPATH"
+            echo "RP_MOD_PREFIX     : $RP_MOD_PREFIX"
+            echo "RADICAL_MOD_PREFIX: $RADICAL_MOD_PREFIX"
             ;;
 
         SANDBOX)
@@ -1158,10 +1193,10 @@ rp_install()
             # make sure the lib path into the prefix conforms to the python conventions
             RP_LOC_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$PILOT_SANDBOX/rp_install|"`
 
-            echo "VE_MOD_PREFIX: $VE_MOD_PREFIX"
-            echo "VIRTENV      : $VIRTENV"
-            echo "SANDBOX      : $PILOT_SANDBOX"
-            echo "VE_LOC_PREFIX: $VE_LOC_PREFIX"
+            echo "VE_MOD_PREFIX     : $VE_MOD_PREFIX"
+            echo "VIRTENV           : $VIRTENV"
+            echo "SANDBOX           : $PILOT_SANDBOX"
+            echo "VE_LOC_PREFIX     : $VE_LOC_PREFIX"
 
             # local PYTHONPATH needs to be pre-pended.  The ve PYTHONPATH is
             # already set during ve activation -- but we don't want the rp_install
@@ -1177,9 +1212,9 @@ rp_install()
             RADICAL_MOD_PREFIX="$RP_LOC_PREFIX/radical/"
 
             echo "using local install tree"
-            echo "PYTHONPATH: $PYTHONPATH"
-            echo "rp_install: $RP_LOC_PREFIX"
-            echo "radicalmod: $RADICAL_MOD_PREFIX"
+            echo "PYTHONPATH        : $PYTHONPATH"
+            echo "RP_LOC_PREFIX     : $RP_LOC_PREFIX"
+            echo "RADICAL_MOD_PREFIX: $RADICAL_MOD_PREFIX"
             ;;
 
         *)
@@ -1447,7 +1482,7 @@ touch "$PROFILES_TARBALL"
 # the sub-agents start off with the same env (or at least the relevant parts of
 # it).
 #
-# This assumes that the env is actually transferrable.  If that assumption
+# This assumes that the env is actually transferable.  If that assumption
 # breaks at some point, we'll have to either only transfer the incremental env
 # changes, or reconsider the approach to pre_bootstrap_x commands altogether --
 # see comment in the pre_bootstrap_0 function.
@@ -1472,11 +1507,23 @@ profile_event 'bootstrap_0_start'
 #       report the absolute representation of it, and thus report a different
 #       module path than one would expect from the virtenv path.  We thus
 #       normalize the virtenv path before we use it.
-mkdir -p "$VIRTENV"
-echo "VIRTENV : $VIRTENV"
-VIRTENV=`(cd $VIRTENV; pwd -P)`
-echo "VIRTENV : $VIRTENV (normalized)"
-rmdir "$VIRTENV" 2>/dev/null
+echo "VIRTENV           : $VIRTENV"
+if test "$PYTHON_DIST" = "anaconda" && ! test -d "$VIRTENV/"; then
+    case "$VIRTENV_MODE" in
+        recreate|update|use)
+            VIRTENV=$(cd `conda info --envs | awk -v envname="$VIRTENV" \
+            '{ if ($1 == envname) print $NF }'`; pwd -P)
+            ;;
+        *)
+            echo "WARNING: conda env is set not as directory ($VIRTENV_MODE)"
+            ;;
+    esac
+else
+    mkdir -p "$VIRTENV"
+    VIRTENV=`(cd $VIRTENV; pwd -P)`
+    rmdir "$VIRTENV" 2>/dev/null
+fi
+echo "VIRTENV normalized: $VIRTENV"
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
@@ -1547,7 +1594,7 @@ get_tunnel(){
         FORWARD_TUNNEL_ENDPOINT_HOST=$BIND_ADDRESS
 
     else
-        # FIXME: ensur FT_EP is set
+        # FIXME: ensure FT_EP is set
         FORWARD_TUNNEL_ENDPOINT_HOST=$FORWARD_TUNNEL_ENDPOINT
     fi
 
@@ -1579,7 +1626,6 @@ then
     export RP_APP_TUNNEL="$RP_BS_TUNNEL"
     echo "app tunnel setup: $RP_APP_TUNNEL"
 fi
-
 
 rehash "$PYTHON"
 
@@ -1680,9 +1726,9 @@ export PATH="$PB1_PATH"
 export LD_LIBRARY_PATH="$PB1_LDLB"
 
 # activate virtenv
-if test "$PYTHON_DIST" = "anaconda"
+if test "$PYTHON_DIST" = "anaconda" && test -e "`which conda`"
 then
-    source activate $VIRTENV/
+    conda activate $VIRTENV
 else
     . $VIRTENV/bin/activate
 fi
@@ -1743,10 +1789,6 @@ then
     echo "# -------------------------------------------------------------------"
 fi
 
-# start the master agent instance (zero)
-profile_event 'sync_rel' 'agent.0'
-
-
 # # I am ashamed that we have to resort to this -- lets hope it's temporary...
 # cat > packer.sh <<EOT
 # #!/bin/sh
@@ -1791,6 +1833,12 @@ profile_event 'sync_rel' 'agent.0'
 # ./packer.sh 2>&1 >> bootstrap_0.out &
 # PACKER_ID=$!
 
+# all env settings are done, bootstrap stages are created - as last action
+# capture the resulting env differences in a deactivate script
+create_deactivate
+
+# start the master agent instance (zero)
+profile_event 'sync_rel' 'agent.0'
 if test -z "$CCM"; then
     ./bootstrap_2.sh 'agent.0'    \
                    1> agent.0.bootstrap_2.out \
