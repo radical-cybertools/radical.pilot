@@ -36,6 +36,7 @@ class TestDefault(TestCase):
 
         global_things = []
         global_state = []
+
         # ------------------------------------------------------------------------------
         #
         def _advance_side_effect(things, state, publish, push):
@@ -43,7 +44,6 @@ class TestDefault(TestCase):
             nonlocal global_state
             global_things.append(things)
             global_state.append(state)
-
 
         # ------------------------------------------------------------------------------
         #
