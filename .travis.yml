@@ -1,8 +1,9 @@
 
 language: python
 python:   "3.6"
-sudo:     disabled
+root:     disabled
 os:       linux
+dist:     xenial
 
 git:
   depth: 1
@@ -15,7 +16,7 @@ env:
     - RADICAL_PILOT_DBURL=mongodb://rct:rct_test@one.radical-project.org/rct_test
     - RADICAL_PILOT_TEST_DBNAME=rct_test
 
-  matrix:
+  jobs:
     - MAIN_CMD="$PYTEST tests/" COVERAGE=true
     - MAIN_CMD="ru-runcheck.sh flake8 diff"
     - MAIN_CMD="ru-runcheck.sh pylint diff"
