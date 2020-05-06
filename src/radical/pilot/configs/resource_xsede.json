@@ -610,7 +610,7 @@
         "mpi_launch_method"           : "MPIRUN",
         "pre_bootstrap_0"             : ["module purge",
                                          "module load intel",
-                                         "module loadmpi/intel_openmpi",
+                                         "module load mpi/intel_openmpi",
                                          "module load slurm",
                                          "module load anaconda3"
                                         ],
