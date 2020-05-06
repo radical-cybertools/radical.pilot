@@ -102,8 +102,10 @@ class MPIRun(LaunchMethod):
                 env_string = '-envlist "%s"' % ','.join(env_list)
 
             elif self.mpi_flavor == self.MPI_FLAVOR_OMPI:
-                for var in env_list:
-                    env_string += '-x "%s" ' % var
+                # by defalt, all vars are exported
+                pass
+              # for var in env_list:
+              #     env_string += '-x "%s" ' % var
 
         # Cheyenne is the only machine that requires mpirun_mpt.  We then
         # have to set MPI_SHEPHERD=true
