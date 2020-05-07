@@ -58,7 +58,7 @@
         },
         "default_queue"               : "rtx",
         "resource_manager"            : "SLURM",
-        "cores_per_node"              : 32,
+        "cores_per_node"              : 16,
         "gpus_per_node"               : 4,
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
@@ -97,19 +97,19 @@
             "job_manager_endpoint"    : "slurm+ssh://longhorn.tacc.utexas.edu/",
             "filesystem_endpoint"     : "sftp://longhorn.tacc.utexas.edu/"
         },
-        "default_queue"               : "normal",
+        "default_queue"               : "development",
         "resource_manager"            : "SLURM",
         "cores_per_node"              : 40,
         "gpus_per_node"               : 4,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SRUN",
-        "task_launch_method"          : "SRUN",
-        "mpi_launch_method"           : "SRUN",
-        "pre_bootstrap_0"             :["module load TACC",
-                                        "module unload gcc",
-                                        "module load gcc/7.3.0",
-                                        "module load python3/3.8.1"
+        "task_launch_method"          : "MPIRUN",
+        "mpi_launch_method"           : "MPIRUN",
+        "pre_bootstrap_0"             : ["module load gcc/7.3.0",
+                                         "module load openmpi/3.1.2",
+                                         "module --expert load xl",
+                                         "module load python3/3.8.1"
                                         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["$SCRATCH", "$WORK"],
@@ -119,7 +119,6 @@
         "export_to_cu"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"
-                                        ],
-        "cu_pre_exec"                 : ["module restore"]
+                                        ]
     }
 }
