@@ -1,0 +1,125 @@
+
+{
+    "frontera": {
+        "description"                 : "Petascale computing system at the Texas Advanced Computing Center (TACC)",
+        "notes"                       : "Always launch RP from a login node if you do not have a waiver from TACC for an external IP address",
+        "schemas"                     : ["local", "ssh"],
+        "mandatory_args"              : ["project"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://frontera.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://frontera.tacc.utexas.edu/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://frontera.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "file://frontera.tacc.utexas.edu/"
+        },
+        "default_queue"               : "normal",
+        "resource_manager"            : "SLURM",
+        "cores_per_node"              : 56,
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SRUN",
+        "task_launch_method"          : "SRUN",
+        "mpi_launch_method"           : "SRUN",
+        "pre_bootstrap_0"             :["module load TACC",
+                                        "module unload intel",
+                                        "module unload impi",
+                                        "module load   intel",
+                                        "module load   python3/3.7.0"
+                                        ],
+        "default_remote_workdir"      : "$SCRATCH",
+        "valid_roots"                 : ["$SCRATCH", "$WORK"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default",
+        "export_to_cu"                : ["LMOD_CMD",
+                                         "LMOD_SYSTEM_DEFAULT_MODULES",
+                                         "LD_LIBRARY_PATH"],
+        "cu_pre_exec"                 : []
+    },
+
+    "frontera_rtx": {
+        "description"                 : "Petascale computing system at the Texas Advanced Computing Center (TACC)",
+        "notes"                       : "Always launch RP from a login node if you do not have a waiver from TACC for an external IP address",
+        "schemas"                     : ["local", "ssh"],
+        "mandatory_args"              : ["project"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://frontera.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://frontera.tacc.utexas.edu/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://frontera.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "file://frontera.tacc.utexas.edu/"
+        },
+        "default_queue"               : "rtx",
+        "resource_manager"            : "SLURM",
+        "cores_per_node"              : 32,
+        "gpus_per_node"               : 4,
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SRUN",
+        "task_launch_method"          : "SRUN",
+        "mpi_launch_method"           : "SRUN",
+        "pre_bootstrap_0"             :["module load TACC",
+                                        "module unload intel",
+                                        "module unload impi",
+                                        "module load   intel",
+                                        "module load   python3/3.7.0"
+                                        ],
+        "default_remote_workdir"      : "$SCRATCH",
+        "valid_roots"                 : ["$SCRATCH", "$WORK"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default",
+        "export_to_cu"                : ["LMOD_CMD",
+                                         "LMOD_SYSTEM_DEFAULT_MODULES",
+                                         "LD_LIBRARY_PATH"],
+        "cu_pre_exec"                 : []
+    },
+
+    "longhorn": {
+        "description"                 : "The TACC resource 'Longhorn' (https://portal.tacc.utexas.edu/user-guides/longhorn)",
+        "notes"                       : "",
+        "schemas"                     : ["local", "ssh"],
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://longhorn.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "file://longhorn.tacc.utexas.edu/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://longhorn.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://longhorn.tacc.utexas.edu/"
+        },
+        "default_queue"               : "normal",
+        "resource_manager"            : "SLURM",
+        "cores_per_node"              : 40,
+        "gpus_per_node"               : 4,
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SRUN",
+        "task_launch_method"          : "SRUN",
+        "mpi_launch_method"           : "SRUN",
+        "pre_bootstrap_0"             :["module load TACC",
+                                        "module unload gcc",
+                                        "module load gcc/7.3.0",
+                                        "module load python3/3.8.1"
+                                        ],
+        "default_remote_workdir"      : "$SCRATCH",
+        "valid_roots"                 : ["$SCRATCH", "$WORK"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default",
+        "export_to_cu"                : ["LMOD_CMD",
+                                         "LMOD_SYSTEM_DEFAULT_MODULES",
+                                         "LD_LIBRARY_PATH"
+                                        ],
+        "cu_pre_exec"                 : ["module restore"]
+    }
+}
