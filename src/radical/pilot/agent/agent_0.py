@@ -121,7 +121,14 @@ class Agent_0(rpu.Worker):
     #
     def _connect_db(self):
 
-        # TODO: this needs to evaluate the bootstrapper's HOSTPORT
+        hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
+        if hostport:
+            host, port = hostport.split(':', 1)
+            dburl      = ru.Url(self._cfg.dburl)
+            dburl.host = host
+            dburl.port = port
+            self._cfg.dburl = str(dburl)
+
         self._dbs = DBSession(sid=self._cfg.sid, dburl=self._cfg.dburl,
                               cfg=self._cfg, log=self._log)
 
