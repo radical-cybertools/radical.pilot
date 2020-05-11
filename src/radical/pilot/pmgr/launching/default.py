@@ -927,7 +927,6 @@ class Default(PMGRLaunchingComponent):
         mandatory_args          = rcfg.get('mandatory_args', [])
         saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
 
-        import pprint
         self._log.debug(cores_per_node)
         self._log.debug(pprint.pformat(rcfg))
 
@@ -952,7 +951,7 @@ class Default(PMGRLaunchingComponent):
         resource_sandbox = resource_sandbox.path % expand
         session_sandbox  = session_sandbox .path % expand
         pilot_sandbox    = pilot_sandbox   .path % expand
-        client_sandbox   = client_sandbox  # not expanded
+      # client_sandbox   = client_sandbox  # not expanded
 
         # Agent configuration that is not part of the public API.
         # The agent config can either be a config dict, or

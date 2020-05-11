@@ -268,7 +268,7 @@ class Agent_0(rpu.Worker):
         self._log.debug('update db state: %s: %s', state, self._final_cause)
         self._log.info('rusage: %s', rpu.get_rusage())
 
-        out, out, err = '', '', ''
+        out, err, log = '', '', ''
 
         try   : out   = open('./agent.0.out', 'r').read(1024)
         except: pass
@@ -425,17 +425,17 @@ class Agent_0(rpu.Worker):
             class _SA(mp.Process):
 
                 def __init__(self, sa, cmd, log):
-                    self._sa   = sa
+                    self._name = sa
                     self._cmd  = cmd.split()
                     self._log  = log
                     self._proc = None
-                    super(_SA, self).__init__(name=sa, log=self._log)
+                    super(_SA, self).__init__(name=self._name)
                     self.start()
 
-                    sys.stdout = open('%s.out' % self._ru_name, 'w')
-                    sys.stderr = open('%s.err' % self._ru_name, 'w')
-                    out = open('%s.out' % self._sa, 'w')
-                    err = open('%s.err' % self._sa, 'w')
+                    sys.stdout = open('%s.out' % self._name, 'w')
+                    sys.stderr = open('%s.err' % self._name, 'w')
+                    out = open('%s.out' % self._name, 'w')
+                    err = open('%s.err' % self._name, 'w')
                     self._proc = sp.Popen(args=self._cmd, stdout=out, stderr=err)
 
                 def run(self):
