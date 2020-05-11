@@ -3,7 +3,6 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os
 import copy
 import time
 import pymongo
@@ -45,14 +44,6 @@ class DBSession(object):
 
         if not connect:
             return
-
-        # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold
-        # the address of the tunnelized DB endpoint. If it exists, we
-        # overrule the agent config with it.
-        hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
-        if hostport:
-            dburl                  = ru.Url(dburl)
-            dburl.host, dburl.port = hostport.split(':')
 
         # mpongodb_connect wants a string at the moment
         self._mongo, self._db, _, _, _ = ru.mongodb_connect(str(dburl))

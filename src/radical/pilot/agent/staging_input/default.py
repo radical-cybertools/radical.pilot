@@ -77,7 +77,6 @@ class Default(AgentStagingInputComponent):
             else:
                 no_staging_units.append(unit)
 
-
         if no_staging_units:
             self.advance(no_staging_units, rps.AGENT_SCHEDULING_PENDING,
                          publish=True, push=True)
