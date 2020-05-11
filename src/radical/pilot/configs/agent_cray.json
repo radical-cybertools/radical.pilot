@@ -36,7 +36,7 @@
                                          "stall_hwm" : 1,
                                          "bulk_size" : 1},
 
-        "funcs_wrk_queue"            : { "kind"      : "queue",
+        "funcs_req_queue"            : { "kind"      : "queue",
                                          "log_level" : "debug",
                                          "stall_hwm" : 1,
                                          "bulk_size" : 0},

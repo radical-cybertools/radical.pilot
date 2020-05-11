@@ -1,5 +1,41 @@
 
 {
+    "traverse": {
+        "description"                 : "",
+        "notes"                       : "",
+        "schemas"                     : ["local"],
+        "mandatory_args"              : [],
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://traverse.princeton.edu/",
+            "job_manager_hop"         : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_queue"               : "test",
+        "resource_manager"            : "SLURM",
+        "cores_per_node"              : 32,
+        "gpus_per_node"               : 4,
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SRUN",
+        "mpi_launch_method"           : "SRUN",
+        "pre_bootstrap_0"             : ["module load anaconda3"
+                                        ],
+        "default_remote_workdir"      : "$HOME/",
+        "valid_roots"                 : [],
+        "rp_version"                  : "installed",
+        "python_dist"                 : "anaconda",
+        "virtenv"                     : "/home/amerzky/radical.pilot.sandbox/ve.rp",
+        "virtenv_mode"                : "use",
+        "export_to_cu"                : [],
+        "cu_pre_exec"                 : [],
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 0,
+        "mem_per_node"                : 0,
+        "forward_tunnel_endpoint"     : "traverse.princeton.edu"
+    },
+
     "tiger_cpu": {
         "description"                 : "",
         "notes"                       : "",
