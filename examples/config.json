@@ -57,6 +57,14 @@
         "cores"    : 80
     },
 
+    "princeton.traverse" : {
+        "project"  : "tromp",
+        "queue"    : "all",
+        "schema"   : "local",
+        "cores"    : 32,
+        "gpus"     : 4
+    },
+
     "princeton.tiger_cpu" : {
         "project"  : "geo",
         "queue"    : "cpu",
