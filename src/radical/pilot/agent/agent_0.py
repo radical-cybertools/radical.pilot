@@ -121,6 +121,9 @@ class Agent_0(rpu.Worker):
     #
     def _connect_db(self):
 
+        # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold
+        # the address of the tunnelized DB endpoint. If it exists, we
+        # overrule the agent config with it.
         hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
         if hostport:
             host, port = hostport.split(':', 1)
