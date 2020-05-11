@@ -50,13 +50,13 @@ class FUNCS(AgentExecutingComponent) :
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
-        addr_wrk = self._cfg['bridges']['funcs_wrk_queue']
+        addr_wrk = self._cfg['bridges']['funcs_req_queue']
         addr_res = self._cfg['bridges']['funcs_res_queue']
 
         self._log.debug('wrk in  addr: %s', addr_wrk['addr_in' ])
         self._log.debug('res out addr: %s', addr_res['addr_out'])
 
-        self._funcs_wrk = rpu.Queue(self._session, 'funcs_wrk_queue',
+        self._funcs_req = rpu.Queue(self._session, 'funcs_req_queue',
                                     rpu.QUEUE_INPUT, self._cfg,
                                     addr_wrk['addr_in'])
         self._funcs_res = rpu.Queue(self._session, 'funcs_res_queue',
@@ -202,7 +202,7 @@ class FUNCS(AgentExecutingComponent) :
 
         for unit in units:
             assert(unit['description']['cpu_process_type'] == 'FUNC')
-            self._funcs_wrk.put(unit)
+            self._funcs_req.put(unit)
 
 
     # --------------------------------------------------------------------------
