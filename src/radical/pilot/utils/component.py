@@ -204,7 +204,7 @@ class ComponentManager(object):
 
         for cname, ccfg in cfg.get('components', {}).items():
 
-            for count in range(ccfg.get('count', 1)):
+            for _ in range(ccfg.get('count', 1)):
 
                 ccfg.uid         = ru.generate_id(cname, ns=self._sid)
                 ccfg.cmgr        = self.uid
@@ -496,7 +496,7 @@ class Component(object):
         from radical.pilot import pmgr      as rppm
         from radical.pilot import umgr      as rpum
         from radical.pilot import agent     as rpa
-        from radical.pilot import constants as rpc
+      # from radical.pilot import constants as rpc
 
         comp = {
                 rpc.UPDATE_WORKER                  : rpw.Update,
@@ -635,13 +635,15 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def stop(self, timeout=None):
+    def stop(self, timeout=None):                                         # noqa
         '''
         We need to terminate and join all threads, close all comunication
         channels, etc.  But we trust on the correct invocation of the finalizers
         to do all this, and thus here only forward the stop request to the base
         class.
         '''
+
+        #  FIXME: implement timeout, or remove parameter
 
         self._log.info('stop %s (%s : %s) [%s]', self.uid, os.getpid(),
                        ru.get_thread_name(), ru.get_caller_name())
@@ -924,7 +926,7 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_subscriber(self, pubsub, cb, cb_data=None):
+    def register_subscriber(self, pubsub, cb):
         '''
         This method is complementary to the register_publisher() above: it
         registers a subscription to a pubsub channel.  If a notification
@@ -932,7 +934,6 @@ class Component(object):
         invoked.  The callback MUST have one of the signatures:
 
           callback(topic, msg)
-          callback(topic, msg, cb_data)
 
         where 'topic' is set to the name of the pubsub channel.
 
