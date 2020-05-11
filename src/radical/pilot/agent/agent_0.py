@@ -434,8 +434,8 @@ class Agent_0(rpu.Worker):
 
                     sys.stdout = open('%s.out' % self._name, 'w')
                     sys.stderr = open('%s.err' % self._name, 'w')
-                    out = open('%s.out' % self._name, 'w')
-                    err = open('%s.err' % self._name, 'w')
+                    out        = open('%s.out' % self._name, 'w')
+                    err        = open('%s.err' % self._name, 'w')
                     self._proc = sp.Popen(args=self._cmd, stdout=out, stderr=err)
 
                 def run(self):
