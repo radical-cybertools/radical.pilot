@@ -24,7 +24,7 @@ except ImportError:
 def setUp():
 
     here       = os.path.dirname(__file__)
-    fname      = '%s/unit_test_cases_continuous_scheduler.json' % here
+    fname      = 'tests/test_scheduler/test_unit/test_cases/unit_test_cases_continuous_scheduler.json' % here
     test_cases = ru.read_json(fname)
 
     return [test_cases.pop('cfg'),
