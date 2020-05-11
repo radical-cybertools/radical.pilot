@@ -140,7 +140,6 @@ class APRun(LaunchMethod):
 
             # add all cpu and gpu process slots to the node list.
             for cpu_slot in node['core_map']: nodes[node_id]['cpu'].append(cpu_slot)
-            for gpu_slot in node['gpu_map']: nodes[node_id]['gpu'].append(gpu_slot)
 
 
         self._log.debug('aprun slots: %s', pprint.pformat(slots))
@@ -158,7 +157,7 @@ class APRun(LaunchMethod):
             self._log.debug('cpu_slots: %s', pprint.pformat(cpu_slots))
             self._log.debug('gpu_slots: %s', pprint.pformat(gpu_slots))
 
-            assert(cpu_slots or gpu_slots)
+            assert(cpu_slots)
 
             # make sure all process slots have the same depth
             if cpu_slots:
@@ -170,20 +169,14 @@ class APRun(LaunchMethod):
             else:
                 depth = 1
 
-            # ensure that depth is `1` if gpu processes are requested
-            if gpu_slots:
-                assert(1 == depth), 'aprun implies depth==1 for gpu procs: %s' % depth
-
             # derive core pinning for each node (gpu's go to core `0`
             core_specs = list()
             for cpu_slot in cpu_slots:
                 core_specs.append(','.join([str(core) for core in cpu_slot]))
-            for gpu_slot in gpu_slots:
-                core_specs.append('0')
             pin_specs  =  ':'.join(core_specs)
 
             # count toal cpu / gpu processes
-            nprocs = len(cpu_slots) + len(gpu_slots)
+            nprocs = len(cpu_slots)
 
             # create the unique part of the node spec, and keep spec info like
             # this:
