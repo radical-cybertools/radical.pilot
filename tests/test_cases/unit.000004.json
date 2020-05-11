@@ -4,9 +4,9 @@
         "uid":         "unit.000004",
         "description": {"executable"    : "/bin/sleep",
                         "arguments"     : ["10"],
-                        "gpu_processes" : 1,
-                        "cpu_processes" : 0,
-                        "cpu_threads"   : 0
+                        "cpu_processes" : 1,
+                        "cpu_threads"   : 1,
+                        "gpu_processes" : 1
                        },
         "unit_sandbox_path": "/tmp"
     },
@@ -20,7 +20,7 @@
                 "lfs_per_node"  : 0,
                 "nodes"         : [{"name"    : "node1",
                                     "uid"     : "node1",
-                                    "core_map": [],
+                                    "core_map": [[0]],
                                     "gpu_map" : [[0]],
                                     "lfs"     : {"size": 0,
                                                  "path": null}
@@ -34,8 +34,8 @@
             "fork"  : ["/bin/sleep \"10\" ", null],
           # "orte"  : "RuntimeError",
             "aprun" : ["aprun -n 1 -N 1 -L node1 -d 1 -cc 0 /bin/sleep \"10\"  ", null],
-            "mpirun": ["mpirun  -np 0  -host   /bin/sleep \"10\"", null],
-            "ibrun" : ["ibrun -n 0 -o 0 /bin/sleep \"10\" ", null],
+            "mpirun": ["mpirun  -np 1  -host node1  /bin/sleep \"10\"", null],
+            "ibrun" : ["ibrun -n 1 -o 0 /bin/sleep \"10\" ", null],
             "ssh"   : ["/bin/sleep \"10\" ","ssh node1 LD_LIBRARY_PATH=/usr/local/lib/ PATH=test_path 1"],
             "spark" : "RuntimeError",
             "yarn"  : "RuntimeError"
