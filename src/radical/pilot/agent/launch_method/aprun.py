@@ -132,6 +132,8 @@ class APRun(LaunchMethod):
         nodes = dict()
         for node in slots['nodes']:
 
+            print('\n', 1, cu['uid'])
+            pprint.pprint(node)
             node_id = node['uid']
             if node_id not in nodes:
                 # keep all cpu and gpu slots, record depths
@@ -150,6 +152,9 @@ class APRun(LaunchMethod):
         # core.
         node_specs = dict()
         for node_id in nodes:
+
+            print(2, cu['uid'])
+            pprint.pprint(nodes[node_id])
 
             cpu_slots = nodes[node_id]['cpu']
             gpu_slots = nodes[node_id]['gpu']
