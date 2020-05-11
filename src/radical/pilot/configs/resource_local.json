@@ -195,8 +195,6 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "default_remote_workdir"      : "$HOME",
-        "cores_per_node"              : 8,
-        "gpus_per_node"               : 1,
         "resource_manager"            : "FORK",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "HOMBRE",
@@ -233,10 +231,8 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "default_remote_workdir"      : "$HOME",
-        "cores_per_node"              : 8,
-        "gpus_per_node"               : 1,
         "resource_manager"            : "FORK",
-        "agent_type"                  : "default",
+      # "agent_type"                  : "default",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "SHELLFS",
@@ -257,6 +253,43 @@
         "gpus_per_node"               : 1
     },
 
+    "localhost_flux": {
+        "description"                 : "",
+        "notes"                       : "",
+        "schemas"                     : ["local", "ssh"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "ssh://localhost/",
+            "filesystem_endpoint"     : "sftp://localhost/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_remote_workdir"      : "$HOME",
+        "resource_manager"            : "FORK",
+        "agent_type"                  : "default",
+        "agent_config"                : "default",
+        "agent_scheduler"             : "FLUX",
+        "agent_spawner"               : "FLUX",
+        "agent_launch_method"         : "FORK",
+        "func_launch_method"          : "FUNC",
+        "task_launch_method"          : "FLUX",
+        "mpi_launch_method"           : "FLUX",
+        "rp_version"                  : "installed",
+        "virtenv_mode"                : "use",
+        "virtenv"                     : "$HOME/radical/radical.pilot.test/ve3/",
+        "python_dist"                 : "default",
+        "pre_bootstrap_0"             : [
+            "export FLUX_DIR=/home/merzky/projects/flux/install/",
+            "export PATH=$PATH:$FLUX_DIR/bin",
+            "export PYTHONPATH=$PYTHONPATH:$FLUX_DIR/lib/python3.7/site-packages/"
+        ],
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1
+    },
+
     "localhost_ortelib": {
         "description"                 : "Your local machine.",
         "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
@@ -272,8 +305,6 @@
            "filesystem_endpoint"     : "file://localhost/"
         },
         "default_remote_workdir"      : "$HOME",
-        "cores_per_node"              : 8,
-        "gpus_per_node"               : 1,
         "resource_manager"            : "FORK",
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",

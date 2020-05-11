@@ -1715,9 +1715,6 @@ fi
 cat > bootstrap_2.sh <<EOT
 #!$BS_SHELL
 
-# some inspection for logging
-hostname
-
 # disable user site packages as those can conflict with our virtualenv
 export PYTHONNOUSERSITE=True
 
