@@ -121,7 +121,17 @@ class Agent_0(rpu.Worker):
     #
     def _connect_db(self):
 
-        # TODO: this needs to evaluate the bootstrapper's HOSTPORT
+        # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold
+        # the address of the tunnelized DB endpoint. If it exists, we
+        # overrule the agent config with it.
+        hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
+        if hostport:
+            host, port = hostport.split(':', 1)
+            dburl      = ru.Url(self._cfg.dburl)
+            dburl.host = host
+            dburl.port = port
+            self._cfg.dburl = str(dburl)
+
         self._dbs = DBSession(sid=self._cfg.sid, dburl=self._cfg.dburl,
                               cfg=self._cfg, log=self._log)
 
@@ -258,7 +268,7 @@ class Agent_0(rpu.Worker):
         self._log.debug('update db state: %s: %s', state, self._final_cause)
         self._log.info('rusage: %s', rpu.get_rusage())
 
-        out, out, err = '', '', ''
+        out, err, log = '', '', ''
 
         try   : out   = open('./agent.0.out', 'r').read(1024)
         except: pass
@@ -415,17 +425,17 @@ class Agent_0(rpu.Worker):
             class _SA(mp.Process):
 
                 def __init__(self, sa, cmd, log):
-                    self._sa   = sa
+                    self._name = sa
                     self._cmd  = cmd.split()
                     self._log  = log
                     self._proc = None
-                    super(_SA, self).__init__(name=sa, log=self._log)
+                    super(_SA, self).__init__(name=self._name)
                     self.start()
 
-                    sys.stdout = open('%s.out' % self._ru_name, 'w')
-                    sys.stderr = open('%s.err' % self._ru_name, 'w')
-                    out = open('%s.out' % self._sa, 'w')
-                    err = open('%s.err' % self._sa, 'w')
+                    sys.stdout = open('%s.out' % self._name, 'w')
+                    sys.stderr = open('%s.err' % self._name, 'w')
+                    out = open('%s.out' % self._name, 'w')
+                    err = open('%s.err' % self._name, 'w')
                     self._proc = sp.Popen(args=self._cmd, stdout=out, stderr=err)
 
                 def run(self):
