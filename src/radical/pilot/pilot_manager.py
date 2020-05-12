@@ -556,7 +556,7 @@ class PilotManager(rpu.Component):
             raise ValueError('cannot submit no pilot descriptions')
 
 
-        self._rep.info('<<submit %d pilot(s)\n\t' % len(descriptions))
+        self._rep.info('<<submit %d pilot(s)' % len(descriptions))
 
         # create the pilot instance
         pilots     = list()
@@ -588,10 +588,9 @@ class PilotManager(rpu.Component):
                 ru.write_json(pd.as_dict(), "%s/%s.batch.%03d.json"
                         % (self._session._rec, pilot.uid, self._rec_id))
 
-            if 'resource' in pd and 'cores' in pd:
-                self._rep.plain('[%s:%s]\n\t' % (pd['resource'], pd['cores']))
-            elif 'resource' in pd:
-                self._rep.plain('[%s]\n\t' % pd['resource'])
+            self._rep.plain('\n\t%s   %-20s %6d cores  %6d gpus' %
+                      (pilot.uid, pd['resource'],
+                       pd.get('cores', 0), pd.get('gpus', 0)))
 
 
         # initial state advance to 'NEW'
