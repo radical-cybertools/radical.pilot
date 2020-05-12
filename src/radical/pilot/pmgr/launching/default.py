@@ -965,6 +965,9 @@ class Default(PMGRLaunchingComponent):
         if not agent_config:
             agent_config = rc_agent_config
 
+        if not job_name:
+            job_name = pid
+
         if isinstance(agent_config, dict):
 
             # use dict as is
