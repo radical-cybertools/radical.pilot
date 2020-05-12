@@ -916,6 +916,7 @@ class Default(PMGRLaunchingComponent):
         virtenv                 = rcfg.get('virtenv',             default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
         gpus_per_node           = rcfg.get('gpus_per_node',  0)
+        self._log.debug('=== gpus_per_node 0: %d', gpus_per_node)
         lfs_path_per_node       = rcfg.get('lfs_path_per_node', None)
         lfs_size_per_node       = rcfg.get('lfs_size_per_node',  0)
         python_dist             = rcfg.get('python_dist')
@@ -930,7 +931,6 @@ class Default(PMGRLaunchingComponent):
         mandatory_args          = rcfg.get('mandatory_args', [])
         saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
 
-        import pprint
         self._log.debug(cores_per_node)
         self._log.debug(pprint.pformat(rcfg))
 
@@ -955,7 +955,7 @@ class Default(PMGRLaunchingComponent):
         resource_sandbox = resource_sandbox.path % expand
         session_sandbox  = session_sandbox .path % expand
         pilot_sandbox    = pilot_sandbox   .path % expand
-        client_sandbox   = client_sandbox  # not expanded
+      # client_sandbox   = client_sandbox  # not expanded
 
         # Agent configuration that is not part of the public API.
         # The agent config can either be a config dict, or
@@ -1135,9 +1135,11 @@ class Default(PMGRLaunchingComponent):
         # if gpus_per_node is set (!= None), then we need to
         # allocation full nodes, and thus round up
         if gpus_per_node:
+            self._log.debug('=== gpus_per_node 1: %d', gpus_per_node)
             gpus_per_node = int(gpus_per_node)
             number_gpus   = int(gpus_per_node *
                             math.ceil(float(number_gpus) / gpus_per_node))
+            self._log.debug('=== gpus_per_node 2: %d', gpus_per_node)
 
         # set mandatory args
         bootstrap_args  = ""
