@@ -44,7 +44,7 @@ class TestBase(TestCase):
                     component._change_slot_states(slots=slot, new_state=new_state)
             else:
                 component._change_slot_states(slots=slot, new_state=new_state)
-                assert component.nodes == result
+                self.assertEqual(component.nodes, result)
 
 
     # ------------------------------------------------------------------------------
@@ -64,7 +64,7 @@ class TestBase(TestCase):
                                      })
     @mock.patch.object(AgentSchedulingComponent, '_change_slot_states',
                        return_value=True)
-    def test_try_allocation(self,mocked_init, mocked_schedule_unit, mocked_handle_cuda,
+    def test_try_allocation(self, mocked_init, mocked_schedule_unit, mocked_handle_cuda,
                             mocked_change_slot_states):
 
         component = AgentSchedulingComponent()
@@ -77,7 +77,7 @@ class TestBase(TestCase):
         component._slot_lock = threading.RLock()
         unit = {'description':'this is a unit', 'uid': 'test'}
         component._try_allocation(unit=unit)
-        assert unit['slots'] == {"cores_per_node": 16,
+        self.assertEqual(unit['slots'], {"cores_per_node": 16,
                                  "lfs_per_node": {"size": 0, "path": "/dev/null"},
                                  "nodes": [{"lfs": {"path": "/dev/null", "size": 0},
                                             "core_map": [[0]],
@@ -86,7 +86,7 @@ class TestBase(TestCase):
                                             "uid": 1,"mem": None}],
                                  "lm_info": "INFO",
                                  "gpus_per_node": 6,
-                                 }
+                                 })
 
 
     # ------------------------------------------------------------------------------
@@ -104,12 +104,12 @@ class TestBase(TestCase):
         for setup, unit, result in zip(setups, units, results):
             component._cfg = setup
             if result == 'ValueError':
-                print(setup, unit, result)
                 with pytest.raises(ValueError):
                     component._handle_cuda(unit)
             else:
                 component._handle_cuda(unit)
-                assert unit['description']['environment']['CUDA_VISIBLE_DEVICES'] == result
+                self.assertEqual(unit['description']['environment']['CUDA_VISIBLE_DEVICES'],
+                                 result)
 
 
     # ------------------------------------------------------------------------------
@@ -122,6 +122,6 @@ class TestBase(TestCase):
         gpus  = [1, 2] 
         tpp   = 4 
         core_map, gpu_map = component._get_node_maps(cores, gpus, tpp)
-        assert core_map == [[1, 2, 3, 4], [5, 6, 7, 8]]
-        assert gpu_map ==  [[1], [2]]
+        self.assertEqual(core_map, [[1, 2, 3, 4], [5, 6, 7, 8]])
+        self.assertEqual(gpu_map, [[1], [2]])
 

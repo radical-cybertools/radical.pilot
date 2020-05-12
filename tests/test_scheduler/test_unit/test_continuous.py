@@ -21,37 +21,27 @@ except ImportError:
 
 # ------------------------------------------------------------------------------
 #
-def setUp():
-
-    here       = os.path.dirname(__file__)
-    fname      = 'tests/test_scheduler/test_unit/test_cases/unit_test_cases_continuous_scheduler.json' % here
-    test_cases = ru.read_json(fname)
-
-    return [test_cases.pop('cfg'),
-            test_cases['allocate']['nodes'],
-            test_cases['allocate']['slots'],
-            test_cases['allocate']['trigger']]
-
-
-# ------------------------------------------------------------------------------
-#
-def tearDown():
-
-    rp = glob.glob('%s/rp.session.*' % os.getcwd())
-    for fold in rp:
-        shutil.rmtree(fold)
-
-
-# ------------------------------------------------------------------------------
-#
 class TestContinuous(unittest.TestCase):
+
+    # ------------------------------------------------------------------------------
+    #
+    def setUp(self):
+
+        fname      = 'tests/test_scheduler/test_unit/test_cases/test_continuous.json'
+        test_cases = ru.read_json(fname)
+
+        return [test_cases.pop('cfg'),
+                test_cases['allocate']['nodes'],
+                test_cases['allocate']['slots'],
+                test_cases['allocate']['trigger']]
+
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Continuous, '__init__', return_value=None)
     def test_configure(self, mocked_init):
 
-        cfg,_,_,_ = setUp()
+        cfg,_,_,_ = self.setUp()
         component = Continuous(cfg=cfg, session=None)
         component._cfg = cfg
         component._rm_node_list = [["a", 1],
@@ -64,19 +54,17 @@ class TestContinuous(unittest.TestCase):
         for i in range (len(cfg['rm_info'])):
             rm_info = cfg['rm_info'][i]
             try:
-                assert component._rm_node_list      == rm_info['node_list']
-                assert component._rm_cores_per_node == rm_info['cores_per_node']
-                assert component._rm_gpus_per_node  == rm_info['gpus_per_node']
-                assert component._rm_lfs_per_node   == rm_info['lfs_per_node']
-                assert component._rm_mem_per_node   == rm_info['mem_per_node']
+                self.assertEqual(component._rm_node_list, rm_info['node_list'])
+                self.assertEqual(component._rm_cores_per_node, rm_info['cores_per_node'])
+                self.assertEqual(component._rm_gpus_per_node, rm_info['gpus_per_node'])
+                self.assertEqual(component._rm_lfs_per_node, rm_info['lfs_per_node'])
+                self.assertEqual(component._rm_mem_per_node, rm_info['mem_per_node'])
                 component._configure()
 
             except:
                 with pytest.raises(AssertionError):
                     component._configure()
                     raise
-
-        tearDown()
 
 
     # --------------------------------------------------------------------------
@@ -87,7 +75,7 @@ class TestContinuous(unittest.TestCase):
                             mocked_init,
                             mocked_configure):
 
-        _,_,cfg,_ = setUp()
+        _,_,cfg,_ = self.setUp()
         component = Continuous(cfg=cfg, session=None)
         component.node = {'name'  : 'a',
                           'uid'   : 2,
@@ -125,11 +113,10 @@ class TestContinuous(unittest.TestCase):
 
         for i in range (len(cfg)):
             try:
-                assert [cfg[i]] == test_slot
+                self.assertEqual([cfg[i]], test_slot)
             except:
                 with pytest.raises(AssertionError):
                     raise
-        tearDown()
 
 
     # --------------------------------------------------------------------------
@@ -149,10 +136,11 @@ class TestContinuous(unittest.TestCase):
                            mocked_configure,
                            mocked_find_resources):
 
-        _,_,_,cfg = setUp()
+        _,_,_,cfg = self.setUp()
         component = Continuous(cfg=cfg, session=None)
 
         unit = dict()
+        unit['uid'] = 'unit.000000'
         unit['description'] = {'environment': {},
                                 "cpu_process_type" : 'null',
                                 "gpu_process_type" : 'null',
@@ -190,15 +178,14 @@ class TestContinuous(unittest.TestCase):
                                  'name': 'a',
                                  'uid': 1}]}
         try:
-            assert component.schedule_unit(unit) == test_slot
+            self.assertEqual(component.schedule_unit(unit), test_slot)
         except:
             with pytest.raises(AssertionError):
                 raise
-        tearDown()
+ 
 
-
-# ------------------------------------------------------------------------------
-#
+    # --------------------------------------------------------------------------
+    #
     @mock.patch.object(Continuous, '__init__', return_value=None)
     def test_unschedule_unit(self, mocked_init):
 
@@ -218,7 +205,6 @@ class TestContinuous(unittest.TestCase):
                          "gpus_per_node": 0,}
         component.nodes = unit['slots']['nodes']
         try:
-            assert component.unschedule_unit(unit) is None
+            self.assertEqual(component.unschedule_unit(unit), None)
         except:
             pass
-        tearDown()
