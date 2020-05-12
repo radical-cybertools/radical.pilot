@@ -19,8 +19,10 @@ env:
     - MAIN_CMD="$PYTEST tests/" COVERAGE=true
     - MAIN_CMD="ru-runcheck.sh flake8 diff"
     - MAIN_CMD="ru-runcheck.sh pylint diff"
-    - MAIN_CMD="ru-runcheck.sh flake8 tests/ bin/ examples/"
-    - MAIN_CMD="ru-runcheck.sh pylint tests/ bin/ examples/"
+    - MAIN_CMD="ru-runcheck.sh flake8 tests/ bin/"
+    - MAIN_CMD="ru-runcheck.sh pylint tests/ bin/"
+      #    - MAIN_CMD="ru-runcheck.sh flake8 tests/ bin/ examples/"
+      #    - MAIN_CMD="ru-runcheck.sh pylint tests/ bin/ examples/"
 
 before_install:
   - uname -a
