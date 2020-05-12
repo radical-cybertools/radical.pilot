@@ -4,6 +4,35 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
+1.4.0 Release                                                         2020-05-12
+--------------------------------------------------------------------------------
+
+  - merge #2122: fixed `n_nodes` for the case when `slots` are set
+  - merge #2123: fix #2121
+  - merge #2124: fixed conda-env path definition
+  - merge #2127: bootstrap env fix
+  - merge #2133, #2138:  IBRun fixes
+  - merge #2134: agent stage_in test1
+  - merge #2137: agent_0 initialization fix
+  - merge #2142: config update
+  - add `deactivate` support for tasks
+  - add cancelation example
+  - added comet_mpirun to resource_xsede.json
+  - added test for launch method "srun"
+  - adding cobalt test
+  - consistent process counting
+  - preliminary FLUX support
+  - fix RA utilization in case of no agent nodes
+  - fix queue naming, prte tmp dir and process count
+  - fix static ve location
+  - fixed version discovery (srun)
+  - cleanup bootstrap_0.sh
+  - separate tacc and xsede resources
+  - support for Princeton's Traverse cluster
+  - updated IBRun tests
+  - updated LM IBRun
+
+      
 1.3.0 Release                                                         2020-04-10
 --------------------------------------------------------------------------------
 
