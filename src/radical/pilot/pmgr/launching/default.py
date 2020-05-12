@@ -887,6 +887,7 @@ class Default(PMGRLaunchingComponent):
         runtime         = pilot['description']['runtime']
         app_comm        = pilot['description']['app_comm']
         queue           = pilot['description']['queue']
+        job_name        = pilot['description']['job_name']
         project         = pilot['description']['project']
         cleanup         = pilot['description']['cleanup']
         candidate_hosts = pilot['description']['candidate_hosts']
@@ -1272,7 +1273,7 @@ class Default(PMGRLaunchingComponent):
         else:
             bootstrap_tgt = '%s/%s' % ('.', BOOTSTRAPPER_0)
 
-        jd.name                  = pid
+        jd.name                  = job_name
         jd.executable            = "/bin/bash"
         jd.arguments             = ['-l %s %s' % (bootstrap_tgt, bootstrap_args)]
         jd.working_directory     = pilot_sandbox

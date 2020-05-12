@@ -12,6 +12,7 @@ import radical.utils as ru
 RESOURCE          = 'resource'
 ACCESS_SCHEMA     = 'access_schema'
 QUEUE             = 'queue'
+JOB_NAME          = 'job_name'
 PROJECT           = 'project'
 CANDIDATE_HOSTS   = 'candidate_hosts'
 SANDBOX           = 'sandbox'
