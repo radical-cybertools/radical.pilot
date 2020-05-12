@@ -118,15 +118,8 @@
         "python_dist"                 : "default",
         "export_to_cu"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
-                                         "LD_LIBRARY_PATH"
-<<<<<<< HEAD
-                                        ],
+                                         "LD_LIBRARY_PATH"],
         "cu_pre_exec"                 : ["module restore"]
     }
 }
 
-=======
-                                        ]
-    }
-}
->>>>>>> devel
