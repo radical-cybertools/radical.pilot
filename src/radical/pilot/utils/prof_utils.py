@@ -13,11 +13,13 @@ _debug = os.environ.get('RP_PROF_DEBUG')
 # ------------------------------------------------------------------------------
 #
 # pilot and unit activities: core hours are derived by multiplying the
-# respective time durations with pilot size / unit size.  The 'idle' utilization
-# and the 'agent' utilization are derived separately.
+# respective time durations with pilot size / unit size.  The 'idle'
+# utilization and the 'agent' utilization are derived separately.
 #
 # Note that durations should add up to the `x_total` generations to ensure
 # accounting for the complete unit/pilot utilization.
+#
+# An updated list of events is available at docs/source/events.md
 
 
 PILOT_DURATIONS = {
@@ -31,7 +33,6 @@ PILOT_DURATIONS = {
         # unused during that time, it is either due to inefficiencies of
         # workload management (accounted for in the unit consumption metrics),
         # or the pilot is starving for workload.
-        #
         'consume' : {
             'boot'      : [{ru.EVENT: 'bootstrap_0_start'},
                            {ru.EVENT: 'sync_rel'         }],
@@ -222,8 +223,8 @@ def get_hostmap(profile):
 #
 def get_hostmap_deprecated(profiles):
     '''
-    This method mangles combine_profiles and get_hostmap, and is deprecated.  At
-    this point it only returns the hostmap
+    This method mangles combine_profiles and get_hostmap, and is deprecated.
+    At this point it only returns the hostmap
     '''
 
     hostmap = dict()  # map pilot IDs to host names
