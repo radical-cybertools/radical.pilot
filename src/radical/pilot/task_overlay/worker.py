@@ -391,7 +391,7 @@ class Worker(rpu.Component):
             with self._plock:
                 # we need to include `proc.start()` in the lock, as otherwise we
                 # may end up getting the `self._result_cb` before the pid could
-                # be regostered in `self._pool`.
+                # be registered in `self._pool`.
                 proc.start()
                 self._pool[proc.pid] = proc
                 self._log.debug('applied: %s: %s: %s', task['uid'], proc.pid,
