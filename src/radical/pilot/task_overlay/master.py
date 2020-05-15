@@ -273,7 +273,6 @@ class Master(rpu.Component):
         self.create_work_items()
 
         # wait for the submitted requests to complete
-        t_start = time.time()
         while True:
 
             # count completed items
@@ -286,10 +285,9 @@ class Master(rpu.Component):
             if len(completed) == len(states):
                 break
 
+            # FIXME: this should be replaced by an async state check.  Maybe
+            #        subscrive to state updates on the update pubsub?
             time.sleep(5.0)
-        t_stop = time.time()
-
-        self._log.debug('master runtime: %.2fs', t_stop - t_start)
 
 
     # --------------------------------------------------------------------------
