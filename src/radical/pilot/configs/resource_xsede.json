@@ -510,7 +510,7 @@
         "python_dist"                 : "default"
     },
 
-    "bridges_intel": {
+    "bridges_mpiexec": {
         "description"                 : "The XSEDE 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription.",
         "schemas"                     : ["gsissh", "ssh", "go"],
@@ -536,14 +536,14 @@
         "lfs_size_per_node"           : 3713368,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "MPIRUN",
+        "agent_launch_method"         : "MPIEXEC",
+        "task_launch_method"          : "MPIEXEC",
+        "mpi_launch_method"           : "MPIEXEC",
         "pre_bootstrap_0"             : ["module purge",
-                                         "module load intel",
-                                         "module load mpi/intel_openmpi",
                                          "module load slurm",
-                                         "module load anaconda3"
+                                         "module load anaconda3",
+                                         "module load intel/19.3",
+                                         "module load mpi/intel_openmpi/19.3"
                                         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/home", "/pylon1", "/pylon5"],
