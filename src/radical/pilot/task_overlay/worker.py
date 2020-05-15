@@ -296,10 +296,6 @@ class Worker(rpu.Component):
                         if len(alloc_gpus) == gpus:
                             break
 
-            # ensure that sufficient free resources were found
-            assert(len(alloc_cores) == cores)
-            assert(len(alloc_gpus ) == gpus )
-
             task['resources'] = {'cores': alloc_cores,
                                  'gpus' : alloc_gpus}
             return True
