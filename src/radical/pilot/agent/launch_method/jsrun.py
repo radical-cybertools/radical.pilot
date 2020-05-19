@@ -31,7 +31,17 @@ class JSRUN(LaunchMethod):
     @classmethod
     def rm_config_hook(cls, name, cfg, rm, log, profiler):
 
-        lm_info = {'cvd_id_mode': 'logical'}
+        if 'session.lassen' in cfg['sid'].lower():
+            # correctness of GPU IDs is based on env var CUDA_VISIBLE_DEVICES
+            # which value is taken from `gpu_map`, it is set at class
+            # `radical.pilot.agent.scheduler.base.AgentSchedulingComponent`
+            # (method `_handle_cuda`)
+            #
+            # *) since the launching happens at the login node Lassen@LLNL
+            #    thus the session name can be used to identify the machine
+            lm_info = {'cvd_id_mode': 'physical'}
+        else:
+            lm_info = {'cvd_id_mode': 'logical'}
         return lm_info
 
 
