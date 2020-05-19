@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/examples/config.json' % os.path.dirname(__file__))
+        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
         report.ok('>>ok\n')
 
         report.header('submit pilots')
@@ -182,7 +182,7 @@ if __name__ == '__main__':
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        session._log.exception('oops')
+        # session._log.exception('oops')
         report.error('caught Exception: %s\n' % e)
         raise
 
