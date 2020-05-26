@@ -226,7 +226,7 @@ class Session(rs.Session):
         '''
 
         Closes the session.  All subsequent attempts access objects attached to
-        the session will result in an error. If cleanup is set to True (default)
+        the session will result in an error. If cleanup is set to True,
         the session data is removed from the database.
 
         **Arguments:**
