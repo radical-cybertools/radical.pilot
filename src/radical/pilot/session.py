@@ -50,7 +50,7 @@ class Session(rs.Session):
         **Arguments:**
             * **dburl** (`string`): The MongoDB URL.  If none is given,
               RP uses the environment variable RADICAL_PILOT_DBURL.  If that is
-              not set, an error will be raises.
+              not set, an error will be raised.
 
             * **cfg** (`str` or `dict`): a named or instantiated configuration
               to be used for the session.
@@ -70,7 +70,7 @@ class Session(rs.Session):
         '''
 
         # NOTE: `name` and `cfg` are overloaded, the user cannot point to
-        #       a predefined config and amed it at the same time.  This might
+        #       a predefined config and amend it at the same time.  This might
         #       be ok for the session, but introduces a minor API inconsistency.
         name = 'default'
         if isinstance(cfg, str):
