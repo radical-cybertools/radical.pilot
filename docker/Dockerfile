@@ -4,9 +4,16 @@
 # radical.pilot will be able to use pymongo to connect.
 # Example:
 #     docker build -t radicalpilot -f Dockerfile ..
-#     docker run --rm --name rp_test radicalpilot
-#     # Then, in a separate terminal window...
+#     docker run --rm --name rp_test -d radicalpilot
+#     # Either use '-d' with 'run' or issue the 'exec' in a separate terminal
+#     # after waiting a few seconds for the DB to be ready to accept connections.
 #     docker exec -ti -u rp rp_test bash -c "cd /radical.pilot && /home/rp/rp-venv/bin/python -m pytest /radical.pilot/tests"
+#     # The examples need the venv to be activated in order to find supporting
+#     # shell scripts on the default PATH. The current working directory also
+#     # needs to be writable.
+#     docker exec -ti -u rp rp_test bash -c "cd && . /home/rp/rp-venv/bin/activate && python /radical.pilot/examples/00*"
+#     # If '-d' was used with 'run', you can just kill the container when done.
+#     docker kill rp_test
 
 FROM mongo:bionic
 # Reference https://github.com/docker-library/mongo/blob/master/4.2/Dockerfile
@@ -61,8 +68,10 @@ USER root
 # `mongo` Docker container entry point script.
 ENV MONGO_INITDB_ROOT_USERNAME=root
 ENV MONGO_INITDB_ROOT_PASSWORD=password
-ENV MONGO_INITDB_NAME=radicalpilot
 
 # Set the environment variable that Radical Pilot uses to find its MongoDB instance.
-# Note that the default mongodb port number is 27017
-ENV RADICAL_PILOT_DBURL="mongodb://$MONGO_INITDB_ROOT_USERNAME:$MONGO_INITDB_ROOT_PASSWORD@localhost:27017/$MONGO_INITDB_NAME?authSource=admin&compressors=disabled&gssapiServiceName=mongodb"
+# Radical Pilot assumes the user is defined in the same database as in the URL.
+# The Docker entry point creates users in the "admin" database, so we can just
+# tell RP to use the same.
+# Note that the default mongodb port number is 27017.
+ENV RADICAL_PILOT_DBURL="mongodb://$MONGO_INITDB_ROOT_USERNAME:$MONGO_INITDB_ROOT_PASSWORD@localhost:27017/admin"
