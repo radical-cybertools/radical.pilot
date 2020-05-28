@@ -42,7 +42,7 @@ install:
 before_script:
   - tmpLOC=`which python`
   - tmpLOC=(${tmpLOC//bin/ })
-  - LOC=`find $arrIN/lib -name "site-packages"`
+  - LOC=`find $tmpLOC/lib -name "site-packages"`
 
 script:
   - echo $MAIN_CMD
