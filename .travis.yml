@@ -11,7 +11,12 @@ env:
   global:
     - CODECOV_TOKEN="c7e0d993-d31a-4d39-8ffa-07c30ea73e48"
     - COVERAGE=false
-    - PYTEST="coverage run -m pytest -ra --timeout=600 -vvv --showlocals"t
+    - PYTEST="coverage run -m pytest -vvv tests/"
+    - tmpLOC=`which python`
+    - tmpLOC=(${tmpLOC//bin/ })
+    - LOC=`find $tmpLOC/lib -name "site-packages"`
+    - echo $LOC
+    - echo $tmpLOC
     
   jobs:
     - MAIN_CMD="$PYTEST tests/" COVERAGE=true
@@ -38,11 +43,6 @@ install:
   - pip install codecov
   - pip install pytest
   - pip install pytest-timeout
-
-before_script:
-  - tmpLOC=`which python`
-  - tmpLOC=(${tmpLOC//bin/ })
-  - LOC=`find $tmpLOC/lib -name "site-packages"`
 
 script:
   - echo $MAIN_CMD
