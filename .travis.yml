@@ -19,8 +19,10 @@ env:
     - MAIN_CMD="$PYTEST tests/" COVERAGE=true
     - MAIN_CMD="ru-runcheck.sh flake8 diff"
     - MAIN_CMD="ru-runcheck.sh pylint diff"
-    - MAIN_CMD="ru-runcheck.sh flake8 tests/ bin/ examples/"
-    - MAIN_CMD="ru-runcheck.sh pylint tests/ bin/ examples/"
+    - MAIN_CMD="ru-runcheck.sh flake8 tests/ bin/"
+    - MAIN_CMD="ru-runcheck.sh pylint tests/ bin/"
+      #    - MAIN_CMD="ru-runcheck.sh flake8 tests/ bin/ examples/"
+      #    - MAIN_CMD="ru-runcheck.sh pylint tests/ bin/ examples/"
 
 before_install:
   - uname -a
@@ -47,7 +49,7 @@ install:
   - pip install pytest-timeout
 
 before_script:
-  - LOC=/home/travis/virtualenv/python3.6  # Location where VE is created on travis
+  - LOC=/home/travis/virtualenv/python3.6/lib/site-packages  # Location where VE is created on travis
 # - sed -i 's|VENV|'"$LOC"'|g' .coveragerc  # Update source in coveragerc
 # - cat .coveragerc
 
