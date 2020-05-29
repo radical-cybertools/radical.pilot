@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
     session = rp.Session()
     try:
-        pd = {'resource'   : 'local.debug',
+        pd = {'resource'   : 'local.localhost',
               'cores'      : 128,
               'runtime'    : 60}
 
