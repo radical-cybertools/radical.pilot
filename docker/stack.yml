@@ -1,0 +1,31 @@
+# Bring the services up with
+#     docker-compose -f stack.yml up
+# Shut down and clean up with
+#     docker-compose -f stack.yml down
+# The service running the "radicalpilot" image (built from
+# radicalpilot.dockerfile in this directory) has an sshd server running and a
+# Python environment configured for the "rp" user.
+# The named services result in containers running with predictable names.
+# Once the services are up, start a shell with
+#     docker exec -ti -u rp docker_login_1 bash
+
+version: '3.1'
+
+services:
+  mongo:
+    image: mongo:bionic
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: password
+  login:
+    image: radicalpilot
+    restart: always
