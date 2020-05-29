@@ -62,6 +62,9 @@ RUN (. ~rp/rp-venv/bin/activate && \
     cd /radical.pilot && \
     ~rp/rp-venv/bin/pip install .)
 
+# radical.saga logs `ModuleNotFountError`s if `redis` is not explicitly installed.
+RUN /home/rp/rp-venv/bin/python -m pip install redis
+
 USER root
 
 # Note that the following environment variables have special meaning to the
