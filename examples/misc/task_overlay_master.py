@@ -11,7 +11,7 @@ import radical.pilot as rp
 # a demonstration of a task overlay within the RCT framework.
 # It will:
 #
-#   - create a master which bootstrappes a specific communication layer
+#   - create a master which bootstraps a specific communication layer
 #   - insert n workers into the pilot (again as a task)
 #   - perform RPC handshake with those workers
 #   - send RPC requests to the workers
@@ -25,7 +25,7 @@ import radical.pilot as rp
 class MyMaster(rp.task_overlay.Master):
     '''
     This class provides the communication setup for the task overlay: it will
-    set up the request / response communication queus and provide the endpoint
+    set up the request / response communication queues and provide the endpoint
     information to be forwarded to the workers.
     '''
 
@@ -33,7 +33,7 @@ class MyMaster(rp.task_overlay.Master):
     #
     def __init__(self, cfg):
 
-        # initialized the task overlay base class.  That base class will ensure
+        # initialize the task overlay base class.  That base class will ensure
         # proper communication channels to the pilot agent.
         rp.task_overlay.Master.__init__(self, cfg=cfg)
 
@@ -128,7 +128,7 @@ if __name__ == '__main__':
     print('workers: ', (n_nodes / cfg.n_masters) - 1)
     n_workers = int((n_nodes / cfg.n_masters) - 1)
 
-    # create a master class instance - this will establish communitation to the
+    # create a master class instance - this will establish communication to the
     # pilot agent
     master = MyMaster(cfg)
 
