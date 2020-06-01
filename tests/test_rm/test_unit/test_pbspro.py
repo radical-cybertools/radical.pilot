@@ -11,6 +11,7 @@ try:
 except ImportError:
     from unittest import mock
 
+
 # ------------------------------------------------------------------------------
 #
 @mock.patch.object(PBSPro, '__init__', return_value=None)
@@ -58,6 +59,7 @@ def test_configure(mocked_init, mocked_raise_on, mocked_parse_pbspro_vnodes):
     assert component.cores_per_node == 4
     assert component.gpus_per_node == 1
     assert component.lfs_per_node == {'path': 'test/', 'size': 100}
+
 
 # ------------------------------------------------------------------------------
 #
@@ -136,6 +138,7 @@ def test_parse_pbspro_vnodes(mocked_init, mocked_raise_on, mocked_configure, moc
     component.name = 'PBSPro'
     component._log = ru.Logger('dummy')
     component._parse_pbspro_vnodes()
+
 
 # ------------------------------------------------------------------------------
 #
