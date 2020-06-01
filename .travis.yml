@@ -11,28 +11,22 @@ env:
   global:
     - CODECOV_TOKEN="c7e0d993-d31a-4d39-8ffa-07c30ea73e48"
     - COVERAGE=false
-    - PYTEST="coverage run -m pytest -ra --timeout=600 -vvv --showlocals"
-    - RADICAL_PILOT_DBURL=mongodb://rct:rct_test@one.radical-project.org/rct_test
-    - RADICAL_PILOT_TEST_DBNAME=rct_test
-
+    - LOC=/home/travis/virtualenv/python3.6.7/lib/python3.6/site-packages
+    - PYTEST="coverage run --include=$LOC/radical/pilot/* -m pytest -ra --timeout=600 -vvv --showlocals"
+    
   jobs:
     - MAIN_CMD="$PYTEST tests/" COVERAGE=true
     - MAIN_CMD="ru-runcheck.sh flake8 diff"
     - MAIN_CMD="ru-runcheck.sh pylint diff"
-    - MAIN_CMD="ru-runcheck.sh flake8 tests/ bin/ examples/"
-    - MAIN_CMD="ru-runcheck.sh pylint tests/ bin/ examples/"
+    - MAIN_CMD="ru-runcheck.sh flake8 tests/ bin/"
+    - MAIN_CMD="ru-runcheck.sh pylint tests/ bin/"
+      #    - MAIN_CMD="ru-runcheck.sh flake8 tests/ bin/ examples/"
+      #    - MAIN_CMD="ru-runcheck.sh pylint tests/ bin/ examples/"
 
 before_install:
   - uname -a
   - ulimit -a
   - python -V
-  - ssh-keygen -t rsa -N '' -f ~/.ssh/id_rsa
-  - cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
-  - echo "Host localhost" >> /home/travis/.ssh/config
-  - echo "  StrictHostKeyChecking no" >> /home/travis/.ssh/config
-  - chmod g-rw,o-rw /home/travis/.ssh/*
-  - ssh localhost hostname
-  - ssh localhost uname -a
 
 # command to install dependencies
 install:
@@ -45,11 +39,13 @@ install:
   - pip install codecov
   - pip install pytest
   - pip install pytest-timeout
-
+  
 before_script:
-  - LOC=/home/travis/virtualenv/python3.6  # Location where VE is created on travis
-# - sed -i 's|VENV|'"$LOC"'|g' .coveragerc  # Update source in coveragerc
-# - cat .coveragerc
+  - tmpLOC=`which python`
+  - tmpLOC=(${tmpLOC///bin/ })
+  - LOC=`find $tmpLOC/lib -name "site-packages"`
+  - echo $tmpLOC
+  - echo $LOC
 
 script:
   - echo $MAIN_CMD
