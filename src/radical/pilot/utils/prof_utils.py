@@ -565,7 +565,7 @@ def get_consumed_resources(session):
     resources consumed.  A consumed resource is characterized by:
 
       - a resource type (we know about cores and gpus)
-      - a metric name (what the resource was used for
+      - a metric name (what the resource was used for)
       - a list of 4-tuples of the form: [t0, t1, r0, r1]
           - t0: time, begin of resource consumption
           - t1: time, begin of resource consumption
