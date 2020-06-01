@@ -240,7 +240,7 @@ class ComputeUnitDescription(ru.Description):
 
     .. data:: tags
 
-       Cofiiguration specific tags which influence unit schedulinng and
+       Configuration specific tags which influence unit scheduling and
        execution.
 
 
