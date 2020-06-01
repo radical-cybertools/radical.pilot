@@ -271,7 +271,7 @@ class Component(object):
     The main event loop of the component -- `work()` -- is executed on `run()`
     and will not terminate on its own, unless it encounters a fatal error.
 
-    Components inheriting this class should and should attempt not to use shared
+    Components inheriting this class should attempt not to use shared
     resources.  That will ensure that multiple instances of the component can
     coexist for higher overall system throughput.  Should access to shared
     resources be necessary, it will require some locking mechanism across
@@ -287,7 +287,7 @@ class Component(object):
         of the component's semantics);
       - the overall system is performant and scalable.
 
-    Inheriting classes SHOULD overload the foloowing methods:
+    Inheriting classes SHOULD overload the following methods:
 
       - `initialize()`:
         - set up the component state for operation
@@ -325,7 +325,7 @@ class Component(object):
 
     The config MAY contain `bridges` and `component` sections.  If those exist,
     the component will start the communication bridges and the components
-    specified therin, and is then considered an owner of those components and
+    specified therein, and is then considered an owner of those components and
     bridges.  As such, it much watch the HB channel for heartbeats from those
     components, and must terminate itself if those go AWOL.
 
@@ -349,7 +349,7 @@ class Component(object):
     arbitrary number of 'thing's over time, and they can be advanced at the
     component's discretion.
 
-    The component process is a stand-alone daemon process which runs outsude of
+    The component process is a stand-alone daemon process which runs outside of
     Python's multiprocessing domain.  As such, it can freely use Python's
     multithreading (and it extensively does so by default) - but developers
     should be aware that spawning additional *processes* in this component is
@@ -1208,7 +1208,7 @@ class Component(object):
 class Worker(Component):
     '''
     A Worker is a Component which cannot change the state of the thing it
-    handles.  Workers are emplyed as helper classes to mediate between
+    handles.  Workers are employed as helper classes to mediate between
     components, between components and database, and between components and
     notification channels.
     '''
