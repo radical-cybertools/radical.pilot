@@ -1,6 +1,4 @@
 [run]
 include =
- $LOC/lib/python2.7/site-packages/radical/pilot/agent/launch_method/*.py
- $LOC/lib/python2.7/site-packages/radical/pilot/agent/resource_manager/*.py
- $LOC/lib/python2.7/site-packages/radical/pilot/states.py
+ $LOC/radical/pilot/*
 
