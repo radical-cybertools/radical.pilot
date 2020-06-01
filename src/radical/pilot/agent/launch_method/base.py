@@ -240,7 +240,7 @@ class LaunchMethod(object):
             raise TypeError("LaunchMethod shutdown hook only available to base class!")
 
         from .prte           import PRTE
-        from .flux           import FLUX
+        from .flux           import Flux
         from .yarn           import Yarn
         from .spark          import Spark
 
@@ -249,7 +249,7 @@ class LaunchMethod(object):
 
         impl = {
             LM_NAME_PRTE          : PRTE,
-            LM_NAME_FLUX          : FLUX,
+            LM_NAME_FLUX          : Flux,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
 
