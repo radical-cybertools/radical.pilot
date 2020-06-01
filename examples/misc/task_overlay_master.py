@@ -17,7 +17,7 @@ import radical.utils as ru
 # a demonstration of a task overlay within the RCT framework.
 # It will:
 #
-#   - create a master which bootstrappes a specific communication layer
+#   - create a master which bootstraps a specific communication layer
 #   - insert n workers into the pilot (again as a task)
 #   - perform RPC handshake with those workers
 #   - send RPC requests to the workers
@@ -106,7 +106,7 @@ class Request(object):
 class MyMaster(rpt.Master):
     '''
     This class provides the communication setup for the task overlay: it will
-    set up the request / response communication queus and provide the endpoint
+    set up the request / response communication queues and provide the endpoint
     information to be forwarded to the workers.
     '''
 
@@ -117,7 +117,7 @@ class MyMaster(rpt.Master):
         self._requests = dict()     # bookkeeping of submitted requests
         self._lock     = mt.Lock()  # lock the request dist on updates
 
-        # initialized the task overlay base class.  That base class will ensure
+        # initialize the task overlay base class.  That base class will ensure
         # proper communication channels to the pilot agent.
         rpt.Master.__init__(self)
 
@@ -221,7 +221,7 @@ if __name__ == '__main__':
 
     worker = sys.argv[1]
 
-    # create a master class instance - this will establish communitation to the
+    # create a master class instance - this will establish communication to the
     # pilot agent
     master = MyMaster()
 
