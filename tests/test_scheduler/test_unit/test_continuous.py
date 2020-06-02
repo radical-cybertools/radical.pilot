@@ -24,7 +24,7 @@ class TestContinuous(TestCase):
     def setUp(self):
 
         ret = list()
-        for fin in glob.glob('/tests/test_scheduler/test_unit/test_cases/unit.*.json'):
+        for fin in glob.glob('tests/test_scheduler/test_unit/test_cases/unit.*.json'):
             test_cases = ru.read_json(fin)
             ret.append(test_cases)
         return ret
@@ -43,7 +43,7 @@ class TestContinuous(TestCase):
                             mocked_configure):
 
         cfg = self.setUp()
-        component = Continuous(cfg=cfg, session=None)
+        component = Continuous(cfg=None, session=None)
         component.node = {'name'  : 'a',
                           'uid'   : 2,
                           'cores' : [0, 0, 0, 0, 0, 0, 0, 0,
