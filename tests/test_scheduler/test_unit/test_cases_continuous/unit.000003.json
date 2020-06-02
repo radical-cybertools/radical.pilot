@@ -1,7 +1,7 @@
 
 {
     "unit": {
-        "uid":         "unit.000000",
+        "uid":         "unit.000003",
         "description": {"environment": {},
                         "executable"       : "/bin/sleep",
                         "arguments"        : ["10"],
@@ -50,7 +50,7 @@
             "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0}; gpu: {0}}\n"]
         },
         "resource_filename": {
-            "jsrun": "rs_layout_cu_000000"
+            "jsrun": "rs_layout_cu_000003"
         }
     }
 }

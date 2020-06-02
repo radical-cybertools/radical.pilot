@@ -7,6 +7,7 @@ from unittest import TestCase
 import glob
 import pytest
 import radical.utils as ru
+import radical.pilot.constants as rpc
 from   radical.pilot.agent.scheduler.continuous import Continuous
 
 try:
@@ -24,7 +25,7 @@ class TestContinuous(TestCase):
     def setUp(self):
 
         ret = list()
-        for fin in glob.glob('tests/test_scheduler/test_unit/test_cases/unit.*.json'):
+        for fin in glob.glob('tests/test_scheduler/test_unit/test_cases_continuous/*.json'):
             test_cases = ru.read_json(fin)
             ret.append(test_cases)
         return ret
@@ -33,6 +34,40 @@ class TestContinuous(TestCase):
     #
     def tearDown(self):
         pass
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Continuous, '__init__', return_value=None)
+    def test_configure(self, mocked_init):
+
+        cfg = self.setUp()
+        component = Continuous(cfg=None, session=None)	
+        component._cfg =  mock.Mock()	
+        component._log = ru.Logger('dummy')
+        component._rm_node_list = [["a", 1],	
+                                   ["b", 2],["c",3]]	
+        component._rm_cores_per_node = 8	
+        component._rm_gpus_per_node  = 2	
+        component._rm_lfs_per_node   = {"path": "/dev/null", "size": 0}	
+        component._rm_mem_per_node   = 128	
+        component.nodes = [{'name'  : 'a',
+                          'uid'   : 2,
+                          'cores' : [1, 2, 3, 4, 6, 0, 9, 8],
+                          'lfs'   : {"size": 1234,
+                                     "path" : "/dev/null"},
+                          'mem'   : 1024,
+                          'gpus'  : [1, 2]}]
+        try:     
+            for i in range (len(cfg[0]['cfg']['rm_info'])):
+                rm_info = cfg[0]['cfg']['rm_info'][i]
+                component._configure()
+                self.assertEqual(component.nodes[0]['cores'], [rpc.FREE] * rm_info['cores_per_node'])	
+                self.assertEqual(component.nodes[0]['gpus'],  [rpc.FREE] * rm_info['gpus_per_node'])
+        except:	
+            with pytest.raises(AssertionError):	
+                component._configure()	
+                raise
+
 
     # --------------------------------------------------------------------------
     #
@@ -69,7 +104,7 @@ class TestContinuous(TestCase):
                 lfs_per_slot=component.lfs_per_slot,
                 mem_per_slot=component.mem_per_slot,
                 partial='None')
-            self.assertEqual([cfg[0]['setup']['lm']['slots']], test_slot)
+            self.assertEqual([cfg[1]['setup']['lm']['slots']], test_slot)
         except:
             with pytest.raises(AssertionError):
                 raise
@@ -95,9 +130,9 @@ class TestContinuous(TestCase):
         cfg = self.setUp()
         component = Continuous(cfg=None, session=None)
         unit = dict()
-        unit['uid'] = cfg[0]['unit']['uid'] 
-        unit['description'] = cfg[0]['unit']['description']      
-        component.nodes = cfg[0]['setup']['lm']['slots']['nodes']
+        unit['uid'] = cfg[1]['unit']['uid'] 
+        unit['description'] = cfg[1]['unit']['description']      
+        component.nodes = cfg[1]['setup']['lm']['slots']['nodes']
 
         component._rm_cores_per_node = 32
         component._rm_gpus_per_node  = 2
@@ -132,9 +167,9 @@ class TestContinuous(TestCase):
         component = Continuous(cfg=None, session=None)
         cfg = self.setUp()
         unit = dict()
-        unit['description'] = cfg[0]['unit']['description']
-        unit['slots'] = cfg[0]['setup']['lm']['slots']
-        component.nodes = cfg[0]['setup']['lm']['slots']['nodes']
+        unit['description'] = cfg[1]['unit']['description']
+        unit['slots'] = cfg[1]['setup']['lm']['slots']
+        component.nodes = cfg[1]['setup']['lm']['slots']['nodes']
         component._log = ru.Logger('dummy')
         component.unschedule_unit(unit)
         try:
