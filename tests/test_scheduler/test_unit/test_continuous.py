@@ -52,7 +52,7 @@ class TestContinuous(TestCase):
                                      "path" : "/dev/null"},
                           'mem'   : 1024,
                           'gpus'  : [0, 0]}
-
+        component._log = ru.Logger('dummy')
         component._rm_lfs_per_node = {"path" : "/dev/null", "size" : 1234}
         component.cores_per_slot   = 16
         component.gpus_per_slot    = 2
@@ -104,6 +104,7 @@ class TestContinuous(TestCase):
         component._rm_lfs_per_node   = {"size": 0, "path": "/dev/null"}
         component._rm_mem_per_node   = 1024
         component._rm_lm_info = 'INFO'
+        component._log = ru.Logger('dummy')
         component._node_offset = 0 
         test_slot =  {'cores_per_node': 32,
                       'gpus_per_node': 2,
@@ -134,6 +135,7 @@ class TestContinuous(TestCase):
         unit['description'] = cfg[0]['unit']['description']
         unit['slots'] = cfg[0]['setup']['lm']['slots']
         component.nodes = cfg[0]['setup']['lm']['slots']['nodes']
+        component._log = ru.Logger('dummy')
         component.unschedule_unit(unit)
         try:
             self.assertEqual(component.nodes[0]['cores'], [0])
