@@ -25,10 +25,11 @@ class TestContinuous(TestCase):
     def setUp(self):
 
         ret = list()
-        for fin in glob.glob('tests/test_scheduler/test_unit/test_cases_continuous/*.json'):
+        for fin in glob.glob('tests/test_scheduler/test_unit/test_cases_continuous/unit*.json'):
             test_cases = ru.read_json(fin)
             ret.append(test_cases)
-        return ret
+        cfg_tests = ru.read_json('tests/test_scheduler/test_unit/test_cases_continuous/test_continuous.json')
+        return cfg_tests, ret
 
     # --------------------------------------------------------------------------
     #
@@ -40,7 +41,7 @@ class TestContinuous(TestCase):
     @mock.patch.object(Continuous, '__init__', return_value=None)
     def test_configure(self, mocked_init):
 
-        cfg = self.setUp()
+        cfg, _ = self.setUp()
         component = Continuous(cfg=None, session=None)	
         component._cfg =  mock.Mock()	
         component._log = ru.Logger('dummy')
@@ -58,8 +59,8 @@ class TestContinuous(TestCase):
                           'mem'   : 1024,
                           'gpus'  : [1, 2]}]
         try:     
-            for i in range (len(cfg[0]['cfg']['rm_info'])):
-                rm_info = cfg[0]['cfg']['rm_info'][i]
+            for i in range (len(cfg['cfg']['rm_info'])):
+                rm_info = cfg['cfg']['rm_info'][i]
                 component._configure()
                 self.assertEqual(component.nodes[0]['cores'], [rpc.FREE] * rm_info['cores_per_node'])	
                 self.assertEqual(component.nodes[0]['gpus'],  [rpc.FREE] * rm_info['gpus_per_node'])
@@ -77,7 +78,7 @@ class TestContinuous(TestCase):
                             mocked_init,
                             mocked_configure):
 
-        cfg = self.setUp()
+        _, cfg = self.setUp()
         component = Continuous(cfg=None, session=None)
         component.node = {'name'  : 'a',
                           'uid'   : 2,
@@ -127,7 +128,7 @@ class TestContinuous(TestCase):
                            mocked_configure,
                            mocked_find_resources):
 
-        cfg = self.setUp()
+        _, cfg = self.setUp()
         component = Continuous(cfg=None, session=None)
         unit = dict()
         unit['uid'] = cfg[1]['unit']['uid'] 
@@ -165,7 +166,7 @@ class TestContinuous(TestCase):
     def test_unschedule_unit(self, mocked_init):
 
         component = Continuous(cfg=None, session=None)
-        cfg = self.setUp()
+        _, cfg = self.setUp()
         unit = dict()
         unit['description'] = cfg[1]['unit']['description']
         unit['slots'] = cfg[1]['setup']['lm']['slots']
