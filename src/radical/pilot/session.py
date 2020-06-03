@@ -648,7 +648,7 @@ class Session(rs.Session):
             raise RuntimeError("Resource domain '%s' is unknown." % domain)
 
         if host not in self._rcfgs[domain]:
-            raise RuntimeError("Resource host '%s' ununknown." % host)
+            raise RuntimeError("Resource host '%s' unknown." % host)
 
         resource_cfg = copy.deepcopy(self._rcfgs[domain][host])
 
