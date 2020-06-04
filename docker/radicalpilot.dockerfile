@@ -9,9 +9,12 @@ FROM ubuntu:bionic
 
 RUN apt-get update && \
     apt-get install -y \
+        curl \
+        dnsutils \
         gcc \
         git \
         openssh-server \
+        iputils-ping \
         python3-dev \
         python3-venv \
         vim && \

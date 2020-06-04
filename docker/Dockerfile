@@ -22,8 +22,11 @@ RUN groupadd -r radical && useradd -r -g radical -m rp
 
 RUN apt-get update && \
     apt-get install -y \
+        curl \
+        dnsutils \
         gcc \
         git \
+        iputils-ping \
         python3-dev \
         python3-venv \
         vim && \
