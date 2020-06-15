@@ -39,6 +39,9 @@ class JSRUN(LaunchMethod):
             #
             # *) since the launching happens at the login node Lassen@LLNL
             #    thus the session name can be used to identify the machine
+            #
+            # FIXME: the `cvd_id_mode` setting should eventually move into the
+            #        resource config.
             lm_info = {'cvd_id_mode': 'physical'}
         else:
             lm_info = {'cvd_id_mode': 'logical'}
