@@ -12,6 +12,7 @@ import radical.utils as ru
 
 # ------------------------------------------------------------------------------
 #
+# pylint: disable=super-init-not-called
 class LSF_SUMMIT(ResourceManager):
 
     # --------------------------------------------------------------------------
@@ -132,7 +133,7 @@ class LSF_SUMMIT(ResourceManager):
         for lm in launch_methods:
             if lm:
                 try:
-                    from .... import pilot as rp
+                    from .... import pilot as rp  # pylint: disable=E0402
                     ru.dict_merge(self.lm_info,
                             rp.agent.LaunchMethod.rm_config_hook(lm, self._cfg,
                                                    self, self._log, self._prof))
