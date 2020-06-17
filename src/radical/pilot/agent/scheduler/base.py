@@ -24,6 +24,8 @@ SCHEDULER_NAME_CONTINUOUS_ORDERED = "CONTINUOUS_ORDERED"
 SCHEDULER_NAME_CONTINUOUS_COLO    = "CONTINUOUS_COLO"
 SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
 SCHEDULER_NAME_HOMBRE             = "HOMBRE"
+SCHEDULER_NAME_FLUX               = "FLUX"
+SCHEDULER_NAME_TORUS              = "TORUS"
 SCHEDULER_NAME_NOOP               = "NOOP"
 SCHEDULER_NAME_TORUS              = "TORUS"
 
@@ -327,6 +329,7 @@ class AgentSchedulingComponent(rpu.Component):
         from .continuous_colo    import ContinuousColo
         from .continuous         import Continuous
         from .hombre             import Hombre
+        from .flux               import Flux
         from .torus              import Torus
         from .noop               import Noop
 
@@ -343,6 +346,7 @@ class AgentSchedulingComponent(rpu.Component):
                 SCHEDULER_NAME_CONTINUOUS_COLO    : ContinuousColo,
                 SCHEDULER_NAME_CONTINUOUS         : Continuous,
                 SCHEDULER_NAME_HOMBRE             : Hombre,
+                SCHEDULER_NAME_FLUX               : Flux,
                 SCHEDULER_NAME_TORUS              : Torus,
                 SCHEDULER_NAME_NOOP               : Noop,
 
@@ -630,14 +634,15 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def _prof_sched_skip(self, task):
 
-        self._prof.prof('schedule_skip', uid=task['uid'])
+        pass
+      # self._prof.prof('schedule_skip', uid=task['uid'])
 
 
     # --------------------------------------------------------------------------
     #
     def _schedule_waitpool(self):
 
-        self.slot_status("before schedule waitpool")
+      # self.slot_status("before schedule waitpool")
 
         # sort by inverse tuple size to place larger tasks first and backfill
         # with smaller tasks.  We only look at cores right now - this needs
@@ -665,7 +670,7 @@ class AgentSchedulingComponent(rpu.Component):
         # if we sccheduled some tasks but not all, we ran out of resources
         resources = not (bool(unscheduled) and bool(unscheduled))
 
-        self.slot_status("after  schedule waitpool")
+      # self.slot_status("after  schedule waitpool")
         return resources, active
 
 
@@ -695,7 +700,7 @@ class AgentSchedulingComponent(rpu.Component):
             # no resource change, no activity
             return None, False
 
-        self.slot_status("before schedule incoming [%d]" % len(units))
+      # self.slot_status("before schedule incoming [%d]" % len(units))
 
         # handle largest units first
         # FIXME: this needs lazy-bisect
@@ -728,7 +733,7 @@ class AgentSchedulingComponent(rpu.Component):
         # tuple_size map
         self._ts_valid = False
 
-        self.slot_status("after  schedule incoming")
+      # self.slot_status("after  schedule incoming")
         return resources, active
 
 
@@ -818,13 +823,13 @@ class AgentSchedulingComponent(rpu.Component):
         '''
 
         uid = unit['uid']
-        self._prof.prof('schedule_try', uid=uid)
+      # self._prof.prof('schedule_try', uid=uid)
 
         slots = self.schedule_unit(unit)
         if not slots:
 
             # schedule failure
-            self._prof.prof('schedule_fail', uid=uid)
+          # self._prof.prof('schedule_fail', uid=uid)
             return False
 
         # the task was placed, we need to reflect the allocation in the
@@ -939,10 +944,8 @@ class AgentSchedulingComponent(rpu.Component):
                 idx += 1
             core_map.append(p_map)
 
-        if idx != len(cores):
-            self._log.error('%s -- %s -- %s -- %s',
-                            idx, len(cores), cores, n_procs)
-        assert(idx == len(cores))
+        assert(idx == len(cores)), \
+              ('%s -- %s -- %s -- %s' % idx, len(cores), cores, n_procs)
 
         # gpu procs are considered single threaded right now (FIXME)
         for g in gpus:

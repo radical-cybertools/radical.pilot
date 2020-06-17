@@ -27,17 +27,20 @@ class MyWorker(rp.task_overlay.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def hello(self, count):
+    def hello(self, count, uid):
         '''
         important work
         '''
 
-      # time.sleep(1)
+        self._prof.prof('dock_start', uid=uid)
 
         out = 'hello %5d @ %.2f [%6d]' % (count, time.time(), os.getpid())
 
+        self._prof.prof('dock_io_start', uid=uid)
         self._log.debug(out)
+        self._prof.prof('dock_io_stop', uid=uid)
 
+        self._prof.prof('dock_stop', uid=uid)
         return out
 
 

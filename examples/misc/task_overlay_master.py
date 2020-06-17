@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import sys
 
 import radical.utils as ru
@@ -10,7 +11,7 @@ import radical.pilot as rp
 # a demonstration of a task overlay within the RCT framework.
 # It will:
 #
-#   - create a master which bootstrappes a specific communication layer
+#   - create a master which bootstraps a specific communication layer
 #   - insert n workers into the pilot (again as a task)
 #   - perform RPC handshake with those workers
 #   - send RPC requests to the workers
@@ -24,7 +25,7 @@ import radical.pilot as rp
 class MyMaster(rp.task_overlay.Master):
     '''
     This class provides the communication setup for the task overlay: it will
-    set up the request / response communication queus and provide the endpoint
+    set up the request / response communication queues and provide the endpoint
     information to be forwarded to the workers.
     '''
 
@@ -32,28 +33,38 @@ class MyMaster(rp.task_overlay.Master):
     #
     def __init__(self, cfg):
 
-        # initialized the task overlay base class.  That base class will ensure
+        # initialize the task overlay base class.  That base class will ensure
         # proper communication channels to the pilot agent.
         rp.task_overlay.Master.__init__(self, cfg=cfg)
-
-        print('%s: cfg from %s to %s' % (self._uid, cfg.data_idx, cfg.data_len))
 
 
     # --------------------------------------------------------------------------
     #
     def create_work_items(self):
 
+        self._prof.prof('create_start')
+
+        world_size = self._cfg.n_masters
+        rank       = self._cfg.rank
+        print('=== 2 : ', self._cfg.rank)
+
         # create an initial list of work items to be distributed to the workers.
         # Work items MUST be serializable dictionaries.
-        items = list()
-        idx   = self._cfg.data_idx
-        while idx < self._cfg.data_idx + self._cfg.data_len:
-            items.append({'mode':  'call',
-                          'data': {'method': 'hello',
-                                   'kwargs': {'count': idx}}})
-            idx += 1
+        idx   = rank
+        total = int(eval(self._cfg.workload.total))
+        while idx < total:
 
-        return items
+            uid  = 'request.%06d' % idx
+            print('=== uid:', uid)
+            item = {'uid' :   uid,
+                    'mode':  'call',
+                    'data': {'method': 'hello',
+                             'kwargs': {'count': idx,
+                                        'uid'  : uid}}}
+            self.request(item)
+            idx += world_size
+
+        self._prof.prof('create_stop')
 
 
     # --------------------------------------------------------------------------
@@ -63,8 +74,8 @@ class MyMaster(rp.task_overlay.Master):
         # result callbacks can return new work items
         new_requests = list()
         for r in requests:
-            print('result_cb %s: %s [%s]' % (r.uid, r.state, r.result))
-          # print('work: %s' % r.work)
+            sys.stdout.write('result_cb %s: %s [%s]\n' % (r.uid, r.state, r.result))
+            sys.stdout.flush()
 
           # count = r.work['data']['kwargs']['count']
           # if count < 10:
@@ -85,13 +96,30 @@ if __name__ == '__main__':
     # workers, and (c) to collect the responses again.
     cfg_fname    = str(sys.argv[1])
     cfg          = ru.Config(cfg=ru.read_json(cfg_fname))
-    cfg.data_idx = int(sys.argv[2])
-    cfg.data_len = int(sys.argv[3])
+    cfg.rank     = int(sys.argv[2])
+    print('=== 1 : ', cfg.rank)
 
     n_nodes    = cfg.nodes
     cpn        = cfg.cpn
     gpn        = cfg.gpn
-    worker     = cfg.worker
+    descr      = cfg.worker_descr
+    worker     = os.path.basename(cfg.worker)
+    pwd        = os.getcwd()
+
+    # add data staging to worker: link input_dir, impress_dir, and oe_license
+    descr['arguments']     = [os.path.basename(worker)]
+    descr['input_staging'] = [
+                               {'source': '%s/%s' % (pwd, worker),
+                                'target': worker,
+                                'action': rp.COPY,
+                                'flags' : rp.DEFAULT_FLAGS,
+                                'uid'   : 'sd.0'},
+                               {'source': '%s/%s' % (pwd, cfg_fname),
+                                'target': cfg_fname,
+                                'action': rp.COPY,
+                                'flags' : rp.DEFAULT_FLAGS,
+                                'uid'   : 'sd.1'},
+                              ]
 
     # one node is used by master.  Alternatively (and probably better), we could
     # reduce one of the worker sizes by one core.  But it somewhat depends on
@@ -100,15 +128,15 @@ if __name__ == '__main__':
     print('workers: ', (n_nodes / cfg.n_masters) - 1)
     n_workers = int((n_nodes / cfg.n_masters) - 1)
 
-    # create a master class instance - this will establish communitation to the
+    # create a master class instance - this will establish communication to the
     # pilot agent
     master = MyMaster(cfg)
 
     # insert `n` worker tasks into the agent.  The agent will schedule (place)
     # those workers and execute them.  Insert one smaller worker (see above)
     # NOTE: this assumes a certain worker size / layout
-    master.submit(worker=worker, count=n_workers, cores=cpn,     gpus=gpn)
-    master.submit(worker=worker, count=1,         cores=cpn - 1, gpus=gpn)
+    master.submit(descr=descr, count=n_workers, cores=cpn,     gpus=gpn)
+    master.submit(descr=descr, count=1,         cores=cpn - 1, gpus=gpn)
 
     # wait until `m` of those workers are up
     # This is optional, work requests can be submitted before and will wait in

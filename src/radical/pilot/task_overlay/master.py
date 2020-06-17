@@ -49,14 +49,14 @@ class Master(rpu.Component):
                                  'uid'        : self._uid + '.req',
                                  'path'       : os.getcwd(),
                                  'stall_hwm'  : 0,
-                                 'bulk_size'  : 1024})
+                                 'bulk_size'  : 56})
 
         res_cfg = ru.Config(cfg={'channel'    : '%s.to_res' % self._uid,
                                  'type'       : 'queue',
                                  'uid'        : self._uid + '.res',
                                  'path'       : os.getcwd(),
                                  'stall_hwm'  : 0,
-                                 'bulk_size'  : 1024})
+                                 'bulk_size'  : 56})
 
         self._req_queue = ru.zmq.Queue(req_cfg)
         self._res_queue = ru.zmq.Queue(res_cfg)
@@ -133,21 +133,23 @@ class Master(rpu.Component):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        self._log.debug('control: %s: %s', cmd, arg)
-
         if cmd == 'worker_register':
 
             uid  = arg['uid']
             info = arg['info']
+
+            self._log.debug('register %s', uid)
 
             with self._lock:
                 self._workers[uid]['info']  = info
                 self._workers[uid]['state'] = 'ACTIVE'
                 self._log.debug('info: %s', info)
 
+
         elif cmd == 'worker_unregister':
 
             uid = arg['uid']
+            self._log.debug('unregister %s', uid)
 
             with self._lock:
                 self._workers[uid]['state'] = 'DONE'
@@ -155,7 +157,7 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def submit(self, worker, count, cores, gpus):
+    def submit(self, descr, count, cores, gpus):
         '''
         submit n workers, and pass the queue info as configuration file.
         Do *not* wait for them to come up
@@ -163,9 +165,6 @@ class Master(rpu.Component):
 
         # each worker gets the specified number of cores and gpus.  All
         # resources need to be located on the same node.
-        descr = self._cfg.worker_descr
-        descr['executable']      = "python3"
-        descr['arguments']       = ['%s/%s' % (os.getcwd(), worker)]
         descr['cpu_processes']   = 1
         descr['cpu_threads']     = cores
         descr['cpu_thread_type'] = 'POSIX'
@@ -201,11 +200,17 @@ class Master(rpu.Component):
             task['type']              = 'unit'
             task['uid']               = uid
             task['unit_sandbox_path'] = sbox
+            task['unit_sandbox']      = 'file://localhost/' + sbox
+            task['pilot_sandbox']     = cfg.base
+            task['session_sandbox']   = cfg.base + '/../'
+            task['resource_sandbox']  = cfg.base + '/../../'
 
             task['description']['arguments'] += [fname]
 
             tasks.append(task)
             self._workers[uid] = task
+
+            self._log.debug('submit %s', uid)
 
         # insert the task
         self.advance(tasks, publish=False, push=True)
@@ -225,11 +230,12 @@ class Master(rpu.Component):
                 with self._lock:
                     states = [w['state'] for w in self._workers.values()]
                 n = states.count('ACTIVE')
-                self._log.debug('states [%d]: %s', n, states)
+                self._log.debug('states [%d]: %s', n,
+                                {k:states.count(k) for k in set(states)})
                 if n >= count:
                     self._log.debug('wait ok')
                     return
-                time.sleep(0.1)
+                time.sleep(1)
 
         elif uids:
             self._log.debug('wait for workers: %s', uids)
@@ -241,7 +247,7 @@ class Master(rpu.Component):
                 if n == len(uids):
                     self._log.debug('wait ok')
                     return
-                time.sleep(0.1)
+                time.sleep(1)
 
 
     # --------------------------------------------------------------------------
@@ -264,16 +270,9 @@ class Master(rpu.Component):
     def run(self):
 
         # get work from the overloading implementation
-        items = self.create_work_items()
-
-        # submit work requests.
-        # The returned request objects behave like Futures (they will be
-        # implemented as proper Futures in the future - ha!)
-        for item in items:
-            self.request(item)
+        self.create_work_items()
 
         # wait for the submitted requests to complete
-        t_start = time.time()
         while True:
 
             # count completed items
@@ -286,10 +285,9 @@ class Master(rpu.Component):
             if len(completed) == len(states):
                 break
 
+            # FIXME: this should be replaced by an async state check.  Maybe
+            #        subscrive to state updates on the update pubsub?
             time.sleep(5.0)
-        t_stop = time.time()
-
-        self._log.debug('=== master runtime: %.2fs', t_stop - t_start)
 
 
     # --------------------------------------------------------------------------
@@ -327,6 +325,8 @@ class Master(rpu.Component):
     #
     def _result_cb(self, msg):
 
+      # self._log.debug('master _result_cb: %s', msg)
+
         # update result and error information for the corresponding request UID
         uid = msg['req']
         out = msg['out']
@@ -352,7 +352,7 @@ class Master(rpu.Component):
         '''
 
         for uid in self._workers:
-            self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
+            self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_terminate',
                                               'arg': {'uid': uid}})
 
 

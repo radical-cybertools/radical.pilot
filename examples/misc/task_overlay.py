@@ -15,14 +15,12 @@ if __name__ == '__main__':
     cfg_dir   = os.path.abspath(os.path.dirname(cfg_file))
     cfg_fname =                 os.path.basename(cfg_file)
 
-    runtime   = 60
-    resource  = 'local.debug'
-
     cfg       = ru.Config(cfg=ru.read_json(cfg_file))
     nodes     = cfg.nodes
     cpn       = cfg.cpn
     gpn       = cfg.gpn
     n_masters = cfg.n_masters
+    workload  = cfg.workload
 
     master    = '%s/%s' % (cfg_dir, cfg.master)
     worker    = '%s/%s' % (cfg_dir, cfg.worker)
@@ -32,19 +30,27 @@ if __name__ == '__main__':
         pd = rp.ComputePilotDescription(cfg.pilot_descr)
         pd.cores   = nodes * cpn
         pd.gpus    = nodes * gpn
-        pd.runtime = runtime
+        pd.runtime = cfg.runtime
 
-        total = eval(cfg.total)
-        chunk = int(total / n_masters)
-        tds   = list()
+        tds = list()
 
         for i in range(n_masters):
-            # TODO: move idx i into custom worker configs
-            print(i, chunk * i, chunk)
             td = rp.ComputeUnitDescription(cfg.master_descr)
             td.executable     = "python3"
-            td.arguments      = [master, cfg_fname, chunk * i, chunk]
-            td.input_staging  = [master, worker, cfg_file]
+            td.arguments      = [os.path.basename(master), cfg_file, i]
+            td.input_staging  = [{'source': master,
+                                  'target': os.path.basename(master),
+                                  'action': rp.TRANSFER,
+                                  'flags' : rp.DEFAULT_FLAGS},
+                                 {'source': worker,
+                                  'target': os.path.basename(worker),
+                                  'action': rp.TRANSFER,
+                                  'flags' : rp.DEFAULT_FLAGS},
+                                 {'source': cfg_file,
+                                  'target': os.path.basename(cfg_file),
+                                  'action': rp.TRANSFER,
+                                  'flags' : rp.DEFAULT_FLAGS}
+                                ]
             tds.append(td)
 
         pmgr  = rp.PilotManager(session=session)
