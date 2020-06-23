@@ -1,5 +1,10 @@
 
-import subprocess as sp
+import os
+import copy
+
+import subprocess    as sp
+
+import radical.utils as ru
 
 
 eiu = __import__('00_env_isolation_utils')
@@ -26,32 +31,28 @@ env_boot = env_read('./env.boot')
 # the launcher is a shell script (in most cases), we don't need to share the
 # python environment).
 
-env_lm = {
-        'OpenMPI' : env_prep(base=env_boot,
-                             remove={},  # ?
-                             pre_exec=['export RP_TEST=LM_1',
-                                        'export RP_TEST_LAUNCH=OpenMPI'
-                                       # module load openmpi
-                                      ]),
-
-        'MPICH'   : env_prep(base=env_boot,
-                             remove={},  # ?
-                             pre_exec=['export RP_TEST=LM_2',
-                                       'export RP_TEST_LAUNCH=MPICH'
-                                       # module load mpich
-                                      ])
-}
-
-
 # ------------------------------------------------------------------------------
 #
 def executor():
-    import os
-    import copy
-    import radical.utils as ru
-
     os.environ['RP_TEST']      = 'EXEC'
     os.environ['RP_TEST_EXEC'] = 'True'
+
+    env_lm = {
+            'OpenMPI' : env_prep(base=env_boot,
+                                 remove={},  # ?
+                                 pre_exec_env=['export RP_TEST=LM_1',
+                                               'export RP_TEST_LAUNCH=OpenMPI'
+                                              # module load openmpi
+                                              ]),
+
+            'MPICH'   : env_prep(base=env_boot,
+                                 remove={},  # ?
+                                 pre_exec_env=['export RP_TEST=LM_2',
+                                               'export RP_TEST_LAUNCH=MPICH'
+                                              # module load mpich
+                                              ])
+    }
+
 
     # The type of launch method to use is hardcoded in this example code, but
     # would be switched by task type really.  It is used to pick the respective

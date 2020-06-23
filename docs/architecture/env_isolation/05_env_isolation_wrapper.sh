@@ -33,7 +33,7 @@ echo "-- task rank $OMPI_COMM_WORLD_RANK --"
 if test "$OMPI_COMM_WORLD_RANK" = 0
 then
     # rank 0 - run pre_exec
-    echo 'run pre_exec'
+    echo 'run pre_exec_action'
     export RP_TEST=RANK0
     export RP_TEST_RANK0=True
 
