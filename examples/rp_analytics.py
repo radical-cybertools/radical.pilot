@@ -4,7 +4,7 @@ __copyright__ = 'Copyright 2013-2016, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
 import sys
-
+import radical.utils as ru
 import radical.pilot as rp
 
 rpu = rp.utils
@@ -25,12 +25,12 @@ if __name__ == '__main__':
     for p in profiles:
         print(p)
 
-    profs = rpu.read_profiles(profiles)
+    profs = ru.read_profiles(profiles)
 
     for p in profs:
         print(type(p))
 
-    prof = rpu.combine_profiles(profs)
+    prof = ru.combine_profiles(profs)
 
     print(len(prof))
     for entry in prof:
