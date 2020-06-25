@@ -34,6 +34,7 @@ env_boot = env_read('./env.boot')
 # ------------------------------------------------------------------------------
 #
 def executor():
+
     os.environ['RP_TEST']      = 'EXEC'
     os.environ['RP_TEST_EXEC'] = 'True'
 
@@ -43,14 +44,16 @@ def executor():
                                  pre_exec_env=['export RP_TEST=LM_1',
                                                'export RP_TEST_LAUNCH=OpenMPI'
                                               # module load openmpi
-                                              ]),
+                                              ],
+                                 tgt="./env.lm_1"),
 
             'MPICH'   : env_prep(base=env_boot,
                                  remove={},  # ?
                                  pre_exec_env=['export RP_TEST=LM_2',
                                                'export RP_TEST_LAUNCH=MPICH'
                                               # module load mpich
-                                              ])
+                                              ],
+                                 tgt="./env.lm_2")
     }
 
 
@@ -66,12 +69,12 @@ def executor():
     # then used by the task wrapper  (caching goes into env_prep).
     env_task = env_prep(base=env_boot,
                         remove=lm_env,
-                        pre_exec=['export RP_TEST=PRE',
-                                  'export RP_TEST_PRE=True',
-                                  'export RP_TEST_VIRGIN=TASK',
-                                 # module load gromacs
-                                 ],
-                        dump='./env.task')
+                        pre_exec_env=['export RP_TEST=PRE',
+                                      'export RP_TEST_PRE=True',
+                                      'export RP_TEST_VIRGIN=TASK',
+                                     # module load gromacs
+                                     ],
+                        tgt='./env.task')
 
     # Note that both, the task launcher and the task wrapper scripts would be
     # created here on the fly - we hardcode them in this example.

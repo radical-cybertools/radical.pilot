@@ -8,5 +8,12 @@
 # It runs in the correct launcher environment already - no additional setup is
 # needed
 
+env | sort > t
+(
+    . ./00_env_isolation_utils.sh
+    . ./env.task
+    env_dump env.task.dump
+)
+
 exec mpirun -n 2 05_env_isolation_wrapper.sh
 

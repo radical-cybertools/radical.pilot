@@ -1,5 +1,9 @@
 #!/bin/sh
 
+# shell level equivalent of utils
+
+. ./00_env_isolation_utils.sh
+
 # ------------------------------------------------------------------------------
 # This script is started via the executor's launch method and will perform the
 # following steps:
@@ -25,17 +29,39 @@
 # for `MPI_INIT`, and versions of this method should work for all MPI
 # implementations):
 
+
 sleep $OMPI_COMM_WORLD_RANK
 
-echo "-- task rank $OMPI_COMM_WORLD_RANK --"
 . ./env.task
 
-if test "$OMPI_COMM_WORLD_RANK" = 0
+if test "$PMIX_RANK" = 0
 then
     # rank 0 - run pre_exec
-    echo 'run pre_exec_action'
+    echo 'run pre_exec_cmd'
+
+    # for the pre_exec, we need to unset all vars created by the launch method
+    # - such as the PMIX_RANK we used just above.  Reason is that otherwise some
+    # pre_exec commands such as `gmx_mpi` detect that they run under MPI and
+    # collide with the MPI communicator.  We do that in a sub_shell, so that the
+    # env.rank is again active.  That implies that any env changes during
+    # `pre_exec_cmd` will be discarded though!
+    #
+    # TODO: log those changes
+
+    (
+        env_dump env.rank.dump
+        env_prep env.task.dump env.rank.dump env.no_rank
+        . ./env.no_rank
+
+        test -z "$PMIX_RANK" || echo "oops PMIX_RANK: $PMIX_RANK"
+
+    )
+
     export RP_TEST=RANK0
     export RP_TEST_RANK0=True
+
+
+
 
   # sleep 3
 fi

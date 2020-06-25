@@ -6,7 +6,7 @@
        - eg., export, module load, source, ...
        - must be fast
        - cached (identical command sets are run only once, env is then reused)
-     - pre_exec_action: any action needed to run the task
+     - pre_exec_cmd: any action needed to run the task
        - runs on the compute node
        - will block all task resources apart from one core (rank really)
        - runs in the task env
@@ -32,6 +32,6 @@ Procedural changes:
      - load env.task
      - if rank == 1:
        - block all other ranks
-       - run pre_exec_action
+       - run pre_exec_cmd
        - release block
      - run task executable
