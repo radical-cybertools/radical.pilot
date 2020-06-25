@@ -47,6 +47,7 @@ then
     # `pre_exec_cmd` will be discarded though!
     #
     # TODO: log those changes
+    # TODO: move tmp env files to /tmp
 
     (
         env_dump env.rank.dump
@@ -59,11 +60,6 @@ then
 
     export RP_TEST=RANK0
     export RP_TEST_RANK0=True
-
-
-
-
-  # sleep 3
 fi
 
 echo "run task"
