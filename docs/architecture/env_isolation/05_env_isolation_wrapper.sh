@@ -32,7 +32,7 @@
 
 sleep $OMPI_COMM_WORLD_RANK
 
-. ./env.task
+. ./env.task.sh
 
 if test "$PMIX_RANK" = 0
 then
@@ -50,9 +50,9 @@ then
     # TODO: move tmp env files to /tmp
 
     (
-        env_dump env.rank.dump
-        env_prep env.task.dump env.rank.dump env.no_rank
-        . ./env.no_rank
+        env_dump env.rank.env
+        env_prep env.task.env env.rank.env env.no_rank.sh
+        . ./env.no_rank.sh
 
         test -z "$PMIX_RANK" || echo "oops PMIX_RANK: $PMIX_RANK"
 

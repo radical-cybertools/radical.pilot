@@ -1,23 +1,23 @@
 #!/bin/sh
 
+echo '--- rank $PMIX_RANK------------------------------------------------------'
+printf "RP_TEST       : %-10s : %s\n" "$RP_TEST"            "RANK0 / PRE"
+printf "RP_TEST       : %-10s : %s\n" "$RP_TEST"            "RANK0 / PRE"
+printf "RP_TEST_VIRGIN: %-10s : %s\n" "$RP_TEST_VIRGIN"     "True"
+printf "RP_TEST_BOOT  : %-10s : %s\n" "$RP_TEST_BOOT"       "-"
+printf "RP_TEST_AGENT : %-10s : %s\n" "$RP_TEST_AGENT"      "-"
+printf "RP_TEST_EXEC  : %-10s : %s\n" "$RP_TEST_EXEC"       "-"
+printf "RP_TEST_LAUNCH: %-10s : %s\n" "$RP_TEST_LAUNCH"     "-"
+printf "RP_TEST_LM_1  : %-10s : %s\n" "$RP_TEST_LM_1"       "-"
+printf "RP_TEST_LM_2  : %-10s : %s\n" "$RP_TEST_LM_2"       "-"
+printf "RP_TEST_PRE   : %-10s : %s\n" "$RP_TEST_PRE"        "True"
+printf "RP_TEST_RANK0 : %-10s : %s\n" "$RP_TEST_RANK0"      "True / -"
+printf "HELLO WORLD   : $PMIX_RANK $RP_TEST_VIRGIN $RP_TEST_PRE\n"
 
-echo '-------------------------------------------------------------------------'
-test "$RP_TEST"        = 'TASK' && echo "RP_TEST       : ok" || echo "RP_TEST       : $RP_TEST"
-test "$RP_TEST_VIRGIN" = 'TASK' && echo "RP_TEST_VIRGIN: ok" || echo "RP_TEST_VIRGIN: $RP_TEST_VIRGIN"
-
-test   -z "$RP_TEST_BOOT"   && echo "RP_TEST_BOOT  : ok" || echo "RP_TEST_BOOT  : $RP_TEST_BOOT"
-test   -z "$RP_TEST_AGENT"  && echo "RP_TEST_AGENT : ok" || echo "RP_TEST_AGENT : $RP_TEST_AGENT"
-test   -z "$RP_TEST_EXEC"   && echo "RP_TEST_EXEC  : ok" || echo "RP_TEST_EXEC  : $RP_TEST_EXEC"
-test   -z "$RP_TEST_LAUNCH" && echo "RP_TEST_LAUNCH: ok" || echo "RP_TEST_LAUNCH: $RP_TEST_LAUNCH"
-test   -z "$RP_TEST_LM_1"   && echo "RP_TEST_LM_1  : ok" || echo "RP_TEST_LM_1  : $RP_TEST_LM_1"
-test   -z "$RP_TEST_LM_2"   && echo "RP_TEST_LM_2  : ok" || echo "RP_TEST_LM_2  : $RP_TEST_LM_2"
-test   -z "$RP_TEST_PRE"    && echo "RP_TEST_PRE   : ok" || echo "RP_TEST_PRE   : $RP_TEST_PRE"
-test   -z "$RP_TEST_RANK0"  && echo "RP_TEST_RANK0 : ok" || echo "RP_TEST_RANK0 : $RP_TEST_RANK0"
-test ! -z "$RP_TEST_TASK"   && echo "RP_TEST_TASK  : ok" || echo "RP_TEST_TASK  : $RP_TEST_PRE"
-
-echo "hello world: $OMPI_COMM_WORLD_RANK $RP_TEST_VIRGIN $RP_TEST_PRE $RP_TEST_TASK"
-
-env | sort > ./env.check
+if test "$PMIX_RANK" = 1
+then
+    env | sort > ./env.check.env
+fi
 
 echo '-------------------------------------------------------------------------'
 

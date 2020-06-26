@@ -20,7 +20,7 @@ env_prep = eiu.env_prep
 # read and parse the environment as originally stored by the bootstrapper,
 # ensure valid keys.  This is the reference env we need to provide to the
 # application.
-env_boot = env_read('./env.boot')
+env_boot = env_read('./env.boot.env')
 
 # each launch method may require it's own environment.  Specifically launcher
 # environments may conflict, if for example one launcher needs OpenMPI loaded,
@@ -45,7 +45,7 @@ def executor():
                                                'export RP_TEST_LAUNCH=OpenMPI'
                                               # module load openmpi
                                               ],
-                                 tgt="./env.lm_1"),
+                                 tgt="./env.lm_1.sh"),
 
             'MPICH'   : env_prep(base=env_boot,
                                  remove={},  # ?
@@ -53,7 +53,7 @@ def executor():
                                                'export RP_TEST_LAUNCH=MPICH'
                                               # module load mpich
                                               ],
-                                 tgt="./env.lm_2")
+                                 tgt="./env.lm_2.sh")
     }
 
 
@@ -65,16 +65,15 @@ def executor():
 
     # The task may specify it's own env preparation commands (pre_exec_env).
     # The executor will prepare that env, too (but caches it for identical
-    # tasks), and dynamically write an `env.task` into the task sandbox which is
-    # then used by the task wrapper  (caching goes into env_prep).
+    # tasks), and dynamically write an `env.task.sh` into the task sandbox which
+    # is then used by the task wrapper  (caching goes into env_prep).
     env_task = env_prep(base=env_boot,
                         remove=lm_env,
                         pre_exec_env=['export RP_TEST=PRE',
                                       'export RP_TEST_PRE=True',
-                                      'export RP_TEST_VIRGIN=TASK',
                                      # module load gromacs
                                      ],
-                        tgt='./env.task')
+                        tgt='./env.task.sh')
 
     # Note that both, the task launcher and the task wrapper scripts would be
     # created here on the fly - we hardcode them in this example.
