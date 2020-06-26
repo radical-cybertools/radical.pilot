@@ -37,8 +37,7 @@ sleep $OMPI_COMM_WORLD_RANK
 if test "$PMIX_RANK" = 0
 then
     # rank 0 - run pre_exec
-    echo 'run pre_exec_cmd'
-
+    #
     # for the pre_exec, we need to unset all vars created by the launch method
     # - such as the PMIX_RANK we used just above.  Reason is that otherwise some
     # pre_exec commands such as `gmx_mpi` detect that they run under MPI and
@@ -62,7 +61,6 @@ then
     export RP_TEST_RANK0=True
 fi
 
-echo "run task"
 exec ./06_env_isolation_task.sh
 
 
