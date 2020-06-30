@@ -8,10 +8,11 @@
 # This script is started via the executor's launch method and will perform the
 # following steps:
 #
-#   - reset the env to env.task
 #   - create a barrier
 #   - if rank == 0:
+#     - reset the env to env.task
 #     - run pre_exec commands
+#     - restore env
 #     - release barrier
 #   - if rank > 0:
 #     - wait for barrier
