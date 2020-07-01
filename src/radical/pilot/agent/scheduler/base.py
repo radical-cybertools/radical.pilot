@@ -837,7 +837,9 @@ class AgentSchedulingComponent(rpu.Component):
         # it enacted by the executor
         self._change_slot_states(slots, rpc.BUSY)
         unit['slots'] = slots
-
+        lsf_path = slots['lfs_per_node']['path']
+        unit['description']['environment']['NODE_LFS_PATH'] = lsf_path
+        
         self._handle_cuda(unit)
 
         # got an allocation, we can go off and launch the process
