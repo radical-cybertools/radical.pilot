@@ -12,6 +12,7 @@ import radical.utils as ru
 
 # ------------------------------------------------------------------------------
 #
+# pylint: disable=super-init-not-called
 class LSF_SUMMIT(ResourceManager):
 
     # --------------------------------------------------------------------------
@@ -132,7 +133,7 @@ class LSF_SUMMIT(ResourceManager):
         for lm in launch_methods:
             if lm:
                 try:
-                    from .... import pilot as rp
+                    from .... import pilot as rp  # pylint: disable=E0402
                     ru.dict_merge(self.lm_info,
                             rp.agent.LaunchMethod.rm_config_hook(lm, self._cfg,
                                                    self, self._log, self._prof))
@@ -215,6 +216,15 @@ class LSF_SUMMIT(ResourceManager):
                     node = line.strip()
                     if node not in lsf_nodes: lsf_nodes[node]  = 1
                     else                    : lsf_nodes[node] += 1
+
+        # It is possible that login/batch nodes were not marked at hostfile
+        # and were not filtered out, thus we assume that there is only one
+        # such node with 1 core (otherwise assertion error will be raised later)
+        # *) affected machine(s): Lassen@LLNL
+        for node, node_cores in lsf_nodes.items():
+            if node_cores == 1:
+                del lsf_nodes[node]
+                break
 
         self._log.debug('found %d nodes: %s', len(lsf_nodes), lsf_nodes)
 

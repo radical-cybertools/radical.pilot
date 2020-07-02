@@ -163,6 +163,15 @@
 	    "cores"    : 72
     },
 
+    "llnl.lassen"  : {
+        "project"  : "CV_DDMD",
+        "queue"    : "pdebug",
+      # "queue"    : "pbatch",
+        "schema"   : "local",
+        "cores"    : 30,
+        "gpus"     : 0
+    },
+
     "ornl.summit"  : {
         "project"  : "CSC343",
         "queue"    : "batch",
