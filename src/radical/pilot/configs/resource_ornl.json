@@ -178,8 +178,7 @@
                                          "module load   py-setuptools/40.4.3-py3",
                                          "module use    /sw/summit/ums/ompix/gcc/8.1.1/modules",
                                          "module load   prrte/1.0.0_devtiming",
-                                         "export PRRTE_PREFIX=$PRRTE_DIR",
-                                         "export TMPDIR=/gpfs/alpine/med110/scratch/merzky1/radical.pilot.sandbox/tmp/"
+                                         "export PRRTE_PREFIX=$PRRTE_DIR"
                                         ],
         "pre_bootstrap_1"             : [
                                          "module unload xl",
@@ -194,7 +193,6 @@
                                          "module use    /sw/summit/ums/ompix/gcc/8.1.1/modules",
                                          "module load   prrte/1.0.0_devtiming",
                                          "export PRRTE_PREFIX=$PRRTE_DIR",
-                                         "export TMPDIR=/gpfs/alpine/med110/scratch/merzky1/radical.pilot.sandbox/tmp/",
                                          "ulimit -u 65536"
                                         ],
         "valid_roots"                 : ["$MEMBERWORK/"],
