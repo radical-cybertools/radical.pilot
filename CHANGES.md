@@ -4,6 +4,12 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
+1.4.1 Hotfix Release                                                  2020-06-09
+--------------------------------------------------------------------------------
+
+  - fix tmpdir mosconfiguration for summit / prrte
+
+
 1.4.0 Release                                                         2020-05-12
 --------------------------------------------------------------------------------
 
