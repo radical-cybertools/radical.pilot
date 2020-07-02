@@ -57,6 +57,14 @@
         "cores"    : 80
     },
 
+    "princeton.traverse" : {
+        "project"  : "tromp",
+        "queue"    : "all",
+        "schema"   : "local",
+        "cores"    : 32,
+        "gpus"     : 4
+    },
+
     "princeton.tiger_cpu" : {
         "project"  : "geo",
         "queue"    : "cpu",
@@ -153,6 +161,15 @@
 	    "queue"    : "regular",
 	    "schema"   : "local",
 	    "cores"    : 72
+    },
+
+    "llnl.lassen"  : {
+        "project"  : "CV_DDMD",
+        "queue"    : "pdebug",
+      # "queue"    : "pbatch",
+        "schema"   : "local",
+        "cores"    : 30,
+        "gpus"     : 0
     },
 
     "ornl.summit"  : {

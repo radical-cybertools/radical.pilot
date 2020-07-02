@@ -15,7 +15,6 @@
             "slots": {
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
-                "task_offsets"  : [1],
                 "lm_info"       : {
                                    # for LM ORTE
                                    "spark_home"     : "/",

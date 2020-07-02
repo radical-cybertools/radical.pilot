@@ -33,7 +33,7 @@ class Cobalt(ResourceManager):
         # place one rank per node, and run `hostname` - that gives is the list
         # of hostnames.  The number of nodes we receive from `$COBALT_PARTSIZE`.
 
-        n_nodes          = int(os.environ('COBALT_PARTSIZE'))
+        n_nodes          = int(os.environ['COBALT_PARTSIZE'])
         out, _, _        = ru.sh_callout('aprun -n %d -N 1 hostname' % n_nodes)
         node_list        = out.split()
         assert(len(node_list) == n_nodes), node_list
