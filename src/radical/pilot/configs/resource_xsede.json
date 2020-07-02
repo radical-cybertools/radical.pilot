@@ -557,8 +557,13 @@
     "bridges": {
         "description"                 : "The XSEDE 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription.",
-        "schemas"                     : ["gsissh", "ssh", "go"],
+        "schemas"                     : ["gsissh", "ssh", "go", "local"],
       # "mandatory_args"              : [],
+        "local"                      :
+        {
+            "job_manager_endpoint"    : "slurm://bridges.psc.xsede.org/",
+            "filesystem_endpoint"     : "file://bridges.psc.xsede.org/"
+        },
         "gsissh"                      :
         {
             "job_manager_endpoint"    : "slurm+gsissh://bridges.psc.xsede.org:2222/",
@@ -581,17 +586,18 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "MPIRUN",
-        "mpi_launch_method"           : "MPIRUN",
+        "task_launch_method"          : "MPIEXEC",
+        "mpi_launch_method"           : "MPIEXEC",
         "pre_bootstrap_0"             : ["module purge",
                                          "module load intel/19.3",
+                                       # "module load gromacs/2018_cpu",
                                          "module load python3conda/3.7.1"
                                         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/home", "/pylon1", "/pylon5"],
-        "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
-        "python_dist"                 : "anaconda",
+        "rp_version"                  : "installed",
+        "virtenv_mode"                : "use",
+        "python_dist"                 : "default",
         "export_to_cu"                : [],
         "cu_pre_exec"                 : [],
         "saga_jd_supplement"          : {"cpu_architecture" : ["p100"]},
