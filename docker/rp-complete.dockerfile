@@ -3,7 +3,7 @@
 # It will take a few seconds to be ready for connections, after which
 # radical.pilot will be able to use pymongo to connect.
 # Example:
-#     docker build -t radicalpilot -f Dockerfile ..
+#     docker build -t radicalpilot -f rp-complete.dockerfile ..
 #     docker run --rm --name rp_test -d radicalpilot
 #     # Either use '-d' with 'run' or issue the 'exec' in a separate terminal
 #     # after waiting a few seconds for the DB to be ready to accept connections.
