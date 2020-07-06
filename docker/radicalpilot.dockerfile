@@ -67,20 +67,8 @@ RUN (. ~rp/rp-venv/bin/activate && \
     cd /radical.pilot && \
     ~rp/rp-venv/bin/pip install .)
 
-# radical.saga logs `ModuleNotFountError`s if `redis` is not explicitly installed.
-RUN /home/rp/rp-venv/bin/python -m pip install redis
-
-# Create a null-password ssh key for RADICAL.
-RUN ssh-keygen -N '' -f /home/rp/.ssh/id_rsa && \
-    cat /home/rp/.ssh/id_rsa.pub > /home/rp/.ssh/authorized_keys
 
 USER root
-
-# Make sure that "rp" can ssh to localhost without interaction.
-RUN awk '{print "localhost", $1, $2}' /etc/ssh/ssh_host_ecdsa_key.pub \
-        > ~rp/.ssh/known_hosts && \
-    chown rp:radical ~rp/.ssh/known_hosts && \
-    chmod 644 ~rp/.ssh/known_hosts
 
 # Set the environment variable that Radical Pilot uses to find its MongoDB instance.
 # Radical Pilot assumes the user is defined in the same database as in the URL.

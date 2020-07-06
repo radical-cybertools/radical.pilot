@@ -18,8 +18,9 @@ comments in the file for more information.
 `stack.yml` provides a recipe for `docker-compose` (or more elaborate
 container-based service cluster). The stack relies on two public
 container images (`mongo:bionic` for the database service and
-`mongo-express` for a database admin console) and a custom image to
-be built locally. See `radicalpilot.dockerfile` for instructions on
+`mongo-express` for a database admin console) and a custom image
+(to be built locally) providing the sshd service and login environment.
+See `radicalpilot.dockerfile` for instructions on
 building the (required) `radicalpilot` container image.
 
 One service container is launched with each of these three images.
