@@ -31,7 +31,7 @@
 # implementations):
 
 
-sleep $OMPI_COMM_WORLD_RANK
+sleep "0$PMIX_RANK"
 
 . ./env.task.sh
 

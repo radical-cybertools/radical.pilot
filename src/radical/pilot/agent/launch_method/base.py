@@ -274,6 +274,13 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
+    def get_rank_cmd(self):
+
+        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
     def construct_command(self, cu, launch_script_hop):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)

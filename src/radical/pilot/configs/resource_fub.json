@@ -23,7 +23,7 @@
         "virtenv_mode"          : "create",
         "python_dist"           : "default",
         "export_to_cu"          : [],
-        "cu_pre_exec"           : ["module restore"]
+        "cu_pre_exec"           : []
     }
 }
 

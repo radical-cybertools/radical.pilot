@@ -166,7 +166,7 @@
         "export_to_cu"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : ["module restore"]
+        "cu_pre_exec"                 : []
     },
 
     "stampede2_ibrun": {
@@ -189,6 +189,7 @@
             "job_manager_endpoint"    : "slurm://stampede2.tacc.utexas.edu/",
             "filesystem_endpoint"     : "file://stampede2.tacc.utexas.edu/"
         },
+        "cores_per_node"              : 68,
         "default_queue"               : "normal",
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
@@ -196,9 +197,10 @@
         "agent_launch_method"         : "IBRUN",
         "task_launch_method"          : "IBRUN",
         "mpi_launch_method"           : "IBRUN",
+        "blocked_cores"               : [64, 65, 66, 67],
         "pre_bootstrap_0"             :["module load TACC",
-                                         "module load intel/18.0.0",
-                                         "module load python3/3.7.0"
+                                        "module load intel/18.0.0",
+                                        "module load python3/3.7.0"
                                         ],
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
@@ -208,7 +210,7 @@
         "export_to_cu"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : ["module restore"]
+        "cu_pre_exec"                 : []
     },
 
     "stampede2_srun": {
@@ -250,7 +252,7 @@
         "export_to_cu"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : ["module restore"]
+        "cu_pre_exec"                 : []
     },
 
     "comet_ssh": {

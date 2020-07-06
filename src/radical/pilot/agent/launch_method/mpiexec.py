@@ -37,6 +37,13 @@ class MPIExec(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
+    def get_rank_cmd(self):
+
+        return "echo $PMIX_RANK"
+
+
+    # --------------------------------------------------------------------------
+    #
     def construct_command(self, cu, launch_script_hop):
 
         slots        = cu['slots']
