@@ -215,8 +215,8 @@ Execute the example with the following command:
 python 00_getting_started.py <resource>
 
 where <resource> can be empty if you want to execute RP on localhost or it 
-can be a resource label. To see all the resource label supported issue the
-command ``radical-pilot-resources``.
+can be a resource label. Use the command ``radical-pilot-resources`` to list 
+the resource labels supported by RP.
 
 Running the example should result in an output similar to the one shown below:
 
