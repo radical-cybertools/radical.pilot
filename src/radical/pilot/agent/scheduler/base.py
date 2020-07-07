@@ -839,7 +839,7 @@ class AgentSchedulingComponent(rpu.Component):
         unit['slots'] = slots
         lsf_path = slots['lfs_per_node']['path']
         unit['description']['environment']['NODE_LFS_PATH'] = lsf_path
-        
+
         self._handle_cuda(unit)
 
         # got an allocation, we can go off and launch the process
