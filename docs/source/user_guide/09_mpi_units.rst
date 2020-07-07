@@ -33,7 +33,9 @@ Running the Example
 -------------------
 
 :download:`09_mpi_units.py <../../../examples/09_mpi_units.py>`.
-uses the code above to run a bag of duplicated `echo` commands:
+uses the code above to run a bag of duplicated `echo` commands.
+
+.. note:: This example requires a working MPI installation. Without it, it will fail.
 
 .. image:: 09_mpi_units.png
 
