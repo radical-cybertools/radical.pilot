@@ -27,6 +27,7 @@ LAYOUT            = 'layout'
 NODES             = 'nodes'
 CORES             = 'cores'
 GPUS              = 'gpus'
+MEMORY            = 'memory'
 
 INPUT_STAGING     = 'input_staging'
 OUTPUT_STAGING    = 'output_staging'
@@ -148,6 +149,7 @@ class ComputePilotDescription(ru.Description):
         SANDBOX         : str       ,
         CORES           : int       ,
         GPUS            : int       ,
+        MEMORY          : int       ,
         QUEUE           : str       ,
         PROJECT         : str       ,
         CLEANUP         : bool      ,
@@ -166,6 +168,7 @@ class ComputePilotDescription(ru.Description):
         SANDBOX         : None      ,
         CORES           : 1         ,
         GPUS            : 0         ,
+        MEMORY          : 0         ,
         QUEUE           : None      ,
         PROJECT         : None      ,
         CLEANUP         : False     ,
