@@ -95,6 +95,17 @@ class ComputePilotDescription(ru.Description):
        NOTE: for local pilots, you can set a number larger than the physical
        machine limit when setting `RADICAL_PILOT_PROFILE` in your environment.
 
+    .. data:: gpus
+
+       [Type: `int`] [optional] The number of gpus the pilot should allocate
+       on the target resource.
+
+    .. data:: memory
+
+       [Type: `int`] [optional] The total amount of physical memory the pilot
+       (and related to it job) requires. This parameter translates into
+       `TotalPhysicalMemory` at `radical.saga.job.Description`.
+
     .. data:: queue
 
        [Type: `string`] [optional] The name of the job queue the pilot should

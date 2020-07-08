@@ -884,7 +884,7 @@ class Default(PMGRLaunchingComponent):
         # pilot description and resource configuration
         number_cores    = pilot['description']['cores']
         number_gpus     = pilot['description']['gpus']
-        required_memory = pilot['description']['memory']  # per node
+        required_memory = pilot['description']['memory']
         runtime         = pilot['description']['runtime']
         app_comm        = pilot['description']['app_comm']
         queue           = pilot['description']['queue']
