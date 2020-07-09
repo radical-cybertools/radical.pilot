@@ -177,6 +177,12 @@ class Agent_0(rpu.Worker):
     #
     def initialize(self):
 
+        # registers the staging_input_queue as this is what we want to push
+        # units to
+        self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
+                             rpc.AGENT_STAGING_INPUT_QUEUE)
+        self._log.debug('=== outputs: %s', list(self._outputs.keys()))
+
         # register the command callback which pulls the DB for commands
         self.register_timed_cb(self._agent_command_cb,
                                timer=self._cfg['db_poll_sleeptime'])
@@ -184,11 +190,6 @@ class Agent_0(rpu.Worker):
         # register idle callback to pull for units
         self.register_timed_cb(self._check_units_cb,
                                timer=self._cfg['db_poll_sleeptime'])
-
-        # registers the staging_input_queue as this is what we want to push
-        # units to
-        self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
-                             rpc.AGENT_STAGING_INPUT_QUEUE)
 
         # sub-agents are started, components are started, bridges are up: we are
         # ready to roll!  Update pilot state.

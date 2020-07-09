@@ -413,7 +413,6 @@ class Component(object):
         self._cb_lock    = ru.RLock('comp.cb_lock.%s' % self._name)
                                         # guard threaded callback invokations
 
-        self._subscribers = dict()      # ZMQ Subscriber classes
 
         if self._owner == self.uid:
             self._owner = 'root'
@@ -432,6 +431,9 @@ class Component(object):
       #                            stop=['put', 'drop'])
         self._prof.prof('init1', uid=self._uid, msg=self._prof.path)
 
+        self._log.debug('=== initialilze outputs')
+
+        self._subscribers = dict()      # ZMQ Subscriber classes
         self._q    = None
         self._in   = None
         self._out  = None
@@ -759,11 +761,12 @@ class Component(object):
 
             # we want a *unique* output queue for each state.
             if state in self._outputs:
-                self._log.warn("%s replaces output for %s : %s -> %s"
+                self._log.warn("=== %s replaces output for %s : %s -> %s"
                         % (self.uid, state, self._outputs[state], output))
 
             if not output:
                 # this indicates a final state
+                self._log.debug('=== %s register output to none %s', self.uid, state)
                 self._outputs[state] = None
 
             else:
@@ -773,7 +776,10 @@ class Component(object):
                 cfg   = ru.read_json(fname)
 
                 self._outputs[state] = ru.zmq.Putter(output, url=cfg['put'])
+                self._log.debug('=== %s register output to none %s', self.uid, state)
 
+            self._log.debug('=== %s register output %s:%s ok: %s', self.uid, state,
+                            output, list(self._outputs.keys()))
 
 
     # --------------------------------------------------------------------------
@@ -790,12 +796,13 @@ class Component(object):
             self._log.debug('TERM : %s unregister output %s', self.uid, state)
 
             if state not in self._outputs:
-                self._log.warn('state %s has no output registered',  state)
+                self._log.warn('=== state %s has no output registered',  state)
               # raise ValueError('state %s has no output registered' % state)
                 continue
 
             del(self._outputs[state])
-            self._log.debug('unregistered output for %s', state)
+            self._log.debug('=== unregistered output for %s: %s', state,
+                            list(self._outputs.keys()))
 
 
     # --------------------------------------------------------------------------
@@ -1155,8 +1162,9 @@ class Component(object):
                     # unknown target state -- error
                     for thing in _things:
                         import pprint
-                        self._log.debug('%s', pprint.pformat(self._outputs))
-                        self._log.debug("lost  %s [%s]", thing['uid'], _state)
+                        self._log.debug('=== %s', pprint.pformat(self._outputs))
+                        self._log.debug("=== lost  %s [%s] [%s]", thing['uid'],
+                                        _state, list(self._outputs.keys()))
                         self._prof.prof('lost', uid=thing['uid'], state=_state,
                                         ts=ts)
                     continue
