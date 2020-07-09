@@ -16,7 +16,7 @@ echo "safe environment of bootstrap_0"
 
 # store the sorted env for logging, but also so that we can dig original env
 # settings for task environments, if needed
-env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' > env.orig
+env | sort > env.orig
 
 
 # interleave stdout and stderr, to get a coherent set of log messages
