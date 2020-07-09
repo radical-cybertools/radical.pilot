@@ -2,20 +2,16 @@
 
 import os
 import sys
-import time
-import signal
 
-import threading     as mt
-
-import radical.pilot as rp
 import radical.utils as ru
+import radical.pilot as rp
 
 
 # This script has to run as a task within an pilot allocation, and is
 # a demonstration of a task overlay within the RCT framework.
 # It will:
 #
-#   - create a master which bootstrappes a specific communication layer
+#   - create a master which bootstraps a specific communication layer
 #   - insert n workers into the pilot (again as a task)
 #   - perform RPC handshake with those workers
 #   - send RPC requests to the workers
@@ -26,228 +22,131 @@ import radical.utils as ru
 
 # ------------------------------------------------------------------------------
 #
-class Request(object):
-
-    # poor man's future
-    # TODO: use proper future implementation
-
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, work):
-
-        self._uid    = ru.generate_id('request')
-        self._work   = work
-        self._state  = 'NEW'
-        self._result = None
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def uid(self):
-        return self._uid
-
-
-    @property
-    def state(self):
-        return self._state
-
-
-    @property
-    def result(self):
-        return self._result
-
-
-    # --------------------------------------------------------------------------
-    #
-    def as_dict(self):
-        '''
-        produce the request message to be sent over the wire to the workers
-        '''
-
-        return {'uid'   : self._uid,
-                'state' : self._state,
-                'result': self._result,
-                'call'  : self._work['call'],
-                'args'  : self._work['args'],
-                'kwargs': self._work['kwargs'],
-               }
-
-
-    # --------------------------------------------------------------------------
-    #
-    def set_result(self, result, error):
-        '''
-        This is called by the master to fulfill the future
-        '''
-
-        self._result = result
-        self._error  = error
-
-        if error: self._state = 'FAILED'
-        else    : self._state = 'DONE'
-
-
-    # --------------------------------------------------------------------------
-    #
-    def wait(self):
-
-        while self.state not in ['DONE', 'FAILED']:
-            time.sleep(0.1)
-
-        return self._result
-
-
-# ------------------------------------------------------------------------------
-#
 class MyMaster(rp.task_overlay.Master):
     '''
     This class provides the communication setup for the task overlay: it will
-    set up the request / response communication queus and provide the endpoint
+    set up the request / response communication queues and provide the endpoint
     information to be forwarded to the workers.
     '''
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self):
+    def __init__(self, cfg):
 
-        self._requests = dict()     # bookkeeping of submitted requests
-        self._lock     = mt.Lock()  # lock the request dist on updates
-
-        # initialized the task overlay base class.  That base class will ensure
+        # initialize the task overlay base class.  That base class will ensure
         # proper communication channels to the pilot agent.
-        rp.task_overlay.Master.__init__(self)
-
-        # set up RU ZMQ Queues for request distribution and result collection
-        req_cfg = ru.Config(cfg={'channel'    : 'to_req',
-                                 'type'       : 'queue',
-                                 'uid'        : self._uid + '.req',
-                                 'path'       : os.getcwd(),
-                                 'stall_hwm'  : 0,
-                                 'bulk_size'  : 1})
-
-        res_cfg = ru.Config(cfg={'channel'    : 'to_res',
-                                 'type'       : 'queue',
-                                 'uid'        : self._uid + '.res',
-                                 'path'       : os.getcwd(),
-                                 'stall_hwm'  : 0,
-                                 'bulk_size'  : 1})
-
-        self._req_queue = ru.zmq.Queue(req_cfg)
-        self._res_queue = ru.zmq.Queue(res_cfg)
-
-        self._req_queue.start()
-        self._res_queue.start()
-
-        self._req_addr_put = str(self._req_queue.addr_put)
-        self._req_addr_get = str(self._req_queue.addr_get)
-
-        self._res_addr_put = str(self._res_queue.addr_put)
-        self._res_addr_get = str(self._res_queue.addr_get)
-
-        # this master will put requests onto the request queue, and will get
-        # responses from the response queue.  Note that the responses will be
-        # delivered via an async callback (`self.result_cb`).
-        self._req_put = ru.zmq.Putter('to_req', self._req_addr_put)
-        self._res_get = ru.zmq.Getter('to_res', self._res_addr_get,
-                                                cb=self.result_cb)
-
-        # for the workers it is the opposite: they will get requests from the
-        # request queue, and will send responses to the response queue.
-        self._info = {'req_addr_get': self._req_addr_get,
-                      'res_addr_put': self._res_addr_put}
-
-
-        # make sure the channels are up before allowing to submit requests
-        time.sleep(1)
+        rp.task_overlay.Master.__init__(self, cfg=cfg)
 
 
     # --------------------------------------------------------------------------
     #
-    def submit(self, worker, count=1):
-        '''
-        submit n workers, and pass the queue info as configuration file
-        '''
+    def create_work_items(self):
 
-        descr = {'executable': worker}
-        return rp.task_overlay.Master.submit(self, self._info, descr, count)
+        self._prof.prof('create_start')
 
+        world_size = self._cfg.n_masters
+        rank       = self._cfg.rank
+        print('=== 2 : ', self._cfg.rank)
 
-    # --------------------------------------------------------------------------
-    #
-    def request(self, call, *args, **kwargs):
-        '''
-        submit a work request (function call spec) to the request queue
-        '''
+        # create an initial list of work items to be distributed to the workers.
+        # Work items MUST be serializable dictionaries.
+        idx   = rank
+        total = int(eval(self._cfg.workload.total))
+        while idx < total:
 
-        # create request and add to bookkeeping dict.  That response object will
-        # be updated once a response for the respective request UID arrives.
-        req = Request(work={'call'  : call,
-                            'args'  : args,
-                            'kwargs': kwargs})
-        with self._lock:
-            self._requests[req.uid] = req
+            uid  = 'request.%06d' % idx
+            print('=== uid:', uid)
+            item = {'uid' :   uid,
+                    'mode':  'call',
+                    'data': {'method': 'hello',
+                             'kwargs': {'count': idx,
+                                        'uid'  : uid}}}
+            self.request(item)
+            idx += world_size
 
-        # push the request message (here and dictionary) onto the request queue
-        self._req_put.put(req.as_dict())
-
-        # return the request to the master script for inspection etc.
-        return req
+        self._prof.prof('create_stop')
 
 
     # --------------------------------------------------------------------------
     #
-    def result_cb(self, msg):
+    def result_cb(self, requests):
 
-        # update result and error information for the corresponding request UID
-        uid = msg['req']
-        res = msg['res']
-        err = msg['err']
+        # result callbacks can return new work items
+        new_requests = list()
+        for r in requests:
+            sys.stdout.write('result_cb %s: %s [%s]\n' % (r.uid, r.state, r.result))
+            sys.stdout.flush()
 
-        self._requests[uid].set_result(res, err)
+          # count = r.work['data']['kwargs']['count']
+          # if count < 10:
+          #     new_requests.append({'mode': 'call',
+          #                          'data': {'method': 'hello',
+          #                                   'kwargs': {'count': count + 100}}})
+
+        return new_requests
 
 
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
-    # This master script currently runs as a task within a pilot allocation.
-    # The purpose of this master is to (a) spawn a set or workers within the
-    # same allocation, (b) to distribute work items (`hello` function calls) to
-    # those workers, and (c) to collect the responses again.
+    # This master script runs as a task within a pilot allocation.  The purpose
+    # of this master is to (a) spawn a set or workers within the same
+    # allocation, (b) to distribute work items (`hello` function calls) to those
+    # workers, and (c) to collect the responses again.
+    cfg_fname    = str(sys.argv[1])
+    cfg          = ru.Config(cfg=ru.read_json(cfg_fname))
+    cfg.rank     = int(sys.argv[2])
+    print('=== 1 : ', cfg.rank)
 
-    worker = sys.argv[1]
+    n_nodes    = cfg.nodes
+    cpn        = cfg.cpn
+    gpn        = cfg.gpn
+    descr      = cfg.worker_descr
+    worker     = os.path.basename(cfg.worker)
+    pwd        = os.getcwd()
 
-    # create a master class instance - this will establish communitation to the
+    # add data staging to worker: link input_dir, impress_dir, and oe_license
+    descr['arguments']     = [os.path.basename(worker)]
+    descr['input_staging'] = [
+                               {'source': '%s/%s' % (pwd, worker),
+                                'target': worker,
+                                'action': rp.COPY,
+                                'flags' : rp.DEFAULT_FLAGS,
+                                'uid'   : 'sd.0'},
+                               {'source': '%s/%s' % (pwd, cfg_fname),
+                                'target': cfg_fname,
+                                'action': rp.COPY,
+                                'flags' : rp.DEFAULT_FLAGS,
+                                'uid'   : 'sd.1'},
+                              ]
+
+    # one node is used by master.  Alternatively (and probably better), we could
+    # reduce one of the worker sizes by one core.  But it somewhat depends on
+    # the worker type and application workload to judge if that makes sense, so
+    # we leave it for now.
+    print('workers: ', (n_nodes / cfg.n_masters) - 1)
+    n_workers = int((n_nodes / cfg.n_masters) - 1)
+
+    # create a master class instance - this will establish communication to the
     # pilot agent
-    master = MyMaster()
+    master = MyMaster(cfg)
 
     # insert `n` worker tasks into the agent.  The agent will schedule (place)
-    # those workers and execute them.
-    master.submit(count=2, worker=worker)
+    # those workers and execute them.  Insert one smaller worker (see above)
+    # NOTE: this assumes a certain worker size / layout
+    master.submit(descr=descr, count=n_workers, cores=cpn,     gpus=gpn)
+    master.submit(descr=descr, count=1,         cores=cpn - 1, gpus=gpn)
 
     # wait until `m` of those workers are up
     # This is optional, work requests can be submitted before and will wait in
     # a work queue.
-    master.wait(count=2)
+  # master.wait(count=nworkers)
 
-    # submit work requests.  The returned request objects behave like Futures
-    # (they will be implemented as proper Futures in the future - ha!)
-    req = list()
-    for n in range(32):
-        req.append(master.request('hello', n))
-
-    # wait for request completion and print the results
-    for r in req:
-        r.wait()
-        print(r.result)
+    master.run()
 
     # simply terminate
-    # FIXME: this needs to be cleaned up
-    sys.stdout.flush()
-    os.kill(os.getpid(), signal.SIGKILL)
-    os.kill(os.getpid(), signal.SIGTERM)
+    # FIXME: clean up workers
 
 
 # ------------------------------------------------------------------------------

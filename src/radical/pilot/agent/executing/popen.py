@@ -211,18 +211,19 @@ echo "$($RP_GTOD),$1,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING,$2" >> $
 
             # Create string for environment variable setting
             env_string = ''
-          # env_string += '. %s/env.orig\n'               % self._pwd
-            env_string += 'export RP_SESSION_ID="%s"\n'   % self._cfg['sid']
-            env_string += 'export RP_PILOT_ID="%s"\n'     % self._cfg['pid']
-            env_string += 'export RP_AGENT_ID="%s"\n'     % self._cfg['aid']
-            env_string += 'export RP_SPAWNER_ID="%s"\n'   % self.uid
-            env_string += 'export RP_UNIT_ID="%s"\n'      % cu['uid']
-            env_string += 'export RP_UNIT_NAME="%s"\n'    % cu['description'].get('name')
-            env_string += 'export RP_GTOD="%s"\n'         % self.gtod
-            env_string += 'export RP_PROF="%s"\n'         % self.prof
-            env_string += 'export RP_TMP="%s"\n'          % self._cu_tmp
+          # env_string += '. %s/env.orig\n'                % self._pwd
+            env_string += 'export RP_SESSION_ID="%s"\n'    % self._cfg['sid']
+            env_string += 'export RP_PILOT_ID="%s"\n'      % self._cfg['pid']
+            env_string += 'export RP_AGENT_ID="%s"\n'      % self._cfg['aid']
+            env_string += 'export RP_SPAWNER_ID="%s"\n'    % self.uid
+            env_string += 'export RP_UNIT_ID="%s"\n'       % cu['uid']
+            env_string += 'export RP_UNIT_NAME="%s"\n'     % cu['description'].get('name')
+            env_string += 'export RP_GTOD="%s"\n'          % self.gtod
+            env_string += 'export RP_PROF="%s"\n'          % self.prof
+            env_string += 'export RP_TMP="%s"\n'           % self._cu_tmp
+            env_string += 'export RP_PILOT_SANDBOX="%s"\n' % self._pwd
             env_string += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
-                                                          % self._pwd
+                                                           % self._pwd
             if self._prof.enabled:
                 env_string += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sandbox, cu['uid'])
 

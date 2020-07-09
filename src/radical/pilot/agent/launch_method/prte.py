@@ -80,6 +80,7 @@ class PRTE(LaunchMethod):
         # FIXME: we should derive the message size from DVM size - smaller DVMs
         #        will never need large messages, as they can't run large tasks)
         prte += ' --pmca ptl_base_max_msg_size %d' % (1024 * 1024 * 1024 * 1)
+      # prte += ' --pmca rmaps_base_verbose 5'
 
         # debug mapper problems for large tasks
         if log.isEnabledFor(logging.DEBUG):
@@ -240,7 +241,6 @@ class PRTE(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        import time
         time.sleep(0.1)
 
         slots        = cu['slots']
@@ -288,6 +288,7 @@ class PRTE(LaunchMethod):
 
         # see DVM startup
         map_flag += ' --pmca ptl_base_max_msg_size %d' % (1024 * 1024 * 1024 * 1)
+      # map_flag += ' --pmca rmaps_base_verbose 5'
 
         if 'nodes' not in slots:
             # this task is unscheduled - we leave it to PRRTE/PMI-X to

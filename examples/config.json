@@ -57,6 +57,14 @@
         "cores"    : 80
     },
 
+    "princeton.traverse" : {
+        "project"  : "tromp",
+        "queue"    : "all",
+        "schema"   : "local",
+        "cores"    : 32,
+        "gpus"     : 4
+    },
+
     "princeton.tiger_cpu" : {
         "project"  : "geo",
         "queue"    : "cpu",
@@ -71,14 +79,14 @@
         "cores"    : 56
     },
 
-    "xsede.frontera" : {
+    "tacc.frontera" : {
         "project"  : "FTA-Jha",
         "queue"    : "development",
         "schema"   : "local",
         "cores"    : 64
     },
 
-    "xsede.longhorn" : {
+    "tacc.longhorn" : {
         "project"  : "FTA-Jha",
         "queue"    : "development",
         "schema"   : "local",
@@ -141,11 +149,27 @@
         "cores"    : 204
     },
 
+    "xsede.stampede2_ibrun"  : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "development",
+        "schema"   : "local",
+        "cores"    : 204
+    },
+
     "ncar.cheyenne": {
 	    "project"  : "URTG0014",
 	    "queue"    : "regular",
 	    "schema"   : "local",
 	    "cores"    : 72
+    },
+
+    "llnl.lassen"  : {
+        "project"  : "CV_DDMD",
+        "queue"    : "pdebug",
+      # "queue"    : "pbatch",
+        "schema"   : "local",
+        "cores"    : 30,
+        "gpus"     : 0
     },
 
     "ornl.summit"  : {

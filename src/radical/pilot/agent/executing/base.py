@@ -14,6 +14,7 @@ from ... import utils     as rpu
 EXECUTING_NAME_POPEN   = "POPEN"
 EXECUTING_NAME_SHELL   = "SHELL"
 EXECUTING_NAME_SHELLFS = "SHELLFS"
+EXECUTING_NAME_FLUX    = "FLUX"
 EXECUTING_NAME_SLEEP   = "SLEEP"
 EXECUTING_NAME_FUNCS   = "FUNCS"
 
@@ -62,6 +63,7 @@ class AgentExecutingComponent(rpu.Component):
         from .popen    import Popen
         from .shell    import Shell
         from .shell_fs import ShellFS
+        from .flux     import Flux
         from .funcs    import FUNCS
         from .sleep    import Sleep
 
@@ -73,6 +75,7 @@ class AgentExecutingComponent(rpu.Component):
                     EXECUTING_NAME_POPEN  : Popen,
                     EXECUTING_NAME_SHELL  : Shell,
                     EXECUTING_NAME_SHELLFS: ShellFS,
+                    EXECUTING_NAME_FLUX   : Flux,
                     EXECUTING_NAME_SLEEP  : Sleep,
                     EXECUTING_NAME_FUNCS  : FUNCS,
                   # EXECUTING_NAME_ABDS   : ABDS,

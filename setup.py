@@ -2,7 +2,7 @@
 
 __author__    = 'RADICAL Team'
 __email__     = 'radical@rutgers.edu'
-__copyright__ = 'Copyright 2013-19, RADICAL Research, Rutgers University'
+__copyright__ = 'Copyright 2013-20, RADICAL Research, Rutgers University'
 __license__   = 'MIT'
 
 
