@@ -589,15 +589,12 @@
         "task_launch_method"          : "MPIEXEC",
         "mpi_launch_method"           : "MPIEXEC",
         "pre_bootstrap_0"             : [
-                                         "env | sort > env.pre.boot",
                                          "module purge",
                                          "module load psc_path/1.1",
                                          "module load xdusage/2.1-1",
                                          "module load intel/18.4",
                                          "module load python3conda",
-                                         "module load gromacs/2018_cpu",
-                                         "mpiexec -n 2 date",
-                                         "env | sort > env.post.boot"
+                                         "module load gromacs/2018_cpu"
                                         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/home", "/pylon1", "/pylon5"],

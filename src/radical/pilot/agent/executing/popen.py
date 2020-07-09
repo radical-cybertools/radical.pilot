@@ -201,7 +201,6 @@ class Popen(AgentExecutingComponent) :
 
             # Create string for environment variable setting
             env_string = ''
-
             env_string += 'export RP_SESSION_ID="%s"\n'    % self._cfg['sid']
             env_string += 'export RP_PILOT_ID="%s"\n'      % self._cfg['pid']
             env_string += 'export RP_AGENT_ID="%s"\n'      % self._cfg['aid']
@@ -213,7 +212,7 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_PILOT_SANDBOX="%s"\n' % self._pwd
             env_string += 'export RP_PILOT_STAGING="%s"\n' % self._pwd
           # env_string += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
-          #                                               % self._pwd
+          #                                                % self._pwd
 
             if self._prof.enabled:
                 env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
