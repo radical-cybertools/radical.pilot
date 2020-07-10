@@ -586,7 +586,7 @@ class Session(rs.Session):
         for domain in self._rcfgs:
             if domain == 'aliases':
                 continue
-            for host in self._rcfgs:
+            for host in self._rcfgs[domain]:
                 resources.append('%s.%s' % (domain, host))
 
         return sorted(resources)
