@@ -4,7 +4,7 @@ Containerized RADICAL Pilot testing can be performed two ways.
 Either the (required) MongoDB server can run in the same container
 as RP, or in a separate service container.
 
-# Monolithic container
+## Monolithic container
 
 `rp-complete.dockerfile` provides a recipe for a complete container
 to run MongoDB and the RP stack. Note that the MongoDB instance can
@@ -13,7 +13,7 @@ is to `run` the container's default mongod service, wait a few moments,
 and then `exec` RP scripts or a shell in the container. Refer to the
 comments in the file for more information.
 
-# Docker Compose stack
+## Docker Compose stack
 
 `stack.yml` provides a recipe for `docker-compose` (or more elaborate
 container-based service cluster). The stack relies on two public

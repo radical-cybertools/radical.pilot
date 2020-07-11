@@ -7,6 +7,9 @@ dist:     xenial
 git:
   depth: 1
 
+services:
+  - docker
+
 env:
   global:
     - CODECOV_TOKEN="c7e0d993-d31a-4d39-8ffa-07c30ea73e48"
@@ -20,6 +23,8 @@ env:
     - MAIN_CMD="ru-runcheck.sh pylint diff"
     - MAIN_CMD="ru-runcheck.sh flake8 tests/ bin/"
     - MAIN_CMD="ru-runcheck.sh pylint tests/ bin/"
+    - MAIN_CMD="bash ci-scripts/docker-stack.sh"
+    - MAIN_CMD="bash ci-scripts/docker-monolithic.sh"
       #    - MAIN_CMD="ru-runcheck.sh flake8 tests/ bin/ examples/"
       #    - MAIN_CMD="ru-runcheck.sh pylint tests/ bin/ examples/"
 
