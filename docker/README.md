@@ -15,6 +15,8 @@ comments in the file for more information.
 
 ## Docker Compose stack
 
+(Warning: Still under development.)
+
 `stack.yml` provides a recipe for `docker-compose` (or more elaborate
 container-based service cluster). The stack relies on two public
 container images (`mongo:bionic` for the database service and
