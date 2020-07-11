@@ -23,10 +23,25 @@ env:
     - MAIN_CMD="ru-runcheck.sh pylint diff"
     - MAIN_CMD="ru-runcheck.sh flake8 tests/ bin/"
     - MAIN_CMD="ru-runcheck.sh pylint tests/ bin/"
-    - MAIN_CMD="bash ci-scripts/docker-stack.sh"
-    - MAIN_CMD="bash ci-scripts/docker-monolithic.sh"
       #    - MAIN_CMD="ru-runcheck.sh flake8 tests/ bin/ examples/"
       #    - MAIN_CMD="ru-runcheck.sh pylint tests/ bin/ examples/"
+
+jobs:
+  include:
+  - install:
+      - docker build -t radicalpilot -f docker/radicalpilot.dockerfile .
+    script:
+      - docker-compose -f docker/stack.yml up -d
+      - sleep 5
+      - docker exec -ti -u rp docker_login_1 bash -c "cd && . /home/rp/rp-venv/bin/activate && python /radical.pilot/examples/00*"
+      - docker-compose -f stack.yml down
+  - install:
+      - docker build -t rp-complete -f docker/rp-complete.dockerfile .
+    script:
+      - docker run --rm --name rp_test -d rp-complete
+      - sleep 5
+      - docker exec -ti -u rp rp_test bash -c "cd && . /home/rp/rp-venv/bin/activate && python /radical.pilot/examples/00*"
+      - docker kill rp_test
 
 before_install:
   - uname -a
