@@ -109,11 +109,12 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _hb_term_cb(self):
+    def _hb_term_cb(self, uid=None):
 
+        self._log.debug('hb_term %s: %s died', self.uid, uid)
         self._cmgr.close()
-        self._log.warn('hb termination')
 
+        self._prof.prof('term', uid=self._uid)
         return None
 
 

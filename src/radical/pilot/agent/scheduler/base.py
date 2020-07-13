@@ -639,7 +639,7 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def _prof_sched_skip(self, task):
 
-        self._stats['skipped'] += 1
+        self._stats['skip'] += 1
       # self._prof.prof('schedule_skip', uid=task['uid'])
         pass
 
