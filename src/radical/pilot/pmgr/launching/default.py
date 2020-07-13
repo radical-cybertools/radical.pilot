@@ -15,7 +15,6 @@ import radical.saga            as rs
 import radical.saga.filesystem as rsfs
 import radical.utils           as ru
 
-from .... import pilot         as rp
 from ...  import states        as rps
 from ...  import constants     as rpc
 
@@ -466,7 +465,7 @@ class Default(PMGRLaunchingComponent):
                     raise ValueError('unknown pilot %s' % pid)
 
                 pilot = self._pilots[pid]['pilot']
-                if pilot['state'] not in rp.FINAL:
+                if pilot['state'] not in rps.FINAL:
                     self._log.debug('killing pilots: alive %s', pid)
                     alive_pids.append(pid)
                 else:
@@ -507,7 +506,7 @@ class Default(PMGRLaunchingComponent):
                     if 'resource_details' in pilot:
                         del(pilot['resource_details'])
 
-                    if pilot['state'] in rp.FINAL:
+                    if pilot['state'] in rps.FINAL:
                         continue
 
                     self._log.debug('plan cancellation of %s : %s', pilot, job)
