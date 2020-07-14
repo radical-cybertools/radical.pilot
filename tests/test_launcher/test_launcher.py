@@ -9,6 +9,7 @@ from unittest import TestCase
 
 import os
 import radical.utils as ru
+import radical.pilot as rp
 
 from   radical.pilot.pmgr.launching.default import Default
 
@@ -78,10 +79,9 @@ class TestContinuous(TestCase):
         component._root_dir   = "%s/../../src/radical/pilot/" % component._mod_dir
         component._conf_dir   = "%s/configs/" % component._root_dir
 
-        component._rp_version, _, _, _, \
-        component._rp_sdist_name, \
-        component._rp_sdist_path = \
-                ru.get_version([component._mod_dir, component._root_dir])
+        component._rp_version    = rp.version
+        component._rp_sdist_name = rp.sdist_name
+        component._rp_sdist_path = rp.sdist_path
 
         resource = 'local.localhost'
         rcfg     = configs.local.localhost
