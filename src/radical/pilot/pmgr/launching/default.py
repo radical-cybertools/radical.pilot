@@ -883,6 +883,7 @@ class Default(PMGRLaunchingComponent):
         # pilot description and resource configuration
         number_cores    = pilot['description']['cores']
         number_gpus     = pilot['description']['gpus']
+        required_memory = pilot['description']['memory']
         runtime         = pilot['description']['runtime']
         app_comm        = pilot['description']['app_comm']
         queue           = pilot['description']['queue']
@@ -1284,6 +1285,7 @@ class Default(PMGRLaunchingComponent):
         jd.error                 = "bootstrap_0.err"
         jd.total_cpu_count       = number_cores
         jd.total_gpu_count       = number_gpus
+        jd.total_physical_memory = required_memory
         jd.processes_per_host    = cores_per_node
         jd.spmd_variation        = spmd_variation
         jd.wall_time_limit       = runtime
