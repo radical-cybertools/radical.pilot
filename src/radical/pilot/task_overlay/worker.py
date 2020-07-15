@@ -105,6 +105,9 @@ class Worker(rpu.Component):
         # to the master.  This can be used to communicate, for example, worker
         # specific communication endpoints.
 
+        # make sure that channels are up before registering
+        time.sleep(1)
+
         # `info` is a placeholder for any additional meta data communicated to
         # the worker
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
@@ -341,7 +344,7 @@ class Worker(rpu.Component):
         '''
 
       # self._log.debug('requested %s', task)
-        self._prof.prof('reg_start', uid=self._uid, msg=task['uid'])
+        self._prof.prof('req_start', uid=self._uid, msg=task['uid'])
         task['worker'] = self._uid
 
         try:
@@ -409,7 +412,6 @@ class Worker(rpu.Component):
             out, err, ret = self._modes[mode](task.get('data'))
             with tlock:
                 res = [task, str(out), str(err), int(ret)]
-                self._log.debug('put 1 result: task %s', task['uid'])
                 self._result_queue.put(res)
         # ----------------------------------------------------------------------
 
@@ -497,7 +499,7 @@ class Worker(rpu.Component):
                    'ret': ret}
 
             self._res_put.put(res)
-            self._prof.prof('reg_stop', uid=self._uid, msg=task['uid'])
+            self._prof.prof('req_stop', uid=self._uid, msg=task['uid'])
         except:
             self._log.exception('result cb failed')
             raise
