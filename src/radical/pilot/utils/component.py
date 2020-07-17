@@ -1,4 +1,7 @@
 
+# pylint: disable=unused-argument    # W0613 Unused argument 'timeout' & 'input'
+# pylint: disable=redefined-builtin  # W0622 Redefining built-in 'input'
+
 import os
 import copy
 import time
@@ -637,13 +640,14 @@ class Component(object):
     #
     def stop(self, timeout=None):                                         # noqa
         '''
-        We need to terminate and join all threads, close all comunication
+        We need to terminate and join all threads, close all communication
         channels, etc.  But we trust on the correct invocation of the finalizers
         to do all this, and thus here only forward the stop request to the base
         class.
         '''
 
         #  FIXME: implement timeout, or remove parameter
+        #   (pylint W0613 should be removed if changes to timeout are applied)
 
         self._log.info('stop %s (%s : %s) [%s]', self.uid, os.getpid(),
                        ru.get_thread_name(), ru.get_caller_name())

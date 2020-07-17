@@ -54,7 +54,7 @@ def main(cfg):
     '''
 
     # basic setup: cfg, logger and profiler
-    log = ru.Logger(name=cfg.uid, ns='radical.pilot', path=cfg.path)
+    log  = ru.Logger(name=cfg.uid, ns='radical.pilot', path=cfg.path)
     prof = ru.Profiler(name=cfg.uid, ns='radical.pilot', path=cfg.path)
 
     try:
@@ -76,7 +76,7 @@ def wrapped_main(cfg, log, prof):
     session = rp.Session(cfg=cfg, _primary=False)
 
     # create the component and begin to work
-    comp  = rp.utils.Component.create(cfg, session)
+    comp = rp.utils.Component.create(cfg, session)
     comp.start()
 
     # component runs - send heartbeats so that cmgr knows about it
