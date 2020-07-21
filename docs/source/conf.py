@@ -18,8 +18,8 @@
 # -- Project information -----------------------------------------------------
 
 project = 'RADICAL-Pilot'
-copyright = '2020, The RADICAL Group at Rutgers University'
-author = 'The RADICAL Group at Rutgers University'
+copyright = '2020, The RADICAL-Cybertools Team'
+author = 'RADICAL-Cybertools Team'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
