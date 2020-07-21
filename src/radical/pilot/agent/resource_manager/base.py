@@ -2,8 +2,8 @@
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
 import os
+
 import radical.utils as ru
 
 # 'enum' for resource manager types
@@ -246,8 +246,8 @@ class ResourceManager(object):
             }[name]
             return impl(cfg, session)
 
-        except KeyError:
-            raise RuntimeError("ResourceManager type '%s' unknown or defunct" % name)
+        except KeyError as e:
+            raise RuntimeError("ResourceManager '%s' unknown" % name) from e
 
 
     # --------------------------------------------------------------------------

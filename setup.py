@@ -135,13 +135,13 @@ def get_version(_mod_root):
         return _version_base, _version_detail, _sdist_name, _path
 
     except Exception as e:
-        raise RuntimeError('Could not extract/set version: %s' % e)
+        raise RuntimeError('Could not extract/set version: %s' % e) from e
 
 
 # ------------------------------------------------------------------------------
-# check python version. we need >= 3.6
-if  sys.hexversion < 0x03060000:
-    raise RuntimeError('%s requires Python 3.6 or higher' % name)
+# check python version, should be >= 3.6
+if sys.hexversion < 0x03060000:
+    raise RuntimeError('ERROR: %s requires Python 3.6 or newer' % name)
 
 
 # ------------------------------------------------------------------------------

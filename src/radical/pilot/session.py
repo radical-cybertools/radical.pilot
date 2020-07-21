@@ -180,10 +180,10 @@ class Session(rs.Session):
                                           'rs': rs.version_detail,
                                           'ru': ru.version_detail,
                                           'py': py_version_detail}})
-        except Exception:
+        except Exception as e:
             self._rep.error(">>err\n")
             self._log.exception('session create failed [%s]',  dburl)
-            raise RuntimeError ('session create failed [%s]' % dburl)
+            raise RuntimeError ('session create failed [%s]' % dburl) from e
 
         # primary sessions have a component manager which also manages
         # heartbeat.  'self._cmgr.close()` should be called during termination

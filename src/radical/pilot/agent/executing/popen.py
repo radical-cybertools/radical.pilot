@@ -248,7 +248,7 @@ prof(){
             except Exception as e:
                 msg = "Error in spawner (%s)" % e
                 self._log.exception(msg)
-                raise RuntimeError(msg)
+                raise RuntimeError (msg) from e
 
             # also add any env vars requested in the unit description
             if descr['environment']:
