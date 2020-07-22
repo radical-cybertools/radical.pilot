@@ -1,3 +1,4 @@
+# pylint: disable=protected-access,unused-argument
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -216,7 +217,7 @@ class Session(rs.Session):
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback):
         self.close(download=True)
 
 
@@ -772,8 +773,8 @@ class Session(rs.Session):
 
                 else:
                     shell = self.get_js_shell(resource, schema)
-                    ret, out, err = shell.run_sync(' echo "WORKDIR: %s"'
-                                                                  % sandbox_raw)
+                    ret, out, _ = shell.run_sync(' echo "WORKDIR: %s"' %
+                                                 sandbox_raw)
                     if ret or 'WORKDIR:' not in out:
                         raise RuntimeError("Couldn't get remote workdir.")
 
@@ -949,7 +950,10 @@ class Session(rs.Session):
     @staticmethod
     def autopilot(user, passwd):
 
-        import github3
+        try:
+            import github3
+        except ImportError:
+            print('ERROR: github3 library is not available')
         import random
 
         labels = 'type:autopilot'
@@ -976,7 +980,6 @@ class Session(rs.Session):
             out        = ru.sh_callout("%s | %s" % (cmd_fetch, cmd_filter),
                                        shell=True)[0]
             return out.strip()
-
 
         github = github3.login(user, passwd)
         repo   = github.repository("radical-cybertools", "radical.pilot")

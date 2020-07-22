@@ -6,6 +6,9 @@ import os
 
 import radical.utils as ru
 
+from ... import agent as rpa
+
+
 # 'enum' for resource manager types
 RM_NAME_FORK        = 'FORK'
 RM_NAME_CCM         = 'CCM'
@@ -151,13 +154,17 @@ class ResourceManager(object):
 
         for lm in launch_methods:
             try:
-                from .... import pilot as rp
-                ru.dict_merge(self.lm_info,
-                        rp.agent.LaunchMethod.rm_config_hook(lm, self._cfg,
-                                                   self, self._log, self._prof))
+                ru.dict_merge(
+                    self.lm_info,
+                    rpa.LaunchMethod.rm_config_hook(name=lm,
+                                                    cfg=self._cfg,
+                                                    rm=self,
+                                                    log=self._log,
+                                                    profiler=self._prof))
             except Exception as e:
                 # FIXME don't catch/raise
-                self._log.exception("ResourceManager config hook failed: %s" % e)
+                self._log.exception(
+                    "ResourceManager config hook failed: %s" % e)
                 raise
 
             self._log.info("ResourceManager config hook succeeded (%s)" % lm)
@@ -265,13 +272,17 @@ class ResourceManager(object):
 
         for lm in launch_methods:
             try:
-                from .... import pilot as rp
-                ru.dict_merge(self.lm_info,
-                rp.agent.LaunchMethod.rm_shutdown_hook(lm, self._cfg, self,
-                                             self.lm_info, self._log,
-                                             self._prof))
+                ru.dict_merge(
+                    self.lm_info,
+                    rpa.LaunchMethod.rm_shutdown_hook(name=lm,
+                                                      cfg=self._cfg,
+                                                      rm=self,
+                                                      lm_info=self.lm_info,
+                                                      log=self._log,
+                                                      profiler=self._prof))
             except Exception as e:
-                self._log.exception("ResourceManager shutdown hook failed: %s" % e)
+                self._log.exception(
+                    "ResourceManager shutdown hook failed: %s" % e)
                 raise
 
             self._log.info("ResourceManager shutdown hook succeeded (%s)" % lm)

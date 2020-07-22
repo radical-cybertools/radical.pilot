@@ -165,7 +165,7 @@ class RunTwine(Command):
     def initialize_options(self): pass
     def finalize_options(self):   pass
     def run(self):
-        out,  err, ret = sh_callout('python setup.py sdist upload -r pypi')
+        _, _, ret = sh_callout('python setup.py sdist upload -r pypi')
         raise SystemExit(ret)
 
 
