@@ -954,6 +954,7 @@ class Session(rs.Session):
             import github3
         except ImportError:
             print('ERROR: github3 library is not available')
+            return
         import random
 
         labels = 'type:autopilot'
