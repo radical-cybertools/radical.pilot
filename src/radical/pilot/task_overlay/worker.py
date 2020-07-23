@@ -337,6 +337,17 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def prepare_task(self, task):
+        '''
+        This method is called upon receiving a new request, and can be
+        overloaded to perform any preperatory action before the request is acted
+        upon
+        '''
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
     def _request_cb(self, task):
         '''
         grep call type from task, check if such a method is registered, and
@@ -346,6 +357,8 @@ class Worker(rpu.Component):
       # self._log.debug('requested %s', task)
         self._prof.prof('req_start', uid=self._uid, msg=task['uid'])
         task['worker'] = self._uid
+
+        self.prepare_task(task)
 
         try:
             # ok, we have work to do.  Check the requirements to see  how many
@@ -409,6 +422,10 @@ class Worker(rpu.Component):
 
         # ----------------------------------------------------------------------
         def _dispatch_thread(tlock):
+
+            os.environ['RP_TASK_CORES'] = ','.join(str(i) for i in task['resources']['cores'])
+            os.environ['RP_TASK_GPUS']  = ','.join(str(i) for i in task['resources']['gpus'])
+
             out, err, ret = self._modes[mode](task.get('data'))
             with tlock:
                 res = [task, str(out), str(err), int(ret)]

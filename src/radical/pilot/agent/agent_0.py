@@ -95,9 +95,9 @@ class Agent_0(rpu.Worker):
                                 log=self._log)
         self._hb.start()
 
-        # register pmgr heartbeat
-        self._log.info('hb init for %s', self._pmgr)
-        self._hb.beat(uid=self._pmgr)
+      # # register pmgr heartbeat
+      # self._log.info('hb init for %s', self._pmgr)
+      # self._hb.beat(uid=self._pmgr)
 
 
     # --------------------------------------------------------------------------
@@ -490,7 +490,8 @@ class Agent_0(rpu.Worker):
             self._prof.prof('cmd', msg="%s : %s" % (cmd, arg), uid=self._pid)
 
             if cmd == 'heartbeat' and arg['pmgr'] == self._pmgr:
-                self._hb.beat(uid=self._pmgr)
+              # self._hb.beat(uid=self._pmgr)
+                pass
 
             elif cmd == 'cancel_pilot':
                 self._log.info('cancel pilot cmd')
