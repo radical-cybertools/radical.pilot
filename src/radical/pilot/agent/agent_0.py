@@ -418,9 +418,6 @@ class Agent_0(rpu.Worker):
                 if hop : cmdline = hop
                 else   : cmdline = ls_name
 
-            # spawn the sub-agent
-            self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
-
             # ------------------------------------------------------------------
             class _SA(mp.Process):
 
@@ -447,6 +444,10 @@ class Agent_0(rpu.Worker):
                         else:
                             return False  # proc is gone - terminate
             # ------------------------------------------------------------------
+
+            # spawn the sub-agent
+            self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
+            _SA(sa, cmdline, log=self._log)
 
             # FIXME: register heartbeats?
 
