@@ -434,6 +434,7 @@ class Agent_0(rpu.Worker):
                     out        = open('%s.out' % self._name, 'w')
                     err        = open('%s.err' % self._name, 'w')
                     self._proc = sp.Popen(args=self._cmd, stdout=out, stderr=err)
+                    self._log.debug('sub-agent %s spawned', self._name)
 
                 def run(self):
                     # FIXME: lifetime, use daemon agent launcher
