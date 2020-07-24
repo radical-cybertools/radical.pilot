@@ -86,7 +86,7 @@ class Session(rs.Session):
         self._cmgr    = None    # only primary sessions have a cmgr
 
         self._cfg     = ru.Config('radical.pilot.session',  name=name, cfg=cfg)
-        self._rcfgs   = ru.Config('radical.pilot.resource', name='*')
+        self._rcfgs   = ru.Config('radical.pilot.resource', name='*', expand=False)
 
         if _primary:
 
@@ -651,7 +651,7 @@ class Session(rs.Session):
             raise RuntimeError("Resource host '%s' unknown." % host)
 
         resource_cfg = copy.deepcopy(self._rcfgs[domain][host])
-
+        self._log.debug('base rcfg:', self._rcfgs[domain][host])
         if  not schema:
             if 'schemas' in resource_cfg:
                 schema = resource_cfg['schemas'][0]
