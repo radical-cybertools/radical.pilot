@@ -75,7 +75,7 @@ class TestBase(TestCase):
         component._wait_pool = list()
         component._wait_lock = threading.RLock()
         component._slot_lock = threading.RLock()
-        unit = {'description':'this is a unit', 'uid': 'test'}
+        unit = {'description':{'note':'this is a unit'}, 'uid': 'test'}
         component._try_allocation(unit=unit)
         self.assertEqual(unit['slots'], {"cores_per_node": 16,
                                  "lfs_per_node": {"size": 0, "path": "/dev/null"},
