@@ -3,19 +3,30 @@
 [![Build Status](https://travis-ci.org/radical-cybertools/radical.pilot.svg?branch=devel)](https://travis-ci.org/radical-cybertools/radical.pilot)
 [![codecov](https://codecov.io/gh/radical-cybertools/radical.pilot/branch/devel/graph/badge.svg)](https://codecov.io/gh/radical-cybertools/radical.pilot)
 
-**Documentation:** https://radicalpilot.readthedocs.io/en/stable/
+RADICAL-Pilot (RP) is a Pilot system written in Python and specialized 
+in executing applications composed of many computational tasks on high 
+performance computing (HPC) platforms. As a Pilot system, RP separates resource 
+acquisition from using those resources to execute application tasks. Resources 
+are acquired by submitting a job to the batch system of an HPC machine. Once 
+the job is scheduled on the requested resources, RP can directly schedule and 
+launch application tasks on those resources. Thus, tasks are not scheduled via 
+the batch system of the HPC platform, but directly on the acquired resources.
 
-**Mailinglists:** 
+## Documentation
 
-* radical-pilot-users@googlegroups.com
-* radical-pilot-devel@googlegroups.com
+Full system description and usage examples are available here - 
+https://radicalpilot.readthedocs.io/en/stable/
 
-The `master` branch generally reflects the RADICAL-Pilot release on Pypi, and is
-considered stable: it should work 'out of the box' for the supported backends.
-For a list of supported backends, please refer to the documentation.
+Additional information is provided in the
+[wiki](https://github.com/radical-cybertools/radical.pilot/wiki) section.
+
+## Repository code
+
+The `master` branch generally reflects the RADICAL-Pilot release on 
+[PyPI](https://pypi.org/project/radical.pilot/), and is considered stable: 
+it should work 'out of the box' for the supported backends. For a list of 
+supported backends, please refer to the documentation.
 
 The `devel` branch (and any other branches than master, for that matter)
-may not correspond to the publised documentation, and specifically may have
-dependencies which need to be resolved manually.  Please contact us over the
-mailing list if you need advice on the usage of any non-master branch.
-
+may not correspond to the published documentation, and specifically may have
+dependencies which need to be resolved manually.
