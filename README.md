@@ -1,4 +1,4 @@
-# RADICAL-Pilot
+# RADICAL-Pilot (RP)
 
 [![Build Status](https://travis-ci.org/radical-cybertools/radical.pilot.svg?branch=devel)](https://travis-ci.org/radical-cybertools/radical.pilot)
 [![codecov](https://codecov.io/gh/radical-cybertools/radical.pilot/branch/devel/graph/badge.svg)](https://codecov.io/gh/radical-cybertools/radical.pilot)
@@ -14,19 +14,20 @@ the batch system of the HPC platform, but directly on the acquired resources.
 
 ## Documentation
 
-Full system description and usage examples are available here - 
+Full system description and usage examples are available at: 
 https://radicalpilot.readthedocs.io/en/stable/
 
 Additional information is provided in the
-[wiki](https://github.com/radical-cybertools/radical.pilot/wiki) section.
+[wiki](https://github.com/radical-cybertools/radical.pilot/wiki) section of RP
+GitHub repository.
 
-## Repository code
+## Code
 
-The `master` branch generally reflects the RADICAL-Pilot release on 
+Generally, the `master` branch reflects the RP release published on
 [PyPI](https://pypi.org/project/radical.pilot/), and is considered stable: 
 it should work 'out of the box' for the supported backends. For a list of 
 supported backends, please refer to the documentation.
 
-The `devel` branch (and any other branches than master, for that matter)
-may not correspond to the published documentation, and specifically may have
-dependencies which need to be resolved manually.
+The `devel` branch (and any branch other than master) may not correspond to the 
+published documentation and, specifically, may have dependencies which need to 
+be resolved manually.
