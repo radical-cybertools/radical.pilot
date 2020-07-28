@@ -3,7 +3,6 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 import os
-import pytest
 import unittest
 import subprocess
 import radical.utils as ru
@@ -26,7 +25,7 @@ class TestBase(unittest.TestCase):
     #
     def setUp(self):
 
-        tc = ru.read_json('/tests/test_executing/test_unit/test_cases/test_base.json')
+        tc = ru.read_json('tests/test_executing/test_unit/test_cases/test_base.json')
 
         return tc
 
@@ -34,19 +33,35 @@ class TestBase(unittest.TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Popen, '__init__', return_value=None)
-    def test_handle_unit(self, mocked_init):
+    @mock.patch.object(Popen, 'initialize', return_value=None)
+    def test_handle_unit(self, mocked_init, mocked_initialize):
+
+        global_launcher = []
+        global_cu = []
+
+        def spawn_side_effect(launcher, cu):
+            nonlocal global_launcher
+            nonlocal global_cu
+            global_launcher.append(launcher)
+            global_cu.append(cu)
+
         tests = self.setUp()
         cu = dict()
         cu['uid'] = tests['unit']['uid'] 
         cu['description'] = tests['unit']['description'] 
-        
         component = Popen()
-        component._prof   = mock.Mock()
-        component.publish = mock.Mock()
-        component.advance = mock.Mock()
-        component._log = ru.Logger('dummy')  
-        test = component._handle_unit(cu)
-        assert test == None
+        component._mpi_launcher  = mock.Mock()
+        component._mpi_launcher.name = 'mpiexec'
+        component._mpi_launcher.command = 'mpiexec'
+        component._task_launcher = mock.Mock()
+        component._task_launcher.name = 'ssh'
+        component._task_launcher.command = 'ssh'
+
+        component.spawn   = mock.MagicMock(side_effect=spawn_side_effect)
+        component._log = ru.Logger('dummy')
+        component._handle_unit(cu)
+        self.assertEqual(cu, global_cu[0])
+
 
 
     # --------------------------------------------------------------------------
@@ -56,7 +71,7 @@ class TestBase(unittest.TestCase):
         tests = self.setUp()
         cu = dict()
         cu = tests['unit']
-        cu['proc'] = subprocess.Popen(args       = '',
+        cu['proc'] = subprocess.Popen(args       = '10',
                                       executable = '/bin/sleep',
                                       stdin      = None,
                                       stdout     = None,
@@ -65,11 +80,10 @@ class TestBase(unittest.TestCase):
                                       close_fds  = True,
                                       shell      = True,
                                       cwd        = None)
+
         component = Popen()
         component._cus_to_watch = list()
         component._cus_to_cancel = list()
         component._cus_to_watch.append(cu)
-        test = component._check_running()
-        assert test == None
-
-
+        action = component._check_running()
+        self.assertEqual(action,0)
