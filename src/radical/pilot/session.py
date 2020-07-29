@@ -164,10 +164,6 @@ class Session(rs.Session):
 
         self._cfg.dburl = dburl
 
-        self._rep.info ('<<database   : ')
-        self._rep.plain('[%s]'    % dburl)
-        self._log.info('dburl %s' % dburl)
-
         # create/connect database handle on primary sessions
         try:
             self._dbs = DBSession(sid=self.uid, dburl=dburl,
