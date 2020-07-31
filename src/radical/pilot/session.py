@@ -652,7 +652,7 @@ class Session(rs.Session):
             raise RuntimeError("Resource host '%s' unknown." % host)
 
         resource_cfg = copy.deepcopy(self._rcfgs[domain][host])
-        self._log.debug('base rcfg:', self._rcfgs[domain][host])
+
         if  not schema:
             if 'schemas' in resource_cfg:
                 schema = resource_cfg['schemas'][0]
