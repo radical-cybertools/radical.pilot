@@ -199,7 +199,50 @@ UNIT_DURATIONS_PRTE_APP  = {
         }
 }
 
-# The set of default unit durations for RADICAL-Analytics. All the durations
+# Set of default pilot durations for RADICAL-Analytics. All the durations
+# are contiguos.
+# FIXME: Divide durations in provide/consume.
+# NOTE: _init durations are most often 0. 
+PILOT_DURATIONS_DEBUG = {
+    'consume' : {
+        'p_pmngr_create'          : [ {ru.EVENT: 'state'            , ru.STATE: rps.NEW                    },      
+                                      {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_LAUNCHING_PENDING }  ],
+        'p_pmngr_launching_init'  : [ {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_LAUNCHING_PENDING }, 
+                                      {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_LAUNCHING         }  ],
+        'p_pmngr_launching'       : [ {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_LAUNCHING         },               
+                                      {ru.EVENT: 'staging_in_start' , ru.STATE: None                       }  ],
+        'p_pmngr_stage_in'        : [ {ru.EVENT: 'staging_in_start' , ru.STATE: None                       }, 
+                                      {ru.EVENT: 'staging_in_stop'  , ru.STATE: None                       }  ], 
+        'p_pmngr_submission_init' : [ {ru.EVENT: 'staging_in_stop'  , ru.STATE: None                       }, 
+                                      {ru.EVENT: 'submission_start' , ru.STATE: None                       }  ], 
+        'p_pmngr_submission'      : [ {ru.EVENT: 'submission_start' , ru.STATE: None                       },  
+                                      {ru.EVENT: 'submission_stop'  , ru.STATE: None                       }  ],
+        'p_pmngr_scheduling_init' : [ {ru.EVENT: 'submission_stop'  , ru.STATE: None                       },  
+                                      {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_ACTIVE_PENDING    }  ], 
+        'p_pmngr_scheduling'      : [ {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_ACTIVE_PENDING    },     # batch system queue time
+                                      {ru.EVENT: 'bootstrap_0_start', ru.STATE: None                       }  ],
+        'p_agent_ve_setup_init'   : [ {ru.EVENT: 'bootstrap_0_start', ru.STATE: None                       },  
+                                      {ru.EVENT: 've_setup_start'   , ru.STATE: None                       }  ], 
+        'p_agent_ve_setup'        : [ {ru.EVENT: 've_setup_start'   , ru.STATE: None                       },  
+                                      {ru.EVENT: 've_setup_stop'    , ru.STATE: None                       }  ], 
+        'p_agent_ve_activate_init': [ {ru.EVENT: 've_setup_stop'    , ru.STATE: None                       },  
+                                      {ru.EVENT: 've_activate_start', ru.STATE: None                       }  ], 
+        'p_agent_ve_activate'     : [ {ru.EVENT: 've_activate_start', ru.STATE: None                       },
+                                      {ru.EVENT: 've_activate_stop' , ru.STATE: None                       }  ],
+        'p_agent_install_init'    : [ {ru.EVENT: 've_activate_stop' , ru.STATE: None                       },
+                                      {ru.EVENT: 'rp_install_start' , ru.STATE: None                       }  ],
+        'p_agent_install'         : [ {ru.EVENT: 'rp_install_start' , ru.STATE: None                       },
+                                      {ru.EVENT: 'rp_install_stop'  , ru.STATE: None                       } ],
+        'p_agent_launching'       : [ {ru.EVENT: 'rp_install_stop'  , ru.STATE: None                       },
+                                      {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_ACTIVE            }  ],
+        'p_agent_runtime'         : [ {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_ACTIVE            },     # total pilot runtime
+                                     [{ru.EVENT: 'state'            , ru.STATE: rps.DONE                   },
+                                      {ru.EVENT: 'state'            , ru.STATE: rps.CANCELED               },
+                                      {ru.EVENT: 'state'            , ru.STATE: rps.FAILED                 } ]]
+    }
+}
+
+# Set of default unit durations for RADICAL-Analytics. All the durations
 # are contiguos.
 UNIT_DURATIONS_DEBUG = {
     'consume' : {
