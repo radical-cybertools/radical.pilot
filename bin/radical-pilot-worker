@@ -49,26 +49,27 @@ def main(cfg):
     are interpreted by the component implementation.
     '''
 
-    # basic setup: uid, logger, process name
-    uid  = cfg.uid
-    path = cfg.path
-    prof = ru.Profiler(name=uid, ns='radical.pilot', path=path)
+    # basic setup: cfg, logger and profiler
+    log  = ru.Logger(name=cfg.uid, ns='radical.pilot', path=cfg.path)
+    prof = ru.Profiler(name=cfg.uid, ns='radical.pilot', path=cfg.path)
 
     try:
-        prof.prof('worker_start', uid=uid)
-        wrapped_main(cfg, uid, path)
+        prof.prof('worker_start', uid=cfg.uid)
+        prof.disable()
+        wrapped_main(cfg, log, prof)
     except:
-        prof.prof('worker_fail', uid=uid)
+        prof.enable()
+        prof.prof('worker_fail', uid=cfg.uid)
     finally:
-        prof.prof('worker_stop', uid=uid)
+        prof.enable()
+        prof.prof('worker_stop', uid=cfg.uid)
 
 
-def wrapped_main(cfg, uid, path):
+def wrapped_main(cfg, log, prof):
 
-    log  = ru.Logger(name=uid, ns='radical.pilot', path=path)
     term = mt.Event()
 
-    spt.setproctitle('rp.%s' % uid)
+    spt.setproctitle('rp.%s' % cfg.uid)
 
     # start a non-primary session
     session = rp.Session(cfg=cfg, _primary=False)
@@ -81,14 +82,14 @@ def wrapped_main(cfg, uid, path):
     hb_pub = ru.zmq.Publisher ('heartbeat', cfg.heartbeat.addr_pub)
 
     def hb_beat_cb():
-        hb_pub.put('heartbeat', msg={'uid' : uid})
+        hb_pub.put('heartbeat', msg={'uid': cfg.uid})
 
     def hb_term_cb(hb_uid):
         worker.stop()
         term.set()
         return None
 
-    hb = ru.Heartbeat(uid=uid,
+    hb = ru.Heartbeat(uid=cfg.uid,
                       timeout=cfg.heartbeat.timeout,
                       interval=cfg.heartbeat.interval,
                       beat_cb=hb_beat_cb,
@@ -104,8 +105,9 @@ def wrapped_main(cfg, uid, path):
         if msg['uid'] == cfg.cmgr:
             hb.beat(uid=cfg.cmgr)
 
-    ru.zmq.Subscriber('heartbeat', cfg.heartbeat.addr_sub, log=log,
-                      topic='heartbeat', cb=hb_sub_cb)
+    ru.zmq.Subscriber('heartbeat', cfg.heartbeat.addr_sub,
+                      topic='heartbeat', cb=hb_sub_cb,
+                      log=log, prof=prof)
 
     # all is set up - we can sit idle 'til end of time.
     while not term.is_set():
@@ -127,7 +129,7 @@ if __name__ == "__main__":
 
     # NOTE: this script runs as an RP task and will *not* daemonize
 
-    main()
+    main(cfg)
 
 
 # ------------------------------------------------------------------------------
