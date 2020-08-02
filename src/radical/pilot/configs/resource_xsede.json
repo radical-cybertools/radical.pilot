@@ -574,7 +574,7 @@
         },
         "default_queue"               : "RM",
         "resource_manager"            : "SLURM",
-        "lfs_path_per_node"           : "$LOCAL",
+        "lfs_path_per_node"           : "${LOCAL}",
         "lfs_size_per_node"           : 3713368,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
