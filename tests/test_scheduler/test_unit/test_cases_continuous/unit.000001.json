@@ -1,0 +1,56 @@
+
+{
+    "unit": {
+        "uid":         "unit.000001",
+        "description": {"environment": {},
+                        "executable"       : "/bin/sleep",
+                        "arguments"        : ["10"],
+                        "gpu_processes"    : 0,
+                        "cpu_processes"    : 1,
+                        "cpu_threads"      : 0,
+                        "cpu_process_type" : "null",
+                        "gpu_process_type" : "null",
+                        "gpu_thread_type"  : "null",
+                        "mem_per_process"  : 128,
+                        "lfs_per_process"  : 0
+                       },
+        "unit_sandbox_path": "/tmp"
+    },
+
+    "setup" : {
+        "lm" : {
+            "slots": {
+                "cores_per_node": 16,
+                "gpus_per_node" : 0,
+                "task_offsets"  : [0],
+                "lm_info"       : {
+                                   "dvm_uri" : "dvm_uri"
+                                  },
+                "lfs_per_node"  : 0,
+                "nodes"         : [{"name"    : "a",
+                                    "uid"     : "1",
+                                    "cores"   : [1],
+                                    "gpus"    : [1],
+                                    "core_map": [[0]],
+                                    "gpu_map" : [[0]],
+                                    "mem"     : 0,
+                                    "lfs"     : {"size": 0,
+                                                 "path": "/dev/null"}
+                }]
+            },
+            "unit_sandbox": "./"
+        }
+    },
+
+    "results": {
+        "lm": {
+            "fork"    : ["/bin/sleep \"10\" ", null]
+        },
+        "resource_file": {
+            "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0}; gpu: {0}}\n"]
+        },
+        "resource_filename": {
+            "jsrun": "rs_layout_cu_000001"
+        }
+    }
+}
