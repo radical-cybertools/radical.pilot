@@ -75,7 +75,6 @@ TARBALL  = 'Tarball'   # remote staging will be executed using a tarball.
 import radical.saga.filesystem as rsf
 
 CREATE_PARENTS = rsf.CREATE_PARENTS  # Create parent directories if needed
-SKIP_FAILED    = 4096                # Don't stage out files if tasks failed
 NON_FATAL      = 8192                # Don't fail the CU if input is missing
 
 
