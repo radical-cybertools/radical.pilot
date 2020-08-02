@@ -12,9 +12,9 @@ import radical.utils as ru
 def usage(msg):
 
     if msg:
-        print '    Error: %s' % msg
+        print('    Error: %s' % msg)
 
-    print '''    Usage: %s <session_dir> [profile]
+    print('''    Usage: %s <session_dir> [profile]
 
     This script will parse all logfiles in the session tree and search for PRTE
     profile entries.  It will parse those line, map the PRTE task IDs to RP IDs,
@@ -35,7 +35,7 @@ def usage(msg):
     those files.   This script will raise an error if a PRTE profile line cannot
     be mapped to an RP ID.
 
-    ''' % sys.argv[0]
+    ''' % sys.argv[0])
 
     if msg:
         sys.exit(1)
@@ -105,10 +105,11 @@ def handle_line(prof, line, pid, idmap):
         uid    = uid.replace(',', '.')
 
         prof.prof('prte_%s' % event, uid=uid, state='AGENT_EXECUTING',
-                  timestamp=tstamp, comp='prte.dvm', tid=dvm, msg=node)
+                  # timestamp=tstamp, comp='prte.dvm', tid=dvm, msg=node)
+                  ts=tstamp, comp='prte.dvm', tid=dvm, msg=node)
     except Exception as e:
-        print 'skip line: %s' % str(e)
-        print line
+        print('skip line: %s' % str(e))
+        print(line)
 
 
 # ------------------------------------------------------------------------------
@@ -143,8 +144,8 @@ def handle_dir(prof, dname):
     pid   = os.path.basename(dname)
     idmap = dict()
 
-    for fname in glob.glob('%s/agent.*.staging.output.*.child.log' % dname):
-        print fname
+    for fname in glob.glob('%s/agent*staging*output*.log' % dname):
+        print(fname)
         map_ids(fname, idmap)
 
     for fname in glob.glob('%s/*.log' % dname):
@@ -155,8 +156,8 @@ def handle_dir(prof, dname):
   #           msg='msg')
 
   # print idmap
-    print
-    print
+    print()
+    print()
 
 # ------------------------------------------------------------------------------
 #
@@ -181,8 +182,8 @@ def main():
     # iterate through all `pilot.*` subdirs in the session tree
     for entry in glob.glob('%s/pilot.*' % sid):
         if os.path.isdir(entry):
-            print
-            print '--> %s' %  entry
+            print()
+            print('--> %s' %  entry)
             handle_dir(prof, entry)
 
 
