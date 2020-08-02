@@ -71,7 +71,6 @@ class LaunchMethod(object):
         'RP_UNIT_ID',
         'RP_UNIT_NAME',
         'RP_PILOT_SANDBOX',
-        'RADICAL_BASE_DIR', 
         'RADICAL_BASE'
     ]
 

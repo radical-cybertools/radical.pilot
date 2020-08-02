@@ -205,7 +205,7 @@ class Popen(AgentExecutingComponent) :
             # Create string for environment variable setting
             env_string = ''
           # env_string += '. %s/env.orig\n'                % self._pwd
-            env_string += 'export RADICAL_BASE_DIR="%s"\n' % self._pwd
+            env_string += 'export RADICAL_BASE="%s"\n'     % self._pwd
             env_string += 'export RP_SESSION_ID="%s"\n'    % self._cfg['sid']
             env_string += 'export RP_PILOT_ID="%s"\n'      % self._cfg['pid']
             env_string += 'export RP_AGENT_ID="%s"\n'      % self._cfg['aid']
