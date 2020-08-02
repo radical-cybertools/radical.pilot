@@ -70,7 +70,7 @@ dict of the following structure:
         'source':   source,   # radical.pilot.Url() or string (MANDATORY).
         'target':   target,   # radical.pilot.Url() or string (OPTIONAL).
         'action':   action,   # One of COPY, LINK, MOVE, TRANSFER or TARBALL (OPTIONAL).
-        'flags':    flags,    # Zero or more of CREATE_PARENTS or SKIP_FAILED (OPTIONAL).
+        'flags':    flags,    # Zero or CREATE_PARENTS (OPTIONAL).
         'priority': priority  # A number to instruct ordering (OPTIONAL).
     }
 
@@ -95,13 +95,8 @@ The semantics of the keys from the dict are as follows:
   system), ``MOVE`` (local resource), ``TRANSFER`` (to a remote resource), or
   ``TARBALL`` (transfer to a remote resource after tarring files).
 
-- ``flags`` (default: [CREATE_PARENTS, SKIP_FAILED]): By passing certain flags
-  we can influence the behavior of the action. Available flags are:
-
-    - ``CREATE_PARENTS``: Create parent directories while writing file.
-    - ``SKIP_FAILED``: Don't stage out files if tasks failed.
-
-    In case of multiple values these can be passed as a list.
+- ``flags`` (default: CREATE_PARENTS): By passing this flag we can influence 
+  the behavior of the action, creating parent directories while writing file.
 
 - ``priority`` (default: 0): This optional field can be used to instruct the
   back end to priority the actions on the ``staging directives``. E.g. to
@@ -113,9 +108,8 @@ The :ref:`example-dict` example demonstrates this in full glory.
 When the `staging directives` are specified as a string as we did earlier,
 that implies a `staging directive` where the ``source`` and the ``target``
 are equal to the content of the string, the ``action`` is set to the default
-action ``TRANSFER``, the ``flags`` are set to the default flags
-``CREATE_PARENTS`` and ``SKIP_FAILED``, and the ``priority`` is set to the
-default value ``0``:
+action ``TRANSFER``, the ``flags`` are set to the default flag 
+``CREATE_PARENTS``, and the ``priority`` is set to the default value ``0``:
 
 .. code-block:: python
 
@@ -123,7 +117,7 @@ default value ``0``:
         'source':   'INPUT_FILE.TXT',
         'target':   'INPUT_FILE.TXT',
         'action':   TRANSFER,
-        'flags':    [CREATE_PARENTS, SKIP_FAILED],
+        'flags':    CREATE_PARENTS,
         'priority': 0
     }
 
