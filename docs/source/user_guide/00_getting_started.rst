@@ -204,11 +204,19 @@ via the ``add_pilot`` call):
         umgr.wait_units()
 
 
-Running the Example
+Executing the Example
 -------------------
 
 .. note:: Remember to set `RADICAL_PILOT_DBURL` in you environment (see chapter
           :ref:`chapter_installation`).
+
+Execute the example with the following command:
+
+python 00_getting_started.py <resource>
+
+where <resource> can be empty if you want to execute RP on localhost or it 
+can be a resource label. Use the command ``radical-pilot-resources`` to list 
+the resource labels supported by RP.
 
 Running the example should result in an output similar to the one shown below:
 
