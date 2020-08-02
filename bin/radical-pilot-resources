@@ -1,0 +1,16 @@
+#!/usr/bin/env python
+
+import radical.utils as ru
+
+
+# ------------------------------------------------------------------------------
+#
+cfg = ru.Config("radical.pilot.resource", name="*")
+
+for site in cfg:
+    for r in cfg[site]:
+        print("%s.%s" % (site, r))
+
+
+# ------------------------------------------------------------------------------
+
