@@ -840,6 +840,10 @@ class AgentSchedulingComponent(rpu.Component):
         self._change_slot_states(slots, rpc.BUSY)
         unit['slots'] = slots
 
+        env_dict = unit['description'].get('environment', {})
+        env_dict['NODE_LFS_PATH'] = slots['lfs_per_node']['path']
+        unit['description']['environment'] = env_dict
+
         self._handle_cuda(unit)
 
         # got an allocation, we can go off and launch the process
