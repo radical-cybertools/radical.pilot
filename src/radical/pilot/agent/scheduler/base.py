@@ -393,11 +393,13 @@ class AgentSchedulingComponent(rpu.Component):
             #       of the node to the location on the list?
 
             node = None
+            node_found = False
             for node in self.nodes:
                 if node['uid'] == slot_node['uid']:
+                    node_found = True
                     break
 
-            if not node:
+            if not node_found:
                 raise RuntimeError('inconsistent node information')
 
             # iterate over cores/gpus in the slot, and update state
@@ -838,6 +840,10 @@ class AgentSchedulingComponent(rpu.Component):
         self._change_slot_states(slots, rpc.BUSY)
         unit['slots'] = slots
 
+        env_dict = unit['description'].get('environment', {})
+        env_dict['NODE_LFS_PATH'] = slots['lfs_per_node']['path']
+        unit['description']['environment'] = env_dict
+
         self._handle_cuda(unit)
 
         # got an allocation, we can go off and launch the process
@@ -934,7 +940,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # make sure the core sets can host the requested number of threads
         assert(not len(cores) % threads_per_proc)
-        n_procs =  len(cores) / threads_per_proc
+        n_procs =  int(len(cores) / threads_per_proc)
 
         idx = 0
         for _ in range(n_procs):
