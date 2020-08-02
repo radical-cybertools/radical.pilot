@@ -139,6 +139,7 @@ disable=raising-format-tuple,
         R,
         relative-import,
         bare-except,
+        redefined-outer-name,
         attribute-defined-outside-init
 
 # Enable the message, report, category or checker with the given id(s). You can
