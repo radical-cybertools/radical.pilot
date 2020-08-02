@@ -79,6 +79,8 @@ class Slurm(ResourceManager):
         self.gpus_per_node  = self._cfg.get('gpus_per_node',  0)  # FIXME GPU
         self.mem_per_node   = self._cfg.get('mem_per_node',   0)
 
+        self._log.debug('lfs path %s', ru.expand_env(
+                                           self._cfg.get('lfs_path_per_node')))
         self.lfs_per_node   = {'path' : ru.expand_env(
                                            self._cfg.get('lfs_path_per_node')),
                                'size' :    self._cfg.get('lfs_size_per_node', 0)

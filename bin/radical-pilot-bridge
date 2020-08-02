@@ -81,47 +81,48 @@ def main(cfg):
     [3] connect to the command channel, send messages for topic `foo`
     '''
 
-    # basic setup: uid, logger, process name
-    uid  = cfg.uid
-    path = cfg.path
-    prof = ru.Profiler(name=uid, ns='radical.pilot', path=path)
+    # basic setup: cfg, logger and profiler
+    log  = ru.Logger(name=cfg.uid, ns='radical.pilot', path=cfg.path)
+    prof = ru.Profiler(name=cfg.uid, ns='radical.pilot', path=cfg.path)
 
     try:
-        prof.prof('bridge_start', uid=uid)
-        wrapped_main(cfg, uid, path)
+        prof.prof('bridge_start', uid=cfg.uid)
+        prof.disable()
+        wrapped_main(cfg, log, prof)
     finally:
-        prof.prof('bridge_stop', uid=uid)
+        prof.enable()
+        prof.prof('bridge_stop', uid=cfg.uid)
 
 
-def wrapped_main(cfg, uid, path):
+def wrapped_main(cfg, log, prof):
 
-    log  = ru.Logger(name=uid, ns='radical.pilot', path=path)
     term = mt.Event()
 
-    spt.setproctitle('rp.%s' % uid)
+    spt.setproctitle('rp.%s' % cfg.uid)
 
     # create the bridge, store connection addresses in FS, and begin to work
     bridge = ru.zmq.Bridge.create(cfg)
 
-    ru.write_json('%s/%s.cfg' % (path, uid),
-                  {'uid'          : uid,
+    ru.write_json('%s/%s.cfg' % (cfg.path, cfg.uid),
+                  {'uid'          : cfg.uid,
                    bridge.type_in : str(bridge.addr_in),
                    bridge.type_out: str(bridge.addr_out)})
 
     bridge.start()
 
     # bridge runs - send heartbeats so that cmgr knows about it
-    hb_pub = ru.zmq.Publisher('heartbeat', cfg.heartbeat.addr_pub, log=log)
+    hb_pub = ru.zmq.Publisher('heartbeat', cfg.heartbeat.addr_pub,
+                              log=log, prof=prof)
 
     def hb_beat_cb():
-        hb_pub.put('heartbeat', msg={'uid' : uid})
+        hb_pub.put('heartbeat', msg={'uid': cfg.uid})
 
     def hb_term_cb(hb_uid):
         bridge.stop()
         term.set()
         return None
 
-    hb = ru.Heartbeat(uid=uid,
+    hb = ru.Heartbeat(uid=cfg.uid,
                       timeout=cfg.heartbeat.timeout,
                       interval=cfg.heartbeat.interval,
                       beat_cb=hb_beat_cb,
@@ -137,8 +138,9 @@ def wrapped_main(cfg, uid, path):
         if msg['uid'] == cfg.cmgr:
             hb.beat(uid=cfg.cmgr)
 
-    ru.zmq.Subscriber('heartbeat', cfg.heartbeat.addr_sub, log=log,
-                      topic='heartbeat', cb=hb_sub_cb)
+    ru.zmq.Subscriber('heartbeat', cfg.heartbeat.addr_sub,
+                      topic='heartbeat', cb=hb_sub_cb,
+                      log=log, prof=prof)
 
     # all is set up - we can sit idle 'til end of time.
     while not term.is_set():
