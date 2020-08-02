@@ -88,7 +88,7 @@ class MPIExec(LaunchMethod):
         # For smaller node sets, we construct command line parameters as
         # clusters of nodes with the same number of processes, like this:
         #
-        #   -H node_name_1,node_name_2 -np 8 : -H node_name_3 -np 4 : ...
+        #   -host node_name_1,node_name_2 -n 8 : -host node_name_3 -n 4 : ...
         #
         # POSIX defines a min argument limit of 4096 bytes, so we try to
         # construct a command line, and switch to hostfile if that limit is
@@ -103,7 +103,7 @@ class MPIExec(LaunchMethod):
         # cluster hosts by number of slots
         host_string = ''
         for node,nslots in list(host_slots.items()):
-            host_string += '-H %s -np %s ' % (','.join([node] * nslots), nslots)
+            host_string += '-host %s -n %s ' % (','.join([node] * nslots), nslots)
         command = command_stub % host_string
 
         if len(command) > arg_max:

@@ -6,7 +6,7 @@ import os
 
 import radical.utils as ru
 
-from ... import utils     as rpu
+from ... import utils as rpu
 
 
 # ------------------------------------------------------------------------------
@@ -72,22 +72,20 @@ class AgentExecutingComponent(rpu.Component):
 
         try:
             impl = {
-                    EXECUTING_NAME_POPEN  : Popen,
-                    EXECUTING_NAME_SHELL  : Shell,
-                    EXECUTING_NAME_SHELLFS: ShellFS,
-                    EXECUTING_NAME_FLUX   : Flux,
-                    EXECUTING_NAME_SLEEP  : Sleep,
-                    EXECUTING_NAME_FUNCS  : FUNCS,
-                  # EXECUTING_NAME_ABDS   : ABDS,
-                  # EXECUTING_NAME_ORTE   : ORTE,
-                   }[name]
-
+                EXECUTING_NAME_POPEN  : Popen,
+                EXECUTING_NAME_SHELL  : Shell,
+                EXECUTING_NAME_SHELLFS: ShellFS,
+                EXECUTING_NAME_FLUX   : Flux,
+                EXECUTING_NAME_SLEEP  : Sleep,
+                EXECUTING_NAME_FUNCS  : FUNCS,
+              # EXECUTING_NAME_ABDS   : ABDS,
+              # EXECUTING_NAME_ORTE   : ORTE,
+            }[name]
             return impl(cfg, session)
 
-        except KeyError:
-            raise RuntimeError("AgentExecutingComponent '%s' unknown" % name)
-
-        return impl
+        except KeyError as e:
+            raise RuntimeError("AgentExecutingComponent '%s' unknown" % name) \
+                from e
 
 
 # ------------------------------------------------------------------------------
