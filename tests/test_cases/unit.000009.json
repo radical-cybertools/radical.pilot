@@ -39,7 +39,7 @@
 
     "results": {
         "lm": {
-            "mpiexec" : ["mpiexec -H node1 -np 1   /bin/sleep", null]
+            "mpiexec" : ["mpiexec -host node1 -n 1   /bin/sleep", null]
         }
     }
 }
