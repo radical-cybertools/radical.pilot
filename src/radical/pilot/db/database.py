@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -219,7 +220,7 @@ class DBSession(object):
 
         except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)
-            raise RuntimeError ('pymongo error: %s' % e.details)
+            raise RuntimeError ('pymongo error: %s' % e.details) from e
 
 
     # --------------------------------------------------------------------------
@@ -256,7 +257,7 @@ class DBSession(object):
 
         except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)
-            raise RuntimeError ('pymongo error: %s' % e.details)
+            raise RuntimeError ('pymongo error: %s' % e.details) from e
 
 
     # --------------------------------------------------------------------------
@@ -400,8 +401,8 @@ class DBSession(object):
                 # FIXME: evaluate res
 
             except pymongo.errors.OperationFailure as e:
-                self._log.exception('pymongo error')
-                raise RuntimeError ('pymongo error: %s' % e.details)
+                self._log.exception('pymongo error: %s' % e.details)
+                raise RuntimeError ('pymongo error: %s' % e.details) from e
 
     # --------------------------------------------------------------------------
     #
