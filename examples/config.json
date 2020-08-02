@@ -176,14 +176,16 @@
         "project"  : "CSC343",
         "queue"    : "batch",
         "schema"   : "local",
-        "cores"    : 168
+        "cores"    : 168,
+        "gpus"     : 6
     },
 
     "ornl.summit_prte" : {
         "project"  : "geo111",
         "queue"    : "batch",
         "schema"   : "local",
-        "cores"    : 168
+        "cores"    : 168,
+        "gpus"     : 6
     },
 
     "ornl.rhea_aprun"   : {
