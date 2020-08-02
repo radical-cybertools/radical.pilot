@@ -2,10 +2,9 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
 import radical.utils as ru
 
-from ... import utils     as rpu
+from ... import utils as rpu
 
 
 # ------------------------------------------------------------------------------
@@ -46,12 +45,11 @@ class UMGRStagingInputComponent(rpu.Component):
             impl = {
                 RP_USI_NAME_DEFAULT: Default
             }[name]
+            return impl(cfg, session)
 
-            impl = impl(cfg, session)
-            return impl
-
-        except KeyError:
-            raise ValueError("UMGRStagingInputComponent '%s' defunct" % name)
+        except KeyError as e:
+            raise ValueError("UMGRStagingInputComponent '%s' unknown" % name) \
+                from e
 
 
 # ------------------------------------------------------------------------------
