@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -15,7 +16,6 @@ import radical.saga            as rs
 import radical.saga.filesystem as rsfs
 import radical.utils           as ru
 
-from .... import pilot         as rp
 from ...  import states        as rps
 from ...  import constants     as rpc
 
@@ -466,7 +466,7 @@ class Default(PMGRLaunchingComponent):
                     raise ValueError('unknown pilot %s' % pid)
 
                 pilot = self._pilots[pid]['pilot']
-                if pilot['state'] not in rp.FINAL:
+                if pilot['state'] not in rps.FINAL:
                     self._log.debug('killing pilots: alive %s', pid)
                     alive_pids.append(pid)
                 else:
@@ -507,7 +507,7 @@ class Default(PMGRLaunchingComponent):
                     if 'resource_details' in pilot:
                         del(pilot['resource_details'])
 
-                    if pilot['state'] in rp.FINAL:
+                    if pilot['state'] in rps.FINAL:
                         continue
 
                     self._log.debug('plan cancellation of %s : %s', pilot, job)
@@ -1300,8 +1300,8 @@ class Default(PMGRLaunchingComponent):
         if os.environ.get('RADICAL_SAGA_SMT'):
             try:
                 jd.smt = int(os.environ['RADICAL_SAGA_SMT'])
-            except (ValueError, TypeError) as e:
-                pass
+            except Exception as e:
+                self._log.debug('SAGA SMT not set: %s' % e)
 
         if self._prof.enabled:
             jd.environment['RADICAL_PROFILE'] = 'TRUE'
