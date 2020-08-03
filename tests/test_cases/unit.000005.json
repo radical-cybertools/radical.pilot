@@ -46,7 +46,7 @@
             "ssh"     : ["/bin/sleep \"10\" ","ssh node1 LD_LIBRARY_PATH=/usr/local/lib/ PATH=test_path 1"],
             "jsrun"   : ["jsrun --erf_input rs_layout_cu_000005 --smpiargs=\"-gpu\"  /bin/sleep \"10\" ", null],
             "mpiexec" : ["mpiexec -host node1 -n 1   /bin/sleep \"10\" ", null],
-            "prte"    : ["prun --hnp \"dvm_uri\"  -np 1 --cpus-per-proc 1 --bind-to hwthread:overload-allowed --use-hwthread-cpus --oversubscribe --pmca ptl_base_max_msg_size 1073741824 -host node1  -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\" -x \"OMP_NUM_THREADS\" -x \"CUDA_VISIBLE_DEVICES\" -x \"RP_AGENT_ID\" -x \"RP_GTOD\" -x \"RP_PILOT_ID\" -x \"RP_PILOT_STAGING\" -x \"RP_PROF\" -x \"RP_SESSION_ID\" -x \"RP_SPAWNER_ID\" -x \"RP_TMP\" -x \"RP_UNIT_ID\" -x \"RP_UNIT_NAME\"  /bin/sleep \"10\" ", null]
+            "prte"    : ["prun --hnp \"dvm_uri\"  -np 1 --cpus-per-proc 1 --bind-to hwthread:overload-allowed --use-hwthread-cpus --oversubscribe --pmca ptl_base_max_msg_size 1073741824 -host node1  -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\" -x \"OMP_NUM_THREADS\" -x \"CUDA_VISIBLE_DEVICES\" -x \"RP_AGENT_ID\" -x \"RP_GTOD\" -x \"RP_PILOT_ID\" -x \"RP_PILOT_STAGING\" -x \"RP_PROF\" -x \"RP_SESSION_ID\" -x \"RP_SPAWNER_ID\" -x \"RP_TMP\" -x \"RP_UNIT_ID\" -x \"RP_UNIT_NAME\" -x \"RP_PILOT_SANDBOX\" -x \"RADICAL_BASE\"  /bin/sleep \"10\" ", null]
         },
         "resource_file": {
             "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0}; gpu: {0}}\n"]
