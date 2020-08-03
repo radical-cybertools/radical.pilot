@@ -2,9 +2,6 @@
 import os
 import sys
 import time
-import glob
-import queue
-import signal
 
 import threading         as mt
 import multiprocessing   as mp
@@ -230,7 +227,7 @@ class Worker(rpu.Component):
             env  = data.get('env',  {}),
 
             proc = sp.Popen(executable=exe, args=args,       env=env,
-                            stdin=None,     stdout=sp.Pipe, stderr=sp.Pipe,
+                            stdin=None,     stdout=sp.PIPE, stderr=sp.PIPE,
                             close_fds=True, shell=False)
             out, err = proc.communicate()
             ret      = proc.returncode
@@ -302,9 +299,6 @@ class Worker(rpu.Component):
                         if len(alloc_gpus) == gpus:
                             break
 
-            assert(len(alloc_cores) == cores)
-            assert(len(alloc_gpus ) == gpus )
-
             task['resources'] = {'cores': alloc_cores,
                                  'gpus' : alloc_gpus}
             return True
@@ -354,7 +348,6 @@ class Worker(rpu.Component):
         invoke it.
         '''
 
-      # self._log.debug('requested %s', task)
         self._prof.prof('req_start', uid=self._uid, msg=task['uid'])
         task['worker'] = self._uid
 
@@ -387,8 +380,8 @@ class Worker(rpu.Component):
 
             with self._plock:
                 # we need to include `proc.start()` in the lock, as otherwise we
-                # may end up getting the `self._result_cb` befor the pid could
-                # be regostered in `self._pool`.
+                # may end up getting the `self._result_cb` before the pid could
+                # be registered in `self._pool`.
                 proc.start()
                 self._pool[proc.pid] = proc
                 self._log.debug('applied: %s: %s: %s', task['uid'], proc.pid,
@@ -554,4 +547,3 @@ class Worker(rpu.Component):
 
 
 # ------------------------------------------------------------------------------
-

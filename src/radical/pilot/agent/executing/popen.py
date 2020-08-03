@@ -215,6 +215,7 @@ echo "$($RP_GTOD),$1,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING,$2" >> $
             # Create string for environment variable setting
             env_string = ''
           # env_string += '. %s/env.orig\n'                % self._pwd
+            env_string += 'export RADICAL_BASE="%s"\n'     % self._pwd
             env_string += 'export RP_SESSION_ID="%s"\n'    % self._cfg['sid']
             env_string += 'export RP_PILOT_ID="%s"\n'      % self._cfg['pid']
             env_string += 'export RP_AGENT_ID="%s"\n'      % self._cfg['aid']

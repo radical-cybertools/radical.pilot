@@ -1,7 +1,7 @@
 
 import time
 
-import radical.utils     as ru
+import radical.utils as ru
 
 
 # ------------------------------------------------------------------------------
