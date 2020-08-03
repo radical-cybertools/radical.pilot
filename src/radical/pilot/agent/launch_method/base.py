@@ -70,6 +70,8 @@ class LaunchMethod(object):
         'RP_TMP',
         'RP_UNIT_ID',
         'RP_UNIT_NAME',
+        'RP_PILOT_SANDBOX',
+        'RADICAL_BASE'
     ]
 
     MPI_FLAVOR_OMPI    = 'OMPI'
