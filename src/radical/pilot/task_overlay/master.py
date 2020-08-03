@@ -313,7 +313,7 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def result_cb(self, msg):
+    def result_cb(self, request):
         '''
         this method can be overloaded by the deriving class
         '''

@@ -224,7 +224,7 @@ class Worker(rpu.Component):
             env  = data.get('env',  {}),
 
             proc = sp.Popen(executable=exe, args=args,       env=env,
-                            stdin=None,     stdout=sp.Pipe, stderr=sp.Pipe,
+                            stdin=None,     stdout=sp.PIPE, stderr=sp.PIPE,
                             close_fds=True, shell=False)
             out, err = proc.communicate()
             ret      = proc.returncode
