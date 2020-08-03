@@ -19,6 +19,16 @@ echo "safe environment of bootstrap_0"
 env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' > env.orig
 
 
+# create a `deactivate` script
+old_path=$(  grep 'export PATH='       env.orig | cut -f 2- -d '=')
+old_pypath=$(grep 'export PYTHONPATH=' env.orig | cut -f 2- -d '=')
+old_pyhome=$(grep 'export PYTHONHOME=' env.orig | cut -f 2- -d '=')
+
+echo "export PATH='$old_path'"          > deactivate
+echo "export PYTHONPATH='$old_pypath'" >> deactivate
+echo "export PYTHONHOME='$old_pyhome'" >> deactivate
+
+
 # interleave stdout and stderr, to get a coherent set of log messages
 if test -z "$RP_BOOTSTRAP_0_REDIR"
 then
