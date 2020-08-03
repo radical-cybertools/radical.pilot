@@ -1296,6 +1296,13 @@ class Default(PMGRLaunchingComponent):
                 self._log.debug('supplement %s: %s', key, val)
                 jd[key] = val
 
+        # set saga job description attribute based on env variable(s)
+        if os.environ.get('RADICAL_SAGA_SMT'):
+            try:
+                jd.smt = int(os.environ['RADICAL_SAGA_SMT'])
+            except (ValueError, TypeError) as e:
+                pass
+
         if self._prof.enabled:
             jd.environment['RADICAL_PROFILE'] = 'TRUE'
 
