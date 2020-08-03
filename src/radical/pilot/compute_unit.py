@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import os
 import copy
 import time
 
@@ -36,6 +37,9 @@ class ComputeUnit(object):
                       unit = umgr.submit_units(ud)
     """
 
+    _pwd = os.getcwd()
+
+
     # --------------------------------------------------------------------------
     # In terms of implementation, a CU is not much more than a dict whose
     # content are dynamically updated to reflect the state progression through
@@ -52,19 +56,12 @@ class ComputeUnit(object):
     #
     def __init__(self, umgr, descr):
 
-        # NOTE GPU: we allow `mpi` for backward compatibility - but need to
-        #      convert the bool into a decent value for `cpu_process_type`
-        if  descr[cud.CPU_PROCESS_TYPE] in [True, 'True']:
-            descr[cud.CPU_PROCESS_TYPE] = cud.MPI
-
         # ensure that the description is viable
         descr.verify()
 
-        # 'static' members
-        self._descr = descr.as_dict()
-        self._umgr  = umgr
-
-        # initialize state
+        # if staging directives exist, expand them to the full dict version
+        self._umgr             = umgr
+        self._descr            = expand_description(descr.as_dict())
         self._session          = self._umgr.session
         self._uid              = ru.generate_id('unit.%(item_counter)06d',
                                                 ru.ID_CUSTOM,
@@ -78,7 +75,7 @@ class ComputeUnit(object):
         self._resource_sandbox = None
         self._pilot_sandbox    = None
         self._unit_sandbox     = None
-        self._client_sandbox   = None
+        self._client_sandbox   = self._pwd
         self._callbacks        = dict()
 
         for m in rpc.UMGR_METRICS:
@@ -88,14 +85,6 @@ class ComputeUnit(object):
         self._callbacks[rpc.UNIT_STATE][self._default_state_cb.__name__] = {
                 'cb'      : self._default_state_cb,
                 'cb_data' : None}
-
-        # If staging directives exist, expand them to the full dict version.  Do
-        # not, however, expand any URLs as of yet, as we likely don't have
-        # sufficient information about pilot sandboxes etc.
-        expand_description(self._descr)
-
-        self._umgr.advance(self.as_dict(), rps.NEW, publish=False, push=False)
-
 
     # --------------------------------------------------------------------------
     #

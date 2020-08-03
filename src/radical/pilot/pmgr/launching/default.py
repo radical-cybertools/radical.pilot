@@ -178,8 +178,8 @@ class Default(PMGRLaunchingComponent):
 
             self._prof.prof('staging_in_start', uid=pid, msg=did)
 
-            src = complete_url(src, src_context, self._log)
-            tgt = complete_url(tgt, tgt_context, self._log)
+            src = complete_url(src, [src_context], self._log)
+            tgt = complete_url(tgt, [tgt_context], self._log)
 
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 self._prof.prof('staging_in_fail', uid=pid, msg=did)
@@ -256,8 +256,8 @@ class Default(PMGRLaunchingComponent):
                 if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                     raise ValueError("invalid pilot action '%s'" % action)
 
-                src = complete_url(src, src_context, self._log)
-                tgt = complete_url(tgt, tgt_context, self._log)
+                src = complete_url(src, [src_context], self._log)
+                tgt = complete_url(tgt, [tgt_context], self._log)
 
                 self._log.info('transfer %s to %s', src, tgt)
 
@@ -658,10 +658,6 @@ class Default(PMGRLaunchingComponent):
             assert(schema == pilot['description'].get('access_schema')), \
                     'inconsistent scheme on launch / staging'
 
-        # get and expand sandboxes
-        session_sandbox = self._session._get_session_sandbox(pilots[0]).path
-        session_sandbox = session_sandbox % expand
-
         # we will create the session sandbox before we untar, so we can use that
         # as workdir, and pack all paths relative to that session sandbox.  That
         # implies that we have to recheck that all URLs in fact do point into
@@ -695,14 +691,16 @@ class Default(PMGRLaunchingComponent):
                     for entry in output_staging:
                         fout.write('%s\n' % entry)
 
+        session_sbox = ru.Url(pilots[0]['session_sandbox']).path
         for ft in ft_list:
             src     = os.path.abspath(ft['src'])
-            tgt     = os.path.relpath(os.path.normpath(ft['tgt']), session_sandbox)
+            tgt     = os.path.relpath(os.path.normpath(ft['tgt']), session_sbox)
           # src_dir = os.path.dirname(src)
             tgt_dir = os.path.dirname(tgt)
 
             if tgt_dir.startswith('..'):
-              # raise ValueError('staging tgt %s outside pilot sbox: %s' % (ft['tgt'], tgt))
+              # raise ValueError('staging tgt %s outside pilot sbox: %s'
+              #                 % (ft['tgt'], tgt))
                 tgt = ft['tgt']
                 tgt_dir = os.path.dirname(tgt)
 
@@ -750,7 +748,7 @@ class Default(PMGRLaunchingComponent):
                 self._saga_fs_cache[fs_url] = fs
 
         tar_rem      = rs.Url(fs_url)
-        tar_rem.path = "%s/%s" % (session_sandbox, tar_name)
+        tar_rem.path = "%s/%s" % (session_sbox, tar_name)
 
         fs.copy(tar_url, tar_rem, flags=rsfs.CREATE_PARENTS)
 
@@ -781,8 +779,7 @@ class Default(PMGRLaunchingComponent):
                 self._saga_js_cache[js_url] = js_tmp
 
       # cmd = "tar zmxvf %s/%s -C / ; rm -f %s" % \
-        cmd = "tar zmxvf %s/%s -C %s" % \
-                (session_sandbox, tar_name, session_sandbox)
+        cmd = "tar zmxvf %s/%s -C %s" % (session_sbox, tar_name, session_sbox)
         j = js_tmp.run_job(cmd)
         j.wait()
 
@@ -916,32 +913,16 @@ class Default(PMGRLaunchingComponent):
         mandatory_args          = rcfg.get('mandatory_args', [])
         saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
 
-        import pprint
-        self._log.debug(cores_per_node)
-        self._log.debug(pprint.pformat(rcfg))
-
         # make sure that mandatory args are known
         for ma in mandatory_args:
             if pilot['description'].get(ma) is None:
                 raise  ValueError('attribute "%s" is required for "%s"'
                                  % (ma, resource))
 
-        # get pilot and global sandbox
-        resource_sandbox = self._session._get_resource_sandbox(pilot)
-        session_sandbox  = self._session._get_session_sandbox (pilot)
-        pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
-        client_sandbox   = self._session._get_client_sandbox  ()
-
-        pilot['resource_sandbox'] = str(resource_sandbox) % expand
-        pilot['session_sandbox']  = str(session_sandbox)  % expand
-        pilot['pilot_sandbox']    = str(pilot_sandbox)    % expand
-        pilot['client_sandbox']   = str(client_sandbox)
-
-        # from here on we need only paths
-        resource_sandbox = resource_sandbox.path % expand
-        session_sandbox  = session_sandbox .path % expand
-        pilot_sandbox    = pilot_sandbox   .path % expand
-        client_sandbox   = client_sandbox  # not expanded
+        # from here on we need only sbox paths
+        resource_sandbox = ru.Url(pilot['resource_sandbox']).path
+        session_sandbox  = ru.Url(pilot['session_sandbox'] ).path
+        pilot_sandbox    = ru.Url(pilot['pilot_sandbox']   ).path
 
         # Agent configuration that is not part of the public API.
         # The agent config can either be a config dict, or
@@ -962,14 +943,16 @@ class Default(PMGRLaunchingComponent):
         elif isinstance(agent_config, str):
             try:
                 # interpret as a config name
-                agent_cfg_file = os.path.join(self._conf_dir, "agent_%s.json" % agent_config)
+                agent_cfg_file = '%s/agent_%s.json' \
+                               % (self._conf_dir, agent_config)
 
                 self._log.info("Read agent config file: %s",  agent_cfg_file)
                 agent_cfg = ru.Config(path=agent_cfg_file)
 
                 # allow for user level overload
                 user_cfg_file = '%s/.radical/pilot/config/%s' \
-                              % (os.environ['HOME'], os.path.basename(agent_cfg_file))
+                              % (os.environ['HOME'],
+                                 os.path.basename(agent_cfg_file))
 
                 if os.path.exists(user_cfg_file):
                     self._log.info("merging user config: %s" % user_cfg_file)

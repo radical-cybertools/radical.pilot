@@ -17,8 +17,6 @@ from ...  import constants as rpc
 
 from .base import AgentStagingInputComponent
 
-from ...staging_directives import complete_url
-
 
 # ------------------------------------------------------------------------------
 #
@@ -42,8 +40,6 @@ class Default(AgentStagingInputComponent):
     #
     def initialize(self):
 
-        self._pwd = os.getcwd()
-
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
                             rpc.AGENT_STAGING_INPUT_QUEUE, self.work)
 
@@ -53,12 +49,7 @@ class Default(AgentStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
-
-        if not isinstance(units, list):
-            units = [units]
-
-        self.advance(units, rps.AGENT_STAGING_INPUT, publish=True, push=False)
+    def _work(self, units):
 
         # we first filter out any units which don't need any input staging, and
         # advance them again as a bulk.  We work over the others one by one, and
@@ -120,16 +111,6 @@ class Default(AgentStagingInputComponent):
         pilot_sandbox.host      = 'localhost'
         resource_sandbox.host   = 'localhost'
 
-        src_context = {'pwd'      : str(unit_sandbox),       # !!!
-                       'unit'     : str(unit_sandbox),
-                       'pilot'    : str(pilot_sandbox),
-                       'resource' : str(resource_sandbox)}
-        tgt_context = {'pwd'      : str(unit_sandbox),       # !!!
-                       'unit'     : str(unit_sandbox),
-                       'pilot'    : str(pilot_sandbox),
-                       'resource' : str(resource_sandbox)}
-
-
         # we can now handle the actionable staging directives
         for sd in actionables:
 
@@ -169,10 +150,6 @@ class Default(AgentStagingInputComponent):
             # of the source
             elif os.path.exists(tgt.strip()) and os.path.isdir(tgt.strip()):
                 tgt = os.path.join(tgt, os.path.basename(src))
-
-
-            src = complete_url(src, src_context, self._log)
-            tgt = complete_url(tgt, tgt_context, self._log)
 
             # Currently, we use the same schema for files and folders.
             assert(tgt.schema == 'file'), 'staging tgt must be file://'

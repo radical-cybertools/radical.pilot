@@ -2,9 +2,12 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os
 
-import radical.utils as ru
+import radical.utils      as ru
 
+from ... import states    as rps
+from ... import constants as rpc
 from ... import utils     as rpu
 
 
@@ -52,6 +55,34 @@ class AgentStagingInputComponent(rpu.Component):
 
         except KeyError:
             raise ValueError("AgentStagingInputComponent '%s' unknown or defunct" % name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def initialize(self):
+
+        AgentStagingInputComponent.initialize(self)
+
+        self._pwd = os.getcwd()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def work(self, units):
+
+        if not isinstance(units, list):
+            units = [units]
+
+        self.advance(units, rps.AGENT_STAGING_INPUT, publish=True, push=False)
+
+        self._work(units)
+
+    # --------------------------------------------------------------------------
+    #
+    def _work(self, units):
+
+        # this needs to be overloaded by the inheriting implementation
+        raise NotImplementedError('work() is not implemented')
 
 
 # ------------------------------------------------------------------------------

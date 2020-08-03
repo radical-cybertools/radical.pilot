@@ -40,11 +40,6 @@ class ComputePilot(object):
     # the PMGR components.  As a Pilot is always created via a PMGR, it is
     # considered to *belong* to that PMGR, and all activities are actually
     # implemented by that PMGR.
-    #
-    # Note that this implies that we could create Pilots before submitting them
-    # to a PMGR, w/o any problems. (FIXME?)
-    # --------------------------------------------------------------------------
-
 
     # --------------------------------------------------------------------------
     #
@@ -69,11 +64,7 @@ class ComputePilot(object):
         self._log        = pmgr._log
         self._pilot_dict = dict()
         self._callbacks  = dict()
-        self._cache      = dict()    # cache of SAGA dir handles
         self._cb_lock    = ru.RLock()
-
-        # pilot failures can trigger app termination
-        self._exit_on_error = self._descr.get('exit_on_error')
 
         for m in rpc.PMGR_METRICS:
             self._callbacks[m] = dict()
@@ -86,12 +77,13 @@ class ComputePilot(object):
         # `as_dict()` needs `pilot_dict` and other attributes.  Those should all
         # be available at this point (apart from the sandboxes), so we now
         # query for those sandboxes.
-        self._pilot_jsurl      = ru.Url()
-        self._pilot_jshop      = ru.Url()
-        self._resource_sandbox = ru.Url()
-        self._session_sandbox  = ru.Url()
-        self._pilot_sandbox    = ru.Url()
-        self._client_sandbox   = ru.Url()
+        # NOTE: do not set to `None`, otherwise `as_dict()` will stringify it.
+        self._pilot_jsurl      = ''
+        self._pilot_jshop      = ''
+        self._resource_sandbox = ''
+        self._session_sandbox  = ''
+        self._pilot_sandbox    = ''
+        self._client_sandbox   = ''
 
         pilot = self.as_dict()
 
@@ -141,7 +133,7 @@ class ComputePilot(object):
 
         self._log.info("[Callback]: pilot %s state: %s.", self.uid, self.state)
 
-        if self.state == rps.FAILED and self._exit_on_error:
+        if self.state == rps.FAILED and self._descr.get('exit_on_error'):
             self._log.error("[Callback]: pilot '%s' failed - exit", self.uid)
 
             # There are different ways to tell main...
@@ -548,15 +540,6 @@ class ComputePilot(object):
         '''
         Cancel the pilot.
         '''
-
-        # clean connection cache
-        try:
-            for key in self._cache:
-                self._cache[key].close()
-            self._cache = dict()
-
-        except:
-            pass
 
         self._pmgr.cancel_pilots(self.uid)
 

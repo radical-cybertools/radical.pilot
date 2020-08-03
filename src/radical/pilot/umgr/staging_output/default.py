@@ -108,15 +108,6 @@ class Default(UMGRStagingOutputComponent):
 
         uid = unit['uid']
 
-        src_context = {'pwd'      : unit['unit_sandbox'],       # !!!
-                       'unit'     : unit['unit_sandbox'],
-                       'pilot'    : unit['pilot_sandbox'],
-                       'resource' : unit['resource_sandbox']}
-        tgt_context = {'pwd'      : os.getcwd(),                # !!!
-                       'unit'     : unit['unit_sandbox'],
-                       'pilot'    : unit['pilot_sandbox'],
-                       'resource' : unit['resource_sandbox']}
-
         # url used for cache (sandbox url w/o path)
         tmp      = rs.Url(unit["unit_sandbox"])
         tmp.path = '/'
@@ -138,12 +129,6 @@ class Default(UMGRStagingOutputComponent):
             tgt    = sd['target']
 
             self._prof.prof('staging_out_start', uid=uid, msg=did)
-
-            self._log.debug('src: %s', src)
-            self._log.debug('tgt: %s', tgt)
-
-            src = rpsd.complete_url(src, src_context, self._log)
-            tgt = rpsd.complete_url(tgt, tgt_context, self._log)
 
             self._log.debug('src: %s', src)
             self._log.debug('tgt: %s', tgt)

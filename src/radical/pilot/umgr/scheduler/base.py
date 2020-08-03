@@ -7,9 +7,10 @@ import os
 
 import radical.utils as ru
 
-from ... import utils     as rpu
-from ... import states    as rps
-from ... import constants as rpc
+from ... import utils              as rpu
+from ... import states             as rps
+from ... import constants          as rpc
+from ... import staging_directives as rsd
 
 
 # ------------------------------------------------------------------------------
@@ -24,7 +25,6 @@ SCHEDULER_DEFAULT      = SCHEDULER_ROUND_ROBIN
 ROLE    = '_scheduler_role'
 ADDED   = 'added'
 REMOVED = 'removed'
-FAILED  = 'failed'
 
 
 # ------------------------------------------------------------------------------
@@ -37,6 +37,7 @@ class UMGRSchedulingComponent(rpu.Component):
     #
     def __init__(self, cfg, session):
 
+        self._dh  = ru.DebugHelper()
         self._uid = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
                                    ru.ID_CUSTOM)
 
@@ -49,14 +50,14 @@ class UMGRSchedulingComponent(rpu.Component):
 
         self._umgr = self._cfg.owner
 
-        self._early       = dict()      # early-bound units, pid-sorted
-        self._pilots      = dict()      # dict of known pilots
-        self._pilots_lock = ru.RLock()  # lock on the above dict
-        self._units       = dict()      # dict of scheduled unit IDs
-        self._units_lock  = ru.RLock()  # lock on the above dict
-
-        # configure the scheduler instance
-        self._configure()
+        self._early        = dict()      # early-bound units, pid-sorted
+        self._pilots       = dict()      # dict of known pilots
+        self._pilots_lock  = ru.RLock()  # lock on the above dict
+        self._units        = dict()      # dict of scheduled unit IDs
+        self._sboxes       = dict()      # map task IDs to task sandboxes
+        self._units_lock   = ru.RLock()  # lock on the above dicts (both!)
+        self._waiting      = dict()      # dict for units waiting on deps
+        self._waiting_lock = ru.RLock()  # lock on the above dict
 
         self.register_input(rps.UMGR_SCHEDULING_PENDING,
                             rpc.UMGR_SCHEDULING_QUEUE, self.work)
@@ -149,24 +150,20 @@ class UMGRSchedulingComponent(rpu.Component):
 
         self._log.debug('update pilot states for %s', [p['uid'] for p in pilots])
 
-      # self._log.debug('update pilot states for %s', [p['uid'] for p in pilots])
-
         if not pilots:
             return
 
         to_update = list()
-
         with self._pilots_lock:
 
             for pilot in pilots:
 
                 pid = pilot['uid']
-
                 if pid not in self._pilots:
                     self._pilots[pid] = {'role'  : None,
                                          'state' : None,
                                          'pilot' : None,
-                                         'info'  : dict()  # scheduler private info
+                                         'sboxes': dict()
                                          }
 
                 target  = pilot['state']
@@ -176,15 +173,12 @@ class UMGRSchedulingComponent(rpu.Component):
                 target, passed = rps._pilot_state_progress(pid, current, target)
 
                 if current != target:
-                  # self._log.debug('%s: %s -> %s', pid,  current, target)
                     to_update.append(pid)
                     self._pilots[pid]['state'] = target
                     self._log.debug('update pilot state: %s -> %s', current, passed)
 
-      # self._log.debug('to update: %s', to_update)
         if to_update:
             self.update_pilots(to_update)
-      # self._log.debug('updated  : %s', to_update)
 
 
     # --------------------------------------------------------------------------
@@ -223,13 +217,11 @@ class UMGRSchedulingComponent(rpu.Component):
         if cmd == 'add_pilots':
 
             pilots = arg['pilots']
-
             with self._pilots_lock:
 
                 for pilot in pilots:
 
                     pid = pilot['uid']
-
                     if pid in self._pilots:
                         if self._pilots[pid]['role'] == ADDED:
                             raise ValueError('pilot already added (%s)' % pid)
@@ -237,11 +229,12 @@ class UMGRSchedulingComponent(rpu.Component):
                         self._pilots[pid] = {'role'  : None,
                                              'state' : None,
                                              'pilot' : None,
-                                             'info'  : dict()
+                                             'sboxes': dict()
                                             }
 
                     self._pilots[pid]['role']  = ADDED
                     self._pilots[pid]['pilot'] = pilot
+
                     self._log.debug('added pilot: %s', self._pilots[pid])
 
                 self._update_pilot_states(pilots)
@@ -255,9 +248,7 @@ class UMGRSchedulingComponent(rpu.Component):
                     early_units = self._early.get(pid)
                     if early_units:
 
-                        for unit in early_units:
-                            self._assign_pilot(unit, pilot)
-
+                        self._assign_pilot(early_units, pilot)
                         self.advance(early_units, rps.UMGR_STAGING_INPUT_PENDING,
                                      publish=True, push=True)
 
@@ -318,27 +309,80 @@ class UMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _assign_pilot(self, unit, pilot):
+    def _assign_pilot(self, units, pilot):
         '''
         assign a unit to a pilot.
         This is also a good opportunity to determine the unit sandbox(es).
         '''
 
-        pid = pilot['uid']
-        uid = unit['uid']
+        units = ru.as_list(units)
+        pid   = pilot['uid']
 
-        unit['pilot'           ] = pid
-        unit['client_sandbox'  ] = str(self._session._get_client_sandbox())
-        unit['resource_sandbox'] = str(self._session._get_resource_sandbox(pilot))
-        unit['pilot_sandbox'   ] = str(self._session._get_pilot_sandbox(pilot))
-        unit['unit_sandbox'    ] = str(self._session._get_unit_sandbox(unit, pilot))
+        with self._pilots_lock:
 
-        unit['unit_sandbox_path'] = ru.Url(unit['unit_sandbox']).path
+            sboxes = self._pilots[pid]['sboxes']
+            if not sboxes:
+
+                p_dict = self._pilots[pid]['pilot']
+
+                # first use: fill sbox dict.  If we get here, we know that we have
+                # all pilot details
+                sboxes['client']   = p_dict['client_sandbox']
+                sboxes['pilot']    = p_dict['pilot_sandbox']
+                sboxes['resource'] = p_dict['resource_sandbox']
+
+                self._pilots[pid]['sboxes'] = sboxes
+
+        for unit in units:
+
+            unit['pilot'           ] = pid
+            unit['client_sandbox'  ] = sboxes['client']
+            unit['pilot_sandbox'   ] = sboxes['pilot']
+            unit['resource_sandbox'] = sboxes['resource']
+            unit['unit_sandbox'    ] = unit['description']['sandbox']
+
+            if not unit['unit_sandbox']:
+                unit['unit_sandbox'] = unit['pilot_sandbox'] + '/' + unit['uid']
+
+            unit['unit_sandbox_path'] = ru.Url(unit['unit_sandbox']).path
+
+        with self._units_lock:
+            for unit in units:
+                self._sboxes[unit['uid']] = unit['unit_sandbox']
+
+        for unit in units:
+
+            for sd in (ru.as_list(unit['description']['input_staging' ]) +
+                       ru.as_list(unit['description']['output_staging'])):
+
+                # FIXME: client sandbox needs full URL (not only path)
+                src_ctx = {'pwd'      : os.getcwd(),                # !!!
+                           'task'     : unit['unit_sandbox']}
+                tgt_ctx = {'pwd'      : unit['unit_sandbox'],       # !!!
+                           'task'     : unit['unit_sandbox']}
+
+                import pprint
+                self._log.error(pprint.pformat(src_ctx))
+                self._log.error(pprint.pformat(tgt_ctx))
+
+                src, host = rsd.complete_url(sd['source'],
+                                             [src_ctx, self._sboxes], self._log)
+                if not src:
+                    self._log.error('=== src missing %s', host)
+
+                tgt, host = rsd.complete_url(sd['target'],
+                                             [tgt_ctx, self._sboxes], self._log)
+                if not tgt:
+                    self._log.error('=== tgt missing %s', host)
+
+                sd['source'] = str(src)
+                sd['target'] = str(tgt)
+
 
         with self._units_lock:
             if pid not in self._units:
                 self._units[pid] = list()
-            self._units[pid].append(uid)
+            self._units[pid] += [unit['uid'] for unit in units]
 
 
     # --------------------------------------------------------------------------
@@ -382,12 +426,61 @@ class UMGRSchedulingComponent(rpu.Component):
         emptied as pilots get registered.
         '''
 
-        if not isinstance(units, list):
-            units = [units]
+        units = ru.as_list(units)
+
+        # some task may have staging directives which reference sandboxes of
+        # other tasks.  Those directives can only be expanded with actual
+        # physical path's once both tasks are known to the scheduler, so we
+        # check this here and (a) let all units wait until the references are
+        # resolved, and (b) check if the units resolve any references
+        #
+        # The `waiting` data structure has the following format:
+        #
+        #   {
+        #     'waiting': {
+        #         <uid_a> : {
+        #             'unit': <unit>,
+        #             'deps': [<uid_1>, <uid_2>, ...]
+        #         },
+        #         ...
+        #       },
+        #     'deps': {
+        #       <uid_1> : [<uid_a>, <uid_b>, ...]
+        #       ...
+        #   }
+        #
+        # for each incoming tasks <uid_1>, we check in `deps` if depending tasks
+        # are known, then remove <uid_1> from the global `deps` dict and also
+        # from the `deps` list of each of those waiting tasks.  If any of those
+        # waiting tasks then ends up with an empty `deps` list, then that task
+        # will not be waiting anymore and can be scheduled.  We mark both
+        # participating tasks so that the scheduler can ensure they end up on
+        # the same pilot.
+        #
+        # NOTE: cross-pilot data dependencies are not yet supported
+        #
+        # The task staging directives are expected to be expanded to their
+        # dictionary format already, and will check for `src` or `tgt` URLs with
+        # a `sandbox://` schema, where the `host` element can reference
+        #
+        #   client:   the client application pwd
+        #   resource: the target resource sandbox
+        #   pilot:    the target pilot's sandbox
+        #   <uid>:    the sandbox of the respective task
+        #
+        # This implies that `client`, `resource` and `pilot` are reserved names
+        # for task IDs, and that tasks which use invalid / non-existing IDs in
+        # sandbox references will never be eligible for scheduling.
+        #
+        # TODO: ensure staging directives are expanded to dicts
+        # TODO: keep directives on string level until expanded in stagers
+        # TODO: parse for '^sandbox://([^/])*/' and replace with task sandbox
+        #     when task is in self._units - or wait for task to appear there
 
         self.advance(units, rps.UMGR_SCHEDULING, publish=True, push=False)
 
         to_schedule = list()
+        to_advance  = list()
 
         with self._pilots_lock:
 
@@ -404,9 +497,7 @@ class UMGRSchedulingComponent(rpu.Component):
                     # the unit to data staging
                     pilot = self._pilots.get(pid, {}).get('pilot')
                     if pilot:
-                        self._assign_pilot(unit, pilot)
-                        self.advance(unit, rps.UMGR_STAGING_INPUT_PENDING,
-                                     publish=True, push=True)
+                        to_advance.append(unit)
 
                     else:
                         # otherwise keep in `self._early` until we learn about
@@ -419,7 +510,13 @@ class UMGRSchedulingComponent(rpu.Component):
                 else:
                     to_schedule.append(unit)
 
-        self._work(to_schedule)
+        if to_advance:
+            self._assign_pilot(to_advance, pilot)
+            self.advance(to_advance, rps.UMGR_STAGING_INPUT_PENDING,
+                         publish=True, push=True)
+
+        if to_schedule:
+            self._work(to_schedule)
 
 
     # --------------------------------------------------------------------------

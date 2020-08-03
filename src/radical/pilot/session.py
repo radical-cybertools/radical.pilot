@@ -863,7 +863,7 @@ class Session(rs.Session):
         # FIXME: this should get 'pid, resource, schema=None' as parameters
 
         pilot_sandbox = pilot.get('pilot_sandbox')
-        if str(pilot_sandbox):
+        if pilot_sandbox:
             return rs.Url(pilot_sandbox)
 
         pid = pilot['uid']

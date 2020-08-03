@@ -18,8 +18,6 @@ from ...   import utils     as rpu
 
 from .base import UMGRStagingInputComponent
 
-from ...staging_directives import complete_url
-
 
 # if we receive more than a certain numnber of units in a bulk, we create the
 # unit sandboxes in a remote bulk op.  That limit is defined here, along with
@@ -155,7 +153,8 @@ class Default(UMGRStagingInputComponent):
         # pointing into the same target file system, so we need to cluster by
         # filesystem before checking the bulk size.  For simplicity we actually
         # cluster by pilot ID, which is sub-optimal for unit bulks which go to
-        # different pilots on the same resource (think OSG).
+        # different pilots on the same resource (think OSG), and might lead to
+        # conflicts for units which custom sandboxes.
         #
         # Note further that we skip the bulk-op for all units for which we
         # actually need to stage data, since the mkdir will then implicitly be
@@ -238,8 +237,7 @@ class Default(UMGRStagingInputComponent):
 
                     tar_rem_path = "%s/%s" % (str(session_sbox), tar_name)
 
-                    self._log.debug('sbox: %s [%s]', session_sbox,
-                                                             type(session_sbox))
+                    self._log.debug('sbox: %s', session_sbox)
                     self._log.debug('copy: %s -> %s', tar_url, tar_rem_path)
                     saga_dir.copy(tar_url, tar_rem_path,
                                              flags=rs.fs.CREATE_PARENTS)
@@ -285,15 +283,6 @@ class Default(UMGRStagingInputComponent):
 
         self._prof.prof("create_sandbox_start", uid=uid)
 
-        src_context = {'pwd'      : os.getcwd(),                # !!!
-                       'unit'     : unit['unit_sandbox'],
-                       'pilot'    : unit['pilot_sandbox'],
-                       'resource' : unit['resource_sandbox']}
-        tgt_context = {'pwd'      : unit['unit_sandbox'],       # !!!
-                       'unit'     : unit['unit_sandbox'],
-                       'pilot'    : unit['pilot_sandbox'],
-                       'resource' : unit['resource_sandbox']}
-
         # we have actionable staging directives, and thus we need a unit
         # sandbox.
         sandbox = rs.Url(unit["unit_sandbox"])
@@ -326,15 +315,11 @@ class Default(UMGRStagingInputComponent):
                 new_actionables.append(sd)
 
             else:
-
                 action = sd['action']
                 flags  = sd['flags']   # NOTE: we don't use those
                 did    = sd['uid']
                 src    = sd['source']
                 tgt    = sd['target']
-
-                src = complete_url(src, src_context, self._log)
-                tgt = complete_url(tgt, tgt_context, self._log)
 
                 self._prof.prof('staging_in_tar_start', uid=uid, msg=did)
 
@@ -370,6 +355,11 @@ class Default(UMGRStagingInputComponent):
         # work on the filtered TRANSFER actionables
         for sd in new_actionables:
 
+            import pprint
+            self._log.error(pprint.pformat(sd))
+            self._log.error(pprint.pformat(src_context))
+            self._log.error(pprint.pformat(tgt_context))
+
             action = sd['action']
             flags  = sd['flags']
             did    = sd['uid']
@@ -378,9 +368,6 @@ class Default(UMGRStagingInputComponent):
 
             if action == rpc.TRANSFER:
 
-                src = complete_url(src, src_context, self._log)
-                tgt = complete_url(tgt, tgt_context, self._log)
-
                 # Check if the src is a folder, if true
                 # add recursive flag if not already specified
                 if os.path.isdir(src.path):
@@ -388,9 +375,6 @@ class Default(UMGRStagingInputComponent):
 
                 # Always set CREATE_PARENTS
                 flags |= rs.fs.CREATE_PARENTS
-
-                src = complete_url(src, src_context, self._log)
-                tgt = complete_url(tgt, tgt_context, self._log)
 
                 self._prof.prof('staging_in_start', uid=uid, msg=did)
                 saga_dir.copy(src, tgt, flags=flags)

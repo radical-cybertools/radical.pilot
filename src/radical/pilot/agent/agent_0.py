@@ -91,8 +91,7 @@ class Agent_0(rpu.Worker):
                                 timeout=10.0,  # FIXME:  configurable
                                 interval=1.0,  # FIXME:  configurable
                                 beat_cb=self._hb_check,  # no own heartbeat(pmgr pulls)
-                                term_cb=self._hb_term_cb,
-                                log=self._log)
+                                term_cb=self._hb_term_cb)
         self._hb.start()
 
         # register pmgr heartbeat

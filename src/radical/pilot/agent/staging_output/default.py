@@ -214,15 +214,6 @@ class Default(AgentStagingOutputComponent):
         pilot_sandbox.host      = 'localhost'
         resource_sandbox.host   = 'localhost'
 
-        src_context = {'pwd'      : str(unit_sandbox),       # !!!
-                       'unit'     : str(unit_sandbox),
-                       'pilot'    : str(pilot_sandbox),
-                       'resource' : str(resource_sandbox)}
-        tgt_context = {'pwd'      : str(unit_sandbox),       # !!!
-                       'unit'     : str(unit_sandbox),
-                       'pilot'    : str(pilot_sandbox),
-                       'resource' : str(resource_sandbox)}
-
         # we can now handle the actionable staging directives
         for sd in actionables:
 
@@ -262,9 +253,6 @@ class Default(AgentStagingOutputComponent):
             # of the source
             elif os.path.exists(tgt.strip()) and os.path.isdir(tgt.strip()):
                 tgt = os.path.join(tgt, os.path.basename(src))
-
-            src = complete_url(src, src_context, self._log)
-            tgt = complete_url(tgt, tgt_context, self._log)
 
             # Currently, we use the same schema for files and folders.
             assert(src.schema == 'file'), 'staging src must be file://'

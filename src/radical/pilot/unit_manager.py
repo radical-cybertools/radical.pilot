@@ -698,6 +698,11 @@ class UnitManager(rpu.Component):
             unit = ComputeUnit(umgr=self, descr=ud)
             units.append(unit)
 
+        unit_docs = [u.as_dict() for u in units]
+        self.advance(unit_docs, rps.NEW, publish=False, push=False)
+
+        for unit in units:
+
             # keep units around
             with self._units_lock:
                 self._units[unit.uid] = unit
@@ -714,7 +719,6 @@ class UnitManager(rpu.Component):
             self._rec_id += 1
 
         # insert units into the database, as a bulk.
-        unit_docs = [u.as_dict() for u in units]
         self._session._dbs.insert_units(unit_docs)
 
         # Only after the insert can we hand the units over to the next

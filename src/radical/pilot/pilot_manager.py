@@ -12,7 +12,7 @@ from .  import utils     as rpu
 from .  import states    as rps
 from .  import constants as rpc
 
-from .staging_directives import expand_staging_directives
+from .staging_directives import expand_sd
 
 
 # ------------------------------------------------------------------------------
@@ -392,7 +392,7 @@ class PilotManager(rpu.Component):
         '''
 
         # add uid, ensure its a list, general cleanup
-        sds  = expand_staging_directives(directives)
+        sds  = expand_sd(directives, 'pilot')
         uids = [sd['uid'] for sd in sds]
         self._active_sds = dict()
 
@@ -430,7 +430,7 @@ class PilotManager(rpu.Component):
         '''
 
         # add uid, ensure its a list, general cleanup
-        sds  = expand_staging_directives(directives)
+        sds  = expand_sd(directives, 'pilot')
         uids = [sd['uid'] for sd in sds]
         self._active_sds = dict()
 

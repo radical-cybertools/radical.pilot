@@ -37,7 +37,9 @@ class Backfilling(UMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def initialize(self):
+
+        UMGRSchedulingComponent.initialize(self)
 
         self._wait_pool = dict()      # set of unscheduled units
         self._wait_lock = ru.RLock()  # look on the above set

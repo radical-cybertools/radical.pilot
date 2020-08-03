@@ -61,7 +61,7 @@ class ComponentManager(object):
                                 interval=self._cfg.heartbeat.interval,
                                 beat_cb=self._hb_beat_cb,  # on every heartbeat
                                 term_cb=self._hb_term_cb,  # on termination
-                                log=self._log)
+                                )
 
         self._hb_pub = ru.zmq.Publisher('heartbeat',
                                         self._cfg.heartbeat.addr_pub,
@@ -1018,8 +1018,6 @@ class Component(object):
                             with self._cancel_lock:
                                 self._cancel_list.remove(uid)
                             to_cancel.append(thing)
-
-                        self._log.debug('got %s (%s)', ttype, uid)
 
                     if to_cancel:
                         self.advance(to_cancel, rps.CANCELED, publish=True,
