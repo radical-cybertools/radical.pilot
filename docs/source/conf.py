@@ -14,11 +14,12 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+# pylint: disable=redefined-builtin
 
 # -- Project information -----------------------------------------------------
 
 project = 'RADICAL-Pilot'
-copyright = '2020, The RADICAL-Cybertools Team'
+copyright = '2020, The RADICAL-Cybertools Team (info@radical-cybertools.org)'
 author = 'RADICAL-Cybertools Team'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -26,10 +27,10 @@ author = 'RADICAL-Cybertools Team'
 # built documents.
 #
 # The short X.Y version.
-with open('../../VERSION','r') as f:
+with open('../../VERSION', 'r') as f:
     version = str(f.readlines()[0])
 # The full version, including alpha/beta/rc tags.
-with open('../../VERSION','r') as f:
+with open('../../VERSION', 'r') as f:
     release = str(f.readlines()[0])
 
 # -- General configuration ---------------------------------------------------
