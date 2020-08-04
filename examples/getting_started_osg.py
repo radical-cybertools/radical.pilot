@@ -105,12 +105,13 @@ if __name__ == "__main__":
 
         pdesc = rp.ComputePilotDescription()
         pdesc.resource        = resource
-        pdesc.cores           = 1
-        pdesc.project         = resources[resource]['project']
-        pdesc.queue           = resources[resource]['queue']
+        pdesc.cores           = config[resource].get('cores', 1),
+        pdesc.gpus            = config[resource].get('gpus', 0),
+        pdesc.project         = config[resource].get('project', None),
+        pdesc.queue           = config[resource].get('queue', None),
         pdesc.runtime         = RUNTIME
         pdesc.cleanup         = False
-        pdesc.access_schema   = resources[resource]['schema']
+        pdesc.access_schema   = config[resource].get('schema', None),
         pdesc.candidate_hosts = [
                               # 'MIT_CMS',
                               # 'UConn-OSG',
