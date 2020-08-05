@@ -21,14 +21,14 @@ Software
 
 RADICAL-Pilot requires the following packages:
 
-* Python >= 3.7
+* Python >= 3.6
 * virtualenv >= 16
 * pip >= 20
 * setuptools >= 45.2.0
 
 or
 
-* Anaconda Python >= 3.7
+* Anaconda Python >= 3.6
 
 All other dependencies are installed automatically by RADICAL-Pilot installer.
 

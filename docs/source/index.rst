@@ -62,9 +62,7 @@ section before starting to use RP.
 **Links**
 
 * repository:     https://github.com/radical-cybertools/radical.pilot
-* issues:         https://github.com/radical-cybertools/radical.pilot/issues        
-* user list:      https://groups.google.com/d/forum/radical-pilot-users
-* developer list: https://groups.google.com/d/forum/radical-pilot-devel
+* issues:         https://github.com/radical-cybertools/radical.pilot/issues
 
 
 #########
