@@ -32,7 +32,7 @@ class TestLauncher(TestCase):
             def __init__(self):
                 self.uid = 'uid.0'
                 self.sid = 'sid.0'
-                self.cfg = ru.Config(cfg={'cfg': {'dburl': 'db://'}})
+                self.cfg = ru.Config(cfg={'dburl': 'db://'})
 
             def _get_resource_sandbox(self, pilot):
                 return ru.Url('/resource/sandbox/%s' % pilot)
@@ -97,6 +97,7 @@ class TestLauncher(TestCase):
                                          'runtime'        : 10,
                                          'app_comm'       : 0,
                                          'cleanup'        : 0,
+                                         'memory'         : 0,
                                          'candidate_hosts': None,
                                          }
                    }
@@ -113,6 +114,7 @@ class TestLauncher(TestCase):
                                          'runtime'        : 10,
                                          'app_comm'       : 0,
                                          'cleanup'        : 0,
+                                         'memory'         : 0,
                                          'candidate_hosts': None,
                                          }
                    }
