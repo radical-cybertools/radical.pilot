@@ -4,6 +4,39 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
+1.5.1 Hotfix Release                                                  2020-08-05
+--------------------------------------------------------------------------------
+
+  - added config parameter for MongoDB tunneling
+  - applied exception chaining
+  - filtering for login/batch nodes that should not be considered (LSF RM)
+  - fix for Resource Set file at JSRUN LM
+  - support memory required per node at the RP level
+  - added Profiler instance into Publisher and Subscriber (zmq.pubsub)
+  - tests added and fixed
+  - configs for Lassen, Frontera
+  - radical-pilot-resources tool
+  - document event model
+  - comm bulking
+  - example cleanup
+  - fix agent base dir
+  - Fix durations and add defaults for app durations
+  - fixed flux import
+  - fixing inconsistent nodelist error
+  - iteration on task overlay
+  - hide passwords on dburl reports / logs
+  - multi-master load distribution
+  - pep8
+  - RADICAL_BASE_DIR -> RADICAL_BASE
+  - remove private TMPDIR export - this fixes #2158
+  - Remove SKIP_FAILED (unused)
+  - support for custom batch job names
+  - updated cuda hook for JSRUN LM
+  - updated license file
+  - updated readme
+  - updated version requirement for python (min is 3.6)
+  
+
 1.4.1 Hotfix Release                                                  2020-06-09
 --------------------------------------------------------------------------------
 

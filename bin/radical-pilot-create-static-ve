@@ -144,9 +144,9 @@ stdbuf -oL $VIRTENV_CMD "$prefix" | progress
 .          "$prefix"/bin/activate
 
 echo -n "update  setuptools "
-pip --no-cache-dir install --upgrade --no-build-isolation $setuptools | progress || exit 1
+pip install --no-cache-dir --upgrade --no-build-isolation $setuptools | progress || exit 1
 echo -n "update  pip "
-pip --no-cache-dir install --upgrade --no-build-isolation $pip        | progress || exit 1
+pip install --no-cache-dir --upgrade --no-build-isolation $pip        | progress || exit 1
 
 for req in $reqs
 do
