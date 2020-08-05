@@ -298,9 +298,9 @@ UNIT_DURATIONS_DEBUG = {
         'u_umngr_destroy'              : [ {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_STAGING_OUTPUT         },
                                           [{ru.EVENT: 'state'           , ru.STATE: rps.DONE                        },
                                            {ru.EVENT: 'state'           , ru.STATE: rps.CANCELED                    },
-                                           {ru.EVENT: 'state'           , ru.STATE: rps.FAILED                      } ]]
+                                           {ru.EVENT: 'state'           , ru.STATE: rps.FAILED                      } ]],
         'u_agent_unschedule'           : [ {ru.EVENT: 'unschedule_start', ru.STATE: None                            },
-                                           {ru.EVENT: 'unschedule_stop' , ru.STATE: None                            }  ], # PROBLEM: discontinuity
+                                           {ru.EVENT: 'unschedule_stop' , ru.STATE: None                            }  ]
     }
 } 
 
