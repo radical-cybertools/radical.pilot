@@ -203,7 +203,6 @@ UNIT_DURATIONS_PRTE_APP  = {
 # are contiguos.
 # FIXME: Divide durations in provide/consume.
 # NOTE: _init durations are most often 0.
-# noqa: E201,E261
 PILOT_DURATIONS_DEBUG = {
     'consume' : {
         'p_pmgr_create'           : [ {ru.EVENT: 'state'            , ru.STATE: rps.NEW                    },
@@ -1027,4 +1026,4 @@ def _get_unit_consumption(session, unit):
 
 
 # ------------------------------------------------------------------------------
-
+# noqa: E201,E261
