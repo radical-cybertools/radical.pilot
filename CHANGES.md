@@ -4,7 +4,7 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
-1.5.0 Hotfix Release                                                  2020-08-05
+1.5.1 Hotfix Release                                                  2020-08-05
 --------------------------------------------------------------------------------
 
   - added config parameter for MongoDB tunneling
