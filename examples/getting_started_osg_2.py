@@ -90,12 +90,13 @@ if __name__ == '__main__':
                          ]
                 pd_init = {
                            'resource'        : resource,
-                           'cores'           :   1,   # pilot size
                            'runtime'         : 300,   # pilot runtime (min)
                            'exit_on_error'   : False,
-                           'project'         : config[resource]['project'],
-                           'queue'           : config[resource]['queue'],
-                           'access_schema'   : config[resource]['schema'],
+                           'cores'           : config[resource].get('cores', 1),
+                           'gpus'            : config[resource].get('gpus', 0),
+                           'project'         : config[resource].get('project', None),
+                           'queue'           : config[resource].get('queue', None),
+                           'access_schema'   : config[resource].get('schema', None),
                            'cleanup'         : False,
                            'candidate_hosts' : ch
                           }
