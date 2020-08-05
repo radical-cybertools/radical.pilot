@@ -337,11 +337,22 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def prepare_task(self, task):
+    def task_pre_exec(self, task):
         '''
         This method is called upon receiving a new request, and can be
         overloaded to perform any preperatory action before the request is acted
         upon
+        '''
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def task_post_exec(self, task):
+        '''
+        This method is called upon completing a request, and can be
+        overloaded to perform any cleanup action before the request is reported
+        as complete.
         '''
         pass
 
@@ -358,7 +369,7 @@ class Worker(rpu.Component):
         self._prof.prof('req_start', uid=self._uid, msg=task['uid'])
         task['worker'] = self._uid
 
-        self.prepare_task(task)
+        self.task_pre_exec(task)
 
         try:
             # ok, we have work to do.  Check the requirements to see  how many
@@ -516,7 +527,12 @@ class Worker(rpu.Component):
                    'ret': ret}
 
             self._res_put.put(res)
+
+            self._prof.prof('req_post', uid=self._uid, msg=task['uid'])
+            self.task_post_exec(task)
+
             self._prof.prof('req_stop', uid=self._uid, msg=task['uid'])
+
         except:
             self._log.exception('result cb failed')
             raise
