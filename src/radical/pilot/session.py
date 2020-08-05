@@ -1,3 +1,4 @@
+# pylint: disable=protected-access,unused-argument
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -86,7 +87,7 @@ class Session(rs.Session):
         self._cmgr    = None    # only primary sessions have a cmgr
 
         self._cfg     = ru.Config('radical.pilot.session',  name=name, cfg=cfg)
-        self._rcfgs   = ru.Config('radical.pilot.resource', name='*')
+        self._rcfgs   = ru.Config('radical.pilot.resource', name='*', expand=False)
 
         if _primary:
 
@@ -163,9 +164,13 @@ class Session(rs.Session):
 
         self._cfg.dburl = dburl
 
-        self._rep.info ('<<database   : ')
-        self._rep.plain('[%s]'    % dburl)
-        self._log.info('dburl %s' % dburl)
+        dburl_no_passwd = ru.Url(dburl)
+        if dburl_no_passwd.get_password():
+            dburl_no_passwd.set_password('****')
+
+        self._rep.info ('<<database   : ')  
+        self._rep.plain('[%s]'    % dburl_no_passwd)
+        self._log.info('dburl %s' % dburl_no_passwd)
 
         # create/connect database handle on primary sessions
         try:
@@ -180,10 +185,12 @@ class Session(rs.Session):
                                           'rs': rs.version_detail,
                                           'ru': ru.version_detail,
                                           'py': py_version_detail}})
-        except Exception:
+        except Exception as e:
             self._rep.error(">>err\n")
-            self._log.exception('session create failed [%s]',  dburl)
-            raise RuntimeError ('session create failed [%s]' % dburl)
+            self._log.exception('session create failed [%s]' %
+                    dburl_no_passwd)
+            raise RuntimeError ('session create failed [%s]' %
+                    dburl_no_passwd) from e
 
         # primary sessions have a component manager which also manages
         # heartbeat.  'self._cmgr.close()` should be called during termination
@@ -216,7 +223,7 @@ class Session(rs.Session):
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback):
         self.close(download=True)
 
 
@@ -586,7 +593,7 @@ class Session(rs.Session):
         for domain in self._rcfgs:
             if domain == 'aliases':
                 continue
-            for host in self._rcfgs:
+            for host in self._rcfgs[domain]:
                 resources.append('%s.%s' % (domain, host))
 
         return sorted(resources)
@@ -772,8 +779,8 @@ class Session(rs.Session):
 
                 else:
                     shell = self.get_js_shell(resource, schema)
-                    ret, out, err = shell.run_sync(' echo "WORKDIR: %s"'
-                                                                  % sandbox_raw)
+                    ret, out, _ = shell.run_sync(' echo "WORKDIR: %s"' %
+                                                 sandbox_raw)
                     if ret or 'WORKDIR:' not in out:
                         raise RuntimeError("Couldn't get remote workdir.")
 
@@ -949,7 +956,11 @@ class Session(rs.Session):
     @staticmethod
     def autopilot(user, passwd):
 
-        import github3
+        try:
+            import github3
+        except ImportError:
+            print('ERROR: github3 library is not available')
+            return
         import random
 
         labels = 'type:autopilot'
@@ -976,7 +987,6 @@ class Session(rs.Session):
             out        = ru.sh_callout("%s | %s" % (cmd_fetch, cmd_filter),
                                        shell=True)[0]
             return out.strip()
-
 
         github = github3.login(user, passwd)
         repo   = github.repository("radical-cybertools", "radical.pilot")

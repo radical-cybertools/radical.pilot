@@ -1,3 +1,6 @@
+# pylint: disable=subprocess-popen-preexec-fn
+# FIXME: review pylint directive - https://github.com/PyCQA/pylint/pull/2087
+#        (https://docs.python.org/3/library/subprocess.html#popen-constructor)
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -17,7 +20,7 @@ import subprocess
 
 import radical.utils as ru
 
-from .... import pilot     as rp
+from ...  import agent     as rpa
 from ...  import utils     as rpu
 from ...  import states    as rps
 from ...  import constants as rpc
@@ -84,12 +87,12 @@ class Popen(AgentExecutingComponent) :
 
         # The AgentExecutingComponent needs the LaunchMethod to construct
         # commands.
-        self._task_launcher = rp.agent.LaunchMethod.create(
+        self._task_launcher = rpa.LaunchMethod.create(
                 name    = self._cfg.get('task_launch_method'),
                 cfg     = self._cfg,
                 session = self._session)
 
-        self._mpi_launcher = rp.agent.LaunchMethod.create(
+        self._mpi_launcher = rpa.LaunchMethod.create(
                 name    = self._cfg.get('mpi_launch_method'),
                 cfg     = self._cfg,
                 session = self._session)
@@ -212,6 +215,7 @@ echo "$($RP_GTOD),$1,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING,$2" >> $
             # Create string for environment variable setting
             env_string = ''
           # env_string += '. %s/env.orig\n'                % self._pwd
+            env_string += 'export RADICAL_BASE="%s"\n'     % self._pwd
             env_string += 'export RP_SESSION_ID="%s"\n'    % self._cfg['sid']
             env_string += 'export RP_PILOT_ID="%s"\n'      % self._cfg['pid']
             env_string += 'export RP_AGENT_ID="%s"\n'      % self._cfg['aid']
@@ -260,7 +264,7 @@ prof(){
             except Exception as e:
                 msg = "Error in spawner (%s)" % e
                 self._log.exception(msg)
-                raise RuntimeError(msg)
+                raise RuntimeError (msg) from e
 
             # also add any env vars requested in the unit description
             if descr['environment']:

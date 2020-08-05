@@ -1,4 +1,7 @@
 
+# pylint: disable=unused-argument    # W0613 Unused argument 'timeout' & 'input'
+# pylint: disable=redefined-builtin  # W0622 Redefining built-in 'input'
+
 import os
 import copy
 import time
@@ -65,11 +68,11 @@ class ComponentManager(object):
 
         self._hb_pub = ru.zmq.Publisher('heartbeat',
                                         self._cfg.heartbeat.addr_pub,
-                                        log=self._log)
+                                        log=self._log, prof=self._prof)
         self._hb_sub = ru.zmq.Subscriber('heartbeat',
                                          self._cfg.heartbeat.addr_sub,
-                                         topic='heartbeat',
-                                         cb=self._hb_sub_cb, log=self._log)
+                                         topic='heartbeat', cb=self._hb_sub_cb,
+                                         log=self._log, prof=self._prof)
 
         # confirm the bridge being usable by listening to our own heartbeat
         self._hb.start()
@@ -639,13 +642,14 @@ class Component(object):
     #
     def stop(self, timeout=None):                                         # noqa
         '''
-        We need to terminate and join all threads, close all comunication
+        We need to terminate and join all threads, close all communication
         channels, etc.  But we trust on the correct invocation of the finalizers
         to do all this, and thus here only forward the stop request to the base
         class.
         '''
 
         #  FIXME: implement timeout, or remove parameter
+        #   (pylint W0613 should be removed if changes to timeout are applied)
 
         self._log.info('stop %s (%s : %s) [%s]', self.uid, os.getpid(),
                        ru.get_thread_name(), ru.get_caller_name())
@@ -923,10 +927,11 @@ class Component(object):
         # dig the addresses from the bridge's config file
         fname = '%s/%s.cfg' % (self._cfg.path, pubsub)
         cfg   = ru.read_json(fname)
-        addr  = cfg['pub']
 
-        self._publishers[pubsub] = ru.zmq.Publisher(pubsub, url=addr,
-                                                            log=self._log)
+        self._publishers[pubsub] = ru.zmq.Publisher(channel=pubsub,
+                                                    url=cfg['pub'],
+                                                    log=self._log,
+                                                    prof=self._prof)
 
         self._log.debug('registered publisher for %s', pubsub)
 
@@ -957,10 +962,11 @@ class Component(object):
         if pubsub not in self._subscribers:
             self._subscribers[pubsub] = ru.zmq.Subscriber(channel=pubsub,
                                                           url=cfg['sub'],
-                                                          log=self._log)
+                                                          log=self._log,
+                                                          prof=self._prof)
 
         self._subscribers[pubsub].subscribe(topic=pubsub, cb=cb,
-                                             lock=self._cb_lock)
+                                            lock=self._cb_lock)
 
 
     # --------------------------------------------------------------------------
