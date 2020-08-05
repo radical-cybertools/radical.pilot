@@ -85,7 +85,6 @@ class TestLauncher(TestCase):
 
         resource = 'local.localhost'
         rcfg     = configs.local.localhost
-        expand   = None
 
         pilot    = {
                         'uid'         : 'pilot.0000',
