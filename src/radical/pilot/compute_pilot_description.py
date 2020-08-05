@@ -12,6 +12,7 @@ import radical.utils as ru
 RESOURCE          = 'resource'
 ACCESS_SCHEMA     = 'access_schema'
 QUEUE             = 'queue'
+JOB_NAME          = 'job_name'
 PROJECT           = 'project'
 CANDIDATE_HOSTS   = 'candidate_hosts'
 SANDBOX           = 'sandbox'
@@ -162,6 +163,7 @@ class ComputePilotDescription(ru.Description):
         GPUS            : int       ,
         MEMORY          : int       ,
         QUEUE           : str       ,
+        JOB_NAME        : str       ,
         PROJECT         : str       ,
         CLEANUP         : bool      ,
         CANDIDATE_HOSTS : [str]     ,
@@ -181,6 +183,7 @@ class ComputePilotDescription(ru.Description):
         GPUS            : 0         ,
         MEMORY          : 0         ,
         QUEUE           : None      ,
+        JOB_NAME        : None      ,
         PROJECT         : None      ,
         CLEANUP         : False     ,
         CANDIDATE_HOSTS : []        ,
