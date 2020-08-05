@@ -119,16 +119,17 @@ def test_construct_command(mocked_init,
 
     test_cases = setUp('lm', 'mpirun')
 
-    component  = MPIRun(name=None, cfg=None, session=None)
-    component._log           = ru.Logger('dummy')
+    component = MPIRun(name=None, cfg=None, session=None)
     component.name           = 'MPIRun'
-    component.mpi_flavor     = None
-    component.launch_command = 'mpirun'
+    component._log           = ru.Logger('dummy')
     component._mpt           = False
     component._rsh           = False
     component._ccmrun        = ''
     component._dplace        = ''
+
     component._configure()
+    component.launch_command = 'mpirun'
+    component.mpi_flavor     = None
 
     for unit, result in test_cases:
         command, hop = component.construct_command(unit, None)
