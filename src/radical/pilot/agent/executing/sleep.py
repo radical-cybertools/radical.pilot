@@ -78,7 +78,6 @@ class Sleep(AgentExecutingComponent) :
             self._prof.prof('exec_start',    uid=uid)
             self._prof.prof('exec_ok',       uid=uid)
             self._prof.prof('cu_start',      uid=uid)
-            self._prof.prof('cu_cd_done',    uid=uid)
             self._prof.prof('cu_exec_start', uid=uid)
             self._prof.prof('app_start',     uid=uid)
 

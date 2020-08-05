@@ -202,32 +202,32 @@ UNIT_DURATIONS_PRTE_APP  = {
 # Set of default pilot durations for RADICAL-Analytics. All the durations
 # are contiguos.
 # FIXME: Divide durations in provide/consume.
-# NOTE: _init durations are most often 0. 
+# NOTE: _init durations are most often 0.
 # noqa: E201,E261
 PILOT_DURATIONS_DEBUG = {
     'consume' : {
-        'p_pmgr_create'           : [ {ru.EVENT: 'state'            , ru.STATE: rps.NEW                    },      
+        'p_pmgr_create'           : [ {ru.EVENT: 'state'            , ru.STATE: rps.NEW                    },
                                       {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_LAUNCHING_PENDING }  ],
-        'p_pmgr_launching_init'   : [ {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_LAUNCHING_PENDING }, 
+        'p_pmgr_launching_init'   : [ {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_LAUNCHING_PENDING },
                                       {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_LAUNCHING         }  ],
-        'p_pmgr_launching'        : [ {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_LAUNCHING         },               
+        'p_pmgr_launching'        : [ {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_LAUNCHING         },
                                       {ru.EVENT: 'staging_in_start' , ru.STATE: None                       }  ],
-        'p_pmgr_stage_in'         : [ {ru.EVENT: 'staging_in_start' , ru.STATE: None                       }, 
-                                      {ru.EVENT: 'staging_in_stop'  , ru.STATE: None                       }  ], 
-        'p_pmgr_submission_init'  : [ {ru.EVENT: 'staging_in_stop'  , ru.STATE: None                       }, 
-                                      {ru.EVENT: 'submission_start' , ru.STATE: None                       }  ], 
-        'p_pmgr_submission'       : [ {ru.EVENT: 'submission_start' , ru.STATE: None                       },  
+        'p_pmgr_stage_in'         : [ {ru.EVENT: 'staging_in_start' , ru.STATE: None                       },
+                                      {ru.EVENT: 'staging_in_stop'  , ru.STATE: None                       }  ],
+        'p_pmgr_submission_init'  : [ {ru.EVENT: 'staging_in_stop'  , ru.STATE: None                       },
+                                      {ru.EVENT: 'submission_start' , ru.STATE: None                       }  ],
+        'p_pmgr_submission'       : [ {ru.EVENT: 'submission_start' , ru.STATE: None                       },
                                       {ru.EVENT: 'submission_stop'  , ru.STATE: None                       }  ],
-        'p_pmgr_scheduling_init'  : [ {ru.EVENT: 'submission_stop'  , ru.STATE: None                       },  
-                                      {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_ACTIVE_PENDING    }  ], 
+        'p_pmgr_scheduling_init'  : [ {ru.EVENT: 'submission_stop'  , ru.STATE: None                       },
+                                      {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_ACTIVE_PENDING    }  ],
         'p_pmgr_scheduling'       : [ {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_ACTIVE_PENDING    },     # batch system queue time
                                       {ru.EVENT: 'bootstrap_0_start', ru.STATE: None                       }  ],
-        'p_agent_ve_setup_init'   : [ {ru.EVENT: 'bootstrap_0_start', ru.STATE: None                       },  
-                                      {ru.EVENT: 've_setup_start'   , ru.STATE: None                       }  ], 
-        'p_agent_ve_setup'        : [ {ru.EVENT: 've_setup_start'   , ru.STATE: None                       },  
-                                      {ru.EVENT: 've_setup_stop'    , ru.STATE: None                       }  ], 
-        'p_agent_ve_activate_init': [ {ru.EVENT: 've_setup_stop'    , ru.STATE: None                       },  
-                                      {ru.EVENT: 've_activate_start', ru.STATE: None                       }  ], 
+        'p_agent_ve_setup_init'   : [ {ru.EVENT: 'bootstrap_0_start', ru.STATE: None                       },
+                                      {ru.EVENT: 've_setup_start'   , ru.STATE: None                       }  ],
+        'p_agent_ve_setup'        : [ {ru.EVENT: 've_setup_start'   , ru.STATE: None                       },
+                                      {ru.EVENT: 've_setup_stop'    , ru.STATE: None                       }  ],
+        'p_agent_ve_activate_init': [ {ru.EVENT: 've_setup_stop'    , ru.STATE: None                       },
+                                      {ru.EVENT: 've_activate_start', ru.STATE: None                       }  ],
         'p_agent_ve_activate'     : [ {ru.EVENT: 've_activate_start', ru.STATE: None                       },
                                       {ru.EVENT: 've_activate_stop' , ru.STATE: None                       }  ],
         'p_agent_install_init'    : [ {ru.EVENT: 've_activate_stop' , ru.STATE: None                       },
@@ -247,39 +247,37 @@ PILOT_DURATIONS_DEBUG = {
 # are contiguos.
 UNIT_DURATIONS_DEBUG = {
     'consume' : {
-        'u_umgr_create'                : [ {ru.EVENT: 'state'           , ru.STATE: rps.NEW                         },      
+        'u_umgr_create'                : [ {ru.EVENT: 'state'           , ru.STATE: rps.NEW                         },
                                            {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_SCHEDULING_PENDING     }  ],
-        'u_umgr_schedule_queue'        : [ {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_SCHEDULING_PENDING     }, 
+        'u_umgr_schedule_queue'        : [ {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_SCHEDULING_PENDING     },
                                            {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_SCHEDULING             }  ],
-        'u_umgr_schedule'              : [ {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_SCHEDULING             },               
+        'u_umgr_schedule'              : [ {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_SCHEDULING             },
                                            {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_STAGING_INPUT_PENDING  }  ],
-        'u_umgr_stage_in_queue'        : [ {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_STAGING_INPUT_PENDING  }, 
+        'u_umgr_stage_in_queue'        : [ {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_STAGING_INPUT_PENDING  },
                                            {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_STAGING_INPUT          }  ], # push to mongodb
-        'u_umgr_stage_in'              : [ {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_STAGING_INPUT          }, 
+        'u_umgr_stage_in'              : [ {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_STAGING_INPUT          },
                                            {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_STAGING_INPUT_PENDING }  ], # wait in mongodb
-        'u_agent_stage_in_queue'       : [ {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_STAGING_INPUT_PENDING },  
-                                           {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_STAGING_INPUT         }  ], # pull from mongodb 
-        'u_agent_stage_in'             : [ {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_STAGING_INPUT         },  
-                                           {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_SCHEDULING_PENDING    }  ], 
-        'u_agent_schedule_queue'       : [ {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_SCHEDULING_PENDING    },  
+        'u_agent_stage_in_queue'       : [ {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_STAGING_INPUT_PENDING },
+                                           {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_STAGING_INPUT         }  ], # pull from mongodb
+        'u_agent_stage_in'             : [ {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_STAGING_INPUT         },
+                                           {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_SCHEDULING_PENDING    }  ],
+        'u_agent_schedule_queue'       : [ {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_SCHEDULING_PENDING    },
                                            {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_SCHEDULING            }  ],
-        'u_agent_schedule'             : [ {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_SCHEDULING            },  
-                                           {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_EXECUTING_PENDING     }  ], 
-        'u_agent_execute_queue'        : [ {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_EXECUTING_PENDING     },  
-                                           {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_EXECUTING             }  ], 
-        'u_agent_execute_prepare'      : [ {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_EXECUTING             },  
-                                           {ru.EVENT: 'exec_mkdir'      , ru.STATE: None                            }  ], 
+        'u_agent_schedule'             : [ {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_SCHEDULING            },
+                                           {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_EXECUTING_PENDING     }  ],
+        'u_agent_execute_queue'        : [ {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_EXECUTING_PENDING     },
+                                           {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_EXECUTING             }  ],
+        'u_agent_execute_prepare'      : [ {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_EXECUTING             },
+                                           {ru.EVENT: 'exec_mkdir'      , ru.STATE: None                            }  ],
         'u_agent_execute_mkdir'        : [ {ru.EVENT: 'exec_mkdir'      , ru.STATE: None                            },
                                            {ru.EVENT: 'exec_mkdir_done' , ru.STATE: None                            }  ],
         'u_agent_execute_layer_start'  : [ {ru.EVENT: 'exec_mkdir_done' , ru.STATE: None                            },
                                            {ru.EVENT: 'exec_start'      , ru.STATE: None                            }  ],
         'u_agent_execute_layer'        : [ {ru.EVENT: 'exec_start'      , ru.STATE: None                            },
                                           [{ru.EVENT: 'exec_ok'         , ru.STATE: None                            },
-                                           {ru.EVENT: 'exec_fail'       , ru.STATE: None                            } ]], # orte, ssh, mpi, ... 
+                                           {ru.EVENT: 'exec_fail'       , ru.STATE: None                            } ]], # orte, ssh, mpi, ...
         'u_agent_lm_start'             : [ {ru.EVENT: 'cu_start'        , ru.STATE: None                            },
-                                           {ru.EVENT: 'cu_cd_done'      , ru.STATE: None                            }  ], # PROBLEM: discontinuity
-        'u_agent_lm_pre_execute_start' : [ {ru.EVENT: 'cu_cd_done'      , ru.STATE: None                            },
-                                           {ru.EVENT: 'cu_pre_start'    , ru.STATE: None                            }  ],
+                                           {ru.EVENT: 'cu_pre_start'    , ru.STATE: None                            }  ], # PROBLEM: discontinuity
         'u_agent_lm_pre_execute'       : [ {ru.EVENT: 'cu_pre_start'    , ru.STATE: None                            },
                                            {ru.EVENT: 'cu_pre_stop'     , ru.STATE: None                            }  ],
         'u_agent_lm_execute_start'     : [ {ru.EVENT: 'cu_pre_stop'     , ru.STATE: None                            },
@@ -303,7 +301,7 @@ UNIT_DURATIONS_DEBUG = {
         'u_agent_unschedule'           : [ {ru.EVENT: 'unschedule_start', ru.STATE: None                            },
                                            {ru.EVENT: 'unschedule_stop' , ru.STATE: None                            }  ]
     }
-} 
+}
 
 
 # ------------------------------------------------------------------------------

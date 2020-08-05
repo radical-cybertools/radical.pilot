@@ -307,7 +307,6 @@ prof(){
         cwd  += "# CU sandbox\n"
         cwd  += "mkdir -p %s\n" % sandbox
         cwd  += "cd       %s\n" % sandbox
-        cwd  += 'prof cu_cd_done\n'
         cwd  += "\n"
 
         if  descr['pre_exec'] :
