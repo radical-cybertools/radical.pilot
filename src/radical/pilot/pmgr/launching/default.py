@@ -888,6 +888,7 @@ class Default(PMGRLaunchingComponent):
         runtime         = pilot['description']['runtime']
         app_comm        = pilot['description']['app_comm']
         queue           = pilot['description']['queue']
+        job_name        = pilot['description']['job_name']
         project         = pilot['description']['project']
         cleanup         = pilot['description']['cleanup']
         candidate_hosts = pilot['description']['candidate_hosts']
@@ -964,6 +965,9 @@ class Default(PMGRLaunchingComponent):
             agent_config = os.environ.get('RADICAL_PILOT_AGENT_CONFIG')
         if not agent_config:
             agent_config = rc_agent_config
+
+        if not job_name:
+            job_name = pid
 
         if isinstance(agent_config, dict):
 
@@ -1273,7 +1277,7 @@ class Default(PMGRLaunchingComponent):
         else:
             bootstrap_tgt = '%s/%s' % ('.', BOOTSTRAPPER_0)
 
-        jd.name                  = pid
+        jd.name                  = job_name
         jd.executable            = "/bin/bash"
         jd.arguments             = ['-l %s %s' % (bootstrap_tgt, bootstrap_args)]
         jd.working_directory     = pilot_sandbox
