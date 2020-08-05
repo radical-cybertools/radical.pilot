@@ -17,20 +17,17 @@ class MPIRun(LaunchMethod):
     #
     def __init__(self, name, cfg, session):
 
-        LaunchMethod.__init__(self, name, cfg, session)
-
         self._mpt    = False
         self._rsh    = False
         self._ccmrun = ''
         self._dplace = ''
 
+        LaunchMethod.__init__(self, name, cfg, session)
+
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-
-        self._mpt = False
-        self._rsh = False
 
         if '_rsh' in self.name.lower():
             self._rsh = True
