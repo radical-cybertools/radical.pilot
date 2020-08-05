@@ -34,9 +34,7 @@ _pids = list()
 
 
 def _kill():
-    print('==== atexit')
     for pid in _pids:
-        print('==== kill %s' % pid)
         os.killpg(pid, signal.SIGTERM)
 
 

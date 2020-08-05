@@ -15,7 +15,6 @@ import radical.saga            as rs
 import radical.saga.filesystem as rsfs
 import radical.utils           as ru
 
-from .... import pilot         as rp
 from ...  import states        as rps
 from ...  import constants     as rpc
 
@@ -466,7 +465,7 @@ class Default(PMGRLaunchingComponent):
                     raise ValueError('unknown pilot %s' % pid)
 
                 pilot = self._pilots[pid]['pilot']
-                if pilot['state'] not in rp.FINAL:
+                if pilot['state'] not in rps.FINAL:
                     self._log.debug('killing pilots: alive %s', pid)
                     alive_pids.append(pid)
                 else:
@@ -507,7 +506,7 @@ class Default(PMGRLaunchingComponent):
                     if 'resource_details' in pilot:
                         del(pilot['resource_details'])
 
-                    if pilot['state'] in rp.FINAL:
+                    if pilot['state'] in rps.FINAL:
                         continue
 
                     self._log.debug('plan cancellation of %s : %s', pilot, job)
@@ -888,6 +887,7 @@ class Default(PMGRLaunchingComponent):
         runtime         = pilot['description']['runtime']
         app_comm        = pilot['description']['app_comm']
         queue           = pilot['description']['queue']
+        job_name        = pilot['description']['job_name']
         project         = pilot['description']['project']
         cleanup         = pilot['description']['cleanup']
         candidate_hosts = pilot['description']['candidate_hosts']
@@ -964,6 +964,9 @@ class Default(PMGRLaunchingComponent):
             agent_config = os.environ.get('RADICAL_PILOT_AGENT_CONFIG')
         if not agent_config:
             agent_config = rc_agent_config
+
+        if not job_name:
+            job_name = pid
 
         if isinstance(agent_config, dict):
 
@@ -1273,7 +1276,7 @@ class Default(PMGRLaunchingComponent):
         else:
             bootstrap_tgt = '%s/%s' % ('.', BOOTSTRAPPER_0)
 
-        jd.name                  = pid
+        jd.name                  = job_name
         jd.executable            = "/bin/bash"
         jd.arguments             = ['-l %s %s' % (bootstrap_tgt, bootstrap_args)]
         jd.working_directory     = pilot_sandbox
