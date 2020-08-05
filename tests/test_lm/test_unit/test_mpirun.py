@@ -110,8 +110,8 @@ def test_configure_dplace(mocked_init, mocked_get_mpi_info, mocked_raise_on,
 
 # ------------------------------------------------------------------------------
 #
-@mock.patch.object(MPIRun, '__init__',   return_value=None)
-@mock.patch.object(MPIRun, '_get_mpi_info', return_value=[5,'ORTE'])
+@mock.patch.object(MPIRun, '__init__', return_value=None)
+@mock.patch.object(MPIRun, '_get_mpi_info', return_value=[5, 'ORTE'])
 @mock.patch('radical.utils.raise_on')
 def test_construct_command(mocked_init,
                            mocked_get_mpi_info,
@@ -120,14 +120,15 @@ def test_construct_command(mocked_init,
     test_cases = setUp('lm', 'mpirun')
 
     component  = MPIRun(name=None, cfg=None, session=None)
-    component.name = 'MPIRun'
-    component._configure()
-
     component._log           = ru.Logger('dummy')
+    component.name           = 'MPIRun'
     component.mpi_flavor     = None
     component.launch_command = 'mpirun'
-    component._ccmrun = ''
-    component._dplace = ''
+    component._mpt           = False
+    component._rsh           = False
+    component._ccmrun        = ''
+    component._dplace        = ''
+    component._configure()
 
     for unit, result in test_cases:
         command, hop = component.construct_command(unit, None)
