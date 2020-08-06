@@ -15,7 +15,6 @@ import radical.saga            as rs
 import radical.saga.filesystem as rsfs
 import radical.utils           as ru
 
-from .... import pilot         as rp
 from ...  import states        as rps
 from ...  import constants     as rpc
 
@@ -212,9 +211,9 @@ class Default(PMGRLaunchingComponent):
             # the directory if it does not yet exist.
 
             # url used for cache (sandbox url w/o path)
-            tmp      = rs.Url(pilot['pilot_sandbox'])
-            tmp.path = '/'
-            key = str(tmp)
+            fs_url      = rs.Url(pilot['pilot_sandbox'])
+            fs_url.path = '/'
+            key         = str(fs_url)
 
             self._log.debug("rs.file.Directory ('%s')", key)
 
@@ -223,7 +222,7 @@ class Default(PMGRLaunchingComponent):
                     fs = self._saga_fs_cache[key]
 
                 else:
-                    fs = rsfs.Directory(key, session=self._session)
+                    fs = rsfs.Directory(fs_url, session=self._session)
                     self._saga_fs_cache[key] = fs
 
             fs.copy(src, tgt, flags=flags)
@@ -284,16 +283,16 @@ class Default(PMGRLaunchingComponent):
                 # Define and open the staging directory for the pilot
 
                 # url used for cache (sandbox url w/o path)
-                tmp      = rs.Url(pilot['pilot_sandbox'])
-                tmp.path = '/'
-                key = str(tmp)
+                fs_url      = rs.Url(pilot['pilot_sandbox'])
+                fs_url.path = '/'
+                key         = str(fs_url)
 
                 with self._cache_lock:
                     if key in self._saga_fs_cache:
                         fs = self._saga_fs_cache[key]
 
                     else:
-                        fs = rsfs.Directory(key, session=self._session)
+                        fs = rsfs.Directory(fs_url, session=self._session)
                         self._saga_fs_cache[key] = fs
 
                 fs.copy(src, tgt, flags=flags)
@@ -470,7 +469,7 @@ class Default(PMGRLaunchingComponent):
                     raise ValueError('unknown pilot %s' % pid)
 
                 pilot = self._pilots[pid]['pilot']
-                if pilot['state'] not in rp.FINAL:
+                if pilot['state'] not in rps.FINAL:
                     self._log.debug('killing pilots: alive %s', pid)
                     alive_pids.append(pid)
                 else:
@@ -511,7 +510,7 @@ class Default(PMGRLaunchingComponent):
                     if 'resource_details' in pilot:
                         del(pilot['resource_details'])
 
-                    if pilot['state'] in rp.FINAL:
+                    if pilot['state'] in rps.FINAL:
                         continue
 
                     self._log.debug('plan cancellation of %s : %s', pilot, job)
@@ -753,15 +752,16 @@ class Default(PMGRLaunchingComponent):
 
         fs_endpoint = rcfg['filesystem_endpoint']
         fs_url      = rs.Url(fs_endpoint)
+        key         = str(fs_url)
 
         self._log.debug("rs.file.Directory ('%s')", fs_url)
 
         with self._cache_lock:
-            if fs_url in self._saga_fs_cache:
-                fs = self._saga_fs_cache[fs_url]
+            if key in self._saga_fs_cache:
+                fs = self._saga_fs_cache[key]
             else:
                 fs = rsfs.Directory(fs_url, session=self._session)
-                self._saga_fs_cache[fs_url] = fs
+                self._saga_fs_cache[key] = fs
 
         tar_rem      = rs.Url(fs_url)
         tar_rem.path = "%s/%s" % (session_sandbox, tar_name)
@@ -892,6 +892,7 @@ class Default(PMGRLaunchingComponent):
         runtime         = pilot['description']['runtime']
         app_comm        = pilot['description']['app_comm']
         queue           = pilot['description']['queue']
+        job_name        = pilot['description']['job_name']
         project         = pilot['description']['project']
         cleanup         = pilot['description']['cleanup']
         candidate_hosts = pilot['description']['candidate_hosts']
@@ -917,7 +918,6 @@ class Default(PMGRLaunchingComponent):
         virtenv                 = rcfg.get('virtenv',             default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
         gpus_per_node           = rcfg.get('gpus_per_node',  0)
-        self._log.debug('=== gpus_per_node 0: %d', gpus_per_node)
         lfs_path_per_node       = rcfg.get('lfs_path_per_node', None)
         lfs_size_per_node       = rcfg.get('lfs_size_per_node',  0)
         python_dist             = rcfg.get('python_dist')
@@ -968,6 +968,9 @@ class Default(PMGRLaunchingComponent):
             agent_config = os.environ.get('RADICAL_PILOT_AGENT_CONFIG')
         if not agent_config:
             agent_config = rc_agent_config
+
+        if not job_name:
+            job_name = pid
 
         if isinstance(agent_config, dict):
 
@@ -1136,11 +1139,9 @@ class Default(PMGRLaunchingComponent):
         # if gpus_per_node is set (!= None), then we need to
         # allocation full nodes, and thus round up
         if gpus_per_node:
-            self._log.debug('=== gpus_per_node 1: %d', gpus_per_node)
             gpus_per_node = int(gpus_per_node)
             number_gpus   = int(gpus_per_node *
                             math.ceil(float(number_gpus) / gpus_per_node))
-            self._log.debug('=== gpus_per_node 2: %d', gpus_per_node)
 
         # set mandatory args
         bootstrap_args  = ""
@@ -1280,7 +1281,7 @@ class Default(PMGRLaunchingComponent):
         else:
             bootstrap_tgt = '%s/%s' % ('.', BOOTSTRAPPER_0)
 
-        jd.name                  = pid
+        jd.name                  = job_name
         jd.executable            = "/bin/bash"
         jd.arguments             = ['-l %s %s' % (bootstrap_tgt, bootstrap_args)]
         jd.working_directory     = pilot_sandbox

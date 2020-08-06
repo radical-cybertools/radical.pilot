@@ -120,7 +120,7 @@ VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/66/f0/6867af06d2e2f511e
 VIRTENV_IS_ACTIVATED=FALSE
 
 VIRTENV_RADICAL_DEPS="pymongo colorama python-hostlist ntplib "\
-"pyzmq netifaces setproctitle msgpack future regex munch"
+"pyzmq netifaces setproctitle msgpack future regex"
 
 VIRTENV_RADICAL_MODS="pymongo colorama hostlist ntplib "\
 "zmq netifaces setproctitle msgpack future regex"
