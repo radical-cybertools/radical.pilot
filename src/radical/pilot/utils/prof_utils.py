@@ -578,8 +578,8 @@ def cluster_resources(resources):
         if isinstance(r, int):
             idx.add(r)
         else:
-            for idx in range(r[0], r[1] + 1):
-                idx.add(idx)
+            for i in range(r[0], r[1] + 1):
+                idx.add(i)
 
     r0 = None
     r1 = None
