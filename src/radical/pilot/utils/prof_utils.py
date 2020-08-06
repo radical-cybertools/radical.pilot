@@ -199,6 +199,7 @@ UNIT_DURATIONS_PRTE_APP  = {
         }
 }
 
+
 # Set of default pilot durations for RADICAL-Analytics. All the durations
 # are contiguos.
 # FIXME: Divide durations in provide/consume.
@@ -241,6 +242,7 @@ PILOT_DURATIONS_DEBUG = {
                                       {ru.EVENT: 'state'            , ru.STATE: rps.FAILED                 } ]]   # noqa
     }
 }
+
 
 # Set of default unit durations for RADICAL-Analytics. All the durations
 # are contiguos.
@@ -301,6 +303,7 @@ UNIT_DURATIONS_DEBUG = {
                                            {ru.EVENT: 'unschedule_stop' , ru.STATE: None                            }  ]  # noqa
     }
 }
+
 
 # ------------------------------------------------------------------------------
 #
