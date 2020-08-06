@@ -300,9 +300,9 @@ UNIT_DURATIONS_DEBUG = {
                                            {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_STAGING_OUTPUT        }  ], # noqa
         'u_agent_stage_out'            : [ {ru.EVENT: 'state'           , ru.STATE: rps.AGENT_STAGING_OUTPUT        },    # noqa
                                            {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_STAGING_OUTPUT_PENDING }  ], # noqa
-        'u_agent_push_to_umngr'        : [ {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_STAGING_OUTPUT_PENDING },    # noqa
+        'u_agent_push_to_umgr'         : [ {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_STAGING_OUTPUT_PENDING },    # noqa
                                            {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_STAGING_OUTPUT         }  ], # push/pull mongodb # noqa
-        'u_umngr_destroy'              : [ {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_STAGING_OUTPUT         },    # noqa
+        'u_umgr_destroy'               : [ {ru.EVENT: 'state'           , ru.STATE: rps.UMGR_STAGING_OUTPUT         },    # noqa
                                           [{ru.EVENT: 'state'           , ru.STATE: rps.DONE                        },    # noqa
                                            {ru.EVENT: 'state'           , ru.STATE: rps.CANCELED                    },    # noqa
                                            {ru.EVENT: 'state'           , ru.STATE: rps.FAILED                      } ]], # noqa
