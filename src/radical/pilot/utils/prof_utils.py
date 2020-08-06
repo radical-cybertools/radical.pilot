@@ -443,7 +443,7 @@ def get_session_description(sid, src=None, dburl=None):
                     json['uid'] = json['_id']
                     if 'cfg' not in json:
                         json['cfg'] = dict()
-                for k,v in json.items():
+                for v in json.values():
                     fix_uids(v)
         fix_uids(json)
     fix_json(json)
