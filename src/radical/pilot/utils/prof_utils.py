@@ -237,14 +237,16 @@ PILOT_DURATIONS_DEBUG = {
                                       {ru.EVENT: 'rp_install_stop'  , ru.STATE: None                       }  ],  # noqa
         'p_agent_launching'       : [ {ru.EVENT: 'rp_install_stop'  , ru.STATE: None                       },     # noqa
                                       {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_ACTIVE            }  ],  # noqa
-        'p_anget_terminate_init'  : [ {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_ACTIVE            },     # noqa
+        'p_agent_terminate_init'  : [ {ru.EVENT: 'state'            , ru.STATE: rps.PMGR_ACTIVE            },     # noqa
                                       {ru.EVENT: 'cmd'              , ru.MSG  : 'cancel_pilot'             }  ],  # noqa
-        'p_anget_terminate'       : [ {ru.EVENT: 'cmd'              , ru.MSG  : 'cancel_pilot'             },     # noqa
-                                      {ru.EVENT: 'state'            , ru.EVENT: 'bootstrap_0_stop'         }  ],  # noqa
-       'p_agent_runtime'          : [ {ru.EVENT: 'state'            , ru.EVENT: 'bootstrap_0_stop'         },     # total pilot runtime  # noqa
+        'p_agent_terminate'       : [ {ru.EVENT: 'cmd'              , ru.MSG  : 'cancel_pilot'             },     # noqa
+                                      {ru.EVENT: 'bootstrap_0_stop' , ru.STATE: None                       }  ],  # noqa
+        'p_agent_finalize'        : [ {ru.EVENT: 'bootstrap_0_stop' , ru.STATE: None                       },     # total pilot runtime  # noqa
                                      [{ru.EVENT: 'state'            , ru.STATE: rps.DONE                   },     # noqa
                                       {ru.EVENT: 'state'            , ru.STATE: rps.CANCELED               },     # noqa
-                                      {ru.EVENT: 'state'            , ru.STATE: rps.FAILED                 } ]]   # noqa
+                                      {ru.EVENT: 'state'            , ru.STATE: rps.FAILED                 } ]],  # noqa
+        'p_agent_runtime'         : [ {ru.EVENT: 'bootstrap_0_start', ru.STATE: None                       },     # noqa
+                                      {ru.EVENT: 'bootstrap_0_stop' , ru.STATE: None                       }  ]   # noqa
     }
 }
 
