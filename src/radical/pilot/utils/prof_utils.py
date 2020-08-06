@@ -606,14 +606,14 @@ def cluster_resources(resources):
 
 # ------------------------------------------------------------------------------
 #
-def _get_pilot_provision(session, pilot):
+def _get_pilot_provision(pilot):
 
     pid   = pilot.uid
     cpn   = pilot.cfg['resource_details']['rm_info']['cores_per_node']
     gpn   = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
     ret   = dict()
 
-    nodes, anodes, pnodes = _get_nodes(pilot)
+    nodes, _, _ = _get_nodes(pilot)
 
     for metric in PILOT_DURATIONS['provide']:
 
@@ -651,7 +651,7 @@ def get_provided_resources(session):
     provided = dict()
     for p in session.get(etype='pilot'):
 
-        data = _get_pilot_provision(session, p)
+        data = _get_pilot_provision(p)
 
         for metric in data:
 
@@ -702,7 +702,7 @@ def get_consumed_resources(session):
     consumed = dict()
     for e in session.get(etype=['pilot', 'unit']):
 
-        if   e.etype == 'pilot': data = _get_pilot_consumption(session, e)
+        if   e.etype == 'pilot': data = _get_pilot_consumption(e)
         elif e.etype == 'unit' : data = _get_unit_consumption(session,  e)
 
         for metric in data:
@@ -743,7 +743,7 @@ def get_consumed_resources(session):
         cpn = pilot.cfg['resource_details']['rm_info']['cores_per_node']
         gpn = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
 
-        nodes, anodes, pnodes = _get_nodes(pilot)
+        nodes, _, pnodes = _get_nodes(pilot)
 
         # find resource utilization scope for all resources. We begin filling
         # the resource dict with
@@ -868,7 +868,7 @@ def _get_nodes(pilot):
 
 # ------------------------------------------------------------------------------
 #
-def _get_pilot_consumption(session, pilot):
+def _get_pilot_consumption(pilot):
 
     # Pilots consume resources in different ways:
     #
@@ -955,7 +955,7 @@ def _get_unit_consumption(session, unit):
     # FIXME: it is inefficient to query those values again and again
     cpn   = pilot.cfg['resource_details']['rm_info']['cores_per_node']
     gpn   = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
-    nodes, anodes, pnodes = _get_nodes(pilot)
+    nodes, _, _ = _get_nodes(pilot)
 
     # Units consume only those resources they are scheduled on.
     if 'slots' not in unit.cfg:
