@@ -1433,7 +1433,7 @@ $cmd"
 #    -x   exit cleanup - delete pilot sandbox, virtualenv etc. after completion
 #    -y   runtime limit
 #
-while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
+while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:z:" OPTION; do
     case $OPTION in
         a)  SESSION_SANDBOX="$OPTARG"  ;;
         b)  PYTHON_DIST="$OPTARG"  ;;
@@ -1453,6 +1453,7 @@ while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
         w)  pre_bootstrap_2 "$OPTARG"  ;;
         x)  CLEANUP="$OPTARG"  ;;
         y)  RUNTIME="$OPTARG"  ;;
+        z)  tar zxvf "../$OPTARG" -C ../ ;;
         *)  echo "Unknown option: '$OPTION'='$OPTARG'"
             return 1;;
     esac

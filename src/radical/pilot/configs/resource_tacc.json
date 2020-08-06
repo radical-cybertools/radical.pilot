@@ -44,7 +44,7 @@
     "frontera_wf0": {
         "description"                 : "",
         "notes"                       : "",
-        "schemas"                     : ["local", "ssh"],
+        "schemas"                     : ["ssh", "local"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
         {
@@ -69,9 +69,10 @@
                                         "module unload intel",
                                         "module unload impi",
                                         "module load   intel",
-                                        "module load   python3/3.7.0"
+                                        "module load   python3/3.7.0",
+                                        ". /home1/07305/rpilot/.miniconda3/etc/profile.d/conda.sh"
                                         ],
-        "default_remote_workdir"      : "$SCRATCH",
+        "default_remote_workdir"      :  "/scratch1/07305/rpilot",
         "valid_roots"                 : ["$SCRATCH", "$WORK"],
         "rp_version"                  : "installed",
         "virtenv"                     : "/scratch1/07305/rpilot/radical.pilot.sandbox/ve_wf0_ad",

@@ -618,6 +618,10 @@ class Default(PMGRLaunchingComponent):
         rcfg = self._session.get_resource_config(resource, schema)
         sid  = self._session.uid
 
+        # we create a deep-copy of the resource cfg, so that this code is fee to
+        # change it as needed
+        rcfg = ru.Config(cfg=rcfg.as_dict())
+
         # ----------------------------------------------------------------------
         # the rcfg can contain keys with string expansion placeholders where
         # values from the pilot description need filling in.  A prominent
@@ -690,7 +694,7 @@ class Default(PMGRLaunchingComponent):
 
             os.makedirs('%s/%s' % (tmp_dir, pilot['uid']))
 
-            info = self._prepare_pilot(resource, rcfg, pilot, expand)
+            info = self._prepare_pilot(resource, rcfg, pilot, expand, tar_name)
             ft_list += info['ft']
             jd_list.append(info['jd'])
             self._prof.prof('staging_in_start', uid=pilot['uid'])
@@ -752,7 +756,9 @@ class Default(PMGRLaunchingComponent):
 
         fs_endpoint = rcfg['filesystem_endpoint']
         fs_url      = rs.Url(fs_endpoint)
-        key         = str(fs_url)
+        tmp         = rs.Url(fs_url)
+        tmp.path    = '/'
+        key         = str(tmp)
 
         self._log.debug("rs.file.Directory ('%s')", fs_url)
 
@@ -766,42 +772,49 @@ class Default(PMGRLaunchingComponent):
         tar_rem      = rs.Url(fs_url)
         tar_rem.path = "%s/%s" % (session_sandbox, tar_name)
 
+        bs0_path = os.path.abspath("%s/agent/%s"
+                                  % (self._root_dir, BOOTSTRAPPER_0))
+        bs0_url      = rs.Url('file://localhost/%s' % bs0_path)
+        bs0_rem      = rs.Url(fs_url)
+        bs0_rem.path = "%s/%s" % (session_sandbox, 'bootstrap_0.sh')
+
+        fs.copy(bs0_url, bs0_rem, flags=rsfs.CREATE_PARENTS)
         fs.copy(tar_url, tar_rem, flags=rsfs.CREATE_PARENTS)
 
         shutil.rmtree(tmp_dir)
 
-        # we now need to untar on the target machine.
-        js_url = ru.Url(pilots[0]['js_url'])
-
-        # well, we actually don't need to talk to the rm, but only need
-        # a shell on the headnode.  That seems true for all ResourceManager we use right
-        # now.  So, lets convert the URL:
-        if '+' in js_url.scheme:
-            parts = js_url.scheme.split('+')
-            if 'gsissh' in parts: js_url.scheme = 'gsissh'
-            elif  'ssh' in parts: js_url.scheme = 'ssh'
-        else:
-            # In the non-combined '+' case we need to distinguish between
-            # a url that was the result of a hop or a local rm.
-            if js_url.scheme not in ['ssh', 'gsissh']:
-                js_url.scheme = 'fork'
-                js_url.host   = 'localhost'
-
-        with self._cache_lock:
-            if  js_url in self._saga_js_cache:
-                js_tmp  = self._saga_js_cache[js_url]
-            else:
-                js_tmp  = rs.job.Service(js_url, session=self._session)
-                self._saga_js_cache[js_url] = js_tmp
-
-      # cmd = "tar zmxvf %s/%s -C / ; rm -f %s" % \
-        cmd = "tar zmxvf %s/%s -C %s" % \
-                (session_sandbox, tar_name, session_sandbox)
-        j = js_tmp.run_job(cmd)
-        j.wait()
-
-        self._log.debug('tar cmd : %s', cmd)
-        self._log.debug('tar done: %s, %s, %s', j.state, j.stdout, j.stderr)
+   ##   # we now need to untar on the target machine.
+   ##   js_url = ru.Url(pilots[0]['js_url'])
+   ##
+   ##   # well, we actually don't need to talk to the rm, but only need
+   ##   # a shell on the headnode.  That seems true for all ResourceManager we use right
+   ##   # now.  So, lets convert the URL:
+   ##   if '+' in js_url.scheme:
+   ##       parts = js_url.scheme.split('+')
+   ##       if 'gsissh' in parts: js_url.scheme = 'gsissh'
+   ##       elif  'ssh' in parts: js_url.scheme = 'ssh'
+   ##   else:
+   ##       # In the non-combined '+' case we need to distinguish between
+   ##       # a url that was the result of a hop or a local rm.
+   ##       if js_url.scheme not in ['ssh', 'gsissh']:
+   ##           js_url.scheme = 'fork'
+   ##           js_url.host   = 'localhost'
+   ##
+   ##   with self._cache_lock:
+   ##       if  js_url in self._saga_js_cache:
+   ##           js_tmp  = self._saga_js_cache[js_url]
+   ##       else:
+   ##           js_tmp  = rs.job.Service(js_url, session=self._session)
+   ##           self._saga_js_cache[js_url] = js_tmp
+   ##
+   ## # cmd = "tar zmxvf %s/%s -C / ; rm -f %s" % \
+   ##   cmd = "tar zmxvf %s/%s -C %s" % \
+   ##           (session_sandbox, tar_name, session_sandbox)
+   ##   j = js_tmp.run_job(cmd)
+   ##   j.wait()
+   ##
+   ##   self._log.debug('tar cmd : %s', cmd)
+   ##   self._log.debug('tar done: %s, %s, %s', j.state, j.stdout, j.stderr)
 
         for pilot in pilots:
             self._prof.prof('staging_in_stop',  uid=pilot['uid'])
@@ -869,7 +882,7 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _prepare_pilot(self, resource, rcfg, pilot, expand):
+    def _prepare_pilot(self, resource, rcfg, pilot, expand, tar_name):
 
         pid = pilot["uid"]
         ret = {'ft': list(),
@@ -1154,6 +1167,7 @@ class Default(PMGRLaunchingComponent):
         bootstrap_args += " -g '%s'" % virtenv_dist
         bootstrap_args += " -v '%s'" % virtenv
         bootstrap_args += " -y '%d'" % runtime
+        bootstrap_args += " -z '%s'" % tar_name
 
         # set optional args
         if resource_manager == "CCM": bootstrap_args += " -c"
