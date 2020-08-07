@@ -691,7 +691,7 @@ virtenv_setup()
     case "$RP_VERSION" in
 
         local)
-            for sdist in `echo $SDISTS | tr ':' ' '`
+            for sdist in $(echo $SDISTS | tr ':' ' ')
             do
                 src=${sdist%.tgz}
                 src=${sdist%.tar.gz}
@@ -1404,6 +1404,19 @@ pre_bootstrap_2()
 $cmd"
 }
 
+
+# -------------------------------------------------------------------------------
+#
+# untar the pilot sandbox
+#
+untar()
+{
+    # FIXME: concurrently starting pilots may conflict on SDIST extraction
+    tar="$1"
+    tar zxvf ../"$tar" -C .. "$PILOT_ID" $(echo $SDISTS | tr ':' ' ')
+}
+
+
 # ------------------------------------------------------------------------------
 #
 # MAIN
@@ -1430,31 +1443,42 @@ $cmd"
 #    -w   execute commands before bootstrapping phase 2: the worker
 #    -x   exit cleanup - delete pilot sandbox, virtualenv etc. after completion
 #    -y   runtime limit
+#    -z   untar initial pilot sandbox tarball
 #
-while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
+# NOTE: -z makes some assumptions on sandbox and tarball location
+#
+while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:z:" OPTION; do
     case $OPTION in
-        a)  SESSION_SANDBOX="$OPTARG"  ;;
-        b)  PYTHON_DIST="$OPTARG"  ;;
-        c)  CCM='TRUE'  ;;
-        d)  SDISTS="$OPTARG"  ;;
-        e)  pre_bootstrap_0 "$OPTARG"  ;;
-        f)  FORWARD_TUNNEL_ENDPOINT="$OPTARG"  ;;
-        g)  VIRTENV_DIST="$OPTARG"  ;;
-        h)  HOSTPORT="$OPTARG"  ;;
-        i)  PYTHON="$OPTARG"  ;;
-        m)  VIRTENV_MODE="$OPTARG"  ;;
-        p)  PILOT_ID="$OPTARG"  ;;
-        r)  RP_VERSION="$OPTARG"  ;;
-        s)  SESSION_ID="$OPTARG"  ;;
-        t)  TUNNEL_BIND_DEVICE="$OPTARG" ;;
-        v)  VIRTENV=$(eval echo "$OPTARG")  ;;
-        w)  pre_bootstrap_2 "$OPTARG"  ;;
-        x)  CLEANUP="$OPTARG"  ;;
-        y)  RUNTIME="$OPTARG"  ;;
+        a)  SESSION_SANDBOX="$OPTARG"         ;;
+        b)  PYTHON_DIST="$OPTARG"             ;;
+        c)  CCM='TRUE'                        ;;
+        d)  SDISTS="$OPTARG"                  ;;
+        e)  pre_bootstrap_0 "$OPTARG"         ;;
+        f)  FORWARD_TUNNEL_ENDPOINT="$OPTARG" ;;
+        g)  VIRTENV_DIST="$OPTARG"            ;;
+        h)  HOSTPORT="$OPTARG"                ;;
+        i)  PYTHON="$OPTARG"                  ;;
+        m)  VIRTENV_MODE="$OPTARG"            ;;
+        p)  PILOT_ID="$OPTARG"                ;;
+        r)  RP_VERSION="$OPTARG"              ;;
+        s)  SESSION_ID="$OPTARG"              ;;
+        t)  TUNNEL_BIND_DEVICE="$OPTARG"      ;;
+        v)  VIRTENV=$(eval echo "$OPTARG")    ;;
+        w)  pre_bootstrap_2 "$OPTARG"         ;;
+        x)  CLEANUP="$OPTARG"                 ;;
+        y)  RUNTIME="$OPTARG"                 ;;
+        z)  TARBALL="$OPTARG"                   ;;
         *)  echo "Unknown option: '$OPTION'='$OPTARG'"
             return 1;;
     esac
 done
+
+echo '# -------------------------------------------------------------------'
+echo '# untar sandbox'
+echo '# -------------------------------------------------------------------'
+set -x
+untar "$TARBALL"
+echo '# -------------------------------------------------------------------'
 
 # before we change anything else in the pilot environment, we safe a couple of
 # env vars to later re-create a close-to-pristine env for unit execution.
