@@ -415,6 +415,8 @@ class Component(object):
         self._threads    = dict()       # subscriber and idler threads
         self._cb_lock    = ru.RLock('comp.cb_lock.%s' % self._name)
                                         # guard threaded callback invokations
+        self._work_lock  = ru.RLock('comp.work_lock.%s' % self._name)
+                                        # guard threaded callback invokations
 
 
         if self._owner == self.uid:
@@ -505,6 +507,7 @@ class Component(object):
 
         comp = {
                 rpc.UPDATE_WORKER                  : rpw.Update,
+                rpc.STAGER_WORKER                  : rpw.Stager,
 
                 rpc.PMGR_LAUNCHING_COMPONENT       : rppm.Launching,
 
@@ -679,33 +682,31 @@ class Component(object):
         check for the next thing once the worker method returns.
         '''
 
-        if not isinstance(states, list):
-            states = [states]
+        states = ru.as_list(states)
+        if not states:
+            states = [None]  # worker handles stateless entities
 
-        name = '%s.%s.%s' % (self.uid, worker.__name__, '_'.join(states))
+        name = '%s.%s.%s' % (self.uid, worker.__name__,
+                             '_'.join([str(s) for s in states]))
 
         if name in self._inputs:
             raise ValueError('input %s already registered' % name)
 
-        # dig the addresses from the bridge's config file
-        fname = '%s/%s.cfg' % (self._cfg.path, input)
-        cfg   = ru.read_json(fname)
-
-        self._inputs[name] = {'queue'  : ru.zmq.Getter(input, url=cfg['get'],
-                                         log=self._log),
+        self._inputs[name] = {'queue'  : self.get_input_ep(input),
                               'states' : states}
 
         self._log.debug('registered input %s', name)
 
-        # we want exactly one worker associated with a state -- but a worker can
-        # be responsible for multiple states
+        # we want exactly one worker associated with a state -- but a worker
+        # can be responsible for multiple states
+
         for state in states:
 
             self._log.debug('%s register input %s: %s', self.uid, state, name)
 
             if state in self._workers:
-                self._log.warn("%s replaces worker for %s (%s)"
-                        % (self.uid, state, self._workers[state]))
+                self._log.warn("%s replaces worker %s (%s)"
+                        % (self.uid, self._workers[state], state))
             self._workers[state] = worker
 
             self._log.debug('registered worker %s [%s]', worker.__name__, state)
@@ -718,10 +719,13 @@ class Component(object):
         This methods is the inverse to the 'register_input()' method.
         '''
 
-        if not isinstance(states, list):
-            states = [states]
+        states = ru.as_list(states)
+        if not states:
+            states = [None]  # worker handles statless entities
 
-        name = '%s.%s.%s' % (self.uid, worker.__name__, '_'.join(states))
+
+        name = '%s.%s.%s' % (self.uid, worker.__name__,
+                             '_'.join([str(s) for s in states]))
 
         if name not in self._inputs:
             self._log.warn('input %s not registered', name)
@@ -733,17 +737,18 @@ class Component(object):
 
         for state in states:
 
-            self._log.debug('%s unregister input %s: %s', self.uid, state, name)
+            self._log.debug('%s unregister input %s (%s)', self.uid, name, state)
+
             if state not in self._workers:
                 self._log.warn('%s input %s unknown', worker.__name__, state)
+                continue
 
             del(self._workers[state])
-            self._log.debug('unregistered worker %s [%s]', worker.__name__, state)
 
 
     # --------------------------------------------------------------------------
     #
-    def register_output(self, states, output=None):
+    def register_output(self, states, output):
         '''
         Using this method, the component can be connected to a queue to which
         things are sent after being worked upon.  The given set of states (which
@@ -758,8 +763,9 @@ class Component(object):
         sure that the thing is in fact in a final state.
         '''
 
-        if not isinstance(states, list):
-            states = [states]
+        states = ru.as_list(states)
+        if not states:
+            states = None
 
         for state in states:
 
@@ -771,21 +777,42 @@ class Component(object):
                         % (self.uid, state, self._outputs[state], output))
 
             if not output:
+
                 # this indicates a final state
                 self._log.debug('=== %s register output to none %s', self.uid, state)
                 self._outputs[state] = None
 
             else:
-                # non-final state, ie. we want a queue to push to
-                # dig the addresses from the bridge's config file
-                fname = '%s/%s.cfg' % (self._cfg.path, output)
-                cfg   = ru.read_json(fname)
+                # non-final state, ie. we want a queue to push to:
+                self._outputs[state] = self.get_output_ep(output)
 
-                self._outputs[state] = ru.zmq.Putter(output, url=cfg['put'])
-                self._log.debug('=== %s register output to none %s', self.uid, state)
 
-            self._log.debug('=== %s register output %s:%s ok: %s', self.uid, state,
-                            output, list(self._outputs.keys()))
+    # --------------------------------------------------------------------------
+    #
+    def get_input_ep(self, input):
+        '''
+        return an input endpoint
+        '''
+
+        # dig the addresses from the bridge's config file
+        fname = '%s/%s.cfg' % (self._cfg.path, input)
+        cfg   = ru.read_json(fname)
+
+        return ru.zmq.Getter(input, url=cfg['get'])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_output_ep(self, output):
+        '''
+        return an output endpoint
+        '''
+
+        # dig the addresses from the bridge's config file
+        fname = '%s/%s.cfg' % (self._cfg.path, output)
+        cfg   = ru.read_json(fname)
+
+        return ru.zmq.Putter(output, url=cfg['put'])
 
 
     # --------------------------------------------------------------------------
@@ -795,10 +822,12 @@ class Component(object):
         this removes any outputs registerd for the given states.
         '''
 
-        if not isinstance(states, list):
-            states = [states]
+        states = ru.as_list(states)
+        if not states:
+            states = None
 
         for state in states:
+
             self._log.debug('TERM : %s unregister output %s', self.uid, state)
 
             if state not in self._outputs:
@@ -809,6 +838,22 @@ class Component(object):
             del(self._outputs[state])
             self._log.debug('=== unregistered output for %s: %s', state,
                             list(self._outputs.keys()))
+
+
+    # --------------------------------------------------------------------------
+    #
+    def output(self, things, state=None):
+        '''
+        this pushes the given things to the output queue register for the given
+        state
+        '''
+
+        # NOTE: we do not check if things are actually in the given state
+
+        if state not in self._outputs:
+            raise ValueError('state %s has no output registered' % state)
+
+        self._outputs[state].put(things)
 
 
     # --------------------------------------------------------------------------
@@ -987,6 +1032,7 @@ class Component(object):
             return True
 
         for name in self._inputs:
+
             input  = self._inputs[name]['queue']
             states = self._inputs[name]['states']
 
@@ -1004,8 +1050,8 @@ class Component(object):
             # pushing them
             buckets = dict()
             for thing in things:
-                state = thing['state']
-                uid   = thing['uid']
+                state = thing.get('state')  # can be stateless
+                uid   = thing.get('uid')    # and not have uids
                 self._prof.prof('get', uid=uid, state=state)
 
                 if state not in buckets:
@@ -1016,29 +1062,31 @@ class Component(object):
 
             for state,things in buckets.items():
 
-                assert(state in states), 'inconsistent state'
+                assert(state in states), 'cannot handle state %s' % state
                 assert(state in self._workers), 'no worker for state %s' % state
 
                 try:
                     to_cancel = list()
+
                     for thing in things:
-                        uid   = thing['uid']
-                        ttype = thing['type']
-                        state = thing['state']
+
+                        uid = thing.get('uid')
 
                         # FIXME: this can become expensive over time
                         #        if the cancel list is never cleaned
-                        if uid in self._cancel_list:
+                        if uid and uid in self._cancel_list:
                             with self._cancel_lock:
                                 self._cancel_list.remove(uid)
                             to_cancel.append(thing)
 
-                        self._log.debug('got %s (%s)', ttype, uid)
+                        self._log.debug('got %s (%s)', uid, state)
 
                     if to_cancel:
-                        self.advance(to_cancel, rps.CANCELED, publish=True,
-                                                              push=False)
-                    with self._cb_lock:
+                        # only advance stateful entities, otherwise just drop
+                        if state:
+                            self.advance(to_cancel, rps.CANCELED, publish=True,
+                                                                  push=False)
+                    with self._work_lock:
                         self._workers[state](things)
 
                 except Exception:
@@ -1046,8 +1094,10 @@ class Component(object):
                     # this is not fatal -- only the 'things' fail, not
                     # the component
                     self._log.exception("work %s failed", self._workers[state])
-                    self.advance(things, rps.FAILED, publish=True, push=False)
 
+                    if state:
+                        self.advance(things, rps.FAILED, publish=True,
+                                                         push=False)
 
         # keep work_cb registered
         return True

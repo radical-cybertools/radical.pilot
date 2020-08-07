@@ -70,7 +70,6 @@ class Default(UMGRStagingInputComponent):
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._base_command_cb)
 
 
-
     # --------------------------------------------------------------------------
     #
     def finalize(self):
