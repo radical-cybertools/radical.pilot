@@ -129,21 +129,7 @@ class Default(PMGRLaunchingComponent):
 
         self._log.debug('launcher got %s', msg)
 
-        if cmd == 'pilot_staging_input_request':
-
-            self._handle_pilot_input_staging(arg['pilot'], arg['sds'])
-            self.publish(rpc.CONTROL_PUBSUB,
-                         {'cmd': 'pilot_staging_input_result',
-                          'arg': {'pilot': pilot,
-                                  'sds'  : sds}})
-
-
-        if cmd == 'pilot_staging_output_request':
-
-            self._handle_pilot_output_staging(arg['pilot'], arg['sds'])
-
-
-        elif cmd == 'cancel_pilots':
+        if cmd == 'cancel_pilots':
 
             # on cancel_pilot requests, we forward the DB entries via MongoDB,
             # by pushing a pilot update.  We also mark the pilot for
@@ -1127,17 +1113,15 @@ class Default(PMGRLaunchingComponent):
         # always stage the bootstrapper for each pilot, but *not* in the tarball
         bootstrapper_path = os.path.abspath("%s/agent/bootstrap_0.sh"
                                            % self._root_dir)
-        tgt = '%s/%s/bootstrap_0.sh' % (session_sandbox, pid)
+        bootstrap_tgt = '%s/bootstrap_0.sh' % (pilot_sandbox, pid)
         ret['sds'].append({'source': bootstrapper_path,
-                           'target': tgt,
+                           'target': bootstrap_tgt,
                            'action': rpc.TRANSFER})
 
         # ----------------------------------------------------------------------
         # Create SAGA Job description and submit the pilot job
 
         jd = rs.job.Description()
-
-        bootstrap_tgt = '%s/bootstrap_0.sh' % pilot_sandbox
 
         jd.name                  = job_name
         jd.executable            = "/bin/bash"

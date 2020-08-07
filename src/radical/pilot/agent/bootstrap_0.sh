@@ -1467,7 +1467,7 @@ while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:z:" OPTION; do
         w)  pre_bootstrap_2 "$OPTARG"         ;;
         x)  CLEANUP="$OPTARG"                 ;;
         y)  RUNTIME="$OPTARG"                 ;;
-        z)  TARBALL="$OPTARG"                   ;;
+        z)  TARBALL="$OPTARG"                 ;;
         *)  echo "Unknown option: '$OPTION'='$OPTARG'"
             return 1;;
     esac
@@ -1476,7 +1476,6 @@ done
 echo '# -------------------------------------------------------------------'
 echo '# untar sandbox'
 echo '# -------------------------------------------------------------------'
-set -x
 untar "$TARBALL"
 echo '# -------------------------------------------------------------------'
 
