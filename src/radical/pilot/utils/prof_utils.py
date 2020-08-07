@@ -266,11 +266,11 @@ UNIT_DURATIONS_DEBUG = {
         'u_umgr_schedule'              : [ {E: 'state'           , S: s.UMGR_SCHEDULING             },
                                            {E: 'state'           , S: s.UMGR_STAGING_INPUT_PENDING  } ],
         'u_umgr_stage_in_queue'        : [ {E: 'state'           , S: s.UMGR_STAGING_INPUT_PENDING  },
-                                           {E: 'state'           , S: s.UMGR_STAGING_INPUT          } ], # push to mongodb
+                                           {E: 'state'           , S: s.UMGR_STAGING_INPUT          } ],  # push to mongodb
         'u_umgr_stage_in'              : [ {E: 'state'           , S: s.UMGR_STAGING_INPUT          },
-                                           {E: 'state'           , S: s.AGENT_STAGING_INPUT_PENDING } ], # wait in mongodb
+                                           {E: 'state'           , S: s.AGENT_STAGING_INPUT_PENDING } ],  # wait in mongodb
         'u_agent_stage_in_queue'       : [ {E: 'state'           , S: s.AGENT_STAGING_INPUT_PENDING },
-                                           {E: 'state'           , S: s.AGENT_STAGING_INPUT         } ], # pull from mongodb
+                                           {E: 'state'           , S: s.AGENT_STAGING_INPUT         } ],  # pull from mongodb
         'u_agent_stage_in'             : [ {E: 'state'           , S: s.AGENT_STAGING_INPUT         },
                                            {E: 'state'           , S: s.AGENT_SCHEDULING_PENDING    } ],
         'u_agent_schedule_queue'       : [ {E: 'state'           , S: s.AGENT_SCHEDULING_PENDING    },
