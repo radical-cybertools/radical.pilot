@@ -198,6 +198,119 @@ UNIT_DURATIONS_PRTE_APP  = {
 }
 
 
+# ----------------------------------------------------------------------------
+#
+def _convert_sdurations(sdurations):
+    '''
+    Converts a collection of durations expressed in short form to the same
+    collection of durations expressed in long form.
+
+    Definitions:
+
+    - Short form collection: one dictionary of short form durations
+    - Long form: one dictionary of long form durations.
+
+    Args:
+
+        sdurations (dict): a collections of durations in short form
+
+    Return:
+
+        ldurations (dict): a collection of long form durations
+
+    Example:
+
+        sdurations = {'name_of_duration': [{'STATE': s.STATE_NAME},
+                                           {'EVENT': 'event_name'}]}
+        ldurations = {'name_of_duration': [{ru.EVENT: 'state',
+                                            ru.STATE: s.STATE_NAME},
+                                           {ru.EVENT: 'event_name',
+                                            ru.STATE: None}]}
+        sdurations = {'name_of_duration': [{'STATE': s.STATE_NAME},
+                                           [{'EVENT': 'event_name'},
+                                            {'STATE': s.STATE_NAME}]]}
+        ldurations = {'name_of_duration': [{ru.EVENT: 'state',
+                                            ru.STATE: s.STATE_NAME},
+                                            [{ru.EVENT: 'event_name',
+                                              ru.STATE: None},
+                                             {ru.EVENT: 'state',
+                                              ru.STATE: s.event_name}]}
+        sdurations = {'name_of_duration': [{'STATE': s.STATE_NAME},
+                                           {'MSG': 'message_name'}]}
+        ldurations = {'name_of_duration': [{ru.EVENT: 'state',
+                                            ru.STATE: s.STATE_NAME},
+                                           {ru.EVENT: 'cmd',
+                                            ru.MSG: 'message_name'}]}
+    '''
+
+    ldurations = {}
+
+    for k,v in sdurations.items():
+
+        ldurations[k] = []
+        for ts in v:
+
+            if type(ts) is dict:
+                ldurations[k].append(_expand_sduration(ts))
+
+            if type(ts) is list:
+                lds = []
+                for i in ts:
+                    lds.append(_expand_sduration(i))
+                ldurations[k].append(lds)
+
+    return ldurations
+
+
+# ----------------------------------------------------------------------------
+#
+def _expand_sduration(sduration):
+    '''
+    Expands a duration expressed in short form to its long form.
+
+    Definitions:
+
+    - Short form duration: one dictionary containing a state or event name.
+    - Long form duration: one dictionary containing two keys, one of type
+      `ru.EVENT` and one of type `ru.STATE`. The `ru.EVENT` key has a string
+      value while the `ru.STATE` key has a `s.STATE_NAME` object as its value.
+
+    Args:
+
+        sduration (dict): a duration in short form
+
+    Return:
+
+        lduration (dict): sduration in long form
+
+    Example:
+
+        sduration = {'STATE': s.STATE_NAME}
+        lduration = {ru.EVENT: 'state', ru.STATE: s.STATE_NAME}
+        sduration = {'EVENT': 'event_name'}
+        lduration = {ru.EVENT: 'event_name', ru.STATE: None}
+        sduration = {'MSG': 'mesage_name'}
+        lduration = {ru.EVENT: 'cmd', ru.MSG: 'message_name'}
+    '''
+
+    assert(len(sduration.keys()) == 1), 'expand only one short form duration'
+    assert(list(sduration.keys())[0] == 'STATE' or
+           list(sduration.keys())[0] == 'EVENT' or
+           list(sduration.keys())[0] == 'MSG'), 'unknown timestamp type'
+
+    lduration = None
+
+    for k,v in sduration.items():
+        if k == 'STATE':
+            lduration = {ru.EVENT: 'state', ru.STATE: v}
+        elif k == 'EVENT':
+            lduration = {ru.EVENT: v, ru.STATE: None}
+        elif k == 'MSG':
+            lduration = {ru.EVENT: 'cmd', ru.MSG: v}
+
+    return lduration
+
+
 # Set of default pilot durations for RADICAL-Analytics. All the durations
 # are contiguos.
 # NOTE: _init durations are most often 0.
@@ -387,119 +500,6 @@ UNIT_DURATIONS_DEBUG_RU = {
         'u_agent_push_to_umgr'       : _udd['u_agent_push_to_umgr'],
     }
 }
-
-
-# ----------------------------------------------------------------------------
-#
-def _convert_sdurations(sdurations):
-    '''
-    Converts a collection of durations expressed in short form to the same
-    collection of durations expressed in long form.
-
-    Definitions:
-
-    - Short form collection: one dictionary of short form durations
-    - Long form: one dictionary of long form durations.
-
-    Args:
-
-        sdurations (dict): a collections of durations in short form
-
-    Return:
-
-        ldurations (dict): a collection of long form durations
-
-    Example:
-
-        sdurations = {'name_of_duration': [{'STATE': s.STATE_NAME},
-                                           {'EVENT': 'event_name'}]}
-        ldurations = {'name_of_duration': [{ru.EVENT: 'state',
-                                            ru.STATE: s.STATE_NAME},
-                                           {ru.EVENT: 'event_name',
-                                            ru.STATE: None}]}
-        sdurations = {'name_of_duration': [{'STATE': s.STATE_NAME},
-                                           [{'EVENT': 'event_name'},
-                                            {'STATE': s.STATE_NAME}]]}
-        ldurations = {'name_of_duration': [{ru.EVENT: 'state',
-                                            ru.STATE: s.STATE_NAME},
-                                            [{ru.EVENT: 'event_name',
-                                              ru.STATE: None},
-                                             {ru.EVENT: 'state',
-                                              ru.STATE: s.event_name}]}
-        sdurations = {'name_of_duration': [{'STATE': s.STATE_NAME},
-                                           {'MSG': 'message_name'}]}
-        ldurations = {'name_of_duration': [{ru.EVENT: 'state',
-                                            ru.STATE: s.STATE_NAME},
-                                           {ru.EVENT: 'cmd',
-                                            ru.MSG: 'message_name'}]}
-    '''
-
-    ldurations = {}
-
-    for k,v in sdurations.items():
-
-        ldurations[k] = []
-        for ts in v:
-
-            if type(ts) is dict:
-                ldurations[k].append(_expand_sduration(ts))
-
-            if type(ts) is list:
-                lds = []
-                for i in ts:
-                    lds.append(_expand_sduration(i))
-                ldurations[k].append(lds)
-
-    return ldurations
-
-
-# ----------------------------------------------------------------------------
-#
-def _expand_sduration(sduration):
-    '''
-    Expands a duration expressed in short form to its long form.
-
-    Definitions:
-
-    - Short form duration: one dictionary containing a state or event name.
-    - Long form duration: one dictionary containing two keys, one of type
-      `ru.EVENT` and one of type `ru.STATE`. The `ru.EVENT` key has a string
-      value while the `ru.STATE` key has a `s.STATE_NAME` object as its value.
-
-    Args:
-
-        sduration (dict): a duration in short form
-
-    Return:
-
-        lduration (dict): sduration in long form
-
-    Example:
-
-        sduration = {'STATE': s.STATE_NAME}
-        lduration = {ru.EVENT: 'state', ru.STATE: s.STATE_NAME}
-        sduration = {'EVENT': 'event_name'}
-        lduration = {ru.EVENT: 'event_name', ru.STATE: None}
-        sduration = {'MSG': 'mesage_name'}
-        lduration = {ru.EVENT: 'cmd', ru.MSG: 'message_name'}
-    '''
-
-    assert(len(sduration.keys()) == 1), 'expand only one short form duration'
-    assert(list(sduration.keys())[0] == 'STATE' or
-           list(sduration.keys())[0] == 'EVENT' or
-           list(sduration.keys())[0] == 'MSG'), 'unknown timestamp type'
-
-    lduration = None
-
-    for k,v in sduration.items():
-        if k == 'STATE':
-            lduration = {ru.EVENT: 'state', ru.STATE: v}
-        elif k == 'EVENT':
-            lduration = {ru.EVENT: v, ru.STATE: None}
-        elif k == 'MSG':
-            lduration = {ru.EVENT: 'cmd', ru.MSG: v}
-
-    return lduration
 
 
 # ------------------------------------------------------------------------------
