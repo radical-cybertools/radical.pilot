@@ -231,10 +231,10 @@ def _convert_sdurations(sdurations):
                                             {'STATE': s.STATE_NAME}]]}
         ldurations = {'name_of_duration': [{ru.EVENT: 'state',
                                             ru.STATE: s.STATE_NAME},
-                                            [{ru.EVENT: 'event_name',
-                                              ru.STATE: None},
-                                             {ru.EVENT: 'state',
-                                              ru.STATE: s.event_name}]}
+                                           [{ru.EVENT: 'event_name',
+                                             ru.STATE: None},
+                                            {ru.EVENT: 'state',
+                                             ru.STATE: s.STATE_NAME}]]}
         sdurations = {'name_of_duration': [{'STATE': s.STATE_NAME},
                                            {'MSG': 'message_name'}]}
         ldurations = {'name_of_duration': [{ru.EVENT: 'state',
@@ -247,13 +247,13 @@ def _convert_sdurations(sdurations):
 
     for k,v in sdurations.items():
 
-        ldurations[k] = []
+        ldurations[k] = list()
         for ts in v:
 
-            if type(ts) is dict:
+            if isinstance(ts, dict):
                 ldurations[k].append(_expand_sduration(ts))
 
-            if type(ts) is list:
+            if isinstance(ts, list):
                 lds = []
                 for i in ts:
                     lds.append(_expand_sduration(i))
@@ -293,11 +293,15 @@ def _expand_sduration(sduration):
         lduration = {ru.EVENT: 'cmd', ru.MSG: 'message_name'}
     '''
 
-    assert(len(sduration.keys()) == 1), 'expand only one short form duration'
-    assert(list(sduration.keys())[0] == 'STATE' or
-           list(sduration.keys())[0] == 'EVENT' or
-           list(sduration.keys())[0] == 'MSG'), 'unknown timestamp type'
+    # Return non STATE, EVENT or MSG unchanged. This allows to have durations
+    # that need to be expressed with both ru.EVENT and ru.STATE.
+    if len(sduration.keys()) != 1:
+        return sduration
 
+    if list(sduration.keys())[0] not in ['STATE', 'EVENT', 'MSG']:
+        return sduration
+
+    # Expand known cases.
     lduration = None
 
     for k,v in sduration.items():
