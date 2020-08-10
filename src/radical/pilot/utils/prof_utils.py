@@ -1,5 +1,4 @@
 # pylint: disable=protected-access
-# flake8: noqa
 
 import os
 import glob
@@ -29,7 +28,6 @@ PILOT_DURATIONS = {
         'total'     : [{ru.EVENT: 'bootstrap_0_start'},
                        {ru.EVENT: 'bootstrap_0_stop' }]
     },
-
     # times between PMGR_ACTIVE and the termination command are not
     # considered pilot specific consumptions.  If some resources remain
     # unused during that time, it is either due to inefficiencies of
@@ -47,14 +45,12 @@ PILOT_DURATIONS = {
                         ru.MSG  : 'cancel_pilot'     },
                        {ru.EVENT: 'bootstrap_0_stop' }],
     },
-
-
     # FIXME: separate out DVM startup time
     #   'rte'       : [{ru.STATE: s.PMGR_ACTIVE    },
     #                  {ru.STATE: s.PMGR_ACTIVE    }],
     #   'setup_2'   : [{ru.STATE: s.PMGR_ACTIVE    },
     #                  {ru.STATE: s.PMGR_ACTIVE    }],
-
+    #
     # resources on agent nodes are consumed for all of the pilot's lifetime
     'agent' : {
         'total'     : [{ru.EVENT: 'bootstrap_0_start'},
@@ -204,116 +200,306 @@ UNIT_DURATIONS_PRTE_APP  = {
 
 # Set of default pilot durations for RADICAL-Analytics. All the durations
 # are contiguos.
-# FIXME: Divide durations in provide/consume.
 # NOTE: _init durations are most often 0.
-E = ru.EVENT
-S = ru.STATE
-M = ru.MSG
-PILOT_DURATIONS_DEBUG = {
+PILOT_DURATIONS_DEBUG_SHORT = {
+    'p_pmgr_create'           : [{'STATE': s.NEW                   },
+                                 {'STATE': s.PMGR_LAUNCHING_PENDING}],
+    'p_pmgr_launching_init'   : [{'STATE': s.PMGR_LAUNCHING_PENDING},
+                                 {'STATE': s.PMGR_LAUNCHING        }],
+    'p_pmgr_launching'        : [{'STATE': s.PMGR_LAUNCHING        },
+                                 {'EVENT': 'staging_in_start'      }],
+    'p_pmgr_stage_in'         : [{'EVENT': 'staging_in_start'      },
+                                 {'EVENT': 'staging_in_stop'       }],
+    'p_pmgr_submission_init'  : [{'EVENT': 'staging_in_stop'       },
+                                 {'EVENT': 'submission_start'      }],
+    'p_pmgr_submission'       : [{'EVENT': 'submission_start'      },
+                                 {'EVENT': 'submission_stop'       }],
+    'p_pmgr_scheduling_init'  : [{'EVENT': 'submission_stop'       },
+                                 {'STATE': s.PMGR_ACTIVE_PENDING   }],
+    # batch system queue time
+    'p_pmgr_scheduling'       : [{'STATE': s.PMGR_ACTIVE_PENDING   },
+                                 {'EVENT': 'bootstrap_0_start'     }],
+    'p_agent_ve_setup_init'   : [{'EVENT': 'bootstrap_0_start'     },
+                                 {'EVENT': 've_setup_start'        }],
+    'p_agent_ve_setup'        : [{'EVENT': 've_setup_start'        },
+                                 {'EVENT': 've_setup_stop'         }],
+    'p_agent_ve_activate_init': [{'EVENT': 've_setup_stop'         },
+                                 {'EVENT': 've_activate_start'     }],
+    'p_agent_ve_activate'     : [{'EVENT': 've_activate_start'     },
+                                 {'EVENT': 've_activate_stop'      }],
+    'p_agent_install_init'    : [{'EVENT': 've_activate_stop'      },
+                                 {'EVENT': 'rp_install_start'      }],
+    'p_agent_install'         : [{'EVENT': 'rp_install_start'      },
+                                 {'EVENT': 'rp_install_stop'       }],
+    'p_agent_launching'       : [{'EVENT': 'rp_install_stop'       },
+                                 {'STATE': s.PMGR_ACTIVE           }],
+    'p_agent_terminate_init'  : [{'STATE': s.PMGR_ACTIVE           },
+                                 {'MSG'  : 'cancel_pilot'          }],
+    'p_agent_terminate'       : [{'MSG'  : 'cancel_pilot'          },
+                                 {'EVENT': 'bootstrap_0_stop'      }],
+    # total pilot runtime
+    'p_agent_finalize'        : [{'EVENT': 'bootstrap_0_stop'      },
+                                 [{'STATE': s.DONE                 },
+                                  {'STATE': s.CANCELED             },
+                                  {'STATE': s.FAILED               }]],
+    'p_agent_runtime'         : [{'EVENT': 'bootstrap_0_start'     },
+                                 {'EVENT': 'bootstrap_0_stop'      }]
+}
+
+PILOT_DURATIONS_DEBUG = _convert_sdurations(PILOT_DURATIONS_DEBUG_SHORT)
+
+
+# Debug pilot durations tagged with keys taht can be used when calculating
+# resource utilization.
+# TODO: add the 'client' tag to relevant resource utilization methods.
+_pdd = PILOT_DURATIONS_DEBUG
+PILOT_DURATIONS_DEBUG_RU = {
+    'provide' : {
+        'p_agent_runtime'         : _pdd['p_agent_runtime']
+    },
+    'client'  : {
+        'p_pmgr_create'           : _pdd['p_pmgr_create'],
+        'p_pmgr_launching_init'   : _pdd['p_pmgr_launching_init'],
+        'p_pmgr_launching'        : _pdd['p_pmgr_launching'],
+        'p_pmgr_stage_in'         : _pdd['p_pmgr_stage_in'],
+        'p_pmgr_submission_init'  : _pdd['p_pmgr_submission_init'],
+        'p_pmgr_submission'       : _pdd['p_pmgr_submission'],
+        'p_pmgr_scheduling_init'  : _pdd['p_pmgr_scheduling_init'],
+        'p_pmgr_scheduling'       : _pdd['p_pmgr_scheduling'],
+        'p_agent_finalize'        : _pdd['p_agent_finalize']
+    },
     'consume' : {
-        'p_pmgr_create'           : [ {E: 'state'            , S: s.NEW                   },
-                                      {E: 'state'            , S: s.PMGR_LAUNCHING_PENDING} ],
-        'p_pmgr_launching_init'   : [ {E: 'state'            , S: s.PMGR_LAUNCHING_PENDING},
-                                      {E: 'state'            , S: s.PMGR_LAUNCHING        } ],
-        'p_pmgr_launching'        : [ {E: 'state'            , S: s.PMGR_LAUNCHING        },
-                                      {E: 'staging_in_start' , S: None                    } ],
-        'p_pmgr_stage_in'         : [ {E: 'staging_in_start' , S: None                    },
-                                      {E: 'staging_in_stop'  , S: None                    } ],
-        'p_pmgr_submission_init'  : [ {E: 'staging_in_stop'  , S: None                    },
-                                      {E: 'submission_start' , S: None                    } ],
-        'p_pmgr_submission'       : [ {E: 'submission_start' , S: None                    },
-                                      {E: 'submission_stop'  , S: None                    } ],
-        'p_pmgr_scheduling_init'  : [ {E: 'submission_stop'  , S: None                    },
-                                      {E: 'state'            , S: s.PMGR_ACTIVE_PENDING   } ],
-        'p_pmgr_scheduling'       : [ {E: 'state'            , S: s.PMGR_ACTIVE_PENDING   },  # batch system queue time
-                                      {E: 'bootstrap_0_start', S: None                    } ],
-        'p_agent_ve_setup_init'   : [ {E: 'bootstrap_0_start', S: None                    },
-                                      {E: 've_setup_start'   , S: None                    } ],
-        'p_agent_ve_setup'        : [ {E: 've_setup_start'   , S: None                    },
-                                      {E: 've_setup_stop'    , S: None                    } ],
-        'p_agent_ve_activate_init': [ {E: 've_setup_stop'    , S: None                    },
-                                      {E: 've_activate_start', S: None                    } ],
-        'p_agent_ve_activate'     : [ {E: 've_activate_start', S: None                    },
-                                      {E: 've_activate_stop' , S: None                    } ],
-        'p_agent_install_init'    : [ {E: 've_activate_stop' , S: None                    },
-                                      {E: 'rp_install_start' , S: None                    } ],
-        'p_agent_install'         : [ {E: 'rp_install_start' , S: None                    },
-                                      {E: 'rp_install_stop'  , S: None                    } ],
-        'p_agent_launching'       : [ {E: 'rp_install_stop'  , S: None                    },
-                                      {E: 'state'            , S: s.PMGR_ACTIVE           } ],
-        'p_agent_terminate_init'  : [ {E: 'state'            , S: s.PMGR_ACTIVE           },
-                                      {E: 'cmd'              , M: 'cancel_pilot'          } ],
-        'p_agent_terminate'       : [ {E: 'cmd'              , M: 'cancel_pilot'          },
-                                      {E: 'bootstrap_0_stop' , S: None                    } ],
-        'p_agent_finalize'        : [ {E: 'bootstrap_0_stop' , S: None                    },  # total pilot runtime
-                                     [{E: 'state'            , S: s.DONE                  },
-                                      {E: 'state'            , S: s.CANCELED              },
-                                      {E: 'state'            , S: s.FAILED                }]],
-        'p_agent_runtime'         : [ {E: 'bootstrap_0_start', S: None                    },
-                                      {E: 'bootstrap_0_stop' , S: None                    } ]
+        'p_agent_ve_setup_init'   : _pdd['p_agent_ve_setup_init'],
+        'p_agent_ve_setup'        : _pdd['p_agent_ve_setup'],
+        'p_agent_ve_activate_init': _pdd['p_agent_ve_activate_init'],
+        'p_agent_ve_activate'     : _pdd['p_agent_ve_activate'],
+        'p_agent_install_init'    : _pdd['p_agent_install_init'],
+        'p_agent_install'         : _pdd['p_agent_install'],
+        'p_agent_launching'       : _pdd['p_agent_launching'],
+        'p_agent_terminate_init'  : _pdd['p_agent_terminate_init'],
+        'p_agent_terminate'       : _pdd['p_agent_terminate']
+    },
+    'agent'   : {
+        'p_agent_runtime'         : _pdd['p_agent_runtime']
     }
 }
 
 
 # Set of default unit durations for RADICAL-Analytics. All the durations
 # are contiguos.
-UNIT_DURATIONS_DEBUG = {
-    'consume' : {
-        'u_umgr_create'                : [ {E: 'state'           , S: s.NEW                         },
-                                           {E: 'state'           , S: s.UMGR_SCHEDULING_PENDING     } ],
-        'u_umgr_schedule_queue'        : [ {E: 'state'           , S: s.UMGR_SCHEDULING_PENDING     },
-                                           {E: 'state'           , S: s.UMGR_SCHEDULING             } ],
-        'u_umgr_schedule'              : [ {E: 'state'           , S: s.UMGR_SCHEDULING             },
-                                           {E: 'state'           , S: s.UMGR_STAGING_INPUT_PENDING  } ],
-        'u_umgr_stage_in_queue'        : [ {E: 'state'           , S: s.UMGR_STAGING_INPUT_PENDING  },
-                                           {E: 'state'           , S: s.UMGR_STAGING_INPUT          } ],  # push to mongodb
-        'u_umgr_stage_in'              : [ {E: 'state'           , S: s.UMGR_STAGING_INPUT          },
-                                           {E: 'state'           , S: s.AGENT_STAGING_INPUT_PENDING } ],  # wait in mongodb
-        'u_agent_stage_in_queue'       : [ {E: 'state'           , S: s.AGENT_STAGING_INPUT_PENDING },
-                                           {E: 'state'           , S: s.AGENT_STAGING_INPUT         } ],  # pull from mongodb
-        'u_agent_stage_in'             : [ {E: 'state'           , S: s.AGENT_STAGING_INPUT         },
-                                           {E: 'state'           , S: s.AGENT_SCHEDULING_PENDING    } ],
-        'u_agent_schedule_queue'       : [ {E: 'state'           , S: s.AGENT_SCHEDULING_PENDING    },
-                                           {E: 'state'           , S: s.AGENT_SCHEDULING            } ],
-        'u_agent_schedule'             : [ {E: 'state'           , S: s.AGENT_SCHEDULING            },
-                                           {E: 'state'           , S: s.AGENT_EXECUTING_PENDING     } ],
-        'u_agent_execute_queue'        : [ {E: 'state'           , S: s.AGENT_EXECUTING_PENDING     },
-                                           {E: 'state'           , S: s.AGENT_EXECUTING             } ],
-        'u_agent_execute_prepare'      : [ {E: 'state'           , S: s.AGENT_EXECUTING             },
-                                           {E: 'exec_mkdir'      , S: None                          } ],
-        'u_agent_execute_mkdir'        : [ {E: 'exec_mkdir'      , S: None                          },
-                                           {E: 'exec_mkdir_done' , S: None                          } ],
-        'u_agent_execute_layer_start'  : [ {E: 'exec_mkdir_done' , S: None                          },
-                                           {E: 'exec_start'      , S: None                          } ],
-        'u_agent_execute_layer'        : [ {E: 'exec_start'      , S: None                          },
-                                          [{E: 'exec_ok'         , S: None                          },
-                                           {E: 'exec_fail'       , S: None                          }]],  # orte, ssh, mpi, ...
-        'u_agent_lm_start'             : [ {E: 'cu_start'        , S: None                          },
-                                           {E: 'cu_pre_start'    , S: None                          } ],  # PROBLEM: discontinuity
-        'u_agent_lm_pre_execute'       : [ {E: 'cu_pre_start'    , S: None                          },
-                                           {E: 'cu_pre_stop'     , S: None                          } ],
-        'u_agent_lm_execute_start'     : [ {E: 'cu_pre_stop'     , S: None                          },
-                                           {E: 'cu_exec_start'   , S: None                          } ],
-        'u_agent_lm_execute'           : [ {E: 'cu_exec_start'   , S: None                          },
-                                           {E: 'cu_exec_stop'    , S: None                          } ],
-        'u_agent_lm_stop'              : [ {E: 'cu_exec_stop'    , S: None                          },
-                                           {E: 'cu_stop'         , S: None                          } ],
-        'u_agent_stage_out_start'      : [ {E: 'cu_stop'         , S: None                          },
-                                           {E: 'state'           , S: s.AGENT_STAGING_OUTPUT_PENDING} ],
-        'u_agent_stage_out_queue'      : [ {E: 'state'           , S: s.AGENT_STAGING_OUTPUT_PENDING},
-                                           {E: 'state'           , S: s.AGENT_STAGING_OUTPUT        } ],
-        'u_agent_stage_out'            : [ {E: 'state'           , S: s.AGENT_STAGING_OUTPUT        },
-                                           {E: 'state'           , S: s.UMGR_STAGING_OUTPUT_PENDING } ],
-        'u_agent_push_to_umgr'         : [ {E: 'state'           , S: s.UMGR_STAGING_OUTPUT_PENDING },
-                                           {E: 'state'           , S: s.UMGR_STAGING_OUTPUT         } ],  # push/pull mongodb
-        'u_umgr_destroy'               : [ {E: 'state'           , S: s.UMGR_STAGING_OUTPUT         },
-                                          [{E: 'state'           , S: s.DONE                        },
-                                           {E: 'state'           , S: s.CANCELED                    },
-                                           {E: 'state'           , S: s.FAILED                      }]],
-        'u_agent_unschedule'           : [ {E: 'unschedule_start', S: None                          },
-                                           {E: 'unschedule_stop' , S: None                          } ]
+UNIT_DURATIONS_DEBUG_SHORT = {
+    'u_umgr_create'              : [{'STATE': s.NEW                         },
+                                    {'STATE': s.UMGR_SCHEDULING_PENDING     }],
+    'u_umgr_schedule_queue'      : [{'STATE': s.UMGR_SCHEDULING_PENDING     },
+                                    {'STATE': s.UMGR_SCHEDULING             }],
+    'u_umgr_schedule'            : [{'STATE': s.UMGR_SCHEDULING             },
+                                    {'STATE': s.UMGR_STAGING_INPUT_PENDING  }],
+    # push to mongodb
+    'u_umgr_stage_in_queue'      : [{'STATE': s.UMGR_STAGING_INPUT_PENDING  },
+                                    {'STATE': s.UMGR_STAGING_INPUT          }],
+    # wait in mongodb
+    'u_umgr_stage_in'            : [{'STATE': s.UMGR_STAGING_INPUT          },
+                                    {'STATE': s.AGENT_STAGING_INPUT_PENDING }],
+    # pull from mongodb
+    'u_agent_stage_in_queue'     : [{'STATE': s.AGENT_STAGING_INPUT_PENDING },
+                                    {'STATE': s.AGENT_STAGING_INPUT         }],
+    'u_agent_stage_in'           : [{'STATE': s.AGENT_STAGING_INPUT         },
+                                    {'STATE': s.AGENT_SCHEDULING_PENDING    }],
+    'u_agent_schedule_queue'     : [{'STATE': s.AGENT_SCHEDULING_PENDING    },
+                                    {'STATE': s.AGENT_SCHEDULING            }],
+    'u_agent_schedule'           : [{'STATE': s.AGENT_SCHEDULING            },
+                                    {'STATE': s.AGENT_EXECUTING_PENDING     }],
+    'u_agent_execute_queue'      : [{'STATE': s.AGENT_EXECUTING_PENDING     },
+                                    {'STATE': s.AGENT_EXECUTING             }],
+    'u_agent_execute_prepare'    : [{'STATE': s.AGENT_EXECUTING             },
+                                    {'EVENT': 'exec_mkdir'                  }],
+    'u_agent_execute_mkdir'      : [{'EVENT': 'exec_mkdir'                  },
+                                    {'EVENT': 'exec_mkdir_done'             }],
+    'u_agent_execute_layer_start': [{'EVENT': 'exec_mkdir_done'             },
+                                    {'EVENT': 'exec_start'                  }],
+    # orte, ssh, mpi, ...
+    'u_agent_execute_layer'      : [{'EVENT': 'exec_start'                  },
+                                    [{'EVENT': 'exec_ok'                    },
+                                     {'EVENT': 'exec_fail'                  }]],
+    # PROBLEM: discontinuity
+    'u_agent_lm_start'           : [{'EVENT': 'cu_start'                    },
+                                    {'EVENT': 'cu_pre_start'                }],
+    'u_agent_lm_pre_execute'     : [{'EVENT': 'cu_pre_start'                },
+                                    {'EVENT': 'cu_pre_stop'                 }],
+    'u_agent_lm_execute_start'   : [{'EVENT': 'cu_pre_stop'                 },
+                                    {'EVENT': 'cu_exec_start'               }],
+    'u_agent_lm_execute'         : [{'EVENT': 'cu_exec_start'               },
+                                    {'EVENT': 'cu_exec_stop'                }],
+    'u_agent_lm_stop'            : [{'EVENT': 'cu_exec_stop'                },
+                                    {'EVENT': 'cu_stop'                     }],
+    'u_agent_stage_out_start'    : [{'EVENT': 'cu_stop'                     },
+                                    {'STATE': s.AGENT_STAGING_OUTPUT_PENDING}],
+    'u_agent_stage_out_queue'    : [{'STATE': s.AGENT_STAGING_OUTPUT_PENDING},
+                                    {'STATE': s.AGENT_STAGING_OUTPUT        }],
+    'u_agent_stage_out'          : [{'STATE': s.AGENT_STAGING_OUTPUT        },
+                                    {'STATE': s.UMGR_STAGING_OUTPUT_PENDING }],
+    # push/pull mongodb
+    'u_agent_push_to_umgr'       : [{'STATE': s.UMGR_STAGING_OUTPUT_PENDING },
+                                    {'STATE': s.UMGR_STAGING_OUTPUT         }],
+    'u_umgr_destroy'             : [{'STATE': s.UMGR_STAGING_OUTPUT         },
+                                    [{'STATE': s.DONE                       },
+                                     {'STATE': s.CANCELED                   },
+                                     {'STATE': s.FAILED                     }]],
+    'u_agent_unschedule'         : [{'EVENT': 'unschedule_start'            },
+                                    {'EVENT': 'unschedule_stop'             }]
+}
+
+UNIT_DURATIONS_DEBUG = _convert_sdurations(UNIT_DURATIONS_DEBUG_SHORT)
+
+
+# Debug unit durations tagged with keys taht can be used when calculating
+# resource utilization.
+# TODO: add the 'client' tag to relevant resource utilization methods.
+_udd = UNIT_DURATIONS_DEBUG
+UNIT_DURATIONS_DEBUG_RU = {
+    'client' : {
+        'u_umgr_create'              : _udd['u_umgr_create'],
+        'u_umgr_schedule_queue'      : _udd['u_umgr_schedule_queue'],
+        'u_umgr_schedule'            : _udd['u_umgr_schedule'],
+        'u_umgr_stage_in_queue'      : _udd['u_umgr_stage_in_queue'],
+        'u_umgr_stage_in'            : _udd['u_umgr_stage_in'],
+        'u_umgr_destroy'             : _udd['u_umgr_destroy'],
+        'u_agent_unschedule'         : _udd['u_agent_unschedule']
+    },
+    'consume'  : {
+        'u_agent_stage_in_queue'     : _udd['u_agent_stage_in_queue'],
+        'u_agent_stage_in'           : _udd['u_agent_stage_in'],
+        'u_agent_schedule_queue'     : _udd['u_agent_schedule_queue'],
+        'u_agent_schedule'           : _udd['u_agent_schedule'],
+        'u_agent_execute_queue'      : _udd['u_agent_execute_queue'],
+        'u_agent_execute_prepare'    : _udd['u_agent_execute_prepare'],
+        'u_agent_execute_mkdir'      : _udd['u_agent_execute_mkdir'],
+        'u_agent_execute_layer_start': _udd['u_agent_execute_layer_start'],
+        'u_agent_execute_layer'      : _udd['u_agent_execute_layer'],
+        'u_agent_lm_start'           : _udd['u_agent_lm_start'],
+        'u_agent_lm_pre_execute'     : _udd['u_agent_lm_pre_execute'],
+        'u_agent_lm_execute_start'   : _udd['u_agent_lm_execute_start'],
+        'u_agent_lm_execute'         : _udd['u_agent_lm_execute'],
+        'u_agent_lm_stop'            : _udd['u_agent_lm_stop'],
+        'u_agent_stage_out_start'    : _udd['u_agent_stage_out_start'],
+        'u_agent_stage_out_queue'    : _udd['u_agent_stage_out_queue'],
+        'u_agent_stage_out'          : _udd['u_agent_stage_out'],
+        'u_agent_push_to_umgr'       : _udd['u_agent_push_to_umgr'],
     }
 }
+
+
+# ----------------------------------------------------------------------------
+#
+def _convert_sdurations(sdurations):
+    '''
+    Converts a collection of durations expressed in short form to the same
+    collection of durations expressed in long form.
+
+    Definitions:
+
+    - Short form collection: one dictionary of short form durations
+    - Long form: one dictionary of long form durations.
+
+    Args:
+
+        sdurations (dict): a collections of durations in short form
+
+    Return:
+
+        ldurations (dict): a collection of long form durations
+
+    Example:
+
+        sdurations = {'name_of_duration': [{'STATE': s.STATE_NAME},
+                                           {'EVENT': 'event_name'}]}
+        ldurations = {'name_of_duration': [{ru.EVENT: 'state',
+                                            ru.STATE: s.STATE_NAME},
+                                           {ru.EVENT: 'event_name',
+                                            ru.STATE: None}]}
+        sdurations = {'name_of_duration': [{'STATE': s.STATE_NAME},
+                                           [{'EVENT': 'event_name'},
+                                            {'STATE': s.STATE_NAME}]]}
+        ldurations = {'name_of_duration': [{ru.EVENT: 'state',
+                                            ru.STATE: s.STATE_NAME},
+                                            [{ru.EVENT: 'event_name',
+                                              ru.STATE: None},
+                                             {ru.EVENT: 'state',
+                                              ru.STATE: s.event_name}]}
+        sdurations = {'name_of_duration': [{'STATE': s.STATE_NAME},
+                                           {'MSG': 'message_name'}]}
+        ldurations = {'name_of_duration': [{ru.EVENT: 'state',
+                                            ru.STATE: s.STATE_NAME},
+                                           {ru.EVENT: 'cmd',
+                                            ru.MSG: 'message_name'}]}
+    '''
+
+    ldurations = {}
+
+    for k,v in sdurations.items():
+
+        ldurations[k] = []
+        for ts in v:
+
+            if type(ts) is dict:
+                ldurations[k].append(_expand_sduration(ts))
+
+            if type(ts) is list:
+                lds = []
+                for i in ts:
+                    lds.append(_expand_sduration(i))
+                ldurations[k].append(lds)
+
+    return ldurations
+
+
+# ----------------------------------------------------------------------------
+#
+def _expand_sduration(sduration):
+    '''
+    Expands a duration expressed in short form to its long form.
+
+    Definitions:
+
+    - Short form duration: one dictionary containing a state or event name.
+    - Long form duration: one dictionary containing two keys, one of type
+      `ru.EVENT` and one of type `ru.STATE`. The `ru.EVENT` key has a string
+      value while the `ru.STATE` key has a `s.STATE_NAME` object as its value.
+
+    Args:
+
+        sduration (dict): a duration in short form
+
+    Return:
+
+        lduration (dict): sduration in long form
+
+    Example:
+
+        sduration = {'STATE': s.STATE_NAME}
+        lduration = {ru.EVENT: 'state', ru.STATE: s.STATE_NAME}
+        sduration = {'EVENT': 'event_name'}
+        lduration = {ru.EVENT: 'event_name', ru.STATE: None}
+        sduration = {'MSG': 'mesage_name'}
+        lduration = {ru.EVENT: 'cmd', ru.MSG: 'message_name'}
+    '''
+
+    assert(len(sduration.keys()) == 1), 'expand only one short form duration'
+    assert(list(sduration.keys())[0] == 'STATE' or
+           list(sduration.keys())[0] == 'EVENT' or
+           list(sduration.keys())[0] == 'MSG'), 'unknown timestamp type'
+
+    lduration = None
+
+    for k,v in sduration.items():
+        if k == 'STATE':
+            lduration = {ru.EVENT: 'state', ru.STATE: v}
+        elif k == 'EVENT':
+            lduration = {ru.EVENT: v, ru.STATE: None}
+        elif k == 'MSG':
+            lduration = {ru.EVENT: 'cmd', ru.MSG: v}
+
+    return lduration
 
 
 # ------------------------------------------------------------------------------
@@ -1039,4 +1225,3 @@ def _get_unit_consumption(session, unit):
 
 
 # ------------------------------------------------------------------------------
-
