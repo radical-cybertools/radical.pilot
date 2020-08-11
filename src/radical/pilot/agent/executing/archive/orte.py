@@ -428,8 +428,6 @@ class ORTE(AgentExecutingComponent):
         if self._prof.enabled:
             task_command = "echo script cu_start `%s` >> %s/%s.prof; " \
                          % (self.gtod, sandbox, cu['uid']) \
-                         + "echo script cu_cd_done `%s` >> %s/%s.prof; " \
-                         % (self.gtod, sandbox, cu['uid']) \
                          + "echo script cu_exec_start `%s` >> %s/%s.prof; " \
                          % (self.gtod, sandbox, cu['uid']) \
                          + task_command \
