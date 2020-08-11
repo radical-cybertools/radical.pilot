@@ -266,7 +266,8 @@ def _convert_sdurations(sdurations):
 #
 def _expand_sduration(sduration):
     '''
-    Expands a duration expressed in short form to its long form.
+    Expands a duration expressed in short form to its long form for the
+    timestamp types `ru.STATE`, `ru.EVENT` and `ru.MSG`.
 
     Definitions:
 
@@ -293,15 +294,16 @@ def _expand_sduration(sduration):
         lduration = {ru.EVENT: 'cmd', ru.MSG: 'message_name'}
     '''
 
-    # Return non STATE, EVENT or MSG unchanged. This allows to have durations
-    # that need to be expressed with both ru.EVENT and ru.STATE.
-    if len(sduration.keys()) != 1:
+    # Allow durations with both ru.EVENT and ru.STATE.
+    tt = list(sduration.keys())
+    if len(tt) == 1 and tt[0] not in ['STATE', 'EVENT', 'MSG']:
+        raise Exception('unknown timestamp type: %s' % tt)
+    if len(tt) == 2:
         return sduration
+    if len(tt) > 2:
+        raise Exception('invalid duration: too many timestamps (%s)' % tt)
 
-    if list(sduration.keys())[0] not in ['STATE', 'EVENT', 'MSG']:
-        return sduration
-
-    # Expand known cases.
+    # Expand known timestamps.
     lduration = None
 
     for k,v in sduration.items():
