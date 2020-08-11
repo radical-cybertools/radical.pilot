@@ -46,9 +46,9 @@ class Sleep(AgentExecutingComponent) :
         self._tasks      = list()
         self._delay      = 0.1
 
-        self._timed = mt.Thread(target=self._timed)
-        self._timed.daemon = True
-        self._timed.start()
+        self._watcher = mt.Thread(target=self._timed)
+        self._watcher.daemon = True
+        self._watcher.start()
 
 
     # --------------------------------------------------------------------------
@@ -56,7 +56,7 @@ class Sleep(AgentExecutingComponent) :
     def finalize(self):
 
         self._terminate.set()
-        self._timed.join()
+        self._watcher.join()
 
 
     # --------------------------------------------------------------------------
@@ -78,7 +78,6 @@ class Sleep(AgentExecutingComponent) :
             self._prof.prof('exec_start',    uid=uid)
             self._prof.prof('exec_ok',       uid=uid)
             self._prof.prof('cu_start',      uid=uid)
-            self._prof.prof('cu_cd_done',    uid=uid)
             self._prof.prof('cu_exec_start', uid=uid)
             self._prof.prof('app_start',     uid=uid)
 
