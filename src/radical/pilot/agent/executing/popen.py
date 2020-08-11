@@ -260,7 +260,6 @@ prof(){
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
             launch_script.write('prof cu_start\n')
             launch_script.write('\n# Change to unit sandbox\ncd %s\n' % sandbox)
-            launch_script.write('prof cu_cd_done\n')
 
             # Before the Big Bang there was nothing
             if self._cfg.get('cu_pre_exec'):
