@@ -227,15 +227,22 @@ class Master(rpu.Component):
         if count:
             self._log.debug('wait for %d workers', count)
             while True:
+                states = {
+                        'NEW'    : 0,
+                        'ACTIVE' : 0,
+                        'DONE'   : 0,
+                        'FAILED' : 0,
+                        }
+
                 with self._lock:
-                    states = [w['state'] for w in self._workers.values()]
-                n = states.count('ACTIVE')
-                self._log.debug('states [%d]: %s', n,
-                                {k:states.count(k) for k in set(states)})
-                if n >= count:
+                    for w in self._workers.values():
+                        states[w['state']] += 1
+
+                self._log.debug('states: %s', states)
+                if states['NEW'] + states['ACTIVE'] == 0:
                     self._log.debug('wait ok')
                     return
-                time.sleep(1)
+                time.sleep(10)
 
         elif uids:
             self._log.debug('wait for workers: %s', uids)

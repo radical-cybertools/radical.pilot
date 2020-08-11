@@ -697,10 +697,6 @@ class Default(PMGRLaunchingComponent):
 
         jc.run()
 
-        # we assume here that the tasks arrive in the same order as the job
-        # descriptions.  For uniform sets of pilots the order does not matter
-        # much though.  Either way, this needs confirming on SAGA level
-        # FIXME
         for j,jd in zip(jc.get_tasks(), jd_list):
 
             # do a quick error check
@@ -1119,8 +1115,9 @@ class Default(PMGRLaunchingComponent):
 
                 for sdist in sdist_paths:
                     base = os.path.basename(sdist)
+                    tgt  = '%s/%s' % (pilot['session_sandbox'], base)
                     ret['fts'].append({'src': sdist,
-                                       'tgt': '%s/%s' % (session_sandbox, base),
+                                       'tgt': tgt,
                                        'rem': False})
 
                 # Some machines cannot run pip due to outdated CA certs.
@@ -1132,8 +1129,9 @@ class Default(PMGRLaunchingComponent):
                     cc_path = os.path.abspath("%s/agent/%s" % (self._root_dir, cc_name))
                     self._log.debug("use CAs %s", cc_path)
 
+                    tgt = '%s/%s' % (pilot['session_sandbox'], cc_name)
                     ret['fts'].append({'src': cc_path,
-                                       'tgt': '%s/%s' % (session_sandbox, cc_name),
+                                       'tgt': tgt, 
                                        'rem': False})
 
                 self._sandboxes[resource] = True
@@ -1141,7 +1139,7 @@ class Default(PMGRLaunchingComponent):
         # always stage the bootstrapper for each pilot, but *not* in the tarball
         bootstrapper_path = os.path.abspath("%s/agent/bootstrap_0.sh"
                                            % self._root_dir)
-        tgt = '%s/%s/bootstrap_0.sh' % (session_sandbox, pid)
+        tgt = '%s/bootstrap_0.sh' % pilot['pilot_sandbox']
         ret['sds'].append({'source': bootstrapper_path,
                            'target': tgt,
                            'action': rpc.TRANSFER})

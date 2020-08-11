@@ -112,6 +112,8 @@ class Stager(rpu.Worker):
             tmp.path = '/'
             key      = str(tmp)
 
+            flags |= rsfs.CREATE_PARENTS
+
             with self._cache_lock:
                 if key in self._saga_fs_cache:
                     fs = self._saga_fs_cache[key]

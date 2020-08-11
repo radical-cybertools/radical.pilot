@@ -129,8 +129,8 @@ class UMGRSchedulingComponent(rpu.Component):
         if not isinstance(arg, list): things = [arg]
         else                        : things =  arg
 
-        pilots = [t for t in things if t['type'] == 'pilot']
-        units  = [t for t in things if t['type'] == 'unit' ]
+        pilots = [t for t in things if t.get('type') == 'pilot']
+        units  = [t for t in things if t.get('type') == 'unit' ]
 
         self._log.debug('update pilots %s', [p['uid'] for p in pilots])
         self._log.debug('update units  %s', [u['uid'] for u in units])
