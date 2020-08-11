@@ -243,7 +243,7 @@ def _convert_sdurations(sdurations):
                                             ru.MSG: 'message_name'}]}
     '''
 
-    ldurations = {}
+    ldurations = dict()
 
     for k,v in sdurations.items():
 
@@ -254,7 +254,7 @@ def _convert_sdurations(sdurations):
                 ldurations[k].append(_expand_sduration(ts))
 
             if isinstance(ts, list):
-                lds = []
+                lds = list()
                 for i in ts:
                     lds.append(_expand_sduration(i))
                 ldurations[k].append(lds)
@@ -1231,3 +1231,4 @@ def _get_unit_consumption(session, unit):
 
 
 # ------------------------------------------------------------------------------
+
