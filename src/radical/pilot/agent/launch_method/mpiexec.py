@@ -65,7 +65,7 @@ class MPIExec(LaunchMethod):
             raise RuntimeError('insufficient information to launch via %s: %s'
                               % (self.name, slots))
 
-        # extract a map of hosts and #slots from slots.  We count cpu and gpu
+        # extract a map of hosts and #slots from slots.  We count cpu
         # slot sets, but do not account for threads.  Since multiple slots
         # entries can have the same node names, we *add* new information.
         host_slots = dict()
@@ -73,7 +73,7 @@ class MPIExec(LaunchMethod):
             node_name = node['name']
             if node_name not in host_slots:
                 host_slots[node_name] = 0
-            host_slots[node_name] += len(node['core_map']) + len(node['gpu_map'])  # cpu + gpu
+            host_slots[node_name] += len(node['core_map'])
 
         # If we have a CU with many cores, and the compression didn't work
         # out, we will create a hostfile and pass that as an argument
@@ -83,13 +83,12 @@ class MPIExec(LaunchMethod):
         #   node_name_2 slots=n_2
         #   ...
         #
-        # where the slot number is the number of processes we intent to spawn,
-        # *including* GPU processes,
+        # where the slot number is the number of processes we intent to spawn.
         #
         # For smaller node sets, we construct command line parameters as
         # clusters of nodes with the same number of processes, like this:
         #
-        #   -H node_name_1,node_name_2 -np 8 : -H node_name_3 -np 4 : ...
+        #   -host node_name_1,node_name_2 -n 8 : -host node_name_3 -n 4 : ...
         #
         # POSIX defines a min argument limit of 4096 bytes, so we try to
         # construct a command line, and switch to hostfile if that limit is
@@ -104,7 +103,7 @@ class MPIExec(LaunchMethod):
         # cluster hosts by number of slots
         host_string = ''
         for node,nslots in list(host_slots.items()):
-            host_string += '-H %s -np %s ' % (','.join([node] * nslots), nslots)
+            host_string += '-host %s -n %s ' % (','.join([node] * nslots), nslots)
         command = command_stub % host_string
 
         if len(command) > arg_max:

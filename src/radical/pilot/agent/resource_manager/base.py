@@ -2,9 +2,12 @@
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
 import os
+
 import radical.utils as ru
+
+from ... import agent as rpa
+
 
 # 'enum' for resource manager types
 RM_NAME_FORK        = 'FORK'
@@ -16,6 +19,7 @@ RM_NAME_PBSPRO      = 'PBSPRO'
 RM_NAME_SGE         = 'SGE'
 RM_NAME_SLURM       = 'SLURM'
 RM_NAME_TORQUE      = 'TORQUE'
+RM_NAME_COBALT      = 'COBALT'
 RM_NAME_YARN        = 'YARN'
 RM_NAME_SPARK       = 'SPARK'
 RM_NAME_DEBUG       = 'DEBUG'
@@ -150,13 +154,17 @@ class ResourceManager(object):
 
         for lm in launch_methods:
             try:
-                from .... import pilot as rp
-                ru.dict_merge(self.lm_info,
-                        rp.agent.LaunchMethod.rm_config_hook(lm, self._cfg,
-                                                   self, self._log, self._prof))
+                ru.dict_merge(
+                    self.lm_info,
+                    rpa.LaunchMethod.rm_config_hook(name=lm,
+                                                    cfg=self._cfg,
+                                                    rm=self,
+                                                    log=self._log,
+                                                    profiler=self._prof))
             except Exception as e:
                 # FIXME don't catch/raise
-                self._log.exception("ResourceManager config hook failed: %s" % e)
+                self._log.exception(
+                    "ResourceManager config hook failed: %s" % e)
                 raise
 
             self._log.info("ResourceManager config hook succeeded (%s)" % lm)
@@ -218,6 +226,7 @@ class ResourceManager(object):
         from .sge         import SGE
         from .slurm       import Slurm
         from .torque      import Torque
+        from .cobalt      import Cobalt
         from .yarn        import Yarn
         from .spark       import Spark
         from .debug       import Debug
@@ -237,14 +246,15 @@ class ResourceManager(object):
                 RM_NAME_SGE         : SGE,
                 RM_NAME_SLURM       : Slurm,
                 RM_NAME_TORQUE      : Torque,
+                RM_NAME_COBALT      : Cobalt,
                 RM_NAME_YARN        : Yarn,
                 RM_NAME_SPARK       : Spark,
                 RM_NAME_DEBUG       : Debug
             }[name]
             return impl(cfg, session)
 
-        except KeyError:
-            raise RuntimeError("ResourceManager type '%s' unknown or defunct" % name)
+        except KeyError as e:
+            raise RuntimeError("ResourceManager '%s' unknown" % name) from e
 
 
     # --------------------------------------------------------------------------
@@ -262,13 +272,17 @@ class ResourceManager(object):
 
         for lm in launch_methods:
             try:
-                from .... import pilot as rp
-                ru.dict_merge(self.lm_info,
-                rp.agent.LaunchMethod.rm_shutdown_hook(lm, self._cfg, self,
-                                             self.lm_info, self._log,
-                                             self._prof))
+                ru.dict_merge(
+                    self.lm_info,
+                    rpa.LaunchMethod.rm_shutdown_hook(name=lm,
+                                                      cfg=self._cfg,
+                                                      rm=self,
+                                                      lm_info=self.lm_info,
+                                                      log=self._log,
+                                                      profiler=self._prof))
             except Exception as e:
-                self._log.exception("ResourceManager shutdown hook failed: %s" % e)
+                self._log.exception(
+                    "ResourceManager shutdown hook failed: %s" % e)
                 raise
 
             self._log.info("ResourceManager shutdown hook succeeded (%s)" % lm)

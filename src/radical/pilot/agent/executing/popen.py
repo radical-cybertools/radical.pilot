@@ -1,13 +1,17 @@
+# pylint: disable=subprocess-popen-preexec-fn
+# FIXME: review pylint directive - https://github.com/PyCQA/pylint/pull/2087
+#        (https://docs.python.org/3/library/subprocess.html#popen-constructor)
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
 import os
-import copy
 import stat
 import time
 import queue
+import atexit
+import pprint
 import signal
 import tempfile
 import threading as mt
@@ -16,12 +20,28 @@ import subprocess
 
 import radical.utils as ru
 
-from .... import pilot     as rp
+from ...  import agent     as rpa
 from ...  import utils     as rpu
 from ...  import states    as rps
 from ...  import constants as rpc
 
 from .base import AgentExecutingComponent
+
+
+# ------------------------------------------------------------------------------
+# ensure tasks are killed on termination
+_pids = list()
+
+
+def _kill():
+    print('==== atexit')
+    for pid in _pids:
+        print('==== kill %s' % pid)
+        os.killpg(pid, signal.SIGTERM)
+
+
+atexit.register(_kill)
+# ------------------------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------------
@@ -62,38 +82,23 @@ class Popen(AgentExecutingComponent) :
 
         # run watcher thread
         self._watcher = mt.Thread(target=self._watch)
-        self._watcher.daemon = True
+      # self._watcher.daemon = True
         self._watcher.start()
 
         # The AgentExecutingComponent needs the LaunchMethod to construct
         # commands.
-        self._task_launcher = rp.agent.LaunchMethod.create(
+        self._task_launcher = rpa.LaunchMethod.create(
                 name    = self._cfg.get('task_launch_method'),
                 cfg     = self._cfg,
                 session = self._session)
 
-        self._mpi_launcher = rp.agent.LaunchMethod.create(
+        self._mpi_launcher = rpa.LaunchMethod.create(
                 name    = self._cfg.get('mpi_launch_method'),
                 cfg     = self._cfg,
                 session = self._session)
 
-        self._cu_environment = self._populate_cu_environment()
-
         self.gtod   = "%s/gtod" % self._pwd
         self.tmpdir = tempfile.gettempdir()
-
-        # if we need to transplant any original env into the CU, we dig the
-        # respective keys from the dump made by bootstrap_0.sh
-        self._env_cu_export = dict()
-        if self._cfg.get('export_to_cu'):
-            with open('env.orig', 'r') as f:
-                for line in f.readlines():
-                    if '=' in line:
-                        k,v = line.split('=', 1)
-                        key = k.strip()
-                        val = v.strip()
-                        if key in self._cfg['export_to_cu']:
-                            self._env_cu_export[key] = val
 
 
     # --------------------------------------------------------------------------
@@ -112,48 +117,6 @@ class Popen(AgentExecutingComponent) :
                 self._cus_to_cancel.extend(arg['uids'])
 
         return True
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _populate_cu_environment(self):
-        """Derive the environment for the cu's from our own environment."""
-
-        # Get the environment of the agent
-        new_env = copy.deepcopy(os.environ)
-
-        #
-        # Mimic what virtualenv's "deactivate" would do
-        #
-        old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
-        if old_path:
-            new_env['PATH'] = old_path
-
-        old_ppath = new_env.pop('_OLD_VIRTUAL_PYTHONPATH', None)
-        if old_ppath:
-            new_env['PYTHONPATH'] = old_ppath
-
-        old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
-        if old_home:
-            new_env['PYTHON_HOME'] = old_home
-
-        old_ps = new_env.pop('_OLD_VIRTUAL_PS1', None)
-        if old_ps:
-            new_env['PS1'] = old_ps
-
-        new_env.pop('VIRTUAL_ENV', None)
-
-        # Remove the configured set of environment variables from the
-        # environment that we pass to Popen.
-        for e in list(new_env.keys()):
-            env_removables = list()
-            if self._mpi_launcher : env_removables += self._mpi_launcher.env_removables
-            if self._task_launcher: env_removables += self._task_launcher.env_removables
-            for r in  env_removables:
-                if e.startswith(r):
-                    new_env.pop(e, None)
-
-        return new_env
 
 
     # --------------------------------------------------------------------------
@@ -223,7 +186,9 @@ class Popen(AgentExecutingComponent) :
         self._prof.prof('exec_mkdir', uid=cu['uid'])
         rpu.rec_makedir(sandbox)
         self._prof.prof('exec_mkdir_done', uid=cu['uid'])
+
         launch_script_name = '%s/%s.sh' % (sandbox, cu['uid'])
+        slots_fname        = '%s/%s.sl' % (sandbox, cu['uid'])
 
         self._log.debug("Created launch_script: %s", launch_script_name)
 
@@ -231,21 +196,27 @@ class Popen(AgentExecutingComponent) :
         cu['stdout'] = ''
         cu['stderr'] = ''
 
+        with open(slots_fname, "w") as launch_script:
+            launch_script.write('\n%s\n\n' % pprint.pformat(cu['slots']))
+
         with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/sh\n\n')
 
             # Create string for environment variable setting
             env_string = ''
-            env_string += 'export RP_SESSION_ID="%s"\n'   % self._cfg['sid']
-            env_string += 'export RP_PILOT_ID="%s"\n'     % self._cfg['pid']
-            env_string += 'export RP_AGENT_ID="%s"\n'     % self._cfg['aid']
-            env_string += 'export RP_SPAWNER_ID="%s"\n'   % self.uid
-            env_string += 'export RP_UNIT_ID="%s"\n'      % cu['uid']
-            env_string += 'export RP_UNIT_NAME="%s"\n'    % cu['description'].get('name')
-            env_string += 'export RP_GTOD="%s"\n'         % self.gtod
-            env_string += 'export RP_TMP="%s"\n'          % self._cu_tmp
+          # env_string += '. %s/env.orig\n'                % self._pwd
+            env_string += 'export RADICAL_BASE="%s"\n'     % self._pwd
+            env_string += 'export RP_SESSION_ID="%s"\n'    % self._cfg['sid']
+            env_string += 'export RP_PILOT_ID="%s"\n'      % self._cfg['pid']
+            env_string += 'export RP_AGENT_ID="%s"\n'      % self._cfg['aid']
+            env_string += 'export RP_SPAWNER_ID="%s"\n'    % self.uid
+            env_string += 'export RP_UNIT_ID="%s"\n'       % cu['uid']
+            env_string += 'export RP_UNIT_NAME="%s"\n'     % cu['description'].get('name')
+            env_string += 'export RP_GTOD="%s"\n'          % self.gtod
+            env_string += 'export RP_TMP="%s"\n'           % self._cu_tmp
+            env_string += 'export RP_PILOT_SANDBOX="%s"\n' % self._pwd
             env_string += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
-                                                          % self._pwd
+                                                           % self._pwd
             if self._prof.enabled:
                 env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
 
@@ -281,11 +252,7 @@ prof(){
             except Exception as e:
                 msg = "Error in spawner (%s)" % e
                 self._log.exception(msg)
-                raise RuntimeError(msg)
-
-            # also add any env vars requested for export by the resource config
-            for k,v in self._env_cu_export.items():
-                env_string += "export %s=%s\n" % (k,v)
+                raise RuntimeError (msg) from e
 
             # also add any env vars requested in the unit description
             if descr['environment']:
@@ -361,6 +328,9 @@ prof(){
                                       shell      = True,
                                       cwd        = sandbox)
         self._prof.prof('exec_ok', uid=cu['uid'])
+
+        # store pid for last-effort termination
+        _pids.append(cu['proc'].pid)
 
         self._watch_queue.put(cu)
 

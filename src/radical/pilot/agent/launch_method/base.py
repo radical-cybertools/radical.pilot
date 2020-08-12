@@ -24,6 +24,7 @@ LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
 LM_NAME_JSRUN         = 'JSRUN'
 LM_NAME_PRTE          = 'PRTE'
+LM_NAME_FLUX          = 'FLUX'
 LM_NAME_ORTE          = 'ORTE'
 LM_NAME_ORTE_LIB      = 'ORTE_LIB'
 LM_NAME_RSH           = 'RSH'
@@ -69,6 +70,8 @@ class LaunchMethod(object):
         'RP_TMP',
         'RP_UNIT_ID',
         'RP_UNIT_NAME',
+        'RP_PILOT_SANDBOX',
+        'RADICAL_BASE'
     ]
 
     MPI_FLAVOR_OMPI    = 'OMPI'
@@ -114,6 +117,7 @@ class LaunchMethod(object):
         from .mpirun         import MPIRun
         from .jsrun          import JSRUN
         from .prte           import PRTE
+        from .flux           import Flux
         from .rsh            import RSH
         from .ssh            import SSH
         from .yarn           import Yarn
@@ -152,6 +156,7 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_DPLACE : MPIRun,
                 LM_NAME_JSRUN         : JSRUN,
                 LM_NAME_PRTE          : PRTE,
+                LM_NAME_FLUX          : Flux,
                 LM_NAME_RSH           : RSH,
                 LM_NAME_SSH           : SSH,
                 LM_NAME_YARN          : Yarn,
@@ -180,13 +185,13 @@ class LaunchMethod(object):
     #
     @classmethod
     def rm_config_hook(cls, name, cfg, rm, log, profiler):
-        """
+        '''
         This hook will allow the ResourceManager to perform launch methods
         specific configuration steps.  The ResourceManager layer MUST ensure
         that this hook is called exactly once (globally).  This will be a NOOP
         for LaunchMethods which do not overload this method.  Exceptions fall
         through to the ResourceManager.
-        """
+        '''
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
@@ -194,6 +199,8 @@ class LaunchMethod(object):
 
         from .fork           import Fork
         from .prte           import PRTE
+        from .flux           import Flux
+        from .jsrun          import JSRUN
         from .yarn           import Yarn
         from .spark          import Spark
 
@@ -203,8 +210,10 @@ class LaunchMethod(object):
         impl = {
             LM_NAME_FORK          : Fork,
             LM_NAME_PRTE          : PRTE,
+            LM_NAME_FLUX          : Flux,
+            LM_NAME_JSRUN         : JSRUN,
             LM_NAME_YARN          : Yarn,
-            LM_NAME_SPARK         : Spark
+            LM_NAME_SPARK         : Spark,
 
             # # deprecated
             # LM_NAME_ORTE          : ORTE,
@@ -223,16 +232,17 @@ class LaunchMethod(object):
     #
     @classmethod
     def rm_shutdown_hook(cls, name, cfg, rm, lm_info, log, profiler):
-        """
+        '''
         This hook is symmetric to the config hook above, and is called during
         shutdown sequence, for the sake of freeing allocated resources.
-        """
+        '''
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
             raise TypeError("LaunchMethod shutdown hook only available to base class!")
 
         from .prte           import PRTE
+        from .flux           import Flux
         from .yarn           import Yarn
         from .spark          import Spark
 
@@ -241,6 +251,7 @@ class LaunchMethod(object):
 
         impl = {
             LM_NAME_PRTE          : PRTE,
+            LM_NAME_FLUX          : Flux,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
 

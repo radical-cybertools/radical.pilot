@@ -80,6 +80,7 @@ class PRTE(LaunchMethod):
         # FIXME: we should derive the message size from DVM size - smaller DVMs
         #        will never need large messages, as they can't run large tasks)
         prte += ' --pmca ptl_base_max_msg_size %d' % (1024 * 1024 * 1024 * 1)
+      # prte += ' --pmca rmaps_base_verbose 5'
 
         # debug mapper problems for large tasks
         if log.isEnabledFor(logging.DEBUG):
@@ -188,8 +189,11 @@ class PRTE(LaunchMethod):
         profiler.prof(event='dvm_ok', uid=cfg['pid'])
 
 
-        lm_info = {'dvm_uri'     : dvm_uri,
-                   'version_info': prte_info}
+        lm_info = {
+                   'dvm_uri'     : dvm_uri,
+                   'version_info': prte_info,
+                   'cvd_id_mode' : 'physical'
+                  }
 
         # we need to inform the actual LaunchMethod instance about the prte URI.
         # So we pass it back to the ResourceManager which will keep it in an
@@ -237,7 +241,6 @@ class PRTE(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        import time
         time.sleep(0.1)
 
         slots        = cu['slots']
@@ -248,8 +251,7 @@ class PRTE(LaunchMethod):
         task_argstr  = self._create_arg_string(task_args)
 
         n_threads = cu['description'].get('cpu_threads',   1)
-        n_procs   = cu['description'].get('cpu_processes', 0) \
-                  + cu['description'].get('gpu_processes', 0)
+        n_procs   = cu['description'].get('cpu_processes', 1)
 
         if not n_procs  : n_procs   = 1
         if not n_threads: n_threads = 1
@@ -286,6 +288,7 @@ class PRTE(LaunchMethod):
 
         # see DVM startup
         map_flag += ' --pmca ptl_base_max_msg_size %d' % (1024 * 1024 * 1024 * 1)
+      # map_flag += ' --pmca rmaps_base_verbose 5'
 
         if 'nodes' not in slots:
             # this task is unscheduled - we leave it to PRRTE/PMI-X to
@@ -296,15 +299,12 @@ class PRTE(LaunchMethod):
             # FIXME: ensure correct binding for procs and threads via slotfile
 
             # enact the scheduler's host placement.  For now, we leave socket,
-            # core and thread placement to the prted, and just add all cpu and
-            # gpu process slots to the host list.
+            # core and thread placement to the prted, and just add all process
+            # slots to the host list.
             hosts = ''
 
             for node in slots['nodes']:
-
-                # for each cpu and gpu slot, add the respective node name
-                for _ in node['core_map']: hosts += '%s,' % node['name']
-                for _ in node['gpu_map' ]: hosts += '%s,' % node['name']
+                hosts += '%s,' % node['name']
 
             # remove trailing ','
             map_flag += ' -host %s' % hosts.rstrip(',')

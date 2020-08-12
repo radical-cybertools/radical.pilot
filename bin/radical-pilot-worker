@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+
+
+import sys
+import time
+
+import threading     as mt
+import setproctitle  as spt
+
+import radical.utils as ru
+import radical.pilot as rp
+
+dh = ru.DebugHelper()
+
+
+# ------------------------------------------------------------------------------
+#
+def main(cfg):
+    '''
+    This thin wrapper starts an RCT task overlay worker. It expects a single
+    argument: a config to use for the worker's configuration.
+    That config must contain:
+
+      - 'uid' : UID of worker instance (unique to the hosting session)
+      - 'path': sandbox for log files etc.
+
+    If the config contains a `heartbeat` section, that section must be formatted
+    as follows:
+
+        {
+          'from'    : 'uid',
+          'pub'     : 'addr_pub',
+          'sub'     : 'addr_sub',
+          'interval': <float>,
+          'timeout' : <float>
+        }
+
+    If that section exists, heartbeats are used to manage the worker's lifetime:
+    the lifetime of this worker is then dependent on receiving heartbeats from
+    the given `uid`: after `timeout` seconds of no heartbeats arriving, the
+    worker will terminate.  The worker itself will publish heartbeats every
+    `interval` seconds on the heartbeat channel under its own uid.
+
+    If the heartbeat section is not present in the config file, the worker's
+    lifetime is expected to be explicitly managed, i.e., that this wrapper
+    process hosting the worker is terminated externally.
+
+    The config file may contain other entries which are passed to the worker and
+    are interpreted by the component implementation.
+    '''
+
+    # basic setup: cfg, logger and profiler
+    log  = ru.Logger(name=cfg.uid, ns='radical.pilot', path=cfg.path)
+    prof = ru.Profiler(name=cfg.uid, ns='radical.pilot', path=cfg.path)
+
+    try:
+        prof.prof('worker_start', uid=cfg.uid)
+        prof.disable()
+        wrapped_main(cfg, log, prof)
+    except:
+        prof.enable()
+        prof.prof('worker_fail', uid=cfg.uid)
+    finally:
+        prof.enable()
+        prof.prof('worker_stop', uid=cfg.uid)
+
+
+def wrapped_main(cfg, log, prof):
+
+    term = mt.Event()
+
+    spt.setproctitle('rp.%s' % cfg.uid)
+
+    # start a non-primary session
+    session = rp.Session(cfg=cfg, _primary=False)
+
+    # create the component and begin to work
+    worker = rp.utils.Component.create(cfg, session)
+    worker.start()
+
+    # component runs - send heartbeats so that cmgr knows about it
+    hb_pub = ru.zmq.Publisher ('heartbeat', cfg.heartbeat.addr_pub)
+
+    def hb_beat_cb():
+        hb_pub.put('heartbeat', msg={'uid': cfg.uid})
+
+    def hb_term_cb(hb_uid):
+        worker.stop()
+        term.set()
+        return None
+
+    hb = ru.Heartbeat(uid=cfg.uid,
+                      timeout=cfg.heartbeat.timeout,
+                      interval=cfg.heartbeat.interval,
+                      beat_cb=hb_beat_cb,
+                      term_cb=hb_term_cb,
+                      log=log)
+    hb.start()
+
+    # register cmgr heartbeat by beating once
+    hb.beat(uid=cfg.cmgr)
+
+    # record cmgr heartbeats
+    def hb_sub_cb(topic, msg):
+        if msg['uid'] == cfg.cmgr:
+            hb.beat(uid=cfg.cmgr)
+
+    ru.zmq.Subscriber('heartbeat', cfg.heartbeat.addr_sub,
+                      topic='heartbeat', cb=hb_sub_cb,
+                      log=log, prof=prof)
+
+    # all is set up - we can sit idle 'til end of time.
+    while not term.is_set():
+        time.sleep(1)
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+
+    if len(sys.argv) != 2:
+        sys.stderr.write('error: invalid arguments\n'
+                         'usage: %s <cfg_file>\n'  % sys.argv[0])
+        raise RuntimeError('invalid arguments: %s' % sys.argv)
+
+    fname = sys.argv[1]
+    cfg   = ru.Config(path=fname)
+    path  = '%s/%s' % (cfg.path, cfg.uid)
+
+    # NOTE: this script runs as an RP task and will *not* daemonize
+
+    main(cfg)
+
+
+# ------------------------------------------------------------------------------
+

@@ -57,6 +57,14 @@
         "cores"    : 80
     },
 
+    "princeton.traverse" : {
+        "project"  : "tromp",
+        "queue"    : "all",
+        "schema"   : "local",
+        "cores"    : 32,
+        "gpus"     : 4
+    },
+
     "princeton.tiger_cpu" : {
         "project"  : "geo",
         "queue"    : "cpu",
@@ -76,6 +84,13 @@
         "queue"    : "development",
         "schema"   : "local",
         "cores"    : 64
+    },
+
+    "xsede.longhorn" : {
+        "project"  : "FTA-Jha",
+        "queue"    : "development",
+        "schema"   : "local",
+        "cores"    : 40
     },
 
     "xsede.bridges" : {
@@ -134,6 +149,13 @@
         "cores"    : 204
     },
 
+    "xsede.stampede2_ibrun"  : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "development",
+        "schema"   : "local",
+        "cores"    : 204
+    },
+
     "ncar.cheyenne": {
 	    "project"  : "URTG0014",
 	    "queue"    : "regular",
@@ -141,18 +163,29 @@
 	    "cores"    : 72
     },
 
+    "llnl.lassen"  : {
+        "project"  : "CV_DDMD",
+        "queue"    : "pdebug",
+      # "queue"    : "pbatch",
+        "schema"   : "local",
+        "cores"    : 30,
+        "gpus"     : 0
+    },
+
     "ornl.summit"  : {
         "project"  : "CSC343",
         "queue"    : "batch",
         "schema"   : "local",
-        "cores"    : 168
+        "cores"    : 168,
+        "gpus"     : 6
     },
 
     "ornl.summit_prte" : {
         "project"  : "geo111",
         "queue"    : "batch",
         "schema"   : "local",
-        "cores"    : 168
+        "cores"    : 168,
+        "gpus"     : 6
     },
 
     "ornl.rhea_aprun"   : {

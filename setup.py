@@ -2,7 +2,7 @@
 
 __author__    = 'RADICAL Team'
 __email__     = 'radical@rutgers.edu'
-__copyright__ = 'Copyright 2013-19, RADICAL Research, Rutgers University'
+__copyright__ = 'Copyright 2013-20, RADICAL Research, Rutgers University'
 __license__   = 'MIT'
 
 
@@ -135,13 +135,13 @@ def get_version(_mod_root):
         return _version_base, _version_detail, _sdist_name, _path
 
     except Exception as e:
-        raise RuntimeError('Could not extract/set version: %s' % e)
+        raise RuntimeError('Could not extract/set version: %s' % e) from e
 
 
 # ------------------------------------------------------------------------------
-# check python version. we need >= 2.7, <3.x
-if  sys.hexversion <= 0x03050000:
-    raise RuntimeError('%s requires Python 3.5 or higher' % name)
+# check python version, should be >= 3.6
+if sys.hexversion < 0x03060000:
+    raise RuntimeError('ERROR: %s requires Python 3.6 or newer' % name)
 
 
 # ------------------------------------------------------------------------------
@@ -165,7 +165,7 @@ class RunTwine(Command):
     def initialize_options(self): pass
     def finalize_options(self):   pass
     def run(self):
-        out,  err, ret = sh_callout('python setup.py sdist upload -r pypi')
+        _, _, ret = sh_callout('python setup.py sdist upload -r pypi')
         raise SystemExit(ret)
 
 
@@ -201,7 +201,7 @@ setup_args = {
     'url'                : 'https://www.github.com/radical-cybertools/radical.pilot/',
     'license'            : 'MIT',
     'keywords'           : 'radical pilot job saga',
-    'python_requires'    : '>=3.5',
+    'python_requires'    : '>=3.6',
     'classifiers'        : [
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
@@ -209,7 +209,7 @@ setup_args = {
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Topic :: Utilities',
         'Topic :: System :: Distributed Computing',
         'Topic :: Scientific/Engineering',
@@ -240,7 +240,8 @@ setup_args = {
                             'bin/radical-pilot-version',
                             'bin/radical-pilot-agent',
                             'bin/radical-pilot-agent-funcs',
-                            'bin/radical-pilot-agent-statepush'
+                            'bin/radical-pilot-agent-statepush',
+                            'bin/radical-pilot-worker',
                            ],
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.c',
                                  '*.md', 'VERSION', 'SDIST', sdist_name]},

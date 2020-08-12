@@ -22,9 +22,7 @@ class RoundRobin(UMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
-
-        UMGRSchedulingComponent.initialize(self)
+    def _configure(self):
 
         self._wait_pool = list()      # set of unscheduled units
         self._wait_lock = ru.RLock()  # look on the above set
@@ -43,6 +41,8 @@ class RoundRobin(UMGRSchedulingComponent):
         # have units in the wait queue waiting -- now is a good time to take
         # care of those!
         with self._wait_lock:
+
+            self._log.debug('add pilot - waitpool %d', len(self._wait_pool))
 
             self._pids += pids
 
@@ -77,56 +77,62 @@ class RoundRobin(UMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def update_units(self, uids):
+    def update_units(self, units):
 
         # RR scheduling is not concerned about unit states
         pass
-
 
 
     # --------------------------------------------------------------------------
     #
     def _work(self, units):
 
-        units_late   = list()
-        units_early  = list()
-        units_assign = dict()
+        units_wait  = list()
+        units_early = dict()
+        units_late  = list()
 
         with self._pilots_lock:
-
-            for unit in units:
-
-                # check if units are already scheduled, ie. by the application
-                uid = unit.get('uid')
-                pid = unit.get('pilot')
-
-                if pid:
-                    # make sure we know this pilot
-                    if pid not in self._pilots:
-                        self._log.error('unknown pilot %s (unit %s)', uid, pid)
-                        self.advance(unit, rps.FAILED, publish=True, push=True)
-                        continue
+            pilot_ids = list(self._pilots.keys())
 
 
-                    units_early.append(unit)
-                    if pid not in units_assign:
-                        units_assign[pid] = list()
-                    units_assign[pid].append(unit)
+        for unit in units:
 
-                else:
-                    # not yet scheduled - put in wait pool
-                    units_late.append(unit)
+            # check if units are already scheduled, ie. by the application
+            pid = unit.get('pilot')
 
+            if not pid:
+                # not yet assigned - put in wait pool for later scheduling
+                units_late.append(unit)
+
+            else:
+                # make sure we know this pilot
+                if pid not in pilot_ids:
+
+                    # pilot is not yet known, let unit wait
+                    units_wait.append(unit)
+                    continue
+
+                if pid not in units_early:
+                    units_early[pid] = list()
+
+                units_early[pid].append(unit)
+
+
+        # assign early bound tasks for which a pilot is known
         with self._pilots_lock:
 
-            for pid in units_assign:
-                pilot = self._pilots[pid]['pilot']
-                self._assign_pilot(units_assign[pid], pilot)
+            for pid in units_early:
 
-        if units_early:
-            self.advance(units_early, rps.UMGR_STAGING_INPUT_PENDING,
-                         publish=True, push=True)
+                self._assign_pilot(units_early[pid], self._pilots[pid]['pilot'])
+                self.advance(units_early[pid], rps.UMGR_STAGING_INPUT_PENDING,
+                             publish=True, push=True)
 
+        # delay units which have to wait for assigned pilots to appear
+        # (delayed early binding)
+        if units_wait:
+            self._wait_pool += units_wait
+
+        # for all unssigned tasks, attempt to schedule them (later binding)
         if units_late:
             self._schedule_units(units_late)
 
@@ -135,18 +141,21 @@ class RoundRobin(UMGRSchedulingComponent):
     #
     def _schedule_units(self, units):
 
+        self._log.debug('schedule %d units', len(units))
+
         with self._pilots_lock:
 
             if not self._pids:
+
+                self._log.debug('no pilots')
 
                 # no pilots, no schedule...
                 with self._wait_lock:
                     self._wait_pool += units
                     return
 
-            units_ok     = list()
-            units_fail   = list()
-            units_assign = dict()
+            units_fail = list()
+            units_done = dict()
 
             for unit in units:
 
@@ -161,29 +170,27 @@ class RoundRobin(UMGRSchedulingComponent):
                     self._idx += 1
 
                     # we assign the unit to the pilot.
-                    if pid not in units_assign:
-                        units_assign[pid] = list()
-                    units_assign[pid].append(unit)
-                    units_ok.append(unit)
+                    if pid not in units_done:
+                        units_done[pid] = list()
+                    units_done[pid].append(unit)
 
                 except Exception:
                     self._log.exception('unit schedule preparation failed')
                     units_fail.append(unit)
 
-            # make sure that all scheduled units have sandboxes known
+            # TODO: make sure that all scheduled units have sandboxes known
 
+        # advance all scheuled units
         with self._pilots_lock:
-            for pid in units_assign:
-                pilot = self._pilots[pid]['pilot']
-                self._assign_pilot(units_assign[pid], pilot)
+            for pid in units_done:
+                self._assign_pilot(units_done[pid], self._pilots[pid]['pilot'])
+                self.advance(units_done[pid], rps.UMGR_STAGING_INPUT_PENDING,
+                             publish=True, push=True)
 
-        # advance all units
+        # advance failed units
         if units_fail:
             self.advance(units_fail, rps.FAILED,
                          publish=True, push=False)
-        if units_ok:
-            self.advance(units_ok,   rps.UMGR_STAGING_INPUT_PENDING,
-                         publish=True, push=True)
 
 
 # ------------------------------------------------------------------------------

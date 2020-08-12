@@ -1,0 +1,32 @@
+{
+    "lassen": {
+        "description"                 : "Unclassified Sierra system (arch: IBM Power9, NVIDIA TeslaV100)",
+        "notes"                       : "A dedicated local instance of MongoDB should be used",
+        "schemas"                     : ["local"],
+        "local"                       :
+        {
+            "job_manager_hop"         : "fork://localhost/",
+            "job_manager_endpoint"    : "lsf://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+      # "forward_tunnel_endpoint"     : "`hostname -f`",
+        "cores_per_node"              : 40,
+        "gpus_per_node"               : 4,
+        "sockets_per_node"            : 2,
+        "default_queue"               : "pbatch",
+        "resource_manager"            : "LSF_SUMMIT",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "JSRUN",
+        "task_launch_method"          : "JSRUN",
+        "mpi_launch_method"           : "JSRUN",
+        "pre_bootstrap_0"             : ["module load jsrun"],
+        "default_remote_workdir"      : "/p/gpfs1/$USER",
+        "valid_roots"                 : ["/p/gpfs1/$USER",
+                                         "$HOME"],
+        "python_dist"                 : "default",
+        "virtenv_dist"                : "default",
+        "virtenv_mode"                : "create",
+        "rp_version"                  : "local"
+    }
+}

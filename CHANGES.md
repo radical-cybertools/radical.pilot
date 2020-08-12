@@ -4,13 +4,84 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
-1.1 Release                                                           2020-02-11
+1.4.1 Hotfix Release                                                  2020-06-09
 --------------------------------------------------------------------------------
 
+  - fix tmpdir mosconfiguration for summit / prrte
+
+
+1.4.0 Release                                                         2020-05-12
+--------------------------------------------------------------------------------
+
+  - merge #2122: fixed `n_nodes` for the case when `slots` are set
+  - merge #2123: fix #2121
+  - merge #2124: fixed conda-env path definition
+  - merge #2127: bootstrap env fix
+  - merge #2133, #2138:  IBRun fixes
+  - merge #2134: agent stage_in test1
+  - merge #2137: agent_0 initialization fix
+  - merge #2142: config update
+  - add `deactivate` support for tasks
+  - add cancelation example
+  - added comet_mpirun to resource_xsede.json
+  - added test for launch method "srun"
+  - adding cobalt test
+  - consistent process counting
+  - preliminary FLUX support
+  - fix RA utilization in case of no agent nodes
+  - fix queue naming, prte tmp dir and process count
+  - fix static ve location
+  - fixed version discovery (srun)
+  - cleanup bootstrap_0.sh
+  - separate tacc and xsede resources
+  - support for Princeton's Traverse cluster
+  - updated IBRun tests
+  - updated LM IBRun
+
+      
+1.3.0 Release                                                         2020-04-10
+--------------------------------------------------------------------------------
+
+  - task overlay + docs
+  - iteration on srun placement
+  - add env support to srun
+  - theta config
+  - clean up launcher termination guard against lower level termination errors
+  - cobalt rm
+  - optional output stager
+  - revive ibrun support
+  - switch comet FS
+
+
+1.2.1 Hotfix Release                                                  2020-02-11
+--------------------------------------------------------------------------------
+
+  - scattered fixes cfor summit
+
+      
+1.2.0 Release                                                         2020-02-11
+--------------------------------------------------------------------------------
+
+  - support for bulk callbacks
+  - fixed package paths for launch methods (radical.pilot.agent.launch_method)
+  - updated documentation references
+  - raise minimum Python version to 3.6
+  - local submit configuration for Frontera
+  - switch frontera to default agent cfg
+  - fix cray agent config
+  - fix issue #2075 part 2
+
+      
 1.1.1 Hotfix Release                                                  2020-02-11
 --------------------------------------------------------------------------------
 
   - fix dependency version for radical.utils
+
+      
+1.1 Release                                                           2020-02-11
+--------------------------------------------------------------------------------
+
+  - code cleanup
 
 
 1.0.0   Release                                                       2019-12-24
@@ -1157,4 +1228,6 @@ API Changes:
   - Closed tickets:
     - https://github.com/saga-project/saga-pilot/issues?milestone=4&state=closed
 
+        
+--------------------------------------------------------------------------------
 

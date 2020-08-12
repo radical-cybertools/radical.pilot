@@ -23,6 +23,30 @@ class JSRUN(LaunchMethod):
     def _configure(self):
 
         self.launch_command = ru.which('jsrun')
+        assert(self.launch_command)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def rm_config_hook(cls, name, cfg, rm, log, profiler):
+
+        if 'session.lassen' in cfg['sid'].lower():
+            # correctness of GPU IDs is based on env var CUDA_VISIBLE_DEVICES
+            # which value is taken from `gpu_map`, it is set at class
+            # `radical.pilot.agent.scheduler.base.AgentSchedulingComponent`
+            # (method `_handle_cuda`)
+            #
+            # *) since the launching happens at the login node Lassen@LLNL
+            #    thus the session name can be used to identify the machine
+            #
+            # FIXME: the `cvd_id_mode` setting should eventually move into the
+            #        resource config.
+            lm_info = {'cvd_id_mode': 'physical'}
+        else:
+            lm_info = {'cvd_id_mode': 'logical'}
+        return lm_info
+
 
     # --------------------------------------------------------------------------
     #
@@ -73,7 +97,12 @@ class JSRUN(LaunchMethod):
 
         """
 
-        rs_str = 'cpu_index_using: physical\n'
+        # if `cpu_index_using: physical` is set to run at Lassen@LLNL,
+        #  then it returns an error "error in ptssup_mkcltsock_afunix()"
+        if slots['nodes'][0]['name'].lower().startswith('lassen'):
+            rs_str = ''
+        else:
+            rs_str = 'cpu_index_using: physical\n'
         rank = 0
         for node in slots['nodes']:
 

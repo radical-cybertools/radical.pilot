@@ -37,9 +37,7 @@ class Backfilling(UMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self):
-
-        UMGRSchedulingComponent.initialize(self)
+    def _configure(self):
 
         self._wait_pool = dict()      # set of unscheduled units
         self._wait_lock = ru.RLock()  # look on the above set
@@ -112,10 +110,12 @@ class Backfilling(UMGRSchedulingComponent):
               # self._log.debug('update pilot: %s %s', pid, state)
 
                 if  rps._pilot_state_value(state) < _BF_START_VAL:
+                  # self._log.debug('early')
                     # not eligible, yet
                     continue
 
                 if  rps._pilot_state_value(state) > _BF_STOP_VAL:
+                  # self._log.debug('late')
                     # not eligible anymore
                     continue
 

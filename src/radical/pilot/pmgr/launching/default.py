@@ -90,18 +90,27 @@ class Default(PMGRLaunchingComponent):
     #
     def finalize(self):
 
-        # FIXME: always kill all saga jobs for non-final pilots at termination,
-        #        and set the pilot states to CANCELED.  This will confluct with
-        #        disconnect/reconnect semantics.
-        with self._pilots_lock:
-            pids = list(self._pilots.keys())
+        try:
+            self.unregister_timed_cb(self._pilot_watcher_cb)
+            self.unregister_input(rps.PMGR_LAUNCHING_PENDING,
+                                  rpc.PMGR_LAUNCHING_QUEUE, self.work)
 
-        self._cancel_pilots(pids)
-        self._kill_pilots(pids)
+            # FIXME: always kill all saga jobs for non-final pilots at termination,
+            #        and set the pilot states to CANCELED.  This will conflict with
+            #        disconnect/reconnect semantics.
+            with self._pilots_lock:
+                pids = list(self._pilots.keys())
 
-        with self._cache_lock:
-            for url,js in self._saga_js_cache.items():
-                js.close()
+            self._cancel_pilots(pids)
+            self._kill_pilots(pids)
+
+            with self._cache_lock:
+                for url,js in self._saga_js_cache.items():
+                    self._log.debug('close js %s', url)
+                    js.close()
+
+        except:
+            self._log.exception('finalization error')
 
 
     # --------------------------------------------------------------------------
@@ -289,6 +298,7 @@ class Default(PMGRLaunchingComponent):
                 self._prof.prof('staging_out_stop', uid=pid, msg=did)
 
             except:
+                self._log.exception('pilot level staging failed')
                 self._prof.prof('staging_out_fail', uid=pid, msg=did)
                 sd['state'] = rps.FAILED
 
@@ -871,6 +881,7 @@ class Default(PMGRLaunchingComponent):
         # pilot description and resource configuration
         number_cores    = pilot['description']['cores']
         number_gpus     = pilot['description']['gpus']
+        required_memory = pilot['description']['memory']
         runtime         = pilot['description']['runtime']
         app_comm        = pilot['description']['app_comm']
         queue           = pilot['description']['queue']
@@ -899,6 +910,7 @@ class Default(PMGRLaunchingComponent):
         virtenv                 = rcfg.get('virtenv',             default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
         gpus_per_node           = rcfg.get('gpus_per_node',  0)
+        self._log.debug('=== gpus_per_node 0: %d', gpus_per_node)
         lfs_path_per_node       = rcfg.get('lfs_path_per_node', None)
         lfs_size_per_node       = rcfg.get('lfs_size_per_node',  0)
         python_dist             = rcfg.get('python_dist')
@@ -913,16 +925,29 @@ class Default(PMGRLaunchingComponent):
         mandatory_args          = rcfg.get('mandatory_args', [])
         saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
 
+
         # make sure that mandatory args are known
         for ma in mandatory_args:
             if pilot['description'].get(ma) is None:
                 raise  ValueError('attribute "%s" is required for "%s"'
                                  % (ma, resource))
 
-        # from here on we need only sbox paths
-        resource_sandbox = ru.Url(pilot['resource_sandbox']).path
-        session_sandbox  = ru.Url(pilot['session_sandbox'] ).path
-        pilot_sandbox    = ru.Url(pilot['pilot_sandbox']   ).path
+        # get pilot and global sandbox
+        resource_sandbox = self._session._get_resource_sandbox(pilot)
+        session_sandbox  = self._session._get_session_sandbox (pilot)
+        pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
+        client_sandbox   = self._session._get_client_sandbox  ()
+
+        pilot['resource_sandbox'] = str(resource_sandbox) % expand
+        pilot['session_sandbox']  = str(session_sandbox)  % expand
+        pilot['pilot_sandbox']    = str(pilot_sandbox)    % expand
+        pilot['client_sandbox']   = str(client_sandbox)
+
+        # from here on we need only paths
+        resource_sandbox = resource_sandbox.path % expand
+        session_sandbox  = session_sandbox .path % expand
+        pilot_sandbox    = pilot_sandbox   .path % expand
+      # client_sandbox   = client_sandbox  # not expanded
 
         # Agent configuration that is not part of the public API.
         # The agent config can either be a config dict, or
@@ -1104,9 +1129,11 @@ class Default(PMGRLaunchingComponent):
         # if gpus_per_node is set (!= None), then we need to
         # allocation full nodes, and thus round up
         if gpus_per_node:
+            self._log.debug('=== gpus_per_node 1: %d', gpus_per_node)
             gpus_per_node = int(gpus_per_node)
             number_gpus   = int(gpus_per_node *
                             math.ceil(float(number_gpus) / gpus_per_node))
+            self._log.debug('=== gpus_per_node 2: %d', gpus_per_node)
 
         # set mandatory args
         bootstrap_args  = ""
@@ -1252,6 +1279,7 @@ class Default(PMGRLaunchingComponent):
         jd.error                 = "bootstrap_0.err"
         jd.total_cpu_count       = number_cores
         jd.total_gpu_count       = number_gpus
+        jd.total_physical_memory = required_memory
         jd.processes_per_host    = cores_per_node
         jd.spmd_variation        = spmd_variation
         jd.wall_time_limit       = runtime

@@ -1,4 +1,7 @@
 
+# pylint: disable=unused-argument    # W0613 Unused argument 'timeout' & 'input'
+# pylint: disable=redefined-builtin  # W0622 Redefining built-in 'input'
+
 import os
 import copy
 import time
@@ -65,11 +68,11 @@ class ComponentManager(object):
 
         self._hb_pub = ru.zmq.Publisher('heartbeat',
                                         self._cfg.heartbeat.addr_pub,
-                                        log=self._log)
+                                        log=self._log, prof=self._prof)
         self._hb_sub = ru.zmq.Subscriber('heartbeat',
                                          self._cfg.heartbeat.addr_sub,
-                                         topic='heartbeat',
-                                         cb=self._hb_sub_cb, log=self._log)
+                                         topic='heartbeat', cb=self._hb_sub_cb,
+                                         log=self._log, prof=self._prof)
 
         # confirm the bridge being usable by listening to our own heartbeat
         self._hb.start()
@@ -204,7 +207,7 @@ class ComponentManager(object):
 
         for cname, ccfg in cfg.get('components', {}).items():
 
-            for count in range(ccfg.get('count', 1)):
+            for _ in range(ccfg.get('count', 1)):
 
                 ccfg.uid         = ru.generate_id(cname, ns=self._sid)
                 ccfg.cmgr        = self.uid
@@ -234,7 +237,6 @@ class ComponentManager(object):
         # to appear.
         failed = self._hb.wait_startup(self._uids, timeout=timeout * 10)
         if failed:
-            self._log.error(   'could not start all components %s' % failed)
             raise RuntimeError('could not start all components %s' % failed)
 
         self._prof.prof('start_components_stop', uid=self._uid)
@@ -272,7 +274,7 @@ class Component(object):
     The main event loop of the component -- `work()` -- is executed on `run()`
     and will not terminate on its own, unless it encounters a fatal error.
 
-    Components inheriting this class should and should attempt not to use shared
+    Components inheriting this class should attempt not to use shared
     resources.  That will ensure that multiple instances of the component can
     coexist for higher overall system throughput.  Should access to shared
     resources be necessary, it will require some locking mechanism across
@@ -288,7 +290,7 @@ class Component(object):
         of the component's semantics);
       - the overall system is performant and scalable.
 
-    Inheriting classes SHOULD overload the foloowing methods:
+    Inheriting classes SHOULD overload the following methods:
 
       - `initialize()`:
         - set up the component state for operation
@@ -326,7 +328,7 @@ class Component(object):
 
     The config MAY contain `bridges` and `component` sections.  If those exist,
     the component will start the communication bridges and the components
-    specified therin, and is then considered an owner of those components and
+    specified therein, and is then considered an owner of those components and
     bridges.  As such, it much watch the HB channel for heartbeats from those
     components, and must terminate itself if those go AWOL.
 
@@ -350,7 +352,7 @@ class Component(object):
     arbitrary number of 'thing's over time, and they can be advanced at the
     component's discretion.
 
-    The component process is a stand-alone daemon process which runs outsude of
+    The component process is a stand-alone daemon process which runs outside of
     Python's multiprocessing domain.  As such, it can freely use Python's
     multithreading (and it extensively does so by default) - but developers
     should be aware that spawning additional *processes* in this component is
@@ -411,7 +413,8 @@ class Component(object):
         self._workers    = dict()       # methods to work on things
         self._publishers = dict()       # channels to send notifications to
         self._threads    = dict()       # subscriber and idler threads
-        self._cb_lock    = ru.RLock('comp.cb_lock.%s' % self._name)   # guard threaded callback invokations
+        self._cb_lock    = ru.RLock('comp.cb_lock.%s' % self._name)
+                                        # guard threaded callback invokations
 
         self._subscribers = dict()      # ZMQ Subscriber classes
 
@@ -496,7 +499,7 @@ class Component(object):
         from radical.pilot import pmgr      as rppm
         from radical.pilot import umgr      as rpum
         from radical.pilot import agent     as rpa
-        from radical.pilot import constants as rpc
+      # from radical.pilot import constants as rpc
 
         comp = {
                 rpc.UPDATE_WORKER                  : rpw.Update,
@@ -538,7 +541,7 @@ class Component(object):
         #        currently have no abstract 'cancel' command, but instead use
         #        'cancel_units'.
 
-      # self._log.debug('command incoming: %s', msg)
+        self._log.debug('command incoming: %s', msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -591,7 +594,7 @@ class Component(object):
         initialization of component base class goes here
         '''
         # components can always publish logs, state updates and control messages
-        self.register_publisher(rpc.LOG_PUBSUB)
+     #  self.register_publisher(rpc.LOG_PUBSUB)
         self.register_publisher(rpc.STATE_PUBSUB)
         self.register_publisher(rpc.CONTROL_PUBSUB)
 
@@ -635,13 +638,16 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def stop(self, timeout=None):
+    def stop(self, timeout=None):                                         # noqa
         '''
-        We need to terminate and join all threads, close all comunication
+        We need to terminate and join all threads, close all communication
         channels, etc.  But we trust on the correct invocation of the finalizers
         to do all this, and thus here only forward the stop request to the base
         class.
         '''
+
+        #  FIXME: implement timeout, or remove parameter
+        #   (pylint W0613 should be removed if changes to timeout are applied)
 
         self._log.info('stop %s (%s : %s) [%s]', self.uid, os.getpid(),
                        ru.get_thread_name(), ru.get_caller_name())
@@ -914,17 +920,18 @@ class Component(object):
         # dig the addresses from the bridge's config file
         fname = '%s/%s.cfg' % (self._cfg.path, pubsub)
         cfg   = ru.read_json(fname)
-        addr  = cfg['pub']
 
-        self._publishers[pubsub] = ru.zmq.Publisher(pubsub, url=addr,
-                                                            log=self._log)
+        self._publishers[pubsub] = ru.zmq.Publisher(channel=pubsub,
+                                                    url=cfg['pub'],
+                                                    log=self._log,
+                                                    prof=self._prof)
 
         self._log.debug('registered publisher for %s', pubsub)
 
 
     # --------------------------------------------------------------------------
     #
-    def register_subscriber(self, pubsub, cb, cb_data=None):
+    def register_subscriber(self, pubsub, cb):
         '''
         This method is complementary to the register_publisher() above: it
         registers a subscription to a pubsub channel.  If a notification
@@ -932,7 +939,6 @@ class Component(object):
         invoked.  The callback MUST have one of the signatures:
 
           callback(topic, msg)
-          callback(topic, msg, cb_data)
 
         where 'topic' is set to the name of the pubsub channel.
 
@@ -949,10 +955,11 @@ class Component(object):
         if pubsub not in self._subscribers:
             self._subscribers[pubsub] = ru.zmq.Subscriber(channel=pubsub,
                                                           url=cfg['sub'],
-                                                          log=self._log)
+                                                          log=self._log,
+                                                          prof=self._prof)
 
         self._subscribers[pubsub].subscribe(topic=pubsub, cb=cb,
-                                             lock=self._cb_lock)
+                                            lock=self._cb_lock)
 
 
     # --------------------------------------------------------------------------
@@ -1066,8 +1073,7 @@ class Component(object):
         if not ts:
             ts = time.time()
 
-        if not isinstance(things, list):
-            things = [things]
+        things = ru.as_list(things)
 
         if not things:
             return
@@ -1078,15 +1084,15 @@ class Component(object):
         buckets = dict()
         for thing in things:
 
-            uid   = thing['uid']
-            ttype = thing['type']
+            uid = thing['uid']
 
-            if ttype not in ['unit', 'pilot']:
-                raise TypeError("thing has unknown type (%s)" % uid)
+          # if thing['type'] not in ['unit', 'pilot']:
+          #     raise TypeError("thing has unknown type (%s)" % uid)
 
             if state:
                 # state advance done here
                 thing['state'] = state
+
             _state = thing['state']
 
             if prof:
@@ -1143,27 +1149,29 @@ class Component(object):
 
               # ts = time.time()
                 if _state in rps.FINAL:
-                  # # things in final state are dropped
-                  # for thing in _things:
-                  #     self._log.debug('final %s [%s]', thing['uid'], _state)
-                  #     self._prof.prof('drop', uid=thing['uid'], state=_state,
-                  #                     ts=ts)
+                    # things in final state are dropped
+                    for thing in _things:
+                        self._log.debug('final %s [%s]', thing['uid'], _state)
+                        self._prof.prof('drop', uid=thing['uid'], state=_state,
+                                        ts=ts)
                     continue
 
                 if _state not in self._outputs:
                     # unknown target state -- error
-                  # for thing in _things:
-                  #     self._log.debug("lost  %s [%s]", thing['uid'], _state)
-                  #     self._prof.prof('lost', uid=thing['uid'], state=_state,
-                  #                     ts=ts)
+                    for thing in _things:
+                        import pprint
+                        self._log.debug('%s', pprint.pformat(self._outputs))
+                        self._log.debug("lost  %s [%s]", thing['uid'], _state)
+                        self._prof.prof('lost', uid=thing['uid'], state=_state,
+                                        ts=ts)
                     continue
 
                 if not self._outputs[_state]:
                     # empty output -- drop thing
-                  # for thing in _things:
-                  #     self._log.debug('drop  %s [%s]', thing['uid'], _state)
-                  #     self._prof.prof('drop', uid=thing['uid'], state=_state,
-                  #                     ts=ts)
+                    for thing in _things:
+                        self._log.debug('drop  %s [%s]', thing['uid'], _state)
+                        self._prof.prof('drop', uid=thing['uid'], state=_state,
+                                        ts=ts)
                     continue
 
                 output = self._outputs[_state]
@@ -1204,7 +1212,7 @@ class Component(object):
 class Worker(Component):
     '''
     A Worker is a Component which cannot change the state of the thing it
-    handles.  Workers are emplyed as helper classes to mediate between
+    handles.  Workers are employed as helper classes to mediate between
     components, between components and database, and between components and
     notification channels.
     '''
