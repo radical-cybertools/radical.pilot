@@ -184,34 +184,21 @@ create_deactivate()
 #
 # If profiling is enabled, compile our little gtod app and take the first time
 #
-create_gtod()
+gtod()
 {
+    # try to get nanoseconds from date
     tmp=`date '+%s.%N' | grep N`
     if test "$?" = 0
     then
         if ! contains "$tmp" '%'
         then
-            # we can use the system tool
-            echo "#!/bin/sh"       > ./gtod
-            echo "date '+%s.%6N'" >> ./gtod
+            # this worked
+            echo $tmp
         fi
     else
-        shell=/bin/sh
-        test -x '/bin/bash' && shell=/bin/bash
-
-        echo "#!$SHELL"                                > ./gtod
-        echo "if test -z \"\$EPOCHREALTIME\""         >> ./gtod
-        echo "then"                                   >> ./gtod
-        echo "  awk 'BEGIN {srand(); print srand()}'" >> ./gtod
-        echo "else"                                   >> ./gtod
-        echo "  echo \${EPOCHREALTIME:0:20}"          >> ./gtod
-        echo "fi"                                     >> ./gtod
+        # no nanoseconds
+        date '+%s.000000'
     fi
-
-    chmod 0755 ./gtod
-
-    TIME_ZERO=`./gtod`
-    export TIME_ZERO
 }
 
 
@@ -229,7 +216,7 @@ profile_event()
     event=$1
     msg=$2
 
-    epoch=`./gtod`
+    epoch=$(gtod)
     now=$(awk "BEGIN{print($epoch - $TIME_ZERO)}")
 
     if ! test -f "$PROFILE"
@@ -303,7 +290,7 @@ waitfor()
     TIMEOUT="$1";  shift
     COMMAND="$*"
 
-    START=`echo \`./gtod\` | cut -f 1 -d .`
+    START=$(date '+%s')
     END=$((START + TIMEOUT))
     NOW=$START
 
@@ -320,7 +307,7 @@ waitfor()
         else
             echo "COND ok ($RET)"
         fi
-        NOW=`echo \`./gtod\` | cut -f 1 -d .`
+        NOW=$(date '+%s')
     done
 
     if test "$RET" = 0
@@ -1503,14 +1490,8 @@ PB1_LDLB="$LD_LIBRARY_PATH"
 #        We should split the parsing and the execution of those.
 #        "bootstrap start" is here so that $PILOT_ID is known.
 # Create header for profile log
-if ! test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
-then
-    echo 'create gtod'
-    create_gtod
-else
-    echo 'create gtod'
-    create_gtod
-fi
+TIME_ZERO=$(gtod)
+export TIME_ZERO
 profile_event 'bootstrap_0_start'
 
 # NOTE: if the virtenv path contains a symbolic link element, then distutil will

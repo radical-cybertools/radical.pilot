@@ -39,7 +39,7 @@ class FUNCS(AgentExecutingComponent) :
     def initialize(self):
 
         self._pwd = os.getcwd()
-        self.gtod = "%s/gtod" % self._pwd
+        self.gtod = ru.which('radical-gtod')
 
         self.register_input(rps.AGENT_EXECUTING_PENDING,
                             rpc.AGENT_EXECUTING_QUEUE, self.work)

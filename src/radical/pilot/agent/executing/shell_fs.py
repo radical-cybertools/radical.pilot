@@ -123,7 +123,7 @@ class ShellFS(AgentExecutingComponent):
         self._cached_events = list()  # keep monitoring events for pid's which
                                       # are not yet known
 
-        self.gtod = "%s/gtod" % self._pwd
+        self.gtod = ru.which('radical-gtod')
 
         # create line buffered fifo's to communicate with the shell executor
         self._fifo_cmd_name = "%s/%s.cmd.pipe" % (self._tmp, self._uid)
