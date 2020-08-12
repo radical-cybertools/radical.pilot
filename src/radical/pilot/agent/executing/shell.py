@@ -156,7 +156,7 @@ class Shell(AgentExecutingComponent):
         self._watcher.daemon = True
         self._watcher.start ()
 
-        self.gtod = "%s/gtod" % self._pwd
+        self.gtod = ru.which('radical-gtod')
 
 
     # --------------------------------------------------------------------------

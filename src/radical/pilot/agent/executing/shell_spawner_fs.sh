@@ -25,8 +25,8 @@ export HISTIGNORE
 #  - if a new ID is incoming (EXEC), it will run the respective script in the
 #    background.  A pid-to-unit id map is stored on the file system, under
 #    ($WORK/pids/[pid].uid and $WORK/pids/[uid].pid)
-#  - on a KILL request, kill the respective process (if it was started).  
-#    No guarantees are made on the kill - we just send SIGKILL and hope 
+#  - on a KILL request, kill the respective process (if it was started).
+#    No guarantees are made on the kill - we just send SIGKILL and hope
 #    for the best
 #  - the EXIT request will obviously call for an exit - running units will not
 #    be killed.
@@ -71,11 +71,9 @@ log(){
 # ------------------------------------------------------------------------------
 #
 prof(){
-  # test -z "$RP_GTOD" && return
     uid=$1
     evt=$2
-  # now=$($RP_GTOD)
-    now=$($BASE/gtod)
+    now=$(radical-gtod)
     \printf "$now,$evt,'shell_spawner,MainThread,$uid,AGENT_EXECUTING,\n" \
         >> "$BASE/$uid/$uid.prof"
 }
@@ -89,7 +87,7 @@ prof(){
 #              should be on a fast FS (eg. `/tmp/`)
 #   $3 - SID : SID for this shell instance  (in case multiple instances coexist)
 #
-# setup() will respawn this script in irder to redirect all stdout and stderr 
+# setup() will respawn this script in irder to redirect all stdout and stderr
 # to $LOG - we ensure here that the respawn happened.
 #
 setup(){
@@ -102,19 +100,19 @@ setup(){
         WORK="$2"
         SID="$3"
         LOG="$WORK/sh.$SID.log"
-        
-        test -z "$BASE" && usage 1 'missing base dir' 
+
+        test -z "$BASE" && usage 1 'missing base dir'
         test -z "$WORK" && usage 1 'missing work dir'
         test -z "$SID"  && usage 1 'missing sid'
-    
+
         export BASE
         export WORK
         export SID
         export LOG
-    
+
         _RESPAWNED=$SID
         export _RESPAWNED
-        exec > $LOG 2>&1 
+        exec > $LOG 2>&1
     fi
 
 
@@ -136,7 +134,7 @@ setup(){
 
     # create location to manage pid to unit.uid maps
     \mkdir -p "$MAP" || error "cannot create mapdir"
-    
+
 }
 
 
@@ -218,7 +216,7 @@ work(){
         read -r cmd id < $PIPE_CMD || do_exit 1 'read failed'
       # log DEBUG "read: [$cmd $id]"
 
-        case "$cmd" in 
+        case "$cmd" in
             EXEC) do_exec   "$id";;
             KILL) do_kill   "$id";;
             EXIT) do_exit 0 "$id";;

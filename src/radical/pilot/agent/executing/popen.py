@@ -95,7 +95,7 @@ class Popen(AgentExecutingComponent) :
                 cfg     = self._cfg,
                 session = self._session)
 
-        self.gtod   = "%s/gtod" % self._pwd
+        self.gtod   = ru.which('radical-gtod')
         self.tmpdir = tempfile.gettempdir()
 
 

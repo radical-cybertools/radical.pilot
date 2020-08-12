@@ -101,7 +101,7 @@ class ORTE(AgentExecutingComponent):
         self._orte_initialized = False
         self._cu_environment   = self._populate_cu_environment()
 
-        self.gtod   = "%s/gtod" % self._pwd
+        self.gtod   = ru.which('radical-gtod')
         self.tmpdir = tempfile.gettempdir()
 
 
