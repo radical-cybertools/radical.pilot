@@ -134,9 +134,11 @@ class PilotManager(rpu.Component):
         self.register_output(rps.PMGR_LAUNCHING_PENDING,
                              rpc.PMGR_LAUNCHING_QUEUE)
 
-        # we also listen on the control pubsub, to learn about completed staging
-        # directives
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._staging_ack_cb)
+        # get queue for staging requests
+        self._stager_queue = self.get_output_ep(rpc.STAGER_REQUEST_QUEUE)
+
+        # we also listen for completed staging directives
+        self.register_subscriber(rpc.STAGER_RESPONSE_PUBSUB, self._staging_ack_cb)
         self._active_sds = dict()
         self._sds_lock   = ru.Lock('pmgr_sds_lock')
 
@@ -398,36 +400,34 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _pilot_staging_input(self, pilot, directives):
+    def _pilot_staging_input(self, sds):
         '''
-        Run some staging directives for a pilot.  We pass this request on to
-        the launcher, and wait until the launcher confirms completion on the
-        command pubsub.
+        Run some staging directives for a pilot.
         '''
 
         # add uid, ensure its a list, general cleanup
         sds  = expand_sd(directives, 'pilot')
         uids = [sd['uid'] for sd in sds]
-        self._active_sds = dict()
 
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'pilot_staging_input_request',
-                                          'arg' : {'pilot' : pilot,
-                                                   'sds'   : sds}})
-        # keep track of SDS we sent off
-        for sd in sds:
-            sd['state'] = rps.NEW
-            self._active_sds[sd['uid']] = sd
-
-        # and wait for their completion
+        # prepare to wait for completion
         with self._sds_lock:
+
+            self._active_sds = dict()
+            for sd in sds:
+                sd['state'] = rps.NEW
+                self._active_sds[sd['uid']] = sd
+
             sd_states = [sd['state'] for sd
-                                     in  list(self._active_sds.values())
+                                     in  self._active_sds.values()
                                      if  sd['uid'] in uids]
+        # push them out
+        self._stager_queue.put(sds)
+
         while rps.NEW in sd_states:
             time.sleep(1.0)
             with self._sds_lock:
                 sd_states = [sd['state'] for sd
-                                         in  list(self._active_sds.values())
+                                         in  self._active_sds.values()
                                          if  sd['uid'] in uids]
 
         if rps.FAILED in sd_states:
@@ -436,27 +436,30 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _pilot_staging_output(self, pilot, directives):
+    def _pilot_staging_output(self, sds):
         '''
-        Run some staging directives for a pilot.  We pass this request on to
-        the launcher, and wait until the launcher confirms completion on the
-        command pubsub.
+        Run some staging directives for a pilot.
         '''
 
         # add uid, ensure its a list, general cleanup
         sds  = expand_sd(directives, 'pilot')
         uids = [sd['uid'] for sd in sds]
-        self._active_sds = dict()
 
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'pilot_staging_output_request',
-                                          'arg': {'pilot' : pilot,
-                                                  'sds'   : sds}})
-        # keep track of SDS we sent off
-        for sd in sds:
-            sd['state'] = rps.NEW
-            self._active_sds[sd['uid']] = sd
+        # prepare to wait for completion
+        with self._sds_lock:
 
-        # and wait for their completion
+            self._active_sds = dict()
+            for sd in sds:
+                sd['state'] = rps.NEW
+                self._active_sds[sd['uid']] = sd
+
+            sd_states = [sd['state'] for sd
+                                     in  self._active_sds.values()
+                                     if  sd['uid'] in uids]
+        # push them out
+        self._stager_queue.put(sds)
+
+        # wait for their completion
         with self._sds_lock:
             sd_states = [sd['state'] for sd in self._active_sds.values()
                                             if sd['uid'] in uids]
@@ -480,11 +483,17 @@ class PilotManager(rpu.Component):
         cmd = msg.get('cmd')
         arg = msg.get('arg')
 
-        if cmd in ['pilot_staging_input_result', 'pilot_staging_output_result']:
+        if cmd == 'staging_result':
+
+            sds = arg['sds']
+            states = {sd['uid']: sd['state'] for sd in self._active_sds.values()}
+
             with self._sds_lock:
                 for sd in arg['sds']:
                     if sd['uid'] in self._active_sds:
                         self._active_sds[sd['uid']]['state'] = sd['state']
+
+            states = {sd['uid']: sd['state'] for sd in self._active_sds.values()}
 
         return True
 

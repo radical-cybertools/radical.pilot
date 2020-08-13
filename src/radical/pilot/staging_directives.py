@@ -42,8 +42,13 @@ def expand_description(descr):
 #
 def expand_sd(sds, sandbox):
     '''
-    expand str directives, expand sandbox references
+    Take an abbreviated or compressed staging directive, expand it, and expand
+    sandboxes
     '''
+
+
+    if not sds:
+        return []
 
     ret = list()
     sds = ru.as_list(sds)
@@ -58,22 +63,47 @@ def expand_sd(sds, sandbox):
 
             if   '>'  in sd: src, tgt = sd.split('>' , 2)
             elif '<'  in sd: tgt, src = sd.split('<' , 2)
-            else           : src, tgt = sd, None
+            else           : src, tgt = sd, os.path.basename(ru.Url(sd).path)
+
+            # FIXME: ns = session ID
+            expanded = {'source':   src.strip(),
+                        'target':   tgt.strip(),
+                        'action':   DEFAULT_ACTION,
+                        'flags':    DEFAULT_FLAGS,
+                        'priority': DEFAULT_PRIORITY,
+                        'uid':      ru.generate_id('sd.%(item_counter)06d',
+                                                    ru.ID_CUSTOM, ns='foo')
+                       }
+
+        elif isinstance(sd, dict):
+
+            # sanity check on dict syntax
+            valid_keys = ['source', 'target', 'action', 'flags', 'priority',
+                          'uid', 'prof_id']
+            for k in sd:
+                if k not in valid_keys:
+                    raise ValueError('"%s" is invalid on staging directive' % k)
+
+            src = sd.get('source')
+            tgt = sd.get('target',   os.path.basename(ru.Url(source).path))
 
             assert(src)
 
-            if not tgt:
-                tgt = 'sandbox://%s/%s' % (sandbox, src.split('/')[-1])
+            if not src:
+                raise Exception("Staging directive dict has no source member!")
 
-            sd_dict = {'uid':      ru.generate_id('sd'),
-                       'source':   src.strip(),
-                       'target':   tgt.strip(),
-                       'action':   DEFAULT_ACTION,
-                       'flags':    DEFAULT_FLAGS,
-                       'priority': DEFAULT_PRIORITY}
+            # FIXME: ns = session ID
+            expanded = {'source':   src,
+                        'target':   tgt,
+                        'action':   sd.get('action',   DEFAULT_ACTION),
+                        'flags':    sd.get('flags',    DEFAULT_FLAGS),
+                        'priority': sd.get('priority', DEFAULT_PRIORITY),
+                        'uid':      ru.generate_id('sd.%(item_counter)06d',
+                                                    ru.ID_CUSTOM, ns='foo')}
+
         else:
             src = sd['source']
-            tgt = sd['target']
+            tgt = sd.get('target', os.path.basename(ru.Url(source).path))
 
             assert(src)
 
@@ -88,6 +118,9 @@ def expand_sd(sds, sandbox):
 
         sd_dict['uid'] = ru.generate_id('sd'),
         ret.append(sd_dict)
+
+        # FIXME: expand sandboxes
+        # FIXME: move to session
 
     return ret
 

@@ -11,6 +11,8 @@ import radical.utils as ru
 from . import states    as rps
 from . import constants as rpc
 
+from .staging_directives import complete_url
+
 
 # ------------------------------------------------------------------------------
 #
@@ -93,6 +95,19 @@ class ComputePilot(object):
         self._session_sandbox  = self._session._get_session_sandbox (pilot)
         self._pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
         self._client_sandbox   = self._session._get_client_sandbox()
+
+        # contexts for staging url expansion
+        # NOTE: no unit sandboxes defined!
+        self._rem_ctx = {'pwd'     : self._pilot_sandbox,
+                         'client'  : self._client_sandbox,
+                         'pilot'   : self._pilot_sandbox,
+                         'resource': self._resource_sandbox}
+
+        self._loc_ctx = {'pwd'     : self._client_sandbox,
+                         'client'  : self._client_sandbox,
+                         'pilot'   : self._pilot_sandbox,
+                         'resource': self._resource_sandbox}
+
 
         # we need to expand plaaceholders in the sandboxes
         # FIXME: this code is a duplication from the pilot launcher code
@@ -547,35 +562,48 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def stage_in(self, directives):
+    def stage_in(self, sds):
         '''
         Stages the content of the staging directive into the pilot's
         staging area
         '''
 
-        # This staging request is actually served by the pmgr *launching*
-        # component, because that already has a channel open to the target
-        # resource which we can reuse.  We might eventually implement or
-        # interface to a dedicated data movement service though.
+        sds = ru.as_list(sds)
 
-        # send the staging request to the pmg launcher
-        self._pmgr._pilot_staging_input(self.as_dict(), directives)
+        for sd in sds:
+            sd['prof_id'] = self.uid
+
+        for sd in sds:
+            sd['source'] = str(complete_url(sd['source'], self._loc_ctx, self._log))
+            sd['target'] = str(complete_url(sd['target'], self._rem_ctx, self._log))
+
+        # ask the pmgr to send the staging reuests to the stager
+        self._pmgr._pilot_staging_input(sds)
 
 
     # --------------------------------------------------------------------------
     #
-    def stage_out(self):
+    def stage_out(self, sds=None):
         '''
-        fetch `staging_output.tgz` from the pilot sandbox, and store in $PWD
+        fetch files (default:`staging_output.tgz`) from the pilot sandbox
         '''
 
-        try:
-            psbox = self._session.get_fs_dir(self._pilot_sandbox)
-            psbox.copy('staging_output.tgz', self._client_sandbox)
+        sds = ru.as_list(sds)
 
-        except Exception:
-            self._log.exception('output staging failed')
-            raise
+        if not sds:
+             sds = [{'source': 'pilot:///staging_output.tgz',
+                     'target': 'client:///staging_output.tgz',
+                     'action': rpc.TRANSFER}]
+
+        for sd in sds:
+            sd['prof_id'] = self.uid
+
+        for sd in sds:
+            sd['source'] = str(complete_url(sd['source'], self._rem_ctx, self._log))
+            sd['target'] = str(complete_url(sd['target'], self._loc_ctx, self._log))
+
+        # ask the pmgr to send the staging reuests to the stager
+        self._pmgr._pilot_staging_output(sds)
 
 
 # ------------------------------------------------------------------------------

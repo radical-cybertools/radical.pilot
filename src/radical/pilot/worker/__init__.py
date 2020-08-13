@@ -4,5 +4,6 @@ __license__   = "MIT"
 
 
 from .update    import Update
+from .stager    import Stager
 
 
