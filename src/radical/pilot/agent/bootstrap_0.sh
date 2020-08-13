@@ -1760,6 +1760,10 @@ cd $PILOT_SANDBOX
 export PATH="$PB1_PATH"
 export LD_LIBRARY_PATH="$PB1_LDLB"
 
+# pass environment variables down so that module load becomes effective at
+# the other side too (e.g. sub-agents).
+$PREBOOTSTRAP2_EXPANDED
+
 # activate virtenv
 if test "$PYTHON_DIST" = "anaconda" && test -e "`which conda`"
 then
@@ -1784,10 +1788,6 @@ unset RADICAL_PILOT_DBURL
 
 # avoid ntphost lookups on compute nodes
 export RADICAL_PILOT_NTPHOST=$RADICAL_PILOT_NTPHOST
-
-# pass environment variables down so that module load becomes effective at
-# the other side too (e.g. sub-agents).
-$PREBOOTSTRAP2_EXPANDED
 
 # start agent, forward arguments
 # NOTE: exec only makes sense in the last line of the script
