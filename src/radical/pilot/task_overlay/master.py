@@ -240,7 +240,8 @@ class Master(rpu.Component):
                         stats[w['status']] += 1
 
                 self._log.debug('stats: %s', stats)
-                if stats['ACTIVE'] + stats['DONE'] + stats['FAILED'] >= count:
+                n = stats['ACTIVE'] + stats['DONE'] + stats['FAILED']
+                if n >= count:
                     self._log.debug('wait ok')
                     return
                 time.sleep(10)
@@ -250,7 +251,7 @@ class Master(rpu.Component):
             while True:
                 with self._lock:
                     stats = [self._workers[uid]['status'] for uid in uids]
-                n = stats.count('ACTIVE')
+                n = stats['ACTIVE'] + stats['DONE'] + stats['FAILED']
                 self._log.debug('stats [%d]: %s', n, stats)
                 if n == len(uids):
                     self._log.debug('wait ok')
