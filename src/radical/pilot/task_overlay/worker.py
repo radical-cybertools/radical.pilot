@@ -359,7 +359,7 @@ class Worker(rpu.Component):
         invoke them.
         '''
 
-        task = ru.as_list(task)
+        tasks = ru.as_list(tasks)
 
         for task in tasks:
 
