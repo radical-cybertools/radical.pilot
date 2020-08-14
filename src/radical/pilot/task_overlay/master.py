@@ -141,8 +141,8 @@ class Master(rpu.Component):
             self._log.debug('register %s', uid)
 
             with self._lock:
-                self._workers[uid]['info']  = info
-                self._workers[uid]['state'] = 'ACTIVE'
+                self._workers[uid]['info']   = info
+                self._workers[uid]['status'] = 'ACTIVE'
                 self._log.debug('info: %s', info)
 
 
@@ -152,7 +152,7 @@ class Master(rpu.Component):
             self._log.debug('unregister %s', uid)
 
             with self._lock:
-                self._workers[uid]['state'] = 'DONE'
+                self._workers[uid]['status'] = 'DONE'
 
 
     # --------------------------------------------------------------------------
@@ -197,6 +197,7 @@ class Master(rpu.Component):
             task = dict()
             task['description']       = copy.deepcopy(descr_complete)
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
+            task['status']            = 'NEW'
             task['type']              = 'unit'
             task['uid']               = uid
             task['unit_sandbox_path'] = sbox
@@ -227,7 +228,7 @@ class Master(rpu.Component):
         if count:
             self._log.debug('wait for %d workers', count)
             while True:
-                states = {
+                stats = {
                         'NEW'    : 0,
                         'ACTIVE' : 0,
                         'DONE'   : 0,
@@ -236,10 +237,10 @@ class Master(rpu.Component):
 
                 with self._lock:
                     for w in self._workers.values():
-                        states[w['state']] += 1
+                        stats[w['status']] += 1
 
-                self._log.debug('states: %s', states)
-                if states['NEW'] + states['ACTIVE'] == 0:
+                self._log.debug('stats: %s', stats)
+                if stats['NEW'] + stats['ACTIVE'] == 0:
                     self._log.debug('wait ok')
                     return
                 time.sleep(10)
@@ -248,9 +249,9 @@ class Master(rpu.Component):
             self._log.debug('wait for workers: %s', uids)
             while True:
                 with self._lock:
-                    states = [self._workers[uid]['state'] for uid in uids]
-                n = states.count('ACTIVE')
-                self._log.debug('states [%d]: %s', n, states)
+                    stats = [self._workers[uid]['status'] for uid in uids]
+                n = stats.count('ACTIVE')
+                self._log.debug('stats [%d]: %s', n, stats)
                 if n == len(uids):
                     self._log.debug('wait ok')
                     return
