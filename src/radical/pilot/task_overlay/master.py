@@ -300,23 +300,29 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def request(self, req):
+    def request(self, reqs):
         '''
-        submit a work request (function call spec) to the request queue
+        submit a list of work request (function call spec) to the request queue
         '''
+
+        reqs  = ru.as_list(reqs)
+        dicts = list()
+        objs  = list()
 
         # create request and add to bookkeeping dict.  That response object will
         # be updated once a response for the respective request UID arrives.
-        req = Request(req=req)
         with self._lock:
-            self._requests[req.uid] = req
+            for req in reqs:
+                reqest = Request(req=req)
+                self._requests[request.uid] = request
+                dicts.append(request.as_dict())
+                objs.append(request)
 
-        # push the request message (here and dictionary) onto the request queue
-        self._req_put.put(req.as_dict())
-      # self._log.debug('requested %s', req.uid)
+        # push the request message (as dictionary) onto the request queue
+        self._req_put.put(dicts)
 
         # return the request to the master script for inspection etc.
-        return req
+        return objs
 
 
     # --------------------------------------------------------------------------
