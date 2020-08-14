@@ -240,7 +240,7 @@ class Master(rpu.Component):
                         stats[w['status']] += 1
 
                 self._log.debug('stats: %s', stats)
-                if stats['NEW'] + stats['ACTIVE'] == 0:
+                if stats['ACTIVE'] + stats['DONE'] + stats['FAILED'] >= count:
                     self._log.debug('wait ok')
                     return
                 time.sleep(10)
