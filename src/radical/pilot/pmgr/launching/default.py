@@ -1301,7 +1301,8 @@ class Default(PMGRLaunchingComponent):
         # set saga job description attribute based on env variable(s)
         if os.environ.get('RADICAL_SAGA_SMT'):
             try:
-                jd.smt = int(os.environ['RADICAL_SAGA_SMT'])
+                jd.system_architecture['smt'] = \
+                    int(os.environ['RADICAL_SAGA_SMT'])
             except Exception as e:
                 self._log.debug('SAGA SMT not set: %s' % e)
 
