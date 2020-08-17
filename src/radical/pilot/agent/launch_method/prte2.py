@@ -113,7 +113,7 @@ class PRTE2(LaunchMethod):
         if log.isEnabledFor(logging.DEBUG):
             # version 1 vs 2
             # prte += ' -pmca orte_rmaps_base_verbose 100'
-            prte += ' -pmixmca orte_rmaps_base_verbose 100'
+            prte += ' --pmixmca orte_rmaps_base_verbose 100'
 
         # 2 temporary tweaks on Summit (not needed for the long run)
         # (1) avoid 64 node limit (ssh connection limit)
