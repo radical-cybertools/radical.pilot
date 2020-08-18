@@ -4,6 +4,8 @@
         "description": {"environment": {},
                         "executable"       : "/bin/sleep",
                         "arguments"        : ["10"],
+                        "pre_exec"         : "null",
+                        "post_exec"         : "null",
                         "gpu_processes"    : 0,
                         "cpu_processes"    : 1,
                         "cpu_threads"      : 0,

@@ -1,8 +1,6 @@
 # pylint: disable=protected-access, unused-argument
 # pylint: disable=no-value-for-parameter
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
-__license__   = "MIT"
-import pytest
 import unittest
 import radical.utils as ru
 from radical.pilot.agent.launch_method.base import LaunchMethod
@@ -23,7 +21,7 @@ class TestBase(unittest.TestCase):
     #
     def setUp(self):
 
-        tc = ru.read_json('test_executing/test_unit/test_cases/test_base.json')
+        tc = ru.read_json('tests/test_executing/test_unit/test_cases/test_base.json')
 
         return tc
 
@@ -101,25 +99,15 @@ class TestBase(unittest.TestCase):
 
     # --------------------------------------------------------------------------
     #
-    @pytest.mark.skip(reason="Skip as work still in progress")
     @mock.patch.object(Popen, '__init__', return_value=None)
     @mock.patch.object(Popen, 'initialize', return_value=None)
     @mock.patch.object(LaunchMethod, '__init__', return_value=None)
     @mock.patch.object(LaunchMethod, 'construct_command',
-                       return_value='mpiexec /bin/echo')
+                       return_value=('mpiexec echo hello',None))
     def test_spawn(self, mocked_init, mocked_initialize,
                    mocked_launchmethod, mocked_construct_command):
-
-        global_cu = []
-        global_launch_script_name = None
-
-        def _construct_command_side_effect(cu, launch_script_name):
-            nonlocal global_cu
-            nonlocal global_launch_script_name
-            global_cu.append(cu)
-            global_launch_script_name = ''
-
         tests = self.setUp()
+        _pids = []
         cu = dict()
         cu = tests['unit']
         cu['slots'] = tests['setup']['lm']['slots']
@@ -135,5 +123,8 @@ class TestBase(unittest.TestCase):
         component._pwd = mock.Mock()
         component._prof = mock.Mock()
         component._cu_tmp = mock.Mock()
+        component._watch_queue = mock.Mock()
         component._log = ru.Logger('dummy')
         component.spawn(launcher=launcher, cu=cu)
+        self.assertEqual(len(_pids), 0)
+
