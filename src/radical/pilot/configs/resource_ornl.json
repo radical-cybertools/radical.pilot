@@ -42,7 +42,7 @@
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system",
-        "cores_per_node"              : "16",
+        "cores_per_node"              : 16,
         "gpus_per_node"               : 1,
         "saga_jd_supplement"          : {"candidate_hosts" : ["rhea"]},
         "forward_tunnel_endpoint"     : "rhea-login4g.ccs.ornl.gov"
@@ -139,7 +139,8 @@
         "python_dist"                 : "default",
         "virtenv_dist"                : "default",
         "gpus_per_node"               : 6,
-        "sockets_per_node"            : 2
+        "sockets_per_node"            : 2,
+        "system_architecture"         : {"smt": 4}
     },
 
     "summit_prte": {
@@ -197,7 +198,7 @@
         "python_dist"                 : "default",
         "virtenv_dist"                : "default",
         "gpus_per_node"               : 6,
-        "sockets_per_node"            : 2
+        "sockets_per_node"            : 2,
+        "system_architecture"         : {"smt": 4}
     }
 }
-
