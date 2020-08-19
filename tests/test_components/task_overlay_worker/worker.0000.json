@@ -14,8 +14,8 @@
     "heartbeat"    : {
         "addr_pub" : "tcp://192.168.8.100:40807",
         "addr_sub" : "tcp://192.168.8.100:36569",
-        "interval" : 1000.0,
-        "timeout"  : 6000.0
+        "interval" : 60.0,
+        "timeout"  : 60.0
     }
 }
 
