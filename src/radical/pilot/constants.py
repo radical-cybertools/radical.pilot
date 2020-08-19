@@ -3,6 +3,9 @@
 #
 # global constants
 #
+MASTER                         = 'master'
+WORKER                         = 'worker'
+
 UPDATE_WORKER                  = 'update'
 
 PMGR_LAUNCHING_QUEUE           = 'pmgr_launching_queue'
