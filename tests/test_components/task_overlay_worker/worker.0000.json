@@ -1,21 +1,21 @@
 
 {
-    "kind"  : "worker",
-    "cores" : 32,
-    "gpus"  : 0,
-    "base"  : "${SBOX}",
-    "path"  : "${SBOX}",
-    "sid"   : "rp.session.0",
-    "uid"   : "worker.0000",
-    "info": {
+    "kind"      : "worker",
+    "cores"     : 32,
+    "gpus"      : 0,
+    "base"      : "${SBOX}",
+    "path"      : "${SBOX}",
+    "sid"       : "rp.session.0",
+    "uid"       : "worker.0000",
+    "info"      : {
         "req_addr_get": "${REQ_ADDR_GET}",
         "res_addr_put": "${RES_ADDR_PUT}"
     },
-    "heartbeat"    : {
+    "heartbeat" : {
         "addr_pub" : "tcp://192.168.8.100:40807",
         "addr_sub" : "tcp://192.168.8.100:36569",
-        "interval" : 60.0,
-        "timeout"  : 60.0
+        "interval" : 300.0,
+        "timeout"  : 300.0
     }
 }
 

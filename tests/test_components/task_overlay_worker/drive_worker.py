@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
     q_in.put([
                [{'state'  : 'NEW',
-                       'uid'    : 'request.000000',
+                       'uid'    : 'request.%06d' % i,
                        'mode'   : 'eval',
                        'timeout': 10,
                        'data'   : {
@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
     for i in range(n):
         for res in q_out.get():
-            print('%6d: %s' % (i, res['out']))
+            print('%s: %s' % (res['req'], res['out']))
 
 
 # ------------------------------------------------------------------------------
