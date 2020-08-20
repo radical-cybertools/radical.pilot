@@ -19,15 +19,14 @@ if __name__ == '__main__':
     c_out = ru.Config(path='%s/funcs_res_queue.cfg' % sbox)
     q_out = ru.zmq.Getter('funcs_res_queue', c_out['get'])
 
-    q_in.put([
-               [{'state'  : 'NEW',
-                       'uid'    : 'request.%06d' % i,
-                       'mode'   : 'eval',
-                       'timeout': 10,
-                       'data'   : {
-                           'code'  : '%d * %d' % (i, i),
-                           'kwargs': {} }
-                } for i in range(n)]
+    q_in.put([{'state'  : 'NEW',
+               'uid'    : 'request.%06d' % i,
+               'mode'   : 'eval',
+               'timeout': 10,
+               'data'   : {
+                   'code'  : '%d * %d' % (i, i),
+                   'kwargs': {} }
+              } for i in range(n)
              ])
 
     for i in range(n):
