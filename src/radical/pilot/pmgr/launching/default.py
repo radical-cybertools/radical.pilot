@@ -1121,6 +1121,10 @@ class Default(PMGRLaunchingComponent):
             if virtenv_mode != 'private':
                 cleanup = cleanup.replace('v', '')
 
+        # don't stage sdists on 'installed', 'local'
+        if virtenv_mode in ['installed', 'local']: stage_sdists = False
+        else                                     : stage_sdists = True
+
         # use local VE ?
         if virtenv_mode == 'local':
             virtenv_mode = 'use'
@@ -1150,7 +1154,10 @@ class Default(PMGRLaunchingComponent):
 
         # set mandatory args
         bootstrap_args  = ""
-        bootstrap_args += " -d '%s'" % ':'.join(sdist_names)
+
+        if stage_sdists:
+            bootstrap_args += " -d '%s'" % ':'.join(sdist_names)
+
         bootstrap_args += " -p '%s'" % pid
         bootstrap_args += " -s '%s'" % sid
         bootstrap_args += " -m '%s'" % virtenv_mode
@@ -1242,32 +1249,37 @@ class Default(PMGRLaunchingComponent):
 
             if resource not in self._sandboxes:
 
-                for sdist in sdist_paths:
-                    base = os.path.basename(sdist)
-                    ret['ft'].append({'src': sdist,
-                                      'tgt': '%s/%s' % (session_sandbox, base),
-                                      'rem': False})
+                if stage_sdists:
+                    for sdist in sdist_paths:
+                        base = os.path.basename(sdist)
+                        ret['ft'].append({
+                            'src': sdist,
+                            'tgt': '%s/%s' % (session_sandbox, base),
+                            'rem': False
+                        })
 
                 # Copy the bootstrap shell script.
                 bootstrapper_path = os.path.abspath("%s/agent/%s"
                                   % (self._root_dir, BOOTSTRAPPER_0))
                 self._log.debug("use bootstrapper %s", bootstrapper_path)
 
-                ret['ft'].append({'src': bootstrapper_path,
-                                  'tgt': '%s/%s' % (session_sandbox, BOOTSTRAPPER_0),
-                                  'rem': False})
+                ret['ft'].append({
+                    'src': bootstrapper_path,
+                    'tgt': '%s/%s' % (session_sandbox, BOOTSTRAPPER_0),
+                    'rem': False
+                })
 
                 # Some machines cannot run pip due to outdated CA certs.
                 # For those, we also stage an updated certificate bundle
                 # TODO: use booleans all the way?
                 if stage_cacerts:
 
-                    cc_name = 'cacert.pem.gz'
-                    cc_path = os.path.abspath("%s/agent/%s" % (self._root_dir, cc_name))
-                    self._log.debug("use CAs %s", cc_path)
+                    certs = 'cacert.pem.gz'
+                    cpath = os.path.abspath("%s/agent/%s" % (self._root_dir, certs))
+                    self._log.debug("use CAs %s", cpath)
 
-                    ret['ft'].append({'src': cc_path,
-                                      'tgt': '%s/%s' % (session_sandbox, cc_name),
+                    ret['ft'].append({'src': cpath,
+                                      'tgt': '%s/%s' % (session_sandbox, certs),
                                       'rem': False})
 
                 self._sandboxes[resource] = True
