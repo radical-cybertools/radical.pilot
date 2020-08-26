@@ -5,6 +5,7 @@ __license__   = "MIT"
 
 
 import os
+import sys
 import copy
 import math
 import time
@@ -1054,6 +1055,7 @@ class Default(PMGRLaunchingComponent):
         #   create  : use    if ve exists, otherwise create, then use
         #   use     : use    if ve exists, otherwise error,  then exit
         #   recreate: delete if ve exists, otherwise create, then use
+        #   local   : use the client virtualenv (assumes same FS)
         #
         # examples   :
         #   virtenv@v0.20
@@ -1118,6 +1120,11 @@ class Default(PMGRLaunchingComponent):
             # we never cleanup virtenvs which are not private
             if virtenv_mode != 'private':
                 cleanup = cleanup.replace('v', '')
+
+        # use local VE ?
+        if virtenv_mode == 'local':
+            virtenv_mode = 'use'
+            virtenv      = sys.base_prefix
 
         # add dists to staging files, if needed
         if rp_version in ['local', 'debug']:
