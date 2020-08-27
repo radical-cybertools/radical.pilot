@@ -9,6 +9,7 @@ import subprocess    as sp
 
 import radical.utils as ru
 
+from ... import agent     as rpa
 from ... import states    as rps
 from ... import constants as rpc
 
@@ -30,8 +31,6 @@ class ShellFS(AgentExecutingComponent):
     # --------------------------------------------------------------------------
     #
     def initialize(self):
-
-        from .... import pilot as rp
 
         self._pwd = os.getcwd()
         self._tmp = self._pwd   # keep temporary files in $PWD for now (slow)
@@ -75,7 +74,7 @@ class ShellFS(AgentExecutingComponent):
         self._mpi_launcher  = None
 
         try:
-            self._task_launcher = rp.agent.LaunchMethod.create(
+            self._task_launcher = rpa.LaunchMethod.create(
                     name    = self._cfg['task_launch_method'],
                     cfg     = self._cfg,
                     session = self._session)
@@ -83,7 +82,7 @@ class ShellFS(AgentExecutingComponent):
             self._log.warn('no task launcher found')
 
         try:
-            self._mpi_launcher = rp.agent.LaunchMethod.create(
+            self._mpi_launcher = rpa.LaunchMethod.create(
                     name    = self._cfg['mpi_launch_method'],
                     cfg     = self._cfg,
                     session = self._session)
@@ -307,7 +306,6 @@ prof(){
         cwd  += "# CU sandbox\n"
         cwd  += "mkdir -p %s\n" % sandbox
         cwd  += "cd       %s\n" % sandbox
-        cwd  += 'prof cu_cd_done\n'
         cwd  += "\n"
 
         if  descr['pre_exec'] :
