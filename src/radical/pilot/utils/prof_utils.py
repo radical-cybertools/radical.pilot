@@ -868,7 +868,7 @@ def get_provided_resources(session):
 
 # ------------------------------------------------------------------------------
 #
-def get_consumed_resources(session):
+def get_consumed_resources(session, udurations=None):
     '''
     For all ra.pilot or ra.unit entities, return the amount and time of
     resources consumed.  A consumed resource is characterized by:
@@ -905,7 +905,8 @@ def get_consumed_resources(session):
     for e in session.get(etype=['pilot', 'unit']):
 
         if   e.etype == 'pilot': data = _get_pilot_consumption(e)
-        elif e.etype == 'unit' : data = _get_unit_consumption(session,  e)
+        elif e.etype == 'unit' : data = _get_unit_consumption(session,  e,
+                                                              udurations)
 
         for metric in data:
 
@@ -923,11 +924,14 @@ def get_consumed_resources(session):
     # consumed the resource to the time when the pilot begins termination.
     for pilot in session.get(etype='pilot'):
 
-        if pilot.cfg['task_launch_method'] == 'PRTE':
-          # print('\nusing prte configuration')
+        if udurations:
+            # print('DEBUG: using udurations')
+            unit_durations = udurations
+        elif pilot.cfg['task_launch_method'] == 'PRTE':
+            # print('DEBUG: using prte configuration')
             unit_durations = UNIT_DURATIONS_PRTE
         else:
-          # print('\nusing default configuration')
+            # print('DEBUG: using default configuration')
             unit_durations = UNIT_DURATIONS_DEFAULT
 
         pt    = pilot.timestamps
@@ -1137,7 +1141,7 @@ def _get_pilot_consumption(pilot):
 
 # ------------------------------------------------------------------------------
 #
-def _get_unit_consumption(session, unit):
+def _get_unit_consumption(session, unit, udurations=None):
 
     # we need to know what pilot the unit ran on.  If we don't find a designated
     # pilot, no resources were consumed
@@ -1183,7 +1187,9 @@ def _get_unit_consumption(session, unit):
 
     # we heuristically switch between PRTE event traces and normal (fork) event
     # traces
-    if pilot.cfg['task_launch_method'] == 'PRTE':
+    if udurations:
+        unit_durations = udurations
+    elif pilot.cfg['task_launch_method'] == 'PRTE':
         unit_durations = UNIT_DURATIONS_PRTE
     else:
         unit_durations = UNIT_DURATIONS_DEFAULT
