@@ -3,7 +3,7 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os
+import os as _os
 
 
 # -----------------------------------------------------------------------------
@@ -39,19 +39,19 @@ _pilot_state_values = {
         DONE                   :  5,
         FAILED                 :  5,
         CANCELED               :  5}
-_pilot_state_inv   = {v: k for k, v in _pilot_state_values.items()}
+_pilot_state_inv   = {_v: _k for _k, _v in _pilot_state_values.items()}
 _pilot_state_inv_full = dict()
-for st,v in _pilot_state_values.items():
-    if v in _pilot_state_inv_full:
-        if not isinstance(_pilot_state_inv_full[v], list):
-            _pilot_state_inv_full[v] = [_pilot_state_inv_full[v]]
-        _pilot_state_inv_full[v].append(st)
+for _st,_v in _pilot_state_values.items():
+    if _v in _pilot_state_inv_full:
+        if not isinstance(_pilot_state_inv_full[_v], list):
+            _pilot_state_inv_full[_v] = [_pilot_state_inv_full[_v]]
+        _pilot_state_inv_full[_v].append(_st)
     else:
-        _pilot_state_inv_full[v] = st
+        _pilot_state_inv_full[_v] = _st
 
 
 def _pilot_state_value(s):
-    return _pilot_state_values[s] 
+    return _pilot_state_values[s]
 
 
 def _pilot_state_progress(pid, current, target):
@@ -110,7 +110,7 @@ def _pilot_state_collapse(states):
 
 
 # ------------------------------------------------------------------------------
-# 
+#
 # unit states
 #
 UMGR_SCHEDULING_PENDING      = 'UMGR_SCHEDULING_PENDING'
@@ -150,19 +150,19 @@ _unit_state_values = {
         DONE                         : 15,
         FAILED                       : 15,
         CANCELED                     : 15}
-_unit_state_inv = {v: k for k, v in _unit_state_values.items()}
+_unit_state_inv = {_v: _k for _k, _v in _unit_state_values.items()}
 _unit_state_inv_full = dict()
-for st,v in _unit_state_values.items():
-    if v in _unit_state_inv_full:
-        if not isinstance(_unit_state_inv_full[v], list):
-            _unit_state_inv_full[v] = [_unit_state_inv_full[v]]
-        _unit_state_inv_full[v].append(st)
+for _st,_v in _unit_state_values.items():
+    if _v in _unit_state_inv_full:
+        if not isinstance(_unit_state_inv_full[_v], list):
+            _unit_state_inv_full[_v] = [_unit_state_inv_full[_v]]
+        _unit_state_inv_full[_v].append(_st)
     else:
-        _unit_state_inv_full[v] = st
+        _unit_state_inv_full[_v] = _st
 
 
 def _unit_state_value(s):
-    return _unit_state_values[s] 
+    return _unit_state_values[s]
 
 
 def _unit_state_progress(uid, current, target):
@@ -176,7 +176,7 @@ def _unit_state_progress(uid, current, target):
     the 'current' state, then 'current' is returned, and the list of passed
     states remains empty.  This way, 'passed_states' can be used to invoke
     callbacks for all state transition, where each transition is announced
-    exactly once.  
+    exactly once.
 
     Note that the call will not allow to transition between states of equal
     values, which in particular applies to final states -- those are truly
@@ -251,7 +251,7 @@ def _unit_state_collapse(states):
 # backward compatibility
 #
 # pilot states
-if 'RP_ENABLE_OLD_DEFINES' in os.environ:
+if 'RP_ENABLE_OLD_DEFINES' in _os.environ:
     CANCELING              = CANCELED
     PENDING                = PMGR_LAUNCHING_PENDING
     PENDING_LAUNCH         = PMGR_LAUNCHING_PENDING
@@ -274,7 +274,7 @@ if 'RP_ENABLE_OLD_DEFINES' in os.environ:
     STAGING_OUTPUT         = UMGR_STAGING_OUTPUT
 
 _legacy_states = {
-    'New'                        : NEW, 
+    'New'                        : NEW,
     'AllocatingPending'          : UMGR_SCHEDULING_PENDING,
     'Allocating'                 : UMGR_SCHEDULING,
     'PendingInputStaging'        : UMGR_STAGING_INPUT_PENDING,
@@ -287,7 +287,7 @@ _legacy_states = {
     'AgentStagingOutput'         : AGENT_STAGING_OUTPUT,
     'PendingOutputStaging'       : UMGR_STAGING_OUTPUT_PENDING,
     'StagingOutput'              : UMGR_STAGING_OUTPUT,
-    'Done'                       : DONE, 
+    'Done'                       : DONE,
     'Canceled'                   : CANCELED,
     'CANCELED'                   : CANCELED,
     'Failed'                     : FAILED,
