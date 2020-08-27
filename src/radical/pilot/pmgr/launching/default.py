@@ -1127,8 +1127,16 @@ class Default(PMGRLaunchingComponent):
 
         # use local VE ?
         if virtenv_mode == 'local':
-            virtenv_mode = 'use'
-            virtenv      = sys.base_prefix
+            if 'VIRTUAL_ENV' in os.environ:
+                virtenv_dist = 'default'
+                virtenv      = os.environ['VIRTUAL_ENV']
+            elif 'CONDA_PREFIX' in os.environ:
+                virtenv_dist = 'anaconda'
+                virtenv      = os.environ['CONDA_PREFIX']
+            else:
+                # we can't use local
+                self._log.error('virtenv_mode is local, no local env found')
+                raise ValueError('no local env found')
 
         # add dists to staging files, if needed
         if rp_version in ['local', 'debug']:
