@@ -135,10 +135,9 @@ def list_sessions(db, dbname, age, session):
         print('no matching session in database at %s' % url)
         return []
 
-    sids = list()
     for sid in sids:
 
-        docs = rpu.get_session_docs(db[dbname], sid)
+        docs = rpu.get_session_docs(db, sid)
         if  not docs or \
             not 'session' in docs or \
             not 'created' in docs['session']:
@@ -255,7 +254,7 @@ if __name__ == '__main__':
         print("session : %s" % session)
 
     if  age:
-        suffix=age[-1]
+        suffix = age[-1]
         if  suffix in '01234567890':
             suffix = 'd'
             num    = int(age)
@@ -266,12 +265,12 @@ if __name__ == '__main__':
             print(suffix)
             usage("invalid age specification (%s)" % options.age)
 
-        if  suffix is 'm': age = datetime.timedelta(minutes =       num)
-        if  suffix is 'h': age = datetime.timedelta(hours   =       num)
-        if  suffix is 'd': age = datetime.timedelta(days    =       num)
-        if  suffix is 'w': age = datetime.timedelta(days    =   7 * num)
-        if  suffix is 'M': age = datetime.timedelta(days    =  30 * num)
-        if  suffix is 'y': age = datetime.timedelta(days    = 365 * num)
+        if  suffix == 'm': age = datetime.timedelta(minutes =       num)
+        if  suffix == 'h': age = datetime.timedelta(hours   =       num)
+        if  suffix == 'd': age = datetime.timedelta(days    =       num)
+        if  suffix == 'w': age = datetime.timedelta(days    =   7 * num)
+        if  suffix == 'M': age = datetime.timedelta(days    =  30 * num)
+        if  suffix == 'y': age = datetime.timedelta(days    = 365 * num)
 
 
     else:
@@ -289,7 +288,7 @@ if __name__ == '__main__':
         elif m == 'help'  : usage(noexit=True)
         else              : usage("unknown mode '%s'" % m)
 
-    mongo.disconnect()
+    mongo.close()
 
 # ------------------------------------------------------------------------------
 
