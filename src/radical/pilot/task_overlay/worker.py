@@ -328,62 +328,71 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _request_cb(self, task):
+    def _request_cb(self, tasks):
         '''
-        grep call type from task, check if such a method is registered, and
-        invoke it.
+        grep call type from tasks, check if methods are registered, and
+        invoke them.
         '''
 
-        self._prof.prof('reg_start', uid=self._uid, msg=task['uid'])
-        task['worker'] = self._uid
+        task = ru.as_list(task)
 
-        try:
-            # ok, we have work to do.  Check the requirements to see  how many
-            # cpus and gpus we need to mark as busy
-            while not self._alloc_task(task):
-                # no resource - wait for new resources
+        for task in tasks:
+
+            self._prof.prof('reg_start', uid=self._uid, msg=task['uid'])
+            task['worker'] = self._uid
+
+            try:
+                # ok, we have work to do.  Check the requirements to see how
+                # many cpus and gpus we need to mark as busy
+                while not self._alloc_task(task):
+                    # no resource - wait for new resources
+                    #
+                    # NOTE: this will block smaller tasks from being executed
+                    #       right now.  alloc_task is not a proper scheduler,
+                    #       after all.
+                    while not self._res_evt.wait(timeout=1.0):
+
+                        # break on termination
+                        if self._term.is_set():
+                            return False
+
+                    self._res_evt.clear()
+
+                # we got an allocation for this task, and can run it, so apply
+                # to the process pool.  The callback (`self._result_cb`) will
+                # pick the task up on completion and free resources.
                 #
-                # NOTE: this will block smaller tasks from being executed right
-                #       now.  alloc_task is not a proper scheduler, after all
-                while not self._res_evt.wait(timeout=1.0):
+                # NOTE: we don't use mp.Pool - see __init__ for details
 
-                    # break on termination
-                    if self._term.is_set():
-                        return False
+              # ret = self._pool.apply_async(func=self._dispatch, args=[task],
+              #                              callback=self._result_cb,
+              #                              error_callback=self._error_cb)
+                proc = mp.Process(target=self._dispatch, args=[task],
+                                  daemon=True)
 
-                self._res_evt.clear()
+                with self._plock:
 
-            # we got an allocation for this task, and can run it, so apply to
-            # the process pool.  The callback (`self._result_cb`) will pick the
-            # task up on completion and free resources.
-            # NOTE: we don't use mp.Pool - see __init__ for details
-          # ret = self._pool.apply_async(func=self._dispatch, args=[task],
-          #                              callback=self._result_cb,
-          #                              error_callback=self._error_cb)
-            proc = mp.Process(target=self._dispatch, args=[task], daemon=True)
+                    # we need to include `proc.start()` in the lock, as
+                    # otherwise we may end up getting the `self._result_cb`
+                    # before the pid could be registered in `self._pool`.
+                    proc.start()
+                    self._pool[proc.pid] = proc
+                    self._log.debug('applied: %s: %s: %s',
+                                    task['uid'], proc.pid, self._pool.keys())
 
-            with self._plock:
-                # we need to include `proc.start()` in the lock, as otherwise we
-                # may end up getting the `self._result_cb` before the pid could
-                # be registered in `self._pool`.
-                proc.start()
-                self._pool[proc.pid] = proc
-                self._log.debug('applied: %s: %s: %s', task['uid'], proc.pid,
-                                                       self._pool.keys())
+            except Exception as e:
 
-        except Exception as e:
+                self._log.exception('request failed')
 
-            self._log.exception('request failed')
+                # free resources again for failed task
+                self._dealloc_task(task)
 
-            # free resources again for failed task
-            self._dealloc_task(task)
+                res = {'req': task['uid'],
+                       'out': None,
+                       'err': 'req_cb error: %s' % e,
+                       'ret': 1}
 
-            res = {'req': task['uid'],
-                   'out': None,
-                   'err': 'req_cb error: %s' % e,
-                   'ret': 1}
-
-            self._res_put.put(res)
+                self._res_put.put(res)
 
 
     # --------------------------------------------------------------------------
