@@ -11,9 +11,13 @@ Bridges as our cluster and the Intel MPI implementation that comes by default
 installed on it. We will assume the Bind approach as our method of creating the 
 container, and familiarity on how to connect to Bridges.
 
-If you want to learn more about the Bind vs Hybrid approach, please refer to: `Bind vs Hybrid Model <https://sylabs.io/guides/3.5/user-guide/mpi.html>`_
+If you want to learn more about the Bind vs Hybrid approach, please refer to:
+`Bind vs Hybrid Model <https://sylabs.io/guides/3.5/user-guide/mpi.html>`_
 
-If you want to run your experiment using the Hybrid model, or perhaps in a different cluster like Comet or under a different MPI implementation, there is an example for each case on thee following repo: `<https://github.com/radical-group/koubbe/tree/master/Containers/First%20experiments/src/exp2>`_
+If you want to run your experiment using the Hybrid model, or perhaps in a 
+different cluster like Comet or under a different MPI implementation, there is 
+an example for each case on thee following repo: 
+`<https://github.com/radical-group/koubbe/tree/master/Containers/First%20experiments/src/exp2>`_
 
 What is a container?
 -------------------
@@ -42,9 +46,11 @@ Singularity container and run.
 In order to see the Initial Presentation on Containers, please visit 
 `Containers Initial Presentation <https://github.com/radical-group/koubbe/blob/master/Containers/First%20experiments/docs/Containers%20Initial%20Presentation.pdf>`_
 
-If you want to take a deeper look into containers and Singularity, please refer to the following document:
+If you want to take a deeper look into containers and Singularity, please refer to 
+the following document:
 
-`Case Studies of executing containerized scientific applications on High-Performance Computing Platforms using RADICAL-Cybertools <https://github.com/radical-group/koubbe/blob/master/Misc/Technical%20Report/GeorgeKoubbe_Report.pdf>`_
+`Case Studies of executing containerized scientific applications on High-Performance 
+Computing Platforms using RADICAL-Cybertools <https://github.com/radical-group/koubbe/blob/master/Misc/Technical%20Report/GeorgeKoubbe_Report.pdf>`_
 
 Step-by-step on Bridges directly
 -------------------
@@ -87,7 +93,11 @@ Alright, let's dive right in.
 
 ``$ mpirun -n 4 -ppn 2 singularity exec --bind /opt/intel/compilers_and_libraries_2019.5.281/linux/mpi/intel64 $HOME/centos-openmpi.sif $HOME/hello_world_intel``
 
-Congratulations if you made it this far! You were able to build your own MPI application inside a Singularity container and run it on Bridges directly. However, you built the container from a preexisting Docker image. If you want to learn how to build it from your own definition file, you can check the following link:
+Congratulations if you made it this far! You were able to build your 
+own MPI application inside a Singularity container and run it on 
+Bridges directly. However, you built the container from a preexisting 
+Docker image. If you want to learn how to build it from your own 
+definition file, you can check the following link:
 
 `Build a container <https://sylabs.io/guides/3.5/user-guide/build_a_container.html>`_
 
@@ -239,6 +249,22 @@ Step-by-step through RADICAL-Pilot
 
         print("--- %s seconds ---" % (time.time() - start_time))
         
-And you can run it by typing the following command, where "x" is the number of MPI processes you would like to spawn:
+And you can run it by typing the following command, where "x" is the
+number of MPI processes you would like to spawn:
 
 ``python mpi_rp.py x xsede.bridges``
+
+Below are the results of the above experiment, showing the overhead 
+obtained when running, through RP, a containerized MPI Hello World 
+application (blue bars), against the non-containerized version (orange
+bars). We can appreciate an overhead of 0.5%, 9%, 11% and 21% for 2, 4, 8 
+and 16 nodes respectively. 
+
+.. image:: 11_containerized_compute_units_1.png
+
+It's worth noting that the same experiment running on Comet gives
+us less noticeable overheads. A container overhead of around 2% was 
+achieved in all cases. Although execution times are considerably higher 
+than on Bridges, the overheads are much lower and consistent.
+
+.. image:: 11_containerized_compute_units_2.png
