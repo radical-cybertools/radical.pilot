@@ -11,8 +11,8 @@ Bridges as our cluster and the Intel MPI implementation that comes by default
 installed on it. We will assume the Bind approach as our method of creating the 
 container, and familiarity on how to connect to Bridges.
 
-If you want to learn more about the Bind vs Hybrid approach, please refer to:
-`Bind vs Hybrid Model <https://sylabs.io/guides/3.5/user-guide/mpi.html>`_
+.. note:: If you want to learn more about the Bind vs Hybrid approach, please refer to:
+          `Bind vs Hybrid Model <https://sylabs.io/guides/3.5/user-guide/mpi.html>`_
 
 If you want to run your experiment using the Hybrid model, or perhaps in a 
 different cluster like Comet or under a different MPI implementation, there is 
@@ -95,14 +95,12 @@ Alright, let's dive right in.
 
     $ mpirun -n 4 -ppn 2 singularity exec --bind /opt/intel/compilers_and_libraries_2019.5.281/linux/mpi/intel64 $HOME/centos-openmpi.sif $HOME/hello_world_intel
 
-Congratulations if you made it this far! You were able to build your 
-own MPI application inside a Singularity container and run it on 
-Bridges directly. However, you built the container from a preexisting 
-Docker image. If you want to learn how to build it from your own 
-definition file, you can check the following link:
+Congratulations if you made it this far! You were able to build, from a 
+preexisting Docker image, your own MPI application inside a Singularity 
+container and run it on Bridges directly. 
 
-`Build a container <https://sylabs.io/guides/3.5/user-guide/build_a_container.html>`_
-
+.. note:: If you want to learn how to build it from your own definition 
+          file, you can check the following link: `Build a container <https://sylabs.io/guides/3.5/user-guide/build_a_container.html>`_
 
 Step-by-step through RADICAL-Pilot
 -------------------
