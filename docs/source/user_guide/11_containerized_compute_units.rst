@@ -57,41 +57,43 @@ Step-by-step on Bridges directly
 
 Alright, let's dive right in.
 
-1. First off let's start by login in to a Bridges login node.
+.. code-block::
 
-2. Load the Singularity module:
+    1. First off let's start by login in to a Bridges login node.
 
-``$ module load singularity``
+    2. Load the Singularity module:
 
-3. Pull the CentOS 7 image from the Docker Hub and build the Singularity container:
+    $ module load singularity
 
-``$ singularity build centos-openmpi.sif docker://centos:centos7``
+    3. Pull the CentOS 7 image from the Docker Hub and build the Singularity container:
 
-4. Download the MPI Hello World code in C:
+    $ singularity build centos-openmpi.sif docker://centos:centos7
 
-``$ wget https://raw.githubusercontent.com/wesleykendall/mpitutorial/gh-pages/tutorials/mpi-hello-world/code/mpi_hello_world.c``
+    4. Download the MPI Hello World code in C:
 
-5. Request Bridges resources through the interactive method:
+    $ wget https://raw.githubusercontent.com/wesleykendall/mpitutorial/gh-pages/tutorials/mpi-hello-world/code/mpi_hello_world.c
 
-``$ interact -p RM -N 2 -n 8 -t 8:00:00``
+    5. Request Bridges resources through the interactive method:
 
-6. Now, on a compute node, we load the Singularity module:
+    $ interact -p RM -N 2 -n 8 -t 8:00:00
 
-``$ module load singularity``
+    6. Now, on a compute node, we load the Singularity module:
 
-7. Export the following variables:
+    $ module load singularity
 
-``$ export SINGULARITYENV_PREPEND_PATH=/opt/intel/compilers_and_libraries_2019.5.281/linux/mpi/intel64/bin/``
+    7. Export the following variables:
 
-``$ export SINGULARITYENV_LD_LIBRARY_PATH=/opt/intel/compilers_and_libraries_2019.5.281/linux/mpi/intel64/lib:/opt/intel/compilers_and_libraries_2019.5.281/linux/mpi/intel64/libfabric/lib``
+    $ export SINGULARITYENV_PREPEND_PATH=/opt/intel/compilers_and_libraries_2019.5.281/linux/mpi/intel64/bin/
 
-8. Build the MPI C code:
+    $ export SINGULARITYENV_LD_LIBRARY_PATH=/opt/intel/compilers_and_libraries_2019.5.281/linux/mpi/intel64/lib:/opt/intel/compilers_and_libraries_2019.5.281/linux/mpi/intel64/libfabric/lib
 
-``$ mpicc mpi_hello_world.c -o hello_world_intel``
+    8. Build the MPI C code:
 
-9. Run the MPI application inside the Singularity container:
+    $ mpicc mpi_hello_world.c -o hello_world_intel
 
-``$ mpirun -n 4 -ppn 2 singularity exec --bind /opt/intel/compilers_and_libraries_2019.5.281/linux/mpi/intel64 $HOME/centos-openmpi.sif $HOME/hello_world_intel``
+    9. Run the MPI application inside the Singularity container:
+
+    $ mpirun -n 4 -ppn 2 singularity exec --bind /opt/intel/compilers_and_libraries_2019.5.281/linux/mpi/intel64 $HOME/centos-openmpi.sif $HOME/hello_world_intel
 
 Congratulations if you made it this far! You were able to build your 
 own MPI application inside a Singularity container and run it on 
