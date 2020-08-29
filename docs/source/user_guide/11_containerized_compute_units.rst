@@ -105,6 +105,8 @@ container and run it on Bridges directly.
 Step-by-step through RADICAL-Pilot
 -------------------
 
+Below is the RP python script to run our container on Bridges:
+
 .. code-block:: python
 
     #!/usr/bin/env python
@@ -253,6 +255,9 @@ And you can run it by typing the following command, where "x" is the
 number of MPI processes you would like to spawn:
 
 ``python mpi_rp.py x xsede.bridges``
+
+Results
+-------------------
 
 Below are the results of the above experiment, showing the overhead 
 obtained when running, through RP, a containerized MPI Hello World 
