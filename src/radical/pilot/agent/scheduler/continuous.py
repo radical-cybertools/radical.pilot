@@ -464,7 +464,6 @@ class Continuous(AgentSchedulingComponent):
 
         # allocation worked!  If the unit was tagged, store the node IDs for
         # this tag, so that later units can reuse that information
-        tag = unit['description'].get('tag')
         if tag:
             self._tag_history[tag] = [node['uid'] for node in slots['nodes']]
 
