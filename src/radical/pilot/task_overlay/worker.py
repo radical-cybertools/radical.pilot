@@ -467,7 +467,7 @@ class Worker(rpu.Component):
             mode = task['mode']
             assert(mode in self._modes), 'no such call mode %s' % mode
 
-            tout = task['timeout']
+            tout = task.get('timeout')
             self._log.debug('dispatch with tout %s', tout)
 
             tlock  = mt.Lock()
