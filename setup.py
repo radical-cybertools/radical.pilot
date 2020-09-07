@@ -135,13 +135,13 @@ def get_version(_mod_root):
         return _version_base, _version_detail, _sdist_name, _path
 
     except Exception as e:
-        raise RuntimeError('Could not extract/set version: %s' % e)
+        raise RuntimeError('Could not extract/set version: %s' % e) from e
 
 
 # ------------------------------------------------------------------------------
-# check python version. we need >= 3.6
-if  sys.hexversion < 0x03060000:
-    raise RuntimeError('%s requires Python 3.6 or higher' % name)
+# check python version, should be >= 3.6
+if sys.hexversion < 0x03060000:
+    raise RuntimeError('ERROR: %s requires Python 3.6 or newer' % name)
 
 
 # ------------------------------------------------------------------------------
@@ -165,7 +165,7 @@ class RunTwine(Command):
     def initialize_options(self): pass
     def finalize_options(self):   pass
     def run(self):
-        out,  err, ret = sh_callout('python setup.py sdist upload -r pypi')
+        _, _, ret = sh_callout('python setup.py sdist upload -r pypi')
         raise SystemExit(ret)
 
 
@@ -246,8 +246,8 @@ setup_args = {
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.c',
                                  '*.md', 'VERSION', 'SDIST', sdist_name]},
   # 'setup_requires'     : ['pytest-runner'],
-    'install_requires'   : ['radical.utils>=1.1',
-                            'radical.saga>=1.0',
+    'install_requires'   : ['radical.utils>=1.5.2',
+                            'radical.saga>=1.5.2',
                             'pymongo',
                             'python-hostlist',
                             'netifaces',

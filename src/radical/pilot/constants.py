@@ -72,10 +72,9 @@ TARBALL  = 'Tarball'   # remote staging will be executed using a tarball.
 #
 # Flags - inherit from RS where possible, add custom ones
 #
-import radical.saga.filesystem as rsf
+import radical.saga.filesystem as _rsf
 
-CREATE_PARENTS = rsf.CREATE_PARENTS  # Create parent directories if needed
-SKIP_FAILED    = 4096                # Don't stage out files if tasks failed
+CREATE_PARENTS = _rsf.CREATE_PARENTS  # Create parent directories if needed
 NON_FATAL      = 8192                # Don't fail the CU if input is missing
 
 
@@ -102,6 +101,7 @@ STAGING_AREA     = 'staging_area'
 SCHEDULER_ROUND_ROBIN  = "round_robin"
 SCHEDULER_BACKFILLING  = "backfilling"
 SCHEDULER_DEFAULT      = SCHEDULER_ROUND_ROBIN
+
 
 # ------------------------------------------------------------------------------
 

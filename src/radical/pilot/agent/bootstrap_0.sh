@@ -19,6 +19,16 @@ echo "safe environment of bootstrap_0"
 env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' > env.orig
 
 
+# create a `deactivate` script
+old_path=$(  grep 'export PATH='       env.orig | cut -f 2- -d '=')
+old_pypath=$(grep 'export PYTHONPATH=' env.orig | cut -f 2- -d '=')
+old_pyhome=$(grep 'export PYTHONHOME=' env.orig | cut -f 2- -d '=')
+
+echo "export PATH='$old_path'"          > deactivate
+echo "export PYTHONPATH='$old_pypath'" >> deactivate
+echo "export PYTHONHOME='$old_pyhome'" >> deactivate
+
+
 # interleave stdout and stderr, to get a coherent set of log messages
 if test -z "$RP_BOOTSTRAP_0_REDIR"
 then
@@ -110,7 +120,7 @@ VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/66/f0/6867af06d2e2f511e
 VIRTENV_IS_ACTIVATED=FALSE
 
 VIRTENV_RADICAL_DEPS="pymongo colorama python-hostlist ntplib "\
-"pyzmq netifaces setproctitle msgpack future regex munch"
+"pyzmq netifaces setproctitle msgpack future regex"
 
 VIRTENV_RADICAL_MODS="pymongo colorama hostlist ntplib "\
 "zmq netifaces setproctitle msgpack future regex"
@@ -1259,7 +1269,7 @@ rp_install()
 
     pip_flags="$pip_flags --src '$PILOT_SANDBOX/rp_install/src'"
     pip_flags="$pip_flags --build '$PILOT_SANDBOX/rp_install/build'"
-    pip_flags="$pip_flags --install-option='--prefix=$RP_INSTALL'"
+    pip_flags="$pip_flags --prefix '$RP_INSTALL'"
     pip_flags="$pip_flags --no-deps --no-cache-dir --no-build-isolation"
 
     for src in $rp_install_sources
