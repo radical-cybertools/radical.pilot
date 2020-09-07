@@ -141,6 +141,7 @@ class Master(rpu.Component):
             self._log.debug('register %s', uid)
 
             with self._lock:
+                self._workers[uid] = dict()
                 self._workers[uid]['info']  = info
                 self._workers[uid]['state'] = 'ACTIVE'
                 self._log.debug('info: %s', info)
@@ -208,8 +209,6 @@ class Master(rpu.Component):
         task['resource_sandbox']  = cfg.base + '/../../'
 
         task['description']['arguments'] += [fname]
-
-        self._workers[uid] = task
 
         self._log.debug('submit %s', uid)
 
@@ -306,7 +305,7 @@ class Master(rpu.Component):
         # be updated once a response for the respective request UID arrives.
         with self._lock:
             for req in reqs:
-                reqest = Request(req=req)
+                request = Request(req=req)
                 self._requests[request.uid] = request
                 dicts.append(request.as_dict())
                 objs.append(request)
