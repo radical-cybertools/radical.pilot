@@ -28,13 +28,17 @@ env:
 
 jobs:
   include:
-  - install:
-      - docker build -t rp-complete -f docker/rp-complete.dockerfile .
+  - name: "Docker test"
+    install:
+      - (cd docker && docker build -t rp-complete -f rp-complete.dockerfile --build-arg RPREF=$TRAVIS_BRANCH .)
     script:
       - docker run --rm --name rp_test -d rp-complete
       - docker ps
       - sleep 5
+      # Consider testing more examples, based on problem areas.
       - docker exec -ti -u rp rp_test bash -c "cd && . /home/rp/rp-venv/bin/activate && python /radical.pilot/examples/00*"
+# Ref issue #2218
+#      - docker exec -ti -u rp rp_test bash -c "cd && . /home/rp/rp-venv/bin/activate && python radical.pilot/examples/misc/task_overlay.py radical.pilot/examples/misc/task_overlay.cfg"
       - docker kill rp_test
 
 before_install:
