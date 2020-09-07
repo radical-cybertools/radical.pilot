@@ -2,6 +2,7 @@
 import os
 import sys
 import time
+import resource
 
 import threading         as mt
 import multiprocessing   as mp
@@ -20,6 +21,8 @@ class Worker(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, session=None):
+
+        self._conc = 0
 
         self._session = session
 
@@ -116,6 +119,22 @@ class Worker(rpu.Component):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
                                           'arg': {'uid' : self._uid,
                                                   'info': self._info}})
+
+        os.system('echo "======================"')
+        os.system('ulimit -a')
+        print("getrlimit before:", resource.getrlimit(resource.RLIMIT_NPROC))
+        try:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (1024 * 32, 1024 * 32))
+            resource.setrlimit(resource.RLIMIT_NPROC,  (1024 * 16, 1024 * 16))
+            resource.setrlimit(resource.RLIMIT_STACK,  (2**29, -1))
+        except:
+            pass
+        print("getrlimit after  :", resource.getrlimit(resource.RLIMIT_NPROC))
+        os.system('echo "======================"')
+        os.system('ulimit -a')
+        os.system('echo "======================"')
+
+        self._log.debug('=== = %s', str(self._resources['cores']))
 
 
     # --------------------------------------------------------------------------
@@ -241,6 +260,11 @@ class Worker(rpu.Component):
             exe  = data['exe'],
             args = data.get('args', []),
             env  = data.get('env',  {}),
+
+
+            import gc
+            gc.collect()
+
 
             proc = sp.Popen(executable=exe, args=args,       env=env,
                             stdin=None,     stdout=sp.PIPE, stderr=sp.PIPE,
@@ -377,6 +401,8 @@ class Worker(rpu.Component):
 
         tasks = ru.as_list(tasks)
 
+        print('got %s tasks' % len(tasks))
+
         for task in tasks:
 
             self._prof.prof('reg_start', uid=self._uid, msg=task['uid'])
@@ -451,6 +477,7 @@ class Worker(rpu.Component):
 
         # ----------------------------------------------------------------------
         def _dispatch_thread(tlock):
+            # FIXME: do we still need this thread?
 
             os.environ['RP_TASK_CORES'] = ','.join(str(i) for i in task['resources']['cores'])
             os.environ['RP_TASK_GPUS']  = ','.join(str(i) for i in task['resources']['gpus'])
@@ -586,6 +613,15 @@ class Worker(rpu.Component):
 
         while not self._term.is_set():
             time.sleep(1)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def test(self, idx, seconds):
+        import time
+        print('start idx %6d: %.1f' % (idx, time.time()))
+        time.sleep(seconds)
+        print('stop  idx %6d: %.1f' % (idx, time.time()))
 
 
 # ------------------------------------------------------------------------------
