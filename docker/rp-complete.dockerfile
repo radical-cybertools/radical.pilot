@@ -16,9 +16,6 @@
 #     # If '-d' was used with 'run', you can just kill the container when done.
 #     docker kill rp_test
 #
-# Optional: Specify a git ref for radical.pilot when building the image with the RPREF build arg. (Default v1.5.2)
-#     docker build -t rp-complete -f rp-complete.dockerfile --build-arg RPREF=master .
-#
 
 
 FROM mongo:bionic
