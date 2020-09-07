@@ -141,6 +141,7 @@ class Master(rpu.Component):
             self._log.debug('register %s', uid)
 
             with self._lock:
+                self._workers[uid] = dict()
                 self._workers[uid]['info']   = info
                 self._workers[uid]['status'] = 'ACTIVE'
                 self._log.debug('info: %s', info)
@@ -165,56 +166,56 @@ class Master(rpu.Component):
 
         # each worker gets the specified number of cores and gpus.  All
         # resources need to be located on the same node.
-        descr['cpu_processes']   = 1
-        descr['cpu_threads']     = cores
-        descr['cpu_thread_type'] = 'POSIX'
-        descr['gpu_processses']  = gpus
+        descr['cpu_processes']    = count
+        descr['cpu_process_type'] = 'MPI'
+        descr['cpu_threads']      = cores
+        descr['cpu_thread_type']  = 'POSIX'
+        descr['gpu_processses']   = gpus
 
 
-        tasks = list()
-        for _ in range(count):
+        # write config file for all worker ranks.  The worker will live in the
+        # master sandbox
+        # NOTE: the uid generated here is for the worker MPI task, not for the
+        #       worker processes (ranks)
+        cfg          = copy.deepcopy(self._cfg)
+        cfg['info']  = self._info
+        uid          = ru.generate_id('worker.%(item_counter)06d',
+                                    ru.ID_CUSTOM,
+                                    ns=self._session.uid)
+        sbox         = os.getcwd()
+        fname        = '%s/%s.json' % (sbox, uid)
 
-            # write config file for that worker
-            cfg          = copy.deepcopy(self._cfg)
-            cfg['info']  = self._info
-            uid          = ru.generate_id('worker')
-            sbox         = '%s/%s'      % (cfg['base'], uid)
-            fname        = '%s/%s.json' % (sbox, uid)
+        cfg['kind']  = 'worker'
+        cfg['uid']   = uid
+        cfg['base']  = sbox
+        cfg['cores'] = cores
+        cfg['gpus']  = gpus
 
-            cfg['kind']  = 'worker'
-            cfg['uid']   = uid
-            cfg['base']  = sbox
-            cfg['cores'] = cores
-            cfg['gpus']  = gpus
+        ru.rec_makedir(sbox)
+        ru.write_json(cfg, fname)
 
-            ru.rec_makedir(sbox)
-            ru.write_json(cfg, fname)
+        # grab default settings via CUD construction
+        descr_complete = ComputeUnitDescription(descr).as_dict()
 
-            # grab default settings via CUD construction
-            descr_complete = ComputeUnitDescription(descr).as_dict()
+        # create task dict
+        task = dict()
+        task['description']       = copy.deepcopy(descr_complete)
+        task['state']             = rps.AGENT_STAGING_INPUT_PENDING
+        task['status']            = 'NEW'
+        task['type']              = 'unit'
+        task['uid']               = uid
+        task['unit_sandbox_path'] = sbox
+        task['unit_sandbox']      = 'file://localhost/' + sbox
+        task['pilot_sandbox']     = cfg.base
+        task['session_sandbox']   = cfg.base + '/../'
+        task['resource_sandbox']  = cfg.base + '/../../'
 
-            # create task dict
-            task = dict()
-            task['description']       = copy.deepcopy(descr_complete)
-            task['state']             = rps.AGENT_STAGING_INPUT_PENDING
-            task['status']            = 'NEW'
-            task['type']              = 'unit'
-            task['uid']               = uid
-            task['unit_sandbox_path'] = sbox
-            task['unit_sandbox']      = 'file://localhost/' + sbox
-            task['pilot_sandbox']     = cfg.base
-            task['session_sandbox']   = cfg.base + '/../'
-            task['resource_sandbox']  = cfg.base + '/../../'
+        task['description']['arguments'] += [fname]
 
-            task['description']['arguments'] += [fname]
-
-            tasks.append(task)
-            self._workers[uid] = task
-
-            self._log.debug('submit %s', uid)
+        self._log.debug('submit %s', uid)
 
         # insert the task
-        self.advance(tasks, publish=False, push=True)
+        self.advance(task, publish=False, push=True)
 
 
     # --------------------------------------------------------------------------

@@ -344,9 +344,9 @@ prof(){
       # if  descr['stdin'] : io  += "<%s "  % descr['stdin']
       # else               : io  += "<%s "  % '/dev/null'
         if  descr['stdout']: io  += "1>%s " % descr['stdout']
-        else               : io  += "1>%s " %       'STDOUT'
+        else               : io  += "1>%s " % '%s.out' % cu['uid']
         if  descr['stderr']: io  += "2>%s " % descr['stderr']
-        else               : io  += "2>%s " %       'STDERR'
+        else               : io  += "2>%s " % '%s.err' % cu['uid']
 
         cmd, hop_cmd  = launcher.construct_command(cu,
                                         '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"')

@@ -335,10 +335,10 @@ class Continuous(AgentSchedulingComponent):
         mem_per_node   = self._rm_mem_per_node
 
         # we always fail when too many threads are requested
-        assert(cores_per_slot <= cores_per_node), 'too many threads per proc'
-        assert(gpus_per_slot  <= gpus_per_node),  'too many gpus    per proc'
-        assert(lfs_per_slot   <= lfs_per_node),   'too much lfs     per proc'
-        assert(mem_per_slot   <= mem_per_node),   'too much mem     per proc'
+        assert(cores_per_slot <= cores_per_node), 'too many threads per proc %s' % cores_per_slot
+        assert(gpus_per_slot  <= gpus_per_node),  'too many gpus    per proc %s' % gpus_per_slot
+        assert(lfs_per_slot   <= lfs_per_node),   'too much lfs     per proc %s' % lfs_per_slot
+        assert(mem_per_slot   <= mem_per_node),   'too much mem     per proc %s' % mem_per_slot
 
         # check what resource type limits teh number of slots per node
         slots_per_node = int(m.floor(cores_per_node / cores_per_slot))

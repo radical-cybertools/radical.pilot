@@ -1,0 +1,17 @@
+
+{
+    "channel"   : "state_pubsub",
+    "uid"       : "state_pubsub",
+    "kind"      : "pubsub",
+    "log_level" : "debug",
+    "path"      : "${SBOX}",
+    "base"      : "${SBOX}",
+    "sid"       : "rp.session.0",
+    "heartbeat" : {
+        "addr_pub" : "tcp://192.168.8.100:40807",
+        "addr_sub" : "tcp://192.168.8.100:36569",
+        "interval" : 300.0,
+        "timeout"  : 300.0
+    }
+}
+

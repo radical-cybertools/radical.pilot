@@ -401,6 +401,51 @@
         "python_dist"                 : "default",
         "cu_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
     },
+    
+    "comet_wf0": {
+        "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
+        "notes"                       : "Configuration specific to Workflow0 of the COVID-19 project. Pls remove once the project is done.",
+        "schemas"                     : ["ssh", "gsissh"],
+        "mandatory_args"              : ["project"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://comet.sdsc.xsede.org/"
+        },
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "gsisftp://comet.sdsc.xsede.org/"
+        },
+        "default_queue"               : "compute",
+        "cores_per_node"              : 24,
+        "lfs_path_per_node"           : "/scratch/$USER/$SLURM_JOB_ID",
+        "lfs_size_per_node"           : 176105,
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN",
+        "pre_bootstrap_0"             :["module reset",
+                                        "module load intel",
+                                        ". $HOME/.miniconda3/etc/profile.d/conda.sh"
+                                        ],
+        "pre_bootstrap_1"             : ["export PATH=/opt/intel/2018.1.163/compilers_and_libraries_2018.1.163/linux/mpi/intel64/bin/:$PATH",
+                                         "export LD_LIBRARY_PATH=/opt/intel/2018.1.163/compilers_and_libraries_2018.1.163/linux/mpi/intel64/lib:$LD_LIBRARY_PATH"
+                                        ],
+        "default_remote_workdir"      :  "$HOME",
+        "valid_roots"                 : ["/home"],
+        "rp_version"                  : "installed",
+        # "virtenv"                     : "/scratch1/07305/rpilot/radical.pilot.sandbox/ve_wf0_ad",
+        "virtenv"                     : "$HOME/.miniconda3/envs/ve.rp",
+        "virtenv_mode"                : "use",
+        "python_dist"                 : "anaconda",
+        "export_to_cu"                : ["LMOD_CMD",
+                                         "LMOD_SYSTEM_DEFAULT_MODULES",
+                                         "LD_LIBRARY_PATH"],
+        "cu_pre_exec"                 : []
+    },
 
     "supermic_ssh": {
         "description"                 : "SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)",
@@ -552,8 +597,8 @@
         "python_dist"                 : "anaconda",
         "export_to_cu"                : [],
         "cu_pre_exec"                 : [],
-        "saga_jd_supplement"          : {"cpu_architecture" : ["p100"]},
-        "gpus_per_node"               : 2
+        "gpus_per_node"               : 2,
+        "system_architecture"         : {"gpu": "p100"}
     },
 
     "supermic_spark": {

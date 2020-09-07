@@ -16,11 +16,17 @@ if __name__ == '__main__':
     cfg_fname =                 os.path.basename(cfg_file)
 
     cfg       = ru.Config(cfg=ru.read_json(cfg_file))
-    nodes     = cfg.nodes
     cpn       = cfg.cpn
     gpn       = cfg.gpn
+    n_agents  = cfg.n_agents
     n_masters = cfg.n_masters
+    n_workers = cfg.n_workers
     workload  = cfg.workload
+
+    # each master uses a node, and each worker on each master uses a node.  We
+    # also need to account for agent nodes
+    nodes     =  n_masters + (n_masters * n_workers) + n_agents
+    print('nodes', nodes)
 
     master    = '%s/%s' % (cfg_dir, cfg.master)
     worker    = '%s/%s' % (cfg_dir, cfg.worker)
@@ -37,6 +43,8 @@ if __name__ == '__main__':
         for i in range(n_masters):
             td = rp.ComputeUnitDescription(cfg.master_descr)
             td.executable     = "python3"
+            td.cpu_threads    = cpn
+            td.gpu_processes  = gpn
             td.arguments      = [os.path.basename(master), cfg_file, i]
             td.input_staging  = [{'source': master,
                                   'target': os.path.basename(master),

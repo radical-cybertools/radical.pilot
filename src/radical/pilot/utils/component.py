@@ -436,7 +436,7 @@ class Component(object):
       #                            stop=['put', 'drop'])
         self._prof.prof('init1', uid=self._uid, msg=self._prof.path)
 
-        self._log.debug('=== initialilze outputs')
+        self._log.debug('initialilze outputs')
 
         self._subscribers = dict()      # ZMQ Subscriber classes
         self._q    = None
@@ -499,13 +499,15 @@ class Component(object):
         #        should really be derived from rp module inspection via an
         #        `ru.PluginManager`.
         #
-        from radical.pilot import worker    as rpw
-        from radical.pilot import pmgr      as rppm
-        from radical.pilot import umgr      as rpum
-        from radical.pilot import agent     as rpa
+        from radical.pilot import worker       as rpw
+        from radical.pilot import pmgr         as rppm
+        from radical.pilot import umgr         as rpum
+        from radical.pilot import agent        as rpa
+        from radical.pilot import task_overlay as rpt
       # from radical.pilot import constants as rpc
 
         comp = {
+                rpc.WORKER                         : rpt.Worker,
                 rpc.UPDATE_WORKER                  : rpw.Update,
                 rpc.STAGER_WORKER                  : rpw.Stager,
 
@@ -773,13 +775,13 @@ class Component(object):
 
             # we want a *unique* output queue for each state.
             if state in self._outputs:
-                self._log.warn("=== %s replaces output for %s : %s -> %s"
+                self._log.warn("%s replaces output for %s : %s -> %s"
                         % (self.uid, state, self._outputs[state], output))
 
             if not output:
 
                 # this indicates a final state
-                self._log.debug('=== %s register output to none %s', self.uid, state)
+                self._log.debug('%s register output to none %s', self.uid, state)
                 self._outputs[state] = None
 
             else:
@@ -831,12 +833,12 @@ class Component(object):
             self._log.debug('TERM : %s unregister output %s', self.uid, state)
 
             if state not in self._outputs:
-                self._log.warn('=== state %s has no output registered',  state)
+                self._log.warn('state %s has no output registered',  state)
               # raise ValueError('state %s has no output registered' % state)
                 continue
 
             del(self._outputs[state])
-            self._log.debug('=== unregistered output for %s: %s', state,
+            self._log.debug('unregistered output for %s: %s', state,
                             list(self._outputs.keys()))
 
 
@@ -1218,10 +1220,7 @@ class Component(object):
                 if _state not in self._outputs:
                     # unknown target state -- error
                     for thing in _things:
-                        import pprint
-                        self._log.debug('=== %s', pprint.pformat(self._outputs))
-                        self._log.debug("=== lost  %s [%s] [%s]", thing['uid'],
-                                        _state, list(self._outputs.keys()))
+                        self._log.debug("lost  %s [%s]", thing['uid'], _state)
                         self._prof.prof('lost', uid=thing['uid'], state=_state,
                                         ts=ts)
                     continue

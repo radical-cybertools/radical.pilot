@@ -46,7 +46,6 @@ class MyMaster(rp.task_overlay.Master):
 
         world_size = self._cfg.n_masters
         rank       = self._cfg.rank
-        print('=== 2 : ', self._cfg.rank)
 
         # create an initial list of work items to be distributed to the workers.
         # Work items MUST be serializable dictionaries.
@@ -55,7 +54,6 @@ class MyMaster(rp.task_overlay.Master):
         while idx < total:
 
             uid  = 'request.%06d' % idx
-            print('=== uid:', uid)
             item = {'uid' :   uid,
                     'mode':  'call',
                     'data': {'method': 'hello',
@@ -97,9 +95,8 @@ if __name__ == '__main__':
     cfg_fname    = str(sys.argv[1])
     cfg          = ru.Config(cfg=ru.read_json(cfg_fname))
     cfg.rank     = int(sys.argv[2])
-    print('=== 1 : ', cfg.rank)
 
-    n_nodes    = cfg.nodes
+    n_workers  = cfg.n_workers
     cpn        = cfg.cpn
     gpn        = cfg.gpn
     descr      = cfg.worker_descr
@@ -108,25 +105,23 @@ if __name__ == '__main__':
 
     # add data staging to worker: link input_dir, impress_dir, and oe_license
     descr['arguments']     = [os.path.basename(worker)]
-    descr['input_staging'] = [
-                               {'source': '%s/%s' % (pwd, worker),
-                                'target': worker,
-                                'action': rp.COPY,
-                                'flags' : rp.DEFAULT_FLAGS,
-                                'uid'   : 'sd.0'},
-                               {'source': '%s/%s' % (pwd, cfg_fname),
-                                'target': cfg_fname,
-                                'action': rp.COPY,
-                                'flags' : rp.DEFAULT_FLAGS,
-                                'uid'   : 'sd.1'},
-                              ]
+  # descr['input_staging'] = [
+  #                            {'source': '%s/%s' % (pwd, worker),
+  #                             'target': worker,
+  #                             'action': rp.COPY,
+  #                             'flags' : rp.DEFAULT_FLAGS,
+  #                             'uid'   : 'sd.0'},
+  #                            {'source': '%s/%s' % (pwd, cfg_fname),
+  #                             'target': cfg_fname,
+  #                             'action': rp.COPY,
+  #                             'flags' : rp.DEFAULT_FLAGS,
+  #                             'uid'   : 'sd.1'},
+  #                           ]
 
     # one node is used by master.  Alternatively (and probably better), we could
     # reduce one of the worker sizes by one core.  But it somewhat depends on
     # the worker type and application workload to judge if that makes sense, so
     # we leave it for now.
-    print('workers: ', (n_nodes / cfg.n_masters) - 1)
-    n_workers = int((n_nodes / cfg.n_masters) - 1)
 
     # create a master class instance - this will establish communication to the
     # pilot agent
@@ -135,8 +130,9 @@ if __name__ == '__main__':
     # insert `n` worker tasks into the agent.  The agent will schedule (place)
     # those workers and execute them.  Insert one smaller worker (see above)
     # NOTE: this assumes a certain worker size / layout
+    print('workers: %d' % n_workers)
     master.submit(descr=descr, count=n_workers, cores=cpn,     gpus=gpn)
-    master.submit(descr=descr, count=1,         cores=cpn - 1, gpus=gpn)
+  # master.submit(descr=descr, count=1,         cores=cpn - 1, gpus=gpn)
 
     # wait until `m` of those workers are up
     # This is optional, work requests can be submitted before and will wait in
