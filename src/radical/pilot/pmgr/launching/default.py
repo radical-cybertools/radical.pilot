@@ -705,7 +705,7 @@ class Default(PMGRLaunchingComponent):
                 self._log.error('%s: %s : %s : %s', j.id, j.state, j.stderr, j.stdout)
                 raise RuntimeError("SAGA Job state is FAILED. (%s)" % jd.name)
 
-            self._log.debug('=== %s - %s state: %s', j.id, j.name, j.state)
+            self._log.debug('%s - %s state: %s', j.id, j.name, j.state)
 
             pilot = None
             pid   = jd.name
@@ -1120,9 +1120,12 @@ class Default(PMGRLaunchingComponent):
 
             if resource not in self._sandboxes:
 
+                tgt_path = ru.Url(pilot['session_sandbox']).path
+
                 for sdist in sdist_paths:
                     base = os.path.basename(sdist)
-                    tgt  = '%s/%s' % (pilot['session_sandbox'], base)
+                    tgt  = '%s/%s' % (tgt_path, base)
+                    self._log.debug('=== %s', tgt)
                     ret['fts'].append({'src': sdist,
                                        'tgt': tgt,
                                        'rem': False})
@@ -1136,9 +1139,9 @@ class Default(PMGRLaunchingComponent):
                     cc_path = os.path.abspath("%s/agent/%s" % (self._root_dir, cc_name))
                     self._log.debug("use CAs %s", cc_path)
 
-                    tgt = '%s/%s' % (pilot['session_sandbox'], cc_name)
+                    tgt = '%s/%s' % (tgt_path, cc_name)
                     ret['fts'].append({'src': cc_path,
-                                       'tgt': tgt, 
+                                       'tgt': tgt,
                                        'rem': False})
 
                 self._sandboxes[resource] = True
