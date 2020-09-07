@@ -597,8 +597,8 @@
         "python_dist"                 : "anaconda",
         "export_to_cu"                : [],
         "cu_pre_exec"                 : [],
-        "saga_jd_supplement"          : {"cpu_architecture" : ["p100"]},
-        "gpus_per_node"               : 2
+        "gpus_per_node"               : 2,
+        "system_architecture"         : {"gpu": "p100"}
     },
 
     "supermic_spark": {

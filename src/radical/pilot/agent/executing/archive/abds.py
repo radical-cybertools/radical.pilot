@@ -346,8 +346,8 @@ prof(){
         self._prof.prof('control', msg='launch script constructed', uid=cu['uid'])
 
         # prepare stdout/stderr
-        stdout_file = cu['description'].get('stdout') or 'STDOUT'
-        stderr_file = cu['description'].get('stderr') or 'STDERR'
+        stdout_file = cu['description'].get('stdout') or '%s.out' % cu['uid']
+        stderr_file = cu['description'].get('stderr') or '%s.err' % cu['uid']
 
         cu['stdout_file'] = os.path.join(sandbox, stdout_file)
         cu['stderr_file'] = os.path.join(sandbox, stderr_file)

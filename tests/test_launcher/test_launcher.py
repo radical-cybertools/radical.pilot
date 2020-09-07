@@ -24,7 +24,7 @@ except ImportError:
 #
 class TestLauncher(TestCase):
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def setUp(self):
 
@@ -119,6 +119,17 @@ class TestLauncher(TestCase):
                    }
         ret = component._prepare_pilot(resource, rcfg, pilot, {})
         assert(ret['jd'].name == 'bar')
+
+        # test resource config parameter `system_architecture`
+
+        # default value is {}
+        assert(ret['jd'].system_architecture == {})
+
+        # value for "ornl.summit" is 4
+        resource = 'ornl.summit'
+        rcfg = configs.ornl.summit
+        ret = component._prepare_pilot(resource, rcfg, pilot, {})
+        assert (ret['jd'].system_architecture['smt'] == 4)
 
 
 # ------------------------------------------------------------------------------
