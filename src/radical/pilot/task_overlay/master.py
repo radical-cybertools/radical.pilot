@@ -165,20 +165,24 @@ class Master(rpu.Component):
 
         # each worker gets the specified number of cores and gpus.  All
         # resources need to be located on the same node.
-        descr['cpu_processes']   = 1
-        descr['cpu_threads']     = cores
-        descr['cpu_thread_type'] = 'POSIX'
-        descr['gpu_processses']  = gpus
+        descr['cpu_processes']    = count
+        descr['cpu_process_type'] = 'MPI'
+        descr['cpu_threads']      = cores
+        descr['cpu_thread_type']  = 'POSIX'
+        descr['gpu_processses']   = gpus
 
 
         tasks = list()
-        for _ in range(count):
+      # for _ in range(count):
+        if True:
 
             # write config file for that worker
             cfg          = copy.deepcopy(self._cfg)
             cfg['info']  = self._info
-            uid          = ru.generate_id('worker')
-            sbox         = '%s/%s'      % (cfg['base'], uid)
+            uid          = ru.generate_id('worker.%(item_counter)06d',
+                                        ru.ID_CUSTOM,
+                                        ns=self._session.uid)
+            sbox         = os.getcwd()
             fname        = '%s/%s.json' % (sbox, uid)
 
             cfg['kind']  = 'worker'
