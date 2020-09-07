@@ -19,15 +19,15 @@ if __name__ == '__main__':
     c_out = ru.Config(path='%s/funcs_res_queue.cfg' % sbox)
     q_out = ru.zmq.Getter('funcs_res_queue', c_out['get'])
 
-    q_in.put([{'state'  : 'NEW',
-               'uid'    : 'request.%06d' % i,
-               'mode'   : 'eval',
-               'timeout': 10,
-               'data'   : {
-                   'code'  : '%d * %d' % (i, i),
-                   'kwargs': {} }
-              } for i in range(n)
-             ])
+    items =  ru.read_json('items.json')
+
+    for item in items:
+        item['timeout'] = 180
+
+    n = min(n, len(items))
+    print(n)
+
+    q_in.put([items[0:n]])
 
     for i in range(n):
         for res in q_out.get():
