@@ -29,7 +29,11 @@ jobs:
     services:
       - docker
     install:
-      - (cd docker && docker build -t rp-complete -f rp-complete.dockerfile --build-arg RPREF=$TRAVIS_BRANCH .)
+      - docker build -t rp-complete -f docker/rp-complete.dockerfile .
+# Note: If we want to target specific branches, use something like the following, with corresponding updates in rp-complete.dockerfile
+#      - echo TRAVIS_BRANCH is $TRAVIS_BRANCH
+#      - RPREF=$TRAVIS_BRANCH
+#      - (cd docker ; docker build -t rp-complete -f rp-complete.dockerfile --build-arg RPREF=${RPREF:-devel} .)
     script:
       - docker run --rm --name rp_test -d rp-complete
       - docker ps

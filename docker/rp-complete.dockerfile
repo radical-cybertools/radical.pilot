@@ -3,7 +3,8 @@
 # It will take a few seconds to be ready for connections, after which
 # radical.pilot will be able to use pymongo to connect.
 # Example:
-#     docker build -t rp-complete -f rp-complete.dockerfile .
+#     # From repository root directory
+#     docker build -t rp-complete -f docker/rp-complete.dockerfile .
 #     docker run --rm --name rp_test -d rp-complete
 #     # Either use '-d' with 'run' or issue the 'exec' in a separate terminal
 #     # after waiting a few seconds for the DB to be ready to accept connections.
@@ -65,20 +66,28 @@ RUN . ~rp/rp-venv/bin/activate && \
         'radical.saga>=1.0' \
         'radical.utils>=1.1'
 
-# Get repository for example and test files and to simplify RPREF build argument.
-# Note that GitHub may have a source directory name suffix that does not exactly
-# match the branch or tag name, so we use a glob to try to normalize the name.
-ARG RPREF="v1.5.2"
-RUN cd ~rp && \
-    wget https://github.com/radical-cybertools/radical.pilot/archive/$RPREF.tar.gz && \
-    tar zxvf $RPREF.tar.gz && \
-    mv radical.pilot-* radical.pilot && \
-    rm $RPREF.tar.gz
-
-# Install RP from whichever git ref is provided as `--build-arg RPREF=...` (default 1.5.2)
+# Install RP from the current local repository working directory.
+COPY --chown=rp:radical . /home/rp/radical.pilot
 RUN . ~rp/rp-venv/bin/activate && \
     cd ~rp/radical.pilot && \
     pip install .
+
+# Note: if we want the image to target a specific (configrable) branch, use the following instead.
+#
+## Get repository for example and test files and to simplify RPREF build argument.
+## Note that GitHub may have a source directory name suffix that does not exactly
+## match the branch or tag name, so we use a glob to try to normalize the name.
+#ARG RPREF="v1.5.2"
+#RUN cd ~rp && \
+#    wget https://github.com/radical-cybertools/radical.pilot/archive/$RPREF.tar.gz && \
+#    tar zxvf $RPREF.tar.gz && \
+#    mv radical.pilot-* radical.pilot && \
+#    rm $RPREF.tar.gz
+#
+## Install RP from whichever git ref is provided as `--build-arg RPREF=...` (default 1.5.2)
+#RUN . ~rp/rp-venv/bin/activate && \
+#    cd ~rp/radical.pilot && \
+#    pip install .
 # OR
 ## Install official version from PyPI
 #RUN . ~rp/rp-venv/bin/activate && \
