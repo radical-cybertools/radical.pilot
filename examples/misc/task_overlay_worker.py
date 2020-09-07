@@ -21,7 +21,6 @@ class MyWorker(rp.task_overlay.Worker):
     #
     def __init__(self, cfg):
 
-        # FIXME: this should be delegated to `generate_id`
         if isinstance(cfg, str): cfg = ru.Config(cfg=ru.read_json(cfg))
         else                   : cfg = ru.Config(cfg=cfg)
 
