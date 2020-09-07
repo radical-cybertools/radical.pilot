@@ -7,9 +7,6 @@ dist:     xenial
 git:
   depth: 1
 
-services:
-  - docker
-
 env:
   global:
     - CODECOV_TOKEN="c7e0d993-d31a-4d39-8ffa-07c30ea73e48"
@@ -29,6 +26,8 @@ env:
 jobs:
   include:
   - name: "Docker test"
+    services:
+      - docker
     install:
       - (cd docker && docker build -t rp-complete -f rp-complete.dockerfile --build-arg RPREF=$TRAVIS_BRANCH .)
     script:
@@ -36,7 +35,7 @@ jobs:
       - docker ps
       - sleep 5
       # Consider testing more examples, based on problem areas.
-      - docker exec -ti -u rp rp_test bash -c "cd && . /home/rp/rp-venv/bin/activate && python /radical.pilot/examples/00*"
+      - docker exec -ti -u rp rp_test bash -c "cd && . /home/rp/rp-venv/bin/activate && python radical.pilot/examples/00*"
 # Ref issue #2218
 #      - docker exec -ti -u rp rp_test bash -c "cd && . /home/rp/rp-venv/bin/activate && python radical.pilot/examples/misc/task_overlay.py radical.pilot/examples/misc/task_overlay.cfg"
       - docker kill rp_test
