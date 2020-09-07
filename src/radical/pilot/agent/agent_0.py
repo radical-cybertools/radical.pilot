@@ -405,6 +405,7 @@ class Agent_0(rpu.Worker):
                     # note that 'exec' only makes sense if we don't add any
                     # commands (such as post-processing) after it.
                     ls.write('#!/bin/sh\n\n')
+                    ls.write('# === ls \n\n')
                     for k,v in agent_cmd['description'].get('environment', {}).items():
                         ls.write('export "%s"="%s"\n' % (k, v))
                     ls.write('\n')
@@ -419,34 +420,44 @@ class Agent_0(rpu.Worker):
                 else   : cmdline = ls_name
 
             # spawn the sub-agent
+
+          # # ------------------------------------------------------------------
+          # class _SA(mp.Process):
+          #
+          #     def __init__(self, sa, cmd, log):
+          #
+          #         self._name = sa
+          #         self._cmd  = cmd.split()
+          #         self._log  = log
+          #         self._proc = None
+          #         super(_SA, self).__init__(name=self._name)
+          #
+          #         self.start()
+          #
+          #
+          #     def run(self):
+          #
+          #         out        = open('%s.out' % self._name, 'w')
+          #         err        = open('%s.err' % self._name, 'w')
+          #         self._proc = sp.Popen(args=self._cmd, stdout=out, stderr=err)
+          #
+          #         self._log.debug('sub-agent %s spawned [%s]', self._name,
+          #                 self._proc)
+          #
+          #         assert(self._proc)
+          #
+          #         # FIXME: lifetime, use daemon agent launcher
+          #         while True:
+          #             time.sleep(0.1)
+          #             if self._proc.poll() is None:
+          #                 return True   # all is well
+          #             else:
+          #                 return False  # proc is gone - terminate
+          # # ------------------------------------------------------------------
+
+            # spawn the sub-agent
             self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
-
-            # ------------------------------------------------------------------
-            class _SA(mp.Process):
-
-                def __init__(self, sa, cmd, log):
-                    self._name = sa
-                    self._cmd  = cmd.split()
-                    self._log  = log
-                    self._proc = None
-                    super(_SA, self).__init__(name=self._name)
-                    self.start()
-
-                    sys.stdout = open('%s.out' % self._name, 'w')
-                    sys.stderr = open('%s.err' % self._name, 'w')
-                    out        = open('%s.out' % self._name, 'w')
-                    err        = open('%s.err' % self._name, 'w')
-                    self._proc = sp.Popen(args=self._cmd, stdout=out, stderr=err)
-
-                def run(self):
-                    # FIXME: lifetime, use daemon agent launcher
-                    while True:
-                        time.sleep(0.1)
-                        if self._proc.poll() is None:
-                            return True   # all is well
-                        else:
-                            return False  # proc is gone - terminate
-            # ------------------------------------------------------------------
+            ru.sh_callout('%s >%s.1.out 2>%s.1.err &' % (cmdline, sa, sa), shell=True)
 
             # FIXME: register heartbeats?
 

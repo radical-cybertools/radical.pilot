@@ -33,7 +33,7 @@ class ComponentManager(object):
 
         self._cfg  = ru.Config('radical.pilot.cmgr', cfg=cfg)
         self._sid  = self._cfg.sid
-        self._uid  = ru.generate_id('cmgr', ns=self._sid)
+        self._uid  = ru.generate_id('cmgr', ns=self._sid, mode=ru.ID_PRIVATE)
         self._uids = [self._uid]  # uids to track hartbeats for (incl. own)
 
         self._prof = ru.Profiler(self._uid, ns='radical.pilot',
@@ -206,10 +206,13 @@ class ComponentManager(object):
         if 'components' in scfg: del(scfg['components'])
 
         for cname, ccfg in cfg.get('components', {}).items():
+            print(cname, self._sid)
 
             for _ in range(ccfg.get('count', 1)):
 
-                ccfg.uid         = ru.generate_id(cname, ns=self._sid)
+                ccfg.uid         = ru.generate_id(cname, ns=self._sid,
+                                   mode=ru.ID_PRIVATE)
+                print('===> %s' % ccfg.uid)
                 ccfg.cmgr        = self.uid
                 ccfg.kind        = cname
                 ccfg.sid         = cfg.sid
@@ -770,6 +773,7 @@ class Component(object):
 
             if not output:
                 # this indicates a final state
+                self._log.debug('%s register output to none %s', self.uid, state)
                 self._outputs[state] = None
 
             else:
@@ -802,6 +806,22 @@ class Component(object):
 
             del(self._outputs[state])
             self._log.debug('unregistered output for %s', state)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def output(self, things, state=None):
+        '''
+        this pushes the given things to the output queue register for the given
+        state
+        '''
+
+        # NOTE: we do not check if things are actually in the given state
+
+        if state not in self._outputs:
+            raise ValueError('state %s has no output registered' % state)
+
+        self._outputs[state].put(things)
 
 
     # --------------------------------------------------------------------------
@@ -926,7 +946,7 @@ class Component(object):
                                                     log=self._log,
                                                     prof=self._prof)
 
-        self._log.debug('registered publisher for %s', pubsub)
+        self._log.debug('registered publisher for %s - %s', self._uid, pubsub)
 
 
     # --------------------------------------------------------------------------
@@ -1161,8 +1181,6 @@ class Component(object):
                 if _state not in self._outputs:
                     # unknown target state -- error
                     for thing in _things:
-                        import pprint
-                        self._log.debug('%s', pprint.pformat(self._outputs))
                         self._log.debug("lost  %s [%s]", thing['uid'], _state)
                         self._prof.prof('lost', uid=thing['uid'], state=_state,
                                         ts=ts)
