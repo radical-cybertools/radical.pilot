@@ -28,7 +28,8 @@
                                         "module unload intel",
                                         "module unload impi",
                                         "module load   intel",
-                                        "module load   python3/3.7.0"
+                                        "module load   python3/3.7.0",
+                                        "ulimit -u 16384"
                                         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["$SCRATCH", "$WORK"],
@@ -70,7 +71,8 @@
                                         "module unload impi",
                                         "module load   intel",
                                         "module load   python3/3.7.0",
-                                        ". /home1/07305/rpilot/.miniconda3/etc/profile.d/conda.sh"
+                                        ". /home1/07305/rpilot/.miniconda3/etc/profile.d/conda.sh",
+                                        "ulimit -u 16384"
                                         ],
         "default_remote_workdir"      :  "/scratch1/07305/rpilot",
         "valid_roots"                 : ["$SCRATCH", "$WORK"],
