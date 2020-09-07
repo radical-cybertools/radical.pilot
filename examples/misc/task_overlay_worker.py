@@ -5,6 +5,7 @@ import sys
 import time
 
 import radical.pilot as rp
+import radical.utils as ru
 
 
 # ------------------------------------------------------------------------------
@@ -34,7 +35,8 @@ class MyWorker(rp.task_overlay.Worker):
 
         self._prof.prof('dock_start', uid=uid)
 
-        out = 'hello %5d @ %.2f [%6d]' % (count, time.time(), os.getpid())
+        out = 'hello %5d @ %.2f [%s]' % (count, time.time(), self._uid)
+      # time.sleep(0.1)
 
         self._prof.prof('dock_io_start', uid=uid)
         self._log.debug(out)

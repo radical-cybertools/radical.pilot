@@ -29,6 +29,25 @@ class Worker(rpu.Component):
         if isinstance(cfg, str): cfg = ru.Config(cfg=ru.read_json(cfg))
         else                   : cfg = ru.Config(cfg=cfg)
 
+
+        # generate a MPI rank dependent UID for each worker process
+        # FIXME: this should be delegated to ru.generate_id
+
+        # FIXME: why do we need to import `os` again after MPI Spawn?
+        import os
+
+        # FIXME: rank determination should be moved to RU
+        rank = None
+
+        if rank is None: rank = os.environ.get('PMIX_RANK')
+        if rank is None: rank = os.environ.get('PMI_RANK')
+        if rank is None: rank = os.environ.get('OMPI_COMM_WORLD_RANK')
+
+        if rank is not None:
+           cfg['uid'] = '%s.%03d' % (cfg['uid'], int(rank))
+
+        print('=== 1')
+
         self._n_cores = cfg.cores
         self._n_gpus  = cfg.gpus
 
@@ -40,6 +59,7 @@ class Worker(rpu.Component):
 
 
         rpu.Component.__init__(self, cfg, self._session)
+        print('=== 2')
 
         self._term    = mp.Event()          # set to terminate
         self._res_evt = mp.Event()          # set on free resources
@@ -56,6 +76,7 @@ class Worker(rpu.Component):
         # resources are initially all free
         self._res_evt.set()
 
+        print('=== 3')
       # # create a multiprocessing pool with `cpn` worker processors.  Set
       # # `maxtasksperchild` to `1` so that we get a fresh process for each
       # # task.  That will also allow us to run command lines via `exec`,
@@ -100,7 +121,9 @@ class Worker(rpu.Component):
         self.register_mode('exec',  self._exec)
         self.register_mode('shell', self._shell)
 
+        print('=== 4')
         self.pre_exec()
+        print('=== 5')
 
         # connect to the request / response ZMQ queues
         self._res_put = ru.zmq.Putter('to_res', self._info.res_addr_put)
@@ -116,9 +139,11 @@ class Worker(rpu.Component):
 
         # `info` is a placeholder for any additional meta data communicated to
         # the worker
+        print('=== 6')
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
                                           'arg': {'uid' : self._uid,
                                                   'info': self._info}})
+        print('=== 7')
 
         os.system('echo "======================"')
         os.system('ulimit -a')
@@ -488,7 +513,7 @@ class Worker(rpu.Component):
                 self._result_queue.put(res)
         # ----------------------------------------------------------------------
 
-        ret = 0
+        ret = None
         try:
           # self._log.debug('dispatch: %s: %d', task['uid'], task['pid'])
             mode = task['mode']

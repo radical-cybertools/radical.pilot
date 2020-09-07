@@ -196,7 +196,6 @@ class Agent_0(rpu.Worker):
         # units to
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
                              rpc.AGENT_STAGING_INPUT_QUEUE)
-        self._log.debug('=== outputs: %s', list(self._outputs.keys()))
 
         # register the command callback which pulls the DB for commands
         self.register_timed_cb(self._agent_command_cb,

@@ -705,7 +705,7 @@ class Default(PMGRLaunchingComponent):
                 self._log.error('%s: %s : %s : %s', j.id, j.state, j.stderr, j.stdout)
                 raise RuntimeError("SAGA Job state is FAILED. (%s)" % jd.name)
 
-            self._log.debug('=== %s - %s state: %s', j.id, j.name, j.state)
+            self._log.debug('%s - %s state: %s', j.id, j.name, j.state)
 
             pilot = None
             pid   = jd.name
@@ -800,6 +800,7 @@ class Default(PMGRLaunchingComponent):
         cu_post_exec            = rcfg.get('cu_post_exec')
         export_to_cu            = rcfg.get('export_to_cu')
         mandatory_args          = rcfg.get('mandatory_args', [])
+        system_architecture     = rcfg.get('system_architecture', {})
         saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
 
         self._log.debug(cores_per_node)
@@ -1120,9 +1121,12 @@ class Default(PMGRLaunchingComponent):
 
             if resource not in self._sandboxes:
 
+                tgt_path = ru.Url(pilot['session_sandbox']).path
+
                 for sdist in sdist_paths:
                     base = os.path.basename(sdist)
-                    tgt  = '%s/%s' % (pilot['session_sandbox'], base)
+                    tgt  = '%s/%s' % (tgt_path, base)
+                    self._log.debug('=== %s', tgt)
                     ret['fts'].append({'src': sdist,
                                        'tgt': tgt,
                                        'rem': False})
@@ -1136,9 +1140,9 @@ class Default(PMGRLaunchingComponent):
                     cc_path = os.path.abspath("%s/agent/%s" % (self._root_dir, cc_name))
                     self._log.debug("use CAs %s", cc_path)
 
-                    tgt = '%s/%s' % (pilot['session_sandbox'], cc_name)
+                    tgt = '%s/%s' % (tgt_path, cc_name)
                     ret['fts'].append({'src': cc_path,
-                                       'tgt': tgt, 
+                                       'tgt': tgt,
                                        'rem': False})
 
                 self._sandboxes[resource] = True
@@ -1174,12 +1178,21 @@ class Default(PMGRLaunchingComponent):
         jd.queue                 = queue
         jd.candidate_hosts       = candidate_hosts
         jd.environment           = dict()
+        jd.system_architecture   = system_architecture
 
         # we set any saga_jd_supplement keys which are not already set above
         for key, val in saga_jd_supplement.items():
             if not jd[key]:
                 self._log.debug('supplement %s: %s', key, val)
                 jd[key] = val
+
+        # set saga job description attribute based on env variable(s)
+        if os.environ.get('RADICAL_SAGA_SMT'):
+            try:
+                jd.system_architecture['smt'] = \
+                    int(os.environ['RADICAL_SAGA_SMT'])
+            except Exception as e:
+                self._log.debug('SAGA SMT not set: %s' % e)
 
         if self._prof.enabled:
             jd.environment['RADICAL_PROFILE'] = 'TRUE'
