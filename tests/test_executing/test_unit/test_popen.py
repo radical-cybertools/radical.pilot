@@ -51,7 +51,7 @@ class TestBase(unittest.TestCase):
         component._task_launcher = mock.Mock()
         component._task_launcher.name = 'ssh'
         component._task_launcher.command = 'ssh'
-        component.spawn   = mock.MagicMock(side_effect=spawn_side_effect)
+        component.spawn   = mock.MagicMock(side_effect=spawn_side_effect(launcher = component._mpi_launcher, cu = cu))
         component._log = ru.Logger('dummy')
         component._handle_unit(cu)
         self.assertEqual(cu, global_cu[0])
