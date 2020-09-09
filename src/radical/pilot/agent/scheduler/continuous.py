@@ -2,8 +2,6 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
-import pprint
-
 import math as m
 
 from ...   import constants as rpc
