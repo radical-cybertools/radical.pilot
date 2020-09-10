@@ -1037,11 +1037,6 @@ class Default(PMGRLaunchingComponent):
         #
         #   local: # needs sdist staging
         #       tar zxf $sdist.tgz
-        #       pip install -t $VIRTENV/rp_install $sdist/
-        #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
-        #
-        #   debug: # needs sdist staging
-        #       tar zxf $sdist.tgz
         #       pip install -t $SANDBOX/rp_install $sdist/
         #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
         #
@@ -1121,30 +1116,18 @@ class Default(PMGRLaunchingComponent):
             if virtenv_mode != 'private':
                 cleanup = cleanup.replace('v', '')
 
-        # don't stage sdists on 'installed', 'local'
-        if virtenv_mode in ['installed', 'local']: stage_sdists = False
-        else                                     : stage_sdists = True
-
         # use local VE ?
         if virtenv_mode == 'local':
-            if 'VIRTUAL_ENV' in os.environ:
-                virtenv_dist = 'default'
-                virtenv      = os.environ['VIRTUAL_ENV']
-            elif 'CONDA_PREFIX' in os.environ:
-                virtenv_dist = 'anaconda'
-                virtenv      = os.environ['CONDA_PREFIX']
+            if os.environ.get('VIRTUAL_ENV'):
+                python_dist = 'default'
+                virtenv     = os.environ['VIRTUAL_ENV']
+            elif os.environ.get('CONDA_PREFIX'):
+                python_dist = 'anaconda'
+                virtenv     = os.environ['CONDA_PREFIX']
             else:
                 # we can't use local
                 self._log.error('virtenv_mode is local, no local env found')
                 raise ValueError('no local env found')
-
-        # add dists to staging files, if needed
-        if rp_version in ['local', 'debug']:
-            sdist_names = [ru.sdist_name, rs.sdist_name, self._rp_sdist_name]
-            sdist_paths = [ru.sdist_path, rs.sdist_path, self._rp_sdist_path]
-        else:
-            sdist_names = list()
-            sdist_paths = list()
 
         # if cores_per_node is set (!= None), then we need to
         # allocation full nodes, and thus round up
@@ -1163,7 +1146,15 @@ class Default(PMGRLaunchingComponent):
         # set mandatory args
         bootstrap_args  = ""
 
-        if stage_sdists:
+        # add dists to staging files, if needed:
+        # don't stage on `rp_version==installed` or `virtenv_mode==local`
+        if rp_version   == 'installed' or \
+           virtenv_mode == 'local'     :
+            sdist_names = list()
+            sdist_paths = list()
+        else:
+            sdist_names = [ru.sdist_name, rs.sdist_name, self._rp_sdist_name]
+            sdist_paths = [ru.sdist_path, rs.sdist_path, self._rp_sdist_path]
             bootstrap_args += " -d '%s'" % ':'.join(sdist_names)
 
         bootstrap_args += " -p '%s'" % pid
@@ -1257,14 +1248,13 @@ class Default(PMGRLaunchingComponent):
 
             if resource not in self._sandboxes:
 
-                if stage_sdists:
-                    for sdist in sdist_paths:
-                        base = os.path.basename(sdist)
-                        ret['ft'].append({
-                            'src': sdist,
-                            'tgt': '%s/%s' % (session_sandbox, base),
-                            'rem': False
-                        })
+                for sdist in sdist_paths:
+                    base = os.path.basename(sdist)
+                    ret['ft'].append({
+                        'src': sdist,
+                        'tgt': '%s/%s' % (session_sandbox, base),
+                        'rem': False
+                    })
 
                 # Copy the bootstrap shell script.
                 bootstrapper_path = os.path.abspath("%s/agent/%s"
@@ -1364,7 +1354,7 @@ class Default(PMGRLaunchingComponent):
 
             if stage_cacerts:
                 jd.file_transfer.extend([
-                    'site:%s/%s > %s' % (session_sandbox, cc_name, cc_name)
+                    'site:%s/%s > %s' % (session_sandbox, certs, certs)
                 ])
 
         self._log.debug("Bootstrap command line: %s %s", jd.executable, jd.arguments)
