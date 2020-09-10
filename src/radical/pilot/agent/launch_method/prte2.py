@@ -314,9 +314,12 @@ class PRTE2(LaunchMethod):
         else:
             envs = ''
 
-        cmd = '%s %s %s %s %s %s %s' % (
-            self.launch_command, dvm_uri, flags, debug_flags, envs,
-            task_exec, self._create_arg_string(task_args))
+        task_args_str = self._create_arg_string(task_args)
+        if task_args_str:
+            task_exec += ' %s' % task_args_str
+
+        cmd = '%s %s %s %s %s %s' % (
+            self.launch_command, dvm_uri, flags, debug_flags, envs, task_exec)
 
         return cmd, None
 
