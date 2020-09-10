@@ -292,6 +292,7 @@ class Shell(AgentExecutingComponent):
         env  += 'export RP_UNIT_NAME="%s"\n'     % cu['description'].get('name')
         env  += 'export RP_GTOD="%s"\n'          % cu['gtod']
         env  += 'export RP_PILOT_STAGING="%s"\n' % self._pwd
+
         if self._prof.enabled:
             env += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
         env  += '''
