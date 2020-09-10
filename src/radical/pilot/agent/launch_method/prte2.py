@@ -6,6 +6,7 @@ __license__   = 'MIT'
 
 import logging
 import os
+import signal
 import time
 
 import subprocess    as mp
@@ -97,7 +98,7 @@ class PRTE2(LaunchMethod):
         if profiler.enabled:  # prte profiling
             # version 1 vs 2
             # prte += ' --pmca orte_state_base_verbose 1'
-            prte += ' --pmixmca orte_state_base_verbose 1'
+            prte += ' --mca orte_state_base_verbose 1'
 
         # large tasks imply large message sizes and we need to account for that
         _base_max_msg_size = 1024 * 1024 * 1024 * 1
@@ -107,13 +108,13 @@ class PRTE2(LaunchMethod):
         # version 1 vs 2
         # prte += ' --pmca ptl_base_max_msg_size %d' % _base_max_msg_size
         # # prte += ' --pmca rmaps_base_verbose 5'
-        prte += ' --pmixmca ptl_base_max_msg_size %d' % _base_max_msg_size
+        prte += ' --mca ptl_base_max_msg_size %d' % _base_max_msg_size
 
         # debug mapper problems for large tasks
         if log.isEnabledFor(logging.DEBUG):
             # version 1 vs 2
             # prte += ' -pmca orte_rmaps_base_verbose 100'
-            prte += ' --pmixmca orte_rmaps_base_verbose 100'
+            prte += ' --mca orte_rmaps_base_verbose 100'
 
         # 2 temporary tweaks on Summit (not needed for the long run)
         # (1) avoid 64 node limit (ssh connection limit)
@@ -124,13 +125,15 @@ class PRTE2(LaunchMethod):
         # version 2
         prte += ' --mca plm_rsh_no_tree_spawn 1'
         prte += ' --mca plm_rsh_num_concurrent %d' % vm_size
+        # FIXME: these 2 options above might not be needed
+        #        (corresponding experiments should be conducted)
 
         # Use (g)stdbuf to disable buffering.  We need this to get the
         # "DVM ready" message to ensure DVM startup completion
         #
         # The command seems to be generally available on Cray's,
         # if not, we can code some home-cooked pty stuff (TODO)
-        stdbuf_cmd =  ru.which(['stdbuf', 'gstdbuf'])
+        stdbuf_cmd = ru.which(['stdbuf', 'gstdbuf'])
         if not stdbuf_cmd:
             raise Exception('(g)stdbuf not found')
         stdbuf_arg = '-oL'
@@ -142,8 +145,8 @@ class PRTE2(LaunchMethod):
         verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
         if verbose:
             cmd += ' '.join(['--debug-devel',
-                             '--pmca odls_base_verbose 100',
-                             '--pmca rml_base_verbose 100'])
+                             '--mca odls_base_verbose 100',
+                             '--mca rml_base_verbose 100'])
 
         cmd = cmd.strip()
 
@@ -172,7 +175,7 @@ class PRTE2(LaunchMethod):
                 # of the standard termination sequence.  If the signal is
                 # swallowed, the next `prun` call will trigger
                 # termination anyway.
-                os.kill(os.getpid())
+                os.kill(os.getpid(), signal.SIGKILL)
                 raise RuntimeError('PRTE DVM died')
 
             log.info('prte stopped (%d)', dvm_process.returncode)
@@ -281,7 +284,7 @@ class PRTE2(LaunchMethod):
         # version 1 vs 2
         # flags += ' --pmca ptl_base_max_msg_size %d' % _base_max_msg_size
         # # flags += ' --pmca rmaps_base_verbose 5'
-        flags += ' --pmixmca ptl_base_max_msg_size %d' % _base_max_msg_size
+        flags += ' --mca ptl_base_max_msg_size %d' % _base_max_msg_size
 
         if 'nodes' not in slots:
             # this task is unscheduled - we leave it to PRRTE/PMI-X
@@ -298,13 +301,12 @@ class PRTE2(LaunchMethod):
             flags += ' --host %s' % hosts
 
         # additional (debug) arguments to prun
-        debug_flags = ''
+        debug_flags = '--verbose'  # needed to get prte profile events
         if self._verbose:
-            debug_flags += ' '.join(['-verbose',
-                                     '--report-bindings'])
-                                   # '--debug-devel',
-                                   # '-display-devel-map',
-                                   # '-display-allocation'])
+            debug_flags += ' ' + ' '.join(['--report-bindings'])
+                                         # '--debug-devel',
+                                         # '--display-devel-map',
+                                         # '--display-allocation'])
 
         env_list = self.EXPORT_ENV_VARIABLES + list(task_env.keys())
         if env_list:
