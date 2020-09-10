@@ -2,10 +2,10 @@
 __copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import time
+import radical.utils  as ru
 
 from ..  import utils as rpu
-
-import radical.utils  as ru
 
 
 # ------------------------------------------------------------------------------

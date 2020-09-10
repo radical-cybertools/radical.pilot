@@ -86,10 +86,14 @@ class Agent_0(rpu.Worker):
         # ready to rumble!
         rpu.Worker.__init__(self, self._cfg, session)
 
-        # run our own slow-paced heartbeat monitor to watch pgr heartbeats
+        # run our own slow-paced heartbeat monitor to watch pmgr heartbeats
+        # FIXME: we need to get pmgr freq
+        freq = 10
+        tint = freq / 3
+        tout = freq * 3
         self._hb = ru.Heartbeat(uid=self._pid,
-                                timeout=10.0,  # FIXME:  configurable
-                                interval=1.0,  # FIXME:  configurable
+                                timeout=tout,
+                                interval=tint,
                                 beat_cb=self._hb_check,  # no own heartbeat(pmgr pulls)
                                 term_cb=self._hb_term_cb,
                                 log=self._log)
@@ -109,10 +113,10 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _hb_term_cb(self):
+    def _hb_term_cb(self, msg):
 
         self._cmgr.close()
-        self._log.warn('hb termination')
+        self._log.warn('hb termination %s' % msg)
 
         return None
 
@@ -300,11 +304,12 @@ class Agent_0(rpu.Worker):
 
             assert(sa != 'agent.0'), 'expect subagent, not agent.0'
 
-            # use our own config sans agents/components as a basis for
+            # use our own config sans agents/components/bridges as a basis for
             # the sub-agent config.
             tmp_cfg = copy.deepcopy(self._cfg)
             tmp_cfg['agents']     = dict()
             tmp_cfg['components'] = dict()
+            tmp_cfg['bridges']    = dict()
 
             # merge sub_agent layout into the config
             ru.dict_merge(tmp_cfg, self._cfg['agents'][sa], ru.OVERWRITE)
@@ -458,6 +463,7 @@ class Agent_0(rpu.Worker):
             # spawn the sub-agent
             self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
             ru.sh_callout('%s >%s.1.out 2>%s.1.err &' % (cmdline, sa, sa), shell=True)
+          # _SA(sa, cmdline, log=self._log)
 
             # FIXME: register heartbeats?
 
