@@ -2,8 +2,6 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
-import pprint
-
 import math as m
 
 from ...   import constants as rpc
@@ -464,7 +462,6 @@ class Continuous(AgentSchedulingComponent):
 
         # allocation worked!  If the unit was tagged, store the node IDs for
         # this tag, so that later units can reuse that information
-        tag = unit['description'].get('tag')
         if tag:
             self._tag_history[tag] = [node['uid'] for node in slots['nodes']]
 
