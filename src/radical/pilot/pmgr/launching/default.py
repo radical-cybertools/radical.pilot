@@ -1075,7 +1075,7 @@ class Default(PMGRLaunchingComponent):
         # is used.
 
         if not rp_version.startswith('@') and \
-               rp_version not in ['installed', 'local', 'debug', 'release']:
+               rp_version not in ['installed', 'local', 'release']:
             raise ValueError("invalid rp_version '%s'" % rp_version)
 
         if rp_version.startswith('@'):
