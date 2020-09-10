@@ -1,10 +1,11 @@
+# pylint: disable=protected-access
 
 import os
 import glob
 
 import radical.utils as ru
 
-from ..       import states as rps
+from ..       import states as s
 from .session import fetch_json
 
 _debug = os.environ.get('RP_PROF_DEBUG')
@@ -23,41 +24,38 @@ _debug = os.environ.get('RP_PROF_DEBUG')
 
 
 PILOT_DURATIONS = {
-        'provide' : {
-            'total'     : [{ru.EVENT: 'bootstrap_0_start'},
-                           {ru.EVENT: 'bootstrap_0_stop' }]
-        },
-
-        # times between PMGR_ACTIVE and the termination command are not
-        # considered pilot specific consumptions.  If some resources remain
-        # unused during that time, it is either due to inefficiencies of
-        # workload management (accounted for in the unit consumption metrics),
-        # or the pilot is starving for workload.
-        'consume' : {
-            'boot'      : [{ru.EVENT: 'bootstrap_0_start'},
-                           {ru.EVENT: 'sync_rel'         }],
-            'setup_1'   : [{ru.EVENT: 'sync_rel'         },
-                           {ru.STATE: rps.PMGR_ACTIVE    }],
-            'ignore'    : [{ru.STATE: rps.PMGR_ACTIVE    },
-                           {ru.EVENT: 'cmd'              ,
-                            ru.MSG  : 'cancel_pilot'     }],
-            'term'      : [{ru.EVENT: 'cmd'              ,
-                            ru.MSG  : 'cancel_pilot'     },
-                           {ru.EVENT: 'bootstrap_0_stop' }],
-        },
-
-
-        # FIXME: separate out DVM startup time
-        #   'rte'       : [{ru.STATE: rps.PMGR_ACTIVE    },
-        #                  {ru.STATE: rps.PMGR_ACTIVE    }],
-        #   'setup_2'   : [{ru.STATE: rps.PMGR_ACTIVE    },
-        #                  {ru.STATE: rps.PMGR_ACTIVE    }],
-
-        # resources on agent nodes are consumed for all of the pilot's lifetime
-        'agent' : {
-            'total'     : [{ru.EVENT: 'bootstrap_0_start'},
-                           {ru.EVENT: 'bootstrap_0_stop' }]
-        }
+    'provide' : {
+        'total'     : [{ru.EVENT: 'bootstrap_0_start'},
+                       {ru.EVENT: 'bootstrap_0_stop' }]
+    },
+    # times between PMGR_ACTIVE and the termination command are not
+    # considered pilot specific consumptions.  If some resources remain
+    # unused during that time, it is either due to inefficiencies of
+    # workload management (accounted for in the unit consumption metrics),
+    # or the pilot is starving for workload.
+    'consume' : {
+        'boot'      : [{ru.EVENT: 'bootstrap_0_start'},
+                       {ru.EVENT: 'sync_rel'         }],
+        'setup_1'   : [{ru.EVENT: 'sync_rel'         },
+                       {ru.STATE: s.PMGR_ACTIVE      }],
+        'ignore'    : [{ru.STATE: s.PMGR_ACTIVE      },
+                       {ru.EVENT: 'cmd'              ,
+                        ru.MSG  : 'cancel_pilot'     }],
+        'term'      : [{ru.EVENT: 'cmd'              ,
+                        ru.MSG  : 'cancel_pilot'     },
+                       {ru.EVENT: 'bootstrap_0_stop' }],
+    },
+    # FIXME: separate out DVM startup time
+    #   'rte'       : [{ru.STATE: s.PMGR_ACTIVE    },
+    #                  {ru.STATE: s.PMGR_ACTIVE    }],
+    #   'setup_2'   : [{ru.STATE: s.PMGR_ACTIVE    },
+    #                  {ru.STATE: s.PMGR_ACTIVE    }],
+    #
+    # resources on agent nodes are consumed for all of the pilot's lifetime
+    'agent' : {
+        'total'     : [{ru.EVENT: 'bootstrap_0_start'},
+                       {ru.EVENT: 'bootstrap_0_stop' }]
+    }
 }
 
 
@@ -65,32 +63,32 @@ PILOT_DURATIONS = {
 # description, default resource configuration, and default scheduler and
 # launcher.
 UNIT_DURATIONS_DEFAULT = {
-        'consume' : {
-            'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
-                             {ru.STATE: rps.AGENT_EXECUTING      }],
-            'exec_prep'   : [{ru.STATE: rps.AGENT_EXECUTING      },
-                             {ru.EVENT: 'exec_start'             }],
-            'exec_rp'     : [{ru.EVENT: 'exec_start'             },
-                             {ru.EVENT: 'cu_start'               }],
-            'exec_sh'     : [{ru.EVENT: 'cu_start'               },
-                             {ru.EVENT: 'cu_exec_start'          }],
-            'exec_cmd'    : [{ru.EVENT: 'cu_exec_start'          },
-                             {ru.EVENT: 'cu_exec_stop'           }],
-            'term_sh'     : [{ru.EVENT: 'cu_exec_stop'           },
-                             {ru.EVENT: 'cu_stop'                }],
-            'term_rp'     : [{ru.EVENT: 'cu_stop'                },
-                             {ru.EVENT: 'exec_stop'              }],
-            'unschedule'  : [{ru.EVENT: 'exec_stop'              },
-                             {ru.EVENT: 'unschedule_stop'        }]
+    'consume' : {
+        'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
+                         {ru.STATE: s.AGENT_EXECUTING        }],
+        'exec_prep'   : [{ru.STATE: s.AGENT_EXECUTING        },
+                         {ru.EVENT: 'exec_start'             }],
+        'exec_rp'     : [{ru.EVENT: 'exec_start'             },
+                         {ru.EVENT: 'cu_start'               }],
+        'exec_sh'     : [{ru.EVENT: 'cu_start'               },
+                         {ru.EVENT: 'cu_exec_start'          }],
+        'exec_cmd'    : [{ru.EVENT: 'cu_exec_start'          },
+                         {ru.EVENT: 'cu_exec_stop'           }],
+        'term_sh'     : [{ru.EVENT: 'cu_exec_stop'           },
+                         {ru.EVENT: 'cu_stop'                }],
+        'term_rp'     : [{ru.EVENT: 'cu_stop'                },
+                         {ru.EVENT: 'exec_stop'              }],
+        'unschedule'  : [{ru.EVENT: 'exec_stop'              },
+                         {ru.EVENT: 'unschedule_stop'        }]
 
-          # # if we have cmd_start / cmd_stop:
-          # 'exec_sh'     : [{ru.EVENT: 'cu_start'               },
-          #                  {ru.EVENT: 'cmd_start'              }],
-          # 'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
-          #                  {ru.EVENT: 'cmd_stop'               }],
-          # 'term_sh'     : [{ru.EVENT: 'cmd_stop'               },
-          #                  {ru.EVENT: 'cu_stop'                }],
-        }
+      # # if we have cmd_start / cmd_stop:
+      # 'exec_sh'     : [{ru.EVENT: 'cu_start'               },
+      #                  {ru.EVENT: 'cmd_start'              }],
+      # 'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
+      #                  {ru.EVENT: 'cmd_stop'               }],
+      # 'term_sh'     : [{ru.EVENT: 'cmd_stop'               },
+      #                  {ru.EVENT: 'cu_stop'                }],
+    }
 }
 
 
@@ -98,68 +96,68 @@ UNIT_DURATIONS_DEFAULT = {
 # events. App events are generated by RADICAL Synapse and by `hello_rp.sh`. The
 # latter is useful for testing as a sleep command drop-in.
 UNIT_DURATIONS_APP = {
-        'consume' : {
-            'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
-                             {ru.STATE: rps.AGENT_EXECUTING      }],
-            'exec_prep'   : [{ru.STATE: rps.AGENT_EXECUTING      },
-                             {ru.EVENT: 'exec_start'             }],
-            'exec_rp'     : [{ru.EVENT: 'exec_start'             },
-                             {ru.EVENT: 'cu_start'               }],
-            'exec_sh'     : [{ru.EVENT: 'cu_start'               },
-                             {ru.EVENT: 'cu_exec_start'          }],
-            'init_app'    : [{ru.EVENT: 'cu_exec_start'          },
-                             {ru.EVENT: 'app_start'              }],
-            'exec_cmd'    : [{ru.EVENT: 'app_start'              },
-                             {ru.EVENT: 'app_stop'               }],
-            'term_app'    : [{ru.EVENT: 'app_stop'               },
-                             {ru.EVENT: 'cu_exec_stop'           }],
-            'term_sh'     : [{ru.EVENT: 'cu_exec_stop'           },
-                             {ru.EVENT: 'cu_stop'                }],
-            'term_rp'     : [{ru.EVENT: 'cu_stop'                },
-                             {ru.EVENT: 'exec_stop'              }],
-            'unschedule'  : [{ru.EVENT: 'exec_stop'              },
-                             {ru.EVENT: 'unschedule_stop'        }]
-        }
+    'consume' : {
+        'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
+                         {ru.STATE: s.AGENT_EXECUTING        }],
+        'exec_prep'   : [{ru.STATE: s.AGENT_EXECUTING        },
+                         {ru.EVENT: 'exec_start'             }],
+        'exec_rp'     : [{ru.EVENT: 'exec_start'             },
+                         {ru.EVENT: 'cu_start'               }],
+        'exec_sh'     : [{ru.EVENT: 'cu_start'               },
+                         {ru.EVENT: 'cu_exec_start'          }],
+        'init_app'    : [{ru.EVENT: 'cu_exec_start'          },
+                         {ru.EVENT: 'app_start'              }],
+        'exec_cmd'    : [{ru.EVENT: 'app_start'              },
+                         {ru.EVENT: 'app_stop'               }],
+        'term_app'    : [{ru.EVENT: 'app_stop'               },
+                         {ru.EVENT: 'cu_exec_stop'           }],
+        'term_sh'     : [{ru.EVENT: 'cu_exec_stop'           },
+                         {ru.EVENT: 'cu_stop'                }],
+        'term_rp'     : [{ru.EVENT: 'cu_stop'                },
+                         {ru.EVENT: 'exec_stop'              }],
+        'unschedule'  : [{ru.EVENT: 'exec_stop'              },
+                         {ru.EVENT: 'unschedule_stop'        }]
+    }
 }
 
 
 # The set of default unit durations with the durations generated when using
 # PRRTE as launch method.
 UNIT_DURATIONS_PRTE = {
-        'consume' : {
-            'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
-                             {ru.STATE: rps.AGENT_EXECUTING      }],
-            'exec_prep'   : [{ru.STATE: rps.AGENT_EXECUTING      },
-                             {ru.EVENT: 'exec_start'             }],
-            'exec_rp'     : [{ru.EVENT: 'exec_start'             },
-                             {ru.EVENT: 'cu_start'               }],
-            'exec_sh'     : [{ru.EVENT: 'cu_start'               },
-                             {ru.EVENT: 'cu_exec_start'          }],
-            'prte_phase_1': [{ru.EVENT: 'cu_exec_start'          },
-                             {ru.EVENT: 'prte_init_complete'     }],
-            'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
-                             {ru.EVENT: 'prte_sending_launch_msg'}],
-            'exec_cmd'    : [{ru.EVENT: 'prte_sending_launch_msg'},
-                             {ru.EVENT: 'prte_iof_complete'      }],
-            'prte_phase_3': [{ru.EVENT: 'prte_iof_complete'      },
-                             {ru.EVENT: 'prte_notify_completed'  }],
-            'prte_phase_4': [{ru.EVENT: 'prte_notify_completed'  },
-                             {ru.EVENT: 'cu_exec_stop'           }],
-            'term_sh'     : [{ru.EVENT: 'cu_exec_stop'           },
-                             {ru.EVENT: 'cu_stop'                }],
-            'term_rp'     : [{ru.EVENT: 'cu_stop'                },
-                             {ru.EVENT: 'exec_stop'              }],
-            'unschedule'  : [{ru.EVENT: 'exec_stop'              },
-                             {ru.EVENT: 'unschedule_stop'        }],
+    'consume' : {
+        'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
+                         {ru.STATE: s.AGENT_EXECUTING        }],
+        'exec_prep'   : [{ru.STATE: s.AGENT_EXECUTING        },
+                         {ru.EVENT: 'exec_start'             }],
+        'exec_rp'     : [{ru.EVENT: 'exec_start'             },
+                         {ru.EVENT: 'cu_start'               }],
+        'exec_sh'     : [{ru.EVENT: 'cu_start'               },
+                         {ru.EVENT: 'cu_exec_start'          }],
+        'prte_phase_1': [{ru.EVENT: 'cu_exec_start'          },
+                         {ru.EVENT: 'prte_init_complete'     }],
+        'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
+                         {ru.EVENT: 'prte_sending_launch_msg'}],
+        'exec_cmd'    : [{ru.EVENT: 'prte_sending_launch_msg'},
+                         {ru.EVENT: 'prte_iof_complete'      }],
+        'prte_phase_3': [{ru.EVENT: 'prte_iof_complete'      },
+                         {ru.EVENT: 'prte_notify_completed'  }],
+        'prte_phase_4': [{ru.EVENT: 'prte_notify_completed'  },
+                         {ru.EVENT: 'cu_exec_stop'           }],
+        'term_sh'     : [{ru.EVENT: 'cu_exec_stop'           },
+                         {ru.EVENT: 'cu_stop'                }],
+        'term_rp'     : [{ru.EVENT: 'cu_stop'                },
+                         {ru.EVENT: 'exec_stop'              }],
+        'unschedule'  : [{ru.EVENT: 'exec_stop'              },
+                         {ru.EVENT: 'unschedule_stop'        }],
 
-          # # if we have app_start / app_stop:
-          # 'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
-          #                  {ru.EVENT: 'cmd_start'              }],
-          # 'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
-          #                  {ru.EVENT: 'cmd_stop'               }],
-          # 'prte_phase_3': [{ru.EVENT: 'cmd_stop'               },
-          #                  {ru.EVENT: 'prte_notify_completed'  }],
-        }
+      # # if we have app_start / app_stop:
+      # 'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
+      #                  {ru.EVENT: 'cmd_start'              }],
+      # 'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
+      #                  {ru.EVENT: 'cmd_stop'               }],
+      # 'prte_phase_3': [{ru.EVENT: 'cmd_stop'               },
+      #                  {ru.EVENT: 'prte_notify_completed'  }],
+    }
 }
 
 
@@ -167,37 +165,348 @@ UNIT_DURATIONS_PRTE = {
 # PRRTE as launch method and an app that records app events (e.g., RADICAL
 # Synapse and `hello_rp.sh`).
 UNIT_DURATIONS_PRTE_APP  = {
-        'consume' : {
-            'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
-                             {ru.STATE: rps.AGENT_EXECUTING      }],
-            'exec_prep'   : [{ru.STATE: rps.AGENT_EXECUTING      },
-                             {ru.EVENT: 'exec_start'             }],
-            'exec_rp'     : [{ru.EVENT: 'exec_start'             },
-                             {ru.EVENT: 'cu_start'               }],
-            'exec_sh'     : [{ru.EVENT: 'cu_start'               },
-                             {ru.EVENT: 'cu_exec_start'          }],
-            'prte_phase_1': [{ru.EVENT: 'cu_exec_start'          },
-                             {ru.EVENT: 'prte_init_complete'     }],
-            'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
-                             {ru.EVENT: 'prte_sending_launch_msg'}],
-            'init_app'    : [{ru.EVENT: 'prte_sending_launch_msg'},
-                             {ru.EVENT: 'app_start'              }],
-            'exec_cmd'    : [{ru.EVENT: 'app_start'              },
-                             {ru.EVENT: 'app_stop'               }],
-            'term_app'    : [{ru.EVENT: 'app_stop'               },
-                             {ru.EVENT: 'prte_iof_complete'      }],
-            'prte_phase_3': [{ru.EVENT: 'prte_iof_complete'      },
-                             {ru.EVENT: 'prte_notify_completed'  }],
-            'prte_phase_4': [{ru.EVENT: 'prte_notify_completed'  },
-                             {ru.EVENT: 'cu_exec_stop'           }],
-            'term_sh'     : [{ru.EVENT: 'cu_exec_stop'           },
-                             {ru.EVENT: 'cu_stop'                }],
-            'term_rp'     : [{ru.EVENT: 'cu_stop'                },
-                             {ru.EVENT: 'exec_stop'              }],
-            'unschedule'  : [{ru.EVENT: 'exec_stop'              },
-                             {ru.EVENT: 'unschedule_stop'        }]
-        }
+    'consume' : {
+        'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
+                         {ru.STATE: s.AGENT_EXECUTING        }],
+        'exec_prep'   : [{ru.STATE: s.AGENT_EXECUTING        },
+                         {ru.EVENT: 'exec_start'             }],
+        'exec_rp'     : [{ru.EVENT: 'exec_start'             },
+                         {ru.EVENT: 'cu_start'               }],
+        'exec_sh'     : [{ru.EVENT: 'cu_start'               },
+                         {ru.EVENT: 'cu_exec_start'          }],
+        'prte_phase_1': [{ru.EVENT: 'cu_exec_start'          },
+                         {ru.EVENT: 'prte_init_complete'     }],
+        'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
+                         {ru.EVENT: 'prte_sending_launch_msg'}],
+        'init_app'    : [{ru.EVENT: 'prte_sending_launch_msg'},
+                         {ru.EVENT: 'app_start'              }],
+        'exec_cmd'    : [{ru.EVENT: 'app_start'              },
+                         {ru.EVENT: 'app_stop'               }],
+        'term_app'    : [{ru.EVENT: 'app_stop'               },
+                         {ru.EVENT: 'prte_iof_complete'      }],
+        'prte_phase_3': [{ru.EVENT: 'prte_iof_complete'      },
+                         {ru.EVENT: 'prte_notify_completed'  }],
+        'prte_phase_4': [{ru.EVENT: 'prte_notify_completed'  },
+                         {ru.EVENT: 'cu_exec_stop'           }],
+        'term_sh'     : [{ru.EVENT: 'cu_exec_stop'           },
+                         {ru.EVENT: 'cu_stop'                }],
+        'term_rp'     : [{ru.EVENT: 'cu_stop'                },
+                         {ru.EVENT: 'exec_stop'              }],
+        'unschedule'  : [{ru.EVENT: 'exec_stop'              },
+                         {ru.EVENT: 'unschedule_stop'        }]
+    }
 }
+
+
+# ----------------------------------------------------------------------------
+#
+def _convert_sdurations(sdurations):
+    '''
+    Converts a collection of durations expressed in short form to the same
+    collection of durations expressed in long form.
+
+    Definitions:
+
+    - Short form collection: one dictionary of short form durations
+    - Long form: one dictionary of long form durations.
+
+    Args:
+
+        sdurations (dict): a collections of durations in short form
+
+    Return:
+
+        ldurations (dict): a collection of long form durations
+
+    Example:
+
+        sdurations = {'name_of_duration': [{'STATE': s.STATE_NAME},
+                                           {'EVENT': 'event_name'}]}
+        ldurations = {'name_of_duration': [{ru.EVENT: 'state',
+                                            ru.STATE: s.STATE_NAME},
+                                           {ru.EVENT: 'event_name',
+                                            ru.STATE: None}]}
+        sdurations = {'name_of_duration': [{'STATE': s.STATE_NAME},
+                                           [{'EVENT': 'event_name'},
+                                            {'STATE': s.STATE_NAME}]]}
+        ldurations = {'name_of_duration': [{ru.EVENT: 'state',
+                                            ru.STATE: s.STATE_NAME},
+                                           [{ru.EVENT: 'event_name',
+                                             ru.STATE: None},
+                                            {ru.EVENT: 'state',
+                                             ru.STATE: s.STATE_NAME}]]}
+        sdurations = {'name_of_duration': [{'STATE': s.STATE_NAME},
+                                           {'MSG': 'message_name'}]}
+        ldurations = {'name_of_duration': [{ru.EVENT: 'state',
+                                            ru.STATE: s.STATE_NAME},
+                                           {ru.EVENT: 'cmd',
+                                            ru.MSG: 'message_name'}]}
+    '''
+
+    ldurations = dict()
+
+    for k,v in sdurations.items():
+
+        ldurations[k] = list()
+        for ts in v:
+
+            if isinstance(ts, dict):
+                ldurations[k].append(_expand_sduration(ts))
+
+            if isinstance(ts, list):
+                lds = list()
+                for i in ts:
+                    lds.append(_expand_sduration(i))
+                ldurations[k].append(lds)
+
+    return ldurations
+
+
+# ----------------------------------------------------------------------------
+#
+def _expand_sduration(sduration):
+    '''
+    Expands a duration expressed in short form to its long form for the
+    timestamp types `ru.STATE`, `ru.EVENT` and `ru.MSG`.
+
+    Definitions:
+
+    - Short form duration: one dictionary containing a state or event name.
+    - Long form duration: one dictionary containing two keys, one of type
+      `ru.EVENT` and one of type `ru.STATE`. The `ru.EVENT` key has a string
+      value while the `ru.STATE` key has a `s.STATE_NAME` object as its value.
+
+    Args:
+
+        sduration (dict): a duration in short form
+
+    Return:
+
+        lduration (dict): sduration in long form
+
+    Example:
+
+        sduration = {'STATE': s.STATE_NAME}
+        lduration = {ru.EVENT: 'state', ru.STATE: s.STATE_NAME}
+        sduration = {'EVENT': 'event_name'}
+        lduration = {ru.EVENT: 'event_name', ru.STATE: None}
+        sduration = {'MSG': 'mesage_name'}
+        lduration = {ru.EVENT: 'cmd', ru.MSG: 'message_name'}
+    '''
+
+    # Allow durations with both ru.EVENT and ru.STATE.
+    tt = list(sduration.keys())
+    if len(tt) == 1 and tt[0] not in ['STATE', 'EVENT', 'MSG']:
+        raise Exception('unknown timestamp type: %s' % tt)
+    if len(tt) == 2:
+        return sduration
+    if len(tt) > 2:
+        raise Exception('invalid duration: too many timestamps (%s)' % tt)
+
+    # Expand known timestamps.
+    lduration = None
+
+    for k,v in sduration.items():
+        if k == 'STATE':
+            lduration = {ru.EVENT: 'state', ru.STATE: v}
+        elif k == 'EVENT':
+            lduration = {ru.EVENT: v, ru.STATE: None}
+        elif k == 'MSG':
+            lduration = {ru.EVENT: 'cmd', ru.MSG: v}
+
+    return lduration
+
+
+# Set of default pilot durations for RADICAL-Analytics. All the durations
+# are contiguos.
+# NOTE: _init durations are most often 0.
+PILOT_DURATIONS_DEBUG_SHORT = {
+    'p_pmgr_create'           : [{'STATE': s.NEW                   },
+                                 {'STATE': s.PMGR_LAUNCHING_PENDING}],
+    'p_pmgr_launching_init'   : [{'STATE': s.PMGR_LAUNCHING_PENDING},
+                                 {'STATE': s.PMGR_LAUNCHING        }],
+    'p_pmgr_launching'        : [{'STATE': s.PMGR_LAUNCHING        },
+                                 {'EVENT': 'staging_in_start'      }],
+    'p_pmgr_stage_in'         : [{'EVENT': 'staging_in_start'      },
+                                 {'EVENT': 'staging_in_stop'       }],
+    'p_pmgr_submission_init'  : [{'EVENT': 'staging_in_stop'       },
+                                 {'EVENT': 'submission_start'      }],
+    'p_pmgr_submission'       : [{'EVENT': 'submission_start'      },
+                                 {'EVENT': 'submission_stop'       }],
+    'p_pmgr_scheduling_init'  : [{'EVENT': 'submission_stop'       },
+                                 {'STATE': s.PMGR_ACTIVE_PENDING   }],
+    # batch system queue time
+    'p_pmgr_scheduling'       : [{'STATE': s.PMGR_ACTIVE_PENDING   },
+                                 {'EVENT': 'bootstrap_0_start'     }],
+    'p_agent_ve_setup_init'   : [{'EVENT': 'bootstrap_0_start'     },
+                                 {'EVENT': 've_setup_start'        }],
+    'p_agent_ve_setup'        : [{'EVENT': 've_setup_start'        },
+                                 {'EVENT': 've_setup_stop'         }],
+    'p_agent_ve_activate_init': [{'EVENT': 've_setup_stop'         },
+                                 {'EVENT': 've_activate_start'     }],
+    'p_agent_ve_activate'     : [{'EVENT': 've_activate_start'     },
+                                 {'EVENT': 've_activate_stop'      }],
+    'p_agent_install_init'    : [{'EVENT': 've_activate_stop'      },
+                                 {'EVENT': 'rp_install_start'      }],
+    'p_agent_install'         : [{'EVENT': 'rp_install_start'      },
+                                 {'EVENT': 'rp_install_stop'       }],
+    'p_agent_launching'       : [{'EVENT': 'rp_install_stop'       },
+                                 {'STATE': s.PMGR_ACTIVE           }],
+    'p_agent_terminate_init'  : [{'STATE': s.PMGR_ACTIVE           },
+                                 {'MSG'  : 'cancel_pilot'          }],
+    'p_agent_terminate'       : [{'MSG'  : 'cancel_pilot'          },
+                                 {'EVENT': 'bootstrap_0_stop'      }],
+    # total pilot runtime
+    'p_agent_finalize'        : [{'EVENT': 'bootstrap_0_stop'      },
+                                 [{'STATE': s.DONE                 },
+                                  {'STATE': s.CANCELED             },
+                                  {'STATE': s.FAILED               }]],
+    'p_agent_runtime'         : [{'EVENT': 'bootstrap_0_start'     },
+                                 {'EVENT': 'bootstrap_0_stop'      }]
+}
+
+PILOT_DURATIONS_DEBUG = _convert_sdurations(PILOT_DURATIONS_DEBUG_SHORT)
+
+
+# Debug pilot durations tagged with keys taht can be used when calculating
+# resource utilization.
+# TODO: add the 'client' tag to relevant resource utilization methods.
+_pdd = PILOT_DURATIONS_DEBUG
+PILOT_DURATIONS_DEBUG_RU = {
+    'provide' : {
+        'p_agent_runtime'         : _pdd['p_agent_runtime']
+    },
+    'client'  : {
+        'p_pmgr_create'           : _pdd['p_pmgr_create'],
+        'p_pmgr_launching_init'   : _pdd['p_pmgr_launching_init'],
+        'p_pmgr_launching'        : _pdd['p_pmgr_launching'],
+        'p_pmgr_stage_in'         : _pdd['p_pmgr_stage_in'],
+        'p_pmgr_submission_init'  : _pdd['p_pmgr_submission_init'],
+        'p_pmgr_submission'       : _pdd['p_pmgr_submission'],
+        'p_pmgr_scheduling_init'  : _pdd['p_pmgr_scheduling_init'],
+        'p_pmgr_scheduling'       : _pdd['p_pmgr_scheduling'],
+        'p_agent_finalize'        : _pdd['p_agent_finalize']
+    },
+    'consume' : {
+        'p_agent_ve_setup_init'   : _pdd['p_agent_ve_setup_init'],
+        'p_agent_ve_setup'        : _pdd['p_agent_ve_setup'],
+        'p_agent_ve_activate_init': _pdd['p_agent_ve_activate_init'],
+        'p_agent_ve_activate'     : _pdd['p_agent_ve_activate'],
+        'p_agent_install_init'    : _pdd['p_agent_install_init'],
+        'p_agent_install'         : _pdd['p_agent_install'],
+        'p_agent_launching'       : _pdd['p_agent_launching'],
+        'p_agent_terminate_init'  : _pdd['p_agent_terminate_init'],
+        'p_agent_terminate'       : _pdd['p_agent_terminate']
+    },
+    'agent'   : {
+        'p_agent_runtime'         : _pdd['p_agent_runtime']
+    }
+}
+
+
+# Set of default unit durations for RADICAL-Analytics. All the durations
+# are contiguos.
+UNIT_DURATIONS_DEBUG_SHORT = {
+    'u_umgr_create'              : [{'STATE': s.NEW                         },
+                                    {'STATE': s.UMGR_SCHEDULING_PENDING     }],
+    'u_umgr_schedule_queue'      : [{'STATE': s.UMGR_SCHEDULING_PENDING     },
+                                    {'STATE': s.UMGR_SCHEDULING             }],
+    'u_umgr_schedule'            : [{'STATE': s.UMGR_SCHEDULING             },
+                                    {'STATE': s.UMGR_STAGING_INPUT_PENDING  }],
+    # push to mongodb
+    'u_umgr_stage_in_queue'      : [{'STATE': s.UMGR_STAGING_INPUT_PENDING  },
+                                    {'STATE': s.UMGR_STAGING_INPUT          }],
+    # wait in mongodb
+    'u_umgr_stage_in'            : [{'STATE': s.UMGR_STAGING_INPUT          },
+                                    {'STATE': s.AGENT_STAGING_INPUT_PENDING }],
+    # pull from mongodb
+    'u_agent_stage_in_queue'     : [{'STATE': s.AGENT_STAGING_INPUT_PENDING },
+                                    {'STATE': s.AGENT_STAGING_INPUT         }],
+    'u_agent_stage_in'           : [{'STATE': s.AGENT_STAGING_INPUT         },
+                                    {'STATE': s.AGENT_SCHEDULING_PENDING    }],
+    'u_agent_schedule_queue'     : [{'STATE': s.AGENT_SCHEDULING_PENDING    },
+                                    {'STATE': s.AGENT_SCHEDULING            }],
+    'u_agent_schedule'           : [{'STATE': s.AGENT_SCHEDULING            },
+                                    {'STATE': s.AGENT_EXECUTING_PENDING     }],
+    'u_agent_execute_queue'      : [{'STATE': s.AGENT_EXECUTING_PENDING     },
+                                    {'STATE': s.AGENT_EXECUTING             }],
+    'u_agent_execute_prepare'    : [{'STATE': s.AGENT_EXECUTING             },
+                                    {'EVENT': 'exec_mkdir'                  }],
+    'u_agent_execute_mkdir'      : [{'EVENT': 'exec_mkdir'                  },
+                                    {'EVENT': 'exec_mkdir_done'             }],
+    'u_agent_execute_layer_start': [{'EVENT': 'exec_mkdir_done'             },
+                                    {'EVENT': 'exec_start'                  }],
+    # orte, ssh, mpi, ...
+    'u_agent_execute_layer'      : [{'EVENT': 'exec_start'                  },
+                                    [{'EVENT': 'exec_ok'                    },
+                                     {'EVENT': 'exec_fail'                  }]],
+    # PROBLEM: discontinuity
+    'u_agent_lm_start'           : [{'EVENT': 'cu_start'                    },
+                                    {'EVENT': 'cu_pre_start'                }],
+    'u_agent_lm_pre_execute'     : [{'EVENT': 'cu_pre_start'                },
+                                    {'EVENT': 'cu_pre_stop'                 }],
+    'u_agent_lm_execute_start'   : [{'EVENT': 'cu_pre_stop'                 },
+                                    {'EVENT': 'cu_exec_start'               }],
+    'u_agent_lm_execute'         : [{'EVENT': 'cu_exec_start'               },
+                                    {'EVENT': 'cu_exec_stop'                }],
+    'u_agent_lm_stop'            : [{'EVENT': 'cu_exec_stop'                },
+                                    {'EVENT': 'cu_stop'                     }],
+    'u_agent_stage_out_start'    : [{'EVENT': 'cu_stop'                     },
+                                    {'STATE': s.AGENT_STAGING_OUTPUT_PENDING}],
+    'u_agent_stage_out_queue'    : [{'STATE': s.AGENT_STAGING_OUTPUT_PENDING},
+                                    {'STATE': s.AGENT_STAGING_OUTPUT        }],
+    'u_agent_stage_out'          : [{'STATE': s.AGENT_STAGING_OUTPUT        },
+                                    {'STATE': s.UMGR_STAGING_OUTPUT_PENDING }],
+    # push/pull mongodb
+    'u_agent_push_to_umgr'       : [{'STATE': s.UMGR_STAGING_OUTPUT_PENDING },
+                                    {'STATE': s.UMGR_STAGING_OUTPUT         }],
+    'u_umgr_destroy'             : [{'STATE': s.UMGR_STAGING_OUTPUT         },
+                                    [{'STATE': s.DONE                       },
+                                     {'STATE': s.CANCELED                   },
+                                     {'STATE': s.FAILED                     }]],
+    'u_agent_unschedule'         : [{'EVENT': 'unschedule_start'            },
+                                    {'EVENT': 'unschedule_stop'             }]
+}
+
+UNIT_DURATIONS_DEBUG = _convert_sdurations(UNIT_DURATIONS_DEBUG_SHORT)
+
+
+# Debug unit durations tagged with keys taht can be used when calculating
+# resource utilization.
+# TODO: add the 'client' tag to relevant resource utilization methods.
+_udd = UNIT_DURATIONS_DEBUG
+UNIT_DURATIONS_DEBUG_RU = {
+    'client' : {
+        'u_umgr_create'              : _udd['u_umgr_create'],
+        'u_umgr_schedule_queue'      : _udd['u_umgr_schedule_queue'],
+        'u_umgr_schedule'            : _udd['u_umgr_schedule'],
+        'u_umgr_stage_in_queue'      : _udd['u_umgr_stage_in_queue'],
+        'u_umgr_stage_in'            : _udd['u_umgr_stage_in'],
+        'u_umgr_destroy'             : _udd['u_umgr_destroy'],
+        'u_agent_unschedule'         : _udd['u_agent_unschedule']
+    },
+    'consume'  : {
+        'u_agent_stage_in_queue'     : _udd['u_agent_stage_in_queue'],
+        'u_agent_stage_in'           : _udd['u_agent_stage_in'],
+        'u_agent_schedule_queue'     : _udd['u_agent_schedule_queue'],
+        'u_agent_schedule'           : _udd['u_agent_schedule'],
+        'u_agent_execute_queue'      : _udd['u_agent_execute_queue'],
+        'u_agent_execute_prepare'    : _udd['u_agent_execute_prepare'],
+        'u_agent_execute_mkdir'      : _udd['u_agent_execute_mkdir'],
+        'u_agent_execute_layer_start': _udd['u_agent_execute_layer_start'],
+        'u_agent_execute_layer'      : _udd['u_agent_execute_layer'],
+        'u_agent_lm_start'           : _udd['u_agent_lm_start'],
+        'u_agent_lm_pre_execute'     : _udd['u_agent_lm_pre_execute'],
+        'u_agent_lm_execute_start'   : _udd['u_agent_lm_execute_start'],
+        'u_agent_lm_execute'         : _udd['u_agent_lm_execute'],
+        'u_agent_lm_stop'            : _udd['u_agent_lm_stop'],
+        'u_agent_stage_out_start'    : _udd['u_agent_stage_out_start'],
+        'u_agent_stage_out_queue'    : _udd['u_agent_stage_out_queue'],
+        'u_agent_stage_out'          : _udd['u_agent_stage_out'],
+        'u_agent_push_to_umgr'       : _udd['u_agent_push_to_umgr'],
+    }
+}
+
 
 # ------------------------------------------------------------------------------
 #
@@ -243,7 +552,7 @@ def get_hostmap_deprecated(profiles):
 
             if 'agent.0.prof' in pname    and \
                 row[ru.EVENT] == 'advance' and \
-                row[ru.STATE] == rps.PMGR_ACTIVE:
+                row[ru.STATE] == s.PMGR_ACTIVE:
                 hostmap[row[ru.UID]] = host_id
                 break
 
@@ -283,7 +592,7 @@ def get_session_profile(sid, src=None):
 
     profiles          = ru.read_profiles(profiles, sid, efilter=efilter)
     profile, accuracy = ru.combine_profiles(profiles)
-    profile           = ru.clean_profile(profile, sid, rps.FINAL, rps.CANCELED)
+    profile           = ru.clean_profile(profile, sid, s.FINAL, s.CANCELED)
     hostmap           = get_hostmap(profile)
 
     if not hostmap:
@@ -336,7 +645,7 @@ def get_session_description(sid, src=None, dburl=None):
                     json['uid'] = json['_id']
                     if 'cfg' not in json:
                         json['cfg'] = dict()
-                for k,v in json.items():
+                for v in json.values():
                     fix_uids(v)
         fix_uids(json)
     fix_json(json)
@@ -408,11 +717,11 @@ def get_session_description(sid, src=None, dburl=None):
 
     ret['tree'] = tree
 
-    ret['entities']['pilot']   = {'state_model'  : rps._pilot_state_values,
-                                  'state_values' : rps._pilot_state_inv_full,
+    ret['entities']['pilot']   = {'state_model'  : s._pilot_state_values,
+                                  'state_values' : s._pilot_state_inv_full,
                                   'event_model'  : dict()}
-    ret['entities']['unit']    = {'state_model'  : rps._unit_state_values,
-                                  'state_values' : rps._unit_state_inv_full,
+    ret['entities']['unit']    = {'state_model'  : s._unit_state_values,
+                                  'state_values' : s._unit_state_inv_full,
                                   'event_model'  : dict()}
     ret['entities']['session'] = {'state_model'  : None,  # has no states
                                   'state_values' : None,
@@ -465,8 +774,8 @@ def cluster_resources(resources):
         if isinstance(r, int):
             idx.add(r)
         else:
-            for idx in range(r[0], r[1] + 1):
-                idx.add(idx)
+            for i in range(r[0], r[1] + 1):
+                idx.add(i)
 
     r0 = None
     r1 = None
@@ -499,14 +808,14 @@ def cluster_resources(resources):
 
 # ------------------------------------------------------------------------------
 #
-def _get_pilot_provision(session, pilot):
+def _get_pilot_provision(pilot):
 
     pid   = pilot.uid
     cpn   = pilot.cfg['resource_details']['rm_info']['cores_per_node']
     gpn   = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
     ret   = dict()
 
-    nodes, anodes, pnodes = _get_nodes(pilot)
+    nodes, _, _ = _get_nodes(pilot)
 
     for metric in PILOT_DURATIONS['provide']:
 
@@ -544,7 +853,7 @@ def get_provided_resources(session):
     provided = dict()
     for p in session.get(etype='pilot'):
 
-        data = _get_pilot_provision(session, p)
+        data = _get_pilot_provision(p)
 
         for metric in data:
 
@@ -559,7 +868,7 @@ def get_provided_resources(session):
 
 # ------------------------------------------------------------------------------
 #
-def get_consumed_resources(session):
+def get_consumed_resources(session, udurations=None):
     '''
     For all ra.pilot or ra.unit entities, return the amount and time of
     resources consumed.  A consumed resource is characterized by:
@@ -595,8 +904,9 @@ def get_consumed_resources(session):
     consumed = dict()
     for e in session.get(etype=['pilot', 'unit']):
 
-        if   e.etype == 'pilot': data = _get_pilot_consumption(session, e)
-        elif e.etype == 'unit' : data = _get_unit_consumption(session,  e)
+        if   e.etype == 'pilot': data = _get_pilot_consumption(e)
+        elif e.etype == 'unit' : data = _get_unit_consumption(session,  e,
+                                                              udurations)
 
         for metric in data:
 
@@ -614,11 +924,14 @@ def get_consumed_resources(session):
     # consumed the resource to the time when the pilot begins termination.
     for pilot in session.get(etype='pilot'):
 
-        if pilot.cfg['task_launch_method'] == 'PRTE':
-          # print('\nusing prte configuration')
+        if udurations:
+            # print('DEBUG: using udurations')
+            unit_durations = udurations
+        elif pilot.cfg['task_launch_method'] == 'PRTE':
+            # print('DEBUG: using prte configuration')
             unit_durations = UNIT_DURATIONS_PRTE
         else:
-          # print('\nusing default configuration')
+            # print('DEBUG: using default configuration')
             unit_durations = UNIT_DURATIONS_DEFAULT
 
         pt    = pilot.timestamps
@@ -636,7 +949,7 @@ def get_consumed_resources(session):
         cpn = pilot.cfg['resource_details']['rm_info']['cores_per_node']
         gpn = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
 
-        nodes, anodes, pnodes = _get_nodes(pilot)
+        nodes, _, pnodes = _get_nodes(pilot)
 
         # find resource utilization scope for all resources. We begin filling
         # the resource dict with
@@ -761,7 +1074,7 @@ def _get_nodes(pilot):
 
 # ------------------------------------------------------------------------------
 #
-def _get_pilot_consumption(session, pilot):
+def _get_pilot_consumption(pilot):
 
     # Pilots consume resources in different ways:
     #
@@ -828,7 +1141,7 @@ def _get_pilot_consumption(session, pilot):
 
 # ------------------------------------------------------------------------------
 #
-def _get_unit_consumption(session, unit):
+def _get_unit_consumption(session, unit, udurations=None):
 
     # we need to know what pilot the unit ran on.  If we don't find a designated
     # pilot, no resources were consumed
@@ -848,7 +1161,7 @@ def _get_unit_consumption(session, unit):
     # FIXME: it is inefficient to query those values again and again
     cpn   = pilot.cfg['resource_details']['rm_info']['cores_per_node']
     gpn   = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
-    nodes, anodes, pnodes = _get_nodes(pilot)
+    nodes, _, _ = _get_nodes(pilot)
 
     # Units consume only those resources they are scheduled on.
     if 'slots' not in unit.cfg:
@@ -874,7 +1187,9 @@ def _get_unit_consumption(session, unit):
 
     # we heuristically switch between PRTE event traces and normal (fork) event
     # traces
-    if pilot.cfg['task_launch_method'] == 'PRTE':
+    if udurations:
+        unit_durations = udurations
+    elif pilot.cfg['task_launch_method'] == 'PRTE':
         unit_durations = UNIT_DURATIONS_PRTE
     else:
         unit_durations = UNIT_DURATIONS_DEFAULT

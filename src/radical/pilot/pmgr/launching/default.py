@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -207,9 +208,9 @@ class Default(PMGRLaunchingComponent):
             # the directory if it does not yet exist.
 
             # url used for cache (sandbox url w/o path)
-            tmp      = rs.Url(pilot['pilot_sandbox'])
-            tmp.path = '/'
-            key = str(tmp)
+            fs_url      = rs.Url(pilot['pilot_sandbox'])
+            fs_url.path = '/'
+            key         = str(fs_url)
 
             self._log.debug("rs.file.Directory ('%s')", key)
 
@@ -218,7 +219,7 @@ class Default(PMGRLaunchingComponent):
                     fs = self._saga_fs_cache[key]
 
                 else:
-                    fs = rsfs.Directory(key, session=self._session)
+                    fs = rsfs.Directory(fs_url, session=self._session)
                     self._saga_fs_cache[key] = fs
 
             fs.copy(src, tgt, flags=flags)
@@ -279,16 +280,16 @@ class Default(PMGRLaunchingComponent):
                 # Define and open the staging directory for the pilot
 
                 # url used for cache (sandbox url w/o path)
-                tmp      = rs.Url(pilot['pilot_sandbox'])
-                tmp.path = '/'
-                key = str(tmp)
+                fs_url      = rs.Url(pilot['pilot_sandbox'])
+                fs_url.path = '/'
+                key         = str(fs_url)
 
                 with self._cache_lock:
                     if key in self._saga_fs_cache:
                         fs = self._saga_fs_cache[key]
 
                     else:
-                        fs = rsfs.Directory(key, session=self._session)
+                        fs = rsfs.Directory(fs_url, session=self._session)
                         self._saga_fs_cache[key] = fs
 
                 fs.copy(src, tgt, flags=flags)
@@ -748,15 +749,16 @@ class Default(PMGRLaunchingComponent):
 
         fs_endpoint = rcfg['filesystem_endpoint']
         fs_url      = rs.Url(fs_endpoint)
+        key         = str(fs_url)
 
         self._log.debug("rs.file.Directory ('%s')", fs_url)
 
         with self._cache_lock:
-            if fs_url in self._saga_fs_cache:
-                fs = self._saga_fs_cache[fs_url]
+            if key in self._saga_fs_cache:
+                fs = self._saga_fs_cache[key]
             else:
                 fs = rsfs.Directory(fs_url, session=self._session)
-                self._saga_fs_cache[fs_url] = fs
+                self._saga_fs_cache[key] = fs
 
         tar_rem      = rs.Url(fs_url)
         tar_rem.path = "%s/%s" % (session_sandbox, tar_name)
@@ -913,7 +915,6 @@ class Default(PMGRLaunchingComponent):
         virtenv                 = rcfg.get('virtenv',             default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
         gpus_per_node           = rcfg.get('gpus_per_node',  0)
-        self._log.debug('=== gpus_per_node 0: %d', gpus_per_node)
         lfs_path_per_node       = rcfg.get('lfs_path_per_node', None)
         lfs_size_per_node       = rcfg.get('lfs_size_per_node',  0)
         python_dist             = rcfg.get('python_dist')
@@ -926,6 +927,7 @@ class Default(PMGRLaunchingComponent):
         cu_post_exec            = rcfg.get('cu_post_exec')
         export_to_cu            = rcfg.get('export_to_cu')
         mandatory_args          = rcfg.get('mandatory_args', [])
+        system_architecture     = rcfg.get('system_architecture', {})
         saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
 
         self._log.debug(cores_per_node)
@@ -1135,11 +1137,9 @@ class Default(PMGRLaunchingComponent):
         # if gpus_per_node is set (!= None), then we need to
         # allocation full nodes, and thus round up
         if gpus_per_node:
-            self._log.debug('=== gpus_per_node 1: %d', gpus_per_node)
             gpus_per_node = int(gpus_per_node)
             number_gpus   = int(gpus_per_node *
                             math.ceil(float(number_gpus) / gpus_per_node))
-            self._log.debug('=== gpus_per_node 2: %d', gpus_per_node)
 
         # set mandatory args
         bootstrap_args  = ""
@@ -1292,12 +1292,21 @@ class Default(PMGRLaunchingComponent):
         jd.queue                 = queue
         jd.candidate_hosts       = candidate_hosts
         jd.environment           = dict()
+        jd.system_architecture   = system_architecture
 
         # we set any saga_jd_supplement keys which are not already set above
         for key, val in saga_jd_supplement.items():
             if not jd[key]:
                 self._log.debug('supplement %s: %s', key, val)
                 jd[key] = val
+
+        # set saga job description attribute based on env variable(s)
+        if os.environ.get('RADICAL_SAGA_SMT'):
+            try:
+                jd.system_architecture['smt'] = \
+                    int(os.environ['RADICAL_SAGA_SMT'])
+            except Exception as e:
+                self._log.debug('SAGA SMT not set: %s' % e)
 
         if self._prof.enabled:
             jd.environment['RADICAL_PROFILE'] = 'TRUE'

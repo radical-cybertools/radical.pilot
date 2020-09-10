@@ -278,7 +278,6 @@ prof(){
 
             launch_script.write('prof cu_start\n')
             launch_script.write('\n# Change to unit sandbox\ncd %s\n' % sandbox)
-            launch_script.write('prof cu_cd_done\n')
 
             # Before the Big Bang there was nothing
             if cu['description']['pre_exec']:

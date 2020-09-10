@@ -9,6 +9,7 @@ import traceback
 
 import radical.utils as ru
 
+from ... import agent     as rpa
 from ... import states    as rps
 from ... import constants as rpc
 
@@ -30,8 +31,6 @@ class Shell(AgentExecutingComponent):
     # --------------------------------------------------------------------------
     #
     def initialize(self):
-
-        from .... import pilot as rp
 
         self._pwd = os.getcwd()
 
@@ -73,12 +72,12 @@ class Shell(AgentExecutingComponent):
         # simplify shell startup / prompt detection
         os.environ['PS1'] = '$ '
 
-        self._task_launcher = rp.agent.LaunchMethod.create(
+        self._task_launcher = rpa.LaunchMethod.create(
                 name    = self._cfg['task_launch_method'],
                 cfg     = self._cfg,
                 session = self._session)
 
-        self._mpi_launcher = rp.agent.LaunchMethod.create(
+        self._mpi_launcher = rpa.LaunchMethod.create(
                 name    = self._cfg['mpi_launch_method'],
                 cfg     = self._cfg,
                 session = self._session)
@@ -140,14 +139,14 @@ class Shell(AgentExecutingComponent):
         self._spawner_tmp = "/%s/%s-%s" % (self._pwd, self._pid, self.uid)
 
         ret, out, _  = self.launcher_shell.run_sync \
-                           ("/bin/sh %s/agent/executing/shell_spawner.sh %s"
-                           % (os.path.dirname (rp.__file__), self._spawner_tmp))
+                           ("/bin/sh %s/executing/shell_spawner.sh %s"
+                           % (os.path.dirname (rpa.__file__), self._spawner_tmp))
         if  ret != 0:
             raise RuntimeError ("launcher bootstrap failed: (%s)(%s)", ret, out)
 
         ret, out, _  = self.monitor_shell.run_sync \
-                           ("/bin/sh %s/agent/executing/shell_spawner.sh %s"
-                           % (os.path.dirname (rp.__file__), self._spawner_tmp))
+                           ("/bin/sh %s/executing/shell_spawner.sh %s"
+                           % (os.path.dirname (rpa.__file__), self._spawner_tmp))
         if  ret != 0:
             raise RuntimeError ("monitor bootstrap failed: (%s)(%s)", ret, out)
 
@@ -320,7 +319,6 @@ prof(){
         cwd  += "# CU sandbox\n"
         cwd  += "mkdir -p %s\n" % sandbox
         cwd  += "cd       %s\n" % sandbox
-        cwd  += 'prof cu_cd_done\n'
         cwd  += "\n"
 
         if  descr['pre_exec']:
