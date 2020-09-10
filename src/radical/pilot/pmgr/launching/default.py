@@ -910,7 +910,7 @@ class Default(PMGRLaunchingComponent):
         pre_bootstrap_1         = rcfg.get('pre_bootstrap_1', [])
         python_interpreter      = rcfg.get('python_interpreter')
         task_launch_method      = rcfg.get('task_launch_method')
-        rp_version              = rcfg.get('rp_version',          DEFAULT_RP_VERSION)
+        rp_version              = rcfg.get('rp_version')
         virtenv_mode            = rcfg.get('virtenv_mode',        DEFAULT_VIRTENV_MODE)
         virtenv                 = rcfg.get('virtenv',             default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
@@ -1073,6 +1073,11 @@ class Default(PMGRLaunchingComponent):
         # A rp_version which does not adhere to the
         # above syntax is ignored, and the fallback stage@local
         # is used.
+
+
+        if not rp_version:
+            if virtenv_mode == 'local': rp_version = 'installed'
+            else                      : rp_version = DEFAULT_RP_VERSION
 
         if not rp_version.startswith('@') and \
                rp_version not in ['installed', 'local', 'release']:
