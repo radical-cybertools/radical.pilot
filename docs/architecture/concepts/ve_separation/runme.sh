@@ -1,6 +1,6 @@
 #!/bin/sh
 
-CONDA_ROOT='/home/merzky/.miniconda3/'
+CONDA_ROOT="$HOME/.miniconda3/"
 
 progress(){
     printf "%-20s: ." "$*"
@@ -30,7 +30,7 @@ cp $os_path modules/my_python_dir/lib/ | progress 'create module'
 # run in subshell to maintain the shell env
 (
     . $CONDA_ROOT/etc/profile.d/conda.sh
-    conda create -y -n conda_test | progress 'create conda env'
+    conda create -y -n conda_test python=3.7 | progress 'create conda env'
 )
 
 # the forth workload will use system python - no preparation needed.
