@@ -910,7 +910,7 @@ class Default(PMGRLaunchingComponent):
         pre_bootstrap_1         = rcfg.get('pre_bootstrap_1', [])
         python_interpreter      = rcfg.get('python_interpreter')
         task_launch_method      = rcfg.get('task_launch_method')
-        rp_version              = rcfg.get('rp_version',          DEFAULT_RP_VERSION)
+        rp_version              = rcfg.get('rp_version')
         virtenv_mode            = rcfg.get('virtenv_mode',        DEFAULT_VIRTENV_MODE)
         virtenv                 = rcfg.get('virtenv',             default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
@@ -1036,11 +1036,6 @@ class Default(PMGRLaunchingComponent):
         #
         #   local: # needs sdist staging
         #       tar zxf $sdist.tgz
-        #       pip install -t $VIRTENV/rp_install $sdist/
-        #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
-        #
-        #   debug: # needs sdist staging
-        #       tar zxf $sdist.tgz
         #       pip install -t $SANDBOX/rp_install $sdist/
         #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
         #
@@ -1054,6 +1049,7 @@ class Default(PMGRLaunchingComponent):
         #   create  : use    if ve exists, otherwise create, then use
         #   use     : use    if ve exists, otherwise error,  then exit
         #   recreate: delete if ve exists, otherwise create, then use
+        #   local   : use the client virtualenv (assumes same FS)
         #
         # examples   :
         #   virtenv@v0.20
@@ -1078,8 +1074,13 @@ class Default(PMGRLaunchingComponent):
         # above syntax is ignored, and the fallback stage@local
         # is used.
 
+
+        if not rp_version:
+            if virtenv_mode == 'local': rp_version = 'installed'
+            else                      : rp_version = DEFAULT_RP_VERSION
+
         if not rp_version.startswith('@') and \
-               rp_version not in ['installed', 'local', 'debug', 'release']:
+               rp_version not in ['installed', 'local', 'release']:
             raise ValueError("invalid rp_version '%s'" % rp_version)
 
         if rp_version.startswith('@'):
@@ -1119,13 +1120,18 @@ class Default(PMGRLaunchingComponent):
             if virtenv_mode != 'private':
                 cleanup = cleanup.replace('v', '')
 
-        # add dists to staging files, if needed
-        if rp_version in ['local', 'debug']:
-            sdist_names = [ru.sdist_name, rs.sdist_name, self._rp_sdist_name]
-            sdist_paths = [ru.sdist_path, rs.sdist_path, self._rp_sdist_path]
-        else:
-            sdist_names = list()
-            sdist_paths = list()
+        # use local VE ?
+        if virtenv_mode == 'local':
+            if os.environ.get('VIRTUAL_ENV'):
+                python_dist = 'default'
+                virtenv     = os.environ['VIRTUAL_ENV']
+            elif os.environ.get('CONDA_PREFIX'):
+                python_dist = 'anaconda'
+                virtenv     = os.environ['CONDA_PREFIX']
+            else:
+                # we can't use local
+                self._log.error('virtenv_mode is local, no local env found')
+                raise ValueError('no local env found')
 
         # if cores_per_node is set (!= None), then we need to
         # allocation full nodes, and thus round up
@@ -1143,7 +1149,18 @@ class Default(PMGRLaunchingComponent):
 
         # set mandatory args
         bootstrap_args  = ""
-        bootstrap_args += " -d '%s'" % ':'.join(sdist_names)
+
+        # add dists to staging files, if needed:
+        # don't stage on `rp_version==installed` or `virtenv_mode==local`
+        if rp_version   == 'installed' or \
+           virtenv_mode == 'local'     :
+            sdist_names = list()
+            sdist_paths = list()
+        else:
+            sdist_names = [ru.sdist_name, rs.sdist_name, self._rp_sdist_name]
+            sdist_paths = [ru.sdist_path, rs.sdist_path, self._rp_sdist_path]
+            bootstrap_args += " -d '%s'" % ':'.join(sdist_names)
+
         bootstrap_args += " -p '%s'" % pid
         bootstrap_args += " -s '%s'" % sid
         bootstrap_args += " -m '%s'" % virtenv_mode
@@ -1237,30 +1254,34 @@ class Default(PMGRLaunchingComponent):
 
                 for sdist in sdist_paths:
                     base = os.path.basename(sdist)
-                    ret['ft'].append({'src': sdist,
-                                      'tgt': '%s/%s' % (session_sandbox, base),
-                                      'rem': False})
+                    ret['ft'].append({
+                        'src': sdist,
+                        'tgt': '%s/%s' % (session_sandbox, base),
+                        'rem': False
+                    })
 
                 # Copy the bootstrap shell script.
                 bootstrapper_path = os.path.abspath("%s/agent/%s"
                                   % (self._root_dir, BOOTSTRAPPER_0))
                 self._log.debug("use bootstrapper %s", bootstrapper_path)
 
-                ret['ft'].append({'src': bootstrapper_path,
-                                  'tgt': '%s/%s' % (session_sandbox, BOOTSTRAPPER_0),
-                                  'rem': False})
+                ret['ft'].append({
+                    'src': bootstrapper_path,
+                    'tgt': '%s/%s' % (session_sandbox, BOOTSTRAPPER_0),
+                    'rem': False
+                })
 
                 # Some machines cannot run pip due to outdated CA certs.
                 # For those, we also stage an updated certificate bundle
                 # TODO: use booleans all the way?
                 if stage_cacerts:
 
-                    cc_name = 'cacert.pem.gz'
-                    cc_path = os.path.abspath("%s/agent/%s" % (self._root_dir, cc_name))
-                    self._log.debug("use CAs %s", cc_path)
+                    certs = 'cacert.pem.gz'
+                    cpath = os.path.abspath("%s/agent/%s" % (self._root_dir, certs))
+                    self._log.debug("use CAs %s", cpath)
 
-                    ret['ft'].append({'src': cc_path,
-                                      'tgt': '%s/%s' % (session_sandbox, cc_name),
+                    ret['ft'].append({'src': cpath,
+                                      'tgt': '%s/%s' % (session_sandbox, certs),
                                       'rem': False})
 
                 self._sandboxes[resource] = True
@@ -1337,7 +1358,7 @@ class Default(PMGRLaunchingComponent):
 
             if stage_cacerts:
                 jd.file_transfer.extend([
-                    'site:%s/%s > %s' % (session_sandbox, cc_name, cc_name)
+                    'site:%s/%s > %s' % (session_sandbox, certs, certs)
                 ])
 
         self._log.debug("Bootstrap command line: %s %s", jd.executable, jd.arguments)
