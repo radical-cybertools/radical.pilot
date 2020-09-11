@@ -39,7 +39,7 @@ class Worker(rpu.Component):
         if rank is None: rank = os.environ.get('OMPI_COMM_WORLD_RANK')
 
         if rank is not None:
-           cfg['uid'] = '%s.%03d' % (cfg['uid'], int(rank))
+            cfg['uid'] = '%s.%03d' % (cfg['uid'], int(rank))
 
         print('=== 1')
 
