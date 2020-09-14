@@ -27,6 +27,7 @@ from parsl.providers import LocalProvider
 
 
 logger = logging.getLogger(__name__)
+report = ru.Reporter(name='radical.pilot')
 
 class RADICALExecutor(ParslExecutor, RepresentationMixin):
     """Executor designed for cluster-scale
@@ -51,14 +52,12 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
                                                            |                                       |     RP Unit/Units desc. --+->   
         ----------------------------------------------------------------------------------------------------------------------------------------------------
     """        
-    
-    logger = logging.getLogger(__name__)
+  
     @typeguard.typechecked
     def __init__(self,
                  label: str = 'RADICALExecutor',
                  resource: str = None,
                  login_method: str = None,            #Specify the connection protocol SSH/GISSH/local
-                 tasks = list(),
                  tasks_pre_exec: Optional[str] = None,      # Specify any requirements that this task needs to run
                  task_process_type: Optional[str] = None, # Specify the type of the process MPI/Non-MPI/rp.Func
                  cores_per_task = 1,
@@ -66,7 +65,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
                  max_tasks: Union[int, float] = float('inf'),
                  worker_logdir_root: Optional[str] = "."):
 
-        logger.debug("Initializing RADICALExecutor")
+        report.header("Initializing RADICALExecutor")
         self.label = label
         self.session = rp.Session(uid=ru.generate_id('parsl.radical_executor.session.%(item_counter)04d',
                                   mode=ru.ID_CUSTOM))
@@ -74,7 +73,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         self.unit_manager  = rp.UnitManager(session=self.session)
         self.resource = resource
         self.login_method = login_method
-        self.tasks = tasks
+        self.tasks = list()
         self.tasks_pre_exec = tasks_pre_exec
         self.task_process_type = task_process_type
         self.cores_per_task = cores_per_task
@@ -90,14 +89,14 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
     def start(self):
         """Create the Pilot process and pass it.
         """
-        logger.debug("Creating Pilot.....")
+        report.header("Creating Pilot.....")
         pmgr = self.pilot_manager
 
         if self.resource is None : logger.error("specify remoute or local resource")
 
 
         else : pd_init = {'resource'      : self.resource,
-                          'runtime'       : 30,  # pilot runtime (min)
+                          'runtime'       : 10,  # pilot runtime (min)
                           'exit_on_error' : True,
                           'project'       : None,
                           'queue'         : None,
@@ -129,32 +128,39 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
 
         pilot = self.start()
         umgr   = self.unit_manager
-        logger.info('submit pilots')
+        report.header('submit pilots')
 
         self._task_counter += 1
         task_id = self._task_counter
 
-        logger.info('Submitting ParSL %d tasks' % self.max_tasks)
+        report.header('Submitting ParSL %d tasks' % self.max_tasks)
 
         # Register the ComputePilot in a UnitManager object.
         umgr.add_pilots(pilot)
 
-        logger.info('Task name %s ' %(str(func))) # THIS NEED TO BE DESERILIZED SOMEHOW
-        logger.info('Task exe  %s ' %(str(args))) #Function arguments
-        logger.info('Task arguments  %s ' %(str(kwargs))) # NO CLUE
+        report.header('Task name %s ' %((func)))            # THIS NEED TO BE DESERILIZED SOMEHOW
+        report.header('Task exe  %s ' %(str(args)))         # Function arguments
+        report.header('Task arguments  %s ' %(str(kwargs))) #  {'outputs': ['/home/aymen/stress_ng_0'], 
+                                                            #  'stdout': '/home/aymen/stress_out/stress_ng.stdout',
+                                                            #  'stderr': '/home/aymen/stress_out/stress_ng.stderr'}
+        report.progress_tgt(self.max_tasks, label='create')
 
 
         for i in range(0, self.max_tasks):
             
             task = rp.ComputeUnitDescription()
-            task.name = str(func)
+            task.name = func
             task.executable = args
-            task.arguments  =  kwargs
+            task.arguments  =  []
+            task.stdout = kwargs['stdout']
+            task.stderr = kwargs['stderr']
             task.pre_exec   = self.tasks_pre_exec
             task.cpu_processes = self.cores_per_task
-            task.cpu_process_type = 'rp.'+ str(self.task_process_type)
+            task.cpu_process_type = self.task_process_type
             self.tasks.append(task)
+            report.progress()
         
+        report.progress_done()
         umgr.submit_units(self.tasks)
         umgr.wait_units()
 
@@ -164,7 +170,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         self.unit_manager.close()
         self.pilot_manager.close()
         self.session.close(download=True)
-        logger.info("Attempting RADICALExecutor shutdown")
+        report.header("Attempting RADICALExecutor shutdown")
 
         return True
 
