@@ -1136,27 +1136,11 @@ class Default(PMGRLaunchingComponent):
                 for sdist in sdist_paths:
                     base = os.path.basename(sdist)
                     tgt  = '%s/%s' % (tgt_path, base)
-                    self._log.debug('=== %s', tgt)
-                    ret['fts'].append({'src': sdist,
-                                       'tgt': tgt,
-                                       'rem': False})
-                    ret['ft'].append({
+                    ret['fts'].append({
                         'src': sdist,
                         'tgt': '%s/%s' % (session_sandbox, base),
                         'rem': False
                     })
-
-                # Copy the bootstrap shell script.
-                bootstrapper_path = os.path.abspath("%s/agent/%s"
-                                  % (self._root_dir, BOOTSTRAPPER_0))
-                self._log.debug("use bootstrapper %s", bootstrapper_path)
-
-                tgt = '%s/%s' % (tgt_path, BOOTSTRAPPER_0)
-                ret['ft'].append({
-                    'src': bootstrapper_path,
-                    'tgt': tgt,
-                    'rem': False
-                })
 
                 # Some machines cannot run pip due to outdated CA certs.
                 # For those, we also stage an updated certificate bundle
@@ -1167,8 +1151,8 @@ class Default(PMGRLaunchingComponent):
                     cpath = os.path.abspath("%s/agent/%s" % (self._root_dir, certs))
                     self._log.debug("use CAs %s", cpath)
 
-                    tgt = '%s/%s' % (tgt_path, cc_name)
-                    ret['ft'].append({'src': cc_path,
+                    tgt = '%s/%s' % (tgt_path, certs)
+                    ret['fts'].append({'src': cpath,
                                        'tgt': tgt,
                                        'rem': False})
 
