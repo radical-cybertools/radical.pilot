@@ -13,7 +13,7 @@ from parsl.executors import HighThroughputExecutor
 from parsl.executors.radical_executor.radical_executor  import RADICALExecutor
 
 parsl.set_stream_logger()
-os.environ['RADICAL_PILOT_DBURL'] = 'mongodb://aymen:7SrUNXq3X64nNFRk@129.114.17.185:27017/radical3'
+os.environ['RADICAL_PILOT_DBURL'] = ''
 config = Config(
          executors=[RADICALExecutor(
                         label = 'RADICALExecutor',
