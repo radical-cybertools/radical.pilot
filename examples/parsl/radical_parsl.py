@@ -1,10 +1,9 @@
+import os 
 import parsl
 import radical.pilot as rp
-import os 
-from parsl.app.app import python_app, bash_app
 from parsl import File
-
 from parsl.config import Config
+from parsl.app.app import python_app, bash_app
 from radical.pilot.agent.executing.parsl_rp import RADICALExecutor as RADICALExecutor
 
 parsl.set_stream_logger()
