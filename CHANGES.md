@@ -4,6 +4,26 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
+1.5.4 Release                                                         2020-09-14
+--------------------------------------------------------------------------------
+
+  - Arbitrary udurations for consumed resources 
+  - Fix unit tests 
+  - Fix python stack on Summit 
+  - add module test 
+  - added PRTE2 for PRRTEv2 
+  - added attribute for SAGA job description using env variable (SMT) 
+  - added config for PRRTE launch method at Frontera 
+  - added test for PRTE2 
+  - added test for rcfg parameter SystemArchitecture 
+  - allow virtenv_mode=local to reuse client ve 
+  - bulk communication for task overlay 
+  - fixed db close/disconnect method 
+  - fixed tests and pylint 
+  - PRTE fixes / updates
+  - remove "debug" rp_version remnant 
+
+
 1.5.2 Hotfix Release                                                  2020-08-11
 --------------------------------------------------------------------------------
 
