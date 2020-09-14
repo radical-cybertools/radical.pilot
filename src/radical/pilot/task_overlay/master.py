@@ -305,7 +305,7 @@ class Master(rpu.Component):
         # be updated once a response for the respective request UID arrives.
         with self._lock:
             for req in reqs:
-                reqest = Request(req=req)
+                request = Request(req=req)
                 self._requests[request.uid] = request
                 dicts.append(request.as_dict())
                 objs.append(request)

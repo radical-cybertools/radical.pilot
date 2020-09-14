@@ -136,7 +136,7 @@ if __name__ == '__main__':
     # those workers and execute them.  Insert one smaller worker (see above)
     # NOTE: this assumes a certain worker size / layout
     master.submit(descr=descr, count=n_workers, cores=cpn,     gpus=gpn)
-    master.submit(descr=descr, count=1,         cores=cpn - 1, gpus=gpn)
+  # master.submit(descr=descr, count=1,         cores=cpn - 1, gpus=gpn)
 
     # wait until `m` of those workers are up
     # This is optional, work requests can be submitted before and will wait in
