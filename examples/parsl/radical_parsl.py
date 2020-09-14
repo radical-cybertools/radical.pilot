@@ -5,15 +5,9 @@ from parsl.app.app import python_app, bash_app
 from parsl import File
 
 from parsl.config import Config
-from parsl.channels import SSHChannel
-from parsl.launchers import SrunLauncher
-from parsl.providers import SlurmProvider
-from parsl.addresses import address_by_query
-from parsl.executors import HighThroughputExecutor
-from parsl.executors.radical_executor.radical_executor  import RADICALExecutor
+from radical.pilot.agent.executing.parsl_rp import RADICALExecutor as RADICALExecutor
 
 parsl.set_stream_logger()
-os.environ['RADICAL_PILOT_DBURL'] = ''
 config = Config(
          executors=[RADICALExecutor(
                         label = 'RADICALExecutor',
@@ -37,12 +31,6 @@ def timer():
     x = time.time()
     return x
 
-"""
-@python_app
-def add(a: int, b: int):
-    return a + b
-
-"""
 r = timer()
 
 print(r)
