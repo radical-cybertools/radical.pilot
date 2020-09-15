@@ -1,17 +1,18 @@
 """RADICAL-Executor builds on the RADICAL-Pilot/ParSL
 """
-
-from concurrent.futures import Future
+import os
+import parsl
+import queue
+import pickle
+import logging
+import typeguard
+import threading
 
 import radical.pilot as rp
 import radical.utils as ru
 
-import typeguard
-import logging
-import threading
-import queue
-import pickle
-import os
+from concurrent.futures import Future
+
 from multiprocessing import Process, Queue
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -27,6 +28,7 @@ from parsl.providers import LocalProvider
 
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 report = ru.Reporter(name='radical.pilot')
 
 class RADICALExecutor(ParslExecutor, RepresentationMixin):
@@ -65,7 +67,8 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
                  max_tasks: Union[int, float] = float('inf'),
                  worker_logdir_root: Optional[str] = "."):
 
-        report.header("Initializing RADICALExecutor")
+        report.title('RP version %s :' % rp.version)
+        report.header("Initializing RADICALExecutor with ParSL version %s :" % parsl.__version__)
         self.label = label
         self.session = rp.Session(uid=ru.generate_id('parsl.radical_executor.session.%(item_counter)04d',
                                   mode=ru.ID_CUSTOM))
@@ -89,7 +92,6 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
     def start(self):
         """Create the Pilot process and pass it.
         """
-        report.header("Creating Pilot.....")
         pmgr = self.pilot_manager
 
         if self.resource is None : logger.error("specify remoute or local resource")
@@ -121,49 +123,68 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
             - **kwargs (dict) : A dictionary of arbitrary keyword args for func.
         """
 
-        #if self._executor_bad_state.is_set():
-        #   raise self._executor_exception
+        logger.debug("Got a task from the parsl.dataflow.dflow")
 
-        # here call the start function
-
-        pilot = self.start()
-        umgr   = self.unit_manager
-        report.header('submit pilots')
+        logger.debug('Task name %s ' %((func)))            # THIS NEED TO BE DESERILIZED SOMEHOW
+        logger.debug('Task exe  %s ' %(str(args)))         # Function arguments
+        logger.debug('Task arguments  %s ' %(str(kwargs))) #  {'outputs': ['/home/aymen/stress_ng_0'], 
+                                                            #  'stdout': '/home/aymen/stress_out/stress_ng.stdout',
+                                                            #  'stderr': '/home/aymen/stress_out/stress_ng.stderr'}
 
         self._task_counter += 1
         task_id = self._task_counter
+        fucture_tasks = {}
+        fucture_tasks[task_id] = Future()
+        try:
 
-        report.header('Submitting ParSL %d tasks' % self.max_tasks)
+            pilot = self.start()
+            umgr   = self.unit_manager
 
-        # Register the ComputePilot in a UnitManager object.
-        umgr.add_pilots(pilot)
+            report.header('Submitting ParSL tasks %d' % self.max_tasks)
 
-        report.header('Task name %s ' %((func)))            # THIS NEED TO BE DESERILIZED SOMEHOW
-        report.header('Task exe  %s ' %(str(args)))         # Function arguments
-        report.header('Task arguments  %s ' %(str(kwargs))) #  {'outputs': ['/home/aymen/stress_ng_0'], 
-                                                            #  'stdout': '/home/aymen/stress_out/stress_ng.stdout',
-                                                            #  'stderr': '/home/aymen/stress_out/stress_ng.stderr'}
-        report.progress_tgt(self.max_tasks, label='create')
+            # Register the ComputePilot in a UnitManager object.
+            umgr.add_pilots(pilot)
 
-
-        for i in range(0, self.max_tasks):
+            report.progress_tgt(self.max_tasks, label='create')
+    
+    
+            for i in range(0, self.max_tasks):
+                
+                task = rp.ComputeUnitDescription()
+                task.name = str(task_id)
+                task.executable = args
+                task.arguments  =  []
+                task.pre_exec   = self.tasks_pre_exec
+                task.cpu_processes = self.cores_per_task
+                task.cpu_process_type = self.task_process_type
+                self.tasks.append(task)
+                report.progress()
             
-            task = rp.ComputeUnitDescription()
-            task.name = func
-            task.executable = args
-            task.arguments  =  []
-            task.stdout = kwargs['stdout']
-            task.stderr = kwargs['stderr']
-            task.pre_exec   = self.tasks_pre_exec
-            task.cpu_processes = self.cores_per_task
-            task.cpu_process_type = self.task_process_type
-            self.tasks.append(task)
-            report.progress()
+            report.progress_done()
+            umgr.submit_units(self.tasks)
+            umgr.wait_units()
         
-        report.progress_done()
-        umgr.submit_units(self.tasks)
-        umgr.wait_units()
+        except Exception as e:
+            # Something unexpected happened in the pilot code above
+            report.error('caught Exception: %s\n' % e)
+            ru.print_exception_trace()
+            raise
 
+        except (KeyboardInterrupt, SystemExit):
+             # the callback called sys.exit(), and we can here catch the
+             # corresponding KeyboardInterrupt exception for shutdown.  We also catch
+             # SystemExit (which gets raised if the main threads exits for some other
+             # reason).
+             ru.print_exception_trace()
+             report.warn('exit requested\n')
+
+        finally:
+            # always clean up the session, no matter if we caught an exception or
+            # not.  This will kill all remaining pilots.
+            report.header('finalize')
+
+        return fucture_tasks[task_id]
+    
 
     def shutdown(self, hub=True, targets='all', block=False):
         """Shutdown the executor, including all RADICAL-Pilot components."""
