@@ -12,6 +12,7 @@ NAME                   = 'name'
 EXECUTABLE             = 'executable'
 ARGUMENTS              = 'arguments'
 ENVIRONMENT            = 'environment'
+NAMED_ENV              = 'named_env'
 SANDBOX                = 'sandbox'
 
 CORES                  = 'cores'  # deprecated
@@ -150,6 +151,15 @@ class ComputeUnitDescription(ru.Description):
        (`dict`).
 
        default: `{}`
+
+
+    .. data:: named_env
+
+       A named environment as prepared by the pilot.  The task will fail if that
+       environment does not exist.
+       (`str`).
+
+       default: `None`
 
 
     .. data:: sandbox
