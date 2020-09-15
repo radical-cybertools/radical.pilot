@@ -503,6 +503,11 @@ class Agent_0(rpu.Worker):
             if cmd == 'heartbeat' and arg['pmgr'] == self._pmgr:
                 self._hb.beat(uid=self._pmgr)
 
+            elif cmd == 'prepare_env':
+                env_spec = arg
+                for env_id in env_spec:
+                    self._prepare_env(env_id, env_spec[env_id])
+
             elif cmd == 'cancel_pilot':
                 self._log.info('cancel pilot cmd')
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
@@ -593,6 +598,21 @@ class Agent_0(rpu.Worker):
         self.advance(unit_list, publish=False, push=True)
 
         return True
+
+    # --------------------------------------------------------------------------
+    #
+    def _prepare_env(eid, env_spec):
+
+        etype = env_spec['type']
+        evers = env_spec['version']
+        emods = env_spec['setup']
+
+        assert(etype == 'virtualenv')
+        assert(evers)
+
+        rp_cse = 'radical-pilot-create-static-ve'
+        out, err, ret = ru.sh_callout('%s -p ./%s -v %s -m "%s"' 
+                                     % (rp_cse, eid, evers, ','.join(emods))) 
 
 
 # ------------------------------------------------------------------------------

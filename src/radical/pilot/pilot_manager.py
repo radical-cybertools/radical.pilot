@@ -398,6 +398,13 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _pilot_prepare_env(self, pid, env_spec):
+
+        self._session._dbs.pilot_command('prep_env', env_spec, pid)
+
+
+    # --------------------------------------------------------------------------
+    #
     def _pilot_staging_input(self, pilot, directives):
         '''
         Run some staging directives for a pilot.  We pass this request on to
@@ -592,6 +599,18 @@ class PilotManager(rpu.Component):
 
         # insert pilots into the database, as a bulk.
         self._session._dbs.insert_pilots(pilot_docs)
+
+        # immediately send first heartbeat and any other commands which are
+        # included in the pilot description
+        for pilot in pilots:
+            pid = pilot.uid
+            uid = self._uid
+
+            self._session._dbs.pilot_command('heartbeat', {'pmgr': uid}, pid)
+
+            if pilot.description.prepare_env:
+                self._session._dbs.pilot_command('prep_env', 
+                                         pilot._descr.prepare_env, pid)
 
         # Only after the insert can we hand the pilots over to the next
         # components (ie. advance state).

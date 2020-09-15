@@ -564,6 +564,23 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
+    def prepare_env(self, env_spec):
+        '''
+        request the preparation of a task or worker environment on the target
+        resource.  This call will return immediately, and the request will be
+        enacted asynchronously.  Any task or worker depending on the named
+        environment will be delayed until the env preparation completed, or will
+        fail if the env preparation failed.
+
+        Format: see `ComputePilotDescription`
+        '''
+
+        # send the prep_env request to the pilot
+        self._pmgr.prep_env(self.uid)
+
+
+    # --------------------------------------------------------------------------
+    #
     def stage_in(self, directives):
         '''
         Stages the content of the staging directive into the pilot's
