@@ -1,12 +1,14 @@
 """RADICAL-Executor builds on the RADICAL-Pilot/ParSL
 """
 import os
+import re
 import parsl
 import queue
 import pickle
 import logging
 import typeguard
 import threading
+import inspect
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -16,8 +18,9 @@ from concurrent.futures import Future
 from multiprocessing import Process, Queue
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from ipyparallel.serialize import unpack_apply_message  # ,unpack_apply_message
-from ipyparallel.serialize import deserialize_object  # ,serialize_object
+from ipyparallel.serialize import unpack_apply_message  # pack_apply_message
+from ipyparallel.serialize import pack_apply_message   # unpack_apply_message
+from ipyparallel.serialize import deserialize_object  # deserialize_object
 
 from parsl.app.errors import RemoteExceptionWrapper
 from parsl.executors.errors import *
@@ -90,10 +93,9 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
 
 
     def start(self):
+       
         """Create the Pilot process and pass it.
         """
-        pmgr = self.pilot_manager
-
         if self.resource is None : logger.error("specify remoute or local resource")
 
 
@@ -107,12 +109,47 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
                           'gpus'          : 0,}
 
         pdesc = rp.ComputePilotDescription(pd_init)
-        pilot = pmgr.submit_pilots(pdesc)
+        
+        return pdesc
 
-        return pilot
+
+    def task_translate(self, func, args, kwargs):
+
+        task_type = inspect.getsource(func).split('\n')[0]
+        
+        if task_type == '@bash_app':
+            source_code = inspect.getsource(func).split('\n')[2].split('return')[1]
+            task_exe = re.findall(r"'(.*?)'", source_code, re.DOTALL)[0]
+            cu = {"source_code": task_exe,
+                  "name"  : func.__name__,
+                  "args"  : None,
+                  "kwargs": kwargs}
+            report.header('Bash task name %s ' %(cu['name'])) 
+            report.header('Bash task exe %s ' %(task_exe))           
+            report.header('Bash task kwargs  %s ' %(cu['args']))
+
+        elif task_type == '@python_app':
+
+            task_exe = inspect.getsource(func).split('\n')[2]
+            cu = {"source_code": task_exe,
+                  "name"  : func.__name__,
+                  "args"  : None,
+                  "kwargs": kwargs}
+            report.header('python task name %s ' %(cu['name'])) 
+            report.header('Python task exe %s ' %(task_exe))           
+            report.header('python task kwargs  %s ' %(cu['args']))
 
 
-    def submit(self, func, *args, **kwargs):    
+        else:
+            pass
+    
+        return cu
+
+        
+    def submit(self, func, *args, **kwargs):
+        report.header('METHOD SUBMIT GOT CALLED')   
+        
+         
         """Submits task/tasks to RADICAL unit_manager.
 
         Args:
@@ -123,43 +160,39 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
             - **kwargs (dict) : A dictionary of arbitrary keyword args for func.
         """
 
-        logger.debug("Got a task from the parsl.dataflow.dflow")
-
-        logger.debug('Task name %s ' %((func)))            # THIS NEED TO BE DESERILIZED SOMEHOW
-        logger.debug('Task exe  %s ' %(str(args)))         # Function arguments
-        logger.debug('Task arguments  %s ' %(str(kwargs))) #  {'outputs': ['/home/aymen/stress_ng_0'], 
-                                                            #  'stdout': '/home/aymen/stress_out/stress_ng.stdout',
-                                                            #  'stderr': '/home/aymen/stress_out/stress_ng.stderr'}
+        logger.debug("Got a task from the parsl.dataflow.dflow")    
 
         self._task_counter += 1
         task_id = self._task_counter
         fucture_tasks = {}
         fucture_tasks[task_id] = Future()
         try:
-
-            pilot = self.start()
+            pmgr = self.pilot_manager
             umgr   = self.unit_manager
+            pdesc = self.start()
+            pilot = pmgr.submit_pilots(pdesc)
 
-            report.header('Submitting ParSL tasks %d' % self.max_tasks)
+            report.header('Submitting ParSL tasks %d \n' % self.max_tasks)
 
             # Register the ComputePilot in a UnitManager object.
             umgr.add_pilots(pilot)
 
             report.progress_tgt(self.max_tasks, label='create')
-    
+
+            comp_unit = self.task_translate(func, args, kwargs)
     
             for i in range(0, self.max_tasks):
                 
                 task = rp.ComputeUnitDescription()
                 task.name = str(task_id)
-                task.executable = args
-                task.arguments  =  []
+                task.executable = comp_unit['source_code']
+                task.arguments  = comp_unit['args']
                 task.pre_exec   = self.tasks_pre_exec
                 task.cpu_processes = self.cores_per_task
                 task.cpu_process_type = self.task_process_type
                 self.tasks.append(task)
                 report.progress()
-            
+
             report.progress_done()
             umgr.submit_units(self.tasks)
             umgr.wait_units()
@@ -187,10 +220,12 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
     
 
     def shutdown(self, hub=True, targets='all', block=False):
+        report.header('METHOD SHUTDOWN GOT CALLED')
         """Shutdown the executor, including all RADICAL-Pilot components."""
         self.unit_manager.close()
         self.pilot_manager.close()
         self.session.close(download=True)
+        #parsl.dfk().cleanup()
         report.header("Attempting RADICALExecutor shutdown")
 
         return True
@@ -204,3 +239,4 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
 
     def scale_out(self, blocks: int):
         raise NotImplementedError
+

@@ -18,16 +18,27 @@ config = Config(
                         managed = True,
                         max_tasks = 1)
                         ],
-strategy= None,
-usage_tracking=True)
-
+#strategy= None,
+#usage_tracking=True)
+)
 parsl.load(config)
 
-
 @bash_app
-def generate(outputs=[], 
-             stdout= '/home/aymen/stress.out',stderr='/home/aymen/stress.err'):
+def gen(outputs=[], stdout= '/home/aymen/rand.out',stderr='/home/aymen/rand.err'):
+    return 'echo $(( RANDOM % (10 - 5 + 1 ) + 5 ))'
 
-    return "echo $(( RANDOM % (10 - 5 + 1 ) + 5 )) &> {o}".format(o=outputs[0])
+zz = gen()
+print (zz)
 
-parsl.dfk().cleanup()
+'''
+@python_app
+def add(a, b, outputs=[], 
+              stdout= '/home/aymen/stress.out',
+              stderr='/home/aymen/stress.err'):
+    x = a+b
+    return x 
+
+zz = add(2, 3)
+print (zz)
+'''
+
