@@ -576,7 +576,7 @@ class ComputePilot(object):
         '''
 
         # send the prep_env request to the pilot
-        self._pmgr.prep_env(self.uid)
+        self._pmgr._pilot_prepare_env(self.uid, env_spec)
 
 
     # --------------------------------------------------------------------------

@@ -186,6 +186,29 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _mpi(self, data):
+        '''
+        launch an rp.MPI_LAUNCH_METHOD for the task
+        '''
+
+        try:
+            cmd = rp.agent.launch_method(data, 
+                    executable=self.exe, args=data['func'])
+            out = rp.sh_callout(cmd)
+            err = None
+            ret = 0
+
+        except Exception as e:
+            self._log.exception('_mpi failed: %s' % (data))
+            out = None
+            err = 'mpi failed: %s' % e
+            ret = 1
+
+        return out, err, ret
+
+
+    # --------------------------------------------------------------------------
+    #
     def _eval(self, data):
         '''
         We expect data to have a single entry: 'code', containing the Python

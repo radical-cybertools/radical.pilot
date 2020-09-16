@@ -210,13 +210,12 @@ class DBSession(object):
             doc['type']    = 'pilot'
             doc['control'] = 'pmgr'
             doc['states']  = [doc['state']]
-            doc['cmd']     = list()
+            doc['cmds']    = list()
+
             bulk.insert(doc)
 
         try:
-            res = bulk.execute()
-            self._log.debug('bulk pilot insert result: %s', res)
-            # FIXME: evaluate res
+            bulk.execute()
 
         except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)
@@ -244,15 +243,17 @@ class DBSession(object):
             cmd_spec = {'cmd' : cmd,
                         'arg' : arg}
 
+            self._log.debug('insert cmd: %s %s %s', pids, cmd, arg)
+
             # FIXME: evaluate retval
             if pids:
                 self._c.update({'type'  : 'pilot',
                                 'uid'   : {'$in' : pids}},
-                               {'$push' : {'cmd' : cmd_spec}},
+                               {'$push' : {'cmds': cmd_spec}},
                                multi=True)
             else:
                 self._c.update({'type'  : 'pilot'},
-                               {'$push' : {'cmd' : cmd_spec}},
+                               {'$push' : {'cmds': cmd_spec}},
                                multi=True)
 
         except pymongo.errors.OperationFailure as e:

@@ -485,27 +485,32 @@ class Agent_0(rpu.Worker):
         #        should then be communicated over the command pubsub
         # FIXME: commands go to pmgr, umgr, session docs
         # FIXME: check if pull/wipe are atomic
+        # FIXME: long runnign commands can time out on hb
         retdoc = self._dbs._c.find_and_modify(
-                    query ={'uid'  : self._pid},
-                    update={'$set' : {'cmd': []}},  # Wipe content of array
-                    fields=['cmd'])
+                    query ={'uid' : self._pid},
+                    fields=['cmds'],                    # get  new commands
+                    update={'$set': {'cmds': list()}})  # wipe old commands
 
         if not retdoc:
             return True
 
-        for spec in retdoc.get('cmd', []):
+        for spec in retdoc.get('cmds', []):
 
             cmd = spec['cmd']
             arg = spec['arg']
 
-            self._prof.prof('cmd', msg="%s : %s" % (cmd, arg), uid=self._pid)
+            self._log.debug('pilot command: %s: %s', cmd, arg)
+            self._prof.prof('cmd', msg="%s : %s" %  (cmd, arg), uid=self._pid)
 
             if cmd == 'heartbeat' and arg['pmgr'] == self._pmgr:
                 self._hb.beat(uid=self._pmgr)
 
-            elif cmd == 'prepare_env':
+            elif cmd == 'prep_env':
                 env_spec = arg
+
                 for env_id in env_spec:
+                    # ensure we have a hb period
+                    self._hb.beat(uid=self._pmgr)
                     self._prepare_env(env_id, env_spec[env_id])
 
             elif cmd == 'cancel_pilot':
@@ -599,9 +604,10 @@ class Agent_0(rpu.Worker):
 
         return True
 
+
     # --------------------------------------------------------------------------
     #
-    def _prepare_env(eid, env_spec):
+    def _prepare_env(self, eid, env_spec):
 
         etype = env_spec['type']
         evers = env_spec['version']
@@ -611,8 +617,10 @@ class Agent_0(rpu.Worker):
         assert(evers)
 
         rp_cse = 'radical-pilot-create-static-ve'
-        out, err, ret = ru.sh_callout('%s -p ./%s -v %s -m "%s"' 
-                                     % (rp_cse, eid, evers, ','.join(emods))) 
+        out, err, ret = ru.sh_callout('%s -p ./%s -v %s -m "%s"'
+                                     % (rp_cse, eid, evers, ','.join(emods)))
+
+        assert(not ret), [out, err]
 
 
 # ------------------------------------------------------------------------------

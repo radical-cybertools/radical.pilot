@@ -213,7 +213,7 @@ class Update(rpu.Worker):
 
                 for key,val in thing.items():
                     # never set _id, states (to avoid index clash, doubled ops)
-                    if key not in ['_id', 'states']:
+                    if key not in ['_id', 'states', 'cmds']:
                         update_dict['$set'][key] = val
 
                 # we set state, put (more importantly) we push the state onto

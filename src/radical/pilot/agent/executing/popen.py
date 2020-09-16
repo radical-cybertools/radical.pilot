@@ -140,12 +140,12 @@ class Popen(AgentExecutingComponent) :
             # ensure that the named env exists
             env = descr.get('named_env')
             if env:
-                if not os.path.is_dir('%s/%s' % (self._pwd, env)):
+                if not os.path.isdir('%s/%s' % (self._pwd, env)):
                     raise ValueError('invalid named env %s for task %s' 
-                                    % env, cu['uid'])
+                                    % (env, cu['uid']))
                 pre = ru.as_list(descr.get('pre_exec'))
-                pre.push_front('. %s/%s/bin/activate' % (self._pwd, env))
-                pre.push_front('. %s/deactivate'      % (self._pwd))
+                pre.insert(0, '. %s/%s/bin/activate' % (self._pwd, env))
+                pre.insert(0, '. %s/deactivate'      % (self._pwd))
                 descr['pre_exec'] = pre
 
 
