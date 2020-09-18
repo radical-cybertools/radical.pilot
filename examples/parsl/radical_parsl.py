@@ -18,8 +18,8 @@ config = Config(
                         managed = True,
                         max_tasks = 1)
                         ],
-#strategy= None,
-#usage_tracking=True)
+strategy= None,
+usage_tracking=True)
 )
 parsl.load(config)
 
