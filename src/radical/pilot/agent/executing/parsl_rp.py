@@ -73,8 +73,8 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         report.title('RP version %s :' % rp.version)
         report.header("Initializing RADICALExecutor with ParSL version %s :" % parsl.__version__)
         self.label = label
-        self.session = rp.Session(uid=ru.generate_id('parsl.radical_executor.session.%(item_counter)04d',
-                                  mode=ru.ID_CUSTOM))
+        self.session = rp.Session(uid=ru.generate_id('parsl.radical_executor.session',
+                                  mode=ru.ID_PRIVATE))
         self.pilot_manager = rp.PilotManager(session=self.session)
         self.unit_manager  = rp.UnitManager(session=self.session)
         self.resource = resource
