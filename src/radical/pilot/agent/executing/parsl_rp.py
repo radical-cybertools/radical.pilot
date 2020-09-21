@@ -159,21 +159,15 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         Kwargs:
             - **kwargs (dict) : A dictionary of arbitrary keyword args for func.
         """
-
         logger.debug("Got a task from the parsl.dataflow.dflow")
 
         self._task_counter += 1
         task_id = self._task_counter
         future_tasks = {}
         future_tasks[task_id] = Future()
-        
         comp_unit = self.task_translate(func, args, kwargs)
 
         try:
-            
-            #report.header('Submitting ParSL tasks %d \n' % self.max_tasks)
-
-            # Register the ComputePilot in a UnitManager object.
             
             report.progress_tgt(self._task_counter, label='create')
 
@@ -201,11 +195,6 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
              # reason).
              ru.print_exception_trace()
              report.warn('exit requested\n')
-
-        finally:
-            # always clean up the session, no matter if we caught an exception or
-            # not.  This will kill all remaining pilots.
-            report.header('finalize')
 
 
         return future_tasks[task_id]
