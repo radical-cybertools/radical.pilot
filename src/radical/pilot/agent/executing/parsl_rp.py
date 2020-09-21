@@ -34,6 +34,11 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 report = ru.Reporter(name='radical.pilot')
 
+session = rp.Session(uid=ru.generate_id('parsl.radical_executor.session',
+                     mode=ru.ID_PRIVATE))
+pmgr    = rp.PilotManager(session=session)
+umgr    = rp.UnitManager(session=session)
+
 class RADICALExecutor(ParslExecutor, RepresentationMixin):
     """Executor designed for cluster-scale
 
@@ -73,10 +78,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         report.title('RP version %s :' % rp.version)
         report.header("Initializing RADICALExecutor with ParSL version %s :" % parsl.__version__)
         self.label = label
-        self.session = rp.Session(uid=ru.generate_id('parsl.radical_executor.session',
-                                  mode=ru.ID_PRIVATE))
-        self.pilot_manager = rp.PilotManager(session=self.session)
-        self.unit_manager  = rp.UnitManager(session=self.session)
+
         self.resource = resource
         self.login_method = login_method
         self.tasks = list()
@@ -93,7 +95,6 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
 
 
     def start(self):
-       
         """Create the Pilot process and pass it.
         """
         if self.resource is None : logger.error("specify remoute or local resource")
@@ -109,8 +110,10 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
                           'gpus'          : 0,}
 
         pdesc = rp.ComputePilotDescription(pd_init)
-        
-        return pdesc
+        pilot = pmgr.submit_pilots(pdesc)
+        umgr.add_pilots(pilot)
+
+        return True
 
 
     def task_translate(self, func, args, kwargs):
@@ -124,9 +127,9 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
                   "name"  : func.__name__,
                   "args"  : None,
                   "kwargs": kwargs}
-            report.header('Bash task name %s ' %(cu['name'])) 
-            report.header('Bash task exe %s ' %(task_exe))           
-            report.header('Bash task kwargs  %s ' %(cu['args']))
+            #report.header('Bash task name %s ' %(cu['name'])) 
+            #report.header('Bash task exe %s ' %(task_exe))           
+            #report.header('Bash task kwargs  %s ' %(cu['args']))
 
         elif task_type == '@python_app':
 
@@ -135,9 +138,9 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
                   "name"  : func.__name__,
                   "args"  : None,
                   "kwargs": kwargs}
-            report.header('python task name %s ' %(cu['name'])) 
-            report.header('Python task exe %s ' %(task_exe))           
-            report.header('python task kwargs  %s ' %(cu['args']))
+            #report.header('python task name %s ' %(cu['name'])) 
+            #report.header('Python task exe %s ' %(task_exe))           
+            #report.header('python task kwargs  %s ' %(cu['args']))
 
 
         else:
@@ -147,9 +150,6 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
 
         
     def submit(self, func, *args, **kwargs):
-        report.header('METHOD SUBMIT GOT CALLED')   
-        
-         
         """Submits task/tasks to RADICAL unit_manager.
 
         Args:
@@ -160,42 +160,33 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
             - **kwargs (dict) : A dictionary of arbitrary keyword args for func.
         """
 
-        logger.debug("Got a task from the parsl.dataflow.dflow")    
+        logger.debug("Got a task from the parsl.dataflow.dflow")
 
         self._task_counter += 1
         task_id = self._task_counter
-        fucture_tasks = {}
-        fucture_tasks[task_id] = Future()
-        try:
-            pmgr = self.pilot_manager
-            umgr   = self.unit_manager
-            pdesc = self.start()
-            pilot = pmgr.submit_pilots(pdesc)
+        future_tasks = {}
+        future_tasks[task_id] = Future()
+        
+        comp_unit = self.task_translate(func, args, kwargs)
 
-            report.header('Submitting ParSL tasks %d \n' % self.max_tasks)
+        try:
+            
+            #report.header('Submitting ParSL tasks %d \n' % self.max_tasks)
 
             # Register the ComputePilot in a UnitManager object.
-            umgr.add_pilots(pilot)
+            
+            report.progress_tgt(self._task_counter, label='create')
 
-            report.progress_tgt(self.max_tasks, label='create')
-
-            comp_unit = self.task_translate(func, args, kwargs)
-    
-            for i in range(0, self.max_tasks):
-                
-                task = rp.ComputeUnitDescription()
-                task.name = str(task_id)
-                task.executable = comp_unit['source_code']
-                task.arguments  = comp_unit['args']
-                task.pre_exec   = self.tasks_pre_exec
-                task.cpu_processes = self.cores_per_task
-                task.cpu_process_type = self.task_process_type
-                self.tasks.append(task)
-                report.progress()
-
-            report.progress_done()
-            umgr.submit_units(self.tasks)
-            umgr.wait_units()
+            task = rp.ComputeUnitDescription()
+            task.name = str(task_id)
+            task.executable = comp_unit['source_code']
+            task.arguments  = comp_unit['args']
+            task.pre_exec   = self.tasks_pre_exec
+            task.cpu_processes = self.cores_per_task
+            task.cpu_process_type = self.task_process_type
+            report.progress()
+            umgr.submit_units(task)
+            
         
         except Exception as e:
             # Something unexpected happened in the pilot code above
@@ -216,16 +207,17 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
             # not.  This will kill all remaining pilots.
             report.header('finalize')
 
-        return fucture_tasks[task_id]
+
+        return future_tasks[task_id]
     
 
     def shutdown(self, hub=True, targets='all', block=False):
-        report.header('METHOD SHUTDOWN GOT CALLED')
         """Shutdown the executor, including all RADICAL-Pilot components."""
-        self.unit_manager.close()
-        self.pilot_manager.close()
-        self.session.close(download=True)
-        #parsl.dfk().cleanup()
+        report.progress_done()
+        umgr.wait_units()
+        umgr.close()
+        pmgr.close()
+        session.close(download=True)
         report.header("Attempting RADICALExecutor shutdown")
 
         return True
