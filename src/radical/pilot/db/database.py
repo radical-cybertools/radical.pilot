@@ -73,7 +73,7 @@ class DBSession(object):
             self._c.insert({'type'      : 'session',
                             '_id'       : sid,
                             'uid'       : sid,
-                            'cfg'       : copy.deepcopy(cfg),
+                            'cfg'       : ru.demunch(cfg.as_dict()),
                             'created'   : self._created,
                             'connected' : self._connected})
             self._can_remove = True
@@ -186,7 +186,7 @@ class DBSession(object):
         pmgr_doc['type'] = 'pmgr'
 
         # FIXME: evaluate retval
-        self._c.insert(pmgr_doc)
+        self._c.insert(ru.demunch(pmgr_doc))
 
 
 
@@ -211,7 +211,7 @@ class DBSession(object):
             doc['control'] = 'pmgr'
             doc['states']  = [doc['state']]
             doc['cmd']     = list()
-            bulk.insert(doc)
+            bulk.insert(ru.demunch(doc))
 
         try:
             res = bulk.execute()
@@ -352,7 +352,7 @@ class DBSession(object):
         umgr_doc['type'] = 'umgr'
 
         # FIXME: evaluate retval
-        self._c.insert(umgr_doc)
+        self._c.insert(ru.demunch(umgr_doc))
 
 
     # --------------------------------------------------------------------------
@@ -393,7 +393,7 @@ class DBSession(object):
                 doc['control'] = 'umgr'
                 doc['states']  = [doc['state']]
                 doc['cmd']     = list()
-                bulk.insert(doc)
+                bulk.insert(ru.demunch(doc))
 
             try:
                 res = bulk.execute()
