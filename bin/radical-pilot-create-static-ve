@@ -100,11 +100,11 @@ elif test "$arg" = "bwpy"
 then
     # this is where we end up after the `exec` call in the branch above
     echo "create bwpy ve [$prefix]"
-    PYTHON=python2.7
+    PYTHON=python3
 else
     # this is not BW.
     echo "create rct ve [$prefix]"
-    PYTHON=python
+    PYTHON=python3
 fi
 
 # create the ve, install bare necessities
@@ -140,7 +140,7 @@ then
 fi
 
 echo -n "create  virtualenv "
-stdbuf -oL $VIRTENV_CMD "$prefix" | progress
+stdbuf -oL $VIRTENV_CMD -p python3 "$prefix" | progress
 .          "$prefix"/bin/activate
 
 echo -n "update  setuptools "
@@ -202,7 +202,7 @@ echo
 echo "---------------------------------------------------------------------"
 echo
 echo "PYTHONPATH: $PYTHONPATH"
-echo "python: `which python` (`python -V`)"
+echo "python: `which python3` (`python3 -V`)"
 echo
 echo "---------------------------------------------------------------------"
 echo

@@ -128,6 +128,46 @@
         "cu_pre_exec"                 : []
     },
 
+    "frontera_prte": {
+        "description"                 : "Petascale computing system at the Texas Advanced Computing Center (TACC)",
+        "notes"                       : "Always launch RP from a login node if you do not have a waiver from TACC for an external IP address",
+        "schemas"                     : ["local", "ssh"],
+        "mandatory_args"              : ["project"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://frontera.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "sftp://frontera.tacc.utexas.edu/"
+        },
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://frontera.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "file://frontera.tacc.utexas.edu/"
+        },
+        "default_queue"               : "normal",
+        "resource_manager"            : "SLURM",
+        "cores_per_node"              : 56,
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "PRTE",
+        "mpi_launch_method"           : "PRTE",
+        "pre_bootstrap_0"             : [
+            "module use /work/05445/naughton/rp/ums/ompix/gcc/6.3.0/modules",
+          # "module use /work/05445/naughton/rp/ums/ompix/intel/19.0.5/modules",
+            "module unload xalt",
+            "module load gcc/6.3.0",
+            "module load prrte/1.0.0_devtiming",
+          # "module load prrte/master",
+            "export PRRTE_PREFIX=$PRRTE_DIR"
+        ],
+        "default_remote_workdir"      : "$SCRATCH",
+        "valid_roots"                 : ["$SCRATCH", "$WORK"],
+        "python_dist"                 : "default",
+        "virtenv_mode"                : "create",
+        "rp_version"                  : "local"
+    },
+
     "longhorn": {
         "description"                 : "The TACC resource 'Longhorn' (https://portal.tacc.utexas.edu/user-guides/longhorn)",
         "notes"                       : "",
