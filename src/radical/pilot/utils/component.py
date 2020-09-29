@@ -766,8 +766,6 @@ class Component(object):
         '''
 
         states = ru.as_list(states)
-        if not states:
-            states = None
 
         for state in states:
 
@@ -825,8 +823,6 @@ class Component(object):
         '''
 
         states = ru.as_list(states)
-        if not states:
-            states = None
 
         for state in states:
 
@@ -838,8 +834,7 @@ class Component(object):
                 continue
 
             del(self._outputs[state])
-            self._log.debug('unregistered output for %s: %s', state,
-                            list(self._outputs.keys()))
+            self._log.debug('unregistered output for %s', state)
 
 
     # --------------------------------------------------------------------------
