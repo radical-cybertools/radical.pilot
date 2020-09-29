@@ -46,6 +46,8 @@ class Worker(rpu.Component):
         if rank is not None:
            cfg['uid'] = '%s.%03d' % (cfg['uid'], int(rank))
 
+        print('=== rank: %s' % rank)
+
         self._n_cores = cfg.cores
         self._n_gpus  = cfg.gpus
 

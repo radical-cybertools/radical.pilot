@@ -170,7 +170,10 @@ class Master(rpu.Component):
         descr['cpu_process_type'] = 'MPI'
         descr['cpu_threads']      = cores
         descr['cpu_thread_type']  = 'POSIX'
-        descr['gpu_processses']   = gpus
+        descr['gpu_processes']    = gpus
+
+        self._log.debug('=== cpn: %s', cores)
+        self._log.debug('=== gpn: %s', gpus)
 
 
         # write config file for all worker ranks.  The worker will live in the
@@ -213,6 +216,9 @@ class Master(rpu.Component):
         task['description']['arguments'] += [fname]
 
         self._log.debug('submit %s', uid)
+        import pprint
+        self._log.debug('submit %s', uid)
+        self._log.debug('=== descr: %s', pprint.pformat(task['description']))
 
         # insert the task
         self.advance(task, publish=False, push=True)

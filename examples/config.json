@@ -173,7 +173,7 @@
     },
 
     "ornl.summit"  : {
-        "project"  : "CSC343",
+        "project"  : "MED110",
         "queue"    : "batch",
         "schema"   : "local",
         "cores"    : 168,
