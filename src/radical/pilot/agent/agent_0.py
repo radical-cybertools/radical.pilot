@@ -113,10 +113,10 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _hb_term_cb(self, msg):
+    def _hb_term_cb(self, msg=None):
 
         self._cmgr.close()
-        self._log.warn('hb termination %s' % msg)
+        self._log.warn('hb termination: %s', msg)
 
         return None
 

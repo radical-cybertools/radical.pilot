@@ -44,7 +44,7 @@ class Worker(rpu.Component):
         if rank is None: rank = os.environ.get('OMPI_COMM_WORLD_RANK')
 
         if rank is not None:
-           cfg['uid'] = '%s.%03d' % (cfg['uid'], int(rank))
+            cfg['uid'] = '%s.%03d' % (cfg['uid'], int(rank))
 
         self._n_cores = cfg.cores
         self._n_gpus  = cfg.gpus
@@ -151,7 +151,8 @@ class Worker(rpu.Component):
         # os.system('ulimit -a')
         # os.system('echo "======================"')
 
-        self._log.debug('=== = %s', str(self._resources['cores']))
+        self._log.debug('cores %s', str(self._resources['cores']))
+        self._log.debug('gpus  %s', str(self._resources['cores']))
 
 
     # --------------------------------------------------------------------------
@@ -506,6 +507,7 @@ class Worker(rpu.Component):
                 res = [task, str(out), str(err), int(ret)]
                 self._result_queue.put(res)
         # ----------------------------------------------------------------------
+
 
         ret = None
         try:
