@@ -497,6 +497,10 @@ class Worker(rpu.Component):
             os.environ['RP_TASK_CORES'] = ','.join(str(i) for i in task['resources']['cores'])
             os.environ['RP_TASK_GPUS']  = ','.join(str(i) for i in task['resources']['gpus'])
 
+            # make CUDA happy
+            # FIXME: assume logical device numbering for now
+            os.environ['CUDA_VISIBLE_DEVICES'] = os.environ['RP_TASK_GPUS'] 
+
             out, err, ret = self._modes[mode](task.get('data'))
             with tlock:
                 res = [task, str(out), str(err), int(ret)]
