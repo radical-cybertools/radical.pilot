@@ -170,7 +170,7 @@ class Master(rpu.Component):
         descr['cpu_process_type'] = 'MPI'
         descr['cpu_threads']      = cores
         descr['cpu_thread_type']  = 'POSIX'
-        descr['gpu_processses']   = gpus
+        descr['gpu_processes']    = gpus
 
 
         # write config file for all worker ranks.  The worker will live in the
