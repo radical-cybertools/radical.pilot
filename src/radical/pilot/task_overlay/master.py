@@ -49,14 +49,14 @@ class Master(rpu.Component):
                                  'uid'        : self._uid + '.req',
                                  'path'       : os.getcwd(),
                                  'stall_hwm'  : 0,
-                                 'bulk_size'  : 56})
+                                 'bulk_size'  : 1024})
 
         res_cfg = ru.Config(cfg={'channel'    : '%s.to_res' % self._uid,
                                  'type'       : 'queue',
                                  'uid'        : self._uid + '.res',
                                  'path'       : os.getcwd(),
                                  'stall_hwm'  : 0,
-                                 'bulk_size'  : 56})
+                                 'bulk_size'  : 1024})
 
         self._req_queue = ru.zmq.Queue(req_cfg)
         self._res_queue = ru.zmq.Queue(res_cfg)
@@ -141,8 +141,9 @@ class Master(rpu.Component):
             self._log.debug('register %s', uid)
 
             with self._lock:
-                self._workers[uid]['info']  = info
-                self._workers[uid]['state'] = 'ACTIVE'
+                self._workers[uid] = dict()
+                self._workers[uid]['info']   = info
+                self._workers[uid]['status'] = 'ACTIVE'
                 self._log.debug('info: %s', info)
 
 
@@ -152,7 +153,7 @@ class Master(rpu.Component):
             self._log.debug('unregister %s', uid)
 
             with self._lock:
-                self._workers[uid]['state'] = 'DONE'
+                self._workers[uid]['status'] = 'DONE'
 
 
     # --------------------------------------------------------------------------
@@ -165,55 +166,56 @@ class Master(rpu.Component):
 
         # each worker gets the specified number of cores and gpus.  All
         # resources need to be located on the same node.
-        descr['cpu_processes']   = 1
-        descr['cpu_threads']     = cores
-        descr['cpu_thread_type'] = 'POSIX'
-        descr['gpu_processses']  = gpus
+        descr['cpu_processes']    = count
+        descr['cpu_process_type'] = 'MPI'
+        descr['cpu_threads']      = cores
+        descr['cpu_thread_type']  = 'POSIX'
+        descr['gpu_processses']   = gpus
 
 
-        tasks = list()
-        for _ in range(count):
+        # write config file for all worker ranks.  The worker will live in the
+        # master sandbox
+        # NOTE: the uid generated here is for the worker MPI task, not for the
+        #       worker processes (ranks)
+        cfg          = copy.deepcopy(self._cfg)
+        cfg['info']  = self._info
+        uid          = ru.generate_id('worker.%(item_counter)06d',
+                                    ru.ID_CUSTOM,
+                                    ns=self._session.uid)
+        sbox         = os.getcwd()
+        fname        = '%s/%s.json' % (sbox, uid)
 
-            # write config file for that worker
-            cfg          = copy.deepcopy(self._cfg)
-            cfg['info']  = self._info
-            uid          = ru.generate_id('worker')
-            sbox         = '%s/%s'      % (cfg['base'], uid)
-            fname        = '%s/%s.json' % (sbox, uid)
+        cfg['kind']  = 'worker'
+        cfg['uid']   = uid
+        cfg['base']  = sbox
+        cfg['cores'] = cores
+        cfg['gpus']  = gpus
 
-            cfg['kind']  = 'worker'
-            cfg['uid']   = uid
-            cfg['base']  = sbox
-            cfg['cores'] = cores
-            cfg['gpus']  = gpus
+        ru.rec_makedir(sbox)
+        ru.write_json(cfg, fname)
 
-            ru.rec_makedir(sbox)
-            ru.write_json(cfg, fname)
+        # grab default settings via CUD construction
+        descr_complete = ComputeUnitDescription(descr).as_dict()
 
-            # grab default settings via CUD construction
-            descr_complete = ComputeUnitDescription(descr).as_dict()
+        # create task dict
+        task = dict()
+        task['description']       = copy.deepcopy(descr_complete)
+        task['state']             = rps.AGENT_STAGING_INPUT_PENDING
+        task['status']            = 'NEW'
+        task['type']              = 'unit'
+        task['uid']               = uid
+        task['unit_sandbox_path'] = sbox
+        task['unit_sandbox']      = 'file://localhost/' + sbox
+        task['pilot_sandbox']     = cfg.base
+        task['session_sandbox']   = cfg.base + '/../'
+        task['resource_sandbox']  = cfg.base + '/../../'
 
-            # create task dict
-            task = dict()
-            task['description']       = copy.deepcopy(descr_complete)
-            task['state']             = rps.AGENT_STAGING_INPUT_PENDING
-            task['type']              = 'unit'
-            task['uid']               = uid
-            task['unit_sandbox_path'] = sbox
-            task['unit_sandbox']      = 'file://localhost/' + sbox
-            task['pilot_sandbox']     = cfg.base
-            task['session_sandbox']   = cfg.base + '/../'
-            task['resource_sandbox']  = cfg.base + '/../../'
+        task['description']['arguments'] += [fname]
 
-            task['description']['arguments'] += [fname]
-
-            tasks.append(task)
-            self._workers[uid] = task
-
-            self._log.debug('submit %s', uid)
+        self._log.debug('submit %s', uid)
 
         # insert the task
-        self.advance(tasks, publish=False, push=True)
+        self.advance(task, publish=False, push=True)
 
 
     # --------------------------------------------------------------------------
@@ -227,23 +229,31 @@ class Master(rpu.Component):
         if count:
             self._log.debug('wait for %d workers', count)
             while True:
+                stats = {
+                        'NEW'    : 0,
+                        'ACTIVE' : 0,
+                        'DONE'   : 0,
+                        'FAILED' : 0,
+                        }
+
                 with self._lock:
-                    states = [w['state'] for w in self._workers.values()]
-                n = states.count('ACTIVE')
-                self._log.debug('states [%d]: %s', n,
-                                {k:states.count(k) for k in set(states)})
+                    for w in self._workers.values():
+                        stats[w['status']] += 1
+
+                self._log.debug('stats: %s', stats)
+                n = stats['ACTIVE'] + stats['DONE'] + stats['FAILED']
                 if n >= count:
                     self._log.debug('wait ok')
                     return
-                time.sleep(1)
+                time.sleep(10)
 
         elif uids:
             self._log.debug('wait for workers: %s', uids)
             while True:
                 with self._lock:
-                    states = [self._workers[uid]['state'] for uid in uids]
-                n = states.count('ACTIVE')
-                self._log.debug('states [%d]: %s', n, states)
+                    stats = [self._workers[uid]['status'] for uid in uids]
+                n = stats['ACTIVE'] + stats['DONE'] + stats['FAILED']
+                self._log.debug('stats [%d]: %s', n, stats)
                 if n == len(uids):
                     self._log.debug('wait ok')
                     return
@@ -305,7 +315,7 @@ class Master(rpu.Component):
         # be updated once a response for the respective request UID arrives.
         with self._lock:
             for req in reqs:
-                reqest = Request(req=req)
+                request = Request(req=req)
                 self._requests[request.uid] = request
                 dicts.append(request.as_dict())
                 objs.append(request)

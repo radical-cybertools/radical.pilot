@@ -2,6 +2,7 @@
 import os
 import sys
 import time
+import resource
 
 import threading         as mt
 import multiprocessing   as mp
@@ -19,16 +20,41 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session=None):
+
+        self._conc = 0
+
+        self._session = session
 
         if isinstance(cfg, str): cfg = ru.Config(cfg=ru.read_json(cfg))
         else                   : cfg = ru.Config(cfg=cfg)
+
+
+        # generate a MPI rank dependent UID for each worker process
+        # FIXME: this should be delegated to ru.generate_id
+
+        # FIXME: why do we need to import `os` again after MPI Spawn?
+        import os
+
+        # FIXME: rank determination should be moved to RU
+        rank = None
+
+        if rank is None: rank = os.environ.get('PMIX_RANK')
+        if rank is None: rank = os.environ.get('PMI_RANK')
+        if rank is None: rank = os.environ.get('OMPI_COMM_WORLD_RANK')
+
+        if rank is not None:
+           cfg['uid'] = '%s.%03d' % (cfg['uid'], int(rank))
 
         self._n_cores = cfg.cores
         self._n_gpus  = cfg.gpus
 
         self._info    = ru.Config(cfg=cfg.get('info', {}))
-        self._session = Session(cfg=cfg, uid=cfg.sid, _primary=False)
+
+
+        if not self._session:
+            self._session = Session(cfg=cfg, uid=cfg.sid, _primary=False)
+
 
         rpu.Component.__init__(self, cfg, self._session)
 
@@ -78,7 +104,7 @@ class Worker(rpu.Component):
 
         # connect to master
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
-        self.register_publisher(rpc.CONTROL_PUBSUB)
+      # self.register_publisher(rpc.CONTROL_PUBSUB)
 
         # run worker initialization *before* starting to work on requests.
         # the worker provides three builtin methods:
@@ -102,11 +128,40 @@ class Worker(rpu.Component):
         # to the master.  This can be used to communicate, for example, worker
         # specific communication endpoints.
 
+        # make sure that channels are up before registering
+        time.sleep(1)
+
         # `info` is a placeholder for any additional meta data communicated to
         # the worker
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
                                           'arg': {'uid' : self._uid,
                                                   'info': self._info}})
+
+        # os.system('echo "======================"')
+        # os.system('ulimit -a')
+        # print("getrlimit before:", resource.getrlimit(resource.RLIMIT_NPROC))
+        # try:
+        #     resource.setrlimit(resource.RLIMIT_NOFILE, (1024 * 32, 1024 * 32))
+        #     resource.setrlimit(resource.RLIMIT_NPROC,  (1024 * 16, 1024 * 16))
+        #     resource.setrlimit(resource.RLIMIT_STACK,  (2**29, -1))
+        # except:
+        #     pass
+        # print("getrlimit after  :", resource.getrlimit(resource.RLIMIT_NPROC))
+        # os.system('echo "======================"')
+        # os.system('ulimit -a')
+        # os.system('echo "======================"')
+
+        self._log.debug('=== = %s', str(self._resources['cores']))
+
+
+    # --------------------------------------------------------------------------
+    #
+    # This class-method creates the appropriate sub-class for the Stager
+    #
+    @classmethod
+    def create(cls, cfg, session):
+
+        return Worker(cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -223,6 +278,11 @@ class Worker(rpu.Component):
             args = data.get('args', []),
             env  = data.get('env',  {}),
 
+
+            import gc
+            gc.collect()
+
+
             proc = sp.Popen(executable=exe, args=args,       env=env,
                             stdin=None,     stdout=sp.PIPE, stderr=sp.PIPE,
                             close_fds=True, shell=False)
@@ -328,18 +388,42 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def task_pre_exec(self, task):
+        '''
+        This method is called upon receiving a new request, and can be
+        overloaded to perform any preperatory action before the request is acted
+        upon
+        '''
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def task_post_exec(self, task):
+        '''
+        This method is called upon completing a request, and can be
+        overloaded to perform any cleanup action before the request is reported
+        as complete.
+        '''
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
     def _request_cb(self, tasks):
         '''
         grep call type from tasks, check if methods are registered, and
         invoke them.
         '''
 
-        task = ru.as_list(task)
+        tasks = ru.as_list(tasks)
 
         for task in tasks:
 
             self._prof.prof('reg_start', uid=self._uid, msg=task['uid'])
             task['worker'] = self._uid
+
+            self.task_pre_exec(task)
 
             try:
                 # ok, we have work to do.  Check the requirements to see how
@@ -408,20 +492,28 @@ class Worker(rpu.Component):
 
         # ----------------------------------------------------------------------
         def _dispatch_thread(tlock):
+            # FIXME: do we still need this thread?
+
+            os.environ['RP_TASK_CORES'] = ','.join(str(i) for i in task['resources']['cores'])
+            os.environ['RP_TASK_GPUS']  = ','.join(str(i) for i in task['resources']['gpus'])
+
+            # make CUDA happy
+            # FIXME: assume logical device numbering for now
+            os.environ['CUDA_VISIBLE_DEVICES'] = os.environ['RP_TASK_GPUS'] 
+
             out, err, ret = self._modes[mode](task.get('data'))
             with tlock:
                 res = [task, str(out), str(err), int(ret)]
-                self._log.debug('put 1 result: task %s', task['uid'])
                 self._result_queue.put(res)
         # ----------------------------------------------------------------------
 
-
+        ret = None
         try:
           # self._log.debug('dispatch: %s: %d', task['uid'], task['pid'])
             mode = task['mode']
             assert(mode in self._modes), 'no such call mode %s' % mode
 
-            tout = self._cfg.workload.timeout
+            tout = task.get('timeout')
             self._log.debug('dispatch with tout %s', tout)
 
             tlock  = mt.Lock()
@@ -456,6 +548,7 @@ class Worker(rpu.Component):
             # if we kill the process too quickly, the result put above
             # will not make it out, thus make sure the queue is empty
             # first.
+            ret = 1
             self._result_queue.close()
             self._result_queue.join_thread()
             sys.exit(ret)
@@ -499,7 +592,12 @@ class Worker(rpu.Component):
                    'ret': ret}
 
             self._res_put.put(res)
-            self._prof.prof('reg_stop', uid=self._uid, msg=task['uid'])
+
+            self._prof.prof('req_post', uid=self._uid, msg=task['uid'])
+            self.task_post_exec(task)
+
+            self._prof.prof('req_stop', uid=self._uid, msg=task['uid'])
+
         except:
             self._log.exception('result cb failed')
             raise
@@ -534,6 +632,15 @@ class Worker(rpu.Component):
 
         while not self._term.is_set():
             time.sleep(1)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def test(self, idx, seconds):
+        import time
+        print('start idx %6d: %.1f' % (idx, time.time()))
+        time.sleep(seconds)
+        print('stop  idx %6d: %.1f' % (idx, time.time()))
 
 
 # ------------------------------------------------------------------------------
