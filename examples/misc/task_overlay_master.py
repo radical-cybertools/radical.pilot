@@ -54,11 +54,13 @@ class MyMaster(rp.task_overlay.Master):
         while idx < total:
 
             uid  = 'request.%06d' % idx
-            item = {'uid' :   uid,
-                    'mode':  'call',
-                    'data': {'method': 'hello',
-                             'kwargs': {'count': idx,
-                                        'uid'  : uid}}}
+            item = {'uid'  :   uid,
+                    'mode' :  'call',
+                    'cores':  1,
+                  # 'gpus' :  1,
+                    'data' : {'method': 'hello',
+                              'kwargs': {'count': idx,
+                                         'uid'  : uid}}}
             self.request(item)
             idx += world_size
 
