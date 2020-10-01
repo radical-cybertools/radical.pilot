@@ -17,7 +17,7 @@ if __name__ == '__main__':
 
     time.sleep(1)
 
-    print("%d/%d/%s"  % (comm.rank+1, comm.size, host))
+    print("%d/%d/%s"  % (comm.rank + 1, comm.size, host))
 
     comm.Barrier()   # wait for everybody to synchronize here
 
