@@ -4,6 +4,12 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
+1.5.4 Release                                                         2020-10-01
+--------------------------------------------------------------------------------
+
+  - fix jsrun GPU mapping
+
+
 1.5.4 Release                                                         2020-09-14
 --------------------------------------------------------------------------------
 
