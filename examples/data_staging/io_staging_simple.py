@@ -88,7 +88,7 @@ if __name__ == "__main__":
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
         # a UnitManager object.
-        umgr = rp.UnitManager(session, rp.SCHEDULER_DIRECT_SUBMISSION)
+        umgr = rp.UnitManager(session=session)
 
         # Register our callback with the UnitManager. This callback will get
         # called every time any of the units managed by the UnitManager
@@ -106,11 +106,8 @@ if __name__ == "__main__":
         # Wait for the compute unit to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
 
-        print("* Task %s (executed @ %s) state: %s, exit code: %s, started: %s,"
-              " finished: %s, output file: %s"
-              % (unit.uid, unit.execution_locations, unit.state,
-                 unit.exit_code,  unit.start_time, unit.stop_time,
-                 unit.description.output_staging[0]['target']))
+        print("* Task %s state: %s, exit code: %s,"
+              % (unit.uid, unit.state, unit.exit_code))
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

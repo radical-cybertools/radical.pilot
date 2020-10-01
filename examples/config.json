@@ -18,7 +18,7 @@
     "local.localhost_funcs" : {
         "project"  : null,
         "queue"    : null,
-        "schema"   : "ssh",
+        "schema"   : "local",
         "cores"    : 64
     },
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
+# pylint: disable=redefined-outer-name
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import os
 import sys
 import radical.pilot as rp
 
@@ -13,10 +13,10 @@ import radical.pilot as rp
 # the larger futuregrid pilots are not getting through the batch queue at all.
 # It is thus not part of the RP test suite.
 
-# READ: The RADICAL-Pilot documentation: 
+# READ: The RADICAL-Pilot documentation:
 #   https://radicalpilot.readthedocs.io/en/stable/
 #
-# Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
+# Try running this example with RADICAL_PILOT_VERBOSE=debug set if
 # you want to see what happens behind the scenes!
 
 
@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    session = rp.Session(name=session_name)
+    session = rp.Session(uid=session_name)
     print("session id: %s" % session.uid)
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
@@ -81,10 +81,9 @@ if __name__ == "__main__":
 
         # create a second pilot with a new description
         pdesc = rp.ComputePilotDescription()
-        pdesc.resource  = "xsede.stampede"
+        pdesc.resource  = "local.localhost"
         pdesc.runtime   = 40  # minutes
         pdesc.cores     = 32
-        pdesc.project   = "TG-MCB090174"
 
         pilot_2 = pmgr.submit_pilots(pdesc)
 
@@ -106,15 +105,15 @@ if __name__ == "__main__":
         umgr.add_pilots([pilot_1, pilot_2, pilot_3])
 
       # # wait until first pilots become active
-        pilot_1.wait (state=rp.ACTIVE)
+        pilot_1.wait (state=rp.PMGR_ACTIVE)
 
-        # Create a workload of 8 ComputeUnits.  
+        # Create a workload of 8 ComputeUnits.
         cus = list()
 
         for unit_count in range(0, 512):
             cu = rp.ComputeUnitDescription()
-            cu.kernel      = 'SLEEP'
-            cu.arguments   = ["300"]
+            cu.executable = '/bin/sleep'
+            cu.arguments = ['10']
             cus.append(cu)
 
         # Submit the previously created ComputeUnit descriptions to the
@@ -128,10 +127,8 @@ if __name__ == "__main__":
         pmgr.cancel_pilots ()
 
         for unit in units:
-            print("* Unit %s state: %s, exit code: %s, started: %s, finished: %s"
-                % (unit.uid, unit.state, unit.exit_code, unit.start_time, unit.stop_time))
-
-        os.system ('radicalpilot-stats -m stat,plot -s %s' % session.uid)
+            print("* Unit %s state: %s, exit code: %s"
+                % (unit.uid, unit.state, unit.exit_code))
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
