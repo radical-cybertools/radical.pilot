@@ -18,6 +18,11 @@ from .base import LaunchMethod
 NUM_NODES_PER_DVM = 10  # e.g., if 50 nodes -> 5 DVMs
 NUM_UNITS_PER_DVM = 20  #       and each DVM handles 20 tasks (max 100 tasks)
 
+# with `True` value it skips the lists of hosts assigned to each task and gets
+# corresponding host from file `prrte.<dvm_id>.hosts`; parameters that are used:
+# task id (uid), numbers of nodes and tasks (units) per dvm from above.
+SKIP_SCHEDULER = False
+
 
 # ------------------------------------------------------------------------------
 #
@@ -286,6 +291,8 @@ class PRTE(LaunchMethod):
 
         cu_id        = int(cu['uid'].split('unit.')[1])
         dvm_id       = int(cu_id / NUM_UNITS_PER_DVM)
+        cu_order_idx = int(cu_id % NUM_UNITS_PER_DVM)  # inside dvm
+        num_units_per_node = math.ceil(NUM_UNITS_PER_DVM / NUM_NODES_PER_DVM)
 
         self._log.debug('prep %s', cu['uid'])
 
@@ -324,24 +331,31 @@ class PRTE(LaunchMethod):
         map_flag += ' --pmca ptl_base_max_msg_size %d' % (1024 * 1024 * 1024 * 1)
       # map_flag += ' --pmca rmaps_base_verbose 5'
 
-        if 'nodes' not in slots:
-            # this task is unscheduled - we leave it to PRRTE/PMI-X to
-            # correctly place the task
-            pass
-
+        if SKIP_SCHEDULER:
+            fhosts = '%s/../prrte.%s.hosts' % (cu['unit_sandbox_path'], dvm_id)
+            with open(fhosts) as fd:
+                hosts = [x.split()[0] for x in fd.readlines() if x.split()]
+            map_flag += ' -host %s:%s' % (
+                hosts[int(cu_order_idx/num_units_per_node)], n_procs)
         else:
-            # FIXME: ensure correct binding for procs and threads via slotfile
+            if 'nodes' not in slots:
+                # this task is unscheduled - we leave it to PRRTE/PMI-X to
+                # correctly place the task
+                pass
 
-            # enact the scheduler's host placement.  For now, we leave socket,
-            # core and thread placement to the prted, and just add all process
-            # slots to the host list.
-            hosts = ''
+            else:
+                # FIXME: ensure correct binding for procs and threads via slotfile
 
-            for node in slots['nodes']:
-                hosts += '%s,' % node['name']
+                # enact the scheduler's host placement.  For now, we leave socket,
+                # core and thread placement to the prted, and just add all process
+                # slots to the host list.
+                hosts = ''
 
-            # remove trailing ','
-            map_flag += ' -host %s' % hosts.rstrip(',')
+                for node in slots['nodes']:
+                    hosts += '%s,' % node['name']
+
+                # remove trailing ','
+                map_flag += ' -host %s' % hosts.rstrip(',')
 
         # Additional (debug) arguments to prun
         if self._verbose:
