@@ -44,7 +44,7 @@ class Worker(rpu.Component):
         if rank is None: rank = os.environ.get('OMPI_COMM_WORLD_RANK')
 
         if rank is not None:
-           cfg['uid'] = '%s.%03d' % (cfg['uid'], int(rank))
+            cfg['uid'] = '%s.%03d' % (cfg['uid'], int(rank))
 
         print('=== rank: %s' % rank)
 
@@ -322,6 +322,20 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    glyphs = {0: '-',
+              1: '+'}
+
+    def _dump_resources(self, uid):
+        cores = self._resources['cores']
+        gpus  = self._resources['gpus']
+
+        s_cores = [self.glyphs[cores[i]] for i in range(self._n_cores)]
+        s_gpus  = [self.glyphs[gpus[i] ] for i in range(self._n_gpus)]
+        self._log.debug('resources: %s : %s : %s' % s_cores, s_gpus, uid)
+
+
+    # --------------------------------------------------------------------------
+    #
     def _alloc_task(self, task):
         '''
         allocate task resources
@@ -360,6 +374,7 @@ class Worker(rpu.Component):
 
             task['resources'] = {'cores': alloc_cores,
                                  'gpus' : alloc_gpus}
+            self._dump_resources(task['uid'])
             return True
 
 
