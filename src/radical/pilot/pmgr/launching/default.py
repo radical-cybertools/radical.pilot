@@ -70,7 +70,6 @@ class Default(PMGRLaunchingComponent):
 
         self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
         self._root_dir      = "%s/../../"   % self._mod_dir
-        self._conf_dir      = "%s/configs/" % self._root_dir
 
         self.register_input(rps.PMGR_LAUNCHING_PENDING,
                             rpc.PMGR_LAUNCHING_QUEUE, self.work)
@@ -971,30 +970,13 @@ class Default(PMGRLaunchingComponent):
             job_name = pid
 
         if isinstance(agent_config, dict):
-
             # use dict as is
             agent_cfg = agent_config
 
         elif isinstance(agent_config, str):
-            try:
-                # interpret as a config name
-                agent_cfg_file = os.path.join(self._conf_dir, "agent_%s.json" % agent_config)
-
-                self._log.info("Read agent config file: %s",  agent_cfg_file)
-                agent_cfg = ru.Config(path=agent_cfg_file)
-
-                # allow for user level overload
-                user_cfg_file = '%s/.radical/pilot/config/%s' \
-                              % (os.environ['HOME'], os.path.basename(agent_cfg_file))
-
-                if os.path.exists(user_cfg_file):
-                    self._log.info("merging user config: %s" % user_cfg_file)
-                    user_cfg = ru.read_json(user_cfg_file)
-                    ru.dict_merge (agent_cfg, user_cfg, policy='overwrite')
-
-            except Exception as e:
-                self._log.exception("Error reading agent config file: %s" % e)
-                raise
+            agent_cfg = ru.Config('radical.pilot',
+                                  category='agent',
+                                  name=agent_config)
 
         else:
             # we can't handle this type
