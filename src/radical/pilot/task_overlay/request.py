@@ -53,8 +53,11 @@ class Request(object):
         produce the request message to be sent over the wire to the workers
         '''
 
+        # FIXME: we should not need to reconstruict the dict
         return {'uid'   : self._uid,
                 'state' : self._state,
+                'cores' : self._work.get('cores', 1),
+                'gpus'  : self._work.get('gpus',  0),
                 'mode'  : self._work['mode'],
                 'data'  : self._work['data'],
                 'result': self._result}
