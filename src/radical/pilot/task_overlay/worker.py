@@ -331,7 +331,7 @@ class Worker(rpu.Component):
 
         s_cores = [self.glyphs[cores[i]] for i in range(self._n_cores)]
         s_gpus  = [self.glyphs[gpus[i] ] for i in range(self._n_gpus)]
-        self._log.debug('resources: %s : %s : %s' % s_cores, s_gpus, uid)
+        self._log.debug('resources: %s : %s : %s', s_cores, s_gpus, uid)
 
 
     # --------------------------------------------------------------------------
