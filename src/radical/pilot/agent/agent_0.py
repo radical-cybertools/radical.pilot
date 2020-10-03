@@ -113,9 +113,9 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _hb_term_cb(self, uid=None):
+    def _hb_term_cb(self, msg=None):
 
-        self._log.debug('hb_term %s: %s died', self.uid, uid)
+        self._log.debug('hb_term %s: %s died', self.uid, msg)
         self._cmgr.close()
 
         self._prof.prof('term', uid=self._uid)

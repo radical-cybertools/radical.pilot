@@ -172,10 +172,6 @@ class Master(rpu.Component):
         descr['cpu_thread_type']  = 'POSIX'
         descr['gpu_processes']    = gpus
 
-        self._log.debug('=== cpn: %s', cores)
-        self._log.debug('=== gpn: %s', gpus)
-
-
         # write config file for all worker ranks.  The worker will live in the
         # master sandbox
         # NOTE: the uid generated here is for the worker MPI task, not for the
@@ -219,6 +215,10 @@ class Master(rpu.Component):
         import pprint
         self._log.debug('submit %s', uid)
         self._log.debug('=== descr: %s', pprint.pformat(task['description']))
+
+        import pprint
+        self._log.debug('==== submit: %s', pprint.pformat(task))
+        pprint.pprint(task)
 
         # insert the task
         self.advance(task, publish=False, push=True)

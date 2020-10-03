@@ -46,7 +46,6 @@ class Worker(rpu.Component):
         if rank is not None:
             cfg['uid'] = '%s.%03d' % (cfg['uid'], int(rank))
 
-        print('=== rank: %s' % rank)
 
         self._n_cores = cfg.cores
         self._n_gpus  = cfg.gpus
@@ -153,7 +152,8 @@ class Worker(rpu.Component):
         # os.system('ulimit -a')
         # os.system('echo "======================"')
 
-        self._log.debug('=== = %s', str(self._resources['cores']))
+        self._log.debug('cores %s', str(self._resources['cores']))
+        self._log.debug('gpus  %s', str(self._resources['cores']))
 
 
     # --------------------------------------------------------------------------

@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 
-import os
 import sys
 import time
 
 import radical.pilot as rp
-import radical.utils as ru
 
 
 # ------------------------------------------------------------------------------
