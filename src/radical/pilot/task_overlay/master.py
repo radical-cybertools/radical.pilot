@@ -26,9 +26,10 @@ class Master(rpu.Component):
         self._backend = backend  # FIXME: use
 
         self._lock     = ru.Lock('master')
-        self._workers  = dict()     # wid: worker
-        self._requests = dict()     # bookkeeping of submitted requests
-        self._lock     = mt.Lock()  # lock the request dist on updates
+        self._workers  = dict()      # wid: worker
+        self._requests = dict()      # bookkeeping of submitted requests
+        self._lock     = mt.Lock()   # lock the request dist on updates
+        self._term     = mt.Event()  # set for termination
 
         cfg.sid        = os.environ['RP_SESSION_ID']
         cfg.base       = os.environ['RP_PILOT_SANDBOX']
@@ -41,6 +42,7 @@ class Master(rpu.Component):
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
                              rpc.AGENT_STAGING_INPUT_QUEUE)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
+        self.register_publisher(rpc.CONTROL_PUBSUB)
 
 
         # set up RU ZMQ Queues for request distribution and result collection
@@ -105,6 +107,7 @@ class Master(rpu.Component):
 
         pwd = os.getcwd()
         ru.dict_merge(cfg, ru.read_json('%s/../control_pubsub.json' % pwd))
+        os.system('ln -s ../control_pubsub.json .')
 
         del(cfg['channel'])
         del(cfg['cmgr'])
@@ -141,9 +144,8 @@ class Master(rpu.Component):
             self._log.debug('register %s', uid)
 
             with self._lock:
-                self._workers[uid] = dict()
-                self._workers[uid]['info']   = info
-                self._workers[uid]['status'] = 'ACTIVE'
+                self._workers[uid] = {'info'   : info,
+                                      'status' : 'ACTIVE'}
                 self._log.debug('info: %s', info)
 
 
@@ -289,7 +291,7 @@ class Master(rpu.Component):
         self.create_work_items()
 
         # wait for the submitted requests to complete
-        while True:
+        while not self._term.is_set():
 
             # count completed items
             with self._lock:
@@ -374,8 +376,12 @@ class Master(rpu.Component):
         '''
 
         for uid in self._workers:
+            self._log.debug('=== term %s', uid)
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_terminate',
                                               'arg': {'uid': uid}})
+        self._log.debug('=== term done')
+
+        self._term.set()
 
 
 # ------------------------------------------------------------------------------

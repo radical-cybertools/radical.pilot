@@ -633,11 +633,16 @@ class Worker(rpu.Component):
     #
     def _control_cb(self, topic, msg):
 
-        if msg['cmd'] == 'worker_terminate':
-            if msg['arg']['uid'] == self._uid:
-
+        self._log.debug('=== got msg: %s: %s', topic, msg)
+        if msg['cmd'] == 'terminate':
                 self._log.debug('got terminate msg: %s: %s', topic, msg)
+                self._term.set()
+                self.stop()
+                sys.exit(0)
 
+        elif msg['cmd'] == 'worker_terminate':
+            if msg['arg']['uid'] == self._uid:
+                self._log.debug('got terminate msg: %s: %s', topic, msg)
                 self._term.set()
                 self.stop()
                 sys.exit(0)
