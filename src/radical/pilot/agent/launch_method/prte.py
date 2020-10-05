@@ -16,13 +16,13 @@ import radical.utils as ru
 from .base import LaunchMethod
 
 NUM_NODES_PER_DVM = 10  # e.g., if 50 nodes -> 5 DVMs
-NUM_UNITS_PER_DVM = 20  #       and each DVM handles 20 tasks (max 100 tasks)
 
 # with `True` value it skips the lists of hosts assigned to each task and gets
 # corresponding host from file `prrte.<dvm_id>.hosts`; parameters that are used:
 # task id (uid), numbers of nodes and tasks (units) per dvm from above.
 SKIP_SCHEDULER = False
-
+# this variable is considered ONLY if SKIP_SCHEDULER is True
+NUM_UNITS_PER_DVM = 20
 
 # ------------------------------------------------------------------------------
 #
@@ -98,22 +98,25 @@ class PRTE(LaunchMethod):
                  prte_info.get('version_detail'))
 
         # start creating multiple DVMs
-        rm_node_list = list(rm.node_list)
-        num_dvm = math.ceil(len(rm_node_list) / NUM_NODES_PER_DVM)
-        dvm_uri_list = []
+        rm_node_list   = list(rm.node_list)
+        num_dvm        = math.ceil(len(rm_node_list) / NUM_NODES_PER_DVM)
+        dvm_uri_list   = []
+        dvm_hosts_list = []
 
         # go through every dvm instance
         for dvm_id in range(num_dvm):
             node_list = rm_node_list[ dvm_id      * NUM_NODES_PER_DVM:
                                      (dvm_id + 1) * NUM_NODES_PER_DVM]
+            dvm_hosts_list.append([node[0] for node in node_list])
+
             vm_size   = len(node_list)
             furi      = '%s/prrte.%s.uri'   % (os.getcwd(), dvm_id)
             fhosts    = '%s/prrte.%s.hosts' % (os.getcwd(), dvm_id)
 
             with open(fhosts, 'w') as fout:
+                num_slots = rm.cores_per_node * rm.smt
                 for node in node_list:
-                    fout.write('%s slots=%d\n' % (node[0],
-                                                  rm.cores_per_node * rm.smt))
+                    fout.write('%s slots=%d\n' % (node[0], num_slots))
 
             prte  = '%s'               % prte_cmd
             prte += ' --prefix %s'     % os.environ['PRRTE_PREFIX']
@@ -213,6 +216,7 @@ class PRTE(LaunchMethod):
             dvm_uri_list.append(dvm_uri)
 
         lm_info = {'dvm_uri'     : dvm_uri_list,
+                   'dvm_hosts'   : dvm_hosts_list,
                    'version_info': prte_info,
                    'cvd_id_mode' : 'physical'}
 
@@ -289,11 +293,6 @@ class PRTE(LaunchMethod):
         n_procs      = cu['description'].get('cpu_processes') or 1
         n_threads    = cu['description'].get('cpu_threads')   or 1
 
-        cu_id        = int(cu['uid'].split('unit.')[1])
-        dvm_id       = int(cu_id / NUM_UNITS_PER_DVM)
-        cu_order_idx = int(cu_id % NUM_UNITS_PER_DVM)  # inside dvm
-        num_units_per_node = math.ceil(NUM_UNITS_PER_DVM / NUM_NODES_PER_DVM)
-
         self._log.debug('prep %s', cu['uid'])
 
         if 'lm_info' not in slots:
@@ -307,12 +306,6 @@ class PRTE(LaunchMethod):
         if 'dvm_uri' not in slots['lm_info']:
             raise RuntimeError('dvm_uri not in lm_info for %s: %s'
                                % (self.name, slots))
-
-        if len(slots['lm_info']['dvm_uri']) <= dvm_id:
-            raise RuntimeError('not enough DVMs (lm_info %s: %s; dvm_id: %s)'
-                               % (self.name, slots, dvm_id))
-
-        dvm_uri = slots['lm_info']['dvm_uri'][dvm_id]
 
         if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
         else          : task_command = task_exec
@@ -331,12 +324,32 @@ class PRTE(LaunchMethod):
         map_flag += ' --pmca ptl_base_max_msg_size %d' % (1024 * 1024 * 1024 * 1)
       # map_flag += ' --pmca rmaps_base_verbose 5'
 
+        dvm_id = 0  # default value
         if SKIP_SCHEDULER:
-            fhosts = '%s/../prrte.%s.hosts' % (cu['unit_sandbox_path'], dvm_id)
-            with open(fhosts) as fd:
-                hosts = [x.split()[0] for x in fd.readlines() if x.split()]
-            map_flag += ' -host %s:%s' % (
-                hosts[int(cu_order_idx/num_units_per_node)], n_procs)
+            # if to skip scheduler's assignments then need to calculate
+            # dvm_id and host id from dvm_hosts to retrieve the host name
+
+            # (!) IMPORTANT: it assumes equal number of units per dvm (at any
+            # units generations, since it uses unit ID)
+
+            num_units_per_node = math.ceil(
+                NUM_UNITS_PER_DVM / NUM_NODES_PER_DVM)
+            num_dvm      = len(slots['lm_info']['dvm_uri'])
+
+            cu_id        = int(cu['uid'].split('unit.')[1])
+            cu_order_idx = int(cu_id % NUM_UNITS_PER_DVM)  # inside dvm
+            dvm_id       = int(cu_id / NUM_UNITS_PER_DVM)
+
+            if dvm_id >= num_dvm: dvm_id = int(dvm_id / num_dvm)
+
+            dvm_hosts = slots['lm_info']['dvm_hosts'][dvm_id]
+            try:
+                host = dvm_hosts[int(cu_order_idx/num_units_per_node)]
+            except IndexError:
+                host = dvm_hosts[-1]
+                self._log.debug('out of index host id (dvm_id=%s) for unit %s',
+                                dvm_id, cu['uid'])
+            map_flag += ' -host %s:%s' % (host, n_procs)
         else:
             if 'nodes' not in slots:
                 # this task is unscheduled - we leave it to PRRTE/PMI-X to
@@ -349,13 +362,15 @@ class PRTE(LaunchMethod):
                 # enact the scheduler's host placement.  For now, we leave socket,
                 # core and thread placement to the prted, and just add all process
                 # slots to the host list.
-                hosts = ''
+                hosts = [node['name'] for node in slots['nodes']]
+                map_flag += ' -host %s' % ','.join(hosts)
 
-                for node in slots['nodes']:
-                    hosts += '%s,' % node['name']
-
-                # remove trailing ','
-                map_flag += ' -host %s' % hosts.rstrip(',')
+                # scheduler makes sure that all hosts are from the same DVM
+                _host_0 = list(set(hosts))[0]
+                for _id, _hosts in enumerate(slots['lm_info']['dvm_hosts']):
+                    if _host_0 in _hosts:
+                        dvm_id = _id
+                        break
 
         # Additional (debug) arguments to prun
         if self._verbose:
@@ -368,6 +383,8 @@ class PRTE(LaunchMethod):
                                      ])
         else:
             debug_string = '--verbose'  # needed to get prte profile events
+
+        dvm_uri = slots['lm_info']['dvm_uri'][dvm_id]
 
       # env_string = ''  # FIXME
         command = '%s --hnp "%s" %s %s %s %s' % (self.launch_command,

@@ -361,15 +361,28 @@ class Continuous(AgentSchedulingComponent):
         is_last  = False
         tag      = cud.get('tag')
 
+        dvm_hosts_list = self._rm_lm_info.get('dvm_hosts') or []
+        # use tag as a DVM ID, so task will be allocated to nodes that are
+        # handled by a corresponding DVM
+        if tag is not None and tag not in self._tag_history:
+            try:
+                tag = int(tag)
+            except (TypeError, ValueError):
+                tag = None
+            else:
+                if len(dvm_hosts_list) > tag:
+                    self._tag_history[tag] = dvm_hosts_list[tag]
+
         # what remains to be allocated?  all of it right now.
-        alc_slots = list()
-        rem_slots = req_slots
+        alc_slots   = list()
+        rem_slots   = req_slots
+        unit_dvm_id = None
 
         # start the search
         for node in self._iterate_nodes():
 
-            node_uid  = node['uid']
-          # node_name = node['name']
+          # node_uid  = node['uid']
+            node_name = node['name']
 
           # self._log.debug('next %s : %s', node_uid, node_name)
           # self._log.debug('req1: %s = %s + %s', req_slots, rem_slots,
@@ -381,10 +394,21 @@ class Continuous(AgentSchedulingComponent):
             #   - if the previous use included this node
             # If a tag exists, continue to consider this node if the tag was
             # used for this node - else continune to the next node.
-            if tag:
-                if tag in self._tag_history:
-                    if node_uid not in self._tag_history[tag]:
-                        continue
+            if tag is not None and tag in self._tag_history:
+                if node_name not in self._tag_history[tag]:
+                    continue
+            elif dvm_hosts_list:
+                # check that nodes assigned to the unit have the same dvm_id
+                _check_next_node = False
+                for dvm_id, dvm_hosts in enumerate(dvm_hosts_list):
+                    if node_name in dvm_hosts:
+                        if unit_dvm_id is None:
+                            unit_dvm_id = dvm_id
+                        elif unit_dvm_id != dvm_id:
+                            _check_next_node = True
+                        break
+                if _check_next_node:
+                    continue
 
             # if only a small set of cores/gpus remains unallocated (ie. less
             # than node size), we are in fact looking for the last node.  Note
@@ -458,12 +482,6 @@ class Continuous(AgentSchedulingComponent):
                  'mem_per_node'  : self._rm_mem_per_node,
                  'lm_info'       : self._rm_lm_info,
                 }
-
-
-        # allocation worked!  If the unit was tagged, store the node IDs for
-        # this tag, so that later units can reuse that information
-        if tag:
-            self._tag_history[tag] = [node['uid'] for node in slots['nodes']]
 
         # this should be nicely filled out now - return
         return slots
