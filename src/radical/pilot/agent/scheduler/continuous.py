@@ -370,8 +370,9 @@ class Continuous(AgentSchedulingComponent):
             except (TypeError, ValueError):
                 tag = None
             else:
-                if len(dvm_hosts_list) > tag:
-                    self._tag_history[tag] = dvm_hosts_list[tag]
+                if len(dvm_hosts_list) <= tag:
+                    raise ValueError('dvm_id (%s) out of range' % tag)
+                self._tag_history[tag] = dvm_hosts_list[tag]
 
         # what remains to be allocated?  all of it right now.
         alc_slots   = list()
