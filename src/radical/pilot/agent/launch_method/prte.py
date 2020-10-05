@@ -340,7 +340,7 @@ class PRTE(LaunchMethod):
             cu_order_idx = int(cu_id % NUM_UNITS_PER_DVM)  # inside dvm
             dvm_id       = int(cu_id / NUM_UNITS_PER_DVM)
 
-            if dvm_id >= num_dvm: dvm_id = int(dvm_id / num_dvm)
+            if dvm_id >= num_dvm: dvm_id = int(dvm_id % num_dvm)
 
             dvm_hosts = slots['lm_info']['dvm_hosts'][dvm_id]
             try:
