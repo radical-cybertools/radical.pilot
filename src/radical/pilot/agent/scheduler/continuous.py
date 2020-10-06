@@ -161,6 +161,7 @@ class Continuous(AgentSchedulingComponent):
         '''
 
         # reflect the request in the nodelist state (set to `FREE`)
+        self._log.debug('=== unschedule 11: %s : %s', unit['uid'], unit['slots'])
         self._change_slot_states(unit['slots'], rpc.FREE)
 
 
@@ -315,6 +316,7 @@ class Continuous(AgentSchedulingComponent):
         if not cores_per_slot:
             cores_per_slot = 1
 
+        self._log.debug('res : %s', self.slot_status())
         self._log.debug('req : %s %s %s %s %s', req_slots, cores_per_slot,
                         gpus_per_slot, lfs_per_slot, mem_per_slot)
 

@@ -69,6 +69,19 @@ if __name__ == '__main__':
         umgr.add_pilots(pilot)
         umgr.wait_units()
 
+        print('overlay done')
+
+        # submit another task to ensure resources were freed
+        td = rp.ComputeUnitDescription(cfg.master_descr)
+        td.executable     = "%s/../hello_rp.sh" % os.getcwd()
+        td.cpu_processes  = nodes
+        td.cpu_threads    = cpn
+        td.gpu_processes  = gpn
+
+        task = umgr.submit_units(td)
+        umgr.wait_units()
+        print('test done')
+
     finally:
         session.close(download=True)
 

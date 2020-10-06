@@ -753,6 +753,7 @@ class AgentSchedulingComponent(rpu.Component):
         try:
             while not self._proc_term.is_set():
                 unit = self._queue_unsched.get(timeout=0.001)
+                self._log.debug('=== unschedule 10: %s : %s', unit['uid'], unit['slots'])
                 to_unschedule.append(unit)
 
         except queue.Empty:

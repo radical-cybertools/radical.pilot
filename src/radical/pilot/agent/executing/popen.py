@@ -178,6 +178,7 @@ echo "$($RP_GTOD),$1,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING,$2" >> $
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             self._prof.prof('unschedule_start', uid=cu['uid'])
+            self._log.debug('=== unschedule 01: %s', cu['uid'])
             self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             self.advance(cu, rps.FAILED, publish=True, push=False)
@@ -425,6 +426,7 @@ prof(){
 
                     del(cu['proc'])  # proc is not json serializable
                     self._prof.prof('unschedule_start', uid=cu['uid'])
+                    self._log.debug('=== unschedule 02: %s', cu['uid'])
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
                     self.advance(cu, rps.CANCELED, publish=True, push=False)
 
@@ -448,6 +450,7 @@ prof(){
                 self._cus_to_watch.remove(cu)
                 del(cu['proc'])  # proc is not json serializable
                 self._prof.prof('unschedule_start', uid=cu['uid'])
+                self._log.debug('=== unschedule 03: %s', cu['uid'])
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
                 if exit_code != 0:
