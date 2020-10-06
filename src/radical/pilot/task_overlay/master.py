@@ -118,7 +118,6 @@ class Master(rpu.Component):
         cfg['uid']     = ru.generate_id('master.%(item_counter)06d',
                                         ru.ID_CUSTOM,
                                         ns=self._session.uid)
-
         return ru.Config(cfg=cfg)
 
 

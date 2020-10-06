@@ -29,7 +29,6 @@ class Worker(rpu.Component):
         if isinstance(cfg, str): cfg = ru.Config(cfg=ru.read_json(cfg))
         else                   : cfg = ru.Config(cfg=cfg)
 
-
         # generate a MPI rank dependent UID for each worker process
         # FIXME: this should be delegated to ru.generate_id
 
@@ -105,7 +104,7 @@ class Worker(rpu.Component):
 
         # connect to master
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
-      # self.register_publisher(rpc.CONTROL_PUBSUB)
+        self.register_publisher(rpc.CONTROL_PUBSUB)
 
         # run worker initialization *before* starting to work on requests.
         # the worker provides three builtin methods:
@@ -660,9 +659,9 @@ class Worker(rpu.Component):
     #
     def test(self, idx, seconds):
         import time
-        print('start idx %6d: %.1f' % (idx, time.time()))
+        self._log.debug('start idx %6d: %.1f' % (idx, time.time()))
         time.sleep(seconds)
-        print('stop  idx %6d: %.1f' % (idx, time.time()))
+        self._log.debug('stop  idx %6d: %.1f' % (idx, time.time()))
 
 
 # ------------------------------------------------------------------------------

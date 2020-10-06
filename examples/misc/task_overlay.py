@@ -73,10 +73,11 @@ if __name__ == '__main__':
 
         # submit another task to ensure resources were freed
         td = rp.ComputeUnitDescription(cfg.master_descr)
-        td.executable     = "%s/../hello_rp.sh" % os.getcwd()
-        td.cpu_processes  = nodes
-        td.cpu_threads    = cpn
-        td.gpu_processes  = gpn
+        td.executable       = "%s/../hello_rp.sh" % os.getcwd()
+        td.cpu_processes    = nodes
+        td.cpu_process_type = rp.MPI
+        td.cpu_threads      = cpn
+        td.gpu_processes    = gpn
 
         task = umgr.submit_units(td)
         umgr.wait_units()

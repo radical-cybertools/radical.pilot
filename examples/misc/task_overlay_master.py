@@ -37,6 +37,9 @@ class MyMaster(rp.task_overlay.Master):
         # proper communication channels to the pilot agent.
         rp.task_overlay.Master.__init__(self, cfg=cfg)
 
+        self._todo = 0
+        self._done = 0
+
 
     # --------------------------------------------------------------------------
     #
@@ -62,6 +65,7 @@ class MyMaster(rp.task_overlay.Master):
                               'kwargs': {'count': idx,
                                          'uid'  : uid}}}
             self.request(item)
+            self._todo += 1
             idx += world_size
 
         self._prof.prof('create_stop')
@@ -76,12 +80,18 @@ class MyMaster(rp.task_overlay.Master):
         for r in requests:
             sys.stdout.write('result_cb %s: %s [%s]\n' % (r.uid, r.state, r.result))
             sys.stdout.flush()
+            self._done += 1
 
           # count = r.work['data']['kwargs']['count']
           # if count < 10:
           #     new_requests.append({'mode': 'call',
           #                          'data': {'method': 'hello',
           #                                   'kwargs': {'count': count + 100}}})
+
+        self._log.debug('check term: %d >= %d', self._done, self._todo)
+        if self._done >= self._todo:
+            self._log.debug('terminate')
+            self.terminate()
 
         return new_requests
 
@@ -139,7 +149,7 @@ if __name__ == '__main__':
     # wait until `m` of those workers are up
     # This is optional, work requests can be submitted before and will wait in
     # a work queue.
-  # master.wait(count=nworkers)
+    master.wait(count=1)
 
     master.run()
 

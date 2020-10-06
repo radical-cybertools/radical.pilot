@@ -164,6 +164,7 @@ echo "$($RP_GTOD),$1,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING,$2" >> $
 
             # Start a new subprocess to launch the unit
             self.spawn(launcher=launcher, cu=cu)
+            self._log.debug('=== spawned task : %s', cu['uid'])
 
         except Exception as e:
             # append the startup error to the units stderr.  This is
