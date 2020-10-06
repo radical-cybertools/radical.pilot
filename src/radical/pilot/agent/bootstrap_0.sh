@@ -855,8 +855,14 @@ virtenv_activate()
     python_dist="$2"
 
     if test "$python_dist" = "anaconda"; then
-        test -e "`which conda`" && conda activate "$virtenv" || \
-        (test -e "$virtenv/bin/activate" && . "$virtenv/bin/activate")
+        if test -e "`which conda`"; then
+            eval "$(conda shell.posix hook)"
+            conda activate "$virtenv"
+        else
+            if test -e "$virtenv/bin/activate"; then
+                . "$virtenv/bin/activate"
+            fi
+        fi
         if test -z "$CONDA_PREFIX"; then
             echo "ERROR: activating of (conda) virtenv failed - abort"
             exit 1
@@ -1740,6 +1746,7 @@ export LD_LIBRARY_PATH="$PB1_LDLB"
 # activate virtenv
 if test "$PYTHON_DIST" = "anaconda" && test -e "`which conda`"
 then
+    eval "\$(conda shell.posix hook)"
     conda activate $VIRTENV
 else
     . $VIRTENV/bin/activate

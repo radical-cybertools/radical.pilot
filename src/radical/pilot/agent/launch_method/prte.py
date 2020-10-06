@@ -15,7 +15,7 @@ import radical.utils as ru
 
 from .base import LaunchMethod
 
-NUM_NODES_PER_DVM = 10  # e.g., if 50 nodes -> 5 DVMs
+NUM_NODES_PER_DVM = 63  # default value for 1008 nodes with 16 dvm
 
 # with `True` value it skips the lists of hosts assigned to each task and gets
 # corresponding host from file `prrte.<dvm_id>.hosts`; parameters that are used:
