@@ -395,20 +395,20 @@ class Continuous(AgentSchedulingComponent):
             #   - if the previous use included this node
             # If a tag exists, continue to consider this node if the tag was
             # used for this node - else continune to the next node.
+            node_dvm_id = None  # get dvm_id for the node (if applicable)
             if tag is not None and tag in self._tag_history:
                 if node_name not in self._tag_history[tag]:
                     continue
             elif dvm_hosts_list:
                 # check that nodes assigned to the unit have the same dvm_id
-                _check_next_node = False
+                _skip_node = True
                 for dvm_id, dvm_hosts in enumerate(dvm_hosts_list):
                     if node_name in dvm_hosts:
-                        if unit_dvm_id is None:
-                            unit_dvm_id = dvm_id
-                        elif unit_dvm_id != dvm_id:
-                            _check_next_node = True
+                        if unit_dvm_id is None or unit_dvm_id == dvm_id:
+                            node_dvm_id = dvm_id  # save to use later
+                            _skip_node = False
                         break
-                if _check_next_node:
+                if _skip_node:
                     continue
 
             # if only a small set of cores/gpus remains unallocated (ie. less
@@ -455,6 +455,9 @@ class Continuous(AgentSchedulingComponent):
 
                 # try next node
                 continue
+
+            if node_dvm_id is not None and unit_dvm_id is None:
+                unit_dvm_id = node_dvm_id  # save dvm_id for unit
 
             # this node got a match, store away the found slots and continue
             # search for remaining ones
