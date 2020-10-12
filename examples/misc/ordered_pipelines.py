@@ -28,7 +28,7 @@ if __name__ == '__main__':
     try:
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/../config.json' % os.path.dirname(__file__))
+        config = ru.read_json('%s/../config.json' % pwd)
         report.ok('>>ok\n')
 
         report.header('submit pilots')
@@ -97,7 +97,7 @@ if __name__ == '__main__':
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
         ru.print_exception_trace()
-        report.warn('exit requested\n')
+        report.warn('exit requested with %s\n' % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or
