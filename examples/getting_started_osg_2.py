@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/examples/config.json' % os.path.dirname(__file__))
+        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
         report.ok('>>ok\n')
 
         report.header('submit pilots')
@@ -134,12 +134,8 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
             # trigger an error now and then
           # if i % 2:
-            if False:
-                cud.executable = 'sleep'
-                cud.arguments  = ['30']
-            else:
-                cud.executable = '/bin/echo'
-                cud.arguments  = ['$RP_PILOT_ID']
+            cud.executable = '/bin/echo'
+            cud.arguments  = ['$RP_PILOT_ID']
 
             cuds.append(cud)
             report.progress()
@@ -183,7 +179,7 @@ if __name__ == '__main__':
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        session._log.exception('oops')
+        # session._log.exception('oops')
         report.error('caught Exception: %s\n' % e)
         raise
 
