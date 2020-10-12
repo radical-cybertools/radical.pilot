@@ -3,15 +3,14 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import os
 import sys
 import time
 import radical.pilot as rp
 
-# READ: The RADICAL-Pilot documentation: 
+# READ: The RADICAL-Pilot documentation:
 #   https://radicalpilot.readthedocs.io/en/stable/
 #
-# Try running this example with RADICAL_PILOT_VERBOSE=debug set if 
+# Try running this example with RADICAL_PILOT_VERBOSE=debug set if
 # you want to see what happens behind the scenes!
 
 
@@ -34,7 +33,7 @@ def unit_state_cb (unit, state):
 # ------------------------------------------------------------------------------
 #
 def wait_queue_size_cb(umgr, wait_queue_size):
-    """ 
+    """
     this callback is called when the size of the unit managers wait_queue
     changes.
     """
@@ -67,7 +66,7 @@ if __name__ == "__main__":
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    session = rp.Session(name=session_name)
+    session = rp.Session(uid=session_name)
     print("session id: %s" % session.uid)
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
@@ -75,10 +74,6 @@ if __name__ == "__main__":
     # the whole RP stack down via a 'session.close()' call in the 'finally'
     # clause...
     try:
-
-        # prepare some input files for the compute units
-        os.system ('hostname > file1.dat')
-        os.system ('date     > file2.dat')
 
         # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
         pmgr = rp.PilotManager (session=session)
@@ -90,21 +85,22 @@ if __name__ == "__main__":
 
         # Define a 4-core local pilot that runs for 10 minutes and cleans up
         # after itself.
+
         pdesc1 = rp.ComputePilotDescription()
-        pdesc1.resource = "localhost"
+        pdesc1.resource = "local.localhost"
         pdesc1.runtime  = 10  # minutes
         pdesc1.cores    =  2
 
         pdesc2 = rp.ComputePilotDescription()
-        pdesc2.resource = "localhost"
+        pdesc2.resource = "local.localhost"
         pdesc2.runtime  = 10  # minutes
         pdesc2.cores    =  2
 
         # Launch the pilots
-        pilots = pmgr.submit_pilots ([pdesc1, pdesc2])
+        pilots = pmgr.submit_pilots([pdesc1, pdesc2])
 
         # wait for them to become active
-        pmgr.wait_pilots (state=[rp.ACTIVE, rp.DONE, rp.FAILED])
+        pmgr.wait_pilots (state=[rp.PMGR_ACTIVE, rp.DONE, rp.FAILED])
 
 
         # Combine the ComputePilot, the ComputeUnits and a scheduler via
@@ -119,31 +115,18 @@ if __name__ == "__main__":
 
         # Register also a callback which tells us when all units have been
         # assigned to pilots
-        umgr.register_callback(wait_queue_size_cb,   rp.WAIT_QUEUE_SIZE)
+        umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
 
 
         # Add the previously created ComputePilot to the UnitManager.
         umgr.add_pilots (pilots)
 
-        # Create a workload of ComputeUnits (tasks). Each compute unit
-        # uses /bin/cat to concatenate two input files, file1.dat and
-        # file2.dat. The output is written to STDOUT. cu.environment is
-        # used to demonstrate how to set environment variables within a
-        # ComputeUnit - it's not strictly necessary for this example. As
-        # a shell script, the ComputeUnits would look something like this:
-        #
-        #    export INPUT1=file1.dat
-        #    export INPUT2=file2.dat
-        #    /bin/cat $INPUT1 $INPUT2
-        #
+        # Create a workload of restartable ComputeUnits (tasks).
         cuds = []
         for unit_count in range(0, 32):
             cud = rp.ComputeUnitDescription()
-            cud.executable    = "/bin/sh"
-            cud.environment   = {'INPUT1': 'file1.dat', 'INPUT2': 'file2.dat'}
-            cud.arguments     = ["-l", "-c", "cat $INPUT1 $INPUT2; sleep 10"]
-            cud.cores         = 1
-            cud.input_staging = ['file1.dat', 'file2.dat']
+            cud.executable    = "/bin/sleep"
+            cud.arguments     = ["10"]
             cud.restartable   = True
 
             cuds.append(cud)
@@ -156,9 +139,11 @@ if __name__ == "__main__":
         # the pilots have a total of 4 cores, and run for 10 min.  A CU needs about
         # 10 seconds, so we can handle about 24 units per minute, and need a total
         # of about 3 minutes.  We now wait for 60 seconds, and then cancel the first
-        # pilot.  The 2 units currently running on that pilot will fail, all others
-        # should get rescheduled to the other pilot.
+        # pilot.  The 2 units currently running on that pilot will fail, and
+        # maybe 2 more which are being pre-fetched into the pilot at that stage
+        # - all others should get rescheduled to the other pilot.
         time.sleep(60)
+        pilots[0].wait(state=rp.PMGR_ACTIVE)
         pilots[0].cancel()
 
         # Wait for all compute units to reach a terminal state (DONE or FAILED).
@@ -171,14 +156,8 @@ if __name__ == "__main__":
             unit.wait()
 
         for unit in units:
-            print("* Task %s (executed @ %s) state %s, exit code: %s, \
-                  started: %s, finished: %s, stdout: %s" % (unit.uid, 
-                  unit.execution_locations, unit.state, unit.exit_code, 
-                  unit.start_time, unit.stop_time, unit.stdout))
-
-        # delete the test data files
-        os.system('rm file1.dat')
-        os.system('rm file2.dat')
+            print("* Task %s state: %s, exit code: %s"
+                  % (unit.uid, unit.state, unit.exit_code))
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
