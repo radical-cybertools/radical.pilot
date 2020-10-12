@@ -41,8 +41,6 @@ class Worker(rpu.Component):
         if rank is not None:
             cfg['uid'] = '%s.%03d' % (cfg['uid'], int(rank))
 
-        print('=== 1')
-
         self._n_cores = cfg.cores
         self._n_gpus  = cfg.gpus
 
@@ -50,7 +48,6 @@ class Worker(rpu.Component):
         self._session = Session(cfg=cfg, uid=cfg.sid, _primary=False)
 
         rpu.Component.__init__(self, cfg, self._session)
-        print('=== 2')
 
         self._term    = mp.Event()          # set to terminate
         self._res_evt = mp.Event()          # set on free resources
@@ -67,7 +64,6 @@ class Worker(rpu.Component):
         # resources are initially all free
         self._res_evt.set()
 
-        print('=== 3')
       # # create a multiprocessing pool with `cpn` worker processors.  Set
       # # `maxtasksperchild` to `1` so that we get a fresh process for each
       # # task.  That will also allow us to run command lines via `exec`,
@@ -112,9 +108,7 @@ class Worker(rpu.Component):
         self.register_mode('exec',  self._exec)
         self.register_mode('shell', self._shell)
 
-        print('=== 4')
         self.pre_exec()
-        print('=== 5')
 
         # connect to the request / response ZMQ queues
         self._res_put = ru.zmq.Putter('to_res', self._info.res_addr_put)
@@ -127,11 +121,9 @@ class Worker(rpu.Component):
 
         # `info` is a placeholder for any additional meta data communicated to
         # the worker
-        print('=== 6')
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
                                           'arg': {'uid' : self._uid,
                                                   'info': self._info}})
-        print('=== 7')
 
 
     # --------------------------------------------------------------------------
