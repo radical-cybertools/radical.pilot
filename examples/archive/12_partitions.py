@@ -23,7 +23,7 @@ dh = ru.DebugHelper()
 #
 if __name__ == '__main__':
 
-    print "\n\tWARNING: this example fails with current versions of RP!!\n\n"
+    print("\n\tWARNING: this example fails with current versions of RP!!\n\n")
     time.sleep(3)
 
     # we use a reporter class for nicer output
@@ -85,9 +85,9 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        print 'pilot info: %d cores (%d + %d)' \
-                % (pilot.cores, pilot.partitions[0].cores, 
-                                pilot.partitions[1].cores)
+        print('pilot info: %d cores (%d + %d)'
+               % (pilot.cores, pilot.partitions[0].cores, 
+                  pilot.partitions[1].cores))
 
         report.header('submit units')
 
@@ -137,22 +137,22 @@ if __name__ == '__main__':
                                             'config' : 'aprun',
                                             'cores'  : part2_cores}]})
 
-        print 'run more units ...'
+        print('run more units ...')
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
         report.error('caught Exception: %s\n' % e)
         ru.print_exception_trace()
         raise
-   
-    except (KeyboardInterrupt, SystemExit) as e:
+
+    except (KeyboardInterrupt, SystemExit):
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
         ru.print_exception_trace()
         report.warn('exit requested\n')
- 
+
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.

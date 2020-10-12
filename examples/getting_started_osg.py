@@ -4,6 +4,7 @@ __copyright__ = "Copyright 2013-2015, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import sys
+import os
 import radical.pilot as rp
 import radical.utils as ru
 
@@ -74,7 +75,7 @@ if __name__ == "__main__":
         resource = 'local.localhost'
 
     print('running on %s' % resource)
-
+    config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
     session = rp.Session()
