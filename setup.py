@@ -180,8 +180,6 @@ df = [('%s/'                      % base, ['docs/source/events.md']),
       ('%s/examples'              % base, glob.glob('examples/*.json')),
       ('%s/examples/docs'         % base, glob.glob('examples/docs/*')),
       ('%s/examples/misc'         % base, glob.glob('examples/misc/*')),
-      ('%s/examples/kmeans'       % base, glob.glob('examples/kmeans/*')),
-      ('%s/examples/mandelbrot'   % base, glob.glob('examples/mandelbrot/*')),
       ('%s/examples/data_staging' % base, glob.glob('examples/data_staging/*')),
 ]
 
