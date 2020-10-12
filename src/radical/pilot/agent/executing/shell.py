@@ -236,14 +236,13 @@ class Shell(AgentExecutingComponent):
             #        right here...
 
         try:
-            if cu['description']['mpi']:
-                launcher = self._mpi_launcher
-            else:
-                launcher = self._task_launcher
+            cpt = cu['description']['cpu_process_type']
+
+            if cpt  == 'MPI': launcher = self._mpi_launcher
+            else            : launcher = self._task_launcher
 
             if not launcher:
-                raise RuntimeError("no launcher (mpi=%s)"
-                                  % cu['description']['mpi'])
+                raise RuntimeError("no launcher (process type = %s)" % cpt)
 
             self._log.debug("Launching unit with %s (%s).",
                             launcher.name, launcher.launch_command)

@@ -69,7 +69,6 @@ class Default(PMGRLaunchingComponent):
 
         self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
         self._root_dir      = "%s/../../"   % self._mod_dir
-        self._conf_dir      = "%s/configs/" % self._root_dir
 
         self.register_input(rps.PMGR_LAUNCHING_PENDING,
                             rpc.PMGR_LAUNCHING_QUEUE, self.work)
@@ -703,13 +702,10 @@ class Default(PMGRLaunchingComponent):
                     for entry in output_staging:
                         fout.write('%s\n' % entry)
 
-<<<<<<< HEAD
-        session_sbox = ru.Url(pilots[0]['session_sandbox']).path
-=======
             # direct staging, use first pilot for staging context
             self._stage_in(pilots[0], info['sds'])
 
->>>>>>> fix/launcher_staging
+        session_sbox = ru.Url(pilots[0]['session_sandbox']).path
         for ft in ft_list:
             src     = os.path.abspath(ft['src'])
             tgt     = os.path.relpath(os.path.normpath(ft['tgt']), session_sbox)
@@ -764,39 +760,6 @@ class Default(PMGRLaunchingComponent):
                                    'action': rpc.TRANSFER})
         shutil.rmtree(tmp_dir)
 
-<<<<<<< HEAD
-        # we now need to untar on the target machine.
-        js_url = ru.Url(pilots[0]['js_url'])
-
-        # well, we actually don't need to talk to the rm, but only need
-        # a shell on the headnode.  That seems true for all ResourceManager we use right
-        # now.  So, lets convert the URL:
-        if '+' in js_url.scheme:
-            parts = js_url.scheme.split('+')
-            if 'gsissh' in parts: js_url.scheme = 'gsissh'
-            elif  'ssh' in parts: js_url.scheme = 'ssh'
-        else:
-            # In the non-combined '+' case we need to distinguish between
-            # a url that was the result of a hop or a local rm.
-            if js_url.scheme not in ['ssh', 'gsissh']:
-                js_url.scheme = 'fork'
-                js_url.host   = 'localhost'
-
-        with self._cache_lock:
-            if  js_url in self._saga_js_cache:
-                js_tmp  = self._saga_js_cache[js_url]
-            else:
-                js_tmp  = rs.job.Service(js_url, session=self._session)
-                self._saga_js_cache[js_url] = js_tmp
-
-      # cmd = "tar zmxvf %s/%s -C / ; rm -f %s" % \
-        cmd = "tar zmxvf %s/%s -C %s" % (session_sbox, tar_name, session_sbox)
-        j = js_tmp.run_job(cmd)
-        j.wait()
-
-        self._log.debug('tar cmd : %s', cmd)
-        self._log.debug('tar done: %s, %s, %s', j.state, j.stdout, j.stderr)
-=======
      ## # NOTE: the untar was moved into the bootstrapper (see `-z`).  That
      ## #       is actually only correct for the single-pilot case...
      ## # TODO: one tarball per pilot
@@ -833,7 +796,6 @@ class Default(PMGRLaunchingComponent):
      ##
      ## self._log.debug('tar cmd : %s', cmd)
      ## self._log.debug('tar done: %s, %s, %s', j.state, j.stdout, j.stderr)
->>>>>>> fix/launcher_staging
 
         for pilot in pilots:
             self._prof.prof('staging_in_stop',  uid=pilot['uid'])
@@ -1005,33 +967,13 @@ class Default(PMGRLaunchingComponent):
             job_name = pid
 
         if isinstance(agent_config, dict):
-
             # use dict as is
             agent_cfg = agent_config
 
         elif isinstance(agent_config, str):
-            try:
-                # interpret as a config name
-                agent_cfg_file = '%s/agent_%s.json' \
-                               % (self._conf_dir, agent_config)
-
-                self._log.info("Read agent config file: %s",  agent_cfg_file)
-                agent_cfg = ru.Config(path=agent_cfg_file)
-
-                # allow for user level overload
-                user_cfg_file = '%s/.radical/pilot/config/%s' \
-                              % (os.environ['HOME'],
-                                 os.path.basename(agent_cfg_file))
-
-                if os.path.exists(user_cfg_file):
-                    self._log.info("merging user config: %s" % user_cfg_file)
-                    user_cfg = ru.read_json(user_cfg_file)
-                    ru.dict_merge (agent_cfg, user_cfg, policy='overwrite')
-
-            except Exception as e:
-                self._log.exception("Error reading agent config file: %s" % e)
-                raise
-
+            agent_cfg = ru.Config('radical.pilot',
+                                  category='agent',
+                                  name=agent_config)
         else:
             # we can't handle this type
             raise TypeError('agent config must be string (config name) or dict')
@@ -1295,28 +1237,20 @@ class Default(PMGRLaunchingComponent):
 
                 for sdist in sdist_paths:
                     base = os.path.basename(sdist)
-<<<<<<< HEAD
                     ret['fts'].append({'src': sdist,
                                        'tgt': '%s/%s' % (session_sandbox, base),
                                        'rem': False})
-=======
-                    ret['ft'].append({
-                        'src': sdist,
-                        'tgt': '%s/%s' % (session_sandbox, base),
-                        'rem': False
-                    })
 
                 # Copy the bootstrap shell script.
                 bootstrapper_path = os.path.abspath("%s/agent/%s"
                                   % (self._root_dir, BOOTSTRAPPER_0))
                 self._log.debug("use bootstrapper %s", bootstrapper_path)
 
-                ret['ft'].append({
-                    'src': bootstrapper_path,
-                    'tgt': '%s/%s' % (session_sandbox, BOOTSTRAPPER_0),
-                    'rem': False
+                ret['fts'].append({'src': bootstrapper_path,
+                                   'tgt': '%s/%s' % (session_sandbox,
+                                                     BOOTSTRAPPER_0),
+                                   'rem': False
                 })
->>>>>>> devel
 
                 # Some machines cannot run pip due to outdated CA certs.
                 # For those, we also stage an updated certificate bundle
@@ -1327,15 +1261,9 @@ class Default(PMGRLaunchingComponent):
                     cpath = os.path.abspath("%s/agent/%s" % (self._root_dir, certs))
                     self._log.debug("use CAs %s", cpath)
 
-<<<<<<< HEAD
-                    ret['fts'].append({'src': cc_path,
-                                       'tgt': '%s/%s' % (session_sandbox, cc_name),
+                    ret['fts'].append({'src': cpath,
+                                       'tgt': '%s/%s' % (session_sandbox, certs),
                                        'rem': False})
-=======
-                    ret['ft'].append({'src': cpath,
-                                      'tgt': '%s/%s' % (session_sandbox, certs),
-                                      'rem': False})
->>>>>>> devel
 
                 self._sandboxes[resource] = True
 
