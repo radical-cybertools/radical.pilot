@@ -24,4 +24,4 @@ given basic application.
    08_unit_environment.rst
    09_mpi_units.rst
    10_pre_and_post_exec.rst
-
+   11_containerized_compute_units.rst
