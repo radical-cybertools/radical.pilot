@@ -62,7 +62,6 @@ class Default(PMGRLaunchingComponent):
         self._pilots_lock   = ru.RLock()  # lock on maipulating the above
         self._checking      = list()      # pilots to check state on
         self._check_lock    = ru.RLock()  # lock on maipulating the above
-        self._saga_fs_cache = dict()      # cache of saga directories
         self._saga_js_cache = dict()      # cache of saga job services
         self._sandboxes     = dict()      # cache of resource sandbox URLs
         self._cache_lock    = ru.RLock()  # lock for cache
@@ -1126,7 +1125,7 @@ class Default(PMGRLaunchingComponent):
         # always stage the bootstrapper for each pilot, but *not* in the tarball
         bootstrapper_path = os.path.abspath("%s/agent/bootstrap_0.sh"
                                            % self._root_dir)
-        bootstrap_tgt = '%s/bootstrap_0.sh' % (pilot_sandbox, pid)
+        bootstrap_tgt = '%s/bootstrap_0.sh' % (pilot_sandbox)
         ret['sds'].append({'source': bootstrapper_path,
                            'target': bootstrap_tgt,
                            'action': rpc.TRANSFER})
@@ -1269,8 +1268,8 @@ class Default(PMGRLaunchingComponent):
             sd['prof_id'] = pilot['uid']
 
         for sd in sds:
-            sd['source'] = str(complete_url(sd['source'], self._rem_ctx, self._log))
-            sd['target'] = str(complete_url(sd['target'], self._loc_ctx, self._log))
+            sd['source'] = str(complete_url(sd['source'], rem_ctx, self._log))
+            sd['target'] = str(complete_url(sd['target'], loc_ctx, self._log))
 
         self._stage(sds)
 
