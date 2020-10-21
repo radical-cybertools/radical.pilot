@@ -26,6 +26,23 @@ class Worker(rpu.Component):
         if isinstance(cfg, str): cfg = ru.Config(cfg=ru.read_json(cfg))
         else                   : cfg = ru.Config(cfg=cfg)
 
+
+        # generate a MPI rank dependent UID for each worker process
+        # FIXME: this should be delegated to ru.generate_id
+
+        # FIXME: why do we need to import `os` again after MPI Spawn?
+        import os
+
+        # FIXME: rank determination should be moved to RU
+        rank = None
+
+        if rank is None: rank = os.environ.get('PMIX_RANK')
+        if rank is None: rank = os.environ.get('PMI_RANK')
+        if rank is None: rank = os.environ.get('OMPI_COMM_WORLD_RANK')
+
+        if rank is not None:
+            cfg['uid'] = '%s.%03d' % (cfg['uid'], int(rank))
+
         self._n_cores = cfg.cores
         self._n_gpus  = cfg.gpus
 
@@ -350,9 +367,7 @@ class Worker(rpu.Component):
         invoke them.
         '''
 
-        task = ru.as_list(tasks)
-
-        for task in tasks:
+        for task in ru.as_list(tasks):
 
             self._prof.prof('reg_start', uid=self._uid, msg=task['uid'])
             task['worker'] = self._uid
@@ -432,6 +447,7 @@ class Worker(rpu.Component):
         # ----------------------------------------------------------------------
 
 
+        ret = None
         try:
           # self._log.debug('dispatch: %s: %d', task['uid'], task['pid'])
             mode = task['mode']

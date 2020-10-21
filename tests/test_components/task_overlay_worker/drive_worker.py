@@ -2,7 +2,6 @@
 
 
 import os
-import pprint
 
 import radical.utils as ru
 
