@@ -22,7 +22,7 @@
         "cores"    : 64
     },
 
-    "local.debug" : {
+    "local.local" : {
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
