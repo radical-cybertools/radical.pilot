@@ -159,8 +159,8 @@ do_exec(){
 
     uid="$1"
     exe="$BASE/$uid/$uid.sh"
-    out="$BASE/$uid/STDOUT"
-    err="$BASE/$uid/STDERR"
+    out="$BASE/$uid/$uid.out"
+    err="$BASE/$uid/$uid.err"
 
     log INFO "exec $uid"
 

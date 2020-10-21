@@ -3,6 +3,9 @@
 #
 # global constants
 #
+MASTER                         = 'master'
+WORKER                         = 'worker'
+
 UPDATE_WORKER                  = 'update'
 
 STAGER_WORKER                  = 'stager'
