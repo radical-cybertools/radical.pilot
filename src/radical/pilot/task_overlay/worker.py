@@ -19,16 +19,39 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session=None):
+
+        self._session = session
 
         if isinstance(cfg, str): cfg = ru.Config(cfg=ru.read_json(cfg))
         else                   : cfg = ru.Config(cfg=cfg)
+
+
+        # generate a MPI rank dependent UID for each worker process
+        # FIXME: this should be delegated to ru.generate_id
+
+        # FIXME: why do we need to import `os` again after MPI Spawn?
+        import os
+
+        # FIXME: rank determination should be moved to RU
+        rank = None
+
+        if rank is None: rank = os.environ.get('PMIX_RANK')
+        if rank is None: rank = os.environ.get('PMI_RANK')
+        if rank is None: rank = os.environ.get('OMPI_COMM_WORLD_RANK')
+
+        if rank is not None:
+            cfg['uid'] = '%s.%03d' % (cfg['uid'], int(rank))
 
         self._n_cores = cfg.cores
         self._n_gpus  = cfg.gpus
 
         self._info    = ru.Config(cfg=cfg.get('info', {}))
-        self._session = Session(cfg=cfg, uid=cfg.sid, _primary=False)
+
+
+        if not self._session:
+            self._session = Session(cfg=cfg, uid=cfg.sid, _primary=False)
+
 
         rpu.Component.__init__(self, cfg, self._session)
 
@@ -78,7 +101,7 @@ class Worker(rpu.Component):
 
         # connect to master
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
-        self.register_publisher(rpc.CONTROL_PUBSUB)
+      # self.register_publisher(rpc.CONTROL_PUBSUB)
 
         # run worker initialization *before* starting to work on requests.
         # the worker provides three builtin methods:
@@ -107,6 +130,16 @@ class Worker(rpu.Component):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
                                           'arg': {'uid' : self._uid,
                                                   'info': self._info}})
+
+
+    # --------------------------------------------------------------------------
+    #
+    # This class-method creates the appropriate sub-class for the Stager
+    #
+    @classmethod
+    def create(cls, cfg, session):
+
+        return Worker(cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -334,9 +367,7 @@ class Worker(rpu.Component):
         invoke them.
         '''
 
-        task = ru.as_list(task)
-
-        for task in tasks:
+        for task in ru.as_list(tasks):
 
             self._prof.prof('reg_start', uid=self._uid, msg=task['uid'])
             task['worker'] = self._uid
@@ -416,12 +447,13 @@ class Worker(rpu.Component):
         # ----------------------------------------------------------------------
 
 
+        ret = None
         try:
           # self._log.debug('dispatch: %s: %d', task['uid'], task['pid'])
             mode = task['mode']
             assert(mode in self._modes), 'no such call mode %s' % mode
 
-            tout = self._cfg.workload.timeout
+            tout = task['timeout']
             self._log.debug('dispatch with tout %s', tout)
 
             tlock  = mt.Lock()
@@ -456,6 +488,7 @@ class Worker(rpu.Component):
             # if we kill the process too quickly, the result put above
             # will not make it out, thus make sure the queue is empty
             # first.
+            ret = 1
             self._result_queue.close()
             self._result_queue.join_thread()
             sys.exit(ret)
