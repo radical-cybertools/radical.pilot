@@ -327,8 +327,8 @@ prof(){
             post += 'prof cu_post_stop\n'
             post += "\n"
 
-        stdout_file = descr.get('stdout') or 'STDOUT'
-        stderr_file = descr.get('stderr') or 'STDERR'
+        stdout_file = descr.get('stdout') or '%s.out' % cu['uid']
+        stderr_file = descr.get('stderr') or '%s.err' % cu['uid']
 
         cu['stdout_file'] = os.path.join(sandbox, stdout_file)
         cu['stderr_file'] = os.path.join(sandbox, stderr_file)
