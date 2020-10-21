@@ -256,7 +256,7 @@ class PilotManager(rpu.Component):
             return False
 
         # send heartbeat
-        self._session._dbs.pilot_command('pilot_heartbeat', {'pmgr': self._uid})
+        self._session._dbs.pilot_command('heartbeat', {'pmgr': self._uid})
 
         return True
 

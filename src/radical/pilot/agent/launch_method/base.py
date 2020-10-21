@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -24,6 +25,7 @@ LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
 LM_NAME_JSRUN         = 'JSRUN'
 LM_NAME_PRTE          = 'PRTE'
+LM_NAME_PRTE2         = 'PRTE2'
 LM_NAME_FLUX          = 'FLUX'
 LM_NAME_ORTE          = 'ORTE'
 LM_NAME_ORTE_LIB      = 'ORTE_LIB'
@@ -117,6 +119,7 @@ class LaunchMethod(object):
         from .mpirun         import MPIRun
         from .jsrun          import JSRUN
         from .prte           import PRTE
+        from .prte2          import PRTE2
         from .flux           import Flux
         from .rsh            import RSH
         from .ssh            import SSH
@@ -156,6 +159,7 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_DPLACE : MPIRun,
                 LM_NAME_JSRUN         : JSRUN,
                 LM_NAME_PRTE          : PRTE,
+                LM_NAME_PRTE2         : PRTE2,
                 LM_NAME_FLUX          : Flux,
                 LM_NAME_RSH           : RSH,
                 LM_NAME_SSH           : SSH,
@@ -199,6 +203,7 @@ class LaunchMethod(object):
 
         from .fork           import Fork
         from .prte           import PRTE
+        from .prte2          import PRTE2
         from .flux           import Flux
         from .jsrun          import JSRUN
         from .yarn           import Yarn
@@ -210,6 +215,7 @@ class LaunchMethod(object):
         impl = {
             LM_NAME_FORK          : Fork,
             LM_NAME_PRTE          : PRTE,
+            LM_NAME_PRTE2         : PRTE2,
             LM_NAME_FLUX          : Flux,
             LM_NAME_JSRUN         : JSRUN,
             LM_NAME_YARN          : Yarn,
@@ -242,6 +248,7 @@ class LaunchMethod(object):
             raise TypeError("LaunchMethod shutdown hook only available to base class!")
 
         from .prte           import PRTE
+        from .prte2          import PRTE2
         from .flux           import Flux
         from .yarn           import Yarn
         from .spark          import Spark
@@ -251,6 +258,7 @@ class LaunchMethod(object):
 
         impl = {
             LM_NAME_PRTE          : PRTE,
+            LM_NAME_PRTE2         : PRTE2,
             LM_NAME_FLUX          : Flux,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark

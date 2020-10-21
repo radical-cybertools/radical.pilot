@@ -18,11 +18,11 @@
     "local.localhost_funcs" : {
         "project"  : null,
         "queue"    : null,
-        "schema"   : "ssh",
+        "schema"   : "local",
         "cores"    : 64
     },
 
-    "local.devel" : {
+    "local.debug" : {
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
