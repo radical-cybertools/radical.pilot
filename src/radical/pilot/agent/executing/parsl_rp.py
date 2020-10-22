@@ -106,10 +106,10 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
 
 
         else : pd_init = {'resource'      : self.resource,
-                          'runtime'       : 10,  # pilot runtime (min)
+                          'runtime'       : self.walltime,
                           'exit_on_error' : True,
-                          'project'       : None,
-                          'queue'         : None,
+                          'project'       : self.project,
+                          'queue'         : self.partition,
                           'access_schema' : self.login_method,
                           'cores'         : 1*self.max_tasks,
                           'gpus'          : 0,}
