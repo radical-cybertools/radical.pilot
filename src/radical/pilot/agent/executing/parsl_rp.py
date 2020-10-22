@@ -66,10 +66,10 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
     @typeguard.typechecked
     def __init__(self,
                  label: str = 'RADICALExecutor',
-                 project: Optional[str] = None,
                  resource: str = None,
                  login_method: str = None,            #Specify the connection protocol SSH/GISSH/local
                  partition : Optional[str] = None,
+                 project: Optional[str] = None,
                  walltime  :  None,
                  tasks_pre_exec: Optional[str] = None,      # Specify any requirements that this task needs to run
                  task_process_type: Optional[str] = None, # Specify the type of the process MPI/Non-MPI/rp.Func

@@ -11,11 +11,11 @@ parsl.set_stream_logger()
 config = Config(
          executors=[RADICALExecutor(
                         label = 'RADICALExecutor',
-                        project = ''
+                        project = '',
                         resource = 'xsede.comet_ssh',
                         login_method = 'gsissh',
-                        partition = ''
-                        walltime  = 30
+                        partition = '',
+                        walltime  = 30,
                         task_process_type = None,
                         cores_per_task=1,
                         managed = True,
