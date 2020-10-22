@@ -67,16 +67,16 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
     def __init__(self,
                  label: str = 'RADICALExecutor',
                  resource: str = None,
-                 login_method: str = None,            #Specify the connection protocol SSH/GISSH/local
-                 walltime  :  None,
+                 login_method: str = None,                  # Specify the connection protocol SSH/GISSH/local
+                 walltime: int = None,
                  tasks_pre_exec: Optional[str] = None,      # Specify any requirements that this task needs to run
-                 task_process_type: Optional[str] = None, # Specify the type of the process MPI/Non-MPI/rp.Func
+                 task_process_type: Optional[str] = None,   # Specify the type of the process MPI/Non-MPI/rp.Func
                  cores_per_task = 1,
                  managed: bool = True,
                  max_tasks: Union[int, float] = float('inf'),
                  worker_logdir_root: Optional[str] = ".",
-                 partition : Optional[str] = None,
-                 project: Optional[str] = None,):
+                 partition : Optional[str] = " ",
+                 project: Optional[str] = " ",):
 
         report.title('RP version %s :' % rp.version)
         report.header("Initializing RADICALExecutor with ParSL version %s :" % parsl.__version__)
