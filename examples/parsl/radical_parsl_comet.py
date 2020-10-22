@@ -11,8 +11,8 @@ parsl.set_stream_logger()
 config = Config(
          executors=[RADICALExecutor(
                         label = 'RADICALExecutor',
-                        resource = 'local.localhost', #'local.localhost_funcs',
-                        login_method = 'local',
+                        resource = 'xsede.comet_ssh', #'local.localhost_funcs',
+                        login_method = 'gsissh',
                         task_process_type = None,
                         cores_per_task=1,
                         managed = True,
