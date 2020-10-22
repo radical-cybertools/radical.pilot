@@ -23,22 +23,18 @@ usage_tracking=True)
 
 parsl.load(config)
 
+'''
 @bash_app
 def gen(outputs=[], stdout= '/home/aymen/rand.out',stderr='/home/aymen/rand.err'):
     return 'echo $(( RANDOM % (10 - 5 + 1 ) + 5 ))'
 
 for i in range(8):
     zz = gen()
-
-'''
-@python_app
-def add(a, b, outputs=[], 
-              stdout= '/home/aymen/stress.out',
-              stderr='/home/aymen/stress.err'):
-    x = a+b
-    return x 
-
-zz = add(2, 3)
-print (zz)
 '''
 
+@bash_app
+def stress(outputs=[], stdout= '/home/aymen/rand.out',stderr='/home/aymen/rand.err'):
+    return '/home/aymen/stress-ng/stress-ng --cpu 1 --timeout 300'
+
+for i in range(8):
+    zz = gen()
