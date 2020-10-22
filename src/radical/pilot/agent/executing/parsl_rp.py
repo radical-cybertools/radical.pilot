@@ -56,7 +56,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
                         ParSL API                          |         ParSL DFK/dflow               |      Task Translator      |     RP-Client/Unit-Manager
         ---------------------------------------------------|---------------------------------------|---------------------------|----------------------------                                                     
                                                            |                                       |                           |
-         parsl_tasks_description ------>  ParSL_tasks{}----+-> Dep. check ------> ParSL_tasks{} ---+--> ParSL Task/Tasks desc. | umgr.submit_units(RP_units)
+         parsl_tasks_description ------>  ParSL_tasks{}----+-> Dep. check ------> ParSL_tasks{} <--+--> ParSL Task/Tasks desc. | umgr.submit_units(RP_units)
                                            +api.submit     | Data management          +dfk.submit  |             |             |
                                                            |                                       |             v             |
                                                            |                                       |     RP Unit/Units desc. --+->   
@@ -66,8 +66,11 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
     @typeguard.typechecked
     def __init__(self,
                  label: str = 'RADICALExecutor',
+                 project: Optional[str] = None,
                  resource: str = None,
                  login_method: str = None,            #Specify the connection protocol SSH/GISSH/local
+                 partition : Optional[str] = None,
+                 walltime  :  None,
                  tasks_pre_exec: Optional[str] = None,      # Specify any requirements that this task needs to run
                  task_process_type: Optional[str] = None, # Specify the type of the process MPI/Non-MPI/rp.Func
                  cores_per_task = 1,
@@ -78,9 +81,11 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         report.title('RP version %s :' % rp.version)
         report.header("Initializing RADICALExecutor with ParSL version %s :" % parsl.__version__)
         self.label = label
-
+        self.project = project
         self.resource = resource
         self.login_method = login_method
+        self.partition = partition
+        self.walltime = walltime
         self.tasks = list()
         self.tasks_pre_exec = tasks_pre_exec
         self.task_process_type = task_process_type
