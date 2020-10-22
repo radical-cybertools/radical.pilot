@@ -37,4 +37,4 @@ def stress(outputs=[], stdout= '/home/aymen/rand.out',stderr='/home/aymen/rand.e
     return '/home/aymen/stress-ng/stress-ng --cpu 1 --timeout 300'
 
 for i in range(8):
-    zz = gen()
+    zz = stress()
