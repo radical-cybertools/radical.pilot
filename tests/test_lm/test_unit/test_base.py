@@ -6,6 +6,7 @@ from radical.pilot.agent.launch_method.base import LaunchMethod
 
 import radical.utils as ru
 import pytest
+import warnings
 
 try:
     import mock
@@ -58,3 +59,23 @@ def test_get_mpi_info(mocked_init):
     version, flavor = lm._get_mpi_info('mpirun')
     assert version == '2.1.2'
     assert flavor == 'OMPI'
+
+    ru.sh_callout.side_effect = [['test',1,1],['HYDRA build details:',3,0]]
+    version, flavor = lm._get_mpi_info('mpirun')
+    assert version == ''
+    assert flavor == 'HYDRA'
+
+    ru.sh_callout.side_effect = [['test',1,1],['Intel(R) MPI Library for Linux* OS,\n\n\
+                                               Version 2019 Update 5 Build 20190806\n\n\
+                                               Copyright 2003-2019, Intel Corporation.',3,0]]
+    version, flavor = lm._get_mpi_info('mpirun')
+    assert version == ''
+    assert flavor == 'HYDRA'
+
+    ru.sh_callout.side_effect = [['test',1,1],['MVAPICH2 2.3b',3,0]]
+    version, flavor = lm._get_mpi_info('mpirun')
+    try: 
+        assert version == '3.2b'
+        assert flavor == 'MVAPICH2'
+    except:
+        warnings.warn(UserWarning("MVAPICH MPI flavor Not implemented yet"))
