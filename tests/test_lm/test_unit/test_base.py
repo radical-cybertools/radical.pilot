@@ -6,7 +6,6 @@ from radical.pilot.agent.launch_method.base import LaunchMethod
 
 import radical.utils as ru
 import pytest
-import warnings
 
 try:
     import mock
@@ -72,10 +71,11 @@ def test_get_mpi_info(mocked_init):
     assert version == ''
     assert flavor == 'HYDRA'
 
-    ru.sh_callout.side_effect = [['test',1,1],['MVAPICH2 2.3b',3,0]]
+    ru.sh_callout.side_effect = [['test',1,1],['HYDRA build details:\n\n\
+                                  Version: 3.2\n\n\
+                                  Release Date: unreleased development copy\n\n\
+                                  /var/tmp/Intel-mvapich2/OFEDRPMS/BUILD/mvapich2\n\n\
+                                  2.3b-10/src/openpa/src',3,0]]
     version, flavor = lm._get_mpi_info('mpirun')
-    try: 
-        assert version == '3.2b'
-        assert flavor == 'MVAPICH2'
-    except:
-        warnings.warn(UserWarning("MVAPICH MPI flavor Not implemented yet"))
+    assert version == ''
+    assert flavor == 'HYDRA'
