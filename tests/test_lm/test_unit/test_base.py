@@ -15,7 +15,7 @@ except ImportError:
 
 
 class TestBase(TestCase):
-    
+
     def test_configure(self):
 
         session = mock.Mock()
