@@ -34,10 +34,7 @@ class TestBase(TestCase):
         ru.sh_callout = mock.Mock()
         ru.sh_callout.side_effect = [['test',1,0]]
         version, flavor = lm._get_mpi_info('mpirun')
-        if version is None:
-            assert True
-        else:
-            assert False
+        self.assertIsNone(version)
         self.assertEqual(flavor, 'unknown')
 
         ru.sh_callout.side_effect = [['test',1,1],['mpirun (Open MPI) 2.1.2\n\n\
