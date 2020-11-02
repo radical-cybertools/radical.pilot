@@ -22,8 +22,6 @@ class Worker(rpu.Component):
     #
     def __init__(self, cfg, session=None):
 
-        self._conc = 0
-
         self._session = session
 
         if isinstance(cfg, str): cfg = ru.Config(cfg=ru.read_json(cfg))
@@ -136,20 +134,6 @@ class Worker(rpu.Component):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
                                           'arg': {'uid' : self._uid,
                                                   'info': self._info}})
-
-        # os.system('echo "======================"')
-        # os.system('ulimit -a')
-        # print("getrlimit before:", resource.getrlimit(resource.RLIMIT_NPROC))
-        # try:
-        #     resource.setrlimit(resource.RLIMIT_NOFILE, (1024 * 32, 1024 * 32))
-        #     resource.setrlimit(resource.RLIMIT_NPROC,  (1024 * 16, 1024 * 16))
-        #     resource.setrlimit(resource.RLIMIT_STACK,  (2**29, -1))
-        # except:
-        #     pass
-        # print("getrlimit after  :", resource.getrlimit(resource.RLIMIT_NPROC))
-        # os.system('echo "======================"')
-        # os.system('ulimit -a')
-        # os.system('echo "======================"')
 
         self._log.debug('cores %s', str(self._resources['cores']))
         self._log.debug('gpus  %s', str(self._resources['cores']))
@@ -500,7 +484,7 @@ class Worker(rpu.Component):
 
             # make CUDA happy
             # FIXME: assume logical device numbering for now
-            os.environ['CUDA_VISIBLE_DEVICES'] = os.environ['RP_TASK_GPUS'] 
+            os.environ['CUDA_VISIBLE_DEVICES'] = os.environ['RP_TASK_GPUS']
 
             out, err, ret = self._modes[mode](task.get('data'))
             with tlock:
