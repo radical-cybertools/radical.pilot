@@ -4,6 +4,25 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
+1.5.7 Release                                                         2020-10-30
+--------------------------------------------------------------------------------
+
+  - Adding init files in all test folders 
+  - document containerized tasks
+  - Fix #2221 
+  - Fix read_config
+  - doc fixes / additions
+  - adding unit tests, component tests
+  - remove old examples
+  - fixing rp_analytics #2114 
+  - inject workers as MPI task 
+  - remove debug prints 
+  - mpirun configs for traverse, stampede2 
+  - ru.Config is responsible to pick configs from correct paths 
+  - test agent execution/base 
+  - unit test for popen/spawn #1881 
+
+
 1.5.4 Release                                                         2020-10-01
 --------------------------------------------------------------------------------
 
