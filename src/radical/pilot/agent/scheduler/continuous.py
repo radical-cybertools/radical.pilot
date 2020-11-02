@@ -129,6 +129,14 @@ class Continuous(AgentSchedulingComponent):
                         idx = s * 21 * smt + i
                         node_entry['cores'][idx] = rpc.DOWN
 
+            # FIXME: also allow to block GPUS
+            if self._cfg.resource_cfg.blocked_cores:
+                blocked = self._cfg.resource_cfg.blocked_cores
+                self._log.info('blocked cores: %s' % blocked)
+                for idx in blocked:
+                    node_entry['cores'][idx] = rpc.DOWN
+                    self._rm_cores_per_node -= 1
+
             self.nodes.append(node_entry)
 
         if self._rm_cores_per_node > 40 and \
