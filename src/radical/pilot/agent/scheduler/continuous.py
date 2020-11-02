@@ -129,13 +129,26 @@ class Continuous(AgentSchedulingComponent):
                         idx = s * 21 * smt + i
                         node_entry['cores'][idx] = rpc.DOWN
 
-            # FIXME: also allow to block GPUS
-            if self._cfg.resource_cfg.blocked_cores:
-                blocked = self._cfg.resource_cfg.blocked_cores
-                self._log.info('blocked cores: %s' % blocked)
-                for idx in blocked:
+            # the config can override core and gpu detection, and decide to
+            # block some resources
+            blocked_cores = self._cfg.resource_cfg.blocked_cores
+            if blocked_cores:
+
+                self._log.info('blocked cores: %s' % blocked_cores)
+                for idx in blocked_cores:
+                    assert(len(node_entry['cores']) > idx)
                     node_entry['cores'][idx] = rpc.DOWN
                     self._rm_cores_per_node -= 1
+
+            blocked_gpus = self._cfg.resource_cfg.blocked_gpus
+            if blocked_gpus:
+
+                self._log.info('blocked gpus : %s' % block_gpus)
+                for idx in block_gpus:
+                    assert(len(node_entry['gpus']) > idx)
+                    node_entry['gpus'][idx] = rpc.DOWN
+                    self._rm_gpus_per_node -= 1
+
 
             self.nodes.append(node_entry)
 
