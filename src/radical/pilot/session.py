@@ -168,13 +168,12 @@ class Session(rs.Session):
         if dburl_no_passwd.get_password():
             dburl_no_passwd.set_password('****')
 
-        self._rep.info ('<<database   : ')  
+        self._rep.info ('<<database   : ')
         self._rep.plain('[%s]'    % dburl_no_passwd)
         self._log.info('dburl %s' % dburl_no_passwd)
 
         # create/connect database handle on primary sessions
-      # try:
-        if True:
+        try:
             self._dbs = DBSession(sid=self.uid, dburl=dburl,
                                   cfg=self._cfg, log=self._log)
 
@@ -186,12 +185,12 @@ class Session(rs.Session):
                                           'rs': rs.version_detail,
                                           'ru': ru.version_detail,
                                           'py': py_version_detail}})
-      # except Exception as e:
-      #     self._rep.error(">>err\n")
-      #     self._log.exception('session create failed [%s]' %
-      #             dburl_no_passwd)
-      #     raise RuntimeError ('session create failed [%s]' %
-      #             dburl_no_passwd) from e
+        except Exception as e:
+            self._rep.error(">>err\n")
+            self._log.exception('session create failed [%s]' %
+                    dburl_no_passwd)
+            raise RuntimeError ('session create failed [%s]' %
+                    dburl_no_passwd) from e
 
         # primary sessions have a component manager which also manages
         # heartbeat.  'self._cmgr.close()` should be called during termination
