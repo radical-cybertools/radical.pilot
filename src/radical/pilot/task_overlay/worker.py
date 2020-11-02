@@ -45,7 +45,6 @@ class Worker(rpu.Component):
         if rank is not None:
             cfg['uid'] = '%s.%03d' % (cfg['uid'], int(rank))
 
-
         self._n_cores = cfg.cores
         self._n_gpus  = cfg.gpus
 
@@ -136,22 +135,6 @@ class Worker(rpu.Component):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
                                           'arg': {'uid' : self._uid,
                                                   'info': self._info}})
-
-        # os.system('echo "======================"')
-        # os.system('ulimit -a')
-        # print("getrlimit before:", resource.getrlimit(resource.RLIMIT_NPROC))
-        # try:
-        #     resource.setrlimit(resource.RLIMIT_NOFILE, (1024 * 32, 1024 * 32))
-        #     resource.setrlimit(resource.RLIMIT_NPROC,  (1024 * 16, 1024 * 16))
-        #     resource.setrlimit(resource.RLIMIT_STACK,  (2**29, -1))
-        # except:
-        #     pass
-        # print("getrlimit after  :", resource.getrlimit(resource.RLIMIT_NPROC))
-        # os.system('echo "======================"')
-        # os.system('ulimit -a')
-        # os.system('echo "======================"')
-
-        self._log.debug('cores %s', str(self._resources['cores']))
         self._log.debug('gpus  %s', str(self._resources['cores']))
 
 
@@ -432,9 +415,7 @@ class Worker(rpu.Component):
         invoke them.
         '''
 
-        tasks = ru.as_list(tasks)
-
-        for task in tasks:
+        for task in ru.as_list(tasks):
 
             self._prof.prof('reg_start', uid=self._uid, msg=task['uid'])
             task['worker'] = self._uid
