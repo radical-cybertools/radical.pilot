@@ -223,9 +223,6 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
     def shutdown(self, hub=True, targets='all', block=False):
         """Shutdown the executor, including all RADICAL-Pilot components."""
         self.report.progress_done()
-        self.umgr.wait_units()
-        self.umgr.close()
-        self.pmgr.close()
         self.session.close(download=True)
         self.report.header("Attempting RADICALExecutor shutdown")
 

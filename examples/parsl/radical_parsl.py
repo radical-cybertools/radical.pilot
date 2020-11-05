@@ -37,7 +37,6 @@ for i in range(4):
     results.append(gen(outputs=[out_file]))
     gen()
 
-print (results)
 print ("Job Status: {}".format([r.done() for r in results]))
 # wait for all apps to complete
 [r.result() for r in results]
