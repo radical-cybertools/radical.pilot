@@ -334,8 +334,6 @@ class Default(PMGRLaunchingComponent):
         with self._pilots_lock, self._check_lock:
 
             for pid in self._checking:
-                
-                self._log.debug('GIANNIS: %s %s', pid,self._pilots[pid]['job'])
                 tc.add(self._pilots[pid]['job'])
 
         states = tc.get_states()
@@ -570,6 +568,7 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
+    # pylint: disable=undefined-loop-variable
     def _start_pilot_bulk(self, resource, schema, pilots):
         """
         For each pilot, we prepare by determining what files need to be staged,
@@ -879,6 +878,7 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
+    # pylint: enable=undefined-loop-variable
     def _prepare_pilot(self, resource, rcfg, pilot, expand):
 
         pid = pilot["uid"]
