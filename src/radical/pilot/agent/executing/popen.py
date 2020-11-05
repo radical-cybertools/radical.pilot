@@ -16,7 +16,7 @@ import signal
 import tempfile
 import threading as mt
 import traceback
-import subprocess
+# import subprocess
 
 import radical.utils as ru
 
@@ -71,10 +71,11 @@ class Popen(AgentExecutingComponent) :
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
-        self._cancel_lock    = ru.RLock()
-        self._cus_to_cancel  = list()
-        self._cus_to_watch   = list()
-        self._watch_queue    = queue.Queue ()
+        self._cancel_lock      = ru.RLock()
+        self._cus_to_cancel    = list()
+        self._cus_to_terminate = list()
+        self._cus_to_watch     = list()
+        self._watch_queue      = queue.Queue()
 
         self._pid = self._cfg['pid']
 
@@ -211,7 +212,7 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_AGENT_ID="%s"\n'      % self._cfg['aid']
             env_string += 'export RP_SPAWNER_ID="%s"\n'    % self.uid
             env_string += 'export RP_UNIT_ID="%s"\n'       % cu['uid']
-            env_string += 'export RP_UNIT_NAME="%s"\n'     % cu['description'].get('name')
+            env_string += 'export RP_UNIT_NAME="%s"\n'     % descr.get('name')
             env_string += 'export RP_GTOD="%s"\n'          % self.gtod
             env_string += 'export RP_TMP="%s"\n'           % self._cu_tmp
             env_string += 'export RP_PILOT_SANDBOX="%s"\n' % self._pwd
@@ -279,9 +280,19 @@ prof(){
                 launch_script.write(pre)
                 launch_script.write('prof cu_pre_stop\n')
 
+            # prepare stdout/stderr
+            stdout_file = descr.get('stdout') or '%s.out' % cu['uid']
+            stderr_file = descr.get('stderr') or '%s.err' % cu['uid']
+
+            cu['stdout_file'] = os.path.join(sandbox, stdout_file)
+            cu['stderr_file'] = os.path.join(sandbox, stderr_file)
+
+            # cu_exec launch command
             launch_script.write("\n# The command to run\n")
             launch_script.write('prof cu_exec_start\n')
-            launch_script.write('%s > %s/STDOUT 2> %s/STDERR\n' % (launch_command, sandbox, sandbox))
+            launch_script.write(
+                '%s > %s 2> %s\n' %
+                (launch_command, cu['stdout_file'], cu['stderr_file']))
             launch_script.write('RETVAL=$?\n')
             launch_script.write('prof cu_exec_stop\n')
 
@@ -305,15 +316,8 @@ prof(){
         st = os.stat(launch_script_name)
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
 
-        # prepare stdout/stderr
-        stdout_file = descr.get('stdout') or '%s.out' % cu['uid']
-        stderr_file = descr.get('stderr') or '%s.err' % cu['uid']
-
-        cu['stdout_file'] = os.path.join(sandbox, stdout_file)
-        cu['stderr_file'] = os.path.join(sandbox, stderr_file)
-
-        _stdout_file_h = open(cu['stdout_file'], 'a')
-        _stderr_file_h = open(cu['stderr_file'], 'a')
+      # _stdout_file_h = open(cu['stdout_file'], 'a')
+      # _stderr_file_h = open(cu['stderr_file'], 'a')
 
         self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, sandbox)
 
@@ -384,17 +388,29 @@ prof(){
         action = 0
         for cu in self._cus_to_watch:
 
-            # poll subprocess object
-            uid = cu['uid']
+            uid   = cu['uid']
+            descr = cu['description']
 
             try:
                 if not os.path.exists('run_done/%s' % uid):
-                    continue
-                os.system('mv run_done/%s run_final/%s' % (uid, uid))
-                with open('run_final/%s' % uid, 'r') as fin:
-                    exit_code = int(fin.read().strip())
+                    if uid in self._cus_to_terminate:
+                        exit_code = -1
+                    else:
+                        stderr_file = '%s/%s' % \
+                            (uid, descr.get('stderr') or '%s.err' % uid)
+                        out, _, _ = ru.sh_callout('tail -n5 %s' % stderr_file)
+                        if 'Caught signal Terminated' in out:
+                            exit_code = -1
+                            self._cus_to_terminate.extend(
+                                [x['uid'] for x in self._cus_to_watch])
+                        else:
+                            continue
+                else:
+                    os.system('mv run_done/%s run_final/%s' % (uid, uid))
+                    with open('run_final/%s' % uid, 'r') as fin:
+                        exit_code = int(fin.read().strip())
             except Exception as e:
-                self._log.exception('ERROR while moving to final state: %s' % e)
+                self._log.exception('ERROR during the state check: %s' % e)
                 continue
 
             if exit_code is None:
@@ -413,12 +429,11 @@ prof(){
                     # method)
                   # cu['proc'].kill()
                     action += 1
-                    try:
-                        pass
-                      # os.killpg(cu['proc'].pid, signal.SIGTERM)
-                    except OSError:
+                  # try:
+                  #     os.killpg(cu['proc'].pid, signal.SIGTERM)
+                  # except OSError:
                         # unit is already gone, we ignore this
-                        pass
+                  #     pass
                   # cu['proc'].wait()  # make sure proc is collected
 
                     with self._cancel_lock:

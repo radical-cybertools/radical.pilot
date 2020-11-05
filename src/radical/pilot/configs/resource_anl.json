@@ -2,7 +2,7 @@
 {
     "theta": {
         "description"                 : "",
-        "notes"                       : null,
+        "notes"                       : "Local instance of MongoDB and pre-set VE should be used.",
         "schemas"                     : ["local"],
         "local"                       : {
             "job_manager_hop"         : "cobalt://localhost/",
@@ -19,18 +19,15 @@
         "task_launch_method"          : "APRUN",
         "mpi_launch_method"           : "APRUN",
         "pre_bootstrap_0"             : [
-                                        ],
-        "pre_bootstrap_1"             : [
-                                        ],
-        "valid_roots"                 : [],
+            "module load miniconda-3"
+        ],
+        "valid_roots"                 : ["$HOME"],
         "default_remote_workdir"      : "$HOME",
-        "rp_version"                  : "installed",
-        "virtualenv"                  : "/home/mturilli/radical.pilot.sandbox/ve.anl.theta.1.2.1",
+        "python_dist"                 : "anaconda",
+        "virtenv"                     : "/home/$USER/ve.rp",
         "virtenv_mode"                : "use",
+        "rp_version"                  : "installed",
         "stage_cacerts"               : true,
-        "python_dist"                 : "default",
-        "virtenv_dist"                : "default",
-        "gpus_per_node"               : 0,
         "cores_per_node"              : 64
     }
 }
