@@ -330,12 +330,12 @@ class Default(PMGRLaunchingComponent):
         # we don't want to lock our members all the time.  For that reason we
         # use a copy of the pilots_tocheck list and iterate over that, and only
         # lock other members when they are manipulated.
-
         tc = rs.job.Container()
         with self._pilots_lock, self._check_lock:
 
             for pid in self._checking:
-
+                
+                self._log.debug('GIANNIS: %s %s', pid,self._pilots[pid]['job'])
                 tc.add(self._pilots[pid]['job'])
 
         states = tc.get_states()
@@ -354,7 +354,7 @@ class Default(PMGRLaunchingComponent):
             for pid in self._checking:
 
                 state = self._pilots[pid]['job'].state
-                self._log.debug('saga job state: %s %s', pid, state)
+                self._log.debug('saga job state: %s %s %s', pid, self._pilots[pid]['job'],  state)
 
                 if state in [rs.job.DONE, rs.job.FAILED, rs.job.CANCELED]:
                     pilot = self._pilots[pid]['pilot']
@@ -835,13 +835,20 @@ class Default(PMGRLaunchingComponent):
                 raise RuntimeError("SAGA Job state is FAILED. (%s)" % jd.name)
 
             pilot = None
-            pid   = jd.name
+            # pid   = jd.name
             for p in pilots:
-                if p['uid'] == pid:
+                if p['uid'] in self._pilots:
+                    continue
+                if p['description']['job_name']:
+                    p_name = p['description']['job_name']
+                else:
+                    p_name = p['uid']
+                if p_name == jd.name:
                     pilot = p
                     break
 
             assert(pilot)
+            pid = p['uid']
 
             # Update the Pilot's state to 'PMGR_ACTIVE_PENDING' if SAGA job
             # submission was successful.  Since the pilot leaves the scope of
