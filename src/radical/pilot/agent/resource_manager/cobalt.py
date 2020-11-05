@@ -34,17 +34,21 @@ class Cobalt(ResourceManager):
         # of hostnames.  The number of nodes we receive from `$COBALT_PARTSIZE`.
 
         n_nodes          = int(os.environ['COBALT_PARTSIZE'])
-        out, _, _        = ru.sh_callout('aprun -n %d -N 1 hostname' % n_nodes)
-        node_list        = out.split()
+      # out, _, _        = ru.sh_callout('aprun -q -n %d -N 1 hostname' % n_nodes)
+      # node_list        = out.split()
+      # print('=== out 1 : [%s]' % out)a
+        node_list        = ['node_%04d' %  i for i in range(n_nodes)]
         assert(len(node_list) == n_nodes), node_list
 
-        # we also want    to learn the core count per node
-        cmd              = 'cat /proc/cpuinfo | grep processor | wc -l'
-        out, _, _        = ru.sh_callout('aprun -n %d -N 1 %s' % (n_nodes, cmd))
-        core_counts      = list(set([int(x) for x in out.split()]))
-        assert(len(core_counts) == 1), core_counts
-        cores_per_node   = core_counts[0]
+      # # we also want to learn the core count per node
+      # cmd              = 'cat /proc/cpuinfo | grep processor | wc -l'
+      # out, _, _        = ru.sh_callout('aprun -q -n %d -N 1 %s' % (n_nodes, cmd))
+      # core_counts      = set([int(x) for x in out.split()])
+      # print('=== out 2 : [%s] [%s]' % (out, core_counts))
+      # assert(len(core_counts) == 1), core_counts
+      # cores_per_node   = core_counts[0]
 
+        cores_per_node   = self._cfg.get('cores_per_node', 1)
         gpus_per_node    = self._cfg.get('gpus_per_node', 0)
         lfs_per_node     = {'path': ru.expand_env(
                                        self._cfg.get('lfs_path_per_node')),

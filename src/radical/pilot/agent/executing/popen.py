@@ -203,6 +203,8 @@ class Popen(AgentExecutingComponent) :
             # Create string for environment variable setting
             env_string = ''
           # env_string += '. %s/env.orig\n'                % self._pwd
+            env_string += 'env > env\n'
+            env_string += '. %s/env.cu\n'                  % self._pwd
             env_string += 'export RADICAL_BASE="%s"\n'     % self._pwd
             env_string += 'export RP_SESSION_ID="%s"\n'    % self._cfg['sid']
             env_string += 'export RP_PILOT_ID="%s"\n'      % self._cfg['pid']
@@ -279,7 +281,7 @@ prof(){
 
             launch_script.write("\n# The command to run\n")
             launch_script.write('prof cu_exec_start\n')
-            launch_script.write('%s\n' % launch_command)
+            launch_script.write('%s > %s/STDOUT 2> %s/STDERR\n' % (launch_command, sandbox, sandbox))
             launch_script.write('RETVAL=$?\n')
             launch_script.write('prof cu_exec_stop\n')
 
@@ -296,6 +298,7 @@ prof(){
 
             launch_script.write("\n# Exit the script with the return code from the command\n")
             launch_script.write("prof cu_stop\n")
+            launch_script.write("echo $RETVAL > ../run_done/$RP_UNIT_ID\n")
             launch_script.write("exit $RETVAL\n")
 
         # done writing to launch script, get it ready for execution.
@@ -315,19 +318,21 @@ prof(){
         self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, sandbox)
 
         self._prof.prof('exec_start', uid=cu['uid'])
-        cu['proc'] = subprocess.Popen(args       = cmdline,
-                                      executable = None,
-                                      stdin      = None,
-                                      stdout     = _stdout_file_h,
-                                      stderr     = _stderr_file_h,
-                                      preexec_fn = os.setsid,
-                                      close_fds  = True,
-                                      shell      = True,
-                                      cwd        = sandbox)
+        os.system('cp %s run_queue/' % launch_script_name)
+        cu['proc'] = 0
+      # cu['proc'] = subprocess.Popen(args       = cmdline,
+      #                               executable = None,
+      #                               stdin      = None,
+      #                               stdout     = _stdout_file_h,
+      #                               stderr     = _stderr_file_h,
+      #                               preexec_fn = os.setsid,
+      #                               close_fds  = True,
+      #                               shell      = True,
+      #                               cwd        = sandbox)
         self._prof.prof('exec_ok', uid=cu['uid'])
 
         # store pid for last-effort termination
-        _pids.append(cu['proc'].pid)
+      # _pids.append(cu['proc'].pid)
 
         self._watch_queue.put(cu)
 
@@ -380,8 +385,17 @@ prof(){
         for cu in self._cus_to_watch:
 
             # poll subprocess object
-            exit_code = cu['proc'].poll()
-            uid       = cu['uid']
+            uid = cu['uid']
+
+            try:
+                if not os.path.exists('run_done/%s' % uid):
+                    continue
+                os.system('mv run_done/%s run_final/%s' % (uid, uid))
+                with open('run_final/%s' % uid, 'r') as fin:
+                    exit_code = int(fin.read().strip())
+            except Exception as e:
+                self._log.exception('ERROR while moving to final state: %s' % e)
+                continue
 
             if exit_code is None:
                 # Process is still running
@@ -400,18 +414,19 @@ prof(){
                   # cu['proc'].kill()
                     action += 1
                     try:
-                        os.killpg(cu['proc'].pid, signal.SIGTERM)
+                        pass
+                      # os.killpg(cu['proc'].pid, signal.SIGTERM)
                     except OSError:
                         # unit is already gone, we ignore this
                         pass
-                    cu['proc'].wait()  # make sure proc is collected
+                  # cu['proc'].wait()  # make sure proc is collected
 
                     with self._cancel_lock:
                         self._cus_to_cancel.remove(uid)
 
                     self._prof.prof('exec_cancel_stop', uid=uid)
 
-                    del(cu['proc'])  # proc is not json serializable
+                 #  del(cu['proc'])  # proc is not json serializable
                     self._prof.prof('unschedule_start', uid=cu['uid'])
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
                     self.advance(cu, rps.CANCELED, publish=True, push=False)
@@ -424,7 +439,7 @@ prof(){
                 self._prof.prof('exec_stop', uid=uid)
 
                 # make sure proc is collected
-                cu['proc'].wait()
+              # cu['proc'].wait()
 
                 # we have a valid return code -- unit is final
                 action += 1
@@ -434,7 +449,7 @@ prof(){
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._cus_to_watch.remove(cu)
-                del(cu['proc'])  # proc is not json serializable
+              # del(cu['proc'])  # proc is not json serializable
                 self._prof.prof('unschedule_start', uid=cu['uid'])
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 

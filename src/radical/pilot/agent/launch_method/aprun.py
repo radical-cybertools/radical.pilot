@@ -196,22 +196,30 @@ class APRun(LaunchMethod):
             node_specs[spec_key]['nodes' ].append(node_id)
 
 
+        aprun_command = self.launch_command
+
         # Now that we have the node specs, and also know what nodes to apply
         # them to, we can construct the aprun command:
-        aprun_command = self.launch_command
-        for node_spec,info in list(node_specs.items()):
+      # for node_spec,info in list(node_specs.items()):
+      #
+      #     # nprocs must be uniform
+      #     nprocs_list = list(info['nprocs'])
+      #     nprocs      = nprocs_list[0]
+      #     assert(len(nprocs_list) == 1), nprocs_list
+      #
+      #   # aprun_command += ' -n %d -N %s -L %s %s %s :' % \
+      #   #                  (nprocs * len(info['nodes']), nprocs,
+      #   #                   ','.join(info['nodes']), node_spec, cmd)
+      #     aprun_command += ' -n %d -N %s %s %s :' % \
+      #                      (nprocs * len(info['nodes']), nprocs, node_spec, cmd)
+      #
+      # # remove trailing colon from above
+      # aprun_command = aprun_command[:-1]
 
-            # nprocs must be uniform
-            nprocs_list = list(info['nprocs'])
-            nprocs      = nprocs_list[0]
-            assert(len(nprocs_list) == 1), nprocs_list
+        procs   = cud['cpu_processes']
+        threads = cud['cpu_threads']
+        aprun_command += ' -n %s -d %s %s' % (procs, threads, cmd)
 
-            aprun_command += ' -n %d -N %s -L %s %s %s :' % \
-                             (nprocs * len(info['nodes']), nprocs,
-                              ','.join(info['nodes']), node_spec, cmd)
-
-        # remove trailing colon from above
-        aprun_command = aprun_command[:-1]
         self._log.debug('aprun cmd: %s', aprun_command)
 
         return aprun_command, None

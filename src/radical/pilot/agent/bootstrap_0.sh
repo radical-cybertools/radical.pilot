@@ -18,6 +18,11 @@ echo "safe environment of bootstrap_0"
 # settings for task environments, if needed
 env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' > env.orig
 
+echo "PATH=\"$PATH\""             >> env.cu
+echo "PYTHONPATH=\"$PYTHONPATH\"" >> env.cu
+echo "# -------------------------------------------------------------------"
+
+
 
 # create a `deactivate` script
 old_path=$(  grep 'export PATH='       env.orig | cut -f 2- -d '=')
@@ -28,6 +33,13 @@ echo "export PATH='$old_path'"          > deactivate
 echo "export PYTHONPATH='$old_pypath'" >> deactivate
 echo "export PYTHONHOME='$old_pyhome'" >> deactivate
 
+
+mkdir -p run_queue
+mkdir -p run_active
+mkdir -p run_done
+mkdir -p run_final
+
+touch run_queue/dummy
 
 # interleave stdout and stderr, to get a coherent set of log messages
 if test -z "$RP_BOOTSTRAP_0_REDIR"
@@ -1864,10 +1876,19 @@ AGENT_PID=$!
 
 while true
 do
-    sleep 3
+    for f in run_queue/*
+    do
+        base=$(basename $f)
+        test "$base" = "dummy" && continue
+        echo "base: $base"
+        echo "run : $base"
+        mv run_queue/$base  run_active/$base
+        sh run_active/$base &
+    done
+
     if kill -0 $AGENT_PID 2>/dev/null
     then
-        echo -n '.'
+      # echo -n '.'
         if test -e "./killme.signal"
         then
             profile_event 'killme' "`date --rfc-3339=ns | cut -c -23`"

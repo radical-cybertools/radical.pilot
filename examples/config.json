@@ -163,6 +163,13 @@
 	    "cores"    : 72
     },
 
+    "anl.theta"  : {
+        "project"  : "CVD_Research",
+        "queue"    : "debug-flat-quad",
+        "schema"   : "local",
+        "cores"    : 32
+    },
+
     "llnl.lassen"  : {
         "project"  : "CV_DDMD",
         "queue"    : "pdebug",
