@@ -30,14 +30,9 @@ from parsl.utils import RepresentationMixin
 from parsl.providers import LocalProvider
 
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger = ru.Logger(name='radical.pilot.parsl.executor')
 report = ru.Reporter(name='radical.pilot')
 
-session = rp.Session(uid=ru.generate_id('parsl.radical_executor.session',
-                     mode=ru.ID_PRIVATE))
-pmgr    = rp.PilotManager(session=session)
-umgr    = rp.UnitManager(session=session)
 
 class RADICALExecutor(ParslExecutor, RepresentationMixin):
     """Executor designed for cluster-scale
@@ -87,6 +82,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         self.partition = partition
         self.walltime = walltime
         self.tasks = list()
+        self.future_tasks = {}
         self.tasks_pre_exec = tasks_pre_exec
         self.task_process_type = task_process_type
         self.cores_per_task = cores_per_task
@@ -95,8 +91,26 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         self._task_counter = 0
         self.run_dir = '.'
         self.worker_logdir_root = worker_logdir_root
+        self.session = rp.Session(uid=ru.generate_id('parsl.radical_executor.session',
+                     mode=ru.ID_PRIVATE))
+        self.pmgr    = rp.PilotManager(session=self.session)
+        self.umgr    = rp.UnitManager(session=self.session)
+        self.logger = ru.Logger(name='radical.pilot.parsl.executor', level='DEBUG')
+        self.report = ru.Reporter(name='radical.pilot')        
         #self._executor_bad_state = threading.Event()
         #self._executor_exception = None
+
+    def unit_state_cb(self, unit, state):
+
+        """
+        Update the state of Parsl Future tasks
+        Based on RP unit state
+        """
+        task = self.future_tasks[unit.name]
+        if state == rp.DONE:
+            task.set_result('Done')
+        elif state == rp.FAILED:
+            task.cancel()
 
 
     def start(self):
@@ -115,8 +129,8 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
                           'gpus'          : 0,}
 
         pdesc = rp.ComputePilotDescription(pd_init)
-        pilot = pmgr.submit_pilots(pdesc)
-        umgr.add_pilots(pilot)
+        pilot = self.pmgr.submit_pilots(pdesc)
+        self.umgr.add_pilots(pilot)
 
         return True
 
@@ -168,55 +182,52 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         Kwargs:
             - **kwargs (dict) : A dictionary of arbitrary keyword args for func.
         """
-        logger.debug("Got a task from the parsl.dataflow.dflow")
+        self.logger.debug("Got a task from the parsl.dataflow.dflow")
 
         self._task_counter += 1
-        task_id = self._task_counter
-        future_tasks = {}
-        future_tasks[task_id] = Future()
+        task_id = str(self._task_counter)
+        self.future_tasks[task_id] = Future()
         comp_unit = self.task_translate(func, args, kwargs)
 
         try:
-            
-            report.progress_tgt(self._task_counter, label='create')
+            self.umgr.register_callback(self.unit_state_cb) 
+            self.report.progress_tgt(self._task_counter, label='create')
 
             task = rp.ComputeUnitDescription()
-            task.name = str(task_id)
+            task.name = task_id
             task.executable = comp_unit['source_code']
             task.arguments  = comp_unit['args']
             task.pre_exec   = self.tasks_pre_exec
             task.cpu_processes = self.cores_per_task
             task.cpu_process_type = self.task_process_type
-            report.progress()
-            umgr.submit_units(task)
+            self.report.progress()
+            self.umgr.submit_units(task)
             
         
         except Exception as e:
             # Something unexpected happened in the pilot code above
-            report.error('caught Exception: %s\n' % e)
+            self.report.error('caught Exception: %s\n' % e)
             ru.print_exception_trace()
             raise
 
         except (KeyboardInterrupt, SystemExit):
-             # the callback called sys.exit(), and we can here catch the
-             # corresponding KeyboardInterrupt exception for shutdown.  We also catch
-             # SystemExit (which gets raised if the main threads exits for some other
-             # reason).
+
              ru.print_exception_trace()
-             report.warn('exit requested\n')
+             self.report.warn('exit requested\n')
+        
 
 
-        return future_tasks[task_id]
+        return self.future_tasks[task_id]
     
 
     def shutdown(self, hub=True, targets='all', block=False):
         """Shutdown the executor, including all RADICAL-Pilot components."""
-        report.progress_done()
-        umgr.wait_units()
-        umgr.close()
-        pmgr.close()
-        session.close(download=True)
-        report.header("Attempting RADICALExecutor shutdown")
+        self.report.progress_done()
+        self.umgr.wait_units()
+        self.umgr.close()
+        self.pmgr.close()
+        self.session.close(download=True)
+        self.report.header("Attempting RADICALExecutor shutdown")
 
         return True
 
