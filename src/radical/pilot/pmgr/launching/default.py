@@ -835,14 +835,21 @@ class Default(PMGRLaunchingComponent):
                 raise RuntimeError("SAGA Job state is FAILED. (%s)" % jd.name)
 
             pilot = None
-            # pid   = jd.name
+
             for p in pilots:
+                # we do not force unique job_names and multiple pilots may have
+                # the same job_name. By checking if p['uid'] is in PMGR pilots
+                # we ensure that each pilot is checked only once.
                 if p['uid'] in self._pilots:
                     continue
+
+                # SAGA job name is equal to a pilot's job_name if it exists
+                # otherwise the pilot's uid. Pick job_name if it exists
                 if p['description']['job_name']:
                     p_name = p['description']['job_name']
                 else:
                     p_name = p['uid']
+
                 if p_name == jd.name:
                     pilot = p
                     break
