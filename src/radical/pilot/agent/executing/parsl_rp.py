@@ -107,9 +107,9 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         """
         task = self.future_tasks[unit.name]
         if state == rp.DONE:
-            task.set_result('Done')
+            task.set_result(unit.stdout)
         elif state == rp.FAILED:
-            task.cancel()
+            task.set_result(unit.stderr)
 
 
     def start(self):
