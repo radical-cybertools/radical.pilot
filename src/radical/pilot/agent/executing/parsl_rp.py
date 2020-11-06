@@ -115,7 +115,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
     def start(self):
         """Create the Pilot process and pass it.
         """
-        if self.resource is None : logger.error("specify remoute or local resource")
+        if self.resource is None : self.logger.error("specify remoute or local resource")
 
 
         else : pd_init = {'resource'      : self.resource,
