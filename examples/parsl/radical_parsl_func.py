@@ -29,6 +29,14 @@ parsl.load(config)
 @python_app
 def report_time(outputs=[],stdout= '/home/aymen/report_time.out',stderr='/home/aymen/report_time.err'):
     import time
-    time.time()
+    return time.time()
 
-zz = report_time()
+results = []
+out_file = "/home/aymen/report_time_{0}".format(0)
+results.append(report_time(outputs=[out_file]))
+
+# wait for all apps to complete
+[r.result() for r in results]
+
+# print each job status, they will now be finished
+print ("Job Status: {}".format([r.done() for r in results]))

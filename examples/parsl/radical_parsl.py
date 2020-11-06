@@ -33,7 +33,7 @@ def gen(outputs=[], stdout= '/home/aymen/rand.out',stderr='/home/aymen/rand.err'
 results = [] 
 
 for i in range(4):
-    out_file = "/home/aymen/stress_output/rand_{0}".format(i)
+    out_file = "/home/aymen/rand_{0}".format(i)
     results.append(gen(outputs=[out_file]))
     gen()
 
