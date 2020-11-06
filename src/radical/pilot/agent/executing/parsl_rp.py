@@ -30,9 +30,6 @@ from parsl.utils import RepresentationMixin
 from parsl.providers import LocalProvider
 
 
-logger = ru.Logger(name='radical.pilot.parsl.executor')
-report = ru.Reporter(name='radical.pilot')
-
 
 class RADICALExecutor(ParslExecutor, RepresentationMixin):
     """Executor designed for cluster-scale
@@ -73,8 +70,11 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
                  partition : Optional[str] = " ",
                  project: Optional[str] = " ",):
 
-        report.title('RP version %s :' % rp.version)
-        report.header("Initializing RADICALExecutor with ParSL version %s :" % parsl.__version__)
+        self.logger = ru.Logger(name='radical.pilot.parsl.executor', level='DEBUG')
+        self.report = ru.Reporter(name='radical.pilot')  
+
+        self.report.title('RP version %s :' % rp.version)
+        self.report.header("Initializing RADICALExecutor with ParSL version %s :" % parsl.__version__)
         self.label = label
         self.project = project
         self.resource = resource
@@ -95,8 +95,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
                      mode=ru.ID_PRIVATE))
         self.pmgr    = rp.PilotManager(session=self.session)
         self.umgr    = rp.UnitManager(session=self.session)
-        self.logger = ru.Logger(name='radical.pilot.parsl.executor', level='DEBUG')
-        self.report = ru.Reporter(name='radical.pilot')        
+      
         #self._executor_bad_state = threading.Event()
         #self._executor_exception = None
 
