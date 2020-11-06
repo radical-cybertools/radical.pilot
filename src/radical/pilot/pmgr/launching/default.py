@@ -567,7 +567,8 @@ class Default(PMGRLaunchingComponent):
 
 
     # --------------------------------------------------------------------------
-    #    def _start_pilot_bulk(self, resource, schema, pilots):
+    #
+    def _start_pilot_bulk(self, resource, schema, pilots):
         """
         For each pilot, we prepare by determining what files need to be staged,
         and what job description needs to be submitted.
