@@ -567,9 +567,7 @@ class Default(PMGRLaunchingComponent):
 
 
     # --------------------------------------------------------------------------
-    #
-    # pylint: disable=undefined-loop-variable
-    def _start_pilot_bulk(self, resource, schema, pilots):
+    #    def _start_pilot_bulk(self, resource, schema, pilots):
         """
         For each pilot, we prepare by determining what files need to be staged,
         and what job description needs to be submitted.
@@ -854,7 +852,7 @@ class Default(PMGRLaunchingComponent):
                     break
 
             assert(pilot)
-            pid = p['uid']
+            pid = pilot['uid']
 
             # Update the Pilot's state to 'PMGR_ACTIVE_PENDING' if SAGA job
             # submission was successful.  Since the pilot leaves the scope of
@@ -878,7 +876,6 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    # pylint: enable=undefined-loop-variable
     def _prepare_pilot(self, resource, rcfg, pilot, expand):
 
         pid = pilot["uid"]
