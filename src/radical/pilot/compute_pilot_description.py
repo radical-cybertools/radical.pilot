@@ -9,6 +9,7 @@ import radical.utils as ru
 # ------------------------------------------------------------------------------
 # Attribute description keys
 #
+UID               = 'uid'
 RESOURCE          = 'resource'
 ACCESS_SCHEMA     = 'access_schema'
 QUEUE             = 'queue'
@@ -55,6 +56,14 @@ class ComputePilotDescription(ru.Description):
           pd.runtime  = 5 # minutes
 
           pilot = pm.submit_pilots(pd)
+
+    .. data:: uid
+
+       A unique ID for the compute pilot (`string`). This attribute is optional,
+       a unique ID will be assigned by RP if the field is not set.
+
+       default: `None`
+
 
     .. data:: resource
 
@@ -154,6 +163,7 @@ class ComputePilotDescription(ru.Description):
     """
 
     _schema = {
+        UID             : str       ,
         RESOURCE        : str       ,
         ACCESS_SCHEMA   : str       ,
         RUNTIME         : int       ,
@@ -174,6 +184,7 @@ class ComputePilotDescription(ru.Description):
     }
 
     _defaults = {
+        UID             : None      ,
         RESOURCE        : None      ,
         ACCESS_SCHEMA   : None      ,
         RUNTIME         : 10        ,
