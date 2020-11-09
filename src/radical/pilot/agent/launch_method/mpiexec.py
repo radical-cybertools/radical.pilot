@@ -16,6 +16,9 @@ class MPIExec(LaunchMethod):
     #
     def __init__(self, name, cfg, session):
 
+        self._mpt     = False
+        self._omplace = False
+
         LaunchMethod.__init__(self, name, cfg, session)
 
 
@@ -23,14 +26,22 @@ class MPIExec(LaunchMethod):
     #
     def _configure(self):
 
-        self.launch_command = ru.which([
-            'mpiexec',            # General case
-            'mpiexec.mpich',      # Linux, MPICH
-            'mpiexec.hydra',      # Linux, MPICH
-            'mpiexec.openempi',   # Linux, MPICH
-            'mpiexec-mpich-mp',   # Mac OSX MacPorts
-            'mpiexec-openmpi-mp'  # Mac OSX MacPorts
-        ])
+        elif '_mpt' in self.name.lower():
+            self._mpt = True
+            self.launch_command = ru.which(['mpiexec_mpt',  # Cheyenne (NCAR)
+                                           ])
+            # cheyenne also uses omplace
+            if self.launch_command:
+                self._omplace = True
+        else:
+            self.launch_command = ru.which([
+                'mpiexec',            # General case
+                'mpiexec.mpich',      # Linux, MPICH
+                'mpiexec.hydra',      # Linux, MPICH
+                'mpiexec.openempi',   # Linux, MPICH
+                'mpiexec-mpich-mp',   # Mac OSX MacPorts
+                'mpiexec-openmpi-mp'  # Mac OSX MacPorts
+            ])
 
         self.mpi_version, self.mpi_flavor = self._get_mpi_info(self.launch_command)
 
@@ -49,6 +60,14 @@ class MPIExec(LaunchMethod):
         # Construct the executable and arguments
         if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
         else          : task_command = task_exec
+
+        # Cheyenne is the only machine that requires mpirun_mpt.  We then
+        # have to set MPI_SHEPHERD=true
+        if self._mpt:
+            if not cud.get('environment'):
+                cud['environment'] = dict()
+            cud['environment']['MPI_SHEPHERD'] = 'true'
+            task_env = cud['environment']
 
         env_string = ''
         env_list   = self.EXPORT_ENV_VARIABLES + list(task_env.keys())
@@ -110,11 +129,11 @@ class MPIExec(LaunchMethod):
 
             # Create a hostfile from the list of hosts.  We create that in the
             # unit sandbox
-            fname = '%s/mpi_hostfile' % cu['unit_sandbox_path']
-            with open(fname, 'w') as f:
+            hostfile = '%s/mpi_hostfile' % cu['unit_sandbox_path']
+            with open(hostfile, 'w') as f:
                 for node,nslots in list(host_slots.items()):
                     f.write('%20s \tslots=%s\n' % (node, nslots))
-            host_string = "-hostfile %s" % fname
+            host_string = "-hostfile %s" % hostfile
 
         command = command_stub % host_string
         self._log.debug('mpiexec cmd: %s', command)
