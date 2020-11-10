@@ -75,7 +75,7 @@ class ComputePilot(object):
 
         # ensure uid is unique
         if self._uid:
-            if not self._umgr.check_uid(self._uid):
+            if not self._pmgr.check_uid(self._uid):
                 raise ValueError('uid %s is not unique' % self._uid)
         else:
             self._uid = ru.generate_id('pilot.%(item_counter)04d', ru.ID_CUSTOM,
