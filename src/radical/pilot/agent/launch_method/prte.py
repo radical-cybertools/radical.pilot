@@ -15,14 +15,8 @@ import radical.utils as ru
 
 from .base import LaunchMethod
 
-NUM_NODES_PER_DVM = 63  # default value for 1008 nodes with 16 dvm
+PTL_BASE_MAX_MSG_SIZE = 1024 * 1024 * 1024 * 1
 
-# with `True` value it skips the lists of hosts assigned to each task and gets
-# corresponding host from file `prrte.<dvm_id>.hosts`; parameters that are used:
-# task id (uid), numbers of nodes and tasks (units) per dvm from above.
-SKIP_SCHEDULER = False
-# this variable is considered ONLY if SKIP_SCHEDULER is True
-NUM_UNITS_PER_DVM = 20
 
 # ------------------------------------------------------------------------------
 #
@@ -38,7 +32,7 @@ class PRTE(LaunchMethod):
         # We remove all PRUN related environment variables from the launcher
         # environment, so that we can use PRUN for both launch of the
         # (sub-)agent and CU execution.
-        self.env_removables.extend(["OMPI_", "OPAL_", "PMIX_"])
+        self.env_removables.extend(['OMPI_', 'OPAL_', 'PMIX_'])
 
         self._verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
 
@@ -78,35 +72,49 @@ class PRTE(LaunchMethod):
 
         prte_cmd = ru.which('prte')
         if not prte_cmd:
-            raise Exception("Couldn't find prte")
+            raise Exception('prte command not found')
 
-        # Now that we found the prte, get PRUN version
-        out, _, _ = ru.sh_callout('prte_info | grep "Open RTE"', shell=True)
-        prte_info = dict()
+        # get OpenRTE/PRTE version
+        out, _, _ = ru.sh_callout('prte_info | grep "RTE"', shell=True)
+        prte_info = {}
         for line in out.split('\n'):
 
             line = line.strip()
 
-            if 'Open RTE:' in line:
-                prte_info['version'] = line.split(':')[1].strip()
+            if not prte_info.get('name'):
+                if 'Open RTE' in line:
+                    prte_info['name'] = 'Open RTE'
+                elif 'PRTE' in line:
+                    prte_info['name'] = 'PRTE'
 
-            elif  'Open RTE repo revision:' in line:
+            if 'RTE:' in line:
+                prte_info['version'] = line.split(':')[1].strip()
+            elif 'RTE repo revision:' in line:
                 prte_info['version_detail'] = line.split(':')[1].strip()
 
-        log.info("Found Open RTE: %s [%s]",
-                 prte_info.get('version'),
-                 prte_info.get('version_detail'))
+        if prte_info.get('name'):
+            log.info('version of %s: %s [%s]',
+                     prte_info['name'],
+                     prte_info.get('version'),
+                     prte_info.get('version_detail'))
+        else:
+            log.info('version of OpenRTE/PRTE not determined')
 
-        # start creating multiple DVMs
-        rm_node_list   = list(rm.node_list)
-        num_dvm        = math.ceil(len(rm_node_list) / NUM_NODES_PER_DVM)
+        # get `dvm_count` from resource config
+        # FIXME: another option is to introduce `nodes_per_dvm` in config
+        #        dvm_count = math.ceil(num_nodes / nodes_per_dvm)
+        num_nodes      = len(rm.node_list)
+        dvm_count      = cfg.get('dvm_count') or 1
+        nodes_per_dvm  = math.ceil(num_nodes / dvm_count)
+
         dvm_uri_list   = []
         dvm_hosts_list = []
 
         # go through every dvm instance
-        for dvm_id in range(num_dvm):
-            node_list = rm_node_list[ dvm_id      * NUM_NODES_PER_DVM:
-                                     (dvm_id + 1) * NUM_NODES_PER_DVM]
+        for dvm_id in range(dvm_count):
+            node_list = rm.node_list[ dvm_id      * nodes_per_dvm:
+                                     (dvm_id + 1) * nodes_per_dvm]
+            # keep node names in `dvm_hosts_list`
             dvm_hosts_list.append([node[0] for node in node_list])
 
             vm_size   = len(node_list)
@@ -126,18 +134,19 @@ class PRTE(LaunchMethod):
             if profiler.enabled:
                 prte += ' --pmca orte_state_base_verbose 1'  # prte profiling
 
-            # large tasks imply large message sizes, and we need to account for that
-            # FIXME: we should derive the message size from DVM size - smaller DVMs
-            #        will never need large messages, as they can't run large tasks)
-            prte += ' --pmca ptl_base_max_msg_size %d' % (1024 * 1024 * 1024 * 1)
+            # large tasks imply large message sizes, we need to account for that
+            # FIXME: need to derive the message size from DVM size - smaller
+            #        DVMs will never need large messages, as they can't run
+            #        large tasks
+            prte += ' --pmca ptl_base_max_msg_size %d' % PTL_BASE_MAX_MSG_SIZE
           # prte += ' --pmca rmaps_base_verbose 5'
 
             # debug mapper problems for large tasks
             if log.isEnabledFor(logging.DEBUG):
                 prte += ' -pmca orte_rmaps_base_verbose 100'
 
-            # we apply two temporary tweaks on Summit which should not be needed in
-            # the long run:
+            # we apply two temporary tweaks on Summit which should not be needed
+            # in the long run:
             #
             # avoid 64 node limit (ssh connection limit)
             prte += ' --pmca plm_rsh_no_tree_spawn 1'
@@ -149,29 +158,27 @@ class PRTE(LaunchMethod):
             # "DVM ready" message to ensure DVM startup completion
             #
             # The command seems to be generally available on our Cray's,
-            # if not, we can code some home-coooked pty stuff (TODO)
+            # if not, we can code some home-cooked pty stuff (TODO)
             stdbuf_cmd = ru.which(['stdbuf', 'gstdbuf'])
             if not stdbuf_cmd:
-                raise Exception("Couldn't find (g)stdbuf")
-            stdbuf_arg = "-oL"
+                raise Exception('(g)stdbuf command not found')
+            stdbuf_arg = '-oL'
 
             # Additional (debug) arguments to prte
             verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
             if verbose:
-                debug_strings = [
-                                 '--debug-devel',
+                debug_strings = ['--debug-devel',
                                  '--pmca odls_base_verbose 100',
-                                 '--pmca rml_base_verbose 100',
-                                ]
+                                 '--pmca rml_base_verbose 100']
             else:
                 debug_strings = []
 
-            # Base command = (g)stdbuf <args> + prte + prte-args + debug_args
+            # Base command = (g)stdbuf <args> + prte + prte-args + debug-args
             cmdline  = '%s %s %s ' % (stdbuf_cmd, stdbuf_arg, prte)
             cmdline += ' '.join(debug_strings)
             cmdline  = cmdline.strip()
 
-            log.info("start prte-%s on %d nodes [%s]", dvm_id, vm_size, cmdline)
+            log.info('start prte-%s on %d nodes [%s]', dvm_id, vm_size, cmdline)
             profiler.prof(event='dvm_start',
                           uid=cfg['pid'],
                           msg='dvm_id=%s' % dvm_id)
@@ -202,13 +209,10 @@ class PRTE(LaunchMethod):
                     break
 
             if not dvm_uri:
-                raise Exception("DVM_URI not found!")
+                raise Exception('DVM_URI not found!')
 
-            log.info("prte-%s startup successful: [%s]", dvm_id, dvm_uri)
+            log.info('prte-%s startup successful: [%s]', dvm_id, dvm_uri)
 
-            # in some cases, DVM seems to need some additional time to settle.
-            # FIXME: this should not be needed, really
-            time.sleep(10)
             profiler.prof(event='dvm_ok',
                           uid=cfg['pid'],
                           msg='dvm_id=%s' % dvm_id)
@@ -219,6 +223,7 @@ class PRTE(LaunchMethod):
                    'dvm_hosts'   : dvm_hosts_list,
                    'version_info': prte_info,
                    'cvd_id_mode' : 'physical'}
+        time.sleep(10)
 
         # we need to inform the actual LaunchMethod instance about the prte URI.
         # So we pass it back to the ResourceManager which will keep it in an
@@ -268,19 +273,6 @@ class PRTE(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        ### --- test for 1 task executed by JSRUN ------------------------------
-
-        ## NOTE: this is applicable for task without GPU, since for that need to
-        ##       set lm_info = {'cvd_id_mode': 'logical'}, which is NOT per task
-
-        # if int(cu['uid'].split('unit.')[1]) == 0:
-        #     from ... import agent as rpa
-        #     launcher = rpa.LaunchMethod.create(name='JSRUN',
-        #                                        cfg=self._cfg,
-        #                                        session=self._session)
-        #     return launcher.construct_command(cu, launch_script_hop)
-        ### --------------------------------------------------------------------
-
         time.sleep(0.1)
 
         slots        = cu['slots']
@@ -307,7 +299,7 @@ class PRTE(LaunchMethod):
             raise RuntimeError('dvm_uri not in lm_info for %s: %s'
                                % (self.name, slots))
 
-        if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
+        if task_argstr: task_command = '%s %s' % (task_exec, task_argstr)
         else          : task_command = task_exec
 
         env_string = ''
@@ -321,66 +313,40 @@ class PRTE(LaunchMethod):
         map_flag += ' --oversubscribe'
 
         # see DVM startup
-        map_flag += ' --pmca ptl_base_max_msg_size %d' % (1024 * 1024 * 1024 * 1)
+        map_flag += ' --pmca ptl_base_max_msg_size %d' % PTL_BASE_MAX_MSG_SIZE
       # map_flag += ' --pmca rmaps_base_verbose 5'
 
         dvm_id = 0  # default value
-        if SKIP_SCHEDULER:
-            # if to skip scheduler's assignments then need to calculate
-            # dvm_id and host id from dvm_hosts to retrieve the host name
+        if 'nodes' not in slots:
+            # this task is unscheduled - we leave it to PRRTE/PMI-X to
+            # correctly place the task
+            pass
 
-            # (!) IMPORTANT: it assumes equal number of units per dvm (at any
-            # units generations, since it uses unit ID)
-
-            num_units_per_node = math.ceil(
-                NUM_UNITS_PER_DVM / NUM_NODES_PER_DVM)
-            num_dvm      = len(slots['lm_info']['dvm_uri'])
-
-            cu_id        = int(cu['uid'].split('unit.')[1])
-            cu_order_idx = int(cu_id % NUM_UNITS_PER_DVM)  # inside dvm
-            dvm_id       = int(cu_id / NUM_UNITS_PER_DVM)
-
-            if dvm_id >= num_dvm: dvm_id = int(dvm_id % num_dvm)
-
-            dvm_hosts = slots['lm_info']['dvm_hosts'][dvm_id]
-            try:
-                host = dvm_hosts[int(cu_order_idx/num_units_per_node)]
-            except IndexError:
-                host = dvm_hosts[-1]
-                self._log.debug('out of index host id (dvm_id=%s) for unit %s',
-                                dvm_id, cu['uid'])
-            map_flag += ' -host %s:%s' % (host, n_procs)
         else:
-            if 'nodes' not in slots:
-                # this task is unscheduled - we leave it to PRRTE/PMI-X to
-                # correctly place the task
-                pass
+            # FIXME: ensure correct binding for procs and threads via slotfile
 
-            else:
-                # FIXME: ensure correct binding for procs and threads via slotfile
+            # enact the scheduler's host placement.  For now, we leave socket,
+            # core and thread placement to the prted, and just add all process
+            # slots to the host list.
+            hosts = [node['name'] for node in slots['nodes']]
+            map_flag += ' -host %s' % ','.join(hosts)
+            # another way to provide list of hosts:
+            #    map_flag += ' -host %s:%s' % (hosts[0], n_procs)
 
-                # enact the scheduler's host placement.  For now, we leave socket,
-                # core and thread placement to the prted, and just add all process
-                # slots to the host list.
-                hosts = [node['name'] for node in slots['nodes']]
-                map_flag += ' -host %s' % ','.join(hosts)
-
-                # scheduler makes sure that all hosts are from the same DVM
-                _host_0 = list(set(hosts))[0]
-                for _id, _hosts in enumerate(slots['lm_info']['dvm_hosts']):
-                    if _host_0 in _hosts:
-                        dvm_id = _id
-                        break
+            # scheduler makes sure that all hosts are from the same DVM
+            _host_0 = list(set(hosts))[0]
+            for _dvm_id, _dvm_hosts in enumerate(slots['lm_info']['dvm_hosts']):
+                if _host_0 in _dvm_hosts:
+                    dvm_id = _dvm_id
+                    break
 
         # Additional (debug) arguments to prun
         if self._verbose:
-            debug_string = ' '.join([
-                                        '--verbose',
-                                      # '--debug-devel',
-                                      # '-display-devel-map',
-                                      # '-display-allocation',
-                                        '--report-bindings',
-                                     ])
+            debug_string = ' '.join(['--verbose',
+                                     # '--debug-devel',
+                                     # '-display-devel-map',
+                                     # '-display-allocation',
+                                     '--report-bindings'])
         else:
             debug_string = '--verbose'  # needed to get prte profile events
 
