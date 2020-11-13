@@ -108,8 +108,12 @@ class TestBase(TestCase):
                     component._handle_cuda(unit)
             else:
                 component._handle_cuda(unit)
-                self.assertEqual(unit['description']['environment']['CUDA_VISIBLE_DEVICES'],
-                                 result)
+                unit_env = unit['description']['environment']
+                if result == 'KeyError':
+                    with pytest.raises(KeyError):
+                        _ = unit_env['CUDA_VISIBLE_DEVICES']
+                else:
+                    self.assertEqual(unit_env['CUDA_VISIBLE_DEVICES'], result)
 
 
     # ------------------------------------------------------------------------------
