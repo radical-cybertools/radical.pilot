@@ -26,13 +26,11 @@ class MPIExec(LaunchMethod):
     #
     def _configure(self):
 
-        elif '_mpt' in self.name.lower():
+        if '_mpt' in self.name.lower():
             self._mpt = True
-            self.launch_command = ru.which(['mpiexec_mpt',  # Cheyenne (NCAR)
-                                           ])
-            # cheyenne also uses omplace
-            if self.launch_command:
-                self._omplace = True
+            self.launch_command = ru.which([
+                'mpiexec_mpt',        # Cheyenne (NCAR)
+            ])
         else:
             self.launch_command = ru.which([
                 'mpiexec',            # General case
@@ -42,6 +40,11 @@ class MPIExec(LaunchMethod):
                 'mpiexec-mpich-mp',   # Mac OSX MacPorts
                 'mpiexec-openmpi-mp'  # Mac OSX MacPorts
             ])
+
+        # cheyenne also uses omplace
+        # FIXME check hostname
+        if self._mpt:
+            self._omplace = True
 
         self.mpi_version, self.mpi_flavor = self._get_mpi_info(self.launch_command)
 
