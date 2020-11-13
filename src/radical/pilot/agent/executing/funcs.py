@@ -50,18 +50,11 @@ class FUNCS(AgentExecutingComponent) :
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
-        addr_wrk = self._cfg['bridges']['funcs_req_queue']
-        addr_res = self._cfg['bridges']['funcs_res_queue']
+        req_cfg = ru.read_json('funcs_req_queue.cfg')
+        res_cfg = ru.read_json('funcs_res_queue.cfg')
 
-        self._log.debug('wrk in  addr: %s', addr_wrk['addr_in' ])
-        self._log.debug('res out addr: %s', addr_res['addr_out'])
-
-        self._funcs_req = rpu.Queue(self._session, 'funcs_req_queue',
-                                    rpu.QUEUE_INPUT, self._cfg,
-                                    addr_wrk['addr_in'])
-        self._funcs_res = rpu.Queue(self._session, 'funcs_res_queue',
-                                    rpu.QUEUE_OUTPUT, self._cfg,
-                                    addr_res['addr_out'])
+        self._req_queue = ru.zmq.Putter('funcs_req_queue', req_cfg['put'])
+        self._res_queue = ru.zmq.Getter('funcs_res_queue', res_cfg['get'])
 
         self._cancel_lock    = ru.RLock()
         self._cus_to_cancel  = list()
@@ -104,8 +97,8 @@ class FUNCS(AgentExecutingComponent) :
                                                         'gpus'  : []
                                                        }]
                                     },
-                     'cfg'        : {'addr_wrk'     : addr_wrk['addr_out'],
-                                     'addr_res'     : addr_res['addr_in']
+                     'cfg'        : {'req_cfg'      : req_cfg['put'],
+                                     'res_cfg'      : res_cfg['get']
                                     }
                     }
             self._spawn(self._launcher, funcs)
@@ -202,7 +195,7 @@ class FUNCS(AgentExecutingComponent) :
 
         for unit in units:
             assert(unit['description']['cpu_process_type'] == 'FUNC')
-            self._funcs_req.put(unit)
+            self._req_queue.put(unit)
 
 
     # --------------------------------------------------------------------------
@@ -212,7 +205,7 @@ class FUNCS(AgentExecutingComponent) :
         while not self._terminate.is_set():
 
             # pull units from "funcs_out_queue"
-            units = self._funcs_res.get_nowait(1000)
+            units = self._res_queue.get_nowait(1000)
 
             if units:
 
