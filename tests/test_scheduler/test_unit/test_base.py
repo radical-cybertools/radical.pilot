@@ -111,7 +111,7 @@ class TestBase(TestCase):
                 unit_env = unit['description']['environment']
                 if result == 'KeyError':
                     with pytest.raises(KeyError):
-                        _ = unit_env['CUDA_VISIBLE_DEVICES']
+                        self.assertIsNone(unit_env['CUDA_VISIBLE_DEVICES'])
                 else:
                     self.assertEqual(unit_env['CUDA_VISIBLE_DEVICES'], result)
 
