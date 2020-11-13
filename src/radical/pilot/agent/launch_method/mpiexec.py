@@ -119,13 +119,18 @@ class MPIExec(LaunchMethod):
         arg_max = 4096
 
         # This is the command w/o the host string
-        command_stub = "%s %%s %s %s" % (self.launch_command,
-                                         env_string, task_command)
+        omplace = ''
+        if self._omplace:
+            omplace = 'omplace'
+        command_stub = "%s %%s %s %s %s" % (self.launch_command,
+                                            env_string, omplace, task_command)
 
         # cluster hosts by number of slots
         host_string = ''
         for node,nslots in list(host_slots.items()):
-            host_string += '-host %s -n %s ' % (','.join([node] * nslots), nslots)
+            if not self._mpt:
+                host_string += '-host '
+            host_string += '%s -n %s ' % (','.join([node] * nslots), nslots)
         command = command_stub % host_string
 
         if len(command) > arg_max:
