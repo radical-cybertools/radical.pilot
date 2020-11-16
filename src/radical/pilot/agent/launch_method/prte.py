@@ -104,7 +104,7 @@ class PRTE(LaunchMethod):
         # FIXME: another option is to introduce `nodes_per_dvm` in config
         #        dvm_count = math.ceil(num_nodes / nodes_per_dvm)
         num_nodes      = len(rm.node_list)
-        dvm_count      = cfg.get('dvm_count') or 1
+        dvm_count      = cfg['resource_cfg'].get('dvm_count') or 1
         nodes_per_dvm  = math.ceil(num_nodes / dvm_count)
 
         dvm_uri_list   = []
