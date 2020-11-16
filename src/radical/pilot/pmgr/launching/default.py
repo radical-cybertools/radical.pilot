@@ -821,38 +821,15 @@ class Default(PMGRLaunchingComponent):
 
         jc.run()
 
-        # we assume here that the tasks arrive in the same order as the job
-        # descriptions.  For uniform sets of pilots the order does not matter
-        # much though.  Either way, this needs confirming on SAGA level
-        # FIXME
-        for j,jd in zip(jc.get_tasks(), jd_list):
+        # Order of tasks in `rs.job.Container().tasks` is not changing over the
+        # time, thus we are able to iterate over these three lists all together
+        for j, jd, pilot in zip(jc.get_tasks(), jd_list, pilots):
 
             # do a quick error check
             if j.state == rs.FAILED:
                 self._log.error('%s: %s : %s : %s', j.id, j.state, j.stderr, j.stdout)
                 raise RuntimeError("SAGA Job state is FAILED. (%s)" % jd.name)
 
-            pilot = None
-
-            for p in pilots:
-                # we do not force unique job_names and multiple pilots may have
-                # the same job_name. By checking if p['uid'] is in PMGR pilots
-                # we ensure that each pilot is checked only once.
-                if p['uid'] in self._pilots:
-                    continue
-
-                # SAGA job name is equal to a pilot's job_name if it exists
-                # otherwise the pilot's uid. Pick job_name if it exists
-                if p['description']['job_name']:
-                    p_name = p['description']['job_name']
-                else:
-                    p_name = p['uid']
-
-                if p_name == jd.name:
-                    pilot = p
-                    break
-
-            assert(pilot)
             pid = pilot['uid']
 
             # Update the Pilot's state to 'PMGR_ACTIVE_PENDING' if SAGA job
