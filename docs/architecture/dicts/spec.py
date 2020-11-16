@@ -53,7 +53,7 @@ for check in checks:
     l = list()
     t = list()
     r = ru.Reporter('radical.test')
-    r.progress_tgt(n * 5, label=check.__name__)
+    r.progress_tgt(n * 5, label='%-10s' % check.__name__)
 
     t0 = time.time()
 
