@@ -15,16 +15,16 @@
 import copy
 import time
 
-# import resource
+import resource
 
 import radical.utils as ru
 
 from spec_rs         import OLD_CUD
 from spec_rp         import NEW_CUD
-from spec_typed_dict import MYDICT  # pip install mypy
+from spec_typed_dict import MYDICT    # pip install mypy
 from spec_pydantic   import PYDANTIC  # pip install pydantic
-from spec_good       import GOOD  # pip install good
-from spec_schema     import SCHEMA  # pip install schema
+from spec_good       import GOOD      # pip install good
+from spec_schema     import SCHEMA    # pip install schema
 from spec_rudict     import RU_DICT
 from spec_rumunch    import RU_MUNCH
 from spec_config     import RU_CFG
@@ -125,18 +125,16 @@ for check in checks:
             e.validate()
         except AttributeError:
             pass
-        except Exception as E:
+        except Exception:
             i += 1
-          # print(E)
-          # raise
         r.progress()
 
     t5 = time.time()
     results.append(t5 - t4)
     results.append(i)
     results.append(t5 - t0)
-    results.append(ru.get_size(l) / (1024 * 1024))
-  # results.append(resource.getrusage(1)[2] / (1024))
+  # results.append(ru.get_size(l) / (1024 * 1024))
+    results.append(resource.getrusage(1)[2] / (1024))
 
     data.append(results)
     print()
