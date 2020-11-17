@@ -418,50 +418,16 @@ class Default(PMGRLaunchingComponent):
     # --------------------------------------------------------------------------
     #
     def _start_pilot_bulk(self, resource, schema, pilots):
-        """
+        '''
         For each pilot, we prepare by determining what files need to be staged,
-        and what job description needs to be submitted.
+        and what job description needs to be submitted.  Files are then be
+        staged, and jobs are submitted.
 
-        We expect `_prepare_pilot(resource, pilot)` to return a dict with:
-
-            {
-              'js' : saga.job.Description,
-              'fts': [
-                { 'src': string  # absolute source file name
-                  'tgt': string  # relative target file name
-                  'rem': bool    # shall we remove src?
-                },
-                ...
-              ],
-              'sds': [
-                <rp staging directive>
-                ...
-              ]
-            }
-
-        When transfering data, we'll ensure that each src is only transferred
-        once (in fact, we put all src files into a tarball and unpack that on
-        the target side).
-
-        The returned dicts are expected to only contain files which actually
-        need staging, ie. which have not been staged during a previous pilot
-        submission.  That implies one of two things: either this component is
-        stateful, and remembers what has been staged -- which makes it difficult
-        to use multiple component instances; or the component inspects the
-        target resource for existing files -- which involves additional
-        expensive remote hops.
-        FIXME: since neither is implemented at this point we won't discuss the
-               tradeoffs further -- right now files are unique per pilot bulk.
-
-        Once all dicts are collected, we create one additional file which
-        contains the staging information, and then pack all src files into
-        a tarball for staging.  We transfer the tarball, and *immediately*
-        trigger the untaring on the target resource, which is thus *not* part of
-        the bootstrapping process.
-        NOTE: this is to avoid untaring race conditions for multiple pilots, and
-              also to simplify bootstrapping dependencies -- the bootstrappers
-              are likely within the tarball after all...
-        """
+        Two files are staged: a bootstrapper and a tarball - the latter
+        containing the pilot sandboxes, agent configs, and any other auxilliary
+        files needed to bootstrap.  The bootstrapper will untar those parts of
+        the tarball which it needs to bootstrap one specific pilot.
+        '''
 
         rcfg = self._session.get_resource_config(resource, schema)
         sid  = self._session.uid
@@ -495,29 +461,22 @@ class Default(PMGRLaunchingComponent):
                 if orig != expanded:
                     self._log.debug('RCFG:\n%s\n%s', orig, expanded)
 
+        # encode first pilot ID into the tarball name
+        pid1 = pilots[0]['uid']
+
         # we create a fake session_sandbox with all pilot_sandboxes in /tmp, and
         # then tar it up.  Once we untar that tarball on the target machine, we
         # should have all sandboxes and all files required to bootstrap the
         # pilots
-        # FIXME: on untar, there is a race between multiple launcher components
-        #        within the same session toward the same target resource.
-        tmp_dir  = os.path.abspath(tempfile.mkdtemp(prefix='rp_agent_tar_dir'))
-        tar_name = '%s.%s.tgz' % (sid, self.uid)
+        tmp_dir  = os.path.abspath(tempfile.mkdtemp(prefix='rp_agent_tmp'))
+        tar_name = '%s.%s.tgz' % (sid, pid1)
         tar_tgt  = '%s/%s'     % (tmp_dir, tar_name)
         tar_url  = rs.Url('file://localhost/%s' % tar_tgt)
 
-        # we need the session sandbox url, but that is (at least in principle)
-        # dependent on the schema to use for pilot startup.  So we confirm here
-        # that the bulk is consistent wrt. to the schema.  Also include
-        # `staging_input` files and place them in the pilots' `staging_area`s.
-        #
-        # FIXME: may need to split into schema-specific sub-bulks
-        #
-        schemas = set([p['description'].get('access_schema') for p in pilots])
-        assert(len(schemas) == 1), \
-               'inconsistent schemas on launch: %s' % schemas
-
-        # get and expand sandboxes
+        # get and expand sandboxes (this bulk uses the same schema toward the
+        # same target resource, so all session sandboxes are the same)
+        # FIXME: expansion actually may differ per pilot (queue names, project
+        #        names, etc could be expanded)
         session_sandbox = self._session._get_session_sandbox(pilots[0]).path
         session_sandbox = session_sandbox % expand
 
@@ -528,7 +487,7 @@ class Default(PMGRLaunchingComponent):
         #
         # We also create a file `staging_output.json` for each pilot which
         # contains the list of files to be tarred up and prepared for output
-        # staging
+        # staging.
 
         ft_list = list()  # files to stage
         jd_list = list()  # jobs  to submit
@@ -541,6 +500,7 @@ class Default(PMGRLaunchingComponent):
             info = self._prepare_pilot(resource, rcfg, pilot, expand)
             ft_list += info['fts']
             jd_list.append(info['jd'])
+
             self._prof.prof('staging_in_start', uid=pid)
 
             for fname in ru.as_list(pilot['description'].get('input_staging')):
@@ -557,6 +517,9 @@ class Default(PMGRLaunchingComponent):
                         fout.write('%s\n' % entry)
 
             # direct staging, use first pilot for staging context
+            # NOTE: this implies that the SDS can only refer to session
+            #       sandboxes, not to pilot sandboxes!
+            self._log.debug('==== %s', info['sds'])
             self._stage_in(pilots[0], info['sds'])
 
         for ft in ft_list:
@@ -805,49 +768,28 @@ class Default(PMGRLaunchingComponent):
         pilot_sandbox    = pilot_sandbox   .path % expand
       # client_sandbox   = client_sandbox  # not expanded
 
-        # Agent configuration that is not part of the public API.
-        # The agent config can either be a config dict, or
-        # a string pointing to a configuration name.  If neither
-        # is given, check if 'RADICAL_PILOT_AGENT_CONFIG' is
-        # set.  The last fallback is 'agent_default'
-        agent_config = pilot['description'].get('_config')
-        if not agent_config:
-            agent_config = os.environ.get('RADICAL_PILOT_AGENT_CONFIG')
-        if not agent_config:
-            agent_config = rc_agent_config
-
         if not job_name:
             job_name = pid
 
-        if isinstance(agent_config, dict):
+        try:
+            # read agent config file
+            fname = '%s/agent_%s.json' % (self._conf_dir, rc_agent_config)
 
-            # use dict as is
-            agent_cfg = agent_config
+            self._log.info("Read agent config file: %s",  fname)
+            agent_cfg = ru.Config(path=fname)
 
-        elif isinstance(agent_config, str):
-            try:
-                # interpret as a config name
-                agent_cfg_file = os.path.join(self._conf_dir, "agent_%s.json" % agent_config)
+            # allow for user level overload
+            user_cfg_file = '%s/.radical/pilot/config/%s' \
+                          % (os.environ['HOME'], os.path.basename(fname))
 
-                self._log.info("Read agent config file: %s",  agent_cfg_file)
-                agent_cfg = ru.Config(path=agent_cfg_file)
+            if os.path.exists(user_cfg_file):
+                self._log.info("merging user config: %s" % user_cfg_file)
+                user_cfg = ru.read_json(user_cfg_file)
+                ru.dict_merge (agent_cfg, user_cfg, policy='overwrite')
 
-                # allow for user level overload
-                user_cfg_file = '%s/.radical/pilot/config/%s' \
-                              % (os.environ['HOME'], os.path.basename(agent_cfg_file))
-
-                if os.path.exists(user_cfg_file):
-                    self._log.info("merging user config: %s" % user_cfg_file)
-                    user_cfg = ru.read_json(user_cfg_file)
-                    ru.dict_merge (agent_cfg, user_cfg, policy='overwrite')
-
-            except Exception as e:
-                self._log.exception("Error reading agent config file: %s" % e)
-                raise
-
-        else:
-            # we can't handle this type
-            raise TypeError('agent config must be string (config name) or dict')
+        except Exception as e:
+            self._log.exception("Error reading agent config file: %s" % e)
+            raise
 
         # expand variables in virtenv string
         virtenv = virtenv % {'pilot_sandbox'   : pilot_sandbox,
@@ -1060,7 +1002,6 @@ class Default(PMGRLaunchingComponent):
 
         # Convert dict to json file
         self._log.debug("Write agent cfg to '%s'.", cfg_tmp_file)
-        self._log.debug(pprint.pformat(agent_cfg))
         ru.write_json(agent_cfg, cfg_tmp_file)
 
         ret['fts'].append({'src': cfg_tmp_file,
@@ -1085,32 +1026,31 @@ class Default(PMGRLaunchingComponent):
         #
         # NOTE: this will race when multiple pilot launcher instances are used!
         #
-        with self._cache_lock:
+        if resource not in self._sandboxes:
 
-            if resource not in self._sandboxes:
+            for sdist in sdist_paths:
+                base = os.path.basename(sdist)
+                ret['fts'].append({'src': sdist,
+                                   'tgt': '%s/%s' % (session_sandbox, base),
+                                   'rem': False})
 
-                for sdist in sdist_paths:
-                    base = os.path.basename(sdist)
-                    ret['fts'].append({'src': sdist,
-                                       'tgt': '%s/%s' % (session_sandbox, base),
-                                       'rem': False})
+            # Some machines cannot run pip due to outdated CA certs.
+            # For those, we also stage an updated certificate bundle
+            # TODO: use booleans all the way?
+            if stage_cacerts:
 
-                # Some machines cannot run pip due to outdated CA certs.
-                # For those, we also stage an updated certificate bundle
-                # TODO: use booleans all the way?
-                if stage_cacerts:
+                cc_name = 'cacert.pem.gz'
+                cc_path = os.path.abspath("%s/agent/%s" % (self._root_dir, cc_name))
+                self._log.debug("use CAs %s", cc_path)
 
-                    cc_name = 'cacert.pem.gz'
-                    cc_path = os.path.abspath("%s/agent/%s" % (self._root_dir, cc_name))
-                    self._log.debug("use CAs %s", cc_path)
+                ret['fts'].append({'src': cc_path,
+                                   'tgt': '%s/%s' % (session_sandbox, cc_name),
+                                   'rem': False})
 
-                    ret['fts'].append({'src': cc_path,
-                                       'tgt': '%s/%s' % (session_sandbox, cc_name),
-                                       'rem': False})
-
-                self._sandboxes[resource] = True
+            self._sandboxes[resource] = True
 
         # always stage the bootstrapper for each pilot, but *not* in the tarball
+        # FIXME: this results in many staging ops for many pilots
         bootstrapper_path = os.path.abspath("%s/agent/bootstrap_0.sh"
                                            % self._root_dir)
         bootstrap_tgt = '%s/bootstrap_0.sh' % (pilot_sandbox, pid)
