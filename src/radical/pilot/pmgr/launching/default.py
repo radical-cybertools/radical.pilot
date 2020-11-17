@@ -822,13 +822,13 @@ class Default(PMGRLaunchingComponent):
         jc.run()
 
         # Order of tasks in `rs.job.Container().tasks` is not changing over the
-        # time, thus we are able to iterate over these three lists all together
-        for j, jd, pilot in zip(jc.get_tasks(), jd_list, pilots):
+        # time, thus it's able to iterate over it and other list(s) all together
+        for j, pilot in zip(jc.get_tasks(), pilots):
 
             # do a quick error check
             if j.state == rs.FAILED:
                 self._log.error('%s: %s : %s : %s', j.id, j.state, j.stderr, j.stdout)
-                raise RuntimeError("SAGA Job state is FAILED. (%s)" % jd.name)
+                raise RuntimeError("SAGA Job state is FAILED. (%s)" % j.name)
 
             pid = pilot['uid']
 
