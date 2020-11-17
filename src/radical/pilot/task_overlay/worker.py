@@ -163,17 +163,17 @@ class Worker(rpu.Component):
         self._mdata[name] = dict()
 
 
-    # --------------------------------------------------------------------------
-    #
-    def register_call(self, name, method):
-
-        # ensure the call mode is usable
-        mode = 'call'
-
-        assert(mode     in self._modes)
-        assert(name not in self._mdata[mode])
-
-        self._mdata[mode][name] = method
+  # # --------------------------------------------------------------------------
+  # #
+  # def register_call(self, name, method):
+  #
+  #     # ensure the call mode is usable
+  #     mode = 'call'
+  #
+  #     assert(mode     in self._modes)
+  #     assert(name not in self._mdata[mode])
+  #
+  #     self._mdata[mode][name] = method
 
 
     # --------------------------------------------------------------------------
@@ -252,13 +252,15 @@ class Worker(rpu.Component):
         try:
             import subprocess as sp
 
-            exe  = data['exe'],
-            args = data.get('args', []),
-            env  = data.get('env',  {}),
+            exe  = data['exe']
+            args = data.get('args', list())
+            env  = data.get('env',  dict())
 
-            proc = sp.Popen(executable=exe, args=args,       env=env,
+            args = '%s %s' % (exe, ' '.join(args))
+
+            proc = sp.Popen(args=args,      env=env,
                             stdin=None,     stdout=sp.PIPE, stderr=sp.PIPE,
-                            close_fds=True, shell=False)
+                            close_fds=True, shell=True)
             out, err = proc.communicate()
             ret      = proc.returncode
 
@@ -280,7 +282,7 @@ class Worker(rpu.Component):
         '''
 
         try:
-            out, err, ret = ru.sh_callout(data['cmd'])
+            out, err, ret = ru.sh_callout(data['cmd'], shell=True)
 
         except Exception as e:
             self._log.exception('_shell failed: %s' % (data))
@@ -453,7 +455,7 @@ class Worker(rpu.Component):
             mode = task['mode']
             assert(mode in self._modes), 'no such call mode %s' % mode
 
-            tout = task.get('timeout', 0.0)
+            tout = task.get('timeout')
             self._log.debug('dispatch with tout %s', tout)
 
             tlock  = mt.Lock()

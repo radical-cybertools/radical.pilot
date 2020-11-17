@@ -581,6 +581,22 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
+    def command(self, cmd, arg):
+        '''
+        Send a pilot command, wait for the response, and return the result.
+        This is basically an RPC into the pilot.
+        '''
+
+        print('cmd  :', cmd, arg)
+        reply = self._session._dbs.pilot_command(cmd, arg, self.uid, sync=True)
+        print('reply:', reply)
+
+        return reply
+
+
+
+    # --------------------------------------------------------------------------
+    #
     def stage_out(self):
         '''
         fetch `staging_output.tgz` from the pilot sandbox, and store in $PWD

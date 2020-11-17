@@ -224,7 +224,7 @@ class DBSession(object):
 
     # --------------------------------------------------------------------------
     #
-    def pilot_command(self, cmd, arg=None, pids=None):
+    def pilot_command(self, cmd, arg=None, pids=None, sync=False):
         """
         send a command and arg to a set of pilots
         """
@@ -240,7 +240,9 @@ class DBSession(object):
             pids = [pids]
 
         try:
-            cmd_spec = {'cmd' : cmd,
+            rpc_id   = ru.generate_id('rpc')
+            cmd_spec = {'uid' : rpc_id,
+                        'cmd' : cmd,
                         'arg' : arg}
 
             # FIXME: evaluate retval
