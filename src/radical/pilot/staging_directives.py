@@ -199,10 +199,6 @@ def complete_url(path, context, log=None):
         log.debug('   expand with %s', context[schema])
         ret = ru.Url(context[schema])
 
-        if schema in ['resource', 'pilot']:
-            # use a dedicated staging area dir
-            ret.path += '/staging_area'
-
         ret.path += '/%s' % ppath
         purl      = ret
 
