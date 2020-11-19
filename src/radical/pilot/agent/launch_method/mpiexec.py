@@ -127,10 +127,19 @@ class MPIExec(LaunchMethod):
 
         # cluster hosts by number of slots
         host_string = ''
-        for node,nslots in list(host_slots.items()):
-            if not self._mpt:
+        if not self._mpt:
+            for node,nslots in list(host_slots.items()):
                 host_string += '-host '
-            host_string += '%s -n %s ' % (','.join([node] * nslots), nslots)
+                host_string += '%s -n %s ' % (','.join([node] * nslots), nslots)
+        else:
+            slots = 0
+            hosts = list()
+            for node,nslots in list(host_slots.items()):
+                slots +=          nslots
+                hosts += [node] * nslots
+            host_string += '.'.join(hosts)
+            host_string += '-n %d' % slots
+
         command = command_stub % host_string
 
         if len(command) > arg_max:
