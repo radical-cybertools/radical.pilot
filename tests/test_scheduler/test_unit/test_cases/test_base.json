@@ -222,7 +222,11 @@
                                                  "mem": null}],
                                       "lm_info": "INFO",
                                       "gpus_per_node": 6}}],
-                    "results": ["","1","0,1","","ValueError"]}
+                    "results": ["KeyError",
+                                "1",
+                                "0,1",
+                                "KeyError",
+                                "ValueError"]}
 
 }
 

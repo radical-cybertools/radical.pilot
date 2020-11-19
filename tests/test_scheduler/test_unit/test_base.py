@@ -1,11 +1,12 @@
 # pylint: disable=protected-access, unused-argument
 # pylint: disable=no-value-for-parameter
 
-from unittest import TestCase
-import pytest
 import threading
+
 import radical.utils as ru
 from radical.pilot.agent.scheduler.base import AgentSchedulingComponent
+
+from unittest import TestCase
 
 try:
     import mock
@@ -40,7 +41,7 @@ class TestBase(TestCase):
         for node, slot, new_state, result in zip(nodes, slots, new_states, results):
             component.nodes = node
             if result == 'RuntimeError':
-                with pytest.raises(RuntimeError):
+                with self.assertRaises(RuntimeError):
                     component._change_slot_states(slots=slot, new_state=new_state)
             else:
                 component._change_slot_states(slots=slot, new_state=new_state)
@@ -100,12 +101,16 @@ class TestBase(TestCase):
         for setup, unit, result in zip(setups, units, results):
             component._cfg = setup
             if result == 'ValueError':
-                with pytest.raises(ValueError):
+                with self.assertRaises(ValueError):
                     component._handle_cuda(unit)
             else:
                 component._handle_cuda(unit)
-                self.assertEqual(unit['description']['environment']['CUDA_VISIBLE_DEVICES'],
-                                 result)
+                unit_env = unit['description']['environment']
+                if result == 'KeyError':
+                    with self.assertRaises(KeyError):
+                        self.assertIsNone(unit_env['CUDA_VISIBLE_DEVICES'])
+                else:
+                    self.assertEqual(unit_env['CUDA_VISIBLE_DEVICES'], result)
 
 
     # ------------------------------------------------------------------------------
