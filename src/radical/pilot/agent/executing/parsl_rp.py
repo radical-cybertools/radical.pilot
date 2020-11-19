@@ -62,7 +62,6 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
                  login_method: str = None,                  # Specify the connection protocol SSH/GISSH/local
                  walltime: int = None,
                  tasks_pre_exec: Optional[str] = None,      # Specify any requirements that this task needs to run
-                 task_process_type: Optional[str] = None,   # Specify the type of the process MPI/Non-MPI/rp.Func
                  cores_per_task = 1,
                  managed: bool = True,
                  max_tasks: Union[int, float] = float('inf'),
@@ -84,7 +83,6 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         self.tasks = list()
         self.future_tasks = {}
         self.tasks_pre_exec = tasks_pre_exec
-        self.task_process_type = task_process_type
         self.cores_per_task = cores_per_task
         self.managed = managed
         self.max_tasks = max_tasks
@@ -145,9 +143,12 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
                   "name"  : func.__name__,
                   "args"  : None,
                   "kwargs": kwargs}
-            #report.header('Bash task name %s ' %(cu['name'])) 
-            #report.header('Bash task exe %s ' %(task_exe))           
-            #report.header('Bash task kwargs  %s ' %(cu['args']))
+            self.report.header(inspect.getsource(func))
+            self.report.header('Bash task name %s ' %(cu['name'])) 
+            self.report.header('Bash task exe %s ' %(task_exe))           
+            self.report.header('Bash task args  %s ' %(cu['args']))
+            self.report.header('Bash task kwargs  %s ' %(cu['kwargs']))
+            
 
         elif task_type == '@python_app':
 
@@ -194,11 +195,12 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
 
             task = rp.ComputeUnitDescription()
             task.name = task_id
-            task.executable = comp_unit['source_code']
-            task.arguments  = comp_unit['args']
-            task.pre_exec   = self.tasks_pre_exec
-            task.cpu_processes = self.cores_per_task
-            task.cpu_process_type = self.task_process_type
+            task.executable       = comp_unit['kwargs']['exe']
+            task.arguments        = comp_unit['source_code'] #comp_unit['args']
+            task.pre_exec         = self.tasks_pre_exec
+            task.cpu_processes    = comp_unit['kwargs']['nproc'] # Specify the type of the process MPI/Non-MPI/rp.Func
+            task.cpu_process_type = comp_unit['kwargs']['ptype']
+            task.cpu_threads      = 8 
             self.report.progress()
             self.umgr.submit_units(task)
             
