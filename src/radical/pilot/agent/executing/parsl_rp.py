@@ -194,7 +194,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
             task                  = rp.ComputeUnitDescription()
             task.name             = task_id
             task.executable       = "{0} {1}".format(comp_unit['kwargs']['exe'],
-                                                      comp_unit['source_code'])
+                                                     comp_unit['source_code'])
             task.arguments        = comp_unit['args']
             task.pre_exec         = self.tasks_pre_exec
             task.cpu_processes    = comp_unit['kwargs']['nproc'] # The process MPI/Non-MPI/rp.Func
@@ -213,7 +213,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         except (KeyboardInterrupt, SystemExit):
             ru.print_exception_trace()
             self.report.warn('exit requested\n')
-            
+
         return self.future_tasks[task_id]
     
 
