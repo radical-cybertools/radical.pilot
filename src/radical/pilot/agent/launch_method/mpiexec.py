@@ -137,8 +137,8 @@ class MPIExec(LaunchMethod):
             for node,nslots in list(host_slots.items()):
                 slots +=          nslots
                 hosts += [node] * nslots
-            host_string += '.'.join(hosts)
-            host_string += '-n %d' % slots
+            host_string += ','.join(hosts)
+            host_string += ' -n %d' % slots
 
         command = command_stub % host_string
 
