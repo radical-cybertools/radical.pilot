@@ -97,8 +97,8 @@ class FUNCS(AgentExecutingComponent) :
                                                         'gpus'  : []
                                                        }]
                                     },
-                     'cfg'        : {'req_cfg'      : req_cfg['put'],
-                                     'res_cfg'      : res_cfg['get']
+                     'cfg'        : {'req_adr'      : req_cfg['put'],
+                                     'res_adr'      : res_cfg['get']
                                     }
                     }
             self._spawn(self._launcher, funcs)
