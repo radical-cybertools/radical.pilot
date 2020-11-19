@@ -138,7 +138,7 @@ class MPIExec(LaunchMethod):
                 slots +=          nslots
                 hosts += [node] * nslots
             host_string += ','.join(hosts)
-            host_string += ' -n %d' % slots
+            host_string += ' -n 1'
 
         command = command_stub % host_string
 
