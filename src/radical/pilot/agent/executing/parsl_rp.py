@@ -143,12 +143,11 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
                   "name"  : func.__name__,
                   "args"  : None,
                   "kwargs": kwargs}
-            self.report.header(inspect.getsource(func))
-            self.report.header('Bash task name %s ' %(cu['name'])) 
-            self.report.header('Bash task exe %s ' %(task_exe))           
-            self.report.header('Bash task args  %s ' %(cu['args']))
-            self.report.header('Bash task kwargs  %s ' %(cu['kwargs']))
-            
+            #self.report.header(inspect.getsource(func))
+            #self.report.header('Bash task name %s ' %(cu['name'])) 
+            #self.report.header('Bash task exe %s ' %(task_exe))           
+            #self.report.header('Bash task args  %s ' %(cu['args']))
+            #self.report.header('Bash task kwargs  %s ' %(cu['kwargs']))
 
         elif task_type == '@python_app':
 
@@ -164,7 +163,6 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
             #report.header('python task name %s ' %(cu['name']))
             #report.header('Python task exe %s ' %(task_exe))
             #report.header('python task kwargs  %s ' %(cu['args']))
-
 
         else:
             pass
@@ -193,12 +191,13 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
             self.umgr.register_callback(self.unit_state_cb) 
             self.report.progress_tgt(self._task_counter, label='create')
 
-            task = rp.ComputeUnitDescription()
-            task.name = task_id
-            task.executable       = comp_unit['kwargs']['exe']
-            task.arguments        = comp_unit['source_code'] #comp_unit['args']
+            task                  = rp.ComputeUnitDescription()
+            task.name             = task_id
+            task.executable       = "{0} {1}".format(comp_unit['kwargs']['exe'],
+                                                      comp_unit['source_code'])
+            task.arguments        = comp_unit['args']
             task.pre_exec         = self.tasks_pre_exec
-            task.cpu_processes    = comp_unit['kwargs']['nproc'] # Specify the type of the process MPI/Non-MPI/rp.Func
+            task.cpu_processes    = comp_unit['kwargs']['nproc'] # The process MPI/Non-MPI/rp.Func
             task.cpu_process_type = comp_unit['kwargs']['ptype']
             task.cpu_threads      = 8 
             self.report.progress()
@@ -212,12 +211,9 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
             raise
 
         except (KeyboardInterrupt, SystemExit):
-
-             ru.print_exception_trace()
-             self.report.warn('exit requested\n')
-        
-
-
+            ru.print_exception_trace()
+            self.report.warn('exit requested\n')
+            
         return self.future_tasks[task_id]
     
 

@@ -25,16 +25,32 @@ usage_tracking=True)
 
 parsl.load(config)
 
+# MPI Shell
+"""
 @bash_app
-def mpi_task(exe ='/bin/sh',ptype=rp.MPI, nproc=3,outputs=[],stdout= '',stderr=''):
+def mpi_shell(exe ='/bin/sh',ptype=rp.MPI, nproc=3,outputs=[],stdout= '',stderr=''):
     return '/home/aymen/mpi.sh'.format(outputs[0])
 
 results = [] 
 
+for i in range(3):
+    out_file = "/home/aymen/mpi_shell_{0}".format(i)
+    results.append(mpi_shell(outputs=[out_file]))
+    mpi_shell()
+"""
+
+# MPI C
+@bash_app
+def mpi_C(exe ='', ptype=rp.MPI, nproc=3,outputs=[], stdout= '', stderr=''):
+    return '/home/aymen/mpi_hello_world'.format(outputs[0])
+
+results = []
+
 for i in range(2):
-    out_file = "/home/aymen/mpi_task_{0}".format(i)
-    results.append(mpi_task(outputs=[out_file]))
-    mpi_task()
+    out_file = "/home/aymen/mpi_C_{0}".format(i)
+    results.append(mpi_C(outputs=[out_file]))
+    mpi_C()
+
 
 print ("Job Status: {}".format([r.done() for r in results]))
 # wait for all apps to complete
