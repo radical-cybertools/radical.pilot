@@ -16,6 +16,11 @@ import queue
 
 pwd = sys.argv[1]
 
+def out(msg):
+    sys.stdout.write('%s\n' % msg)
+    sys.stdout.flush()
+
+
 # ------------------------------------------------------------------------------
 # activate virtenv if needed
 ve = None
@@ -76,8 +81,8 @@ class Executor(object):
 
         self._log.debug('=== req in  addr: %s', addr_req)
         self._log.debug('=== res out addr: %s', addr_res)
-        print('=== req in  addr: %s' % addr_req)
-        print('=== res out addr: %s' % addr_res)
+        out('=== req in  addr: %s' % addr_req)
+        out('=== res out addr: %s' % addr_res)
 
         assert(addr_req)
         assert(addr_res)
@@ -118,9 +123,14 @@ class Executor(object):
         self._workers = list()
         for i in range(self._nw):
             wid  = '%s.%03d' % (self._uid, i)
+            out('==== start worker')
             proc = mp.Process(target=self._work, args=[self._uid, wid])
+            proc.daemon = True
             proc.start()
             self._workers.append(proc)
+
+        time.sleep(3)
+        out('==== started worker')
 
         self._prof.prof('init_stop', uid=self._uid)
 
@@ -216,7 +226,7 @@ class Executor(object):
         run it, push the result onto the result queue
         '''
 
-        print('==== work start')
+        out('==== work start')
 
         self._prof.prof('work_start', comp=wid, uid=uid)
 
@@ -224,10 +234,9 @@ class Executor(object):
 
             try:
                 task = self._mpq_work.get(block=True, timeout=0.1)
-                print('==== task: %s' % task)
+                out('==== task: %s' % task)
 
             except queue.Empty:
-                print('==== task: --')
                 continue
 
           # import pprint
