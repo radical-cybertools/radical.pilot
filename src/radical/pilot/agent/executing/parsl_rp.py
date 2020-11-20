@@ -198,7 +198,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
             task.pre_exec         = self.tasks_pre_exec
             task.cpu_processes    = tu['kwargs']['nproc']
             task.cpu_process_type = None if 'ptype' not in tu['kwargs'] else tu['kwargs']['ptype']
-            task.cpu_threads      = 1    if 'nthrds' not in tu['kwargs'] else tu['kwargs']['nthrd']
+            task.cpu_threads      = 1    if 'nthrd' not in tu['kwargs'] else tu['kwargs']['nthrd']
             self.report.progress()
             self.umgr.submit_units(task)
             

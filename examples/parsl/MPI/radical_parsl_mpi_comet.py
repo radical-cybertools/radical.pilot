@@ -40,7 +40,7 @@ for i in range(3):
 
 # MPI C
 @bash_app
-def mpi_C(ptype=rp.MPI, nproc=3,outputs=[], stdout= '', stderr=''):
+def mpi_C(ptype=rp.MPI,nthrd=8, nproc=3,outputs=[], stdout= '', stderr=''):
     return '/home/aymen/mpi_hello_world'.format(outputs[0])
 
 results = []
