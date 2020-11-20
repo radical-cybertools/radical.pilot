@@ -12,7 +12,7 @@ from parsl.addresses import address_by_query
 from parsl.addresses import address_by_hostname
 from parsl.executors import HighThroughputExecutor
 from parsl.executors.high_throughput import interchange
-from rp.executing.parsl_rp import RADICALExecutor as RADICALExecutor
+from radical.pilot.agent.executing.parsl_rp import RADICALExecutor as RADICALExecutor
 
 """
 This example illustrates how we assign different executors 
@@ -63,7 +63,6 @@ config = Config(
                         login_method = 'gsissh',
                         project = '',
                         partition = 'debug',
-                        cores_per_task=1,
                         walltime = 30,
                         managed = True,
                         max_tasks = 3)
@@ -73,7 +72,7 @@ usage_tracking=True
 )
 parsl.load(config)
 
-@bash_app(executors=["RADICALExecutor"])
+@bash_app(exe ='', nproc=1,ptype= None, executors=["RADICALExecutor"])
 def generate(outputs=[]):
     return "echo $(( RANDOM )) &> {}".format(outputs[0].filepath)
 

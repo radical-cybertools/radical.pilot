@@ -34,7 +34,7 @@ for i in range(8):
 '''
 
 @bash_app
-def stress(exe='',nproc=1, ptype= None,outputs=[], stdout= '', stderr=''):
+def stress(nproc=1,outputs=[], stdout= '', stderr=''):
     return '/home/aymen/stress-ng/stress-ng --cpu 1 --timeout 300 > {0}'.format(outputs[0])
 
 
@@ -43,8 +43,6 @@ results = []
 for i in range(8):
     out_file = "/home/aymen/stress_{0}".format(i)
     results.append(stress(outputs=[out_file]))
-    stress()
-
 
 print ("Job Status: {}".format([r.done() for r in results]))
 # wait for all apps to complete

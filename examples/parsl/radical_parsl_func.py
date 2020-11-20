@@ -13,10 +13,8 @@ config = Config(
                         label = 'RADICALExecutor',
                         resource = 'local.localhost_funcs', #'local.localhost_funcs',
                         login_method = 'local',
-                        task_process_type = 'rp.FUNC',
                         project = '',
                         partition = '',
-                        cores_per_task=1,
                         walltime = 30,
                         managed = True,
                         max_tasks = 1)
@@ -27,7 +25,7 @@ usage_tracking=True)
 parsl.load(config)
 
 @python_app
-def report_time(outputs=[],stdout= '/home/aymen/report_time.out',stderr='/home/aymen/report_time.err'):
+def report_time(ptype='rp.FUNC',outputs=[],stdout= '/home/aymen/report_time.out',stderr='/home/aymen/report_time.err'):
     import time
     return time.time()
 

@@ -40,7 +40,7 @@ for i in range(3):
 
 # MPI C
 @bash_app
-def mpi_C(exe ='', ptype=rp.MPI, nproc=3,outputs=[], stdout= '', stderr=''):
+def mpi_C(ptype=rp.MPI, nproc=3,outputs=[], stdout= '', stderr=''):
     return '/home/aymen/mpi_hello_world'.format(outputs[0])
 
 results = []
@@ -48,7 +48,6 @@ results = []
 for i in range(2):
     out_file = "/home/aymen/mpi_C_{0}".format(i)
     results.append(mpi_C(outputs=[out_file]))
-    mpi_C()
 
 
 print ("Job Status: {}".format([r.done() for r in results]))

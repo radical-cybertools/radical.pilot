@@ -33,7 +33,6 @@ results = []
 for i in range(2):
     out_file = "/home/aymen/mpi_task_{0}".format(i)
     results.append(mpi_task(outputs=[out_file]))
-    mpi_task()
 
 print ("Job Status: {}".format([r.done() for r in results]))
 # wait for all apps to complete

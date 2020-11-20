@@ -15,8 +15,6 @@ config = Config(
                         login_method = 'local',
                         project = '',
                         partition = '',
-                        task_process_type = None,
-                        cores_per_task=1,
                         walltime = 30,
                         managed = True,
                         max_tasks = 1)
@@ -27,7 +25,7 @@ usage_tracking=True)
 parsl.load(config)
 
 @bash_app
-def gen(outputs=[], stdout= '/home/aymen/rand.out',stderr='/home/aymen/rand.err'):
+def gen(nproc =1,outputs=[], stdout= '/home/aymen/rand.out',stderr='/home/aymen/rand.err'):
     return 'echo $(( RANDOM % (10 - 5 + 1 ) + 5 )) > {0}'.format(outputs[0])
 
 results = [] 
@@ -35,7 +33,7 @@ results = []
 for i in range(4):
     out_file = "/home/aymen/rand_{0}".format(i)
     results.append(gen(outputs=[out_file]))
-    gen()
+
 
 print ("Job Status: {}".format([r.done() for r in results]))
 # wait for all apps to complete

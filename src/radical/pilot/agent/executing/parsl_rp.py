@@ -183,7 +183,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         self._task_counter += 1
         task_id = str(self._task_counter)
         self.future_tasks[task_id] = Future()
-        comp_unit = self.task_translate(func, args, kwargs)
+        tu = self.task_translate(func, args, kwargs)
 
         try:
             self.umgr.register_callback(self.unit_state_cb) 
@@ -191,13 +191,14 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
 
             task                  = rp.ComputeUnitDescription()
             task.name             = task_id
-            task.executable       = "{0} {1}".format(comp_unit['kwargs']['exe'],
-                                                     comp_unit['source_code'])
-            task.arguments        = comp_unit['args']
+            task.executable       = tu['source_code'] if 'exe' not in tu['kwargs'] else "{0} {1}".format(tu['kwargs']['exe'],
+                                                                                                         tu['source_code'])
+                                                       
+            task.arguments        = tu['args']
             task.pre_exec         = self.tasks_pre_exec
-            task.cpu_processes    = comp_unit['kwargs']['nproc'] # The process MPI/Non-MPI/rp.Func
-            task.cpu_process_type = comp_unit['kwargs']['ptype']
-            task.cpu_threads      = 8 
+            task.cpu_processes    = tu['kwargs']['nproc']
+            task.cpu_process_type = None if 'ptype' not in tu['kwargs'] else tu['kwargs']['ptype']
+            task.cpu_threads      = 1    if 'nthrds' not in tu['kwargs'] else tu['kwargs']['nthrd']
             self.report.progress()
             self.umgr.submit_units(task)
             
