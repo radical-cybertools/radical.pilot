@@ -72,8 +72,8 @@ usage_tracking=True
 )
 parsl.load(config)
 
-@bash_app(exe ='', nproc=1,ptype= None, executors=["RADICALExecutor"])
-def generate(outputs=[]):
+@bash_app(executors=["RADICALExecutor"])
+def generate(nproc=1, ptype= None, outputs=[]):
     return "echo $(( RANDOM )) &> {}".format(outputs[0].filepath)
 
 
