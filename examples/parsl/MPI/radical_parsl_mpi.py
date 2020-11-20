@@ -15,7 +15,6 @@ config = Config(
                         login_method = 'local',
                         project = '',
                         partition = '',
-                        cores_per_task=1,
                         walltime = 30,
                         managed = True,
                         max_tasks = 3)

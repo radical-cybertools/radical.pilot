@@ -62,7 +62,6 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
                  login_method: str = None,                  # Specify the connection protocol SSH/GISSH/local
                  walltime: int = None,
                  tasks_pre_exec: Optional[str] = None,      # Specify any requirements that this task needs to run
-                 cores_per_task = 1,
                  managed: bool = True,
                  max_tasks: Union[int, float] = float('inf'),
                  worker_logdir_root: Optional[str] = ".",
@@ -83,7 +82,6 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         self.tasks = list()
         self.future_tasks = {}
         self.tasks_pre_exec = tasks_pre_exec
-        self.cores_per_task = cores_per_task
         self.managed = managed
         self.max_tasks = max_tasks
         self._task_counter = 0
