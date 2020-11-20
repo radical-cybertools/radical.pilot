@@ -78,12 +78,8 @@ class TestBase(TestCase):
             self.assertEqual(unit['slots'], result['slots'])
 
             # test environment variable(s)
-            if 'NODE_LFS_PATH' not in result['description']['environment']:
-                self.assertNotIn('NODE_LFS_PATH',
-                                 unit['description']['environment'])
-            else:
-                self.assertEqual(unit['description']['environment'],
-                                 result['description']['environment'])
+            self.assertEqual(unit['description']['environment'],
+                             result['description']['environment'])
 
 
     # ------------------------------------------------------------------------------
