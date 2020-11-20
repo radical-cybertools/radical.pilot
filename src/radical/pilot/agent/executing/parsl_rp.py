@@ -134,7 +134,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
 
         task_type = inspect.getsource(func).split('\n')[0]
         
-        if task_type == '@bash_app':
+        if task_type.startswith('@bash_app'):
             source_code = inspect.getsource(func).split('\n')[2].split('return')[1]
             task_exe = re.findall(r"'(.*?)'", source_code, re.DOTALL)[0]
             cu = {"source_code": task_exe,
@@ -147,7 +147,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
             #self.report.header('Bash task args  %s ' %(cu['args']))
             #self.report.header('Bash task kwargs  %s ' %(cu['kwargs']))
 
-        elif task_type == '@python_app':
+        elif task_type.startswith('@python_app'):
 
             task_pre_exec = inspect.getsource(func).split('\n')[2]
             task_exe      = inspect.getsource(func).split('\n')[3]

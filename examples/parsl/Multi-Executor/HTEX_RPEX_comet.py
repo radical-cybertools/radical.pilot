@@ -68,13 +68,12 @@ config = Config(
                         max_tasks = 3)
     ],
 strategy='simple',
-usage_tracking=True
-)
+usage_tracking=True)
 parsl.load(config)
 
 @bash_app(executors=["RADICALExecutor"])
 def generate(nproc=1, ptype= None, outputs=[]):
-    return "echo $(( RANDOM )) &> {}".format(outputs[0].filepath)
+    return 'echo $(( RANDOM )) &> {}'.format(outputs[0].filepath)
 
 
 @bash_app(executors=["Comet_HTEX_multinode"])
@@ -94,8 +93,9 @@ output_files = []
 for i in range (5):
     output_files.append(generate(outputs=[File('random-%s.txt' % i)]))
 
-# Concatenate the files into a single file
-cc = concat(inputs=[i.outputs[0] for i in output_files], outputs=[File("all.txt")])
+# Concatenate the files into a single file 
+# We are failing here with depndecy error between generate <-> concat
+cc = concat(inputs=[i.outputs[0] for i in output_files], outputs=[File("all.txt")]) 
 
 # Calculate the sum of the random numbers
 result = total(inputs=[cc.outputs[0]])
