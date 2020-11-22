@@ -88,7 +88,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         self.run_dir = '.'
         self.worker_logdir_root = worker_logdir_root
         self.session = rp.Session(uid=ru.generate_id('parsl.radical_executor.session',
-                     mode=ru.ID_PRIVATE))
+                       mode=ru.ID_PRIVATE))
         self.pmgr    = rp.PilotManager(session=self.session)
         self.umgr    = rp.UnitManager(session=self.session)
       
@@ -136,7 +136,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         
         if task_type.startswith('@bash_app'):
             source_code = inspect.getsource(func).split('\n')[2].split('return')[1]
-            task_exe = re.findall(r"'(.*?)'", source_code, re.DOTALL)[0]
+            task_exe = re.findall(r"['\"](.*?)['\"]", source_code, re.DOTALL)[0]
             cu = {"source_code": task_exe,
                   "name"  : func.__name__,
                   "args"  : None,
