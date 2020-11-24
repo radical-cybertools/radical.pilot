@@ -27,6 +27,7 @@ class Agent_n(rpu.Worker):
         self._session = session
         self._log     = session._log
 
+        self._starttime   = time.time()
         self._final_cause = None
 
         # this is the earliest point to sync bootstrap and agent profiles

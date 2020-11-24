@@ -32,15 +32,7 @@ def bootstrap_3(aid):
     agent.0 will create derived config files for all sub-agents.
     """
 
-    print('=== %s foo out 2' % aid)
-
-    sys.stdout.flush()
-    sys.stderr.flush()
-
     print("bootstrap agent %s" % aid)
-    sys.stdout.flush()
-    sys.stderr.flush()
-
 
     agent = None
 
@@ -56,8 +48,6 @@ def bootstrap_3(aid):
         # start a non-primary session (the agents will own their cmgrs)
         session = rp.Session(cfg=cfg, _primary=False)
 
-        print('==== aid: %s' % aid)
-
         if aid == 'agent.0': agent = rp.Agent_0(cfg, session)
         else               : agent = rp.Agent_n(cfg, session)
 
@@ -65,10 +55,7 @@ def bootstrap_3(aid):
 
         # wait until the agent finishes or fails.
         while True:
-            time.sleep(1)
-            print('run %s' % aid)
-            sys.stdout.flush()
-            sys.stderr.flush()
+            time.sleep(0.1)
 
     except:
         print('failed %s' % aid)
@@ -79,37 +66,22 @@ def bootstrap_3(aid):
         # does not mind doing all those things in a finally clause of
         # (essentially) main...
         print('finalize %s' % aid)
-        sys.stdout.flush()
-        sys.stderr.flush()
-
 
         if agent:
             agent.stop()
             print('stopped  %s' % aid)
-
-        sys.stdout.flush()
-        sys.stderr.flush()
 
 
 # ------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
+    # FIXME: daemonization a'la component
+
     if len(sys.argv) != 2:
         raise RuntimeError('missing parameter: agent id')
 
-    aid = sys.argv[1]
-
-    sys.stdout = open('./%s.out' % aid, 'a')
-    sys.stderr = open('./%s.err' % aid, 'a')
-
-    print('=== %s foo out 1' % aid)
-
-    sys.stdout.flush()
-    sys.stderr.flush()
-    # FIXME: daemonization a'la component
-
-    bootstrap_3(aid)
+    bootstrap_3(sys.argv[1])
 
 
 # ------------------------------------------------------------------------------
