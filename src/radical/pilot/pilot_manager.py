@@ -399,8 +399,7 @@ class PilotManager(rpu.Component):
     #
     def _pilot_send_hb(self, pid=None):
 
-            self._session._dbs.pilot_command('heartbeat', 
-                                             {'pmgr': self._uid}, pid)
+        self._session._dbs.pilot_command('heartbeat', {'pmgr': self._uid}, pid)
 
 
     # --------------------------------------------------------------------------
@@ -615,7 +614,6 @@ class PilotManager(rpu.Component):
         for pilot_doc in pilot_docs:
             pid = pilot_doc['uid']
             pd  = pilot_doc['description']
-            uid = self._uid
 
             self._pilot_send_hb(pid)
             self._pilot_prepare_env(pid, pd.get('prepare_env'))
