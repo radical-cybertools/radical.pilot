@@ -366,8 +366,8 @@ class AgentSchedulingComponent(rpu.Component):
             impl = impl(cfg, session)
             return impl
 
-        except KeyError:
-            raise ValueError("Scheduler '%s' unknown or defunct" % name)
+        except KeyError as e:
+            raise ValueError("Scheduler '%s' unknown or defunct" % name) from e
 
 
     # --------------------------------------------------------------------------
@@ -853,9 +853,9 @@ class AgentSchedulingComponent(rpu.Component):
         self._change_slot_states(slots, rpc.BUSY)
         unit['slots'] = slots
 
-        env_dict = unit['description'].get('environment', {})
-        env_dict['NODE_LFS_PATH'] = slots['lfs_per_node']['path']
-        unit['description']['environment'] = env_dict
+        if slots['lfs_per_node']['path']:
+            unit['description']['environment']['NODE_LFS_PATH'] = \
+                slots['lfs_per_node']['path']
 
         self._handle_cuda(unit)
 
@@ -900,7 +900,6 @@ class AgentSchedulingComponent(rpu.Component):
         lm_info     = self._cfg['rm_info']['lm_info']
         cvd_id_mode = lm_info.get('cvd_id_mode', 'physical')
 
-        unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = ''
         gpu_maps = list()
         for node in unit['slots']['nodes']:
             if node['gpu_map'] not in gpu_maps:
@@ -920,12 +919,12 @@ class AgentSchedulingComponent(rpu.Component):
             gpu_map = gpu_maps[0]
 
             if cvd_id_mode == 'physical':
-                unit['description']['environment']['CUDA_VISIBLE_DEVICES']\
-                        = ','.join([str(gpu_set[0]) for gpu_set in gpu_map])
+                unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = \
+                    ','.join([str(gpu_set[0]) for gpu_set in gpu_map])
 
             elif cvd_id_mode == 'logical':
-                unit['description']['environment']['CUDA_VISIBLE_DEVICES']\
-                        = ','.join([str(x) for x in range(len(gpu_map))])
+                unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = \
+                    ','.join([str(x) for x in range(len(gpu_map))])
 
             else:
                 raise ValueError('invalid CVD mode %s' % cvd_id_mode)

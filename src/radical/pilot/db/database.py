@@ -4,7 +4,6 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import copy
 import time
 import pymongo
 
@@ -73,7 +72,7 @@ class DBSession(object):
             self._c.insert({'type'      : 'session',
                             '_id'       : sid,
                             'uid'       : sid,
-                            'cfg'       : ru.demunch(cfg.as_dict()),
+                            'cfg'       : cfg.as_dict(),
                             'created'   : self._created,
                             'connected' : self._connected})
             self._can_remove = True
