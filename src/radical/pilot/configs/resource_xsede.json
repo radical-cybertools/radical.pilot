@@ -211,7 +211,7 @@
         "cu_pre_exec"                 : ["module restore"]
     },
 
-    "stampede2_ibrun": {
+    "stampede2_ibrun_repex": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["local", "gsissh", "ssh"],
@@ -283,7 +283,6 @@
         "agent_launch_method"         : "IBRUN",
         "task_launch_method"          : "IBRUN",
         "mpi_launch_method"           : "IBRUN",
-        "blocked_cores"               : [64, 65, 66, 67],
         "pre_bootstrap_0"             :["module load TACC",
                                         "module load intel/18.0.0",
                                         "module load python3/3.7.0"
@@ -634,11 +633,10 @@
         "mpi_launch_method"           : "MPIEXEC",
         "pre_bootstrap_0"             : [
                                          "module purge",
-                                         "module load psc_path/1.1",
-                                         "module load xdusage/2.1-1",
-                                         "module load intel/18.4",
-                                         "module load anaconda3",
-                                         "module load gromacs/2018_cpu"
+                                         "module load gcc",
+                                         "module load mpi/gcc_openmpi",
+                                         "module load slurm",
+                                         "module load anaconda3"
                                         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/home", "/pylon1", "/pylon5"],
