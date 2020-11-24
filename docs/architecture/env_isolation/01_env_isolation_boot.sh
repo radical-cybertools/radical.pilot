@@ -6,7 +6,7 @@
 #
 # Note that the original environment we capture here includes whatever the user
 # sets in his .profile and other initialisation file.  This includes enviroment
-# details the user considers useful for the workload eventual to run - but
+# details the user considers useful for the workload to run - but
 # implies that agent and launch methods may need to reset some of those settings
 # to obtain their own desired environment, for example via a `module reset` or
 # similar.
@@ -60,4 +60,3 @@ exec ./02_env_isolation_agent.py
 
 
 # ------------------------------------------------------------------------------
-
