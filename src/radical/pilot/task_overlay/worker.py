@@ -219,25 +219,30 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _mpi(self, data):
-        '''
-        launch an rp.MPI_LAUNCH_METHOD for the task
-        '''
-
-        try:
-            cmd = rp.agent.launch_method.construct_command(data,
-                    executable=self.exe, args=data['func'])
-            out = rp.sh_callout(cmd)
-            err = None
-            ret = 0
-
-        except Exception as e:
-            self._log.exception('_mpi failed: %s' % (data))
-            out = None
-            err = 'mpi failed: %s' % e
-            ret = 1
-
-        return out, err, ret
+    # FIXME: an MPI call mode should be added.  That could work along these
+    #        lines of:
+    #
+    # --------------------------------------------------------------------------
+    #  def _mpi(self, data):
+    #
+    #      try:
+    #          cmd = rp.agent.launch_method.construct_command(data,
+    #                  executable=self.exe, args=data['func'])
+    #          out = rp.sh_callout(cmd)
+    #          err = None
+    #          ret = 0
+    #
+    #      except Exception as e:
+    #          self._log.exception('_mpi failed: %s' % (data))
+    #          out = None
+    #          err = 'mpi failed: %s' % e
+    #          ret = 1
+    #
+    #      return out, err, ret
+    # --------------------------------------------------------------------------
+    #
+    # For that to work we would need to be able to create a LM here, but ideally
+    # not replicate the work done in the agent executor.
 
 
     # --------------------------------------------------------------------------
