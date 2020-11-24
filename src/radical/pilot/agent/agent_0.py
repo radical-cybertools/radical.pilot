@@ -471,6 +471,7 @@ class Agent_0(rpu.Worker):
     def _agent_command_cb(self):
 
         if not self._check_commands(): return False
+        if not self._check_rpc     (): return False
         if not self._check_state   (): return False
 
         return True
@@ -528,6 +529,38 @@ class Agent_0(rpu.Worker):
                                                   'arg' : arg})
             else:
                 self._log.warn('could not interpret cmd "%s" - ignore', cmd)
+
+        return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _check_rpc(self):
+
+        self._log.debug('rpc check')
+
+        retdoc = self._dbs._c.find_and_modify(
+                    query ={'uid' : self._pid},
+                    fields=['rpc_req'],
+                    update={'$set': {'rpc_req': None}})
+
+        if not retdoc:
+            return True
+
+        rpc_req = retdoc.get('rpc_req')
+        if rpc_req is None:
+            return True
+
+        self._log.debug('rpc req: %s', rpc_req)
+
+        rpc_res = rpc_req
+        rpc_res['ret'] = 'foo'
+
+        self._log.debug('rpc res: %s', rpc_res)
+
+        self._dbs._c.update({'type'  : 'pilot',
+                             'uid'   : self._pid},
+                            {'$set'  : {'rpc_res': rpc_res}})
 
         return True
 

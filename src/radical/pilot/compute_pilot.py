@@ -598,18 +598,17 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def command(self, cmd, arg):
+    def rpc(self, rpc, args):
         '''
         Send a pilot command, wait for the response, and return the result.
         This is basically an RPC into the pilot.
         '''
 
-        print('cmd  :', cmd, arg)
-        reply = self._session._dbs.pilot_command(cmd, arg, self.uid, sync=True)
-        print('reply:', reply)
+        print('rpc req:', rpc, args)
+        reply = self._session._dbs.pilot_rpc(self.uid, rpc, args)
+        print('rpc res:', reply)
 
         return reply
-
 
 
     # --------------------------------------------------------------------------

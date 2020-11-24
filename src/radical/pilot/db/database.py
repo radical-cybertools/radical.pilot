@@ -222,7 +222,7 @@ class DBSession(object):
 
     # --------------------------------------------------------------------------
     #
-    def pilot_command(self, cmd, arg=None, pids=None, sync=False):
+    def pilot_command(self, cmd, arg=None, pids=None):
         """
         send a command and arg to a set of pilots
         """
@@ -238,9 +238,7 @@ class DBSession(object):
             pids = [pids]
 
         try:
-            rpc_id   = ru.generate_id('rpc')
-            cmd_spec = {'uid' : rpc_id,
-                        'cmd' : cmd,
+            cmd_spec = {'cmd' : cmd,
                         'arg' : arg}
 
             self._log.debug('insert cmd: %s %s %s', pids, cmd, arg)
@@ -255,6 +253,59 @@ class DBSession(object):
                 self._c.update({'type'  : 'pilot'},
                                {'$push' : {'cmds': cmd_spec}},
                                multi=True)
+
+        except pymongo.errors.OperationFailure as e:
+            self._log.exception('pymongo error: %s' % e.details)
+            raise RuntimeError ('pymongo error: %s' % e.details) from e
+
+
+    # --------------------------------------------------------------------------
+    #
+    def pilot_rpc(self, pid, rpc, args=None):
+        """
+        send a command and arg to a set of pilots
+        """
+
+        if self.closed:
+            raise Exception('session is closed')
+
+        if not self._c:
+            raise Exception('session is disconnected ')
+
+        try:
+            rpc_id  = ru.generate_id('rpc')
+            rpc_req = {'uid' : rpc_id,
+                       'rpc' : rpc,
+                       'arg' : args}
+
+            self._log.debug('=== rpc request: %s', rpc_req)
+
+            # FIXME: evaluate retval
+            self._c.update({'type'  : 'pilot',
+                            'uid'   : pid},
+                           {'$set'  : {'rpc_req': rpc_req}})
+
+            # now wait for reply to arrive
+            while True:
+                self._log.debug('=== rpc: wait')
+
+                time.sleep(5.0)
+
+                retdoc = self._c.find_and_modify(
+                            query ={'uid' : pid},
+                            fields=['rpc_res'],
+                            update={'$set': {'rpc_res': None}})
+
+                if not retdoc:
+                    continue
+
+                rpc_res = retdoc.get('rpc_res')
+                self._log.debug('=== rpc response: %s', rpc_res)
+                if not rpc_res:
+                    continue
+
+                return rpc_res
+
 
         except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)
