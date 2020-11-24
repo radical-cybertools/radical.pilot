@@ -168,7 +168,7 @@ class Session(rs.Session):
         if dburl_no_passwd.get_password():
             dburl_no_passwd.set_password('****')
 
-        self._rep.info ('<<database   : ')  
+        self._rep.info ('<<database   : ')
         self._rep.plain('[%s]'    % dburl_no_passwd)
         self._log.info('dburl %s' % dburl_no_passwd)
 
