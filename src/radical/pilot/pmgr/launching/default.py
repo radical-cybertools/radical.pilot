@@ -1079,20 +1079,20 @@ class Default(PMGRLaunchingComponent):
 
                 for sdist in sdist_paths:
                     base = os.path.basename(sdist)
-                    ret['ft'].append({
+                    ret['fts'].append({
                         'src': sdist,
                         'tgt': '%s/%s' % (session_sandbox, base),
                         'rem': False
                     })
 
                 # Copy the bootstrap shell script.
-                bootstrapper_path = os.path.abspath("%s/agent/%s"
-                                  % (self._root_dir, BOOTSTRAPPER_0))
+                bootstrapper_path = os.path.abspath("%s/agent/bootstrap_0.sh"
+                                  % self._root_dir)
                 self._log.debug("use bootstrapper %s", bootstrapper_path)
 
-                ret['ft'].append({
+                ret['fts'].append({
                     'src': bootstrapper_path,
-                    'tgt': '%s/%s' % (session_sandbox, BOOTSTRAPPER_0),
+                    'tgt': session_sandbox,
                     'rem': False
                 })
 
@@ -1105,9 +1105,9 @@ class Default(PMGRLaunchingComponent):
                     cpath = os.path.abspath("%s/agent/%s" % (self._root_dir, certs))
                     self._log.debug("use CAs %s", cpath)
 
-                    ret['ft'].append({'src': cpath,
-                                      'tgt': '%s/%s' % (session_sandbox, certs),
-                                      'rem': False})
+                    ret['fts'].append({'src': cpath,
+                                       'tgt': '%s/%s' % (session_sandbox, certs),
+                                       'rem': False})
 
                 self._sandboxes[resource] = True
 
