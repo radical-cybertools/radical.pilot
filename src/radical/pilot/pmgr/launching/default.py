@@ -1241,12 +1241,12 @@ class Default(PMGRLaunchingComponent):
         client_sandbox   = self._session._get_client_sandbox()
 
         # contexts for staging url expansion
-        loc_ctx = {'pwd'     : pilot_sandbox,
+        loc_ctx = {'pwd'     : client_sandbox,
                    'client'  : client_sandbox,
                    'pilot'   : pilot_sandbox,
                    'resource': resource_sandbox}
 
-        rem_ctx = {'pwd'     : client_sandbox,
+        rem_ctx = {'pwd'     : pilot_sandbox,
                    'client'  : client_sandbox,
                    'pilot'   : pilot_sandbox,
                    'resource': resource_sandbox}
