@@ -114,7 +114,7 @@ class ComputeUnit(object):
     #
     def __str__(self):
 
-        return [self.uid, self.pilot, self.state]
+        return str([self.uid, self.pilot, self.state])
 
 
     # --------------------------------------------------------------------------
