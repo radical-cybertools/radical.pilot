@@ -840,9 +840,9 @@ class AgentSchedulingComponent(rpu.Component):
         self._change_slot_states(slots, rpc.BUSY)
         unit['slots'] = slots
 
-        env_dict = unit['description'].get('environment', {})
-        env_dict['NODE_LFS_PATH'] = slots['lfs_per_node']['path']
-        unit['description']['environment'] = env_dict
+        if slots['lfs_per_node']['path']:
+            unit['description']['environment']['NODE_LFS_PATH'] = \
+                slots['lfs_per_node']['path']
 
         self._handle_cuda(unit)
 

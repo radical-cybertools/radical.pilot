@@ -52,20 +52,9 @@ class TestBase(TestCase):
     #
     @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
     @mock.patch.object(AgentSchedulingComponent, '_handle_cuda', return_value=True)
-    @mock.patch.object(AgentSchedulingComponent, 'schedule_unit',
-                       return_value={"cores_per_node": 16,
-                                     "lfs_per_node": {"size": 0, "path": "/dev/null"},
-                                     "nodes": [{"lfs": {"path": "/dev/null", "size": 0},
-                                                "core_map": [[0]],
-                                                "name": "a",
-                                                "gpu_map": None,
-                                                "uid": 1,"mem": None}],
-                                     "lm_info": "INFO",
-                                     "gpus_per_node": 6,
-                                     })
     @mock.patch.object(AgentSchedulingComponent, '_change_slot_states',
                        return_value=True)
-    def test_try_allocation(self, mocked_init, mocked_schedule_unit, mocked_handle_cuda,
+    def test_try_allocation(self, mocked_init, mocked_handle_cuda,
                             mocked_change_slot_states):
 
         component = AgentSchedulingComponent()
@@ -76,18 +65,21 @@ class TestBase(TestCase):
         component._wait_pool = list()
         component._wait_lock = threading.RLock()
         component._slot_lock = threading.RLock()
-        unit = {'description':{'note':'this is a unit'}, 'uid': 'test'}
-        component._try_allocation(unit=unit)
-        self.assertEqual(unit['slots'], {"cores_per_node": 16,
-                                 "lfs_per_node": {"size": 0, "path": "/dev/null"},
-                                 "nodes": [{"lfs": {"path": "/dev/null", "size": 0},
-                                            "core_map": [[0]],
-                                            "name": "a",
-                                            "gpu_map": None,
-                                            "uid": 1,"mem": None}],
-                                 "lm_info": "INFO",
-                                 "gpus_per_node": 6,
-                                 })
+
+        tests = self.setUp()['try_allocation']
+        for input_data, result in zip(tests['setup'], tests['results']):
+            component.schedule_unit = mock.Mock(
+                return_value=input_data['scheduled_unit_slots'])
+
+            unit = input_data['unit']
+            component._try_allocation(unit=unit)
+
+            # test unit's slots
+            self.assertEqual(unit['slots'], result['slots'])
+
+            # test environment variable(s)
+            self.assertEqual(unit['description']['environment'],
+                             result['description']['environment'])
 
 
     # ------------------------------------------------------------------------------
