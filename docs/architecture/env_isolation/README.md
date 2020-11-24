@@ -2,7 +2,7 @@
 
 The purpose of this code is to ensure a stable environment for RP tasks,
 which ideally is (as) identical (as possible) to the environment the pilot
-is originally placed in.  
+is originally placed in.
 
 API / config changes
 
@@ -21,13 +21,13 @@ API / config changes
      - any number of LMs can be configured for an agent
      - TODO: clarify how a LM is selected for a task
 
-         
+
 Naming:
 
   - *.dump: environment dumps (`env > env.dump`)
   - *.sh  : environment setup (unset and export command lines, can be sourced)
 
-      
+
 Procedural changes:
 
    - capture the original environment (`env.boot.dump`)
