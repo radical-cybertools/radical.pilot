@@ -86,7 +86,82 @@
                                "RuntimeError"
                               ]
                    },
-    "try_allocation":{},
+    "try_allocation":{
+        "setup": [
+            {
+                "unit": {"uid": "unit.000000",
+                         "description": {"executable": "/bin/sleep",
+                                         "environment": {}}},
+                "scheduled_unit_slots": {"cores_per_node": 16,
+                                         "lfs_per_node": {"size": 0,
+                                                          "path": "/dev/null"},
+                                         "nodes": [
+                                             {"lfs": {"path": "/dev/null",
+                                                      "size": 0},
+                                              "core_map": [[0]],
+                                              "name": "a",
+                                              "gpu_map": null,
+                                              "uid": 1,
+                                              "mem": null}
+                                         ],
+                                         "lm_info": "INFO",
+                                         "gpus_per_node": 6
+                                     }
+            },
+            {
+                "unit": {"uid": "unit.000001",
+                         "description": {"executable": "/bin/sleep",
+                                         "environment": {}}},
+                "scheduled_unit_slots": {"cores_per_node": 16,
+                                         "lfs_per_node": {"size": 0,
+                                                          "path": null},
+                                         "nodes": [
+                                             {"lfs": {"path": null,
+                                                      "size": 0},
+                                              "core_map": [[0]],
+                                              "name": "a",
+                                              "gpu_map": null,
+                                              "uid": 1,
+                                              "mem": null}
+                                         ],
+                                         "lm_info": "INFO",
+                                         "gpus_per_node": 6
+                                     }
+            }
+        ],
+        "results": [
+            {
+                "description": {"environment": {"NODE_LFS_PATH": "/dev/null"},
+                                "executable": "/bin/sleep"},
+                "slots": {"cores_per_node": 16,
+                          "gpus_per_node": 6,
+                          "lfs_per_node": {"path": "/dev/null", "size": 0},
+                          "lm_info": "INFO",
+                          "nodes": [{"core_map": [[0]],
+                                     "gpu_map": null,
+                                     "lfs": {"path": "/dev/null", "size": 0},
+                                     "mem": null,
+                                     "name": "a",
+                                     "uid": 1}]},
+                "uid": "unit.000000"
+            },
+            {
+                "description": {"environment": {},
+                                "executable": "/bin/sleep"},
+                "slots": {"cores_per_node": 16,
+                          "gpus_per_node": 6,
+                          "lfs_per_node": {"path": null, "size": 0},
+                          "lm_info": "INFO",
+                          "nodes": [{"core_map": [[0]],
+                                     "gpu_map": null,
+                                     "lfs": {"path": null, "size": 0},
+                                     "mem": null,
+                                     "name": "a",
+                                     "uid": 1}]},
+                "uid": "unit.000001"
+            }
+        ]
+    },
     "handle_cuda": {"setup": [{"rm_info":{"lm_info":{}}},
                               {"rm_info":{"lm_info":{}}},
                               {"rm_info":{"lm_info":{"cvd_id_mode":"physical"}}},
@@ -147,7 +222,11 @@
                                                  "mem": null}],
                                       "lm_info": "INFO",
                                       "gpus_per_node": 6}}],
-                    "results": ["","1","0,1","","ValueError"]}
+                    "results": ["KeyError",
+                                "1",
+                                "0,1",
+                                "KeyError",
+                                "ValueError"]}
 
 }
 
