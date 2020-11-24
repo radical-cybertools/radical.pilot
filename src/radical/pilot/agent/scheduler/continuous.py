@@ -301,7 +301,7 @@ class Continuous(AgentSchedulingComponent):
         on a single node.
         '''
 
-        self._log.debug('find_resources %s', unit['uid'])
+      # self._log.debug('find_resources %s', unit['uid'])
 
         cud = unit['description']
         mpi = bool('mpi' in cud['cpu_process_type'].lower())
@@ -317,9 +317,8 @@ class Continuous(AgentSchedulingComponent):
         if not cores_per_slot:
             cores_per_slot = 1
 
-        self._log.debug('res : %s', self.slot_status())
-        self._log.debug('req : %s %s %s %s %s', req_slots, cores_per_slot,
-                        gpus_per_slot, lfs_per_slot, mem_per_slot)
+      # self._log.debug('req : %s %s %s %s %s', req_slots, cores_per_slot,
+      #                 gpus_per_slot, lfs_per_slot, mem_per_slot)
 
         # First and last nodes can be a partial allocation - all other nodes
         # can only be partial when `scattered` is set.
@@ -373,7 +372,7 @@ class Continuous(AgentSchedulingComponent):
 
             node_uid  = node['uid']
             node_name = node['name']
-           
+
             self._log.debug('next %s : %s', node_uid, node_name)
             self._log.debug('req1: %s = %s + %s', req_slots, rem_slots,
                                                   len(alc_slots))

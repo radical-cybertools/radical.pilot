@@ -145,12 +145,26 @@ echo "$($RP_GTOD),$1,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING,$2" >> $
     def _handle_unit(self, cu):
 
         try:
+            descr = cu['description']
+
+            # ensure that the named env exists
+            env = descr.get('named_env')
+            if env:
+                if not os.path.isdir('%s/%s' % (self._pwd, env)):
+                    raise ValueError('invalid named env %s for task %s' 
+                                    % (env, cu['uid']))
+                pre = ru.as_list(descr.get('pre_exec'))
+                pre.insert(0, '. %s/%s/bin/activate' % (self._pwd, env))
+                pre.insert(0, '. %s/deactivate'      % (self._pwd))
+                descr['pre_exec'] = pre
+
+
             # prep stdout/err so that we can append w/o checking for None
             cu['stdout'] = ''
             cu['stderr'] = ''
 
-            cpt = cu['description']['cpu_process_type']
-          # gpt = cu['description']['gpu_process_type']  # FIXME: use
+            cpt = descr['cpu_process_type']
+          # gpt = descr['gpu_process_type']  # FIXME: use
 
             # FIXME: this switch is insufficient for mixed units (MPI/OpenMP)
             if cpt == 'MPI': launcher = self._mpi_launcher
