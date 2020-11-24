@@ -578,7 +578,7 @@
         "lfs_size_per_node"           : 3713368,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "MPIEXEC",
+        "agent_launch_method"         : "SSH",
         "task_launch_method"          : "MPIEXEC",
         "mpi_launch_method"           : "MPIEXEC",
         "pre_bootstrap_0"             : ["module purge",
