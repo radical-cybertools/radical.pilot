@@ -7,6 +7,11 @@ dist:     xenial
 git:
   depth: 1
 
+# safelist
+branches:
+  only:
+  - devel
+
 env:
   global:
     - CODECOV_TOKEN="c7e0d993-d31a-4d39-8ffa-07c30ea73e48"
