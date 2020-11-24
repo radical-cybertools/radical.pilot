@@ -1,18 +1,41 @@
 #!/bin/sh
 
-script="$0"
-prefix="$1"
-arg="$2"
+SCRIPT="$0"
+PREFIX=         # full path or virtenv name
+VERSION=        # python version (e.g., 2.7, 3.6, etc.)
+                # NOTE: for virtualenv corresponding version should be installed
+MODULES=        # alternative list of pre-installed modules/packages
+TYPE='default'  # TBD
+
+while getopts "p:v:m:t:" OPTION; do
+    case $OPTION in
+        p)  PREFIX="$OPTARG"   ;;
+        v)  VERSION="$OPTARG"  ;;
+        m)  MODULES="$OPTARG"  ;;
+        t)  TYPE="$OPTARG"     ;;
+        *)  echo "Unknown option: '$OPTION'='$OPTARG'"
+            return 1;;
+    esac
+done
 
 echo
-echo "script : $script"
-echo "prefix : $prefix"
-echo "arg    : $arg"
+echo "script : $SCRIPT"
+echo "type   : $TYPE"
+echo "prefix : $PREFIX"
+echo "version: $VERSION"
+echo "modules: $MODULES"
 echo
 
-reqs="pymongo==2.8 python-hostlist netifaces setproctitle ntplib pyzmq"
-reqs="$reqs apache-libcloud colorama backports.ssl-match-hostname msgpack-python"
-reqs="$reqs future regex msgpack parse"
+if test -z "$MODULES"
+then
+    # by default, install all RCT dependencies
+    MODULES="apache-libcloud chardet colorama future idna msgpack"
+    MODULES="$MODULES msgpack-python netifaces ntplib parse pymongo"
+    MODULES="$MODULES python-hostlist pyzmq regex requests setproctitle urllib3"
+else
+    # move from comma separated to space separated module list
+    MODULES=$(echo "$MODULES" | sed -e 's/,/ /g')
+fi
 
 # setuptools="setuptools==0.6c11"
 # pip="pip==1.4.1"
@@ -60,56 +83,63 @@ progress(){
 # ------------------------------------------------------------------------------
 #
 
-if test "$prefix" = "-h"
+if test "$PREFIX" = "-h"
 then
     help
 fi
 
-if test -z "$prefix"
+if test -z "$PREFIX"
 then
     help "missing target"
 fi
 
 # We don't want to overwrite VE's -- the hack to get the namespace import in
 # place is too invasive to be applied to an existing VE.
-if test -e "$prefix"
+if test -e "$PREFIX"
 then
-    help "target '$prefix' exists"
+    help "target '$PREFIX' exists"
 fi
 
 # Ensure we install in an absolute path -- pip seems to like that better...
-case $prefix in
+case $PREFIX in
     /*)
         ;;
     *)
-        prefix="`pwd`/$prefix"
+        PREFIX="`pwd`/$PREFIX"
         ;;
 esac
 
 
-if test "$arg" = "bw"
+if test "$TYPE" = "bw"
 then
     # BW wants us to run all things python in its own process group (I assume
     # a cgroup or something), so we spawn that here and continue the script at
     # the same place
-    echo "invoke BW magic"
+    echo "invoke  BW magic"
     module load bwpy
-    exec bwpy-environ -- /bin/sh "$script" "$prefix" bwpy
+    exec bwpy-environ -- /bin/sh "$SCRIPT" -p "$PREFIX" -t bwpy
 
-elif test "$arg" = "bwpy"
+elif test "$TYPE" = "bwpy"
 then
     # this is where we end up after the `exec` call in the branch above
-    echo "create bwpy ve [$prefix]"
-    PYTHON=python3
+    echo "create  bwpy ve [$PREFIX]"
+    export EPYTHON=python3.6
+    PYTHON="$(which python3 2>/dev/null | head -n 1)"
+
 else
     # this is not BW.
-    echo "create rct ve [$prefix]"
+    echo "create  rct ve [$PREFIX]"
     PYTHON=python3
 fi
 
+if test -z "$VERSION"
+then
+    VERSION=$($PYTHON -V | cut -f 2 -d ' ' | cut -f 1,2 -d '.')
+fi
+
 # create the ve, install bare necessities
-mkdir -p "$prefix"
-cd $prefix
+mkdir -p "$PREFIX"
+cd $PREFIX
 
 # for conda environments, install virtualenv in the env
 if ! test -z "$CONDA_DEFAULT_ENV"
@@ -132,45 +162,58 @@ VIRTENV_CMD="$(which virtualenv 2>/dev/null)"
 if test -z "$VIRTENV_CMD"
 then
     echo -n "install private virtualenv "
-    VIRTENV_TGZ="virtualenv-1.9.tar.gz"
+    VIRTENV_VER="virtualenv-16.7.5"
+    VIRTENV_TGZ="$VIRTENV_VER.tar.gz"
     VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/$VIRTENV_TGZ"
-    curl -k -L -O "$VIRTENV_TGZ_URL" 2>&1 | progress
-    tar zxmf "$VIRTENV_TGZ"
-    VIRTENV_CMD="$PYTHON virtualenv-1.9/virtualenv.py"
+  # VIRTENV_VER=20.0.27
+  # VIRTENV_TGZ="$VIRTENV_VER.tar.gz"
+  # VIRTENV_TGZ_URL="https://github.com/pypa/virtualenv/archive/$VIRTENV_TGZ"
+
+#    set -x
+    curl -k -L -O "$VIRTENV_TGZ_URL" 2>&1  | progress
+    tar zxf "$VIRTENV_TGZ"
+#    ls -lad virt*
+    VIRTENV_CMD="$PYTHON $VIRTENV_VER/virtualenv.py"
+
+  # VIRTENV_PYZ="virtualenv.pyz"
+  # VIRTENV_PYZ_URL="https://bootstrap.pypa.io/virtualenv/$VERSION/$VIRTENV_PYZ"
+  # set -x
+  # curl -k -L -O "$VIRTENV_PYZ_URL" 2>&1  #| progress
+  # VIRTENV_CMD="$PYTHON $VIRTENV_PYZ"
 fi
 
 echo -n "create  virtualenv "
-stdbuf -oL $VIRTENV_CMD -p python3 "$prefix" | progress
-.          "$prefix"/bin/activate
+stdbuf -oL $VIRTENV_CMD -p "python$VERSION" "$PREFIX" | progress
+.          "$PREFIX"/bin/activate
 
 echo -n "update  setuptools "
 pip install --no-cache-dir --upgrade --no-build-isolation $setuptools | progress || exit 1
 echo -n "update  pip "
 pip install --no-cache-dir --upgrade --no-build-isolation $pip        | progress || exit 1
 
-for req in $reqs
+for mod in $MODULES
 do
-    echo -n "install $req "
-    stdbuf -oL pip install --no-cache-dir --upgrade --no-build-isolation $req | progress   || exit 1
+    echo -n "install $mod "
+    stdbuf -oL pip install --no-cache-dir --upgrade --no-build-isolation $mod | progress   || exit 1
 done
 
 # install the radical stack (utils, saga, pilot) into a separate tree
-# ($prefix/rp_install(, so that any local install can use the ve *w/o*
+# ($PREFIX/rp_install), so that any local install can use the ve *w/o*
 # the radical stack, by re-routing PYTHONPATH
 python_version=`$PYTHON -c 'import distutils.sysconfig as sc; print(sc.get_python_version())'`
 ve_mod_prefix=` $PYTHON -c 'import distutils.sysconfig as sc; print(sc.get_python_lib())'`
-rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$prefix|$prefix/rp_install/|"`
+rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$PREFIX|$PREFIX/rp_install/|"`
 
 # BW doesn't like us anymore: after loading the bwpy module, we also need to
 # create a new process group to get a  workable Python.  We thus patch the
 # virtualenv to do the necessary actions automatically, by wrapping the python
 # executable in a small script which sets up that environment.
-if test "$arg" = "bwpy"
+if test "$TYPE" = "bwpy"
 then
 
     echo "fix bwpy ve"
     old_cwd=$(pwd)
-    cd $prefix/bin
+    cd $PREFIX/bin
     cwd=$(pwd -P)
 
     # find binary - fucking virtualenv seems to pick the bin name randomly or
@@ -201,8 +244,12 @@ fi
 echo
 echo "---------------------------------------------------------------------"
 echo
+echo "PYTHON    : `which $PYTHON` (`python -V`)"
+echo "TYPE      : $TYPE"
+echo "PREFIX    : $PREFIX"
+echo "VERSION   : $VERSION"
+echo "MODULES   : $MODULES"
 echo "PYTHONPATH: $PYTHONPATH"
-echo "python: `which python3` (`python3 -V`)"
 echo
 echo "---------------------------------------------------------------------"
 echo
