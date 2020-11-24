@@ -214,10 +214,6 @@ class Master(rpu.Component):
 
         self._log.debug('submit %s', uid)
 
-        import pprint
-        self._log.debug('==== submit: %s', pprint.pformat(task))
-        pprint.pprint(task)
-
         # insert the task
         self.advance(task, publish=False, push=True)
 

@@ -263,11 +263,6 @@ class Worker(rpu.Component):
             args = data.get('args', []),
             env  = data.get('env',  {}),
 
-
-            import gc
-            gc.collect()
-
-
             proc = sp.Popen(executable=exe, args=args,       env=env,
                             stdin=None,     stdout=sp.PIPE, stderr=sp.PIPE,
                             close_fds=True, shell=False)
