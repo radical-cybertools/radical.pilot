@@ -58,9 +58,8 @@ class Worker(rpu.Component):
         self._term    = mp.Event()          # set to terminate
         self._res_evt = mp.Event()          # set on free resources
 
-        self._mlock   = ru.Lock(self._uid)  # lock `_modes` and `_mdata`
+        self._mlock   = ru.Lock(self._uid)  # lock `_modes`
         self._modes   = dict()              # call modes (call, exec, eval, ...)
-        self._mdata   = dict()              # call mode meta data
 
         # We need to make sure to run only up to `gpn` tasks using a gpu
         # within that pool, so need a separate counter for that.
@@ -160,20 +159,6 @@ class Worker(rpu.Component):
         assert(name not in self._modes)
 
         self._modes[name] = executor
-        self._mdata[name] = dict()
-
-
-  # # --------------------------------------------------------------------------
-  # #
-  # def register_call(self, name, method):
-  #
-  #     # ensure the call mode is usable
-  #     mode = 'call'
-  #
-  #     assert(mode     in self._modes)
-  #     assert(name not in self._mdata[mode])
-  #
-  #     self._mdata[mode][name] = method
 
 
     # --------------------------------------------------------------------------

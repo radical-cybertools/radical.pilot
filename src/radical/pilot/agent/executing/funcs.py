@@ -50,9 +50,6 @@ class FUNCS(AgentExecutingComponent) :
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
-        import pprint
-        self._log.debug('=== cfg: %s', pprint.pformat(self._cfg))
-
         addr_wrk = self._cfg['bridges']['funcs_req_queue']
         addr_res = self._cfg['bridges']['funcs_res_queue']
 
