@@ -77,7 +77,7 @@ if __name__ == '__main__':
         # Each compute unit runs '/bin/date'.
 
         n = 2
-        report.info('create %d unit description(s)\n\t' % n)
+        report.progress_tgt(n, label='create')
 
         cuds = list()
         for i in range(0, n):
@@ -94,7 +94,8 @@ if __name__ == '__main__':
             cud.cpu_process_type = rp.FUNC
             cuds.append(cud)
             report.progress()
-        report.ok('>>ok\n')
+
+        report.progress_done()
 
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
