@@ -16,10 +16,6 @@ import queue
 
 pwd = sys.argv[1]
 
-def out(msg):
-    sys.stdout.write('%s\n' % msg)
-    sys.stdout.flush()
-
 
 # ------------------------------------------------------------------------------
 # activate virtenv if needed
@@ -76,13 +72,11 @@ class Executor(object):
 
         self._prof.prof('init_start', uid=self._uid)
 
-        addr_req = self._cfg.get('res_adr')
-        addr_res = self._cfg.get('req_adr')
+        addr_req = self._cfg.get('req_get')
+        addr_res = self._cfg.get('res_put')
 
-        self._log.debug('=== req in  addr: %s', addr_req)
-        self._log.debug('=== res out addr: %s', addr_res)
-        out('=== req in  addr: %s' % addr_req)
-        out('=== res out addr: %s' % addr_res)
+        self._log.debug('req get addr: %s', addr_req)
+        self._log.debug('res put addr: %s', addr_res)
 
         assert(addr_req)
         assert(addr_res)
@@ -123,14 +117,10 @@ class Executor(object):
         self._workers = list()
         for i in range(self._nw):
             wid  = '%s.%03d' % (self._uid, i)
-            out('==== start worker')
             proc = mp.Process(target=self._work, args=[self._uid, wid])
             proc.daemon = True
             proc.start()
             self._workers.append(proc)
-
-        time.sleep(3)
-        out('==== started worker')
 
         self._prof.prof('init_stop', uid=self._uid)
 
@@ -183,16 +173,14 @@ class Executor(object):
 
         while not self._term.is_set():
 
-          # self._log.debug('=== get')
             tasks = self._zmq_req.get_nowait(1000)
 
             if tasks:
 
-                self._log.debug('=== got %d tasks', len(tasks))
+                self._log.debug('got %d tasks', len(tasks))
 
                 # send task individually to load balance workers
                 for task in tasks:
-                    self._log.debug('=== got %s', task['uid'])
                     self._mpq_work.put(task)
 
 
@@ -213,9 +201,7 @@ class Executor(object):
                 continue
 
             if task:
-                self._log.debug('=== put %s', task['uid'])
                 self._zmq_res.put(task)
-                self._log.debug('=== put %s done', task['uid'])
 
 
     # --------------------------------------------------------------------------
@@ -226,15 +212,12 @@ class Executor(object):
         run it, push the result onto the result queue
         '''
 
-        out('==== work start')
-
         self._prof.prof('work_start', comp=wid, uid=uid)
 
         while True:
 
             try:
                 task = self._mpq_work.get(block=True, timeout=0.1)
-                out('==== task: %s' % task)
 
             except queue.Empty:
                 continue
