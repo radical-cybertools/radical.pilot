@@ -1155,6 +1155,7 @@ class Default(PMGRLaunchingComponent):
             bootstrap_args += " -w '%s'" % arg
 
         agent_cfg['owner']               = 'agent.0'
+        agent_cfg['resource']            = resource
         agent_cfg['cores']               = number_cores
         agent_cfg['gpus']                = number_gpus
         agent_cfg['spawner']             = agent_spawner
