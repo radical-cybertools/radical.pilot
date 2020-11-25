@@ -36,7 +36,7 @@ class MPIExec(LaunchMethod):
                 'mpiexec',            # General case
                 'mpiexec.mpich',      # Linux, MPICH
                 'mpiexec.hydra',      # Linux, MPICH
-                'mpiexec.openempi',   # Linux, MPICH
+                'mpiexec.openmpi',    # Linux, MPICH
                 'mpiexec-mpich-mp',   # Mac OSX MacPorts
                 'mpiexec-openmpi-mp'  # Mac OSX MacPorts
             ])
@@ -82,6 +82,7 @@ class MPIExec(LaunchMethod):
             elif self.mpi_flavor == self.MPI_FLAVOR_OMPI:
                 for var in env_list:
                     env_string += '-x "%s" ' % var
+                env_string = env_string.strip()
 
         if 'nodes' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'
