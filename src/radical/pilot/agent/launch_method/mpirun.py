@@ -46,6 +46,11 @@ class MPIRun(LaunchMethod):
                                             'mpirun',             # general case
                                            ])
 
+        # cheyenne is special: it needs MPT behavior (no -host) even for the
+        # default mpirun (not mpirun_mpt).
+        if 'cheyenne' in self._cfg.resource.lower():
+            self._mpt = True
+
         # don't use the full pathname as the user might load a different
         # compiler / MPI library suite from his CU pre_exec that requires
         # the launcher from that version -- see #572.

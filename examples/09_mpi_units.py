@@ -64,10 +64,10 @@ if __name__ == '__main__':
                    'runtime'       : 15,  # pilot runtime (min)
                    'exit_on_error' : True,
                    'project'       : config[resource].get('project', None),
-                   'queue'         : config[resource].get('queue', None),
-                   'access_schema' : config[resource].get('schema', None),
-                   'cores'         : config[resource].get('cores', 1),
-                   'gpus'          : config[resource].get('gpus', 0),
+                   'queue'         : config[resource].get('queue',   None),
+                   'access_schema' : config[resource].get('schema',  None),
+                   'cores'         : config[resource].get('cores',   1),
+                   'gpus'          : config[resource].get('gpus',    0),
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
 
@@ -82,8 +82,8 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs a MPI test application.
 
-        n = 2   # number of units to run
-        t_num = 1  # number of threads   (OpenMP)
+        n     = 2   # number of units to run
+        t_num = 2  # number of threads   (OpenMP)
         p_num = 3  # number of processes (MPI)
         report.info('create %d unit description(s)\n\t' % n)
 
