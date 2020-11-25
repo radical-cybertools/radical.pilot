@@ -132,10 +132,8 @@ class MPIExec(LaunchMethod):
                 host_string += '-host '
                 host_string += '%s -n %s ' % (','.join([node] * nslots), nslots)
         else:
-            slots = 0
             hosts = list()
             for node,nslots in list(host_slots.items()):
-                slots +=          nslots
                 hosts += [node] * nslots
             host_string += ','.join(hosts)
             host_string += ' -n 1'
