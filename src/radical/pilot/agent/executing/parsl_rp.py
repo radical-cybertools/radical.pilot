@@ -2,6 +2,7 @@
 """
 import os
 import re
+import shlex
 import parsl
 import queue
 import pickle
@@ -136,7 +137,9 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         
         if task_type.startswith('@bash_app'):
             source_code = inspect.getsource(func).split('\n')[2].split('return')[1]
-            task_exe = re.findall(r"['\"](.*?)['\"]", source_code, re.DOTALL)[0]
+            temp        = ' '.join(shlex.quote(arg) for arg in (shlex.split(source_code,
+                                                                comments=True,posix=True)))
+            task_exe    = re.findall(r"'(.*?).format",temp,re.DOTALL)[0]
             cu = {"source_code": task_exe,
                   "name"  : func.__name__,
                   "args"  : None,

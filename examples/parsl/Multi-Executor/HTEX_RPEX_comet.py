@@ -73,7 +73,7 @@ parsl.load(config)
 
 @bash_app(executors=["RADICALExecutor"])
 def generate(nproc=1, ptype= None, outputs=[]):
-    return 'echo $(( RANDOM )) &> {}'.format(outputs[0].filepath)
+    return "echo $(( RANDOM )) &> {}".format(outputs[0].filepath)
 
 
 @bash_app(executors=["Comet_HTEX_multinode"])
