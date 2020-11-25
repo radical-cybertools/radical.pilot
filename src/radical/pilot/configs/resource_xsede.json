@@ -166,7 +166,7 @@
         "export_to_cu"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : ["module restore"]
+        "cu_pre_exec"                 : []
     },
 
     "stampede2_mpirun": {
@@ -231,6 +231,7 @@
             "job_manager_endpoint"    : "slurm://stampede2.tacc.utexas.edu/",
             "filesystem_endpoint"     : "file://stampede2.tacc.utexas.edu/"
         },
+        "cores_per_node"              : 68,
         "default_queue"               : "normal",
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
@@ -238,9 +239,10 @@
         "agent_launch_method"         : "IBRUN",
         "task_launch_method"          : "IBRUN",
         "mpi_launch_method"           : "IBRUN",
+      # "blocked_cores"               : [64, 65, 66, 67],
         "pre_bootstrap_0"             :["module load TACC",
-                                         "module load intel/18.0.0",
-                                         "module load python3/3.7.0"
+                                        "module load intel/18.0.0",
+                                        "module load python3/3.7.0"
                                         ],
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
@@ -250,7 +252,7 @@
         "export_to_cu"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : ["module restore"]
+        "cu_pre_exec"                 : []
     },
 
     "stampede2_srun": {
@@ -292,7 +294,7 @@
         "export_to_cu"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : ["module restore"]
+        "cu_pre_exec"                 : []
     },
 
     "comet_ssh": {
@@ -550,6 +552,52 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
+    },
+
+    "bridges_mpiexec": {
+        "description"                 : "The XSEDE 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
+        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription.",
+        "schemas"                     : ["gsissh", "ssh", "go"],
+      # "mandatory_args"              : [],
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://bridges.psc.xsede.org:2222/",
+            "filesystem_endpoint"     : "gsisftp://bridges.psc.xsede.org:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://bridges.psc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://bridges.psc.xsede.org/"
+        },
+        "go":
+        {
+            "job_manager_endpoint"    : "slurm+ssh://bridges.psc.xsede.org/",
+            "filesystem_endpoint"     : "go://xsede#bridges/"
+        },
+        "default_queue"               : "RM",
+        "resource_manager"            : "SLURM",
+        "lfs_path_per_node"           : "$LOCAL",
+        "lfs_size_per_node"           : 3713368,
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "MPIEXEC",
+        "mpi_launch_method"           : "MPIEXEC",
+        "pre_bootstrap_0"             : ["module purge",
+                                         "module load slurm",
+                                         "module load anaconda3",
+                                         "module load intel/19.3",
+                                         "module load mpi/intel_openmpi/19.3"
+                                        ],
+        "default_remote_workdir"      : "$SCRATCH",
+        "valid_roots"                 : ["/home", "/pylon1", "/pylon5"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "anaconda",
+        "export_to_cu"                : [],
+        "cu_pre_exec"                 : [],
+        "system_architecture"         : {"gpu": "p100"},
+        "gpus_per_node"               : 2
     },
 
     "bridges": {
