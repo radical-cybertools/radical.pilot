@@ -553,15 +553,23 @@ class Agent_0(rpu.Worker):
 
         self._log.debug('rpc req: %s', rpc_req)
 
-        rpc_res = rpc_req
-        rpc_res['ret'] = 'foo'
+        # RPCs are synchronous right now - we send the RPC on the command
+        # channel, hope that some component picks it up and replies, and then
+        # return that reply.
+        def rpc_cb(rpc_id, topic, msg):
 
-        self._log.debug('rpc res: %s', rpc_res)
+            if msg['rpc_id'] != rpc_id:
+                return True
 
-        self._dbs._c.update({'type'  : 'pilot',
-                             'uid'   : self._pid},
-                            {'$set'  : {'rpc_res': rpc_res}})
+            self._log.debug('rpc res: %s', msg)
 
+            self._dbs._c.update({'type'  : 'pilot',
+                                 'uid'   : self._pid},
+                                {'$set'  : {'rpc_res': msg}})
+
+            return False  # unregister cb
+
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._rpc_cb)
         return True
 
 

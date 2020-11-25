@@ -604,9 +604,7 @@ class ComputePilot(object):
         This is basically an RPC into the pilot.
         '''
 
-        print('rpc req:', rpc, args)
         reply = self._session._dbs.pilot_rpc(self.uid, rpc, args)
-        print('rpc res:', reply)
 
         return reply
 
