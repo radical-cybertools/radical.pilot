@@ -18,6 +18,7 @@ LM_NAME_CCMRUN        = 'CCMRUN'
 LM_NAME_FORK          = 'FORK'
 LM_NAME_IBRUN         = 'IBRUN'
 LM_NAME_MPIEXEC       = 'MPIEXEC'
+LM_NAME_MPIEXEC_MPT   = 'MPIEXEC_MPT'
 LM_NAME_MPIRUN        = 'MPIRUN'
 LM_NAME_MPIRUN_MPT    = 'MPIRUN_MPT'
 LM_NAME_MPIRUN_CCMRUN = 'MPIRUN_CCMRUN'
@@ -152,6 +153,7 @@ class LaunchMethod(object):
                 LM_NAME_FORK          : Fork,
                 LM_NAME_IBRUN         : IBRun,
                 LM_NAME_MPIEXEC       : MPIExec,
+                LM_NAME_MPIEXEC_MPT   : MPIExec,
                 LM_NAME_MPIRUN        : MPIRun,
                 LM_NAME_MPIRUN_CCMRUN : MPIRun,
                 LM_NAME_MPIRUN_RSH    : MPIRun,
@@ -278,6 +280,13 @@ class LaunchMethod(object):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
+
+        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_cmd(self):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
