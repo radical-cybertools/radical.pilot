@@ -12,12 +12,13 @@ import subprocess
 
 import radical.utils as ru
 
-from .... import pilot     as rp
 from ...  import utils     as rpu
 from ...  import states    as rps
 from ...  import constants as rpc
 
-from .base import AgentExecutingComponent
+from ..   import LaunchMethod
+
+from .base           import AgentExecutingComponent
 
 
 # ------------------------------------------------------------------------------
@@ -70,7 +71,7 @@ class FUNCS(AgentExecutingComponent) :
 
         # we need to launch the executors on all nodes, and use the
         # agent_launcher for that
-        self._launcher = rp.agent.LaunchMethod.create(
+        self._launcher = LaunchMethod.create(
                 name    = self._cfg.get('agent_launch_method'),
                 cfg     = self._cfg,
                 session = self._session)
