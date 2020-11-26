@@ -820,7 +820,8 @@ class Component(object):
         if state not in self._outputs:
             raise ValueError('state %s has no output registered' % state)
 
-        self._outputs[state].put(things)
+        if self._outputs[state]:
+            self._outputs[state].put(things)
 
 
     # --------------------------------------------------------------------------
