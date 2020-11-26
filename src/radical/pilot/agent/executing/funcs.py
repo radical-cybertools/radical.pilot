@@ -172,6 +172,7 @@ class FUNCS(AgentExecutingComponent) :
         ferr = open('%s/%s.err' % (sandbox, funcs['uid']), "w")
 
         self._prof.prof('exec_start', uid=funcs['uid'])
+        # we really want to use preexec_fn:
         # pylint: disable=W1509
         funcs['proc'] = subprocess.Popen(args       = cmdline,
                                          executable = None,
