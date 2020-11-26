@@ -24,6 +24,7 @@ def test_configure(mocked_init, mocked_get_mpi_info, mocked_raise_on,
 
     component = MPIRun(name=None, cfg=None, session=None)
     component.name = 'MPIRun'
+    component._cfg = mock.Mock(resource='localhost')
     component._configure()
     assert('mpirun' == component.launch_command)
     assert(5 == component.mpi_version)
@@ -43,6 +44,7 @@ def test_configure_rsh(mocked_init, mocked_get_mpi_info, mocked_raise_on,
 
     component = MPIRun(name=None, cfg=None, session=None)
     component.name = 'MPIRun_rsh'
+    component._cfg = mock.Mock(resource='localhost')
     component._configure()
     assert('mpirun' == component.launch_command)
     assert(5 == component.mpi_version)
@@ -62,6 +64,7 @@ def test_configure_mpt(mocked_init, mocked_get_mpi_info, mocked_raise_on,
 
     component = MPIRun(name=None, cfg=None, session=None)
     component.name = 'MPIRun_mpt'
+    component._cfg = mock.Mock(resource='localhost')
     component._configure()
     assert('mpirun' == component.launch_command)
     assert(5 == component.mpi_version)
@@ -81,6 +84,7 @@ def test_configure_ccmrun(mocked_init, mocked_get_mpi_info, mocked_raise_on,
 
     component = MPIRun(name=None, cfg=None, session=None)
     component.name = 'MPIRun_ccmrun'
+    component._cfg = mock.Mock(resource='localhost')
     component._configure()
     assert('mpirun' == component.launch_command)
     assert(5 == component.mpi_version)
@@ -100,6 +104,7 @@ def test_configure_dplace(mocked_init, mocked_get_mpi_info, mocked_raise_on,
 
     component = MPIRun(name=None, cfg=None, session=None)
     component.name = 'MPIRun_dplace'
+    component._cfg = mock.Mock(resource='localhost')
     component._configure()
     assert('mpirun' == component.launch_command)
     assert(5 == component.mpi_version)
@@ -122,6 +127,7 @@ def test_construct_command(mocked_init,
     component = MPIRun(name=None, cfg=None, session=None)
     component.name           = 'MPIRun'
     component._log           = ru.Logger('dummy')
+    component._cfg           = mock.Mock(resource='localhost')
     component._mpt           = False
     component._rsh           = False
     component._ccmrun        = ''
