@@ -143,8 +143,8 @@ class Continuous(AgentSchedulingComponent):
             blocked_gpus = self._cfg.resource_cfg.blocked_gpus
             if blocked_gpus:
 
-                self._log.info('blocked gpus : %s' % block_gpus)
-                for idx in block_gpus:
+                self._log.info('blocked gpus : %s' % blocked_gpus)
+                for idx in blocked_gpus:
                     assert(len(node_entry['gpus']) > idx)
                     node_entry['gpus'][idx] = rpc.DOWN
                     self._rm_gpus_per_node -= 1
