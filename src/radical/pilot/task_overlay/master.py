@@ -284,7 +284,7 @@ class Master(rpu.Component):
         if self._thread:
             self._thread.join()
 
-        rpu.Component.stop(timeout=timeout)
+        rpu.Component.stop(self, timeout=timeout)
 
 
     # --------------------------------------------------------------------------
