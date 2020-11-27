@@ -86,6 +86,8 @@ class Agent_0(rpu.Worker):
         # ready to rumble!
         rpu.Worker.__init__(self, self._cfg, session)
 
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._check_control)
+
         # run our own slow-paced heartbeat monitor to watch pmgr heartbeats
         # FIXME: we need to get pmgr freq
         freq = 10
@@ -537,7 +539,7 @@ class Agent_0(rpu.Worker):
     #
     def _check_rpc(self):
 
-        self._log.debug('rpc check')
+        self._log.debug('=== rpc check')
 
         retdoc = self._dbs._c.find_and_modify(
                     query ={'uid' : self._pid},
@@ -551,25 +553,77 @@ class Agent_0(rpu.Worker):
         if rpc_req is None:
             return True
 
-        self._log.debug('rpc req: %s', rpc_req)
+        self._log.debug('=== rpc req: %s', rpc_req)
 
         # RPCs are synchronous right now - we send the RPC on the command
         # channel, hope that some component picks it up and replies, and then
         # return that reply.
-        def rpc_cb(rpc_id, topic, msg):
+        def rpc_cb(topic, msg):
 
-            if msg['rpc_id'] != rpc_id:
+            rpc_id  = rpc_req['uid']
+
+            cmd     = msg['cmd']
+            rpc_res = msg['arg']
+
+            self._log.debug('=== rpc res: %s: %s', cmd, rpc_res)
+            if cmd != 'rpc_res':
                 return True
 
-            self._log.debug('rpc res: %s', msg)
+            self._log.debug('=== rpc res: %s', rpc_res['uid'])
+            if rpc_res['uid'] != rpc_id:
+                return True
+
+            self._log.debug('=== rpc res: %s', rpc_res)
 
             self._dbs._c.update({'type'  : 'pilot',
                                  'uid'   : self._pid},
-                                {'$set'  : {'rpc_res': msg}})
+                                {'$set'  : {'rpc_res': rpc_res}})
 
-            return False  # unregister cb
+            return False  # unregister cb (rpc_cb)
 
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._rpc_cb)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, rpc_cb)
+
+        # ready to receive and proxy rpc response -- forward rpc request on
+        # control channel
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'rpc_req',
+                                          'arg' : rpc_req})
+
+        return True  # keeb cb registered (self._check_rpc)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _check_control(self, topic, msg):
+
+        cmd     = msg['cmd']
+        rpc_req = msg['arg']
+
+        rpc_res = {'uid': rpc_req['uid']}
+
+        if cmd != 'rpc_req':
+            return True
+
+        try:
+            ret = None
+
+            if rpc_req['rpc'] == 'hello':
+
+                ret = 'hello %s' % rpc_req['arg']
+
+            elif rpc_req['rpc'] == 'prep_env':
+
+                ret = self._prepare_env(env_id, env_spec)
+
+        except Exception as e:
+            rpc_res['err'] = str(e)
+            rpc_res['ret'] = None
+
+        else:
+            rpc_res['err'] = None
+            rpc_res['ret'] = ret
+
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
+                                          'arg': rpc_res})
         return True
 
 
@@ -579,7 +633,9 @@ class Agent_0(rpu.Worker):
 
         # Make sure that we haven't exceeded the runtime - otherwise terminate.
         if self._cfg.runtime:
+
             if time.time() >= self._starttime +  (int(self._cfg.runtime) * 60):
+
                 self._log.info('runtime limit (%ss).', self._cfg.runtime * 60)
                 self._final_cause = 'timeout'
                 self.stop()

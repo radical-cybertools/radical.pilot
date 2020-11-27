@@ -304,7 +304,10 @@ class DBSession(object):
                 if not rpc_res:
                     continue
 
-                return rpc_res
+                if rpc_res['err']:
+                    raise RuntimeError('rpc failed: %s' % rpc_res['err'])
+
+                return rpc_res['ret']
 
 
         except pymongo.errors.OperationFailure as e:
