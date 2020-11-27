@@ -538,6 +538,16 @@ class Agent_0(rpu.Worker):
     # --------------------------------------------------------------------------
     #
     def _check_rpc(self):
+        '''
+        check if the DB has any RPC request for this pilot.  If so, then forward
+        that request as `rpc_req` command on the CONTROL channel, and listen for
+        an `rpc_res` command on the same channel, for the same rpc id.  Once
+        that response is received (from whatever component handled that
+        command), send the response back to the databse for the callee to pick
+        up.
+        '''
+
+        # FIXME: implement a timeout, and/or a registry of rpc clients
 
         self._log.debug('=== rpc check')
 
@@ -547,17 +557,21 @@ class Agent_0(rpu.Worker):
                     update={'$set': {'rpc_req': None}})
 
         if not retdoc:
+            # no rpc request found
             return True
 
         rpc_req = retdoc.get('rpc_req')
         if rpc_req is None:
+            # document has no rpc request
             return True
 
         self._log.debug('=== rpc req: %s', rpc_req)
 
         # RPCs are synchronous right now - we send the RPC on the command
         # channel, hope that some component picks it up and replies, and then
-        # return that reply.
+        # return that reply.  The reply is received via a temporary callback
+        # defined here, which will receive all CONTROL messages until the right
+        # rpc response comes along.
         def rpc_cb(topic, msg):
 
             rpc_id  = rpc_req['uid']
@@ -565,21 +579,22 @@ class Agent_0(rpu.Worker):
             cmd     = msg['cmd']
             rpc_res = msg['arg']
 
-            self._log.debug('=== rpc res: %s: %s', cmd, rpc_res)
             if cmd != 'rpc_res':
+                # not an rpc responese
                 return True
 
-            self._log.debug('=== rpc res: %s', rpc_res['uid'])
             if rpc_res['uid'] != rpc_id:
+                # not the right rpc response
                 return True
 
-            self._log.debug('=== rpc res: %s', rpc_res)
-
+            # send the response to the DB
             self._dbs._c.update({'type'  : 'pilot',
                                  'uid'   : self._pid},
                                 {'$set'  : {'rpc_res': rpc_res}})
 
-            return False  # unregister cb (rpc_cb)
+            # work is done - unregister this temporary cb (rpc_cb)
+            return False
+
 
         self.register_subscriber(rpc.CONTROL_PUBSUB, rpc_cb)
 
@@ -594,6 +609,11 @@ class Agent_0(rpu.Worker):
     # --------------------------------------------------------------------------
     #
     def _check_control(self, topic, msg):
+        '''
+        Check for commands on the control pubsub, mainly waiting for RPC
+        requests to handle.  We handle two types of RPC requests: `hello` for
+        testing, and `prep_env` for environment preparation requests.
+        '''
 
         cmd     = msg['cmd']
         rpc_req = msg['arg']
@@ -601,27 +621,29 @@ class Agent_0(rpu.Worker):
         rpc_res = {'uid': rpc_req['uid']}
 
         if cmd != 'rpc_req':
+            # not an rpc request
+            return True
+
+        req = rpc_req['rpc']
+        if req not in ['hello', 'prep_env']:
+            # we don't handle that request
             return True
 
         try:
-            ret = None
-
-            if rpc_req['rpc'] == 'hello':
-
-                ret = 'hello %s' % rpc_req['arg']
-
-            elif rpc_req['rpc'] == 'prep_env':
-
-                ret = self._prepare_env(env_id, env_spec)
+            if   req == 'hello'   : ret = 'hello %s' % rpc_req['arg']
+            elif req == 'prep_env': ret = self._prepare_env(env_id, env_spec)
 
         except Exception as e:
+            # request failed for some reason - indicate error
             rpc_res['err'] = str(e)
             rpc_res['ret'] = None
 
         else:
+            # request succeeded - respond with return value
             rpc_res['err'] = None
             rpc_res['ret'] = ret
 
+        # publish the response (success or failure)
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
                                           'arg': rpc_res})
         return True
