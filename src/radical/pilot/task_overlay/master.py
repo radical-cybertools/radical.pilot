@@ -278,11 +278,13 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def stop(self):
+    def stop(self, timeout=None):
 
         self._term.set()
         if self._thread:
             self._thread.join()
+
+        rpu.Component.stop(timeout=timeout)
 
 
     # --------------------------------------------------------------------------
@@ -299,7 +301,7 @@ class Master(rpu.Component):
     def _run(self):
 
         # get work from the overloading implementation
-        ret = self.create_work_items()
+        self.create_work_items()
 
         # wait for the submitted requests to complete
         while not self._term.is_set():

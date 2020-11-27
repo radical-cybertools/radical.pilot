@@ -31,7 +31,7 @@ class Worker(rpu.Component):
         # FIXME: this should be delegated to ru.generate_id
 
         # FIXME: why do we need to import `os` again after MPI Spawn?
-        import os
+        import os                                                         # noqa
 
         # FIXME: rank determination should be moved to RU
         rank = None
@@ -239,7 +239,7 @@ class Worker(rpu.Component):
         '''
 
         try:
-            out = eval(data['code'])
+            out = eval(data['code'])                                      # noqa
             err = None
             ret = 0
 

@@ -608,7 +608,7 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _check_control(self, topic, msg):
+    def _check_control(self, _, msg):
         '''
         Check for commands on the control pubsub, mainly waiting for RPC
         requests to handle.  We handle two types of RPC requests: `hello` for
@@ -630,8 +630,13 @@ class Agent_0(rpu.Worker):
             return True
 
         try:
-            if   req == 'hello'   : ret = 'hello %s' % ' '.join(rpc_req['arg'])
-            elif req == 'prep_env': ret = self._prepare_env(env_id, env_spec)
+            if req == 'hello'   :
+                ret = 'hello %s' % ' '.join(rpc_req['arg'])
+
+            elif req == 'prep_env':
+                env_id   = rpc_req['arg']['env_id']
+                env_spec = rpc_req['arg']['env_spec']
+                ret = self._prepare_env(env_id, env_spec)
 
         except Exception as e:
             # request failed for some reason - indicate error
