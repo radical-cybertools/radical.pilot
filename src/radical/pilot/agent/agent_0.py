@@ -630,7 +630,7 @@ class Agent_0(rpu.Worker):
             return True
 
         try:
-            if   req == 'hello'   : ret = 'hello %s' % rpc_req['arg']
+            if   req == 'hello'   : ret = 'hello %s' % ' '.join(rpc_req['arg'])
             elif req == 'prep_env': ret = self._prepare_env(env_id, env_spec)
 
         except Exception as e:
