@@ -1,11 +1,11 @@
 
 {
-    "local.localhost" : {
+    "local.localhost_anaconda" : {
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
         "cores"    : 1,
-        "gpus"     : 2
+        "gpus"     : 0
     },
 
     "local.localhost_prte" : {

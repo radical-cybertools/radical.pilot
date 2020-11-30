@@ -64,7 +64,7 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        n = 1024  # number of units to run
+        n = 10  # number of units to run
         report.header('submit %d units' % n)
 
         # Register the ComputePilot in a UnitManager object.
