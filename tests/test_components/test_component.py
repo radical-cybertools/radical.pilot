@@ -27,7 +27,7 @@ class TestComponent(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Component, '__init__', return_value=None)
-    def test_ouput(self, mocked_init):
+    def test_output(self, mocked_init):
 
         component = Component(None, None)
 
