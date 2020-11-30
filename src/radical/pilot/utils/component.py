@@ -816,11 +816,17 @@ class Component(object):
         '''
 
         # NOTE: we do not check if things are actually in the given state
+        things = ru.as_list(things)
+        if not things:
+            # nothing to do
+            return
 
         if state not in self._outputs:
             raise ValueError('state %s has no output registered' % state)
 
         if self._outputs[state]:
+            # the bridge will sort things into bulks, wit bulk size dependig on
+            # bridge configuration
             self._outputs[state].put(things)
 
 
