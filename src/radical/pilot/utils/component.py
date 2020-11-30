@@ -764,8 +764,7 @@ class Component(object):
         '''
 
         states = ru.as_list(states)
-        if not states:
-            states = None
+        assert(states), 'missing states for output registration'
 
         for state in states:
 
@@ -777,7 +776,6 @@ class Component(object):
                         % (self.uid, state, self._outputs[state], output))
 
             if not output:
-
                 # this indicates a final state
                 self._outputs[state] = None
 

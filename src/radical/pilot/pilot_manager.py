@@ -469,9 +469,6 @@ class PilotManager(rpu.Component):
                 sd['state'] = rps.NEW
                 self._active_sds[sd['uid']] = sd
 
-            sd_states = [sd['state'] for sd
-                                     in  self._active_sds.values()
-                                     if  sd['uid'] in uids]
         # push them out
         self._stager_queue.put(sds)
 
