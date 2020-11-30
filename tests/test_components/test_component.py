@@ -35,12 +35,13 @@ class TestComponent(TestCase):
 
         with self.assertRaises(ValueError):
             component.output(things='test_thing')
-        
+
         with self.assertRaises(ValueError):
             component.output(things='test_thing', state='test_state2')
 
-        with self.assertRaises(ValueError):
-            component.output(things=None, state='test_state')
+        component.output(things=None,  state='test_state')
+        component.output(things=1,     state='test_state')
+        component.output(things=[1,2], state='test_state')
 
 
 # ------------------------------------------------------------------------------
