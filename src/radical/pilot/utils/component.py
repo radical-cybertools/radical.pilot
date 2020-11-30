@@ -820,8 +820,7 @@ class Component(object):
         '''
 
         states = ru.as_list(states)
-        if not states:
-            states = None
+        assert(states), 'missing states for output unregistration'
 
         for state in states:
 
