@@ -76,7 +76,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 2
+        n = 10
         report.progress_tgt(n, label='create')
 
         cuds = list()
@@ -107,7 +107,7 @@ if __name__ == '__main__':
         report.header('gather results')
         umgr.wait_units()
 
-        for unit in (units[:10] + units[-10:]):
+        for unit in (units[-10:]):
             if unit.state == rp.DONE:
                 print('\t+ %s: %-10s: %10s: %s'
                      % (unit.uid, unit.state, unit.pilot, unit.stdout))
