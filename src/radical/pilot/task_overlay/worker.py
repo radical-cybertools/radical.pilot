@@ -502,12 +502,10 @@ class Worker(rpu.Component):
         def _dispatch_thread(tlock):
             # FIXME: do we still need this thread?
 
-            os.environ['RP_TASK_CORES'] = ','.join(str(i) for i in task['resources']['cores'])
-            os.environ['RP_TASK_GPUS']  = ','.join(str(i) for i in task['resources']['gpus'])
-
             # make CUDA happy
-            # FIXME: assume logical device numbering for now
-            os.environ['CUDA_VISIBLE_DEVICES'] = os.environ['RP_TASK_GPUS']
+            # FIXME: assume physical device numbering for now
+            os.environ['CUDA_VISIBLE_DEVICES'] = \
+                             ','.join(str(i) for i in task['resources']['gpus'])
 
             out, err, ret = self._modes[mode](task.get('data'))
             with tlock:
