@@ -1,6 +1,6 @@
 
 {
-    "local.localhost_anaconda" : {
+    "local.localhost" : {
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
