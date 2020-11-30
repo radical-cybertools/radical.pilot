@@ -85,9 +85,9 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = 'time.time'
-            cud.arguments        = []
-            cud.pre_exec         = ['import time']
+            cud.executable       = 'math.mult'
+            cud.arguments        = [5, 6]
+            cud.pre_exec         = ['import math']
             cud.gpu_processes    = 0
             cud.cpu_processes    = 1
             cud.cpu_threads      = 1

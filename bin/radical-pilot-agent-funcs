@@ -228,14 +228,19 @@ class Executor(object):
             tid   = task['uid']
             descr = task['description']
             exe   = descr['executable']
-            args  = descr.get('arguments', [])
+            args  = descr.get('arguments', list())
+            pres  = descr.get('pre_exec',  list())
             cmd   = '%s(%s)' % (exe, ','.join(args))
 
             self._prof.prof('task_get', comp=wid, uid=tid)
           # self._log.debug('get %s: %s', tid, cmd)
 
-
             try:
+                for pre in pres:
+                    if pre.split()[0] == 'import':
+                        for mod in pre.split()[1:]:
+                            ru.import_module(mod)
+
                 task['stdout'] = eval(cmd)
                 task['stderr'] = None
                 task['state']  = 'DONE'
