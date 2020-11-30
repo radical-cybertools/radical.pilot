@@ -236,13 +236,10 @@ class Executor(object):
           # self._log.debug('get %s: %s', tid, cmd)
 
             try:
-                self._log.debug('=== pres %s' % pres)
                 for pre in pres:
-                    self._log.debug('=== pre  %s' % pre.split())
                     if pre.split()[0] == 'import':
                         for mod in pre.split()[1:]:
                             if mod not in globals():
-                                self._log.debug('=== import %s' % mod)
                                 globals()[mod] = ru.import_module(mod)
                                 locals() [mod] = globals()[mod]
 
