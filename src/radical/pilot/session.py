@@ -12,10 +12,9 @@ import radical.saga                 as rs
 import radical.saga.filesystem      as rsfs
 import radical.saga.utils.pty_shell as rsup
 
-from .db import DBSession
-from .   import utils as rpu
-
-RESOURCE_CONFIG_LABEL_DEFAULT = 'user.cfg'
+from .constants import RESOURCE_CONFIG_LABEL_DEFAULT
+from .db        import DBSession
+from .          import utils as rpu
 
 
 # ------------------------------------------------------------------------------
@@ -588,13 +587,11 @@ class Session(rs.Session):
     def list_resources(self):
         '''
         Returns a list of known resource labels which can be used in a pilot
-        description.  Not that resource aliases won't be listed.
+        description.
         '''
 
         resources = list()
         for domain in self._rcfgs:
-            if domain == 'aliases':
-                continue
             for host in self._rcfgs[domain]:
                 resources.append('%s.%s' % (domain, host))
 
@@ -625,6 +622,9 @@ class Session(rs.Session):
                pd.runtime  = 5 # minutes
 
                pilot = pm.submit_pilots(pd)
+
+        NOTE:  if <resource_config>.label is not set, then the default value
+               is assigned - `rp.RESOURCE_CONFIG_LABEL_DEFAULT`
         '''
 
         if isinstance(resource_config, str):
@@ -643,10 +643,11 @@ class Session(rs.Session):
             if not resource_config.label:
                 resource_config.label = RESOURCE_CONFIG_LABEL_DEFAULT
 
-            if '.' in resource_config.label:
-                domain, host = resource_config.label.split('.', 1)
-            else:
-                domain = host = resource_config.label
+            elif '.' not in resource_config.label:
+                raise ValueError('Resource config label format should be '
+                                 '"<domain>.<host>"')
+
+            domain, host = resource_config.label.split('.', 1)
             self._log.debug('load rcfg for "%s.%s"', (domain, host))
             self._rcfgs.setdefault(domain, {})[host] = resource_config.as_dict()
 
@@ -657,11 +658,6 @@ class Session(rs.Session):
         '''
         Returns a dictionary of the requested resource config
         '''
-
-        if resource in self._rcfgs.aliases.get('aliases', {}):
-            self._log.warning("Using alias '%s' for deprecated resource '%s'" %
-                              (self._rcfgs.aliases.aliases[resource], resource))
-            resource = self._rcfgs.aliases.aliases[resource]
 
         domain, host = resource.split('.', 1)
         if domain not in self._rcfgs:

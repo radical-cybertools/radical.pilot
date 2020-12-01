@@ -7,14 +7,10 @@ import glob
 import os
 import shutil
 
-import radical.pilot.session as rps
-import radical.utils         as ru
+from unittest import TestCase, mock
 
-from unittest import TestCase
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+import radical.pilot as rp
+import radical.utils as ru
 
 TEST_CASES_PATH = 'tests/test_components/test_cases'
 
@@ -26,9 +22,9 @@ class SessionTestClass(TestCase):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    @mock.patch.object(rps.Session, '_initialize_primary', return_value=None)
+    @mock.patch.object(rp.Session, '_initialize_primary', return_value=None)
     def setUpClass(cls, *args, **kwargs):
-        cls._session = rps.Session()
+        cls._session = rp.Session()
 
     # --------------------------------------------------------------------------
     #
@@ -48,7 +44,6 @@ class SessionTestClass(TestCase):
         listed_resources = self._session.list_resources()
 
         self.assertIsInstance(listed_resources, list)
-        self.assertNotIn('aliases', listed_resources)
         self.assertIn('local.localhost', listed_resources)
 
     # --------------------------------------------------------------------------
@@ -67,38 +62,27 @@ class SessionTestClass(TestCase):
         # label with "<domain>.<host>"
         user_cfg.label = 'local.mpirun_cfg'
         self._session.add_resource_config(resource_config=user_cfg)
-        # label where <domain> and <host> are equal to each other
-        user_cfg.label = 'tmp_cfg'
-        self._session.add_resource_config(resource_config=user_cfg)
-        # default label will be assigned
+        # no label, thus default label is assigned
         user_cfg.label = None
         self._session.add_resource_config(resource_config=user_cfg)
+
+        # check exception(s)
+        user_cfg.label = 'tmp_cfg'
+        with self.assertRaises(ValueError):
+            self._session.add_resource_config(resource_config=user_cfg)
 
         # retrieve resource labels and test them
         listed_resources = self._session.list_resources()
 
         self.assertIn('user_cfg.user_resource', listed_resources)
         self.assertIn('local.mpirun_cfg', listed_resources)
-        self.assertIn('tmp_cfg.tmp_cfg', listed_resources)
-        self.assertIn(rps.RESOURCE_CONFIG_LABEL_DEFAULT, listed_resources)
+        self.assertIn(rp.RESOURCE_CONFIG_LABEL_DEFAULT, listed_resources)
 
     # --------------------------------------------------------------------------
     #
     def test_get_resource_config(self):
 
-        rcfg_label       = 'xsede.comet_ssh'
-        rcfg_alias_label = 'xsede.comet'
-
-        # check aliases
-
-        self.assertIn(rcfg_alias_label, self._session._rcfgs.aliases.aliases)
-        self.assertEqual(
-            rcfg_label, self._session._rcfgs.aliases.aliases[rcfg_alias_label])
-
-        # get resource configs
-
-        self.assertEqual(self._session.get_resource_config(rcfg_label),
-                         self._session.get_resource_config(rcfg_alias_label))
+        rcfg_label = 'xsede.comet_ssh'
 
         # schemas are ["ssh", "gsissh"]
         rcfg = self._session.get_resource_config(rcfg_label)
