@@ -1,5 +1,5 @@
 
-# pylint: disable=unused-argument, no-value-for-parameter
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 #
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 
@@ -20,9 +20,9 @@ class TestBase(unittest.TestCase):
     #
     def setUp(self):
 
-         fname = 'tests/test_executing/test_unit/test_cases/test_base.json'
+        fname = 'tests/test_executing/test_unit/test_cases/test_base.json'
 
-         return ru.read_json(fname)
+        return ru.read_json(fname)
 
     # --------------------------------------------------------------------------
     #
@@ -63,6 +63,5 @@ class TestBase(unittest.TestCase):
         component._handle_unit(cu)
         self.assertEqual(cu, global_cu[0])
 
-
 # ------------------------------------------------------------------------------
-
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

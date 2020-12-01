@@ -1,5 +1,5 @@
 
-# pylint: disable=no-value-for-parameter, unused-argument
+# pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
 import threading
 
@@ -129,4 +129,4 @@ class TestBase(TestCase):
 
 
 # ------------------------------------------------------------------------------
-
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

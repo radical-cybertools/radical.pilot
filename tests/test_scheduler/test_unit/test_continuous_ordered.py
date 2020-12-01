@@ -1,5 +1,5 @@
 
-# pylint: disable, unused-argument, no-value-for-parameter
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 from unittest import mock
 
@@ -59,28 +59,26 @@ def test_schedule_units(mocked_init, mocked_try_schedule, mocked_advance):
     component._unordered      = list()
     units = [
             {"uid"        : "unit.000001",
-             "description": {
-                 "executable"     : "/bin/sleep",
-                 "arguments"      : ["10"],
-                 "gpu_processes"  : 1,
-                 "cpu_processes"  : 1,
-                 "cpu_threads"    : 1,
-                 "gpu_threads"    : 1,
-                 "mem_per_process": 128,
-                 "lfs_per_process": 2
-                 }
+             "description": {"executable"     : "/bin/sleep",
+                             "arguments"      : ["10"],
+                             "gpu_processes"  : 1,
+                             "cpu_processes"  : 1,
+                             "cpu_threads"    : 1,
+                             "gpu_threads"    : 1,
+                             "mem_per_process": 128,
+                             "lfs_per_process": 2
+                            }
             },
             {"uid"        : "unit.000002",
-             "description": {
-                 "executable"     : "/bin/sleep",
-                 "arguments"      : ["20"],
-                 "gpu_processes"  : 1,
-                 "cpu_processes"  : 1,
-                 "cpu_threads"    : 1,
-                 "gpu_threads"    : 1,
-                 "mem_per_process": 128,
-                 "lfs_per_process": 2
-                 },
+             "description": {"executable"     : "/bin/sleep",
+                             "arguments"      : ["20"],
+                             "gpu_processes"  : 1,
+                             "cpu_processes"  : 1,
+                             "cpu_threads"    : 1,
+                             "gpu_threads"    : 1,
+                             "mem_per_process": 128,
+                             "lfs_per_process": 2
+                            },
             }]
     component._schedule_units(units)
 
@@ -122,6 +120,5 @@ def test_state_cb(mocked_init, mocked_try_schedule, mocked_advance):
 
     component._state_cb(topic, msg)
 
-
 # ------------------------------------------------------------------------------
-
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter
