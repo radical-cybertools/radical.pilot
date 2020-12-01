@@ -1,4 +1,4 @@
-# pylint: disable=protected-access
+# pylint: disable=protected-access, unused-argument
 
 __copyright__ = 'Copyright 2020, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
