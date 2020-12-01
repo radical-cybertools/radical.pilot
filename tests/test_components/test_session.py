@@ -89,9 +89,6 @@ class SessionTestClass(TestCase):
         rcfg_label       = 'xsede.comet_ssh'
         rcfg_alias_label = 'xsede.comet'
 
-        # get resource config
-
-
         # check aliases
 
         self.assertIn(rcfg_alias_label, self._session._rcfgs.aliases.aliases)
