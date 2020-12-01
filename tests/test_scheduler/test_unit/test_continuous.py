@@ -178,7 +178,7 @@ class TestContinuous(TestCase):
         _, cfg   = self.setUp()
 
         unit = {
-                'description': cfg[1]['unit']['description']
+                'description': cfg[1]['unit']['description'],
                 'slots'      : cfg[1]['setup']['lm']['slots']
                }
 

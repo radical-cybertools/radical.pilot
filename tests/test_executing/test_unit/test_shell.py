@@ -22,7 +22,7 @@ class TestBase(unittest.TestCase):
 
          fname = 'tests/test_executing/test_unit/test_cases/test_base.json'
 
-        return ru.read_json(fname)
+         return ru.read_json(fname)
 
     # --------------------------------------------------------------------------
     #

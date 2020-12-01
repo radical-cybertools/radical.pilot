@@ -20,7 +20,7 @@ class TestBase(TestCase):
     #
     def setUp(self):
 
-        fname = 'tests/test_scheduler/test_unit/test_cases/test_base.json')
+        fname = 'tests/test_scheduler/test_unit/test_cases/test_base.json'
         tc    = ru.read_json(fname)
 
         return tc
