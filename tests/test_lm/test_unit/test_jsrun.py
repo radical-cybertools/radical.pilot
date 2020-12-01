@@ -1,5 +1,5 @@
 
-# pylint: disable=unused-argument
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import os
 import glob
@@ -65,4 +65,4 @@ def test_construct_command(mocked_init, mocked_configure, mocked_raise_on):
 
 
 # ------------------------------------------------------------------------------
-
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

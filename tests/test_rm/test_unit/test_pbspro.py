@@ -1,5 +1,4 @@
-
-# pylint: disable=unused-argument, no-value-for-parameter
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import os
 import pytest
@@ -170,4 +169,4 @@ def test_parse_pbspro_vnodes_error(mocked_init, mocked_raise_on,
 
 
 # ------------------------------------------------------------------------------
-
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

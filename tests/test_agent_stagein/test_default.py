@@ -1,5 +1,4 @@
-
-# pylint: disable=unused-argument
+# pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
 import glob
 
@@ -75,3 +74,5 @@ class TestDefault(TestCase):
 
 # ------------------------------------------------------------------------------
 
+# ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

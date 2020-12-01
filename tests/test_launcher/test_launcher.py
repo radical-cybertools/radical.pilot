@@ -1,5 +1,4 @@
-
-# pylint: disable=no-value-for-parameter, unused-argument
+# pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
 __copyright__ = "Copyright 2020, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -128,4 +127,4 @@ class TestLauncher(TestCase):
 
 
 # ------------------------------------------------------------------------------
-
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

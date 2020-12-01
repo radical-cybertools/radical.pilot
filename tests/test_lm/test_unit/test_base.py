@@ -1,5 +1,5 @@
 
-# pylint: disable=no-value-for-parameter, unused-argument
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import pytest
 
@@ -68,4 +68,4 @@ class TestBase(TestCase):
 
 
 # ------------------------------------------------------------------------------
-
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

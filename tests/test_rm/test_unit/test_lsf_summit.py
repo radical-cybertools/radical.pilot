@@ -1,5 +1,5 @@
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-# pylint: disable=unused-argument
 import os
 import pytest
 
@@ -82,4 +82,4 @@ def test_configure_error(mocked_init, mocked_raise_on):
 
 
 # ------------------------------------------------------------------------------
-
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

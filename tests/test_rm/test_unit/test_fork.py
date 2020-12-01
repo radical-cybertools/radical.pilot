@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-
-# pylint: unused-argument, disable=no-value-for-parameter
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 from unittest import mock
 
@@ -51,4 +49,4 @@ if __name__ == '__main__':
 
 
 # ------------------------------------------------------------------------------
-
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

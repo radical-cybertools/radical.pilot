@@ -1,8 +1,4 @@
-'''
-Unit test for torque_pbs scheduler
-'''
-
-# pylint: disable=unused-argument
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import os
 import pytest
@@ -136,4 +132,4 @@ def test_configure_error(mocked_init, mocked_raise_on, mocked_expand_hoslist):
 
 
 # ------------------------------------------------------------------------------
-
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

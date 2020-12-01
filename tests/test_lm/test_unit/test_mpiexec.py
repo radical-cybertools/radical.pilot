@@ -1,5 +1,5 @@
 
-# pylint: disable=unused-argument
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 from unittest import mock
 
@@ -103,4 +103,4 @@ def test_construct_command_mpt(mocked_init,
 
 
 # ------------------------------------------------------------------------------
-
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

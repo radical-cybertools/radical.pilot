@@ -1,5 +1,5 @@
 
-# pylint: disable=unused-argument,no-value-for-parameter
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 
@@ -142,4 +142,4 @@ class TestBase(unittest.TestCase):
 
 
 # ------------------------------------------------------------------------------
-
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter
