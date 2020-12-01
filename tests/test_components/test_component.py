@@ -1,23 +1,13 @@
 
-# pylint: disable=protected-access, unused-argument
-# pylint: disable=no-value-for-parameter
+# pylint: disable=no-value-for-parameter, unused-argument
 
 __copyright__ = "Copyright 2020, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 from unittest import TestCase
+from unittest import mock
 
-import os
-import radical.utils as ru
-import radical.pilot as rp
-
-from   radical.pilot.utils.component import Component
-
-
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+from radical.pilot.utils.component import Component
 
 
 # ------------------------------------------------------------------------------
@@ -45,3 +35,4 @@ class TestComponent(TestCase):
 
 
 # ------------------------------------------------------------------------------
+

@@ -1,16 +1,14 @@
-# pylint: disable=protected-access, unused-argument
+
+# pylint: disable=unused-argument
 
 import pytest
 
-from .test_common import setUp
-from radical.pilot.agent.launch_method.prte import PRTE
+from unittest import mock
 
 import radical.utils as ru
 
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+from .test_common                           import setUp
+from radical.pilot.agent.launch_method.prte import PRTE
 
 
 # ------------------------------------------------------------------------------
@@ -40,3 +38,4 @@ def test_construct_command(mocked_init, mocked_configure):
 
 
 # ------------------------------------------------------------------------------
+

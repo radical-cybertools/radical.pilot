@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
 
-# pylint: disable=protected-access, unused-argument
-# pylint: disable=no-value-for-parameter
+# pylint: unused-argument, disable=no-value-for-parameter
+
+from unittest import mock
 
 import radical.utils as ru
+
 from radical.pilot.agent.resource_manager.fork import Fork
 
-try:
-    import mock
-except ImportError:
-    from unittest import mock
 
-
-# --------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Test 1 config file
 @mock.patch.object(Fork, '__init__', return_value=None)
 @mock.patch('radical.utils.raise_on')

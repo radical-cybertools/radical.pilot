@@ -1,17 +1,18 @@
 '''
 Unit test for torque_pbs scheduler
 '''
-# pylint: disable=protected-access, unused-argument
-import os
-import warnings
-import pytest
-import radical.utils as ru
-from radical.pilot.agent.resource_manager.torque import Torque
 
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+# pylint: disable=unused-argument
+
+import os
+import pytest
+import warnings
+
+from unittest import mock
+
+import radical.utils as ru
+
+from radical.pilot.agent.resource_manager.torque import Torque
 
 
 # ------------------------------------------------------------------------------
@@ -132,4 +133,7 @@ def test_configure_error(mocked_init, mocked_raise_on, mocked_expand_hoslist):
     with pytest.warns(RuntimeWarning):
         component._configure()
         warnings.warn("PBS_NUM_NODES not set!", RuntimeWarning)
+
+
+# ------------------------------------------------------------------------------
 

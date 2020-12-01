@@ -1,15 +1,14 @@
-# pylint: disable=protected-access, unused-argument
+
+# pylint: disable=unused-argument
 
 import pytest
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+
+from unittest import mock
 
 import radical.utils as ru
-from radical.pilot.agent.launch_method.ibrun import IBRun
 
-from .test_common import setUp
+from .test_common                            import setUp
+from radical.pilot.agent.launch_method.ibrun import IBRun
 
 
 # ------------------------------------------------------------------------------
@@ -54,3 +53,4 @@ def test_construct_command(mocked_init, mocked_configure, mocked_raise_on):
 
 
 # ------------------------------------------------------------------------------
+

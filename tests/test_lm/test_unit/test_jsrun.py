@@ -1,19 +1,15 @@
-# pylint: disable=protected-access, unused-argument
+
+# pylint: disable=unused-argument
 
 import os
 import glob
+
+from unittest import mock
+
 import radical.utils as ru
 
-from .test_common import setUp
-
+from .test_common                            import setUp
 from radical.pilot.agent.launch_method.jsrun import JSRUN
-
-
-try:
-    import mock
-
-except ImportError:
-    from unittest import mock
 
 
 # ------------------------------------------------------------------------------
@@ -29,7 +25,8 @@ def tearDown():
 @mock.patch.object(JSRUN, '__init__', return_value=None)
 @mock.patch.object(JSRUN, '_configure',return_value='jsrun')
 @mock.patch('radical.utils.raise_on')
-def test_create_resource_set_file(mocked_init, mocked_configure, mocked_raise_on):
+def test_create_resource_set_file(mocked_init, mocked_configure,
+                                  mocked_raise_on):
 
     test_cases = setUp('lm', 'jsrun')
     component  = JSRUN(name=None, cfg=None, session=None)
