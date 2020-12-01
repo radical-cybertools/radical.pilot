@@ -62,9 +62,16 @@ class SessionTestClass(TestCase):
 
         # add resource config by providing Config instance
         user_cfg = ru.Config(path=cfg_path)
-        user_cfg.label             = 'local.mpirun_cfg'
         user_cfg.mpi_launch_method = 'MPIRUN'
         user_cfg.cores_per_node    = 1024
+        # label with "<domain>.<host>"
+        user_cfg.label = 'local.mpirun_cfg'
+        self._session.add_resource_config(resource_config=user_cfg)
+        # label where <domain> and <host> are equal to each other
+        user_cfg.label = 'tmp_cfg'
+        self._session.add_resource_config(resource_config=user_cfg)
+        # default label will be assigned
+        user_cfg.label = None
         self._session.add_resource_config(resource_config=user_cfg)
 
         # retrieve resource labels and test them
@@ -72,6 +79,8 @@ class SessionTestClass(TestCase):
 
         self.assertIn('user_cfg.user_resource', listed_resources)
         self.assertIn('local.mpirun_cfg', listed_resources)
+        self.assertIn('tmp_cfg.tmp_cfg', listed_resources)
+        self.assertIn(rps.RESOURCE_CONFIG_LABEL_DEFAULT, listed_resources)
 
     # --------------------------------------------------------------------------
     #
