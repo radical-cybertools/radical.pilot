@@ -62,7 +62,6 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
                  resource: str = None,
                  login_method: str = None,                  # Specify the connection protocol SSH/GISSH/local
                  walltime: int = None,
-                 tasks_pre_exec: Optional[str] = None,      # Specify any requirements that this task needs to run
                  managed: bool = True,
                  max_tasks: Union[int, float] = float('inf'),
                  worker_logdir_root: Optional[str] = ".",
@@ -82,19 +81,15 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         self.walltime = walltime
         self.tasks = list()
         self.future_tasks = {}
-        self.tasks_pre_exec = tasks_pre_exec
         self.managed = managed
         self.max_tasks = max_tasks
         self._task_counter = 0
         self.run_dir = '.'
         self.worker_logdir_root = worker_logdir_root
         self.session = rp.Session(uid=ru.generate_id('parsl.radical_executor.session',
-                       mode=ru.ID_PRIVATE))
+                                                     mode=ru.ID_PRIVATE))
         self.pmgr    = rp.PilotManager(session=self.session)
         self.umgr    = rp.UnitManager(session=self.session)
-      
-        #self._executor_bad_state = threading.Event()
-        #self._executor_exception = None
 
     def unit_state_cb(self, unit, state):
 
@@ -113,7 +108,6 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         """Create the Pilot process and pass it.
         """
         if self.resource is None : self.logger.error("specify remoute or local resource")
-
 
         else : pd_init = {'resource'      : self.resource,
                           'runtime'       : self.walltime,
@@ -134,16 +128,15 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
     def task_translate(self, func, args, kwargs):
 
         task_type = inspect.getsource(func).split('\n')[0]
-        
         if task_type.startswith('@bash_app'):
             source_code = inspect.getsource(func).split('\n')[2].split('return')[1]
             temp        = ' '.join(shlex.quote(arg) for arg in (shlex.split(source_code,
-                                                                comments=True,posix=True)))
-            task_exe    = re.findall(r"'(.*?).format",temp,re.DOTALL)[0]
-            cu = {"source_code": task_exe,
-                  "name"  : func.__name__,
-                  "args"  : None,
-                  "kwargs": kwargs}
+                                                                            comments=True, posix=True)))
+            task_exe    = re.findall(r"'(.*?).format", temp,re.DOTALL)[0]
+            cu          = {"source_code": task_exe,
+                           "name"       : func.__name__,
+                           "args"       : args,
+                           "kwargs"     : kwargs}
             #self.report.header(inspect.getsource(func))
             #self.report.header('Bash task name %s ' %(cu['name'])) 
             #self.report.header('Bash task exe %s ' %(task_exe))           
@@ -152,13 +145,18 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
 
         elif task_type.startswith('@python_app'):
 
-            task_pre_exec = inspect.getsource(func).split('\n')[2]
-            task_exe      = inspect.getsource(func).split('\n')[3]
+            source_code   = inspect.getsource(func).split('\n')[1:]
+            task_exe      = "\n".join(source_code)
+            task_pre_exec = []
+            for i in range (len(source_code)):
+                if 'import' in source_code[i]:
+                    task_pre_exec.append(source_code[i].strip())
+
             cu = {"source_code": task_exe,
-                  "name"  : func.__name__,
-                  "args"  : None,
-                  "pre_exec": task_pre_exec,
-                  "kwargs": kwargs}
+                  "name"       : func.__name__,
+                  "args"       : args,
+                  "pre_exec"   : task_pre_exec,
+                  "kwargs"     : kwargs}
             #report.header('python task %s ' %(inspect.getsource(func)))
             #report.header('python task pre_exec %s ' %(cu['pre_exec']))
             #report.header('python task name %s ' %(cu['name']))
@@ -167,10 +165,9 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
 
         else:
             pass
-    
+
         return cu
 
-        
     def submit(self, func, *args, **kwargs):
         """Submits task/tasks to RADICAL unit_manager.
 
@@ -196,16 +193,15 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
             task.name             = task_id
             task.executable       = tu['source_code'] if 'exe' not in tu['kwargs'] else "{0} {1}".format(tu['kwargs']['exe'],
                                                                                                          tu['source_code'])
-                                                       
+                                                     
             task.arguments        = tu['args']
-            task.pre_exec         = self.tasks_pre_exec
-            task.cpu_processes    = tu['kwargs']['nproc']
+            task.pre_exec         = tu['tasks_pre_exec']
+            task.cpu_processes    = 1    if 'nproc' not in tu['kwargs'] else tu['kwargs']['nproc']
             task.cpu_process_type = None if 'ptype' not in tu['kwargs'] else tu['kwargs']['ptype']
             task.cpu_threads      = 1    if 'nthrd' not in tu['kwargs'] else tu['kwargs']['nthrd']
             self.report.progress()
             self.umgr.submit_units(task)
-            
-        
+
         except Exception as e:
             # Something unexpected happened in the pilot code above
             self.report.error('caught Exception: %s\n' % e)
@@ -217,7 +213,6 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
             self.report.warn('exit requested\n')
 
         return self.future_tasks[task_id]
-    
 
     def shutdown(self, hub=True, targets='all', block=False):
         """Shutdown the executor, including all RADICAL-Pilot components."""
