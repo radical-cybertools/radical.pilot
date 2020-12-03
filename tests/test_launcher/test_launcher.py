@@ -1,23 +1,17 @@
-
-# pylint: disable=protected-access, unused-argument
-# pylint: disable=no-value-for-parameter
+# pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
 __copyright__ = "Copyright 2020, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-from unittest import TestCase
-
 import os
+
+from unittest import TestCase
+from unittest import mock
+
 import radical.utils as ru
 import radical.pilot as rp
 
 from   radical.pilot.pmgr.launching.default import Default
-
-
-try:
-    import mock
-except ImportError:
-    from unittest import mock
 
 
 # ------------------------------------------------------------------------------
@@ -133,4 +127,4 @@ class TestLauncher(TestCase):
 
 
 # ------------------------------------------------------------------------------
-
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

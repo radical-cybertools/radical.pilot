@@ -1,27 +1,28 @@
-# pylint: disable=protected-access, unused-argument
-# pylint: disable=no-value-for-parameter
+
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
+#
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
+
 import unittest
+
+from unittest import mock
+
 import radical.utils as ru
+
 from radical.pilot.agent.executing.shell import Shell
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+
 
 # ------------------------------------------------------------------------------
 #
-
-
 class TestBase(unittest.TestCase):
 
     # ------------------------------------------------------------------------------
     #
     def setUp(self):
 
-        tc = ru.read_json('tests/test_executing/test_unit/test_cases/test_base.json')
+        fname = 'tests/test_executing/test_unit/test_cases/test_base.json'
 
-        return tc
+        return ru.read_json(fname)
 
     # --------------------------------------------------------------------------
     #
@@ -40,20 +41,27 @@ class TestBase(unittest.TestCase):
 
         tests = self.setUp()
         cu = dict()
-        cu['uid'] = tests['unit']['uid']
+        cu['uid']         = tests['unit']['uid']
         cu['description'] = tests['unit']['description']
-        cu['stderr'] = 'tests/test_executing/test_unit/test_cases/'
+        cu['stderr']      = 'tests/test_executing/test_unit/test_cases/'
+
         component = Shell()
-        component._cus_to_cancel =  []
-        component._prof = mock.Mock()
-        component.publish = mock.Mock()
-        component._mpi_launcher  = mock.Mock()
-        component._mpi_launcher.name = 'mpiexec'
-        component._mpi_launcher.command = 'mpiexec'
-        component._task_launcher = mock.Mock()
-        component._task_launcher.name = 'ssh'
+        component._cus_to_cancel         = []
+        component._prof                  = mock.Mock()
+        component.publish                = mock.Mock()
+        component._mpi_launcher          = mock.Mock()
+        component._mpi_launcher.name     = 'mpiexec'
+        component._mpi_launcher.command  = 'mpiexec'
+        component._task_launcher         = mock.Mock()
+        component._task_launcher.name    = 'ssh'
         component._task_launcher.command = 'ssh'
-        component.spawn = mock.MagicMock(side_effect=spawn_side_effect(launcher = component._mpi_launcher, cu = cu))
-        component._log = ru.Logger('dummy')
+        component._log                   = ru.Logger('dummy')
+
+        component.spawn = mock.MagicMock(side_effect=spawn_side_effect
+                (launcher=component._mpi_launcher, cu=cu))
+
         component._handle_unit(cu)
         self.assertEqual(cu, global_cu[0])
+
+# ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter
