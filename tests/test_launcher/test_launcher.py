@@ -64,6 +64,7 @@ class TestLauncher(TestCase):
         session, configs = self.setUp()
 
         component = Default(cfg=None, session=None)
+        component._uid        = 'pmgr.launching.0000'
         component._cfg        = mock.Mock()
         component._log        = ru.Logger('dummy')
         component._rp_version = '0.0'
