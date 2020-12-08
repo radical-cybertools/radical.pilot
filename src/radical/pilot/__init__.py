@@ -40,7 +40,7 @@ from . import agent
 from .agent import Agent_0
 from .agent import Agent_n
 
-from .task_overlay import Master, Worker
+from .raptor import Master, Worker
 
 
 # ------------------------------------------------------------------------------

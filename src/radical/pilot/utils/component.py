@@ -499,7 +499,7 @@ class Component(object):
         from radical.pilot import pmgr         as rppm
         from radical.pilot import umgr         as rpum
         from radical.pilot import agent        as rpa
-        from radical.pilot import task_overlay as rpt
+        from radical.pilot import raptor       as rpt
       # from radical.pilot import constants as rpc
 
         comp = {
