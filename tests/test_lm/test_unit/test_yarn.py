@@ -1,17 +1,14 @@
 
-# pylint: disable=protected-access, unused-argument
-
-from   .test_common                 import setUp
-from   radical.pilot.agent.launch_method.yarn import Yarn
-
-import radical.utils as ru
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import pytest
 
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+from unittest import mock
+
+import radical.utils as ru
+
+from   .test_common                           import setUp
+from   radical.pilot.agent.launch_method.yarn import Yarn
 
 
 # ------------------------------------------------------------------------------
@@ -25,8 +22,6 @@ def test_configure(mocked_init, mocked_raise_on):
     component._cfg = {'rm_info':{'lm_info':{'launch_command':'yarn'}}}
     component._configure()
     assert('yarn' == component.launch_command)
-
-# ------------------------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------------
@@ -53,4 +48,6 @@ def test_construct_command(mocked_init,
             command, hop = component.construct_command(unit, None)
             assert([command, hop] == result)
 
+
 # ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter
