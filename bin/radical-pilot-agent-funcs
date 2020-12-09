@@ -3,7 +3,10 @@
 import os
 import sys
 import time
-
+import pickle
+import codecs
+import contextlib
+from io import StringIO
 import multiprocessing as mp
 import threading       as mt
 
@@ -203,6 +206,38 @@ class Executor(object):
             if task:
                 self._zmq_res.put(task)
 
+    # --------------------------------------------------------------------------
+    #
+    def decompose(self, function_info):
+        '''
+        Decompose the function dictionary keys/values and assigned
+        them to different variables.
+        '''
+        code        = function_info["_cud_code"]
+        name        = function_info["_cud_name"]
+        args        = function_info["_cud_args"]
+        kwargs      = function_info["_cud_kwargs"]
+        return (name, code, args, kwargs)
+
+    # --------------------------------------------------------------------------
+    #
+    def prepare_func(self, func):
+
+        u_ns = locals()
+        u_ns.update({'__builtins__': __builtins__})
+        function_info = {}
+        
+        function_info = pickle.loads(codecs.decode(func.encode(), "base64"))
+
+        (fn_name,fn, fn_args, fn_kwargs) = self.decompose(function_info)
+        u_ns.update({'__cud_args'  : fn_args,
+                     '__cud_kwargs': fn_kwargs,
+                     '__cud_output': None})
+        source = fn.split('\n')
+        fn_app = "__cud_output = {0}()".format(fn_name)
+        source.append(fn_app)
+        code = "\n".join(source)
+        return code
 
     # --------------------------------------------------------------------------
     #
@@ -243,7 +278,26 @@ class Executor(object):
                                 globals()[mod] = ru.import_module(mod)
                                 locals() [mod] = globals()[mod]
 
-                task['stdout'] = eval(cmd)
+                try:
+                    function_code = self.prepare_func(exe)
+                except Exception:
+                    self._log.debug("Setting the function for execution failed!.")
+                    raise
+                
+                @contextlib.contextmanager
+                def stdoutIO(stdout=None):
+                    old = sys.stdout
+                    if stdout is None:
+                       stdout = StringIO()
+                    sys.stdout = stdout
+                    yield stdout
+                    sys.stdout = old
+                
+                with stdoutIO() as s:
+                     exec(function_code)
+        
+                #task['stdout'] = eval(cmd) # We need to find a way to keey this option!!!
+                task['stdout'] = s.getvalue()
                 task['stderr'] = None
                 task['state']  = 'DONE'
 

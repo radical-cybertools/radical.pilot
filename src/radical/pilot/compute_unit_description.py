@@ -2,7 +2,9 @@
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
+import pickle
+import codecs
+import inspect
 import radical.utils as ru
 
 
@@ -418,6 +420,20 @@ class ComputeUnitDescription(ru.Description):
     # --------------------------------------------------------------------------
     #
     def _verify(self):
+        
+        if callable(self.get('executable')):
+
+           exe = self.get('executable')
+           block = inspect.getsource(exe)
+
+           cu_exe_dict   = {'_cud_name':exe.__name__,
+                            '_cud_code':block,
+                            '_cud_args':'',
+                            '_cud_kwargs':''}
+
+
+           func_obj = codecs.encode(pickle.dumps(cu_exe_dict), "base64").decode()
+           self['executable'] = func_obj
 
         if not self.get('executable') and \
            not self.get('kernel')     :
