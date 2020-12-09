@@ -12,8 +12,9 @@ import radical.saga                 as rs
 import radical.saga.filesystem      as rsfs
 import radical.saga.utils.pty_shell as rsup
 
-from .db import DBSession
-from .   import utils as rpu
+from .constants import RESOURCE_CONFIG_LABEL_DEFAULT
+from .db        import DBSession
+from .          import utils as rpu
 
 
 # ------------------------------------------------------------------------------
@@ -586,13 +587,11 @@ class Session(rs.Session):
     def list_resources(self):
         '''
         Returns a list of known resource labels which can be used in a pilot
-        description.  Not that resource aliases won't be listed.
+        description.
         '''
 
         resources = list()
         for domain in self._rcfgs:
-            if domain == 'aliases':
-                continue
             for host in self._rcfgs[domain]:
                 resources.append('%s.%s' % (domain, host))
 
@@ -608,34 +607,49 @@ class Session(rs.Session):
 
         For example::
 
-               rc = ru.Config("./mycluster.json")
-               rc.job_manager_endpoint = "ssh+pbs://mycluster
-               rc.filesystem_endpoint  = "sftp://mycluster
-               rc.default_queue        = "private"
+               rc = ru.Config(path='./mycluster.json')
+               rc.label                = 'local.mycluster'
+               rc.job_manager_endpoint = 'ssh+pbs://mycluster'
+               rc.filesystem_endpoint  = 'sftp://mycluster'
+               rc.default_queue        = 'private'
 
                session = rp.Session()
                session.add_resource_config(rc)
 
                pd = rp.ComputePilotDescription()
-               pd.resource = "mycluster"
+               pd.resource = 'local.mycluster'
                pd.cores    = 16
                pd.runtime  = 5 # minutes
 
                pilot = pm.submit_pilots(pd)
+
+        NOTE:  if <resource_config>.label is not set, then the default value
+               is assigned - `rp.RESOURCE_CONFIG_LABEL_DEFAULT`
         '''
 
         if isinstance(resource_config, str):
 
-            # let exceptions fall through
             rcs = ru.Config('radical.pilot.resource', name=resource_config)
+            domain = os.path.splitext(os.path.basename(resource_config))[0]
+            if domain not in self._rcfgs:
+                self._rcfgs[domain] = {}
 
             for rc in rcs:
-                self._log.info('load rcfg for %s' % rc)
-                self._rcfgs[rc] = rcs[rc].as_dict()
+                self._log.info('load rcfg for "%s.%s"' % (domain, rc))
+                self._rcfgs[domain][rc] = rcs[rc].as_dict()
 
         else:
-            self._log.debug('load rcfg for %s', resource_config.label)
-            self._rcfgs[resource_config.label] = resource_config.as_dict()
+
+            if not resource_config.label:
+                resource_config.label = RESOURCE_CONFIG_LABEL_DEFAULT
+
+            elif '.' not in resource_config.label:
+                raise ValueError('Resource config label format should be '
+                                 '"<domain>.<host>"')
+
+            domain, host = resource_config.label.split('.', 1)
+            self._log.debug('load rcfg for "%s.%s"', (domain, host))
+            self._rcfgs.setdefault(domain, {})[host] = resource_config.as_dict()
 
 
     # --------------------------------------------------------------------------
@@ -644,11 +658,6 @@ class Session(rs.Session):
         '''
         Returns a dictionary of the requested resource config
         '''
-
-        if  resource in self._rcfgs.get('aliases', {}):
-            self._log.warning("using alias '%s' for deprecated resource '%s'"
-                              % (self._rcfgs.aliases.resource, resource))
-            resource = self._rcfgs.aliases.resource
 
         domain, host = resource.split('.', 1)
         if domain not in self._rcfgs:
@@ -1013,4 +1022,3 @@ class Session(rs.Session):
 
 
 # ------------------------------------------------------------------------------
-
