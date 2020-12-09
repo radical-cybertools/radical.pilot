@@ -1,14 +1,13 @@
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-# pylint: disable=protected-access, unused-argument
 import os
 import pytest
-import radical.utils as ru
-from radical.pilot.agent.resource_manager.lsf_summit import LSF_SUMMIT
 
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+from unittest import mock
+
+import radical.utils as ru
+
+from radical.pilot.agent.resource_manager.lsf_summit import LSF_SUMMIT
 
 
 # ------------------------------------------------------------------------------
@@ -49,7 +48,6 @@ def test_configure(mocked_init, mocked_raise_on):
     assert component.gpus_per_socket  == 1
     assert component.lfs_per_node     == {'path': 'test/', 'size': 100}
     assert component.mem_per_node     == 0
-# ------------------------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------------
@@ -82,4 +80,6 @@ def test_configure_error(mocked_init, mocked_raise_on):
     with pytest.raises(AssertionError):
         component._configure()
 
+
 # ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter
