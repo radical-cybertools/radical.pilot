@@ -339,7 +339,7 @@ class ComputeUnitDescription(ru.Description):
     """
 
     _schema = {
-               EXECUTABLE      : str         ,
+               EXECUTABLE      : None        ,
                KERNEL          : str         ,
                NAME            : str         ,
                SANDBOX         : str         ,
@@ -373,7 +373,7 @@ class ComputeUnitDescription(ru.Description):
     }
 
     _defaults = {
-               EXECUTABLE      : ''          ,
+               EXECUTABLE      : None        ,
                KERNEL          : ''          ,
                NAME            : ''          ,
                SANDBOX         : ''          ,
