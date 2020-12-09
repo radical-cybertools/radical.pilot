@@ -4,23 +4,44 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
+1.5.8 Release                                                         2020-12-09
+--------------------------------------------------------------------------------
+
+
+  - improve test coverage
+  - add env isolation prototype and documentation
+  - change agent launcher to ssh for bridges
+  - fix sub agent init
+  - fix Cheyenne support
+  - define an intel-friendly bridges config
+  - add environment preparation to pilot
+  - example fixes
+  - fixed procedure of adding resource config to the session
+  - fix mpiexec_mpt LM
+  - silence scheduler log
+  - removed resource aliases
+  - updated docs for resource config
+  - updated env variable RADICAL_BASE for a job description
+  - work around pip problem on Summit
+
+
 1.5.7 Release                                                         2020-10-30
 --------------------------------------------------------------------------------
 
-  - Adding init files in all test folders 
+  - Adding init files in all test folders
   - document containerized tasks
-  - Fix #2221 
+  - Fix #2221
   - Fix read_config
   - doc fixes / additions
   - adding unit tests, component tests
   - remove old examples
-  - fixing rp_analytics #2114 
-  - inject workers as MPI task 
-  - remove debug prints 
-  - mpirun configs for traverse, stampede2 
-  - ru.Config is responsible to pick configs from correct paths 
-  - test agent execution/base 
-  - unit test for popen/spawn #1881 
+  - fixing rp_analytics #2114
+  - inject workers as MPI task
+  - remove debug prints
+  - mpirun configs for traverse, stampede2
+  - ru.Config is responsible to pick configs from correct paths
+  - test agent execution/base
+  - unit test for popen/spawn #1881
 
 
 1.5.4 Release                                                         2020-10-01
@@ -32,21 +53,21 @@ https://github.com/radical-cybertools/radical.pilot/issues/
 1.5.4 Release                                                         2020-09-14
 --------------------------------------------------------------------------------
 
-  - Arbitrary udurations for consumed resources 
-  - Fix unit tests 
-  - Fix python stack on Summit 
-  - add module test 
-  - added PRTE2 for PRRTEv2 
-  - added attribute for SAGA job description using env variable (SMT) 
-  - added config for PRRTE launch method at Frontera 
-  - added test for PRTE2 
-  - added test for rcfg parameter SystemArchitecture 
-  - allow virtenv_mode=local to reuse client ve 
-  - bulk communication for task overlay 
-  - fixed db close/disconnect method 
-  - fixed tests and pylint 
+  - Arbitrary udurations for consumed resources
+  - Fix unit tests
+  - Fix python stack on Summit
+  - add module test
+  - added PRTE2 for PRRTEv2
+  - added attribute for SAGA job description using env variable (SMT)
+  - added config for PRRTE launch method at Frontera
+  - added test for PRTE2
+  - added test for rcfg parameter SystemArchitecture
+  - allow virtenv_mode=local to reuse client ve
+  - bulk communication for task overlay
+  - fixed db close/disconnect method
+  - fixed tests and pylint
   - PRTE fixes / updates
-  - remove "debug" rp_version remnant 
+  - remove "debug" rp_version remnant
 
 
 1.5.2 Hotfix Release                                                  2020-08-11
