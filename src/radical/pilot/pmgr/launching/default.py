@@ -1301,8 +1301,12 @@ class Default(PMGRLaunchingComponent):
             except Exception as e:
                 self._log.debug('SAGA SMT not set: %s' % e)
 
+        # job description environment variable(s) setup
+
         if self._prof.enabled:
             jd.environment['RADICAL_PROFILE'] = 'TRUE'
+
+        jd.environment['RADICAL_BASE'] = resource_sandbox
 
         # for condor backends and the like which do not have shared FSs, we add
         # additional staging directives so that the backend system binds the

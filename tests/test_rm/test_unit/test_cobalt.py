@@ -1,13 +1,13 @@
 
-# pylint: disable=protected-access, unused-argument
-import os
-import radical.utils as ru
-from radical.pilot.agent.resource_manager.cobalt import Cobalt
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+import os
+
+from unittest import mock
+
+import radical.utils as ru
+
+from radical.pilot.agent.resource_manager.cobalt import Cobalt
 
 
 # ------------------------------------------------------------------------------
@@ -31,4 +31,7 @@ def test_configure(mocked_init, mocked_raise_on, mocked_sh_callout):
     assert component.cores_per_node == 16
     assert component.gpus_per_node == 0
     assert component.lfs_per_node == {'path': None, 'size': 0}
+
+
 # ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter
