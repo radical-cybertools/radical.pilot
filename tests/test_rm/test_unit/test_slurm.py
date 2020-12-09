@@ -1,14 +1,13 @@
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-# pylint: disable=protected-access, unused-argument
 import os
 import pytest
-import radical.utils as ru
-from radical.pilot.agent.resource_manager.slurm import Slurm
 
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+from unittest import mock
+
+import radical.utils as ru
+
+from radical.pilot.agent.resource_manager.slurm import Slurm
 
 
 # ------------------------------------------------------------------------------
@@ -141,4 +140,7 @@ def test_configure_error(mocked_init, mocked_raise_on, mocked_expand_hostlist):
 
     with pytest.raises(RuntimeError):
         component._configure()
+
+
 # ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter
