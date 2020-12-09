@@ -1,4 +1,6 @@
 
+# pylint: disable=eval-used
+
 import os
 import sys
 import time
@@ -239,7 +241,7 @@ class Worker(rpu.Component):
         '''
 
         try:
-            out = eval(data['code'])                                      # noqa
+            out = eval(data['code'])
             err = None
             ret = 0
 
