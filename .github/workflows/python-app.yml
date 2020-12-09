@@ -1,0 +1,59 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Python application
+
+on:
+  push:
+    branches: [ devel ]
+  pull_request:
+    branches: [ devel ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.6
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.6
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install . --upgrade
+        pip install psutil
+        pip install coverage
+        pip install flake8
+        pip install flake8-per-file-ignores
+        pip install pylint
+        pip install codecov
+        pip install pytest
+        pip install pytest-timeout
+    - name: Test with pytest
+      run: |
+        LOC=/opt/hostedtoolcache/Python/3.6.12/x64/lib/python3.6/site-packages
+        coverage run --include=$LOC/radical/pilot/* -m pytest -ra --timeout=600 -vvv --showlocals tests/
+    - name: Codecov
+      uses: codecov/codecov-action@v1.0.15
+
+    #- name: Lint with flake8
+    #  run: |
+    #    # stop the build if there are Python syntax errors or undefined names
+    #    LOG=`git log -n 1 | grep Merge`
+    #    OLD=`echo $LOG | cut -d ' ' -f2`
+    #    NEW=`echo $LOG | cut -d ' ' -f3`
+    #    DIFF=`git diff --name-only --diff-filter=b $OLD...$NEW`
+    #    DIFF=$(echo $DIFF | grep -o -e '\b[^ ]*.py\b')
+    #    test -z \"$DIFF\" && echo 'nothing to flake8' || flake8 $DIFF
+    #- name: Lint with pylint
+    #  run: |
+    #    # stop the build if there are Python syntax errors or undefined names
+    #    LOG=`git log -n 1 | grep Merge`
+    #    OLD=`echo $LOG | cut -d ' ' -f2`
+    #    NEW=`echo $LOG | cut -d ' ' -f3`
+    #    DIFF=`git diff --name-only --diff-filter=b $OLD...$NEW`
+    #    DIFF=$(echo $DIFF | grep -o -e '\b[^ ]*.py\b')
+    #    test -z \"$DIFF\" && echo 'nothing to pylint' || pylint $DIFF
