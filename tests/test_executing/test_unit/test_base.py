@@ -1,23 +1,20 @@
-# pylint: disable=protected-access, unused-argument
-# pylint: disable=no-value-for-parameter
+
+# pylint: disable=unused-argument, no-value-for-parameter
+
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import pytest
 import unittest
+
+from unittest import mock
+
 from radical.pilot.agent.executing.base import AgentExecutingComponent
 
-try:
-    import mock
-except ImportError:
-    from unittest import mock
 
 # ------------------------------------------------------------------------------
 #
-
-
 class TestBase(unittest.TestCase):
-
 
     # --------------------------------------------------------------------------
     #
@@ -38,4 +35,6 @@ class TestBase(unittest.TestCase):
                 with pytest.raises(RuntimeError):
                     raise
 
+
+# ------------------------------------------------------------------------------
 

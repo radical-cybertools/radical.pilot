@@ -772,6 +772,7 @@ class Component(object):
 
             if not output:
                 # this indicates a final state
+                self._log.debug('%s register output to None %s', self.uid, state)
                 self._outputs[state] = None
 
             else:
@@ -804,6 +805,29 @@ class Component(object):
 
             del(self._outputs[state])
             self._log.debug('unregistered output for %s', state)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def output(self, things, state=None):
+        '''
+        this pushes the given things to the output queue register for the given
+        state
+        '''
+
+        # NOTE: we do not check if things are actually in the given state
+        things = ru.as_list(things)
+        if not things:
+            # nothing to do
+            return
+
+        if state not in self._outputs:
+            raise ValueError('state %s has no output registered' % state)
+
+        if self._outputs[state]:
+            # the bridge will sort things into bulks, wit bulk size dependig on
+            # bridge configuration
+            self._outputs[state].put(things)
 
 
     # --------------------------------------------------------------------------
@@ -1163,8 +1187,6 @@ class Component(object):
                 if _state not in self._outputs:
                     # unknown target state -- error
                     for thing in _things:
-                        import pprint
-                        self._log.debug('%s', pprint.pformat(self._outputs))
                         self._log.debug("lost  %s [%s]", thing['uid'], _state)
                         self._prof.prof('lost', uid=thing['uid'], state=_state,
                                         ts=ts)
