@@ -1,16 +1,12 @@
 
-# pylint: disable=protected-access, unused-argument
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-from   .test_common                    import setUp
-from   radical.pilot.agent.launch_method.mpiexec import MPIExec
+from unittest import mock
 
 import radical.utils as ru
 
-
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+from   .test_common                              import setUp
+from   radical.pilot.agent.launch_method.mpiexec import MPIExec
 
 
 # ------------------------------------------------------------------------------
@@ -105,4 +101,6 @@ def test_construct_command_mpt(mocked_init,
         assert([command, hop] == result)
         assert(unit['description']['environment'].get('MPI_SHEPHERD') == 'true')
 
+
 # ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter
