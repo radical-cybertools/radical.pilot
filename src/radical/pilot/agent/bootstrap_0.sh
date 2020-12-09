@@ -1269,10 +1269,6 @@ rp_install()
   #     fi
   # fi
 
-    OLD_TMPDIR="$TMPDIR"
-    export TMPDIR="$PILOT_SANDBOX/rp_install/build"
-    mkdir $TMPDIR
-
     pip_flags="$pip_flags --src '$PILOT_SANDBOX/rp_install/src'"
     pip_flags="$pip_flags --prefix '$RP_INSTALL'"
     pip_flags="$pip_flags --no-deps --no-cache-dir --no-build-isolation"
@@ -1294,9 +1290,6 @@ rp_install()
             rm -r "$src"
         fi
     done
-
-    rm -rf "$TMPDIR"
-    export TMPDIR="$OLD_TMPDIR"
 
     profile_event 'rp_install_stop'
 }
