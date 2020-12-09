@@ -1,17 +1,14 @@
 
-# pylint: disable=protected-access, unused-argument
-
-from   .test_common                  import setUp
-from   radical.pilot.agent.launch_method.spark import Spark
-
-import radical.utils as ru
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import pytest
 
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+from unittest import mock
+
+import radical.utils as ru
+
+from   .test_common                            import setUp
+from   radical.pilot.agent.launch_method.spark import Spark
 
 
 # ------------------------------------------------------------------------------
@@ -55,3 +52,4 @@ def test_construct_command(mocked_init,
 
 
 # ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

@@ -1,18 +1,15 @@
 
-# pylint: disable=protected-access, unused-argument
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import os
-
-from   .test_common                 import setUp
-from   radical.pilot.agent.launch_method.rsh import RSH
 import pytest
+
+from   unittest     import mock
+from   .test_common import setUp
 
 import radical.utils as ru
 
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+from   radical.pilot.agent.launch_method.rsh import RSH
 
 
 # ------------------------------------------------------------------------------
@@ -26,8 +23,6 @@ def test_configure(mocked_init, mocked_raise_on, mocked_which):
     component._configure()
     assert('/usr/bin/rsh' == component.launch_command)
 
-# ------------------------------------------------------------------------------
-
 
 # ------------------------------------------------------------------------------
 #
@@ -39,8 +34,6 @@ def test_configure_fail(mocked_init, mocked_raise_on, mocked_which):
     component = RSH(name=None, cfg=None, session=None)
     with pytest.raises(RuntimeError):
         component._configure()
-
-# ------------------------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------------
@@ -75,4 +68,4 @@ def test_construct_command(mocked_init,
 
 
 # ------------------------------------------------------------------------------
-
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter
