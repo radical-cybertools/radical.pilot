@@ -4,7 +4,8 @@
         "description"                 : "",
         "notes"                       : "Local instance of MongoDB and pre-set VE should be used.",
         "schemas"                     : ["local"],
-        "local"                       : {
+        "local"                       :
+        {
             "job_manager_hop"         : "cobalt://localhost/",
             "job_manager_endpoint"    : "cobalt://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
@@ -29,6 +30,37 @@
         "rp_version"                  : "installed",
         "stage_cacerts"               : true,
         "cores_per_node"              : 64
+    },
+    "theta_gpu": {
+        "description"                 : "",
+        "notes"                       : "Local instance of MongoDB and pre-set VE should be used.",
+        "schemas"                     : ["local"],
+        "local"                       :
+        {
+            "job_manager_hop"         : "cobalt://localhost/",
+            "job_manager_endpoint"    : "cobalt://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_queue"               : "full-node",
+        "resource_manager"            : "COBALT",
+        "lfs_per_node"                : "/tmp",
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "MPIEXEC",
+        "task_launch_method"          : "MPIEXEC",
+        "mpi_launch_method"           : "MPIEXEC",
+        "pre_bootstrap_0"             : [
+            ". /home/$USER/.miniconda3/etc/profile.d/conda.sh"
+        ],
+        "valid_roots"                 : ["$HOME"],
+        "default_remote_workdir"      : "$HOME",
+        "python_dist"                 : "anaconda",
+        "virtenv"                     : "ve.rp",
+        "virtenv_mode"                : "use",
+        "rp_version"                  : "installed",
+        "stage_cacerts"               : true,
+        "cores_per_node"              : 128,
+        "gpus_per_node"               : 8
     }
 }
-
