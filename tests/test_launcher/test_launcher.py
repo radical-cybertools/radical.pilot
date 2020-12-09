@@ -29,13 +29,15 @@ class TestLauncher(TestCase):
                 self.cfg = ru.Config(cfg={'dburl': 'db://'})
 
             def _get_resource_sandbox(self, pilot):
-                return ru.Url('/resource/sandbox/%s' % pilot)
+                return ru.Url(pilot['description'].get('sandbox') or
+                              '/resource/sandbox')
 
             def _get_session_sandbox(self, pilot):
-                return ru.Url('/session/sandbox/%s' % pilot)
+                return ru.Url(pilot['description'].get('session_sandbox') or
+                              '/session/sandbox/%s' % self.uid)
 
             def _get_pilot_sandbox(self, pilot):
-                return ru.Url('/pilot/sandbox/%s' % pilot)
+                return ru.Url('/pilot/sandbox/%s' % pilot['uid'])
 
             def _get_client_sandbox(self):
                 return ru.Url('/client/sandbox')
@@ -58,6 +60,7 @@ class TestLauncher(TestCase):
         session, configs = self.setUp()
 
         component = Default(cfg=None, session=None)
+        component._uid        = 'pmgr.launching.0000'
         component._cfg        = mock.Mock()
         component._log        = ru.Logger('dummy')
         component._rp_version = '0.0'
@@ -96,6 +99,8 @@ class TestLauncher(TestCase):
                    }
         ret = component._prepare_pilot(resource, rcfg, pilot, {})
         assert(ret['jd'].name == 'pilot.0000')
+        assert(ret['jd'].environment['RADICAL_BASE'] ==
+               str(session._get_resource_sandbox(pilot)))
 
         pilot    = {
                         'uid'         : 'pilot.0000',
