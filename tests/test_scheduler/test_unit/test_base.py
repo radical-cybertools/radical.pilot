@@ -1,31 +1,31 @@
-# pylint: disable=protected-access, unused-argument
-# pylint: disable=no-value-for-parameter
+
+# pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
 import threading
 
-import radical.utils as ru
-from radical.pilot.agent.scheduler.base import AgentSchedulingComponent
-
+from unittest import mock
 from unittest import TestCase
 
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+import radical.utils as ru
+
+from radical.pilot.agent.scheduler.base import AgentSchedulingComponent
 
 
+# ------------------------------------------------------------------------------
+#
 class TestBase(TestCase):
 
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def setUp(self):
 
-        tc = ru.read_json('tests/test_scheduler/test_unit/test_cases/test_base.json')
+        fname = 'tests/test_scheduler/test_unit/test_cases/test_base.json'
+        tc    = ru.read_json(fname)
 
         return tc
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
     def test_change_slot_states(self, mocked_init):
@@ -38,11 +38,13 @@ class TestBase(TestCase):
 
         component = AgentSchedulingComponent()
 
-        for node, slot, new_state, result in zip(nodes, slots, new_states, results):
+        for node, slot, new_state, result \
+                in zip(nodes, slots, new_states, results):
             component.nodes = node
             if result == 'RuntimeError':
                 with self.assertRaises(RuntimeError):
-                    component._change_slot_states(slots=slot, new_state=new_state)
+                    component._change_slot_states(slots=slot,
+                                                  new_state=new_state)
             else:
                 component._change_slot_states(slots=slot, new_state=new_state)
                 self.assertEqual(component.nodes, result)
@@ -50,21 +52,24 @@ class TestBase(TestCase):
 
     # ------------------------------------------------------------------------------
     #
-    @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
-    @mock.patch.object(AgentSchedulingComponent, '_handle_cuda', return_value=True)
+    @mock.patch.object(AgentSchedulingComponent, '__init__',
+                       return_value=None)
+    @mock.patch.object(AgentSchedulingComponent, '_handle_cuda',
+                       return_value=True)
     @mock.patch.object(AgentSchedulingComponent, '_change_slot_states',
                        return_value=True)
     def test_try_allocation(self, mocked_init, mocked_handle_cuda,
                             mocked_change_slot_states):
 
         component = AgentSchedulingComponent()
-        component._log = ru.Logger('dummy')
-        component._allocate_slot = mock.Mock(side_effect=[None, {'slot':'test_slot'}])
-        component._prof = mock.Mock()
-        component._prof.prof = mock.Mock(return_value=True)
-        component._wait_pool = list()
-        component._wait_lock = threading.RLock()
-        component._slot_lock = threading.RLock()
+        component._log           = ru.Logger('dummy')
+        component._allocate_slot = mock.Mock(side_effect=[None,
+                                                          {'slot':'test_slot'}])
+        component._prof          = mock.Mock()
+        component._prof.prof     = mock.Mock(return_value=True)
+        component._wait_pool     = list()
+        component._wait_lock     = threading.RLock()
+        component._slot_lock     = threading.RLock()
 
         tests = self.setUp()['try_allocation']
         for input_data, result in zip(tests['setup'], tests['results']):
@@ -82,7 +87,7 @@ class TestBase(TestCase):
                              result['description']['environment'])
 
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
     def test_handle_cuda(self,mocked_init):
@@ -109,16 +114,19 @@ class TestBase(TestCase):
                     self.assertEqual(unit_env['CUDA_VISIBLE_DEVICES'], result)
 
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
     def test_get_node_maps(self,mocked_init):
         component = AgentSchedulingComponent()
 
-        cores = [1, 2, 3, 4, 5, 6, 7, 8] 
-        gpus  = [1, 2] 
-        tpp   = 4 
+        cores = [1, 2, 3, 4, 5, 6, 7, 8]
+        gpus  = [1, 2]
+        tpp   = 4
         core_map, gpu_map = component._get_node_maps(cores, gpus, tpp)
         self.assertEqual(core_map, [[1, 2, 3, 4], [5, 6, 7, 8]])
         self.assertEqual(gpu_map, [[1], [2]])
 
+
+# ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter
