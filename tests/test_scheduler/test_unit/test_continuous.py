@@ -1,40 +1,47 @@
-# pylint: disable=protected-access, unused-argument
-# pylint: disable=no-value-for-parameter
+
+# pylint: disable=protected-access, no-value-for-parameter, unused-argument
+
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
-from unittest import TestCase
 import glob
 import pytest
-import radical.utils as ru
-import radical.pilot.constants as rpc
-from   radical.pilot.agent.scheduler.continuous import Continuous
 
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+from unittest import TestCase
+from unittest import mock
+
+import radical.utils           as ru
+import radical.pilot.constants as rpc
+
+from   radical.pilot.agent.scheduler.continuous import Continuous
 
 
 # ------------------------------------------------------------------------------
 #
 class TestContinuous(TestCase):
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def setUp(self):
 
         ret = list()
-        for fin in glob.glob('tests/test_scheduler/test_unit/test_cases_continuous/unit*.json'):
+        pat = 'tests/test_scheduler/test_unit/test_cases_continuous/unit*.json'
+
+        for fin in glob.glob(pat):
             test_cases = ru.read_json(fin)
             ret.append(test_cases)
-        cfg_tests = ru.read_json('tests/test_scheduler/test_unit/test_cases_continuous/test_continuous.json')
+
+        cfg_fname = 'tests/test_scheduler/test_unit/test_cases_continuous/test_continuous.json'
+        cfg_tests = ru.read_json(cfg_fname)
+
         return cfg_tests, ret
+
 
     # --------------------------------------------------------------------------
     #
     def tearDown(self):
         pass
+
 
     # --------------------------------------------------------------------------
     #
@@ -42,15 +49,15 @@ class TestContinuous(TestCase):
     def test_configure(self, mocked_init):
 
         cfg, _ = self.setUp()
-        component = Continuous(cfg=None, session=None)	
-        component._cfg =  mock.Mock()	
+        component = Continuous(cfg=None, session=None)
+        component._cfg =  mock.Mock()
         component._log = ru.Logger('dummy')
-        component._rm_node_list = [["a", 1],	
-                                   ["b", 2],["c",3]]	
-        component._rm_cores_per_node = 8	
-        component._rm_gpus_per_node  = 2	
-        component._rm_lfs_per_node   = {"path": "/dev/null", "size": 0}	
-        component._rm_mem_per_node   = 128	
+        component._rm_node_list = [["a", 1],
+                                   ["b", 2],["c",3]]
+        component._rm_cores_per_node = 8
+        component._rm_gpus_per_node  = 2
+        component._rm_lfs_per_node   = {"path": "/dev/null", "size": 0}
+        component._rm_mem_per_node   = 128
         component.nodes = [{'name'  : 'a',
                           'uid'   : 2,
                           'cores' : [1, 2, 3, 4, 6, 0, 9, 8],
@@ -58,15 +65,17 @@ class TestContinuous(TestCase):
                                      "path" : "/dev/null"},
                           'mem'   : 1024,
                           'gpus'  : [1, 2]}]
-        try:     
+        try:
             for i in range (len(cfg['cfg']['rm_info'])):
                 rm_info = cfg['cfg']['rm_info'][i]
                 component._configure()
-                self.assertEqual(component.nodes[0]['cores'], [rpc.FREE] * rm_info['cores_per_node'])	
-                self.assertEqual(component.nodes[0]['gpus'],  [rpc.FREE] * rm_info['gpus_per_node'])
-        except:	
-            with pytest.raises(AssertionError):	
-                component._configure()	
+                self.assertEqual(component.nodes[0]['cores'],
+                                 [rpc.FREE] * rm_info['cores_per_node'])
+                self.assertEqual(component.nodes[0]['gpus'],
+                                 [rpc.FREE] * rm_info['gpus_per_node'])
+        except:
+            with pytest.raises(AssertionError):
+                component._configure()
                 raise
 
 
@@ -131,8 +140,8 @@ class TestContinuous(TestCase):
         _, cfg = self.setUp()
         component = Continuous(cfg=None, session=None)
         unit = dict()
-        unit['uid'] = cfg[1]['unit']['uid'] 
-        unit['description'] = cfg[1]['unit']['description']      
+        unit['uid'] = cfg[1]['unit']['uid']
+        unit['description'] = cfg[1]['unit']['description']
         component.nodes = cfg[1]['setup']['lm']['slots']['nodes']
 
         component._rm_cores_per_node = 32
@@ -141,7 +150,7 @@ class TestContinuous(TestCase):
         component._rm_mem_per_node   = 1024
         component._rm_lm_info = 'INFO'
         component._log = ru.Logger('dummy')
-        component._node_offset = 0 
+        component._node_offset = 0
         test_slot =  {'cores_per_node': 32,
                       'gpus_per_node': 2,
                       'lfs_per_node': {'path': '/dev/null', 'size': 0},
@@ -166,16 +175,24 @@ class TestContinuous(TestCase):
     def test_unschedule_unit(self, mocked_init):
 
         component = Continuous(cfg=None, session=None)
-        _, cfg = self.setUp()
-        unit = dict()
-        unit['description'] = cfg[1]['unit']['description']
-        unit['slots'] = cfg[1]['setup']['lm']['slots']
+        _, cfg   = self.setUp()
+
+        unit = {
+                'description': cfg[1]['unit']['description'],
+                'slots'      : cfg[1]['setup']['lm']['slots']
+               }
+
         component.nodes = cfg[1]['setup']['lm']['slots']['nodes']
-        component._log = ru.Logger('dummy')
+        component._log  = ru.Logger('dummy')
+
         component.unschedule_unit(unit)
         try:
             self.assertEqual(component.nodes[0]['cores'], [0])
             self.assertEqual(component.nodes[0]['gpus'], [0])
         except:
             with pytest.raises(AssertionError):
-                raise        
+                raise
+
+
+# ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter
