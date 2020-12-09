@@ -198,32 +198,31 @@ Several configuration files are part of the RADICAL-Pilot installation, and can 
 under ``radical/pilot/configs/`` in the RADICAL-Pilot git repository.
 
 
-Customizing Resource Configurations Programatically
+Customizing Resource Configurations Programmatically
 ===================================================
 
 The set of resource configurations available to the RADICAL-Pilot session is
-accessible programmatically. The example below changes the ``default_queue`` for
-the ``epsrc.archer`` resource.
+accessible programmatically. The example below creates a new resource config
+from the ``xsede.bridges`` resource, and updates attribute ``default_queue``.
 
 .. code-block:: python
 
     import radical.pilot as rp
     import pprint
 
-    RESOURCE = 'epsrc.archer'
+    # resource label should of a format <domain>.<host>
+    RESOURCE     = 'xsede.bridges'
+    NEW_RESOURCE = 'xsede.bridges_debug'
 
     # get a pre-installed resource configuration
     session = rp.Session()
+    # a deep copy of a config from the session is returned
     cfg = session.get_resource_config(RESOURCE)
-    pprint.pprint (cfg)
-
-    # create a new config based on the old one, and set a different launch method
-    new_cfg = rp.ResourceConfig(RESOURCE, cfg)
-    new_cfg.default_queue = 'royal_treatment'
-
-    # now add the entry back.  As we did not change the config name, this will
-    # replace the original configuration.  A completely new configuration would
-    # need a unique label.
-    session.add_resource_config(new_cfg)
-    pprint.pprint (session.get_resource_config(RESOURCE))
+    # update the default queue name
+    cfg.default_queue = 'debug'
+    # set resource label for a new config
+    cfg.label = NEW_RESOURCE
+    # add new resource config back to the session
+    session.add_resource_config(cfg)
+    pprint.pprint(session.get_resource_config(NEW_RESOURCE))
 
