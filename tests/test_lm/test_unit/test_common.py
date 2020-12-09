@@ -1,5 +1,5 @@
 
-# pylint: disable=protected-access, unused-argument
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import glob
 
@@ -7,7 +7,7 @@ import radical.utils as ru
 
 
 # ------------------------------------------------------------------------------
-# 
+#
 def setUp(test_type, test_name):
 
     ret = list()
@@ -16,9 +16,10 @@ def setUp(test_type, test_name):
         tc                = ru.read_json(fin)
         unit              = tc['unit'   ]
         setup             = tc['setup'  ].get(test_type, {})
-        result            = tc['results'].get(test_type, {}).get(test_name)
-        resource_file     = tc['results'].get('resource_file', {}).get(test_name)
-        resource_filename = tc['results'].get('resource_filename', {}).get(test_name)
+        results           = tc['results']
+        result            = results.get(test_type, {}).get(test_name)
+        resource_file     = results.get('resource_file', {}).get(test_name)
+        resource_filename = results.get('resource_filename', {}).get(test_name)
         test              = ru.dict_merge(unit, setup, ru.PRESERVE)
 
         if result:
@@ -36,4 +37,6 @@ def tearDown():
 
     pass
 
+
 # ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

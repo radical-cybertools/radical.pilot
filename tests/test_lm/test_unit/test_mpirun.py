@@ -1,16 +1,12 @@
 
-# pylint: disable=protected-access, unused-argument
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-from   .test_common                   import setUp
-from   radical.pilot.agent.launch_method.mpirun import MPIRun
+from unittest import mock
 
 import radical.utils as ru
 
-
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+from   .test_common                             import setUp
+from   radical.pilot.agent.launch_method.mpirun import MPIRun
 
 
 # ------------------------------------------------------------------------------
@@ -30,8 +26,6 @@ def test_configure(mocked_init, mocked_get_mpi_info, mocked_raise_on,
     assert(5 == component.mpi_version)
     assert('ORTE' == component.mpi_flavor)
 
-# ------------------------------------------------------------------------------
-
 
 # ------------------------------------------------------------------------------
 #
@@ -49,8 +43,6 @@ def test_configure_rsh(mocked_init, mocked_get_mpi_info, mocked_raise_on,
     assert('mpirun' == component.launch_command)
     assert(5 == component.mpi_version)
     assert('ORTE' == component.mpi_flavor)
-
-# ------------------------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------------
@@ -70,8 +62,6 @@ def test_configure_mpt(mocked_init, mocked_get_mpi_info, mocked_raise_on,
     assert(5 == component.mpi_version)
     assert('ORTE' == component.mpi_flavor)
 
-# ------------------------------------------------------------------------------
-
 
 # ------------------------------------------------------------------------------
 #
@@ -89,8 +79,6 @@ def test_configure_ccmrun(mocked_init, mocked_get_mpi_info, mocked_raise_on,
     assert('mpirun' == component.launch_command)
     assert(5 == component.mpi_version)
     assert('ORTE' == component.mpi_flavor)
-
-# ------------------------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------------
@@ -110,8 +98,6 @@ def test_configure_dplace(mocked_init, mocked_get_mpi_info, mocked_raise_on,
     assert(5 == component.mpi_version)
     assert('ORTE' == component.mpi_flavor)
 
-# ------------------------------------------------------------------------------
-
 
 # ------------------------------------------------------------------------------
 #
@@ -125,13 +111,13 @@ def test_construct_command(mocked_init,
     test_cases = setUp('lm', 'mpirun')
 
     component = MPIRun(name=None, cfg=None, session=None)
-    component.name           = 'MPIRun'
-    component._log           = ru.Logger('dummy')
-    component._cfg           = mock.Mock(resource='localhost')
-    component._mpt           = False
-    component._rsh           = False
-    component._ccmrun        = ''
-    component._dplace        = ''
+    component.name    = 'MPIRun'
+    component._log    = ru.Logger('dummy')
+    component._cfg    = mock.Mock(resource='localhost')
+    component._mpt    = False
+    component._rsh    = False
+    component._ccmrun = ''
+    component._dplace = ''
 
     component._configure()
     component.launch_command = 'mpirun'
@@ -143,3 +129,4 @@ def test_construct_command(mocked_init,
 
 
 # ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

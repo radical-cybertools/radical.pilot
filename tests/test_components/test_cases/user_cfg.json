@@ -1,0 +1,22 @@
+{
+    "user_resource": {
+        "schemas"                     : ["local"],
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_remote_workdir"      : "$HOME",
+        "resource_manager"            : "FORK",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "FORK",
+        "task_launch_method"          : "FORK",
+        "mpi_launch_method"           : "MPIEXEC",
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "anaconda",
+        "cores_per_node"              : 4,
+        "gpus_per_node"               : 1
+    }
+}

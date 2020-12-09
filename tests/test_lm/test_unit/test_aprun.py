@@ -1,15 +1,12 @@
 
-# pylint: disable=protected-access, unused-argument
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-from .test_common                  import setUp
-from radical.pilot.agent.launch_method.aprun import APRun
+from unittest import mock
 
 import radical.utils as ru
 
-try:
-    import mock
-except ImportError:
-    from unittest import mock
+from .test_common                            import setUp
+from radical.pilot.agent.launch_method.aprun import APRun
 
 
 # ------------------------------------------------------------------------------
@@ -22,8 +19,6 @@ def test_configure(mocked_init, mocked_raise_on, mocked_which):
     component = APRun(name=None, cfg=None, session=None)
     component._configure()
     assert('/usr/bin/aprun' == component.launch_command)
-
-# ------------------------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------------
@@ -46,5 +41,6 @@ def test_construct_command(mocked_init,
         command, hop = component.construct_command(unit, None)
         assert([command, hop] == result)
 
-# ------------------------------------------------------------------------------
 
+# ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter
