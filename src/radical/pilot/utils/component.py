@@ -779,7 +779,7 @@ class Component(object):
             if not output:
 
                 # this indicates a final state
-                self._log.debug('%s register output to none %s', self.uid, state)
+                self._log.debug('%s register output to None %s', self.uid, state)
                 self._outputs[state] = None
 
             else:
@@ -846,11 +846,18 @@ class Component(object):
         '''
 
         # NOTE: we do not check if things are actually in the given state
+        things = ru.as_list(things)
+        if not things:
+            # nothing to do
+            return
 
         if state not in self._outputs:
             raise ValueError('state %s has no output registered' % state)
 
-        self._outputs[state].put(things)
+        if self._outputs[state]:
+            # the bridge will sort things into bulks, wit bulk size dependig on
+            # bridge configuration
+            self._outputs[state].put(things)
 
 
     # --------------------------------------------------------------------------

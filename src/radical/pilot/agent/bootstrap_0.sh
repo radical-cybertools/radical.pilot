@@ -1277,7 +1277,6 @@ rp_install()
   # fi
 
     pip_flags="$pip_flags --src '$PILOT_SANDBOX/rp_install/src'"
-    pip_flags="$pip_flags --build '$PILOT_SANDBOX/rp_install/build'"
     pip_flags="$pip_flags --prefix '$RP_INSTALL'"
     pip_flags="$pip_flags --no-deps --no-cache-dir --no-build-isolation"
 
@@ -1290,9 +1289,6 @@ rp_install()
         then
             echo "Couldn't install $src! Lets see how far we get ..."
         fi
-
-        # NOTE: why? fuck pip, that's why!
-        rm -rf "$PILOT_SANDBOX/rp_install/build"
 
         # clean out the install source if it is a local dir
         if test -d "$src"
