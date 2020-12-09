@@ -1,5 +1,5 @@
 
-# pylint: disable=protected-access, unused-argument
+# pylint: disable=unused-argument
 
 
 # ------------------------------------------------------------------------------
@@ -27,7 +27,6 @@ def test_pilot_state_collapse():
               'PMGR_ACTIVE',
               'PMGR_ACTIVE_PENDING']
     assert(_pilot_state_collapse(states) == 'FAILED')
-# ------------------------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------------
@@ -63,4 +62,7 @@ def test_unit_state_collapse():
               'AGENT_STAGING_INPUT',
               'UMGR_SCHEDULING']
     assert(_unit_state_collapse(states) == 'CANCELED')
+
+
 # ------------------------------------------------------------------------------
+
