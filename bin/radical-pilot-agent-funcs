@@ -221,7 +221,7 @@ class Executor(object):
 
     # --------------------------------------------------------------------------
     #
-    def prepare_func(self, func):
+    def prepare_func(self, func, args):
 
         u_ns = locals()
         u_ns.update({'__builtins__': __builtins__})
@@ -234,8 +234,8 @@ class Executor(object):
                      '__cud_kwargs': fn_kwargs,
                      '__cud_output': None})
         source = fn.split('\n')
-        fn_app = "__cud_output = {0}()".format(fn_name)
-        source.append(fn_app)
+        fn_call = "__cud_output = {0}({1})".format(fn_name,','.join(args))
+        source.append(fn_call)
         code = "\n".join(source)
         return code
 
@@ -279,7 +279,7 @@ class Executor(object):
                                 locals() [mod] = globals()[mod]
 
                 try:
-                    function_code = self.prepare_func(exe)
+                    function_code = self.prepare_func(exe, args)
                 except Exception:
                     self._log.debug("Setting the function for execution failed!.")
                     raise

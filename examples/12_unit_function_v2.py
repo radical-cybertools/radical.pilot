@@ -21,10 +21,8 @@ dh = ru.DebugHelper()
 
 # ------------------------------------------------------------------------------
 #
-def mathma():
+def mathma(a,b):
     import math
-    a = 5
-    b = 6
     eq = []
     for i in range(2):
         if a > b:
@@ -100,8 +98,8 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.pre_exec         = []
-            cud.executable       = mathma #Function reference
-            cud.arguments        = [i]
+            cud.executable       = mathma # Function reference
+            cud.arguments        = [5,7]  # Function arguments
             cud.gpu_processes    = 0
             cud.cpu_processes    = 1
             cud.cpu_threads      = 1
