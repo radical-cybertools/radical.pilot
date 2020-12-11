@@ -123,7 +123,6 @@ class Executor(object):
         for i in range(self._nw):
             wid  = '%s.%03d' % (self._uid, i)
             proc = mp.Process(target=self._work, args=[self._uid, wid])
-            proc.daemon = True
             proc.start()
             self._workers.append(proc)
 
