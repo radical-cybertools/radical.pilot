@@ -34,15 +34,15 @@ if __name__ == '__main__':
 
         pwd  = os.path.dirname(os.path.abspath(__file__))
         TD  = rp.TaskDescription
-        cuds = list()
+        tds = list()
 
         for i in range(n_master):
-            cuds.append(TD({'executable': '%s/rp_app_master.py' % pwd,
+            tds.append(TD({'executable': '%s/rp_app_master.py' % pwd,
                              'arguments' : [n_worker]}))
         for i in range(n_worker):
-            cuds.append(TD({'executable': '%s/rp_app_worker.py' % pwd}))
+            tds.append(TD({'executable': '%s/rp_app_worker.py' % pwd}))
 
-        umgr.submit_tasks(cuds)
+        umgr.submit_tasks(tds)
         umgr.wait_tasks()
 
     finally:

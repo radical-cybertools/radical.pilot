@@ -94,15 +94,15 @@ if __name__ == "__main__":
         umgr.register_callback(task_state_cb,      rp.TASK_STATE)
         umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
 
-        cuds = list()
+        tds = list()
         for task_count in range(0, TASKS):
-            cud = rp.TaskDescription()
-            cud.executable     = "/bin/sh"
-            cud.arguments      = ["-c", "echo $HOSTNAME:$OSG_HOSTNAME && sleep %d" % SLEEP]
-            cud.cores          = 1
-            cuds.append(cud)
+            td = rp.TaskDescription()
+            td.executable     = "/bin/sh"
+            td.arguments      = ["-c", "echo $HOSTNAME:$OSG_HOSTNAME && sleep %d" % SLEEP]
+            td.cores          = 1
+            tds.append(td)
 
-        tasks = umgr.submit_tasks(cuds)
+        tasks = umgr.submit_tasks(tds)
 
         pdesc = rp.PilotDescription()
         pdesc.resource        = resource

@@ -122,19 +122,19 @@ if __name__ == "__main__":
         umgr.add_pilots (pilots)
 
         # Create a workload of restartable Tasks (tasks).
-        cuds = []
+        tds = []
         for task_count in range(0, 32):
-            cud = rp.TaskDescription()
-            cud.executable    = "/bin/sleep"
-            cud.arguments     = ["10"]
-            cud.restartable   = True
+            td = rp.TaskDescription()
+            td.executable    = "/bin/sleep"
+            td.arguments     = ["10"]
+            td.restartable   = True
 
-            cuds.append(cud)
+            tds.append(td)
 
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        tasks = umgr.submit_tasks(cuds)
+        tasks = umgr.submit_tasks(tds)
 
         # the pilots have a total of 4 cores, and run for 10 min.  A Task needs about
         # 10 seconds, so we can handle about 24 tasks per minute, and need a total

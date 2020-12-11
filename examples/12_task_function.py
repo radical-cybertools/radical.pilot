@@ -79,27 +79,27 @@ if __name__ == '__main__':
         n = 1024 * 2
         report.info('create %d task description(s)\n\t' % n)
 
-        cuds = list()
+        tds = list()
         for i in range(0, n):
 
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.TaskDescription()
-            cud.executable       = 'time.time'
-            cud.arguments        = []
-            cud.pre_exec         = ['import time']
-            cud.gpu_processes    = 0
-            cud.cpu_processes    = 1
-            cud.cpu_threads      = 1
-            cud.cpu_process_type = rp.FUNC
-            cuds.append(cud)
+            td = rp.TaskDescription()
+            td.executable       = 'time.time'
+            td.arguments        = []
+            td.pre_exec         = ['import time']
+            td.gpu_processes    = 0
+            td.cpu_processes    = 1
+            td.cpu_threads      = 1
+            td.cpu_process_type = rp.FUNC
+            tds.append(td)
             report.progress()
         report.ok('>>ok\n')
 
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        tasks = umgr.submit_tasks(cuds)
+        tasks = umgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or
         # FAILED).

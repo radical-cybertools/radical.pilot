@@ -26,17 +26,17 @@ def test_cu_sandbox():
     
         for sbox_in, sbox_out in sboxes:
 
-            cud = rp.TaskDescription()
-            cud.executable = 'true'  # required attribute
-            cud.sandbox    = sbox_in
+            td = rp.TaskDescription()
+            td.executable = 'true'  # required attribute
+            td.sandbox    = sbox_in
 
             if not sbox_out:
                 with pytest.raises(ValueError):
-                    task = umgr.submit_tasks(cud)
+                    task = umgr.submit_tasks(td)
 
                 continue
 
-            task   = umgr.submit_tasks(cud)
+            task   = umgr.submit_tasks(td)
             u_dict = task.as_dict()
             check  = session._get_task_sandbox(u_dict, p_dict)
 

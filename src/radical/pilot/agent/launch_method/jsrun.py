@@ -131,9 +131,9 @@ class JSRUN(LaunchMethod):
 
         uid          = cu['uid']
         slots        = cu['slots']
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_args    = cud.get('arguments')   or list()
+        td          = cu['description']
+        task_exec    = td['executable']
+        task_args    = td.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
         task_sandbox = cu['task_sandbox_path']
 
@@ -145,7 +145,7 @@ class JSRUN(LaunchMethod):
         else          : task_command = task_exec
 
         env_string = ''
-      # task_env   = cud.get('environment') or dict()
+      # task_env   = td.get('environment') or dict()
       # env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
       # env_string = ' '.join(['-E "%s"' % var for var in env_list])
       #
@@ -161,8 +161,8 @@ class JSRUN(LaunchMethod):
         # CUDA without MPI, use jsrun --smpiargs="off"
         #
         # We only set this for CUDA tasks
-        if 'cuda' in cud.get('gpu_thread_type', '').lower():
-            if 'mpi' in cud.get('gpu_process_type', '').lower():
+        if 'cuda' in td.get('gpu_thread_type', '').lower():
+            if 'mpi' in td.get('gpu_process_type', '').lower():
                 smpiargs = '--smpiargs="-gpu"'
             else:
                 smpiargs = '--smpiargs="off"'

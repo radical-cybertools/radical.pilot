@@ -54,29 +54,29 @@ def test_local_tagging():
     n = 5  # number of tasks to run
     report.info('create %d task description(s)\n\t' % n)
 
-    cuds = list()
+    tds = list()
     for i in range(0, n):
 
         # create a new Task description, and fill it.
         # Here we don't use dict initialization.
-        cud                  = rp.TaskDescription()
-        cud.executable       = '/bin/hostname'
-        cud.arguments        = ['>', 's1_t%s_hostname.txt' % i]
-        cud.cpu_processes    = 1
-        cud.cpu_threads      = 1
-      # cud.cpu_process_type = rp.MPI
-      # cud.cpu_thread_type  = rp.OpenMP
-        cud.output_staging   = {'source': 'task:///s1_t%s_hostname.txt' % i,
+        td                  = rp.TaskDescription()
+        td.executable       = '/bin/hostname'
+        td.arguments        = ['>', 's1_t%s_hostname.txt' % i]
+        td.cpu_processes    = 1
+        td.cpu_threads      = 1
+      # td.cpu_process_type = rp.MPI
+      # td.cpu_thread_type  = rp.OpenMP
+        td.output_staging   = {'source': 'task:///s1_t%s_hostname.txt' % i,
                                 'target': 'client:///s1_t%s_hostname.txt' % i,
                                 'action': rp.TRANSFER}
-        cuds.append(cud)
+        tds.append(td)
         report.progress()
     report.ok('>>ok\n')
 
     # Submit the previously created Task descriptions to the
     # PilotManager. This will trigger the selected scheduler to start
     # assigning Tasks to the Pilots.
-    cus = umgr.submit_tasks(cuds)
+    cus = umgr.submit_tasks(tds)
 
     # Wait for all tasks to reach a final state
     # (DONE, CANCELED or FAILED).
@@ -86,30 +86,30 @@ def test_local_tagging():
     n = 5  # number of tasks to run
     report.info('create %d task description(s)\n\t' % n)
 
-    cuds = list()
+    tds = list()
     for i in range(0, n):
 
         # create a new Task description, and fill it.
         # Here we don't use dict initialization.
-        cud                  = rp.TaskDescription()
-        cud.executable       = '/bin/hostname'
-        cud.arguments        = ['>', 's2_t%s_hostname.txt' % i]
-        cud.cpu_processes    = 1
-        cud.cpu_threads      = 1
-        cud.tag              = cus[i].uid
-      # cud.cpu_process_type = rp.MPI
-      # cud.cpu_thread_type  = rp.OpenMP
-        cud.output_staging   = {'source': 'task:///s2_t%s_hostname.txt' % i,
+        td                  = rp.TaskDescription()
+        td.executable       = '/bin/hostname'
+        td.arguments        = ['>', 's2_t%s_hostname.txt' % i]
+        td.cpu_processes    = 1
+        td.cpu_threads      = 1
+        td.tag              = cus[i].uid
+      # td.cpu_process_type = rp.MPI
+      # td.cpu_thread_type  = rp.OpenMP
+        td.output_staging   = {'source': 'task:///s2_t%s_hostname.txt' % i,
                                 'target': 'client:///s2_t%s_hostname.txt' % i,
                                 'action': rp.TRANSFER}
-        cuds.append(cud)
+        tds.append(td)
         report.progress()
     report.ok('>>ok\n')
 
     # Submit the previously created Task descriptions to the
     # PilotManager. This will trigger the selected scheduler to start
     # assigning Tasks to the Pilots.
-    cus = umgr.submit_tasks(cuds)
+    cus = umgr.submit_tasks(tds)
 
     # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
     report.header('gather results')

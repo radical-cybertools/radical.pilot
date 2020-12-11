@@ -46,11 +46,11 @@ class MPIRunRSH(LaunchMethod):
     def construct_command(self, cu, launch_script_hop):
 
         opaque_slots = cu['slots']
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_cores   = cud['cores']
-        task_env     = cud.get('environment') or dict()
-        task_args    = cud.get('arguments')   or list()
+        td          = cu['description']
+        task_exec    = td['executable']
+        task_cores   = td['cores']
+        task_env     = td.get('environment') or dict()
+        task_args    = td.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
         if 'task_slots' not in opaque_slots:

@@ -25,7 +25,7 @@ from .base import AgentSchedulingComponent
 #
 # The storage availability will be obtained from the rm_node_list and assigned
 # to the node list of the class. The lfs requirement will be obtained from the
-# cud in the alloc_nompi and alloc_mpi methods. Using the availability and
+# td in the alloc_nompi and alloc_mpi methods. Using the availability and
 # requirement, the _find_resources method will return the core and gpu ids.
 #
 # Expected DS of the nodelist
@@ -301,15 +301,15 @@ class Continuous(AgentSchedulingComponent):
 
       # self._log.debug('find_resources %s', task['uid'])
 
-        cud = task['description']
-        mpi = bool('mpi' in cud['cpu_process_type'].lower())
+        td = task['description']
+        mpi = bool('mpi' in td['cpu_process_type'].lower())
 
         # dig out the allocation request details
-        req_slots      = cud['cpu_processes']
-        cores_per_slot = cud['cpu_threads']
-        gpus_per_slot  = cud['gpu_processes']
-        lfs_per_slot   = cud['lfs_per_process']
-        mem_per_slot   = cud['mem_per_process']
+        req_slots      = td['cpu_processes']
+        cores_per_slot = td['cpu_threads']
+        gpus_per_slot  = td['gpu_processes']
+        lfs_per_slot   = td['lfs_per_process']
+        mem_per_slot   = td['mem_per_process']
 
         # make sure that processes are at least single-threaded
         if not cores_per_slot:
@@ -359,7 +359,7 @@ class Continuous(AgentSchedulingComponent):
         # set conditions to find the first matching node
         is_first = True
         is_last  = False
-        tag      = cud.get('tag')
+        tag      = td.get('tag')
 
         # what remains to be allocated?  all of it right now.
         alc_slots = list()

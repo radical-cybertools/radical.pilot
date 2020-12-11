@@ -95,15 +95,15 @@ if __name__ == "__main__":
 
             # Actual task description.
             # Concatenate the shared input and the task specific input.
-            cud = rp.TaskDescription()
-            cud.executable = '/bin/bash'
-            cud.arguments = ['-c', 'cat %s %s > %s' %
+            td = rp.TaskDescription()
+            td.executable = '/bin/bash'
+            td.arguments = ['-c', 'cat %s %s > %s' %
                              (SHARED_INPUT_FILE, input_file, output_file)]
-            cud.cpu_processes = 1
-            cud.input_staging = [sd_shared, input_file]
-            cud.output_staging = output_file
+            td.cpu_processes = 1
+            td.input_staging = [sd_shared, input_file]
+            td.output_staging = output_file
 
-            task_descs.append(cud)
+            task_descs.append(td)
 
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start

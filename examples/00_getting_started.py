@@ -74,15 +74,15 @@ if __name__ == '__main__':
         # Each task runs '/bin/date'.
 
         report.progress_tgt(n, label='create')
-        cuds = list()
+        tds = list()
         for i in range(0, n):
 
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.TaskDescription()
-            cud.executable    = '/bin/date'
-            cud.cpu_processes = 1
-            cuds.append(cud)
+            td = rp.TaskDescription()
+            td.executable    = '/bin/date'
+            td.cpu_processes = 1
+            tds.append(td)
             report.progress()
 
         report.progress_done()
@@ -90,7 +90,7 @@ if __name__ == '__main__':
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        umgr.submit_tasks(cuds)
+        umgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
         umgr.wait_tasks()

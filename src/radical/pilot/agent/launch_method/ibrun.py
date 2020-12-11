@@ -35,14 +35,14 @@ class IBRun(LaunchMethod):
     def construct_command(self, cu, launch_script_hop):
 
         slots        = cu['slots']
-        cud          = cu['description']
+        td          = cu['description']
 
-        task_exec    = cud['executable']
-        task_args    = cud.get('arguments') or []
+        task_exec    = td['executable']
+        task_args    = td.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
-        task_env     = cud.get('environment') or dict()
+        task_env     = td.get('environment') or dict()
 
-        n_tasks      = cud['cpu_processes']
+        n_tasks      = td['cpu_processes']
 
         # Usage of env variable TACC_TASKS_PER_NODE is purely for MPI tasks,
         #  and threads are not considered (info provided by TACC support)

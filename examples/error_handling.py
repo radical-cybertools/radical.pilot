@@ -115,17 +115,17 @@ if __name__ == "__main__":
 
         # we submit n tasks, some of which will fail.
         n    = 1024 * 3
-        cuds = list()
+        tds = list()
         for _ in range(n):
-            cud = rp.TaskDescription()
+            td = rp.TaskDescription()
             if random.random() < 0.5:
-                cud.executable = '/bin/true'
+                td.executable = '/bin/true'
             else:
-                cud.executable = '/bin/fail'
-            cuds.append(cud)
+                td.executable = '/bin/fail'
+            tds.append(td)
 
         # submit the tasks...
-        cus = umgr.submit_tasks(cuds)
+        cus = umgr.submit_tasks(tds)
 
         # ... and wait for their completion.
         state = umgr.wait_tasks(state=rp.FINAL)

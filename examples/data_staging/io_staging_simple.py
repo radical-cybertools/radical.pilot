@@ -80,11 +80,11 @@ if __name__ == "__main__":
         #  The exact command that is executed by the agent is:
         #    "/usr/bin/sort -o result.dat passwd"
         #
-        cud = rp.TaskDescription()
-        cud.executable     = "/usr/bin/sort"
-        cud.arguments      = ["-o", "result.dat", "passwd"]
-        cud.input_staging  = "/etc/passwd"
-        cud.output_staging = "result.dat"
+        td = rp.TaskDescription()
+        td.executable     = "/usr/bin/sort"
+        td.arguments      = ["-o", "result.dat", "passwd"]
+        td.input_staging  = "/etc/passwd"
+        td.output_staging = "result.dat"
 
         # Combine the Pilot, the Tasks and a scheduler via
         # a TaskManager object.
@@ -101,7 +101,7 @@ if __name__ == "__main__":
         # Submit the previously created Task description to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning the Task to the Pilot.
-        task = umgr.submit_tasks(cud)
+        task = umgr.submit_tasks(td)
 
         # Wait for the task to reach a terminal state (DONE or FAILED).
         umgr.wait_tasks()

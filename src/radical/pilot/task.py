@@ -11,7 +11,7 @@ import radical.utils as ru
 from . import states    as rps
 from . import constants as rpc
 
-from . import task_description as cud
+from . import task_description as td
 
 from .staging_directives import expand_description
 
@@ -54,8 +54,8 @@ class Task(object):
 
         # NOTE GPU: we allow `mpi` for backward compatibility - but need to
         #      convert the bool into a decent value for `cpu_process_type`
-        if  descr[cud.CPU_PROCESS_TYPE] in [True, 'True']:
-            descr[cud.CPU_PROCESS_TYPE] = cud.MPI
+        if  descr[td.CPU_PROCESS_TYPE] in [True, 'True']:
+            descr[td.CPU_PROCESS_TYPE] = td.MPI
 
         # ensure that the description is viable
         descr.verify()

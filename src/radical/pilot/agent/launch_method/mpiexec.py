@@ -61,10 +61,10 @@ class MPIExec(LaunchMethod):
     def construct_command(self, cu, launch_script_hop):
 
         slots        = cu['slots']
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_env     = cud.get('environment') or dict()
-        task_args    = cud.get('arguments')   or list()
+        td          = cu['description']
+        task_exec    = td['executable']
+        task_env     = td.get('environment') or dict()
+        task_args    = td.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
         # Construct the executable and arguments
@@ -74,10 +74,10 @@ class MPIExec(LaunchMethod):
         # Cheyenne is the only machine that requires mpirun_mpt.  We then
         # have to set MPI_SHEPHERD=true
         if self._mpt:
-            if not cud.get('environment'):
-                cud['environment'] = dict()
-            cud['environment']['MPI_SHEPHERD'] = 'true'
-            task_env = cud['environment']
+            if not td.get('environment'):
+                td['environment'] = dict()
+            td['environment']['MPI_SHEPHERD'] = 'true'
+            task_env = td['environment']
 
         env_string = ''
         env_list   = self.EXPORT_ENV_VARIABLES + list(task_env.keys())

@@ -80,12 +80,12 @@ class MPIRun(LaunchMethod):
 
         slots        = cu['slots']
         uid          = cu['uid']
-        cud          = cu['description']
+        td          = cu['description']
         sandbox      = cu['task_sandbox_path']
-        task_exec    = cud['executable']
-        task_threads = cud.get('cpu_threads', 1)
-        task_env     = cud.get('environment') or dict()
-        task_args    = cud.get('arguments')   or list()
+        task_exec    = td['executable']
+        task_threads = td.get('cpu_threads', 1)
+        task_env     = td.get('environment') or dict()
+        task_args    = td.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
         if '_dplace' in self.name and task_threads > 1:

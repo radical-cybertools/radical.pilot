@@ -23,7 +23,7 @@ from .base import AgentSchedulingComponent
 
 # General idea:
 # The availability will be obtained from the rm_node_list and assigned to
-# the node list of the class. The requirement will be obtained from the cud in
+# the node list of the class. The requirement will be obtained from the td in
 # the alloc_nompi and alloc_mpi methods. Using the availability and
 # requirement, the _find_resources method will return the core and gpu ids.
 #
@@ -402,11 +402,11 @@ class ContinuousSummit(AgentSchedulingComponent):
         '''
 
         uid = task['uid']
-        cud = task['description']
+        td = task['description']
 
         # single_node allocation is enforced for non-message passing tasks
-        if cud['cpu_process_type'] in [rpc.MPI] or \
-           cud['gpu_process_type'] in [rpc.MPI]:
+        if td['cpu_process_type'] in [rpc.MPI] or \
+           td['gpu_process_type'] in [rpc.MPI]:
             slots = self._alloc_mpi(task)
         else:
             slots = self._alloc_nompi(task)
@@ -661,18 +661,18 @@ class ContinuousSummit(AgentSchedulingComponent):
         Find a suitable set of cores and gpus *within a single node*.
 
         Input:
-        cud: Task description. Needs to specify at least one CPU
+        td: Task description. Needs to specify at least one CPU
         process and one thread per CPU process, or one GPU process.
         """
 
         uid = task['uid']
-        cud = task['description']
+        td = task['description']
 
         # dig out the allocation request details
-        requested_procs  = cud['cpu_processes']
-        threads_per_proc = cud['cpu_threads']
-        requested_gpus   = cud['gpu_processes']
-        requested_lfs    = cud['lfs_per_process']
+        requested_procs  = td['cpu_processes']
+        threads_per_proc = td['cpu_threads']
+        requested_gpus   = td['gpu_processes']
+        requested_lfs    = td['lfs_per_process']
         lfs_chunk        = requested_lfs if requested_lfs > 0 else 1
 
         # make sure that processes are at least single-threaded
@@ -707,7 +707,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         lfs       = None
         node_name = None
         node_uid  = None
-        tag       = cud.get('tag')
+        tag       = td.get('tag')
 
         for node in self.nodes:  # FIXME optimization: iteration start
 
@@ -749,10 +749,10 @@ class ContinuousSummit(AgentSchedulingComponent):
         core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
 
         # We need to specify the node lfs path that the task needs to use.
-        # We set it as an environment variable that gets loaded with cud
+        # We set it as an environment variable that gets loaded with td
         # executable.
         # Assumption enforced: The LFS path is the same across all nodes.
-        cud['environment']['NODE_LFS_PATH'] = self._rm_lfs_per_node['path']
+        td['environment']['NODE_LFS_PATH'] = self._rm_lfs_per_node['path']
 
         # all the information for placing the task is acquired - return them
         slots = {'nodes': [{'name'    : node_name,
@@ -792,13 +792,13 @@ class ContinuousSummit(AgentSchedulingComponent):
         """
 
         uid = task['uid']
-        cud = task['description']
+        td = task['description']
 
         # dig out the allocation request details
-        requested_procs  = cud['cpu_processes']
-        threads_per_proc = cud['cpu_threads']
-        requested_gpus   = cud['gpu_processes']
-        requested_lfs_per_process = cud['lfs_per_process']
+        requested_procs  = td['cpu_processes']
+        threads_per_proc = td['cpu_threads']
+        requested_gpus   = td['gpu_processes']
+        requested_lfs_per_process = td['lfs_per_process']
 
         # make sure that processes are at least single-threaded
         if not threads_per_proc:
@@ -862,7 +862,7 @@ class ContinuousSummit(AgentSchedulingComponent):
                  'lm_info'       : self._rm_lm_info,
                 }
 
-        tag = cud.get('tag')
+        tag = td.get('tag')
 
         # start the search
         for node in self.nodes:
@@ -934,12 +934,12 @@ class ContinuousSummit(AgentSchedulingComponent):
             core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
 
             # We need to specify the node lfs path that the task needs to use.
-            # We set it as an environment variable that gets loaded with cud
+            # We set it as an environment variable that gets loaded with td
             # executable.
             # Assumption enforced: The LFS path is the same across all nodes.
             lfs_path = self._rm_lfs_per_node['path']
-            if 'NODE_LFS_PATH' not in cud['environment']:
-                cud['environment']['NODE_LFS_PATH'] = lfs_path
+            if 'NODE_LFS_PATH' not in td['environment']:
+                td['environment']['NODE_LFS_PATH'] = lfs_path
 
             slots['nodes'].append({'name'    : node_name,
                                    'uid'     : node_uid,

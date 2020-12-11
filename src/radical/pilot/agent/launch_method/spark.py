@@ -168,10 +168,10 @@ class Spark(LaunchMethod):
     def construct_command(self, cu, launch_script_hop):
 
         slots        = cu['slots']
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_args    = cud.get('arguments')
-        task_env     = cud.get('environment')
+        td          = cu['description']
+        task_exec    = td['executable']
+        task_args    = td.get('arguments')
+        task_env     = td.get('environment')
 
         # Construct the args_string which is the arguments given as input to the
         # shell script. Needs to be a string

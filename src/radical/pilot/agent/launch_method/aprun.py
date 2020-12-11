@@ -37,10 +37,10 @@ class APRun(LaunchMethod):
     #
     def construct_command(self, cu, launch_script_hop):
 
-        cud        = cu['description']
+        td        = cu['description']
         slots      = cu['slots']
-        executable = cud['executable']
-        args       = cud['arguments']
+        executable = td['executable']
+        args       = td['arguments']
         argstr     = self._create_arg_string(args)
 
         if argstr: cmd = "%s %s" % (executable, argstr)

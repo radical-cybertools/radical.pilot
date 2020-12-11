@@ -37,9 +37,9 @@ class Fork(LaunchMethod):
         # NOTE: ignore thread and process counts, and expect application to do
         #       the needful
 
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_args    = cud.get('arguments') or []
+        td          = cu['description']
+        task_exec    = td['executable']
+        task_args    = td.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)
 
         if task_argstr:

@@ -87,27 +87,27 @@ if __name__ == '__main__':
         p_num = 3  # number of processes (MPI)
         report.info('create %d task description(s)\n\t' % n)
 
-        cuds = list()
+        tds = list()
         for i in range(0, n):
 
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.TaskDescription()
-            cud.executable       = '/bin/sh'
-            cud.arguments        = ['09_mpi_tasks.sh']
-            cud.input_staging    = ['%s/09_mpi_tasks.sh' % PWD]
-            cud.cpu_processes    = p_num
-            cud.cpu_process_type = rp.MPI
-            cud.cpu_threads      = t_num
-            cud.cpu_thread_type  = rp.OpenMP
-            cuds.append(cud)
+            td = rp.TaskDescription()
+            td.executable       = '/bin/sh'
+            td.arguments        = ['09_mpi_tasks.sh']
+            td.input_staging    = ['%s/09_mpi_tasks.sh' % PWD]
+            td.cpu_processes    = p_num
+            td.cpu_process_type = rp.MPI
+            td.cpu_threads      = t_num
+            td.cpu_thread_type  = rp.OpenMP
+            tds.append(td)
             report.progress()
         report.ok('>>ok\n')
 
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        tasks = umgr.submit_tasks(cuds)
+        tasks = umgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED)
         report.header('gather results')

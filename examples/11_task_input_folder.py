@@ -89,7 +89,7 @@ if __name__ == '__main__':
         print('Dummy folder created')
 
         report.info('create %d task description(s)\n\t' % n)
-        cuds = list()
+        tds = list()
         for i in range(0, n):
 
             path  = '/tmp/stage_in_folder_%d/' % i
@@ -97,27 +97,27 @@ if __name__ == '__main__':
             full  = '%s/%s'  % (path, fname)
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.TaskDescription()
-            cud.executable     = '/usr/bin/wc'
-            cud.arguments      = ['-c', fname]
-            cud.input_staging  = {'source': full,
+            td = rp.TaskDescription()
+            td.executable     = '/usr/bin/wc'
+            td.arguments      = ['-c', fname]
+            td.input_staging  = {'source': full,
                                   'target': 'task:///%s' % fname,
                                   'action': rp.MOVE
                                   }
 
-            cud.output_staging = {'source': 'task:///%s' % fname,
+            td.output_staging = {'source': 'task:///%s' % fname,
                                   'target': 'pilot:///input_%d_moved' % i,
                                   'action': rp.MOVE
                                  }
 
-            cuds.append(cud)
+            tds.append(td)
             report.progress()
         report.ok('>>ok\n')
 
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        tasks = umgr.submit_tasks(cuds)
+        tasks = umgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')

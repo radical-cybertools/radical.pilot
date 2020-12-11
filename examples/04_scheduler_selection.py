@@ -93,23 +93,23 @@ if __name__ == '__main__':
         n = 256  # number of tasks to run
         report.info('create %d task description(s)\n\t' % n)
 
-        cuds = list()
+        tds = list()
         for i in range(0, n):
 
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.TaskDescription()
-            cud.executable = '/bin/echo'
-            cud.arguments  = ['$RP_PILOT_ID']
+            td = rp.TaskDescription()
+            td.executable = '/bin/echo'
+            td.arguments  = ['$RP_PILOT_ID']
 
-            cuds.append(cud)
+            tds.append(td)
             report.progress()
         report.ok('>>ok\n')
 
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        tasks = umgr.submit_tasks(cuds)
+        tasks = umgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')

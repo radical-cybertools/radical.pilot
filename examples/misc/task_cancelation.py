@@ -34,15 +34,15 @@ if __name__ == '__main__':
         # submit 32 tasks, each running for 10 seconds.  We have 8 cores, so the
         # tasks will run in 4 batches of 8 at a time.
         t_start = time.time()
-        cuds    = list()
+        tds    = list()
         for _ in range(32):
 
-            cud = rp.TaskDescription()
-            cud.executable = '%s/examples/hello_rp.sh' % os.getcwd()
-            cud.arguments  = [10]
-            cuds.append(cud)
+            td = rp.TaskDescription()
+            td.executable = '%s/examples/hello_rp.sh' % os.getcwd()
+            td.arguments  = [10]
+            tds.append(td)
 
-        tasks = umgr.submit_tasks(cuds)
+        tasks = umgr.submit_tasks(tds)
 
         # wait until 8 tasks are done (16 cores: should take about 10 seconds
         print('%d total  - wait for 8 tasks' % len(tasks))

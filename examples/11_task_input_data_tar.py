@@ -87,31 +87,31 @@ if __name__ == '__main__':
         n = 16   # number of tasks to run
         report.info('create %d task description(s)\n\t' % n)
 
-        cuds = list()
+        tds = list()
         for i in range(0, n):
 
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.TaskDescription()
-            cud.executable     = 'ls'
-            cud.arguments      = ['-la']
+            td = rp.TaskDescription()
+            td.executable     = 'ls'
+            td.arguments      = ['-la']
 
             # Move multiple files to a Task by using a tarball
-            cud.input_staging  = [{'source': 'client:///input.dat',
+            td.input_staging  = [{'source': 'client:///input.dat',
                                    'target': 'task:///input.dat',
                                    'action': rp.TARBALL},
                                   {'source': 'client:///input2.dat',
                                    'target': 'task:///input2.dat',
                                    'action': rp.TARBALL}]
 
-            cuds.append(cud)
+            tds.append(td)
             report.progress()
         report.ok('>>ok\n')
 
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        tasks = umgr.submit_tasks(cuds)
+        tasks = umgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')

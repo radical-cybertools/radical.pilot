@@ -143,50 +143,50 @@ def test_nonmpi_task_withhombre_scheduler(mocked_init,
                          })
 
     # Allocate first TD -- should land on second node
-    cud  = cud_nonmpi()
-    slot = component._allocate_slot(cud)
+    td  = cud_nonmpi()
+    slot = component._allocate_slot(td)
     chk = all_slots[-1]
 
     assert(slot == chk)
 
     # Allocate second TD -- should also land on second node
-    cud  = cud_nonmpi()
-    slot = component._allocate_slot(cud)
+    td  = cud_nonmpi()
+    slot = component._allocate_slot(td)
     chk = all_slots[-2]
 
     assert(slot == chk)
 
     # Allocate third TD -- should land on first node
-    cud  = cud_nonmpi()
-    slot = component._allocate_slot(cud)
+    td  = cud_nonmpi()
+    slot = component._allocate_slot(td)
     chk = all_slots[-3]
 
     assert(slot == chk)
 
     # Allocate fourth TD -- should also land on tecond node
-    cud  = cud_nonmpi()
-    slot = component._allocate_slot(cud)
+    td  = cud_nonmpi()
+    slot = component._allocate_slot(td)
     assert slot == all_slots[-4]
 
     # Fail with ValueError if heterogeneous  CUs are scheduled
     with pytest.raises(ValueError):
 
-        cud = cud_nonmpi()
-        cud['gpu_processes'] = 2
-        slot = component._allocate_slot(cud)
+        td = cud_nonmpi()
+        td['gpu_processes'] = 2
+        slot = component._allocate_slot(td)
 
 
     # expext no slots now, as all resources are used
-    cud    = cud_nonmpi()
-    noslot = component._allocate_slot(cud)
+    td    = cud_nonmpi()
+    noslot = component._allocate_slot(td)
     assert(noslot is None)
 
     # Deallocate last filled slot
     component._release_slot(slot)
 
     # we should get a new slot now, which is the same as the one just freed
-    cud     = cud_nonmpi()
-    newslot = component._allocate_slot(cud)
+    td     = cud_nonmpi()
+    newslot = component._allocate_slot(td)
     assert(newslot == slot)
 
     tearDown(session)
@@ -239,35 +239,35 @@ def test_mpi_task_withhombre_scheduler(mocked_init,
                  }]
 
     # Allocate first TD -- should land on second node
-    cud  = cud_mpi()
-    slot = component._allocate_slot(cud)
+    td  = cud_mpi()
+    slot = component._allocate_slot(td)
     chk  = all_slots[-1]
 
     assert(slot == chk)
 
     # Allocate second TD -- should land on first node
-    cud  = cud_mpi()
-    slot = component._allocate_slot(cud)
+    td  = cud_mpi()
+    slot = component._allocate_slot(td)
     assert slot == all_slots[-2]
 
     # Fail with ValueError if heterogeneous  CUs are scheduled
     with pytest.raises(ValueError):
 
-        cud = cud_mpi()
-        cud['gpu_processes'] = 2
-        slot = component._allocate_slot(cud)
+        td = cud_mpi()
+        td['gpu_processes'] = 2
+        slot = component._allocate_slot(td)
 
     # expext no slots now, as all resources are used
-    cud    = cud_mpi()
-    noslot = component._allocate_slot(cud)
+    td    = cud_mpi()
+    noslot = component._allocate_slot(td)
     assert(noslot is None)
 
     # Deallocate last filled slot
     component._release_slot(slot)
 
     # we should get a new slot now, which is the same as the one just freed
-    cud     = cud_mpi()
-    newslot = component._allocate_slot(cud)
+    td     = cud_mpi()
+    newslot = component._allocate_slot(td)
     assert(newslot == slot)
 
     tearDown(session)

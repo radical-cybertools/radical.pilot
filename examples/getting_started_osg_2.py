@@ -125,19 +125,19 @@ if __name__ == '__main__':
 
         report.info('create %d task description(s)\n\t' % n_tasks)
 
-        cuds  = list()
+        tds  = list()
         start = time.time()
         for i in range(n_tasks):
 
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.TaskDescription()
+            td = rp.TaskDescription()
             # trigger an error now and then
           # if i % 2:
-            cud.executable = '/bin/echo'
-            cud.arguments  = ['$RP_PILOT_ID']
+            td.executable = '/bin/echo'
+            td.arguments  = ['$RP_PILOT_ID']
 
-            cuds.append(cud)
+            tds.append(td)
             report.progress()
         report.ok('>>ok\n')
 
@@ -145,7 +145,7 @@ if __name__ == '__main__':
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
         start  = time.time()
-        tasks  = umgr.submit_tasks(cuds)
+        tasks  = umgr.submit_tasks(tds)
         stop   = time.time()
         print(' === > %s' % (stop - start))
 

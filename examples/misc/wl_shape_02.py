@@ -72,29 +72,29 @@ if __name__ == '__main__':
         n = 2
         n = 2 * 1024  # number of tasks to run
         report.info('create %d task description(s)\n\t' % n)
-        cuds = list()
+        tds = list()
         for i in range(0, n):
 
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.TaskDescription()
-            cud.executable       = 'date'
-          # cud.arguments        = '1'.split()
-          # cud.executable       = 'gmx'
-          # cud.arguments        = args.split()
-            cud.tags             = tags
-            cud.gpu_processes    = 0
-            cud.cpu_processes    = 2  # '1-32'
-            cud.cpu_threads      = 2  # '1-16'
-            cud.cpu_process_type = rp.MPI
-            cud.cpu_thread_type  = rp.OpenMP
-      #     cud.input_staging    = cudis
+            td = rp.TaskDescription()
+            td.executable       = 'date'
+          # td.arguments        = '1'.split()
+          # td.executable       = 'gmx'
+          # td.arguments        = args.split()
+            td.tags             = tags
+            td.gpu_processes    = 0
+            td.cpu_processes    = 2  # '1-32'
+            td.cpu_threads      = 2  # '1-16'
+            td.cpu_process_type = rp.MPI
+            td.cpu_thread_type  = rp.OpenMP
+      #     td.input_staging    = cudis
 
-            cuds.append(cud)
+            tds.append(td)
             report.progress()
         report.ok('>>ok\n')
 
-        umgr.submit_tasks(cuds)
+        umgr.submit_tasks(tds)
         report.header('gather results')
         umgr.wait_tasks()
 

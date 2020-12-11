@@ -254,14 +254,14 @@ class PRTE2(LaunchMethod):
         time.sleep(0.1)
 
         slots     = cu['slots']
-        cud       = cu['description']
+        td       = cu['description']
 
-        task_exec = cud['executable']
-        task_args = cud.get('arguments') or []
-        task_env  = cud.get('environment') or {}
+        task_exec = td['executable']
+        task_args = td.get('arguments') or []
+        task_env  = td.get('environment') or {}
 
-        n_procs   = cud.get('cpu_processes') or 1
-        n_threads = cud.get('cpu_threads') or 1
+        n_procs   = td.get('cpu_processes') or 1
+        n_threads = td.get('cpu_threads') or 1
 
         if not slots.get('lm_info'):
             raise RuntimeError('lm_info not set (%s): %s' % (self.name, slots))

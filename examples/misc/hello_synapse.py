@@ -83,15 +83,15 @@ if __name__ == '__main__':
 
         # we create one pseudo task which installs radical.synapse in the pilot
         # ve
-        cud = rp.TaskDescription()
-        cud.pre_exec    = ["unset PYTHONPATH",
+        td = rp.TaskDescription()
+        td.pre_exec    = ["unset PYTHONPATH",
                            "virtualenv /tmp/rp_synapse_ve_$USER",
                            ". /tmp/rp_synapse_ve_$USER/bin/activate",
                            "pip install --upgrade radical.synapse"]
-        cud.executable  = "radical-synapse-version"
-        cud.cpu_processes = 1
+        td.executable  = "radical-synapse-version"
+        td.cpu_processes = 1
 
-        cu = umgr.submit_tasks(cud)
+        cu = umgr.submit_tasks(td)
         umgr.wait_tasks(cu.uid)
         assert(cu.state == rp.DONE)
 
@@ -104,24 +104,24 @@ if __name__ == '__main__':
         n = 128   # number of tasks to run
         report.info('create %d task description(s)\n\t' % n)
 
-        cuds = list()
+        tds = list()
         for i in range(0, n):
 
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.TaskDescription()
-            cud.pre_exec       = ["unset PYTHONPATH",
+            td = rp.TaskDescription()
+            td.pre_exec       = ["unset PYTHONPATH",
                                   ". /tmp/rp_synapse_ve_$USER/bin/activate"]
-            cud.executable     = "radical-synapse-sample"
-            cud.arguments      = ("-m sample -f %s -s 1" % (FLOPS)).split()
-            cuds.append(cud)
+            td.executable     = "radical-synapse-sample"
+            td.arguments      = ("-m sample -f %s -s 1" % (FLOPS)).split()
+            tds.append(td)
             report.progress()
         report.ok('>>ok\n')
 
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        tasks = umgr.submit_tasks(cuds)
+        tasks = umgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state
         # (DONE, CANCELED or FAILED).
