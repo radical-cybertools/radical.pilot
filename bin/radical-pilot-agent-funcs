@@ -278,29 +278,33 @@ class Executor(object):
                                 globals()[mod] = ru.import_module(mod)
                                 locals() [mod] = globals()[mod]
 
-                try:
-                    function_code = self.prepare_func(exe, args)
-                except Exception:
-                    self._log.debug("Setting the function for execution failed!.")
-                    raise
-                
-                @contextlib.contextmanager
-                def stdoutIO(stdout=None):
-                    old = sys.stdout
-                    if stdout is None:
-                       stdout = StringIO()
-                    sys.stdout = stdout
-                    yield stdout
-                    sys.stdout = old
-                
-                with stdoutIO() as s:
-                     exec(function_code)
-        
-                #task['stdout'] = eval(cmd) # We need to find a way to keey this option!!!
-                task['stdout'] = s.getvalue()
+                if isinstance(exe, dict):
+
+                    try:
+                        function_code = self.prepare_func(exe, args)
+                    except Exception:
+                        self._log.debug("Setting the function for execution failed!.")
+                        raise
+                    
+                    @contextlib.contextmanager
+                    def stdoutIO(stdout=None):
+                        old = sys.stdout
+                        if stdout is None:
+                           stdout = StringIO()
+                        sys.stdout = stdout
+                        yield stdout
+                        sys.stdout = old
+                    
+                    with stdoutIO() as s:
+                         exec(function_code)
+                    
+                    task['stdout'] = s.getvalue()
+
+                else:
+                    task['stdout'] = eval(cmd)
+
                 task['stderr'] = None
                 task['state']  = 'DONE'
-
             except Exception as e:
                 task['stdout'] = None
                 task['stderr'] = str(e)
