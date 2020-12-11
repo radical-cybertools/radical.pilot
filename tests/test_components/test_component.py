@@ -4,8 +4,8 @@
 __copyright__ = "Copyright 2020, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-from unittest import TestCase
-from unittest import mock
+from tasktest import TestCase
+from tasktest import mock
 
 from radical.pilot.utils.component import Component
 

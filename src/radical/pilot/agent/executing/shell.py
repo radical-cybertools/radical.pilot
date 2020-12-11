@@ -112,7 +112,7 @@ class Shell(AgentExecutingComponent):
                         if key in self._cfg['export_to_cu']:
                             self._env_cu_export[key] = val
 
-        # the registry keeps track of units to watch, indexed by their shell
+        # the registry keeps track of tasks to watch, indexed by their shell
         # spawner process ID.  As the registry is shared between the spawner and
         # watcher thread, we use a lock while accessing it.
         self._registry      = dict()
@@ -166,9 +166,9 @@ class Shell(AgentExecutingComponent):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_units':
+        if cmd == 'cancel_tasks':
 
-            self._log.info("cancel_units command (%s)" % arg)
+            self._log.info("cancel_tasks command (%s)" % arg)
             with self._cancel_lock:
                 self._cus_to_cancel.append(arg['uids'])
 
@@ -177,23 +177,23 @@ class Shell(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
+    def work(self, tasks):
 
-        if not isinstance(units, list):
-            units = [units]
+        if not isinstance(tasks, list):
+            tasks = [tasks]
 
-        self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
+        self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        for unit in units:
+        for task in tasks:
 
-            self._handle_unit(unit)
+            self._handle_task(task)
 
 
     # --------------------------------------------------------------------------
     #
-    def _handle_unit(self, cu):
+    def _handle_task(self, cu):
 
-        # check that we don't start any units which need cancelling
+        # check that we don't start any tasks which need cancelling
         if cu['uid'] in self._cus_to_cancel:
 
             with self._cancel_lock:
@@ -203,7 +203,7 @@ class Shell(AgentExecutingComponent):
             self.advance(cu, rps.CANCELED, publish=True, push=False)
             return True
 
-        # otherwise, check if we have any active units to cancel
+        # otherwise, check if we have any active tasks to cancel
         # FIXME: this should probably go into a separate idle callback
         if self._cus_to_cancel:
 
@@ -222,7 +222,7 @@ class Shell(AgentExecutingComponent):
                         ret, out, _ = self.launcher_shell.run_sync(
                                                              'CANCEL %s\n', pid)
                         if  ret != 0:
-                            self._log.error("unit cancel failed '%s': (%s)(%s)",
+                            self._log.error("task cancel failed '%s': (%s)(%s)",
                                             cu_uid, ret, out)
                         # successful or not, we only try once
                         del(self._registry[pid])
@@ -244,18 +244,18 @@ class Shell(AgentExecutingComponent):
             if not launcher:
                 raise RuntimeError("no launcher (process type = %s)" % cpt)
 
-            self._log.debug("Launching unit with %s (%s).",
+            self._log.debug("Launching task with %s (%s).",
                             launcher.name, launcher.launch_command)
 
             assert(cu['slots'])
 
-            # Start a new subprocess to launch the unit
+            # Start a new subprocess to launch the task
             self.spawn(launcher=launcher, cu=cu)
 
         except Exception as e:
-            # append the startup error to the units stderr.  This is
+            # append the startup error to the tasks stderr.  This is
             # not completely correct (as this text is not produced
-            # by the unit), but it seems the most intuitive way to
+            # by the task), but it seems the most intuitive way to
             # communicate that error to the application/user.
             self._log.exception("error running CU")
             cu['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
@@ -280,15 +280,15 @@ class Shell(AgentExecutingComponent):
         cmd   = ""
 
         descr   = cu['description']
-        sandbox = cu['unit_sandbox_path']
+        sandbox = cu['task_sandbox_path']
 
         env  += "# CU environment\n"
         env  += "export RP_SESSION_ID=%s\n"     % self._cfg['sid']
         env  += "export RP_PILOT_ID=%s\n"       % self._cfg['pid']
         env  += "export RP_AGENT_ID=%s\n"       % self._cfg['aid']
         env  += "export RP_SPAWNER_ID=%s\n"     % self.uid
-        env  += "export RP_UNIT_ID=%s\n"        % cu['uid']
-        env  += 'export RP_UNIT_NAME="%s"\n'    % cu['description'].get('name')
+        env  += "export RP_TASK_ID=%s\n"        % cu['uid']
+        env  += 'export RP_TASK_NAME="%s"\n'    % cu['description'].get('name')
         env  += 'export RP_GTOD="%s"\n'         % cu['gtod']
         env  += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
                                                 % self._pwd
@@ -302,7 +302,7 @@ prof(){
     fi
     event=$1
     now=$($RP_GTOD)
-    echo "$now,$event,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING," >> $RP_PROF
+    echo "$now,$event,task_script,MainThread,$RP_TASK_ID,AGENT_EXECUTING," >> $RP_PROF
 }
 '''
 
@@ -310,7 +310,7 @@ prof(){
         for k,v in self._env_cu_export.items():
             env += "export %s=%s\n" % (k,v)
 
-        # also add any env vars requested in hte unit description
+        # also add any env vars requested in hte task description
         if descr['environment']:
             for e in descr['environment']:
                 env += "export %s=%s\n"  %  (e, descr['environment'][e])
@@ -407,7 +407,7 @@ prof(){
         ret, out, _ = self.launcher_shell.run_sync (run_cmd)
 
         if  ret != 0 :
-            raise RuntimeError("failed to run unit '%s': (%s)(%s)" %
+            raise RuntimeError("failed to run task '%s': (%s)(%s)" %
                                (run_cmd, ret, out))
 
         lines = [_f for _f in out.split ("\n") if _f]
@@ -415,10 +415,10 @@ prof(){
         self._log.debug (lines)
 
         if  len (lines) < 2 :
-            raise RuntimeError ("Failed to run unit (%s)", lines)
+            raise RuntimeError ("Failed to run task (%s)", lines)
 
         if  lines[-2] != "OK" :
-            raise RuntimeError ("Failed to run unit (%s)" % lines)
+            raise RuntimeError ("Failed to run task (%s)" % lines)
 
         # FIXME: verify format of returned pid (\d+)!
         pid       = lines[-1].strip ()
@@ -429,12 +429,12 @@ prof(){
         ret, out = self.launcher_shell.find_prompt ()
         if  ret != 0 :
             self._prof.prof('exec_fail', uid=cu['uid'])
-            raise RuntimeError ("failed to run unit '%s': (%s)(%s)"
+            raise RuntimeError ("failed to run task '%s': (%s)(%s)"
                              % (run_cmd, ret, out))
 
         self._prof.prof('exec_ok', uid=cu['uid'])
 
-        # for convenience, we link the ExecWorker job-cwd to the unit sandbox
+        # for convenience, we link the ExecWorker job-cwd to the task sandbox
         try:
             os.symlink("%s/%s" % (self._spawner_tmp, cu['pid']),
                        "%s/%s" % (sandbox, 'SHELL_SPAWNER_TMP'))
@@ -469,7 +469,7 @@ prof(){
 
                 if not line:
 
-                    # just a read timeout, i.e. an opportunity to check for
+                    # just a read timeout, i.e. an opporttasky to check for
                     # termination signals...
                     if  self._terminate.is_set() :
                         self._log.debug ("stop monitoring")
@@ -583,11 +583,11 @@ prof(){
         else    : cu['exit_code'] = None
 
         if rp_state in [rps.FAILED, rps.CANCELED] :
-            # The unit failed - fail after staging output
+            # The task failed - fail after staging output
             cu['target_state'] = rps.FAILED
 
         else:
-            # The unit finished cleanly, see if we need to deal with
+            # The task finished cleanly, see if we need to deal with
             # output data.  We always move to stageout, even if there are no
             # directives -- at the very least, we'll upload stdout/stderr
             cu['target_state'] = rps.DONE

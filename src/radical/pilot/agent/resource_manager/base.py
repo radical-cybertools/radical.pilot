@@ -139,7 +139,7 @@ class ResourceManager(object):
 
         # Check if we can do any work
         if not self.node_list:
-            raise RuntimeError('ResourceManager has no nodes left to run units')
+            raise RuntimeError('ResourceManager has no nodes left to run tasks')
 
         # After ResourceManager configuration, we call any existing config hooks
         # on the launch methods.  Those hooks may need to adjust the
@@ -190,7 +190,7 @@ class ResourceManager(object):
         #
         # five elements are well defined:
         #   lm_info:        the dict received via the LM's rm_config_hook
-        #   node_list:      a list of node names to be used for unit execution
+        #   node_list:      a list of node names to be used for task execution
         #   cores_per_node: as the name says
         #   gpus_per_node:  as the name says
         #   agent_nodes:    list of node names reserved for agent execution

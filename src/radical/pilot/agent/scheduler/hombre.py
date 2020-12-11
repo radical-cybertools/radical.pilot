@@ -65,7 +65,7 @@ class Hombre(AgentSchedulingComponent):
             raise ValueError('HOMBRE needs oversubscription enabled')
 
         # NOTE: We delay the actual configuration until we received the first
-        #       unit to schedule - at that point we can slice and dice the
+        #       task to schedule - at that point we can slice and dice the
         #       resources into suitable static slots.
         self._configured = False
 
@@ -106,7 +106,7 @@ class Hombre(AgentSchedulingComponent):
             # single node task - check if it fits
             if cores_needed > self.cpn or \
                gpus_needed  > self.gpn:
-                raise ValueError('unit does not fit on node')
+                raise ValueError('task does not fit on node')
 
 
         # ---------------------------------------------------------------------
@@ -217,7 +217,7 @@ class Hombre(AgentSchedulingComponent):
     def _allocate_slot(self, cud):
         '''
         This is the main method of this implementation, and is triggered when
-        a unit needs to be mapped to a set of cores / gpus.
+        a task needs to be mapped to a set of cores / gpus.
         '''
 
       # self._log.debug('=> allocate [%d]', len(self.free))

@@ -33,7 +33,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - Fix #2221
   - Fix read_config
   - doc fixes / additions
-  - adding unit tests, component tests
+  - adding task tests, component tests
   - remove old examples
   - fixing rp_analytics #2114
   - inject workers as MPI task
@@ -41,7 +41,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - mpirun configs for traverse, stampede2
   - ru.Config is responsible to pick configs from correct paths
   - test agent execution/base
-  - unit test for popen/spawn #1881
+  - task test for popen/spawn #1881
 
 
 1.5.4 Release                                                         2020-10-01
@@ -54,7 +54,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
 --------------------------------------------------------------------------------
 
   - Arbitrary udurations for consumed resources
-  - Fix unit tests
+  - Fix task tests
   - Fix python stack on Summit
   - add module test
   - added PRTE2 for PRRTEv2
@@ -199,7 +199,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - ensure PATH setting for sub-agents
   - CUDA is now handled by LM
   - fix / improve documentation
-  - Sched optimization: unit lookup in O(1)
+  - Sched optimization: task lookup in O(1)
   - Stampede2 prun config
   - testing, flaking, linting and travis fixes
   - add `pilot.stage_out` (symmetric to `pilot.stage_in`)
@@ -252,14 +252,14 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - archive ORTE
   - increase bootstrap timeouts
   - consolidate MPI related launch methods
-  - unit testing and linting
+  - task testing and linting
   - archive ORTE, issue #1915
   - fix `get_mpi_info` for Open MPI
   - base classes to raise notimplemented. issue #1920
   - remove outdated resources
   - ensure that pilot env reaches func executor
   - ensureID uniqueness across processes
-  - fix inconsistencies in unit sandbox handling
+  - fix inconsistencies in task sandbox handling
   - fix gpu placement alg
   - fix issue #1910
   - fix torque nodefile name and path
@@ -337,7 +337,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
 0.62.0  Release                                                       2019-06-08
 --------------------------------------------------------------------------------
 
-  - add unit test
+  - add task test
   - trigger tests
   - remove obsolete fifo scheduler (use the ordered scheduler instead)
   - add ordered scheduler
@@ -345,7 +345,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - add ssh access to cheyenne
   - cleanup examples
   - fix dplace support
-  - support app specified unit sandboxes
+  - support app specified task sandboxes
   - fix pilot statepush over tunnels
   - fix titan ve creation, add new static ve
   - fix for cheyenne
@@ -375,7 +375,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - rename RP_PILOT_SBOX to RP_PILOT_STAGING and expose to tasks
   - fix bridges default partition (#1816)
   - fix #1826
-  - fix off-by-one error on unit state check
+  - fix off-by-one error on task state check
   - ignore failing DB disconnect
   - follow rename of saga-python to radical.saga
 
@@ -402,7 +402,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
 --------------------------------------------------------------------------------
 
   - fix Titan OMPI installation
-  - support metdata for units
+  - support metdata for tasks
   - fix git error detection during setup
 
 
@@ -544,7 +544,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
 0.47.12 Release                                                       2018-05-19
 --------------------------------------------------------------------------------
 
-  - ensure that units are started in their own process group, to ensure clean
+  - ensure that tasks are started in their own process group, to ensure clean
     cancellation semantics.
 
 
@@ -639,7 +639,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - add xsede.supermic_orte configuration
   - add xsede.supermic_ortelib configuration
   - apply RU's managed process to termination stress test
-  - attempt to localize aprun units
+  - attempt to localize aprun tasks
   - better hops for titan
   - better integration of CU script and app profs
   - catch up with config changes for local testing
@@ -662,7 +662,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - make sure a canceled pilot stays canceled
   - make cb return codes consistent
   - make sure profs are flushed on termination
-  - make sure the umgr only pulls units its interested in
+  - make sure the umgr only pulls tasks its interested in
   - profile mkdir
   - publish resource_details (incl. lm_info) again
   - re-add a profile flag to advance()
@@ -672,7 +672,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - setup number of cores per node on stampede2
   - smaller default pilot size for supermic
   - switch to ibrun for comet_ssh
-  - track unit drops
+  - track task drops
   - use js hop for untar
   - using new process class
   - GPU/CPU pinning test is now complete, needs some env settings in the launchers
@@ -775,7 +775,7 @@ Version 0.46                                                          2017-08-11
   - update installation.rst
   - analytics backport
   - use profiler from RU
-  - when calling a unit state callback, missed states also trigger callbacks
+  - when calling a task state callback, missed states also trigger callbacks
 
 
 0.43.1 Release                                                        2016-09-09
@@ -804,14 +804,14 @@ Version 0.46                                                          2017-08-11
   - fix getip
   - fix iface detection
   - fix reordering of states for some update sequences
-  - fix unit cancellation
+  - fix task cancellation
   - improve ve create script
   - make orte-submit aware of non-mpi CUs
   - move env preservation to an earlier point, to avoid pre-exec stuff
   - Python distribution mandatory to all confs
   - Remove temp agent config directory.
   - Resolving #1107
-  - Schedule behind the real unit and support multicore.
+  - Schedule behind the real task and support multicore.
   - SchedulerContinuous -> AgentSchedulingComponent.
   - Take ccmrun out of bootstrap_2.
   - Tempfile is not a tempfile so requires explicit removal.
@@ -919,7 +919,7 @@ Version 0.46                                                          2017-08-11
 0.37.5 Release                                                        2015-10-19
 --------------------------------------------------------------------------------
 
-  - timing fix to ensure unit state ordering
+  - timing fix to ensure task state ordering
 
 
 0.37.3 Release                                                        2015-10-19
@@ -946,12 +946,12 @@ Version 0.46                                                          2017-08-11
 
   - change default spawner to POPEN
   - use hostlist to avoid mpirun* limitations
-  - support default callbacks on units and pilots
+  - support default callbacks on tasks and pilots
   - use a config for examples
   - add lrms shutdown hook for ORTE LM
   - various updates to examples and documentation
   - create logfile and profile tarballs on the fly
-  - export some RP env vars to units
+  - export some RP env vars to tasks
   - Fix a mongodb race
   - internally unregister pilot cbs on shutdown
   - move agent.stop to finally clause, to correctly react on signals
@@ -972,7 +972,7 @@ Version 0.46                                                          2017-08-11
 
   - simplify agent process tree, process naming
   - improve session and agent termination
-  - several fixes and chages to the unit state model (refer to documentation!)
+  - several fixes and chages to the task state model (refer to documentation!)
   - fix POPEN state reporting
   - split agent component into individual, relocatable processes
   - improve and generalize agent bootstrapping
@@ -1141,7 +1141,7 @@ Version 0.46                                                          2017-08-11
   - also use staging flags on input staging
   - stampede environment fix
   - Added missing stampede alias
-  - adds timestamps to unit and pilot logentries
+  - adds timestamps to task and pilot logentries
   - fix state tags for plots
   - fix plot style for waitq
   - introduce UNSCHEDULED state as per #233
@@ -1164,11 +1164,11 @@ Version 0.46                                                          2017-08-11
   - Documentation of MPI support
   - Documentation of data staging operations
   - correct handling of data transfer exceptions
-  - fix handling of non-ascii data in unit stdio
+  - fix handling of non-ascii data in task stdio
   - simplify switching of access schemas on pilot submission
-  - disable pilot virtualenv for unit execution
+  - disable pilot virtualenv for task execution
   - MPI support for DaVinci
-  - performance optimizations on file transfers, unit sandbox setup
+  - performance optimizations on file transfers, task sandbox setup
   - fix ibrun tmp file problem on stampede
 
 
@@ -1227,7 +1227,7 @@ New Features
 
 API Changes:
 
-  - ComputeUnitDescription.working\_dir\_priv removed
+  - TaskDescription.working\_dir\_priv removed
   - Extended state model
   - resource\_configurations parameter removed from PilotManager c`tor
 

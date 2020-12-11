@@ -72,7 +72,7 @@ class SSH(LaunchMethod):
                               % (self.name, slots))
 
         if len(slots['nodes']) > 1:
-            raise RuntimeError('ssh cannot run multinode units')
+            raise RuntimeError('ssh cannot run multinode tasks')
 
         host = slots['nodes'][0]['name']
 

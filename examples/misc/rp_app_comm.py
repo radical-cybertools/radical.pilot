@@ -29,7 +29,7 @@ if __name__ == '__main__':
                   }
         pdesc = rp.PilotDescription(pd_init)
         pilot = pmgr.submit_pilots(pdesc)
-        umgr  = rp.UnitManager(session=session)
+        umgr  = rp.TaskManager(session=session)
         umgr.add_pilots(pilot)
 
         pwd  = os.path.dirname(os.path.abspath(__file__))
@@ -42,8 +42,8 @@ if __name__ == '__main__':
         for i in range(n_worker):
             cuds.append(CUD({'executable': '%s/rp_app_worker.py' % pwd}))
 
-        umgr.submit_units(cuds)
-        umgr.wait_units()
+        umgr.submit_tasks(cuds)
+        umgr.wait_tasks()
 
     finally:
         session.close(download=True)

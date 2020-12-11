@@ -6,12 +6,12 @@ from description import Description
 # ------------------------------------------------------------------------------
 #
 
-class ComputePilotDescription (Description) :
+class PilotDescription (Description) :
     """
-    The ComputePilotDescription is a description based on
+    The PilotDescription is a description based on
     SAGA Job Description.
 
-    It offers the application to describe a ComputePilot in an abstract
+    It offers the application to describe a Pilot in an abstract
     way that is dealt with by the Pilot-Manager.
 
     Class members:

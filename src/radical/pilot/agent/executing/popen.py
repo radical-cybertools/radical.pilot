@@ -108,9 +108,9 @@ class Popen(AgentExecutingComponent) :
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_units':
+        if cmd == 'cancel_tasks':
 
-            self._log.info("cancel_units command (%s)" % arg)
+            self._log.info("cancel_tasks command (%s)" % arg)
             with self._cancel_lock:
                 self._cus_to_cancel.extend(arg['uids'])
 
@@ -119,20 +119,20 @@ class Popen(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
+    def work(self, tasks):
 
-        if not isinstance(units, list):
-            units = [units]
+        if not isinstance(tasks, list):
+            tasks = [tasks]
 
-        self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
+        self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        for unit in units:
-            self._handle_unit(unit)
+        for task in tasks:
+            self._handle_task(task)
 
 
     # --------------------------------------------------------------------------
     #
-    def _handle_unit(self, cu):
+    def _handle_task(self, cu):
 
         try:
             descr = cu['description']
@@ -156,23 +156,23 @@ class Popen(AgentExecutingComponent) :
             cpt = descr['cpu_process_type']
           # gpt = descr['gpu_process_type']  # FIXME: use
 
-            # FIXME: this switch is insufficient for mixed units (MPI/OpenMP)
+            # FIXME: this switch is insufficient for mixed tasks (MPI/OpenMP)
             if cpt == 'MPI': launcher = self._mpi_launcher
             else           : launcher = self._task_launcher
 
             if not launcher:
                 raise RuntimeError("no launcher (process type = %s)" % cpt)
 
-            self._log.debug("Launching unit with %s (%s).",
+            self._log.debug("Launching task with %s (%s).",
                             launcher.name, launcher.launch_command)
 
-            # Start a new subprocess to launch the unit
+            # Start a new subprocess to launch the task
             self.spawn(launcher=launcher, cu=cu)
 
         except Exception as e:
-            # append the startup error to the units stderr.  This is
+            # append the startup error to the tasks stderr.  This is
             # not completely correct (as this text is not produced
-            # by the unit), but it seems the most intuitive way to
+            # by the task), but it seems the most intuitive way to
             # communicate that error to the application/user.
             self._log.exception("error running CU")
             if cu.get('stderr') is None:
@@ -192,7 +192,7 @@ class Popen(AgentExecutingComponent) :
     def spawn(self, launcher, cu):
 
         descr   = cu['description']
-        sandbox = cu['unit_sandbox_path']
+        sandbox = cu['task_sandbox_path']
 
         # make sure the sandbox exists
         self._prof.prof('exec_mkdir', uid=cu['uid'])
@@ -222,8 +222,8 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_PILOT_ID="%s"\n'      % self._cfg['pid']
             env_string += 'export RP_AGENT_ID="%s"\n'      % self._cfg['aid']
             env_string += 'export RP_SPAWNER_ID="%s"\n'    % self.uid
-            env_string += 'export RP_UNIT_ID="%s"\n'       % cu['uid']
-            env_string += 'export RP_UNIT_NAME="%s"\n'     % cu['description'].get('name')
+            env_string += 'export RP_TASK_ID="%s"\n'       % cu['uid']
+            env_string += 'export RP_TASK_NAME="%s"\n'     % cu['description'].get('name')
             env_string += 'export RP_GTOD="%s"\n'          % self.gtod
             env_string += 'export RP_TMP="%s"\n'           % self._cu_tmp
             env_string += 'export RP_PILOT_SANDBOX="%s"\n' % self._pwd
@@ -247,7 +247,7 @@ prof(){
     event=$1
     msg=$2
     now=$($RP_GTOD)
-    echo "$now,$event,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING,$msg" >> $RP_PROF
+    echo "$now,$event,task_script,MainThread,$RP_TASK_ID,AGENT_EXECUTING,$msg" >> $RP_PROF
 }
 '''
 
@@ -266,14 +266,14 @@ prof(){
                 self._log.exception(msg)
                 raise RuntimeError (msg) from e
 
-            # also add any env vars requested in the unit description
+            # also add any env vars requested in the task description
             if descr['environment']:
                 for key,val in descr['environment'].items():
                     env_string += 'export "%s=%s"\n' % (key, val)
 
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
             launch_script.write('prof cu_start\n')
-            launch_script.write('\n# Change to unit sandbox\ncd %s\n' % sandbox)
+            launch_script.write('\n# Change to task sandbox\ncd %s\n' % sandbox)
 
             # FIXME: cu_pre_exec should be LM specific
             if self._cfg.get('cu_pre_exec'):
@@ -326,7 +326,7 @@ prof(){
         _stdout_file_h = open(cu['stdout_file'], 'a')
         _stderr_file_h = open(cu['stderr_file'], 'a')
 
-        self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, sandbox)
+        self._log.info("Launching task %s via %s in %s", cu['uid'], cmdline, sandbox)
 
         self._prof.prof('exec_start', uid=cu['uid'])
         cu['proc'] = subprocess.Popen(args       = cmdline,
@@ -416,7 +416,7 @@ prof(){
                     try:
                         os.killpg(cu['proc'].pid, signal.SIGTERM)
                     except OSError:
-                        # unit is already gone, we ignore this
+                        # task is already gone, we ignore this
                         pass
                     cu['proc'].wait()  # make sure proc is collected
 
@@ -440,9 +440,9 @@ prof(){
                 # make sure proc is collected
                 cu['proc'].wait()
 
-                # we have a valid return code -- unit is final
+                # we have a valid return code -- task is final
                 action += 1
-                self._log.info("Unit %s has return code %s.", uid, exit_code)
+                self._log.info("Task %s has return code %s.", uid, exit_code)
 
                 cu['exit_code'] = exit_code
 
@@ -453,11 +453,11 @@ prof(){
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
                 if exit_code != 0:
-                    # The unit failed - fail after staging output
+                    # The task failed - fail after staging output
                     cu['target_state'] = rps.FAILED
 
                 else:
-                    # The unit finished cleanly, see if we need to deal with
+                    # The task finished cleanly, see if we need to deal with
                     # output data.  We always move to stageout, even if there are no
                     # directives -- at the very least, we'll upload stdout/stderr
                     cu['target_state'] = rps.DONE

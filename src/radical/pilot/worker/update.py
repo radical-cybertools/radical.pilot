@@ -141,7 +141,7 @@ class Update(rpu.Worker):
 
         Supported types are:
 
-          - unit
+          - task
           - pilot
 
         supported 'cmds':

@@ -151,8 +151,8 @@ class MPIExec(LaunchMethod):
         if len(command) > arg_max:
 
             # Create a hostfile from the list of hosts.  We create that in the
-            # unit sandbox
-            hostfile = '%s/mpi_hostfile' % cu['unit_sandbox_path']
+            # task sandbox
+            hostfile = '%s/mpi_hostfile' % cu['task_sandbox_path']
             with open(hostfile, 'w') as f:
                 for node,nslots in list(host_slots.items()):
                     f.write('%20s \tslots=%s\n' % (node, nslots))

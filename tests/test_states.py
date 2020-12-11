@@ -31,8 +31,8 @@ def test_pilot_state_collapse():
 
 # ------------------------------------------------------------------------------
 #
-def test_unit_state_collapse():
-    from radical.pilot.states import _unit_state_collapse
+def test_task_state_collapse():
+    from radical.pilot.states import _task_state_collapse
     states = ['AGENT_STAGING_OUTPUT',
               'AGENT_EXECUTING_PENDING',
               'UMGR_SCHEDULING',
@@ -41,7 +41,7 @@ def test_unit_state_collapse():
               'AGENT_SCHEDULING',
               'AGENT_STAGING_OUTPUT_PENDING',
               'AGENT_SCHEDULING_PENDING']
-    assert(_unit_state_collapse(states) == 'UMGR_STAGING_OUTPUT')
+    assert(_task_state_collapse(states) == 'UMGR_STAGING_OUTPUT')
 
     states =  ['DONE',
                'UMGR_STAGING_INPUT_PENDING',
@@ -51,7 +51,7 @@ def test_unit_state_collapse():
                'AGENT_EXECUTING',
                'AGENT_STAGING_INPUT',
                'FAILED']
-    assert(_unit_state_collapse(states) == 'DONE')
+    assert(_task_state_collapse(states) == 'DONE')
 
     states = ['AGENT_STAGING_OUTPUT_PENDING',
               'CANCELED',
@@ -61,7 +61,7 @@ def test_unit_state_collapse():
               'AGENT_SCHEDULING',
               'AGENT_STAGING_INPUT',
               'UMGR_SCHEDULING']
-    assert(_unit_state_collapse(states) == 'CANCELED')
+    assert(_task_state_collapse(states) == 'CANCELED')
 
 
 # ------------------------------------------------------------------------------

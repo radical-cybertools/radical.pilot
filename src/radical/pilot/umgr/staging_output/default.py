@@ -19,7 +19,7 @@ from .base import UMGRStagingOutputComponent
 class Default(UMGRStagingOutputComponent):
     """
     This component performs all umgr side output staging directives for compute
-    units.  It gets units from the umgr_staging_output_queue, in
+    tasks.  It gets tasks from the umgr_staging_output_queue, in
     UMGR_STAGING_OUTPUT_PENDING state, will advance them to UMGR_STAGING_OUTPUT
     state while performing the staging, and then moves then to the respective
     final state.
@@ -42,7 +42,7 @@ class Default(UMGRStagingOutputComponent):
         self.register_input(rps.UMGR_STAGING_OUTPUT_PENDING,
                             rpc.UMGR_STAGING_OUTPUT_QUEUE, self.work)
 
-        # we don't need an output queue -- units will be final
+        # we don't need an output queue -- tasks will be final
 
 
     # --------------------------------------------------------------------------
@@ -55,70 +55,70 @@ class Default(UMGRStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
+    def work(self, tasks):
 
-        if not isinstance(units, list):
-            units = [units]
+        if not isinstance(tasks, list):
+            tasks = [tasks]
 
-        self.advance(units, rps.UMGR_STAGING_OUTPUT, publish=True, push=False)
+        self.advance(tasks, rps.UMGR_STAGING_OUTPUT, publish=True, push=False)
 
-        # we first filter out any units which don't need any output staging, and
+        # we first filter out any tasks which don't need any output staging, and
         # advance them again as a bulk.  We work over the others one by one, and
         # advance them individually, to avoid stalling from slow staging ops.
 
-        no_staging_units = list()
-        staging_units    = list()
+        no_staging_tasks = list()
+        staging_tasks    = list()
 
-        for unit in units:
+        for task in tasks:
 
             # no matter if we perform any staging or not, we will push the full
-            # unit info to the DB on the next advance, since the units will be
+            # task info to the DB on the next advance, since the tasks will be
             # final
-            unit['$all']    = True
-            unit['control'] = None
+            task['$all']    = True
+            task['control'] = None
 
             # check if we have any staging directives to be enacted in this
             # component
             actionables = list()
-            for sd in unit['description'].get('output_staging', []):
+            for sd in task['description'].get('output_staging', []):
 
                 if sd['action'] == rpc.TRANSFER:
                     actionables.append(sd)
 
             if actionables:
-                staging_units.append([unit, actionables])
+                staging_tasks.append([task, actionables])
             else:
-                no_staging_units.append(unit)
+                no_staging_tasks.append(task)
 
 
-        if no_staging_units:
+        if no_staging_tasks:
 
             # nothing to stage -- transition into final state.
-            for unit in no_staging_units:
-                unit['state'] = unit['target_state']
-            self.advance(no_staging_units, publish=True, push=True)
+            for task in no_staging_tasks:
+                task['state'] = task['target_state']
+            self.advance(no_staging_tasks, publish=True, push=True)
 
-        for unit,actionables in staging_units:
-            self._handle_unit(unit, actionables)
+        for task,actionables in staging_tasks:
+            self._handle_task(task, actionables)
 
 
     # --------------------------------------------------------------------------
     #
-    def _handle_unit(self, unit, actionables):
+    def _handle_task(self, task, actionables):
 
-        uid = unit['uid']
+        uid = task['uid']
 
-        src_context = {'pwd'      : unit['unit_sandbox'],       # !!!
-                       'unit'     : unit['unit_sandbox'],
-                       'pilot'    : unit['pilot_sandbox'],
-                       'resource' : unit['resource_sandbox']}
+        src_context = {'pwd'      : task['task_sandbox'],       # !!!
+                       'task'     : task['task_sandbox'],
+                       'pilot'    : task['pilot_sandbox'],
+                       'resource' : task['resource_sandbox']}
         tgt_context = {'pwd'      : os.getcwd(),                # !!!
-                       'unit'     : unit['unit_sandbox'],
-                       'pilot'    : unit['pilot_sandbox'],
-                       'resource' : unit['resource_sandbox']}
+                       'task'     : task['task_sandbox'],
+                       'pilot'    : task['pilot_sandbox'],
+                       'resource' : task['resource_sandbox']}
 
         # url used for cache (sandbox url w/o path)
-        tmp      = rs.Url(unit["unit_sandbox"])
+        tmp      = rs.Url(task["task_sandbox"])
         tmp.path = '/'
         key      = str(tmp)
 
@@ -159,9 +159,9 @@ class Default(UMGRStagingOutputComponent):
             saga_dir.copy(src, tgt, flags=flags)
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
-        # all staging is done -- at this point the unit is final
-        unit['state'] = unit['target_state']
-        self.advance(unit, publish=True, push=True)
+        # all staging is done -- at this point the task is final
+        task['state'] = task['target_state']
+        self.advance(task, publish=True, push=True)
 
 
 # ------------------------------------------------------------------------------

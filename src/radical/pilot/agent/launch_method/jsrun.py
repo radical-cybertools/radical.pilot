@@ -76,7 +76,7 @@ class JSRUN(LaunchMethod):
         ----------
         slots : List of dictionaries.
 
-            The slots that the unit will be placed. A slot has the following
+            The slots that the task will be placed. A slot has the following
             format:
 
             {"nodes"         : [{"name"    : "a",
@@ -91,8 +91,8 @@ class JSRUN(LaunchMethod):
              "lm_info"       : "INFO",
             }
 
-        uid     : unit ID (string)
-        sandbox : unit sandbox (string)
+        uid     : task ID (string)
+        sandbox : task sandbox (string)
         mpi     : MPI or not (bool, default: False)
 
         """
@@ -135,7 +135,7 @@ class JSRUN(LaunchMethod):
         task_exec    = cud['executable']
         task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
-        task_sandbox = cu['unit_sandbox_path']
+        task_sandbox = cu['task_sandbox_path']
 
         assert(slots), 'missing slots for %s' % uid
 

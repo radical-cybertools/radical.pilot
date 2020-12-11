@@ -200,10 +200,10 @@ class Master(rpu.Component):
         task = dict()
         task['description']       = copy.deepcopy(descr_complete)
         task['state']             = rps.AGENT_STAGING_INPUT_PENDING
-        task['type']              = 'unit'
+        task['type']              = 'task'
         task['uid']               = uid
-        task['unit_sandbox_path'] = sbox
-        task['unit_sandbox']      = 'file://localhost/' + sbox
+        task['task_sandbox_path'] = sbox
+        task['task_sandbox']      = 'file://localhost/' + sbox
         task['pilot_sandbox']     = cfg.base
         task['session_sandbox']   = cfg.base + '/../'
         task['resource_sandbox']  = cfg.base + '/../../'

@@ -23,17 +23,17 @@ class Task(object):
     A Task represent a 'task' that is executed on a Pilot.
     Tasks allow to control and query the state of this task.
 
-    .. note:: A unit cannot be created directly. The factory method
-              :meth:`rp.UnitManager.submit_units` has to be used instead.
+    .. note:: A task cannot be created directly. The factory method
+              :meth:`rp.TaskManager.submit_tasks` has to be used instead.
 
                 **Example**::
 
-                      umgr = rp.UnitManager(session=s)
+                      umgr = rp.TaskManager(session=s)
 
                       ud = rp.TaskDescription()
                       ud.executable = "/bin/date"
 
-                      unit = umgr.submit_units(ud)
+                      task = umgr.submit_tasks(ud)
     """
 
     # --------------------------------------------------------------------------
@@ -66,7 +66,7 @@ class Task(object):
 
         # initialize state
         self._session          = self._umgr.session
-        self._uid              = ru.generate_id('unit.%(item_counter)06d',
+        self._uid              = ru.generate_id('task.%(item_counter)06d',
                                                 ru.ID_CUSTOM,
                                                 ns=self._session.uid)
         self._state            = rps.NEW
@@ -77,7 +77,7 @@ class Task(object):
         self._pilot            = descr.get('pilot')
         self._resource_sandbox = None
         self._pilot_sandbox    = None
-        self._unit_sandbox     = None
+        self._task_sandbox     = None
         self._client_sandbox   = None
         self._callbacks        = dict()
 
@@ -85,7 +85,7 @@ class Task(object):
             self._callbacks[m] = dict()
 
         # we always invke the default state cb
-        self._callbacks[rpc.UNIT_STATE][self._default_state_cb.__name__] = {
+        self._callbacks[rpc.TASK_STATE][self._default_state_cb.__name__] = {
                 'cb'      : self._default_state_cb,
                 'cb_data' : None}
 
@@ -113,28 +113,28 @@ class Task(object):
 
     # --------------------------------------------------------------------------
     #
-    def _default_state_cb(self, unit, state=None):
+    def _default_state_cb(self, task, state=None):
 
-        self._log.info("[Callback]: unit %s state: %s.", self.uid, self.state)
+        self._log.info("[Callback]: task %s state: %s.", self.uid, self.state)
 
 
     # --------------------------------------------------------------------------
     #
-    def _update(self, unit_dict):
+    def _update(self, task_dict):
         """
         This will update the facade object after state changes etc, and is
         invoked by whatever component receiving that updated information.
         """
 
-        assert(unit_dict['uid'] == self.uid), 'update called on wrong instance'
+        assert(task_dict['uid'] == self.uid), 'update called on wrong instance'
 
         # this method relies on state updates to arrive in order
         current = self.state
-        target  = unit_dict['state']
+        target  = task_dict['state']
 
         if target not in [rps.FAILED, rps.CANCELED]:
-            s_tgt = rps._unit_state_value(target)
-            s_cur = rps._unit_state_value(current)
+            s_tgt = rps._task_state_value(target)
+            s_cur = rps._task_state_value(current)
             if s_tgt - s_cur != 1:
                 self._log.error('%s: invalid state transition %s -> %s',
                                 self.uid, current, target)
@@ -146,10 +146,10 @@ class Task(object):
         # FIXME: well, not all really :/
         # FIXME: setattr is ugly...  we should maintain all state in a dict.
         for key in ['state', 'stdout', 'stderr', 'exit_code', 'pilot',
-                    'resource_sandbox', 'pilot_sandbox', 'unit_sandbox',
+                    'resource_sandbox', 'pilot_sandbox', 'task_sandbox',
                     'client_sandbox']:
 
-            val = unit_dict.get(key, None)
+            val = task_dict.get(key, None)
             if val is not None:
                 setattr(self, "_%s" % key, val)
 
@@ -164,7 +164,7 @@ class Task(object):
         """
 
         ret = {
-            'type':             'unit',
+            'type':             'task',
             'umgr':             self.umgr.uid,
             'uid':              self.uid,
             'name':             self.name,
@@ -175,7 +175,7 @@ class Task(object):
             'pilot':            self.pilot,
             'resource_sandbox': self.resource_sandbox,
             'pilot_sandbox':    self.pilot_sandbox,
-            'unit_sandbox':     self.unit_sandbox,
+            'task_sandbox':     self.task_sandbox,
             'client_sandbox':   self.client_sandbox,
             'description':      self.description   # this is a deep copy
         }
@@ -188,7 +188,7 @@ class Task(object):
     @property
     def session(self):
         """
-        Returns the unit's session.
+        Returns the task's session.
 
         **Returns:**
             * A :class:`Session`.
@@ -202,10 +202,10 @@ class Task(object):
     @property
     def umgr(self):
         """
-        Returns the unit's manager.
+        Returns the task's manager.
 
         **Returns:**
-            * A :class:`UnitManager`.
+            * A :class:`TaskManager`.
         """
 
         return self._umgr
@@ -216,9 +216,9 @@ class Task(object):
     @property
     def uid(self):
         """
-        Returns the unit's unique identifier.
+        Returns the task's unique identifier.
 
-        The uid identifies the unit within a :class:`UnitManager`.
+        The uid identifies the task within a :class:`TaskManager`.
 
         **Returns:**
             * A unique identifier (string).
@@ -231,7 +231,7 @@ class Task(object):
     @property
     def name(self):
         """
-        Returns the unit's application specified name.
+        Returns the task's application specified name.
 
         **Returns:**
             * A name (string).
@@ -244,7 +244,7 @@ class Task(object):
     @property
     def state(self):
         """
-        Returns the current state of the unit.
+        Returns the current state of the task.
 
         **Returns:**
             * state (string enum)
@@ -258,7 +258,7 @@ class Task(object):
     @property
     def exit_code(self):
         """
-        Returns the exit code of the unit, if that is already known, or
+        Returns the exit code of the task, if that is already known, or
         'None' otherwise.
 
         **Returns:**
@@ -275,7 +275,7 @@ class Task(object):
         """
         Returns a snapshot of the executable's STDOUT stream.
 
-        If this property is queried before the unit has reached
+        If this property is queried before the task has reached
         'DONE' or 'FAILED' state it will return None.
 
         .. warning: This can be inefficient.  Output may be incomplete and/or
@@ -295,7 +295,7 @@ class Task(object):
         """
         Returns a snapshot of the executable's STDERR stream.
 
-        If this property is queried before the unit has reached
+        If this property is queried before the task has reached
         'DONE' or 'FAILED' state it will return None.
 
         .. warning: This can be inefficient.  Output may be incomplete and/or
@@ -313,7 +313,7 @@ class Task(object):
     @property
     def pilot(self):
         """
-        Returns the pilot ID of this unit, if that is already known, or
+        Returns the pilot ID of this task, if that is already known, or
         'None' otherwise.
 
         **Returns:**
@@ -332,20 +332,20 @@ class Task(object):
 
     @property
     def sandbox(self):
-        return self.unit_sandbox
+        return self.task_sandbox
 
 
     @property
-    def unit_sandbox(self):
+    def task_sandbox(self):
         """
-        Returns the full sandbox URL of this unit, if that is already
+        Returns the full sandbox URL of this task, if that is already
         known, or 'None' otherwise.
 
         **Returns:**
             * A URL (radical.utils.Url).
         """
 
-        # NOTE: The unit has a sandbox property, containing the full sandbox
+        # NOTE: The task has a sandbox property, containing the full sandbox
         #       path, which is used by the umgr to stage data back and forth.
         #       However, the full path as visible from the umgr side might not
         #       be what the agent is seeing, specifically in the case of
@@ -356,7 +356,7 @@ class Task(object):
         #       There is thus implicit knowledge shared between the RP client
         #       and the RP agent on how the sandbox path is formed!
 
-        return self._unit_sandbox
+        return self._task_sandbox
 
 
     @property
@@ -377,7 +377,7 @@ class Task(object):
     @property
     def description(self):
         """
-        Returns the description the unit was started with, as a dictionary.
+        Returns the description the task was started with, as a dictionary.
 
         **Returns:**
             * description (dict)
@@ -391,7 +391,7 @@ class Task(object):
     @property
     def metadata(self):
         """
-        Returns the metadata field of the unit's description
+        Returns the metadata field of the task's description
         """
 
         return copy.deepcopy(self._descr.get('metadata'))
@@ -402,7 +402,7 @@ class Task(object):
     def register_callback(self, cb, cb_data=None, metric=None):
         '''
         Registers a callback function that is triggered every time a
-        unit's state changes.
+        task's state changes.
 
         All callback functions need to have the same signature::
 
@@ -418,7 +418,7 @@ class Task(object):
         '''
 
         if not metric:
-            metric = rpc.UNIT_STATE
+            metric = rpc.TASK_STATE
 
         self._umgr.register_callback(cb, cb_data, metric=metric, uid=self._uid)
 
@@ -427,16 +427,16 @@ class Task(object):
     #
     def wait(self, state=None, timeout=None):
         """
-        Returns when the unit reaches a specific state or
+        Returns when the task reaches a specific state or
         when an optional timeout is reached.
 
         **Arguments:**
 
             * **state** [`list of strings`]
-              The state(s) that unit has to reach in order for the
+              The state(s) that task has to reach in order for the
               call to return.
 
-              By default `wait` waits for the unit to reach a **final**
+              By default `wait` waits for the task to reach a **final**
               state, which can be one of the following:
 
               * :data:`rp.states.DONE`
@@ -445,7 +445,7 @@ class Task(object):
 
             * **timeout** [`float`]
               Optional timeout in seconds before the call returns regardless
-              whether the unit has reached the desired state or not.  The
+              whether the task has reached the desired state or not.  The
               default value **None** never times out.  """
 
         if not state:
@@ -464,7 +464,7 @@ class Task(object):
 
             # FIXME: do we want a raise here, really?  This introduces a race,
             #        really, on application level
-            # raise RuntimeError("can't wait on a unit in final state")
+            # raise RuntimeError("can't wait on a task in final state")
             return self.state
 
         start_wait = time.time()
@@ -485,10 +485,10 @@ class Task(object):
     #
     def cancel(self):
         """
-        Cancel the unit.
+        Cancel the task.
         """
 
-        self._umgr.cancel_units(self.uid)
+        self._umgr.cancel_tasks(self.uid)
 
 
 # ------------------------------------------------------------------------------

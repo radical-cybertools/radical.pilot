@@ -226,7 +226,7 @@ installed.
 .. Many installation problems depends on an incompatible version of
 .. ``pip`` and ``setuptools``.
 
-.. Many recent systems, specifically in the academic community, install Python in
+.. Many recent systems, specifically in the academic commtasky, install Python in
 .. its incarnation as Anaconda Distribution.  RADICAL-Pilot is not yet able to function in
 .. that environment.  While support of Anaconda is planned in the near future, you
 .. will have to revert to a 'normal' Python distribution to use RADICAL-Pilot.

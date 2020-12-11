@@ -60,7 +60,7 @@ class Srun(LaunchMethod):
         slots          = cu.get('slots')
         uid            = cu['uid']
         cud            = cu['description']
-        sbox           = cu['unit_sandbox_path']
+        sbox           = cu['task_sandbox_path']
 
         task_exec      = cud['executable']
         task_argstr    = self._create_arg_string(cud.get('arguments') or [])

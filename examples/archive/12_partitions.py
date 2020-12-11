@@ -89,17 +89,17 @@ if __name__ == '__main__':
                % (pilot.cores, pilot.partitions[0].cores,
                   pilot.partitions[1].cores))
 
-        report.header('submit units')
+        report.header('submit tasks')
 
-        # Register the Pilot in a UnitManager object.
-        umgr = rp.UnitManager(session=session)
+        # Register the Pilot in a TaskManager object.
+        umgr = rp.TaskManager(session=session)
         umgr.add_pilots(pilot)
 
         # Create a workload of Tasks.
         # Each task runs '/bin/date'.
 
-        n = 256  # number of units to run
-        report.info('create %d unit description(s)\n\t' % n)
+        n = 256  # number of tasks to run
+        report.info('create %d task description(s)\n\t' % n)
 
         cuds = list()
         for i in range(0, n):
@@ -115,18 +115,18 @@ if __name__ == '__main__':
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        units = umgr.submit_units(cuds)
+        tasks = umgr.submit_tasks(cuds)
 
         # Wait for all tasks to reach
         # a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
-        umgr.wait_units()
+        umgr.wait_tasks()
 
         report.info('\n')
-        for unit in units:
+        for task in tasks:
             report.plain('  * %s [%3d - %4s] : %s @ %s\n'
-                    % (unit.uid, unit.exit_code, unit.state[:4],
-                       unit.partition, unit.pilot))
+                    % (task.uid, task.exit_code, task.state[:4],
+                       task.partition, task.pilot))
 
 
         # ----------------------------------------------------------------------
@@ -137,7 +137,7 @@ if __name__ == '__main__':
                                             'config' : 'aprun',
                                             'cores'  : part2_cores}]})
 
-        print('run more units ...')
+        print('run more tasks ...')
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

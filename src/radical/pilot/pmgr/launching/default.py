@@ -163,7 +163,7 @@ class Default(PMGRLaunchingComponent):
 
         pid = pilot['uid']
 
-        # NOTE: no unit sandboxes defined!
+        # NOTE: no task sandboxes defined!
         src_context = {'pwd'     : pilot['client_sandbox'],
                        'pilot'   : pilot['pilot_sandbox'],
                        'resource': pilot['resource_sandbox']}
@@ -238,7 +238,7 @@ class Default(PMGRLaunchingComponent):
 
         pid = pilot['uid']
 
-        # NOTE: no unit sandboxes defined!
+        # NOTE: no task sandboxes defined!
         src_context = {'pwd'     : pilot['pilot_sandbox'],
                        'pilot'   : pilot['pilot_sandbox'],
                        'resource': pilot['resource_sandbox']}
@@ -1074,7 +1074,7 @@ class Default(PMGRLaunchingComponent):
 
         if  cleanup and isinstance(cleanup, bool):
             #  l : log files
-            #  u : unit work dirs
+            #  u : task work dirs
             #  v : virtualenv
             #  e : everything (== pilot sandbox)
             if shared_filesystem:

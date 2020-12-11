@@ -1455,7 +1455,7 @@ while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
 done
 
 # before we change anything else in the pilot environment, we safe a couple of
-# env vars to later re-create a close-to-pristine env for unit execution.
+# env vars to later re-create a close-to-pristine env for task execution.
 _OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
 _OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
 _OLD_VIRTUAL_PATH="$PATH"
@@ -1772,7 +1772,7 @@ chmod 0755 bootstrap_2.sh
 
 #
 # Create a barrier to start the agent.
-# This can be used by experimental scripts to push all units to the DB before
+# This can be used by experimental scripts to push all tasks to the DB before
 # the agent starts.
 #
 if ! test -z "$RADICAL_PILOT_BARRIER"
@@ -1899,7 +1899,7 @@ profile_event 'agent_final' "$AGENT_PID:$AGENT_EXITCODE `date --rfc-3339=ns | cu
 
 # cleanup flags:
 #   l : pilot log files
-#   u : unit work dirs
+#   u : task work dirs
 #   v : virtualenv
 #   e : everything
 echo
@@ -1909,7 +1909,7 @@ echo "#"
 
 profile_event 'cleanup_start'
 contains $CLEANUP 'l' && rm -r "$PILOT_SANDBOX/agent.*"
-contains $CLEANUP 'u' && rm -r "$PILOT_SANDBOX/unit.*"
+contains $CLEANUP 'u' && rm -r "$PILOT_SANDBOX/task.*"
 contains $CLEANUP 'v' && rm -r "$VIRTENV/" # FIXME: in what cases?
 contains $CLEANUP 'e' && rm -r "$PILOT_SANDBOX/"
 profile_event 'cleanup_stop'

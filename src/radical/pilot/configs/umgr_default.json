@@ -1,7 +1,7 @@
 
-# this is the default unit manager config which is used if no other config is
+# this is the default task manager config which is used if no other config is
 # specified.  It contains the minimal set of settings required for
-# a functional unit manager.
+# a functional task manager.
 {
     # default scheduler
     "scheduler" : "round_robin",

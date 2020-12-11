@@ -11,11 +11,11 @@ from ... import states as rps
 from .base import UMGRSchedulingComponent, ADDED
 
 
-# the high water mark determines the percentage of unit oversubscription for the
+# the high water mark determines the percentage of task oversubscription for the
 # pilots, in terms of numbers of cores
 _HWM = int(os.environ.get('RADICAL_PILOT_BACKFILLING_HWM', 200))
 
-# we consider pilots eligible for unit scheduling beyond a certain start state,
+# we consider pilots eligible for task scheduling beyond a certain start state,
 # which defaults to 'PMGR_ACTIVE'.
 _BF_START = os.environ.get('RADICAL_PILOT_BACKFILLING_START', rps.PMGR_ACTIVE)
 _BF_STOP  = os.environ.get('RADICAL_PILOT_BACKFILLING_STOP',  rps.PMGR_ACTIVE)
@@ -39,7 +39,7 @@ class Backfilling(UMGRSchedulingComponent):
     #
     def _configure(self):
 
-        self._wait_pool = dict()      # set of unscheduled units
+        self._wait_pool = dict()      # set of unscheduled tasks
         self._wait_lock = ru.RLock()  # look on the above set
 
         self._pids = list()
@@ -53,7 +53,7 @@ class Backfilling(UMGRSchedulingComponent):
       # self._log.debug('add pilots %s', pids)
 
         # pilots just got added.  If we did not have any pilot before, we might
-        # have units in the wait queue waiting -- now is a good time to take
+        # have tasks in the wait queue waiting -- now is a good time to take
         # care of those!
         with self._wait_lock:
 
@@ -66,13 +66,13 @@ class Backfilling(UMGRSchedulingComponent):
                         'cores' : cores,
                         'hwm'   : hwm,
                         'used'  : 0,
-                        'units' : list(),  # list of assigned unit IDs
-                        'done'  : list(),  # list of executed unit IDs
+                        'tasks' : list(),  # list of assigned task IDs
+                        'done'  : list(),  # list of executed task IDs
                 }
 
             # now we can use the pilot
             self._pids += pids
-            self._schedule_units()
+            self._schedule_tasks()
 
 
     # --------------------------------------------------------------------------
@@ -89,7 +89,7 @@ class Backfilling(UMGRSchedulingComponent):
                     raise ValueError('no such pilot %s' % pid)
 
                 self._pids.remove(pid)
-                # FIXME: cancel units
+                # FIXME: cancel tasks
 
 
     # --------------------------------------------------------------------------
@@ -128,114 +128,114 @@ class Backfilling(UMGRSchedulingComponent):
 
         if action:
           # self._log.debug('upd pilot  -> schedule')
-            self._schedule_units()
+            self._schedule_tasks()
 
 
     # --------------------------------------------------------------------------
     #
-    def update_units(self, units):
+    def update_tasks(self, tasks):
 
-      # self._log.debug('update  units: %s', [u['uid'] for u in units])
+      # self._log.debug('update  tasks: %s', [u['uid'] for u in tasks])
 
         reschedule = False
 
         with self._pilots_lock, self._wait_lock:
 
-            for unit in units:
+            for task in tasks:
 
-                uid   = unit['uid']
-                state = unit['state']
-                pid   = unit.get('pilot', '')
+                uid   = task['uid']
+                state = task['state']
+                pid   = task.get('pilot', '')
 
-                self._log.debug('update  unit: %s [%s] [%s]',  uid, pid, state)
+                self._log.debug('update  task: %s [%s] [%s]',  uid, pid, state)
 
                 if not pid:
                     # we are not interested in state updates for unscheduled
-                    # units
-                    self._log.debug('upd unit  %s no pilot', uid)
+                    # tasks
+                    self._log.debug('upd task  %s no pilot', uid)
                     continue
 
                 if pid not in self._pilots:
-                    # we don't handle the pilot of this unit
-                    self._log.debug('upd unit  %s not handled', uid)
+                    # we don't handle the pilot of this task
+                    self._log.debug('upd task  %s not handled', uid)
                     continue
 
                 info = self._pilots[pid]['info']
 
                 if uid in info['done']:
                     # we don't need further state udates
-                    self._log.debug('upd unit  %s in done', uid)
+                    self._log.debug('upd task  %s in done', uid)
                     continue
 
-                if  rps._unit_state_value(state) <= \
-                    rps._unit_state_value(rps.AGENT_EXECUTING):
-                    self._log.debug('upd unit  %s too early', uid)
+                if  rps._task_state_value(state) <= \
+                    rps._task_state_value(rps.AGENT_EXECUTING):
+                    self._log.debug('upd task  %s too early', uid)
                     continue
 
-                if uid not in info['units']:
-                    # this contradicts the unit's assignment
-                    self._log.debug('upd unit  %s not in units', uid)
-                    self._log.error('bf: unit %s on %s inconsistent', uid, pid)
+                if uid not in info['tasks']:
+                    # this contradicts the task's assignment
+                    self._log.debug('upd task  %s not in tasks', uid)
+                    self._log.error('bf: task %s on %s inconsistent', uid, pid)
                     raise RuntimeError('inconsistent scheduler state')
 
-                # this unit is now considered done
+                # this task is now considered done
                 info['done'].append(uid)
-                info['used'] -= unit['description']['cpu_processes'] \
-                              * unit['description']['cpu_threads']
+                info['used'] -= task['description']['cpu_processes'] \
+                              * task['description']['cpu_threads']
                 reschedule = True
-                self._log.debug('upd unit  %s -  schedule (used: %s)', uid, info['used'])
+                self._log.debug('upd task  %s -  schedule (used: %s)', uid, info['used'])
 
                 if info['used'] < 0:
                     self._log.error('bf: pilot %s inconsistent', pid)
                     raise RuntimeError('inconsistent scheduler state')
 
 
-        # if any pilot state was changed, consider new units for scheduling
+        # if any pilot state was changed, consider new tasks for scheduling
         if reschedule:
-            self._log.debug('upd units -> schedule')
-            self._schedule_units()
+            self._log.debug('upd tasks -> schedule')
+            self._schedule_tasks()
 
 
     # --------------------------------------------------------------------------
     #
-    def _work(self, units):
+    def _work(self, tasks):
 
         with self._pilots_lock, self._wait_lock:
 
-            for unit in units:
+            for task in tasks:
 
-                uid = unit['uid']
+                uid = task['uid']
 
                 # not yet scheduled - put in wait pool
-                self._wait_pool[uid] = unit
+                self._wait_pool[uid] = task
 
-        self._schedule_units()
+        self._schedule_tasks()
 
 
     # --------------------------------------------------------------------------
     #
-    def _schedule_units(self):
+    def _schedule_tasks(self):
         """
-        We have a set of units which we can place over a set of pilots.
+        We have a set of tasks which we can place over a set of pilots.
 
         The overall objective is to keep pilots busy while load balancing across
         all pilots, even those which might yet to get added.  We achieve that
         via the following algorithm:
 
           - for each pilot which is being added, no matter the state:
-            - assign sufficient units to the pilot that it can run 'n'
+            - assign sufficient tasks to the pilot that it can run 'n'
               generations of them, 'n' being a tunable parameter called
               'RADICAL_PILOT_BACKFILLING_HWM'.
 
-          - for each unit being completed (goes out of AGENT_EXECUTING state)
+          - for each task being completed (goes out of AGENT_EXECUTING state)
             - determine the pilot which executed it
-            - backfill units from the wait queue until the backfilling HWM is
+            - backfill tasks from the wait queue until the backfilling HWM is
               reached again.
 
         The HWM is interpreted as percent of pilot size.  For example, a pilot
-        of size 10 cores and a HWM of 200 can get units with a total of 20 cores
-        assigned.  It can get assigned more than that, if the last unit
-        assigned to it surpasses the HWM.  We will not schedule any unit larger
+        of size 10 cores and a HWM of 200 can get tasks with a total of 20 cores
+        assigned.  It can get assigned more than that, if the last task
+        assigned to it surpasses the HWM.  We will not schedule any task larger
         than pilot size however.
         """
 
@@ -275,25 +275,25 @@ class Backfilling(UMGRSchedulingComponent):
             if not pids:
                 return
 
-            # cycle over available pids and add units until we either ran
-            # out of units to schedule, or out of pids to schedule over
+            # cycle over available pids and add tasks until we either ran
+            # out of tasks to schedule, or out of pids to schedule over
 
-          # self._log.debug('schedule %s units over %s pilots',
+          # self._log.debug('schedule %s tasks over %s pilots',
           #         len(self._wait_pool), len(pids))
 
-            scheduled   = list()   # units we want to advance
+            scheduled   = list()   # tasks we want to advance
             unscheduled = dict()   # this will be the new wait pool
-            for uid, unit in self._wait_pool.items():
+            for uid, task in self._wait_pool.items():
 
                 if not pids:
-                    # no more useful pilots -- move remaining units into
+                    # no more useful pilots -- move remaining tasks into
                     # unscheduled pool
-                    self._log.debug(' =!= sch unit  %s', uid)
-                    unscheduled[uid] = unit
+                    self._log.debug(' =!= sch task  %s', uid)
+                    unscheduled[uid] = task
                     continue
 
-                cores   = unit['description']['cpu_processes'] \
-                        * unit['description']['cpu_threads']
+                cores   = task['description']['cpu_processes'] \
+                        * task['description']['cpu_threads']
                 success = False
                 for pid in pids:
 
@@ -301,15 +301,15 @@ class Backfilling(UMGRSchedulingComponent):
 
                     if info['used'] <= info['hwm']:
 
-                      # self._log.debug('sch unit  %s -> %s', uid, pid)
+                      # self._log.debug('sch task  %s -> %s', uid, pid)
                         self._log.info('schedule %s -> %s', uid, pid)
 
                         pilot = self._pilots[pid]['pilot']
-                        info['units'].append(unit['uid'])
+                        info['tasks'].append(task['uid'])
                         info['used']   += cores
 
-                        self._assign_pilot(unit, pilot)
-                        scheduled.append(unit)
+                        self._assign_pilot(task, pilot)
+                        scheduled.append(task)
                         success = True
 
                         # this pilot might now be full.  If so, remove it from
@@ -320,20 +320,20 @@ class Backfilling(UMGRSchedulingComponent):
                         break  # stop looking through pilot list
 
                 if not success:
-                    # we did not find a useable pilot for this unit -- keep it
-                    self._log.debug(' ==! sch unit  %s', uid)
-                    unscheduled[uid] = unit
+                    # we did not find a useable pilot for this task -- keep it
+                    self._log.debug(' ==! sch task  %s', uid)
+                    unscheduled[uid] = task
 
 
-          # self._log.debug('retain   %s units and  %s pilots',
+          # self._log.debug('retain   %s tasks and  %s pilots',
           #         len(unscheduled), len(pids))
 
-            # all unscheduled units *are* the new wait pool
+            # all unscheduled tasks *are* the new wait pool
             self._log.debug(' 1 > waits: %s', list(self._wait_pool.keys()))
             self._wait_pool = unscheduled
             self._log.debug(' 2 > waits: %s', list(self._wait_pool.keys()))
 
-        # advance scheduled units
+        # advance scheduled tasks
         if scheduled:
             self.advance(scheduled, rps.UMGR_STAGING_INPUT_PENDING,
                          publish=True, push=True)

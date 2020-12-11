@@ -24,7 +24,7 @@ class RoundRobin(UMGRSchedulingComponent):
     #
     def _configure(self):
 
-        self._wait_pool = list()      # set of unscheduled units
+        self._wait_pool = list()      # set of unscheduled tasks
         self._wait_lock = ru.RLock()  # look on the above set
 
         self._pids = list()
@@ -38,7 +38,7 @@ class RoundRobin(UMGRSchedulingComponent):
     def add_pilots(self, pids):
 
         # pilots just got added.  If we did not have any pilot before, we might
-        # have units in the wait queue waiting -- now is a good time to take
+        # have tasks in the wait queue waiting -- now is a good time to take
         # care of those!
         with self._wait_lock:
 
@@ -47,9 +47,9 @@ class RoundRobin(UMGRSchedulingComponent):
             self._pids += pids
 
             if self._wait_pool:
-                units = self._wait_pool[:]   # deep copy to avoid data recursion
+                tasks = self._wait_pool[:]   # deep copy to avoid data recursion
                 self._wait_pool = list()
-                self._schedule_units(units)
+                self._schedule_tasks(tasks)
 
 
     # --------------------------------------------------------------------------
@@ -64,7 +64,7 @@ class RoundRobin(UMGRSchedulingComponent):
                     raise ValueError('no such pilot %s' % pid)
 
                 self._pids.remove(pid)
-                # FIXME: cancel units
+                # FIXME: cancel tasks
 
 
     # --------------------------------------------------------------------------
@@ -77,15 +77,15 @@ class RoundRobin(UMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def update_units(self, units):
+    def update_tasks(self, tasks):
 
-        # RR scheduling is not concerned about unit states
+        # RR scheduling is not concerned about task states
         pass
 
 
     # --------------------------------------------------------------------------
     #
-    def _work(self, units):
+    def _work(self, tasks):
 
         unscheduled = list()
         scheduled   = list()
@@ -93,29 +93,29 @@ class RoundRobin(UMGRSchedulingComponent):
 
         with self._pilots_lock:
 
-            for unit in units:
+            for task in tasks:
 
-                # check if units are already scheduled, ie. by the application
-                uid = unit.get('uid')
-                pid = unit.get('pilot')
+                # check if tasks are already scheduled, ie. by the application
+                uid = task.get('uid')
+                pid = task.get('pilot')
 
                 self._log.debug('attempt %s', uid)
 
                 if pid:
                     # make sure we know this pilot
                     if pid not in self._pilots:
-                        self._log.error('unknown pilot %s (unit %s)', uid, pid)
-                        failed.append(unit)
+                        self._log.error('unknown pilot %s (task %s)', uid, pid)
+                        failed.append(task)
                         continue
 
                     pilot = self._pilots[pid]['pilot']
 
-                    self._assign_pilot(unit, pilot)
-                    scheduled.append(unit)
+                    self._assign_pilot(task, pilot)
+                    scheduled.append(task)
 
                 else:
                     # not yet scheduled - put in wait pool
-                    unscheduled.append(unit)
+                    unscheduled.append(task)
 
         self._log.debug('failed %d / scheduled %d / unscheduled %d',
                         len(failed), len(scheduled), len(unscheduled))
@@ -124,14 +124,14 @@ class RoundRobin(UMGRSchedulingComponent):
                                      publish=True, push=True)
         if scheduled  : self.advance(scheduled, rps.UMGR_STAGING_INPUT_PENDING,
                                      publish=True, push=True)
-        if unscheduled: self._schedule_units(unscheduled)
+        if unscheduled: self._schedule_tasks(unscheduled)
 
 
     # --------------------------------------------------------------------------
     #
-    def _schedule_units(self, units):
+    def _schedule_tasks(self, tasks):
 
-        self._log.debug('schedule %d units', len(units))
+        self._log.debug('schedule %d tasks', len(tasks))
 
         with self._pilots_lock:
 
@@ -141,16 +141,16 @@ class RoundRobin(UMGRSchedulingComponent):
 
                 # no pilots, no schedule...
                 with self._wait_lock:
-                    self._wait_pool += units
+                    self._wait_pool += tasks
                     return
 
-            units_ok = list()
-            units_fail = list()
+            tasks_ok = list()
+            tasks_fail = list()
 
-            for unit in units:
+            for task in tasks:
 
                 try:
-                    # determine target pilot for unit
+                    # determine target pilot for task
                     if self._idx >= len(self._pids):
                         self._idx = 0
 
@@ -159,21 +159,21 @@ class RoundRobin(UMGRSchedulingComponent):
 
                     self._idx += 1
 
-                    # we assign the unit to the pilot.
-                    self._assign_pilot(unit, pilot)
+                    # we assign the task to the pilot.
+                    self._assign_pilot(task, pilot)
 
-                    units_ok.append(unit)
+                    tasks_ok.append(task)
 
                 except Exception:
-                    self._log.exception('unit schedule preparation failed')
-                    units_fail.append(unit)
+                    self._log.exception('task schedule preparation failed')
+                    tasks_fail.append(task)
 
-            # make sure that all scheduled units have sandboxes known
+            # make sure that all scheduled tasks have sandboxes known
 
-            # advance all units
-            self._log.debug('failed: %d, ok: %d', len(units_fail), len(units_ok))
-            self.advance(units_fail, rps.FAILED, publish=True, push=False)
-            self.advance(units_ok,   rps.UMGR_STAGING_INPUT_PENDING,
+            # advance all tasks
+            self._log.debug('failed: %d, ok: %d', len(tasks_fail), len(tasks_ok))
+            self.advance(tasks_fail, rps.FAILED, publish=True, push=False)
+            self.advance(tasks_ok,   rps.UMGR_STAGING_INPUT_PENDING,
                          publish=True, push=True)
 
 

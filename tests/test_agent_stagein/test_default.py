@@ -2,7 +2,7 @@
 
 import glob
 
-from unittest import TestCase, mock
+from tasktest import TestCase, mock
 
 import radical.utils as ru
 
@@ -17,12 +17,12 @@ class TestDefault(TestCase):
     #
     def setUp(self):
         ret = list()
-        for fin in glob.glob('tests/test_agent_stagein/test_cases/unit.*.json'):
+        for fin in glob.glob('tests/test_agent_stagein/test_cases/task.*.json'):
             tc     = ru.read_json(fin)
-            unit   = tc['unit'   ]
+            task   = tc['task'   ]
             result = tc['results']
             if result:
-                ret.append([unit, result])
+                ret.append([task, result])
 
         return ret
 
@@ -53,14 +53,14 @@ class TestDefault(TestCase):
 
         # ----------------------------------------------------------------------
         #
-        def _handle_unit_side_effect(unit, actionables):
-            _advance_side_effect(unit, actionables, False, False)
+        def _handle_task_side_effect(task, actionables):
+            _advance_side_effect(task, actionables, False, False)
 
 
         tests = self.setUp()
         component = Default(cfg=None, session=None)
-        component._handle_unit = mock.MagicMock(
-                                       side_effect=_handle_unit_side_effect)
+        component._handle_task = mock.MagicMock(
+                                       side_effect=_handle_task_side_effect)
         component.advance = mock.MagicMock(side_effect=_advance_side_effect)
         component._log = ru.Logger('dummy')
 

@@ -26,10 +26,10 @@ def pilot_state_cb (pilot, state):
 
 # ------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state):
-    """ this callback is invoked on all unit state changes """
+def task_state_cb (task, state):
+    """ this callback is invoked on all task state changes """
 
-    print("[Callback]: Task '%s' state: %s." % (unit.uid, state))
+    print("[Callback]: Task '%s' state: %s." % (task.uid, state))
 
     if state == rp.FAILED:
         sys.exit (1)
@@ -87,27 +87,27 @@ if __name__ == "__main__":
         cud.output_staging = "result.dat"
 
         # Combine the Pilot, the Tasks and a scheduler via
-        # a UnitManager object.
-        umgr = rp.UnitManager(session=session)
+        # a TaskManager object.
+        umgr = rp.TaskManager(session=session)
 
-        # Register our callback with the UnitManager. This callback will get
-        # called every time any of the units managed by the UnitManager
+        # Register our callback with the TaskManager. This callback will get
+        # called every time any of the tasks managed by the TaskManager
         # change their state.
-        umgr.register_callback(unit_state_cb)
+        umgr.register_callback(task_state_cb)
 
-        # Add the previously created Pilot to the UnitManager.
+        # Add the previously created Pilot to the TaskManager.
         umgr.add_pilots(pilot)
 
         # Submit the previously created Task description to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning the Task to the Pilot.
-        unit = umgr.submit_units(cud)
+        task = umgr.submit_tasks(cud)
 
         # Wait for the task to reach a terminal state (DONE or FAILED).
-        umgr.wait_units()
+        umgr.wait_tasks()
 
         print("* Task %s state: %s, exit code: %s,"
-              % (unit.uid, unit.state, unit.exit_code))
+              % (task.uid, task.state, task.exit_code))
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

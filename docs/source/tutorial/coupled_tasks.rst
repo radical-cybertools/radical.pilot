@@ -50,11 +50,11 @@ In this case, the important logic to draw your attention too is around line 140:
 .. code-block:: python
 
         print "Waiting for 'A' and 'B' CUs to complete..."
-        umgr.wait_units()
+        umgr.wait_tasks()
         print "Executing 'C' tasks now..."
 
 In this example, we submit both the A and B tasks to the Pilot, but instead of
-running C tasks right away, we call ``wait()`` on the unit manager.  This tells
+running C tasks right away, we call ``wait()`` on the task manager.  This tells
 RADICAL-Pilot to wait for all of the submitted tasks to finish, before continuing in
 the code. After all the A and B (submitted tasks) have finished, it then submits
 the C tasks. 

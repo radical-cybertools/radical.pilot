@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
         report.header('submit bags of tasks')
 
-        umgr = rp.UnitManager(session=session)
+        umgr = rp.TaskManager(session=session)
         umgr.add_pilots(pilot)
 
         # run N bags of tasks, where each bag contains M tasks of different
@@ -75,10 +75,10 @@ if __name__ == '__main__':
 
         random.shuffle(cuds)
 
-        umgr.submit_units(cuds)
+        umgr.submit_tasks(cuds)
 
         report.header('gather results')
-        umgr.wait_units()
+        umgr.wait_tasks()
 
 
     except Exception as e:

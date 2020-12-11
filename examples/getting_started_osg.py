@@ -13,7 +13,7 @@ dh = ru.DebugHelper ()
 RUNTIME  =    60
 SLEEP    =    10
 PILOTS   =     2
-UNITS    =    10
+TASKS    =    10
 CNT      =     0
 SCHED    = rp.umgr.scheduler.SCHEDULER_BACKFILLING
 
@@ -43,14 +43,14 @@ def pilot_state_cb (pilot, state):
 
 # ------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state):
+def task_state_cb (task, state):
 
-    if not unit:
+    if not task:
         return
 
     global CNT
 
-    print("[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot, state))
+    print("[Callback]: task %s on %s: %s." % (task.uid, task.pilot, state))
 
     if state in [rp.FAILED, rp.DONE, rp.CANCELED]:
         CNT += 1
@@ -90,19 +90,19 @@ if __name__ == "__main__":
         pmgr = rp.PilotManager(session=session)
         pmgr.register_callback(pilot_state_cb)
 
-        umgr = rp.UnitManager(session=session, scheduler=SCHED)
-        umgr.register_callback(unit_state_cb,      rp.UNIT_STATE)
+        umgr = rp.TaskManager(session=session, scheduler=SCHED)
+        umgr.register_callback(task_state_cb,      rp.TASK_STATE)
         umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
 
         cuds = list()
-        for unit_count in range(0, UNITS):
+        for task_count in range(0, TASKS):
             cud = rp.TaskDescription()
             cud.executable     = "/bin/sh"
             cud.arguments      = ["-c", "echo $HOSTNAME:$OSG_HOSTNAME && sleep %d" % SLEEP]
             cud.cores          = 1
             cuds.append(cud)
 
-        units = umgr.submit_units(cuds)
+        tasks = umgr.submit_tasks(cuds)
 
         pdesc = rp.PilotDescription()
         pdesc.resource        = resource
@@ -128,9 +128,9 @@ if __name__ == "__main__":
             pilot = pmgr.submit_pilots(pdesc)
             umgr.add_pilots(pilot)
 
-        umgr.wait_units()
+        umgr.wait_tasks()
 
-        for cu in units:
+        for cu in tasks:
             print("* Task %s state %s, exit code: %s, stdout: %s, pilot: %s"
                 % (cu.uid, cu.state, cu.exit_code, cu.stdout, cu.pilot))
 

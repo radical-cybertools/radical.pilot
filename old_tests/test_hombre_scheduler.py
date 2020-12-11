@@ -13,7 +13,7 @@ from radical.pilot.agent.scheduler.hombre import Hombre
 try:
     import mock
 except ImportError:
-    from unittest import mock
+    from tasktest import mock
 
 
 # ------------------------------------------------------------------------------
@@ -77,12 +77,12 @@ def tearDown(session):
 
 
 # ------------------------------------------------------------------------------
-# Test non mpi units
+# Test non mpi tasks
 @mock.patch.object(Hombre, '__init__', return_value=None)
 @mock.patch.object(Hombre, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
 @mock.patch('radical.utils.raise_on')
-def test_nonmpi_unit_withhombre_scheduler(mocked_init,
+def test_nonmpi_task_withhombre_scheduler(mocked_init,
                                           mocked_method,
                                           mocked_profiler,
                                           mocked_raise_on):
@@ -193,12 +193,12 @@ def test_nonmpi_unit_withhombre_scheduler(mocked_init,
 
 
 # ------------------------------------------------------------------------------
-# Test mpi units
+# Test mpi tasks
 @mock.patch.object(Hombre, '__init__', return_value=None)
 @mock.patch.object(Hombre, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
 @mock.patch('radical.utils.raise_on')
-def test_mpi_unit_withhombre_scheduler(mocked_init,
+def test_mpi_task_withhombre_scheduler(mocked_init,
                                        mocked_method,
                                        mocked_profiler,
                                        mocked_raise_on):

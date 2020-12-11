@@ -79,13 +79,13 @@ if __name__ == "__main__":
         pilot = pmgr.submit_pilots(pdesc)
 
         # Combine the Pilot, the Tasks and a scheduler via
-        # a UnitManager object.
-        print("Initializing Unit Manager ...")
-        umgr = rp.UnitManager (session=session)
+        # a TaskManager object.
+        print("Initializing Task Manager ...")
+        umgr = rp.TaskManager (session=session)
 
 
-        # Add the created Pilot to the UnitManager.
-        print("Registering  Pilot with Unit Manager ...")
+        # Add the created Pilot to the TaskManager.
+        print("Registering  Pilot with Task Manager ...")
         umgr.add_pilots(pilot)
 
         # submit A cus to pilot job
@@ -105,8 +105,8 @@ if __name__ == "__main__":
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        print("Submit 'A' Tasks to Unit Manager ...")
-        cu_list_A = umgr.submit_units(cudesc_list_A)
+        print("Submit 'A' Tasks to Task Manager ...")
+        cu_list_A = umgr.submit_tasks(cudesc_list_A)
 
         # Chaining cus i.e submit a task, when task from A is
         # successfully executed.  A B CU reads the content of the output file of
@@ -132,7 +132,7 @@ if __name__ == "__main__":
                 # -------- END USER DEFINED CU B_n DESCRIPTION --------- #
 
                 # Submit CU to Pilot Job
-                cu_b = umgr.submit_units(cudesc)
+                cu_b = umgr.submit_tasks(cudesc)
                 cu_list_B.append(cu_b)
                 cu_list_A.remove(cu_a)
 

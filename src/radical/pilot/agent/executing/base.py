@@ -29,7 +29,7 @@ EXECUTING_NAME_FUNCS   = "FUNCS"
 class AgentExecutingComponent(rpu.Component):
     """
     Manage the creation of CU processes, and watch them until they are completed
-    (one way or the other).  The spawner thus moves the unit from
+    (one way or the other).  The spawner thus moves the task from
     PendingExecution to Executing, and then to a final state (or PendingStageOut
     of course).
     """

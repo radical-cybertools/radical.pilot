@@ -33,10 +33,10 @@ def pilot_state_cb (pilot, state):
 
 # ------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state):
-    """ this callback is invoked on all unit state changes """
+def task_state_cb (task, state):
+    """ this callback is invoked on all task state changes """
 
-    print("[Callback]: Task  '%s' state: %s." % (unit.uid, state))
+    print("[Callback]: Task  '%s' state: %s." % (task.uid, state))
 
     if state == rp.FAILED:
         sys.exit (1)
@@ -93,15 +93,15 @@ if __name__ == "__main__":
         pilot_3 = pmgr.submit_pilots(pdesc)
 
         # Combine the Pilot, the Tasks and a scheduler via
-        # a UnitManager object.
-        umgr = rp.UnitManager (session=session, scheduler=rp.SCHEDULER_BACKFILLING)
+        # a TaskManager object.
+        umgr = rp.TaskManager (session=session, scheduler=rp.SCHEDULER_BACKFILLING)
 
-        # Register our callback with the UnitManager. This callback will get
-        # called every time any of the units managed by the UnitManager
+        # Register our callback with the TaskManager. This callback will get
+        # called every time any of the tasks managed by the TaskManager
         # change their state.
-        umgr.register_callback(unit_state_cb)
+        umgr.register_callback(task_state_cb)
 
-        # Add the previsouly created Pilot to the UnitManager.
+        # Add the previsouly created Pilot to the TaskManager.
         umgr.add_pilots([pilot_1, pilot_2, pilot_3])
 
       # # wait until first pilots become active
@@ -110,7 +110,7 @@ if __name__ == "__main__":
         # Create a workload of 8 Tasks.
         cus = list()
 
-        for unit_count in range(0, 512):
+        for task_count in range(0, 512):
             cu = rp.TaskDescription()
             cu.executable = '/bin/sleep'
             cu.arguments = ['10']
@@ -119,16 +119,16 @@ if __name__ == "__main__":
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        units = umgr.submit_units(cus)
+        tasks = umgr.submit_tasks(cus)
 
         # Wait for all tasks to reach a terminal state (DONE or FAILED).
-        umgr.wait_units()
+        umgr.wait_tasks()
 
         pmgr.cancel_pilots ()
 
-        for unit in units:
-            print("* Unit %s state: %s, exit code: %s"
-                % (unit.uid, unit.state, unit.exit_code))
+        for task in tasks:
+            print("* Task %s state: %s, exit code: %s"
+                % (task.uid, task.state, task.exit_code))
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

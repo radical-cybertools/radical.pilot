@@ -110,7 +110,7 @@ class SortWorker (threading.Thread):
 
         except Exception as e:
 
-            # on failuer, just push a state update -- don't advance the unit
+            # on failuer, just push a state update -- don't advance the task
             cu.state = FAILED
             for _cu in blowup (cu, 'update_queue'):
                 rpu.prof (uid=cu.uid, 'put', 'SortWorker to update_queue (FAILED)')

@@ -114,9 +114,9 @@ class ABDS(AgentExecutingComponent):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_units':
+        if cmd == 'cancel_tasks':
 
-            self._log.info("cancel_units command (%s)" % arg)
+            self._log.info("cancel_tasks command (%s)" % arg)
             with self._cancel_lock:
                 self._cus_to_cancel.extend(arg['uids'])
 
@@ -167,22 +167,22 @@ class ABDS(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
+    def work(self, tasks):
 
-        if not isinstance(units, list):
-            units = [units]
+        if not isinstance(tasks, list):
+            tasks = [tasks]
 
-        self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
+        self.advance(tasks, rps.AGENT_SCHEDULING, publish=True, push=False)
 
-        for unit in units:
-            self._handle_unit(unit)
+        for task in tasks:
+            self._handle_task(task)
 
-        self.advance(units, rps.AGENT_EXECUTING_PENDING, publish=True, push=False)
+        self.advance(tasks, rps.AGENT_EXECUTING_PENDING, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
     #
-    def _handle_unit(self, cu):
+    def _handle_task(self, cu):
 
         try:
             if cu['description']['mpi']:
@@ -193,18 +193,18 @@ class ABDS(AgentExecutingComponent):
             if not launcher:
                 raise RuntimeError("no launcher (mpi=%s)" % cu['description']['mpi'])
 
-            self._log.debug("Launching unit with %s (%s).", launcher.name, launcher.launch_command)
+            self._log.debug("Launching task with %s (%s).", launcher.name, launcher.launch_command)
 
             assert(cu['slots']) # FIXME: no assert, but check
-            self._prof.prof('exec', msg='unit launch', uid=cu['uid'])
+            self._prof.prof('exec', msg='task launch', uid=cu['uid'])
 
-            # Start a new subprocess to launch the unit
+            # Start a new subprocess to launch the task
             self.spawn(launcher=launcher, cu=cu)
 
         except Exception as e:
-            # append the startup error to the units stderr.  This is
+            # append the startup error to the tasks stderr.  This is
             # not completely correct (as this text is not produced
-            # by the unit), but it seems the most intuitive way to
+            # by the task), but it seems the most intuitive way to
             # communicate that error to the application/user.
             self._log.exception("error running CU")
             cu['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
@@ -221,9 +221,9 @@ class ABDS(AgentExecutingComponent):
     #
     def spawn(self, launcher, cu):
 
-        self._prof.prof('spawn', msg='unit spawn', uid=cu['uid'])
+        self._prof.prof('spawn', msg='task spawn', uid=cu['uid'])
 
-        sandbox = cu['unit_sandbox_path']
+        sandbox = cu['task_sandbox_path']
 
         # make sure the sandbox exists
         rpu.rec_makedir(sandbox)
@@ -246,8 +246,8 @@ class ABDS(AgentExecutingComponent):
             env_string += 'export RP_PILOT_ID="%s"\n'     % self._cfg['pid']
             env_string += 'export RP_AGENT_ID="%s"\n'     % self._cfg['aid']
             env_string += 'export RP_SPAWNER_ID="%s"\n'   % self.uid
-            env_string += 'export RP_UNIT_ID="%s"\n'      % cu['uid']
-            env_string += 'export RP_UNIT_NAME="%s"\n'    % cu['description'].get('name')
+            env_string += 'export RP_TASK_ID="%s"\n'      % cu['uid']
+            env_string += 'export RP_TASK_NAME="%s"\n'    % cu['description'].get('name')
             env_string += 'export RP_GTOD="%s"\n'         % self.gtod
             env_string += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
                                                           % self._pwd
@@ -266,11 +266,11 @@ prof(){
     fi
     event=$1
     now=$($RP_GTOD)
-    echo "$now,$event,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING," >> $RP_PROF
+    echo "$now,$event,task_script,MainThread,$RP_TASK_ID,AGENT_EXECUTING," >> $RP_PROF
 }
 '''
 
-            # also add any env vars requested in the unit description
+            # also add any env vars requested in the task description
             if cu['description']['environment']:
                 for key,val in cu['description']['environment'].items():
                     env_string += 'export %s=%s\n' % (key, val)
@@ -278,7 +278,7 @@ prof(){
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
 
             launch_script.write('prof cu_start\n')
-            launch_script.write('\n# Change to unit sandbox\ncd %s\n' % sandbox)
+            launch_script.write('\n# Change to task sandbox\ncd %s\n' % sandbox)
 
             # Before the Big Bang there was nothing
             if cu['description']['pre_exec']:
@@ -356,7 +356,7 @@ prof(){
         _stderr_file_h = open(cu['stderr_file'], "w+")
         self._prof.prof('control', msg='stdout and stderr files created', uid=cu['uid'])
 
-        self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, sandbox)
+        self._log.info("Launching task %s via %s in %s", cu['uid'], cmdline, sandbox)
 
         self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['uid'])
 
@@ -411,7 +411,7 @@ prof(){
                 # add all cus we found to the watchlist
                 for cu in cus :
 
-                    self._prof.prof('passed', msg="ExecWatcher picked up unit", uid=cu['uid'])
+                    self._prof.prof('passed', msg="ExecWatcher picked up task", uid=cu['uid'])
                     self._cus_to_watch.append (cu)
 
                 # check on the known cus.
@@ -508,9 +508,9 @@ prof(){
                     # make sure proc is collected
                     cu['proc'].wait()
 
-                    # we have a valid return code -- unit is final
+                    # we have a valid return code -- task is final
                     action += 1
-                    self._log.info("Unit %s has return code %s.", cu['uid'], exit_code)
+                    self._log.info("Task %s has return code %s.", cu['uid'], exit_code)
 
                     cu['exit_code'] = exit_code
 
@@ -520,12 +520,12 @@ prof(){
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
                     if exit_code != 0:
-                        # The unit failed - fail after staging output
+                        # The task failed - fail after staging output
                         self._prof.prof('final', msg="execution failed", uid=cu['uid'])
                         cu['target_state'] = rps.FAILED
 
                     else:
-                        # The unit finished cleanly, see if we need to deal with
+                        # The task finished cleanly, see if we need to deal with
                         # output data.  We always move to stageout, even if there are no
                         # directives -- at the very least, we'll upload stdout/stderr
                         self._prof.prof('final', msg="execution succeeded", uid=cu['uid'])

@@ -58,7 +58,7 @@ class RSH(LaunchMethod):
                               % (self.name, slots))
 
         if len(slots['nodes']) > 1:
-            raise RuntimeError('rsh cannot run multinode units')
+            raise RuntimeError('rsh cannot run multinode tasks')
 
         host = slots['nodes'][0]['name']
 

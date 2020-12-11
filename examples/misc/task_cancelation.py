@@ -24,7 +24,7 @@ if __name__ == '__main__':
                   }
         pdesc = rp.PilotDescription(pd_init)
         pilot = pmgr.submit_pilots(pdesc)
-        umgr  = rp.UnitManager(session=session)
+        umgr  = rp.TaskManager(session=session)
         umgr.add_pilots(pilot)
 
         # wait until pilot is active to have somewhat sensible timings below
@@ -42,7 +42,7 @@ if __name__ == '__main__':
             cud.arguments  = [10]
             cuds.append(cud)
 
-        tasks = umgr.submit_units(cuds)
+        tasks = umgr.submit_tasks(cuds)
 
         # wait until 8 tasks are done (16 cores: should take about 10 seconds
         print('%d total  - wait for 8 tasks' % len(tasks))
@@ -64,7 +64,7 @@ if __name__ == '__main__':
         cancel_uids = cancel_uids[:12]
         n_canceled  = len(cancel_uids)
 
-        umgr.cancel_units(uids=cancel_uids)
+        umgr.cancel_tasks(uids=cancel_uids)
 
       # # this would also work:
       # n_canceled = 0
@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
         # 12 tasks should be left which fit on the available cores in two
         # batches (8 + 4), and we should wait for about 20 seconds or so
-        umgr.wait_units()
+        umgr.wait_tasks()
         t_done = time.time()
 
         # print some statistocs

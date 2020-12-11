@@ -541,14 +541,14 @@ class Component(object):
         # FIXME: We do not check for types of things to cancel - the UIDs are
         #        supposed to be unique.  That abstraction however breaks as we
         #        currently have no abstract 'cancel' command, but instead use
-        #        'cancel_units'.
+        #        'cancel_tasks'.
 
         self._log.debug('command incoming: %s', msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_units':
+        if cmd == 'cancel_tasks':
 
             uids = arg['uids']
 
@@ -1114,7 +1114,7 @@ class Component(object):
 
             uid = thing['uid']
 
-          # if thing['type'] not in ['unit', 'pilot']:
+          # if thing['type'] not in ['task', 'pilot']:
           #     raise TypeError("thing has unknown type (%s)" % uid)
 
             if state:

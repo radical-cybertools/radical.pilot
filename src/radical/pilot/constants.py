@@ -53,9 +53,9 @@ DOWN = 2
 #
 # definitions of metrics
 #
-UNIT_STATE           = 'UNIT_STATE'
+TASK_STATE           = 'TASK_STATE'
 WAIT_QUEUE_SIZE      = 'WAIT_QUEUE_SIZE'
-UMGR_METRICS         = [UNIT_STATE,
+UMGR_METRICS         = [TASK_STATE,
                         WAIT_QUEUE_SIZE]
 
 PILOT_STATE          = 'PILOT_STATE'

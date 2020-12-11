@@ -72,7 +72,7 @@ if __name__ == '__main__':
         pilots = pmgr.submit_pilots(pdescs)
 
 
-        report.header('submit units')
+        report.header('submit tasks')
 
         # use different schedulers, depending on number of pilots
         report.info('select scheduler')
@@ -83,15 +83,15 @@ if __name__ == '__main__':
         report.ok('>>%s\n' % SCHED)
 
         # Combine the Pilot, the Tasks and a scheduler via
-        # a UnitManager object.
-        umgr = rp.UnitManager(session=session, scheduler=SCHED)
+        # a TaskManager object.
+        umgr = rp.TaskManager(session=session, scheduler=SCHED)
         umgr.add_pilots(pilots)
 
         # Create a workload of Tasks.
         # Each task reports the id of the pilot it runs on.
 
-        n = 256  # number of units to run
-        report.info('create %d unit description(s)\n\t' % n)
+        n = 256  # number of tasks to run
+        report.info('create %d task description(s)\n\t' % n)
 
         cuds = list()
         for i in range(0, n):
@@ -109,19 +109,19 @@ if __name__ == '__main__':
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        units = umgr.submit_units(cuds)
+        tasks = umgr.submit_tasks(cuds)
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
-        umgr.wait_units()
+        umgr.wait_tasks()
 
         report.info('\n')
         counts = dict()
-        for unit in units:
-            out_str = unit.stdout.strip()[:35]
+        for task in tasks:
+            out_str = task.stdout.strip()[:35]
             report.plain('  * %s: %s, exit: %3s, out: %s\n'
-                    % (unit.uid, unit.state[:4],
-                        unit.exit_code, out_str))
+                    % (task.uid, task.state[:4],
+                        task.exit_code, out_str))
             if out_str not in counts:
                 counts[out_str] = 0
             counts[out_str] += 1

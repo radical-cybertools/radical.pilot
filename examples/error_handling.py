@@ -50,12 +50,12 @@ def pilot_state_cb(pilots):
 
 # -----------------------------------------------------------------------------
 #
-def unit_state_cb(units):
-    """ this callback is invoked on all unit state changes """
+def task_state_cb(tasks):
+    """ this callback is invoked on all task state changes """
 
     # The approach to task state callbacks is the same as the one to
     # pilot state callbacks. Only difference is that task state
-    # callbacks are invoked by the unit manager on changes of task
+    # callbacks are invoked by the task manager on changes of task
     # states.
     #
     # The example below does not really create any Task object, we only
@@ -63,16 +63,16 @@ def unit_state_cb(units):
     # handling.
     #
     # Note that other error handling semantics are available, depending on your
-    # application requirements. For example, upon units failure, the
-    # application could spawn replacement units, or spawn a pilot on a
-    # different resource which might be better equipped to handle the unit
+    # application requirements. For example, upon tasks failure, the
+    # application could spawn replacement tasks, or spawn a pilot on a
+    # different resource which might be better equipped to handle the task
     # payload.
 
-    for unit in units:
-        print('  unit %s: %s' % (unit.uid, unit.state))
+    for task in tasks:
+        print('  task %s: %s' % (task.uid, task.state))
 
-        if unit.state == rp.FAILED:
-            print('                  : %s' % unit.stderr)
+        if task.state == rp.FAILED:
+            print('                  : %s' % task.stderr)
 
 
 # ------------------------------------------------------------------------------
@@ -94,13 +94,13 @@ if __name__ == "__main__":
     try:
 
         # create the task and pilot managers.
-        umgr = rp.UnitManager(session=session)
+        umgr = rp.TaskManager(session=session)
         pmgr = rp.PilotManager(session=session)
 
         # Register our callbacks with the managers. The callbacks will get
-        # called every time any of the pilots or units change their state,
+        # called every time any of the pilots or tasks change their state,
         # including on FAILED states.
-        umgr.register_callback(unit_state_cb)
+        umgr.register_callback(task_state_cb)
         pmgr.register_callback(pilot_state_cb)
 
         # Create a local pilot.
@@ -124,11 +124,11 @@ if __name__ == "__main__":
                 cud.executable = '/bin/fail'
             cuds.append(cud)
 
-        # submit the units...
-        cus = umgr.submit_units(cuds)
+        # submit the tasks...
+        cus = umgr.submit_tasks(cuds)
 
         # ... and wait for their completion.
-        state = umgr.wait_units(state=rp.FINAL)
+        state = umgr.wait_tasks(state=rp.FINAL)
 
 
     except Exception as e:

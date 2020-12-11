@@ -25,7 +25,7 @@ if __name__ == "__main__":
 
     RESOURCE_LABEL = 'local.localhost'
     PILOT_CORES    =  2
-    BAG_SIZE       = 10  # The number of units
+    BAG_SIZE       = 10  # The number of tasks
     CU_CORES       =  1  # The cores each CU will take.
     QUEUE          = None
     # we use a reporter class for nicer output
@@ -64,17 +64,17 @@ if __name__ == "__main__":
         report.header("Submitting  Pilot to Pilot Manager ...")
         pilot = pmgr.submit_pilots(pdesc)
 
-        # create a UnitManager which schedules Tasks over pilots.
-        report.header("Initializing Unit Manager ...")
-        umgr = rp.UnitManager (session=session)
+        # create a TaskManager which schedules Tasks over pilots.
+        report.header("Initializing Task Manager ...")
+        umgr = rp.TaskManager (session=session)
 
 
-        # Add the created Pilot to the UnitManager.
+        # Add the created Pilot to the TaskManager.
         report.ok('>>ok\n')
 
         umgr.add_pilots(pilot)
 
-        report.info('Create %d Unit Description(s)\n\t' % BAG_SIZE)
+        report.info('Create %d Task Description(s)\n\t' % BAG_SIZE)
 
         # create CU descriptions
         cudesc_list = []
@@ -94,15 +94,15 @@ if __name__ == "__main__":
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        report.header("Submit Tasks to Unit Manager ...")
-        cu_set = umgr.submit_units (cudesc_list)
+        report.header("Submit Tasks to Task Manager ...")
+        cu_set = umgr.submit_tasks (cudesc_list)
 
         report.header("Waiting for CUs to complete ...")
-        umgr.wait_units()
+        umgr.wait_tasks()
 
-        for unit in cu_set:
+        for task in cu_set:
             print("* CU %s, state %s, exit code: %s, stdout: %s"
-                % (unit.uid, unit.state, unit.exit_code, unit.stdout.strip()))
+                % (task.uid, task.state, task.exit_code, task.stdout.strip()))
 
 
     except Exception as e:

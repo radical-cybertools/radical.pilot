@@ -24,20 +24,20 @@ def pilot_state_cb (pilot, state):
 
 # ------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state):
-    """ this callback is invoked on all unit state changes """
+def task_state_cb (task, state):
+    """ this callback is invoked on all task state changes """
 
-    print("[Callback]: Task  '%s' state: %s." % (unit.uid, state))
+    print("[Callback]: Task  '%s' state: %s." % (task.uid, state))
 
 
 # ------------------------------------------------------------------------------
 #
 def wait_queue_size_cb(umgr, wait_queue_size):
     """
-    this callback is called when the size of the unit managers wait_queue
+    this callback is called when the size of the task managers wait_queue
     changes.
     """
-    print("[Callback]: UnitManager  '%s' wait_queue_size changed to %s."
+    print("[Callback]: TaskManager  '%s' wait_queue_size changed to %s."
         % (umgr.uid, wait_queue_size))
 
     pilots = umgr.get_pilots ()
@@ -104,26 +104,26 @@ if __name__ == "__main__":
 
 
         # Combine the Pilot, the Tasks and a scheduler via
-        # a UnitManager object.
-        umgr = rp.UnitManager (session   = session,
+        # a TaskManager object.
+        umgr = rp.TaskManager (session   = session,
                                scheduler = rp.SCHEDULER_BACKFILLING)
 
-        # Register our callback with the UnitManager. This callback will get
-        # called every time any of the units managed by the UnitManager
+        # Register our callback with the TaskManager. This callback will get
+        # called every time any of the tasks managed by the TaskManager
         # change their state.
-        umgr.register_callback (unit_state_cb, rp.UNIT_STATE)
+        umgr.register_callback (task_state_cb, rp.TASK_STATE)
 
-        # Register also a callback which tells us when all units have been
+        # Register also a callback which tells us when all tasks have been
         # assigned to pilots
         umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
 
 
-        # Add the previously created Pilot to the UnitManager.
+        # Add the previously created Pilot to the TaskManager.
         umgr.add_pilots (pilots)
 
         # Create a workload of restartable Tasks (tasks).
         cuds = []
-        for unit_count in range(0, 32):
+        for task_count in range(0, 32):
             cud = rp.TaskDescription()
             cud.executable    = "/bin/sleep"
             cud.arguments     = ["10"]
@@ -134,12 +134,12 @@ if __name__ == "__main__":
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        units = umgr.submit_units(cuds)
+        tasks = umgr.submit_tasks(cuds)
 
         # the pilots have a total of 4 cores, and run for 10 min.  A CU needs about
-        # 10 seconds, so we can handle about 24 units per minute, and need a total
+        # 10 seconds, so we can handle about 24 tasks per minute, and need a total
         # of about 3 minutes.  We now wait for 60 seconds, and then cancel the first
-        # pilot.  The 2 units currently running on that pilot will fail, and
+        # pilot.  The 2 tasks currently running on that pilot will fail, and
         # maybe 2 more which are being pre-fetched into the pilot at that stage
         # - all others should get rescheduled to the other pilot.
         time.sleep(60)
@@ -147,17 +147,17 @@ if __name__ == "__main__":
         pilots[0].cancel()
 
         # Wait for all tasks to reach a terminal state (DONE or FAILED).
-        umgr.wait_units()
+        umgr.wait_tasks()
 
-        print('units all completed')
+        print('tasks all completed')
         print('----------------------------------------------------------------------')
 
-        for unit in units:
-            unit.wait()
+        for task in tasks:
+            task.wait()
 
-        for unit in units:
+        for task in tasks:
             print("* Task %s state: %s, exit code: %s"
-                  % (unit.uid, unit.state, unit.exit_code))
+                  % (task.uid, task.state, task.exit_code))
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

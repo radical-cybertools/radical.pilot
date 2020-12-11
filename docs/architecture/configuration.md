@@ -40,7 +40,7 @@ interfaces to the resource's software and OS stack, such as it's batch system,
 access mechanisms, network settings, filesystem sharing and retention policies,
 etc.  As such, the configurations capture relevant system configuration choices
 where those cannot be automatically be detected.  In fact, we often forego
-opportunities of automated detection in favor of explicit configuration, at
+opporttaskies of automated detection in favor of explicit configuration, at
 least at the current stage of development.
 
 Resource configuration files are, as all configuration files really, located
@@ -119,7 +119,7 @@ This example is to be interpreted as follows:
     same node as the parent agent; is set to `node` when the respective agent is
     to be started on an otherwise unoccupied node
   * `mode` is set to `shared`, if the agent's node can also be used to execute
-    compute units; is set to `reserved` if the node is exclusively used for the
+    tasks; is set to `reserved` if the node is exclusively used for the
     agent, and not shared with the workload.
   * `partition` allows to run multiple independent agent instances in the same
     pilot job, each managing a subset (partition) of the available nodes.

@@ -51,9 +51,9 @@ if __name__ == '__main__':
                         'action': rp.TRANSFER})
         report.ok('>>ok\n')
 
-        report.header('submit units')
+        report.header('submit tasks')
 
-        umgr = rp.UnitManager(session=session)
+        umgr = rp.TaskManager(session=session)
         umgr.add_pilots(pilot)
 
         args = 'mdrun -o traj.trr -e ener.edr -s topol.tpr -g mdlog.log ' \
@@ -66,12 +66,12 @@ if __name__ == '__main__':
         for f in ['grompp.mdp', 'mdout.mdp', 'start.gro',
                   'topol.top',  'topol.tpr']:
             cudis.append({'source': 'pilot:///gromacs/%s' % f,
-                          'target': 'unit:///%s' % f,
+                          'target': 'task:///%s' % f,
                           'action': rp.LINK})
 
         n = 2
-        n = 2 * 1024  # number of units to run
-        report.info('create %d unit description(s)\n\t' % n)
+        n = 2 * 1024  # number of tasks to run
+        report.info('create %d task description(s)\n\t' % n)
         cuds = list()
         for i in range(0, n):
 
@@ -94,9 +94,9 @@ if __name__ == '__main__':
             report.progress()
         report.ok('>>ok\n')
 
-        umgr.submit_units(cuds)
+        umgr.submit_tasks(cuds)
         report.header('gather results')
-        umgr.wait_units()
+        umgr.wait_tasks()
 
 
     finally:

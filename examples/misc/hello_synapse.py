@@ -75,13 +75,13 @@ if __name__ == '__main__':
         pilots = pmgr.submit_pilots(pdescs)
 
 
-        report.header('submit synapse installer unit')
+        report.header('submit synapse installer task')
 
-        # Register the Pilot in a UnitManager object.
-        umgr = rp.UnitManager(session=session)
+        # Register the Pilot in a TaskManager object.
+        umgr = rp.TaskManager(session=session)
         umgr.add_pilots(pilots)
 
-        # we create one pseudo unit which installs radical.synapse in the pilot
+        # we create one pseudo task which installs radical.synapse in the pilot
         # ve
         cud = rp.TaskDescription()
         cud.pre_exec    = ["unset PYTHONPATH",
@@ -91,18 +91,18 @@ if __name__ == '__main__':
         cud.executable  = "radical-synapse-version"
         cud.cpu_processes = 1
 
-        cu = umgr.submit_units(cud)
-        umgr.wait_units(cu.uid)
+        cu = umgr.submit_tasks(cud)
+        umgr.wait_tasks(cu.uid)
         assert(cu.state == rp.DONE)
 
 
-        report.header('submit synapse workload units')
+        report.header('submit synapse workload tasks')
 
         # Create a workload of Tasks.
         # Each task reports the id of the pilot it runs on.
 
-        n = 128   # number of units to run
-        report.info('create %d unit description(s)\n\t' % n)
+        n = 128   # number of tasks to run
+        report.info('create %d task description(s)\n\t' % n)
 
         cuds = list()
         for i in range(0, n):
@@ -121,17 +121,17 @@ if __name__ == '__main__':
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        units = umgr.submit_units(cuds)
+        tasks = umgr.submit_tasks(cuds)
 
         # Wait for all tasks to reach a final state
         # (DONE, CANCELED or FAILED).
         report.header('gather results')
-        umgr.wait_units()
+        umgr.wait_tasks()
 
         report.info('\n')
-        for unit in units:
-            report.plain('  * %s: %s, exit: %3s\n' % (unit.uid, unit.state[:4],
-                                                      unit.exit_code))
+        for task in tasks:
+            report.plain('  * %s: %s, exit: %3s\n' % (task.uid, task.state[:4],
+                                                      task.exit_code))
 
 
     except Exception as e:

@@ -113,7 +113,7 @@ class ShellFS(AgentExecutingComponent):
                         if key in self._cfg['export_to_cu']:
                             self._env_cu_export[key] = val
 
-        # the registry keeps track of units to watch
+        # the registry keeps track of tasks to watch
         self._registry      = dict()
         self._registry_lock = ru.RLock()
 
@@ -176,9 +176,9 @@ class ShellFS(AgentExecutingComponent):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_units':
+        if cmd == 'cancel_tasks':
 
-            self._log.info("cancel_units command (%s)" % arg)
+            self._log.info("cancel_tasks command (%s)" % arg)
             uids = arg['uids']
 
             if not isinstance(uids, list):
@@ -201,15 +201,15 @@ class ShellFS(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
+    def work(self, tasks):
 
-        if not isinstance(units, list):
-            units = [units]
+        if not isinstance(tasks, list):
+            tasks = [tasks]
 
-        self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
+        self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        for unit in units:
-            self._handle_unit(unit)
+        for task in tasks:
+            self._handle_task(task)
 
         # fail on dead watcher
         if self._terminate.is_set():
@@ -218,9 +218,9 @@ class ShellFS(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _handle_unit(self, cu):
+    def _handle_task(self, cu):
 
-        # check that we don't start any units which need cancelling
+        # check that we don't start any tasks which need cancelling
         if cu['uid'] in self._to_cancel:
 
             with self._cancel_lock:
@@ -230,7 +230,7 @@ class ShellFS(AgentExecutingComponent):
             self.advance(cu, rps.CANCELED, publish=True, push=False)
             return True
 
-        # launch the new unit
+        # launch the new task
         try:
             mpi = cu['description'].get('mpi', False)
             if mpi: launcher = self._mpi_launcher
@@ -248,9 +248,9 @@ class ShellFS(AgentExecutingComponent):
 
 
         except Exception as e:
-            # append the startup error to the units stderr.  This is
+            # append the startup error to the tasks stderr.  This is
             # not completely correct (as this text is not produced
-            # by the unit), but it seems the most intuitive way to
+            # by the task), but it seems the most intuitive way to
             # communicate that error to the application/user.
             self._log.exception("error running CU: %s", e)
 
@@ -273,14 +273,14 @@ class ShellFS(AgentExecutingComponent):
         cmd   = ""
 
         descr   = cu['description']
-        sandbox = cu['unit_sandbox_path']
+        sandbox = cu['task_sandbox_path']
 
         env  += "# CU environment\n"
         env  += "export RP_SESSION_ID=%s\n"     % self._cfg['sid']
         env  += "export RP_PILOT_ID=%s\n"       % self._cfg['pid']
         env  += "export RP_AGENT_ID=%s\n"       % self._cfg['aid']
         env  += "export RP_SPAWNER_ID=%s\n"     % self.uid
-        env  += "export RP_UNIT_ID=%s\n"        % cu['uid']
+        env  += "export RP_TASK_ID=%s\n"        % cu['uid']
         env  += 'export RP_GTOD="%s"\n'         % self.gtod
         if self._prof.enabled:
             env += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
@@ -289,7 +289,7 @@ prof(){
     test -z "$RP_PROF" && return
     event=$1
     now=$($RP_GTOD)
-    echo "$now,$event,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING," >> $RP_PROF
+    echo "$now,$event,task_script,MainThread,$RP_TASK_ID,AGENT_EXECUTING," >> $RP_PROF
 }
 '''
 
@@ -297,7 +297,7 @@ prof(){
         for k,v in self._env_cu_export.items():
             env += "export %s=%s\n" % (k,v)
 
-        # also add any env vars requested in hte unit description
+        # also add any env vars requested in hte task description
         if descr['environment']:
             for e in descr['environment'] :
                 env += "export %s=%s\n"  %  (e, descr['environment'][e])
@@ -465,7 +465,7 @@ prof(){
             cu = self._registry[uid]
             del(self._registry[uid])
 
-        # free unit slots.
+        # free task slots.
         self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
         if ret is None:
@@ -478,11 +478,11 @@ prof(){
         else                        : rp_state = rps.FAILED
 
         if rp_state in [rps.FAILED, rps.CANCELED] :
-            # The unit failed - fail after staging output
+            # The task failed - fail after staging output
             cu['target_state'] = rps.FAILED
 
         else:
-            # The unit finished cleanly, see if we need to deal with
+            # The task finished cleanly, see if we need to deal with
             # output data.  We always move to stageout, even if there are no
             # directives -- at the very least, we'll upload stdout/stderr
             cu['target_state'] = rps.DONE

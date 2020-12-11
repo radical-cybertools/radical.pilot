@@ -56,7 +56,7 @@ def _pilot_state_value(s):
 
 def _pilot_state_progress(pid, current, target):
     """
-    See documentation of 'unit_state_progress' below.
+    See documentation of 'task_state_progress' below.
     """
 
     # first handle final state corrections
@@ -111,7 +111,7 @@ def _pilot_state_collapse(states):
 
 # ------------------------------------------------------------------------------
 #
-# unit states
+# task states
 #
 UMGR_SCHEDULING_PENDING      = 'UMGR_SCHEDULING_PENDING'
 UMGR_SCHEDULING              = 'UMGR_SCHEDULING'
@@ -130,7 +130,7 @@ UMGR_STAGING_OUTPUT          = 'UMGR_STAGING_OUTPUT'
 
 # assign numeric values to states to support state ordering operations
 # ONLY final state get the same values.
-_unit_state_values = {
+_task_state_values = {
         None                         : -1,
         NEW                          :  0,
         UMGR_SCHEDULING_PENDING      :  1,
@@ -150,24 +150,24 @@ _unit_state_values = {
         DONE                         : 15,
         FAILED                       : 15,
         CANCELED                     : 15}
-_unit_state_inv = {_v: _k for _k, _v in _unit_state_values.items()}
-_unit_state_inv_full = dict()
-for _st,_v in _unit_state_values.items():
-    if _v in _unit_state_inv_full:
-        if not isinstance(_unit_state_inv_full[_v], list):
-            _unit_state_inv_full[_v] = [_unit_state_inv_full[_v]]
-        _unit_state_inv_full[_v].append(_st)
+_task_state_inv = {_v: _k for _k, _v in _task_state_values.items()}
+_task_state_inv_full = dict()
+for _st,_v in _task_state_values.items():
+    if _v in _task_state_inv_full:
+        if not isinstance(_task_state_inv_full[_v], list):
+            _task_state_inv_full[_v] = [_task_state_inv_full[_v]]
+        _task_state_inv_full[_v].append(_st)
     else:
-        _unit_state_inv_full[_v] = _st
+        _task_state_inv_full[_v] = _st
 
 
-def _unit_state_value(s):
-    return _unit_state_values[s]
+def _task_state_value(s):
+    return _task_state_values[s]
 
 
-def _unit_state_progress(uid, current, target):
+def _task_state_progress(uid, current, target):
     """
-    This method will ensure a unit state progression in sync with the state
+    This method will ensure a task state progression in sync with the state
     model defined above.  It will return a tuple: [new_state, passed_states]
     where 'new_state' is either 'target' or 'current', depending which comes
     later in the state model, and 'passed_states' is a sorted list of all states
@@ -186,19 +186,19 @@ def _unit_state_progress(uid, current, target):
     On contradicting final states, DONE and FAILED are preferred over CANCELED,
     but no other transitions are allowed
 
-    unit_state_progress(UMGR_SCHEDULING, NEW)
+    task_state_progress(UMGR_SCHEDULING, NEW)
     --> [UMGR_SCHEDULING, []]
 
-    unit_state_progress(NEW, NEW)
+    task_state_progress(NEW, NEW)
     --> [NEW, []]
 
-    unit_state_progress(NEW, UMGR_SCHEDULING_PENDING)
+    task_state_progress(NEW, UMGR_SCHEDULING_PENDING)
     --> [UMGR_SCHEDULING_PENDING, [UMGR_SCHEDULING_PENDING]]
 
-    unit_state_progress(NEW, UMGR_SCHEDULING)
+    task_state_progress(NEW, UMGR_SCHEDULING)
     --> [UMGR_SCHEDULING, [UMGR_SCHEDULING_PENDING, UMGR_SCHEDULING]]
 
-    unit_state_progress(DONE, FAILED)
+    task_state_progress(DONE, FAILED)
     --> [DONE, []]
 
     """
@@ -212,8 +212,8 @@ def _unit_state_progress(uid, current, target):
         if target in FINAL:
             raise ValueError('invalid transition for %s: %s -> %s' % (uid, current, target))
 
-    cur = _unit_state_values[current]
-    tgt = _unit_state_values[target]
+    cur = _task_state_values[current]
+    tgt = _task_state_values[target]
 
     if cur >= tgt:
         # nothing to do, a similar or better progression happened earlier
@@ -222,7 +222,7 @@ def _unit_state_progress(uid, current, target):
     # dig out all intermediate states, skip current
     passed = list()
     for i in range(cur + 1,tgt):
-        passed.append(_unit_state_inv[i])
+        passed.append(_task_state_inv[i])
 
     # append target state to trigger notification of transition
     passed.append(target)
@@ -230,9 +230,9 @@ def _unit_state_progress(uid, current, target):
     return(target, passed)
 
 
-def _unit_state_collapse(states):
+def _task_state_collapse(states):
     """
-    This method takes a list of unit states and selects the one with the highest
+    This method takes a list of task states and selects the one with the highest
     state value.
     """
     # we first check the final states, as we want to express a preference there.
@@ -242,7 +242,7 @@ def _unit_state_collapse(states):
     if CANCELED in states: return CANCELED
     ret = None
     for state in states:
-        if _unit_state_values[state] > _unit_state_values[ret]:
+        if _task_state_values[state] > _task_state_values[ret]:
             ret = state
     return ret
 

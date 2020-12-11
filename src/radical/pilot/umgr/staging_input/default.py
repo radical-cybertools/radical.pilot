@@ -21,14 +21,14 @@ from .base import UMGRStagingInputComponent
 from ...staging_directives import complete_url
 
 
-# if we receive more than a certain numnber of units in a bulk, we create the
-# unit sandboxes in a remote bulk op.  That limit is defined here, along with
+# if we receive more than a certain numnber of tasks in a bulk, we create the
+# task sandboxes in a remote bulk op.  That limit is defined here, along with
 # the definition of the bulk mechanism used to create the sandboxes:
 #   saga: use SAGA bulk ops
 #   tar : unpack a locally created tar which contains all sandboxes
 
-UNIT_BULK_MKDIR_THRESHOLD = 16
-UNIT_BULK_MKDIR_MECHANISM = 'tar'
+TASK_BULK_MKDIR_THRESHOLD = 16
+TASK_BULK_MKDIR_MECHANISM = 'tar'
 
 
 # ------------------------------------------------------------------------------
@@ -36,7 +36,7 @@ UNIT_BULK_MKDIR_MECHANISM = 'tar'
 class Default(UMGRStagingInputComponent):
     """
     This component performs all umgr side input staging directives for compute
-    units.  It gets units from the umgr_staging_input_queue, in
+    tasks.  It gets tasks from the umgr_staging_input_queue, in
     UMGR_STAGING_INPUT_PENDING state, will advance them to UMGR_STAGING_INPUT
     state while performing the staging, and then moves then to the
     AGENT_SCHEDULING_PENDING state, passing control to the agent.
@@ -66,7 +66,7 @@ class Default(UMGRStagingInputComponent):
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING, None)
 
         # we subscribe to the command channel to learn about pilots being added
-        # to this unit manager.
+        # to this task manager.
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._base_command_cb)
 
 
@@ -109,74 +109,74 @@ class Default(UMGRStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
+    def work(self, tasks):
 
-        if not isinstance(units, list):
-            units = [units]
+        if not isinstance(tasks, list):
+            tasks = [tasks]
 
-        self.advance(units, rps.UMGR_STAGING_INPUT, publish=True, push=False)
+        self.advance(tasks, rps.UMGR_STAGING_INPUT, publish=True, push=False)
 
-        # we first filter out any units which don't need any input staging, and
+        # we first filter out any tasks which don't need any input staging, and
         # advance them again as a bulk.  We work over the others one by one, and
         # advance them individually, to avoid stalling from slow staging ops.
 
-        no_staging_units = list()
-        staging_units    = list()
+        no_staging_tasks = list()
+        staging_tasks    = list()
 
-        for unit in units:
+        for task in tasks:
 
             # no matter if we perform any staging or not, we will push the full
-            # unit info to the DB on the next advance, and will pass control to
+            # task info to the DB on the next advance, and will pass control to
             # the agent.
-            unit['$all']    = True
-            unit['control'] = 'agent_pending'
+            task['$all']    = True
+            task['control'] = 'agent_pending'
 
             # check if we have any staging directives to be enacted in this
             # component
             actionables = list()
-            for sd in unit['description'].get('input_staging', []):
+            for sd in task['description'].get('input_staging', []):
                 if sd['action'] in [rpc.TRANSFER, rpc.TARBALL]:
                     actionables.append(sd)
 
             if actionables:
-                staging_units.append([unit, actionables])
+                staging_tasks.append([task, actionables])
             else:
-                no_staging_units.append(unit)
+                no_staging_tasks.append(task)
 
-        # Optimization: if we obtained a large bulk of units, we at this point
-        # attempt a bulk mkdir for the unit sandboxes, to free the agent of
+        # Optimization: if we obtained a large bulk of tasks, we at this point
+        # attempt a bulk mkdir for the task sandboxes, to free the agent of
         # performing that operation.  That implies that the agent needs to check
         # sandbox existence before attempting to create them now.
         #
         # Note that this relies on the umgr scheduler to assigning the sandbox
-        # to the unit.
+        # to the task.
         #
-        # Note further that we need to make sure that all units are actually
+        # Note further that we need to make sure that all tasks are actually
         # pointing into the same target file system, so we need to cluster by
         # filesystem before checking the bulk size.  For simplicity we actually
-        # cluster by pilot ID, which is sub-optimal for unit bulks which go to
+        # cluster by pilot ID, which is sub-optimal for task bulks which go to
         # different pilots on the same resource (think OSG).
         #
-        # Note further that we skip the bulk-op for all units for which we
+        # Note further that we skip the bulk-op for all tasks for which we
         # actually need to stage data, since the mkdir will then implicitly be
         # done anyways.
         #
         # Caveat: we can actually only (reasonably) do this if we know some
         # details about the pilot, because otherwise we'd have too much guessing
         # to do about the pilot configuration (sandbox, access schema, etc), so
-        # we only attempt this optimization for units scheduled to pilots for
+        # we only attempt this optimization for tasks scheduled to pilots for
         # which we learned those details.
-        unit_sboxes_by_pid = dict()
-        for unit in no_staging_units:
-            sbox = unit['unit_sandbox']
-            pid  = unit['pilot']
-            if pid not in unit_sboxes_by_pid:
-                unit_sboxes_by_pid[pid] = list()
-            unit_sboxes_by_pid[pid].append(sbox)
+        task_sboxes_by_pid = dict()
+        for task in no_staging_tasks:
+            sbox = task['task_sandbox']
+            pid  = task['pilot']
+            if pid not in task_sboxes_by_pid:
+                task_sboxes_by_pid[pid] = list()
+            task_sboxes_by_pid[pid].append(sbox)
 
         # now trigger the bulk mkdir for all filesystems which have more than
-        # a certain units tohandle in this bulk:
-        for pid in unit_sboxes_by_pid:
+        # a certain tasks tohandle in this bulk:
+        for pid in task_sboxes_by_pid:
 
             with self._pilots_lock:
                 pilot = self._pilots.get(pid)
@@ -187,11 +187,11 @@ class Default(UMGRStagingInputComponent):
                 continue
 
             session_sbox = self._session._get_session_sandbox(pilot)
-            unit_sboxes  = unit_sboxes_by_pid[pid]
+            task_sboxes  = task_sboxes_by_pid[pid]
 
-            if len(unit_sboxes) >= UNIT_BULK_MKDIR_THRESHOLD:
+            if len(task_sboxes) >= TASK_BULK_MKDIR_THRESHOLD:
 
-                self._log.debug('tar %d sboxes', len(unit_sboxes))
+                self._log.debug('tar %d sboxes', len(task_sboxes))
 
                 # no matter the bulk mechanism, we need a SAGA handle to the
                 # remote FS
@@ -205,18 +205,18 @@ class Default(UMGRStagingInputComponent):
 
                 # we have two options for a bulk mkdir:
                 # 1) ask SAGA to create the sandboxes in a bulk op
-                # 2) create a tarball with all unit sandboxes, push
+                # 2) create a tarball with all task sandboxes, push
                 #    it over, and untar it (one untar op then creates all dirs).
                 #    We implement both
-                if UNIT_BULK_MKDIR_MECHANISM == 'saga':
+                if TASK_BULK_MKDIR_MECHANISM == 'saga':
 
                     tc = rs.task.Container()
-                    for sbox in unit_sboxes:
+                    for sbox in task_sboxes:
                         tc.add(saga_dir.make_dir(sbox, ttype=rs.TASK))
                     tc.run()
                     tc.wait()
 
-                elif UNIT_BULK_MKDIR_MECHANISM == 'tar':
+                elif TASK_BULK_MKDIR_MECHANISM == 'tar':
 
                     tmp_path = tempfile.mkdtemp(prefix='rp_agent_tar_dir')
                     tmp_dir  = os.path.abspath(tmp_path)
@@ -230,7 +230,7 @@ class Default(UMGRStagingInputComponent):
                     root = str(session_sbox)
                     rlen = len(root)
                     rels = list()
-                    for path in unit_sboxes:
+                    for path in task_sboxes:
                         if path.startswith(root):
                             rels.append(path[rlen + 1:])
 
@@ -265,39 +265,39 @@ class Default(UMGRStagingInputComponent):
                             j.exit_code)
 
 
-        if no_staging_units:
+        if no_staging_tasks:
 
             # nothing to stage, push to the agent
-            self.advance(no_staging_units, rps.AGENT_STAGING_INPUT_PENDING,
+            self.advance(no_staging_tasks, rps.AGENT_STAGING_INPUT_PENDING,
                          publish=True, push=True)
 
-        for unit,actionables in staging_units:
-            self._handle_unit(unit, actionables)
+        for task,actionables in staging_tasks:
+            self._handle_task(task, actionables)
 
 
     # --------------------------------------------------------------------------
     #
-    def _handle_unit(self, unit, actionables):
+    def _handle_task(self, task, actionables):
 
-        # FIXME: we should created unit sandboxes in a bulk
+        # FIXME: we should created task sandboxes in a bulk
 
-        uid = unit['uid']
+        uid = task['uid']
 
         self._prof.prof("create_sandbox_start", uid=uid)
 
         src_context = {'pwd'      : os.getcwd(),                # !!!
-                       'unit'     : unit['unit_sandbox'],
-                       'pilot'    : unit['pilot_sandbox'],
-                       'resource' : unit['resource_sandbox']}
-        tgt_context = {'pwd'      : unit['unit_sandbox'],       # !!!
-                       'unit'     : unit['unit_sandbox'],
-                       'pilot'    : unit['pilot_sandbox'],
-                       'resource' : unit['resource_sandbox']}
+                       'task'     : task['task_sandbox'],
+                       'pilot'    : task['pilot_sandbox'],
+                       'resource' : task['resource_sandbox']}
+        tgt_context = {'pwd'      : task['task_sandbox'],       # !!!
+                       'task'     : task['task_sandbox'],
+                       'pilot'    : task['pilot_sandbox'],
+                       'resource' : task['resource_sandbox']}
 
-        # we have actionable staging directives, and thus we need a unit
+        # we have actionable staging directives, and thus we need a task
         # sandbox.
-        sandbox = rs.Url(unit["unit_sandbox"])
-        tmp     = rs.Url(unit["unit_sandbox"])
+        sandbox = rs.Url(task["task_sandbox"])
+        tmp     = rs.Url(task["task_sandbox"])
 
         # url used for cache (sandbox url w/o path)
         tmp.path = '/'
@@ -347,7 +347,7 @@ class Default(UMGRStagingInputComponent):
                     tar_path = tmp_file.name
                     tar_file = tarfile.open(fileobj=tmp_file, mode='w')
                     tar_src  = ru.Url('file://localhost/%s' % tar_path)
-                    tar_tgt  = ru.Url('unit:////%s.tar'     % uid)
+                    tar_tgt  = ru.Url('task:////%s.tar'     % uid)
                     tar_did  = ru.generate_id('sd')
                     tar_sd   = {'action' : rpc.TRANSFER,
                                 'flags'  : rpc.DEFAULT_FLAGS,
@@ -402,12 +402,12 @@ class Default(UMGRStagingInputComponent):
             # some tarball staging was done.  Add a staging directive for the
             # agent to untar the tarball, and clean up.
             tar_sd['action'] = rpc.TARBALL
-            unit['description']['input_staging'].append(tar_sd)
+            task['description']['input_staging'].append(tar_sd)
             os.remove(tar_path)
 
 
-        # staging is done, we can advance the unit at last
-        self.advance(unit, rps.AGENT_STAGING_INPUT_PENDING,
+        # staging is done, we can advance the task at last
+        self.advance(task, rps.AGENT_STAGING_INPUT_PENDING,
                            publish=True, push=True)
 
 

@@ -71,8 +71,8 @@ class LaunchMethod(object):
         'RP_SESSION_ID',
         'RP_SPAWNER_ID',
         'RP_TMP',
-        'RP_UNIT_ID',
-        'RP_UNIT_NAME',
+        'RP_TASK_ID',
+        'RP_TASK_NAME',
         'RP_PILOT_SANDBOX',
         'RADICAL_BASE'
     ]
@@ -305,7 +305,7 @@ class LaunchMethod(object):
                          impaired=False):
 
         # Open appropriately named temporary file
-        # NOTE: we make an assumption about the unit sandbox here
+        # NOTE: we make an assumption about the task sandbox here
         filename = '%s/%s.hosts' % (sandbox, uid)
         with open(filename, 'w') as fout:
 
@@ -364,7 +364,7 @@ class LaunchMethod(object):
     #
     def _create_arg_string(self, args):
 
-        # unit Arguments (if any)
+        # task Arguments (if any)
         arg_string = ''
         if args:
             for arg in args:

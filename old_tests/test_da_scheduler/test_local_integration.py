@@ -17,7 +17,7 @@ def test_local_integration():
     # fails, there is not much we can do anyways...
     session = rp.Session()
 
-    # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+    # Add a Pilot Manager. Pilot managers manage one or more Pilots.
     pmgr = rp.PilotManager(session=session)
 
     # Update localhost lfs path and size
@@ -41,13 +41,13 @@ def test_local_integration():
                'runtime'       : 15,  # pilot runtime (min)
                'cores'         : 4
               }
-    pdesc = rp.ComputePilotDescription(pd_init)
+    pdesc = rp.PilotDescription(pd_init)
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
 
-    # Register the ComputePilot in a UnitManager object.
-    umgr = rp.UnitManager(session=session)
+    # Register the Pilot in a TaskManager object.
+    umgr = rp.TaskManager(session=session)
     umgr.add_pilots(pilot)
 
     # Run 16 tasks that each require 1 core and 10MB of LFS
@@ -57,26 +57,26 @@ def test_local_integration():
 
         # create a new CU description, and fill it.
         # Here we don't use dict initialization.
-        cud = rp.ComputeUnitDescription()
+        cud = rp.TaskDescription()
         cud.executable       = '/bin/hostname'
         cud.arguments = ['>', 's1_t%s_hostname.txt' % i]
         cud.cpu_processes    = 1
         cud.cpu_threads      = 1
         # cud.cpu_process_type = rp.MPI
         cud.lfs_per_process  = 10   # MB
-        cud.output_staging = {'source': 'unit:///s1_t%s_hostname.txt' % i,
+        cud.output_staging = {'source': 'task:///s1_t%s_hostname.txt' % i,
                               'target': 'client:///s1_t%s_hostname.txt' % i,
                               'action': rp.TRANSFER}
         cuds.append(cud)
 
 
-    # Submit the previously created ComputeUnit descriptions to the
+    # Submit the previously created Task descriptions to the
     # PilotManager. This will trigger the selected scheduler to start
-    # assigning ComputeUnits to the ComputePilots.
-    cus = umgr.submit_units(cuds)
+    # assigning Tasks to the Pilots.
+    cus = umgr.submit_tasks(cuds)
 
-    # Wait for all units to finish
-    umgr.wait_units()
+    # Wait for all tasks to finish
+    umgr.wait_tasks()
 
     n = 16  
     cuds2 = list()
@@ -84,7 +84,7 @@ def test_local_integration():
 
         # create a new CU description, and fill it.
         # Here we don't use dict initialization.
-        cud = rp.ComputeUnitDescription()
+        cud = rp.TaskDescription()
         cud.tag = cus[i].uid
         cud.executable       = '/bin/hostname'
         cud.arguments = ['>', 's2_t%s_hostname.txt' % i]
@@ -92,21 +92,21 @@ def test_local_integration():
         cud.cpu_threads      = 1
         # cud.cpu_process_type = rp.MPI
         cud.lfs_per_process  = 10   # MB
-        cud.output_staging = {'source': 'unit:///s2_t%s_hostname.txt' % i,
+        cud.output_staging = {'source': 'task:///s2_t%s_hostname.txt' % i,
                               'target': 'client:///s2_t%s_hostname.txt' % i,
                               'action': rp.TRANSFER}
 
         cuds2.append(cud)
 
 
-    # # Submit the previously created ComputeUnit descriptions to the
+    # # Submit the previously created Task descriptions to the
     # # PilotManager. This will trigger the selected scheduler to start
-    # # assigning ComputeUnits to the ComputePilots.
-    cus2 = umgr.submit_units(cuds2)
+    # # assigning Tasks to the Pilots.
+    cus2 = umgr.submit_tasks(cuds2)
 
 
-    # # Wait for all units to finish
-    umgr.wait_units()
+    # # Wait for all tasks to finish
+    umgr.wait_tasks()
 
     for i in range(0, n):
         assert open('s1_t%s_hostname.txt'%i,'r').readline().strip() == open('s2_t%s_hostname.txt'%i,'r').readline().strip()

@@ -33,17 +33,17 @@ def pilot_state_cb (pilot, state):
 
 # ------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state):
+def task_state_cb (task, state):
 
-    if not unit:
+    if not task:
         return
 
     global CNT
 
-    print("[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state))
+    print("[Callback]: task %s on %s: %s." % (task.uid, task.pilot_id, state))
 
     if state == rp.FAILED:
-        print("stderr: %s" % unit.stderr)
+        print("stderr: %s" % task.stderr)
         sys.exit(2)
 
 
@@ -131,19 +131,19 @@ if __name__ == "__main__":
         pilots = pmgr.submit_pilots(pilot_list)
 
         # Combine the Pilot, the Tasks and a scheduler via
-        # a UnitManager object. The scheduler that supports multi-pilot sessions
+        # a TaskManager object. The scheduler that supports multi-pilot sessions
         # is Round Robin. Direct Submittion does not.
-        print("Initializing Unit Manager ...")
-        umgr = rp.UnitManager (session=session,
+        print("Initializing Task Manager ...")
+        umgr = rp.TaskManager (session=session,
                                scheduler=rp.SCHEDULER_ROUND_ROBIN)
 
-        # Register our callback with the UnitManager. This callback will get
-        # called every time any of the units managed by the UnitManager
+        # Register our callback with the TaskManager. This callback will get
+        # called every time any of the tasks managed by the TaskManager
         # change their state.
-        umgr.register_callback(unit_state_cb)
+        umgr.register_callback(task_state_cb)
 
-        # Add the created Pilot to the UnitManager.
-        print("Registering  Pilots with Unit Manager ...")
+        # Add the created Pilot to the TaskManager.
+        print("Registering  Pilots with Task Manager ...")
         umgr.add_pilots(pilots)
 
         NUMBER_JOBS  = 64  # the total number of cus to run
@@ -165,11 +165,11 @@ if __name__ == "__main__":
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        print("Submit Tasks to Unit Manager ...")
-        cu_set = umgr.submit_units (cudesc_list)
+        print("Submit Tasks to Task Manager ...")
+        cu_set = umgr.submit_tasks (cudesc_list)
 
         print("Waiting for CUs to complete ...")
-        umgr.wait_units()
+        umgr.wait_tasks()
         print("All CUs completed successfully!")
 
 

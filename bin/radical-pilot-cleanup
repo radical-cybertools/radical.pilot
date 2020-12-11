@@ -38,7 +38,7 @@ def usage (msg=None, noexit=False) :
         list  : show  a  list   of sessions in the database
         close : reconnect to a session and close it
 
-      Closing a session will cancel all its compute units and pilots.
+      Closing a session will cancel all its tasks and pilots.
       The default MongoDB is '%s'
       
 """ % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL))

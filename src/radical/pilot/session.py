@@ -23,7 +23,7 @@ class Session(rs.Session):
     '''
     A Session is the root object of all RP objects in an application instance:
     it holds :class:`radical.pilot.PilotManager` and
-    :class:`radical.pilot.UnitManager` instances which in turn hold
+    :class:`radical.pilot.TaskManager` instances which in turn hold
     :class:`radical.pilot.Pilot` and :class:`radical.pilot.Task`
     instances, and several other components which operate on those stateful
     entities.
@@ -543,13 +543,13 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def list_unit_managers(self):
+    def list_task_managers(self):
         '''
-        Lists the unique identifiers of all :class:`radical.pilot.UnitManager`
+        Lists the unique identifiers of all :class:`radical.pilot.TaskManager`
         instances associated with this session.
 
         **Returns:**
-            * A list of :class:`radical.pilot.UnitManager` uids (`list` of `strings`).
+            * A list of :class:`radical.pilot.TaskManager` uids (`list` of `strings`).
         '''
 
         return list(self._umgrs.keys())
@@ -557,17 +557,17 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def get_unit_managers(self, umgr_uids=None):
+    def get_task_managers(self, umgr_uids=None):
         '''
-        returns known UnitManager(s).
+        returns known TaskManager(s).
 
         **Arguments:**
 
             * **umgr_uids** [`string`]:
-              unique identifier of the UnitManager we want
+              unique identifier of the TaskManager we want
 
         **Returns:**
-            * One or more [:class:`radical.pilot.UnitManager`] objects.
+            * One or more [:class:`radical.pilot.TaskManager`] objects.
         '''
 
         return_scalar = False
@@ -903,35 +903,35 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _get_unit_sandbox(self, unit, pilot):
+    def _get_task_sandbox(self, task, pilot):
 
-        # If a sandbox is specified in the unit description, then interpret
+        # If a sandbox is specified in the task description, then interpret
         # relative paths as relativet to the pilot sandbox.
 
-        # unit sandboxes are cached in the unit dict
-        unit_sandbox = unit.get('unit_sandbox')
-        if unit_sandbox:
-            return unit_sandbox
+        # task sandboxes are cached in the task dict
+        task_sandbox = task.get('task_sandbox')
+        if task_sandbox:
+            return task_sandbox
 
         # specified in description?
-        if not unit_sandbox:
-            sandbox  = unit['description'].get('sandbox')
+        if not task_sandbox:
+            sandbox  = task['description'].get('sandbox')
             if sandbox:
-                unit_sandbox = ru.Url(self._get_pilot_sandbox(pilot))
+                task_sandbox = ru.Url(self._get_pilot_sandbox(pilot))
                 if sandbox[0] == '/':
-                    unit_sandbox.path = sandbox
+                    task_sandbox.path = sandbox
                 else:
-                    unit_sandbox.path += '/%s/' % sandbox
+                    task_sandbox.path += '/%s/' % sandbox
 
         # default
-        if not unit_sandbox:
-            unit_sandbox = ru.Url(self._get_pilot_sandbox(pilot))
-            unit_sandbox.path += "/%s/" % unit['uid']
+        if not task_sandbox:
+            task_sandbox = ru.Url(self._get_pilot_sandbox(pilot))
+            task_sandbox.path += "/%s/" % task['uid']
 
         # cache
-        unit['unit_sandbox'] = str(unit_sandbox)
+        task['task_sandbox'] = str(task_sandbox)
 
-        return unit_sandbox
+        return task_sandbox
 
 
     # --------------------------------------------------------------------------

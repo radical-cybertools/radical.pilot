@@ -227,17 +227,17 @@ def start_pilot(cr=None):
 #
 def run_workload(pilot):
 
-    report.header('submit units')
+    report.header('submit tasks')
 
-    # Register the Pilot in a UnitManager object.
-    umgr = rp.UnitManager(session=pilot.session)
+    # Register the Pilot in a TaskManager object.
+    umgr = rp.TaskManager(session=pilot.session)
     umgr.add_pilots(pilot)
 
     # Create a workload of Tasks.
     # Each task runs '/bin/date'.
 
-    n = 128   # number of units to run
-    report.info('create %d unit description(s)\n\t' % n)
+    n = 128   # number of tasks to run
+    report.info('create %d task description(s)\n\t' % n)
 
     cuds = list()
     for i in range(0, n):
@@ -256,23 +256,23 @@ def run_workload(pilot):
     # Submit the previously created Task descriptions to the
     # PilotManager. This will trigger the selected scheduler to start
     # assigning Tasks to the Pilots.
-    units = umgr.submit_units(cuds)
+    tasks = umgr.submit_tasks(cuds)
 
     # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
     report.header('gather results')
-    umgr.wait_units()
+    umgr.wait_tasks()
 
     report.info('\n')
-    for unit in units:
-        if unit.state == rp.FAILED:
+    for task in tasks:
+        if task.state == rp.FAILED:
             report.plain('  * %s: %s, exit: %3s, err: %s'
-                    % (unit.uid, unit.state[:4],
-                       unit.exit_code, unit.stderr.strip()[-35:]))
+                    % (task.uid, task.state[:4],
+                       task.exit_code, task.stderr.strip()[-35:]))
             report.error('>>err\n')
         else:
             report.plain('  * %s: %s, exit: %3s, out: %s'
-                    % (unit.uid, unit.state[:4],
-                        unit.exit_code, unit.stdout.strip()[:35]))
+                    % (task.uid, task.state[:4],
+                        task.exit_code, task.stdout.strip()[:35]))
             report.ok('>>ok\n')
 
 

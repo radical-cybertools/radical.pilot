@@ -5,8 +5,8 @@ __license__   = "MIT"
 
 import os
 
-from unittest import TestCase
-from unittest import mock
+from tasktest import TestCase
+from tasktest import mock
 
 import radical.utils as ru
 import radical.pilot as rp

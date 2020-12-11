@@ -58,8 +58,8 @@ class TaskDescription(ru.Description):
     """
     A TaskDescription object describes the requirements and properties
     of a :class:`radical.pilot.Task` and is passed as a parameter to
-    :meth:`radical.pilot.UnitManager.submit_units` to instantiate and run
-    a new unit.
+    :meth:`radical.pilot.TaskManager.submit_tasks` to instantiate and run
+    a new task.
 
 
     .. note:: A TaskDescription **MUST** define at least an
@@ -132,7 +132,7 @@ class TaskDescription(ru.Description):
     .. data:: name
 
        A descriptive name for the task (`string`).  This attribute can
-       be used to map individual units back to application level workloads.
+       be used to map individual tasks back to application level workloads.
 
        default: `None`
 
@@ -164,9 +164,9 @@ class TaskDescription(ru.Description):
 
     .. data:: sandbox
 
-       (`Attribute`) This specifies the working directory of the unit.  That
+       (`Attribute`) This specifies the working directory of the task.  That
        directory *MUST* be relative to the pilot sandbox.  It will be created if
-       it does not exist.  By default, the sandbox has the name of the unit's
+       it does not exist.  By default, the sandbox has the name of the task's
        uid.
 
 
@@ -210,13 +210,13 @@ class TaskDescription(ru.Description):
        overall throughput.
 
        No assumption should be made as to where these commands are executed
-       (although RP attempts to perform them in the unit's execution
+       (although RP attempts to perform them in the task's execution
        environment).
 
        No assumption should be made on the specific shell environment the
        commands are executed in.
 
-       Errors in executing these commands will result in the unit to enter
+       Errors in executing these commands will result in the task to enter
        `FAILED` state, and no execution of the actual workload will be
        attempted.
 
@@ -227,7 +227,7 @@ class TaskDescription(ru.Description):
 
        Actions (shell commands) to perform after this task finishes (`list` of
        `strings`).  The same remarks as on `pre_exec` apply, inclusive the point
-       on error handling, which again will cause the unit to fail, even if the
+       on error handling, which again will cause the task to fail, even if the
        actual execution was successful.
 
        default: `[]`
@@ -236,7 +236,7 @@ class TaskDescription(ru.Description):
     .. data:: kernel
 
        Name of a simulation kernel which expands to description attributes once
-       the unit is scheduled to a pilot and resource. TODO: explain in detail,
+       the task is scheduled to a pilot and resource. TODO: explain in detail,
        referencing ENMDTK.
 
        default: `None`
@@ -244,15 +244,15 @@ class TaskDescription(ru.Description):
 
     .. data:: restartable
 
-       If the unit starts to execute on a pilot, but cannot finish because the
-       pilot fails or is canceled, the unit can be restarted.
+       If the task starts to execute on a pilot, but cannot finish because the
+       pilot fails or is canceled, the task can be restarted.
 
        default: `False`
 
 
     .. data:: tags
 
-       Configuration specific tags which influence unit scheduling and
+       Configuration specific tags which influence task scheduling and
        execution.
 
 
@@ -266,10 +266,10 @@ class TaskDescription(ru.Description):
     .. data:: cleanup
 
        If cleanup (a `bool`) is set to `True`, the pilot will delete the entire
-       unit sandbox upon termination. This includes all generated output data in
+       task sandbox upon termination. This includes all generated output data in
        that sandbox.  Output staging will be performed before cleanup.
 
-       Note that unit sandboxes are also deleted if the pilot's own `cleanup`
+       Note that task sandboxes are also deleted if the pilot's own `cleanup`
        flag is set.
 
        default: `False`
@@ -277,8 +277,8 @@ class TaskDescription(ru.Description):
 
     .. data:: pilot
 
-       If specified as `string` (pilot uid), the unit is submitted to the pilot
-       with the given ID.  If that pilot is not known to the unit manager, an
+       If specified as `string` (pilot uid), the task is submitted to the pilot
+       with the given ID.  If that pilot is not known to the task manager, an
        exception is raised.
 
 
@@ -309,7 +309,7 @@ class TaskDescription(ru.Description):
         * `client://`  : relative to the client's working directory
         * `resource://`: relative to the RP    sandbox on the target resource
         * `pilot://`   : relative to the pilot sandbox on the target resource
-        * `unit://`    : relative to the unit  sandbox on the target resource
+        * `task://`    : relative to the task  sandbox on the target resource
 
       In all these cases, the `hostname` element of the URL is expected to be
       empty, and the path is *always* considered relative to the locations

@@ -28,25 +28,25 @@ def pilot_state_cb (pilot, state):
 
 # ------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state):
-    """ this callback is invoked on all unit state changes """
+def task_state_cb (task, state):
+    """ this callback is invoked on all task state changes """
 
-    print("[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state))
+    print("[Callback]: task %s on %s: %s." % (task.uid, task.pilot_id, state))
 
-    if not unit:
+    if not task:
         return
 
     if state in [rp.FAILED, rp.DONE, rp.CANCELED]:
 
-        print("* unit %s (%s) state %s (%s) %s - %s, out/err: %s / %s"
-                 % (unit.uid,
-                    unit.execution_locations,
-                    unit.state,
-                    unit.exit_code,
-                    unit.start_time,
-                    unit.stop_time,
-                    unit.stdout,
-                    unit.stderr))
+        print("* task %s (%s) state %s (%s) %s - %s, out/err: %s / %s"
+                 % (task.uid,
+                    task.execution_locations,
+                    task.state,
+                    task.exit_code,
+                    task.start_time,
+                    task.stop_time,
+                    task.stdout,
+                    task.stderr))
 
 
 # ------------------------------------------------------------------------------
@@ -90,11 +90,11 @@ if __name__ == "__main__":
         pilot = pmgr.submit_pilots(pdesc)
 
         # Combine the Pilot, the Tasks and a scheduler via
-        # a UnitManager object.
-        umgr = rp.UnitManager(session=session)
-        umgr.register_callback(unit_state_cb, rp.UNIT_STATE)
+        # a TaskManager object.
+        umgr = rp.TaskManager(session=session)
+        umgr.register_callback(task_state_cb, rp.TASK_STATE)
 
-        # Add the previously created Pilot to the UnitManager.
+        # Add the previously created Pilot to the TaskManager.
         umgr.add_pilots(pilot)
 
         # Configure the staging directive for intermediate data
@@ -113,10 +113,10 @@ if __name__ == "__main__":
         cud1.output_staging = sd_inter_out
 
         # Submit the first task for execution.
-        umgr.submit_units(cud1)
+        umgr.submit_tasks(cud1)
 
         # Wait for the task to finish.
-        umgr.wait_units()
+        umgr.wait_tasks()
 
         # Configure the staging directive for input intermediate data
         sd_inter_in = {
@@ -135,10 +135,10 @@ if __name__ == "__main__":
         cud2.output_staging = OUTPUT_FILE
 
         # Submit the second CU for execution.
-        umgr.submit_units(cud2)
+        umgr.submit_tasks(cud2)
 
         # Wait for the task to finish.
-        umgr.wait_units()
+        umgr.wait_tasks()
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

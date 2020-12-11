@@ -13,13 +13,13 @@ Sessions and Security Contexts
 Sessions
 --------
 .. autoclass:: radical.pilot.Session
-   :members: 
+   :members:
    :special-members: __init__
 
 Security Contexts
 -----------------
 .. autoclass:: radical.pilot.Context
-   :members: 
+   :members:
    :special-members: __init__
 
 Pilots and PilotManagers
@@ -28,86 +28,86 @@ Pilots and PilotManagers
 PilotManagers
 -------------
 .. autoclass:: radical.pilot.PilotManager
-   :members: 
+   :members:
    :special-members: __init__
 
-ComputePilotDescription
+PilotDescription
 -----------------------
-.. autoclass:: radical.pilot.ComputePilotDescription
-   :members: 
+.. autoclass:: radical.pilot.PilotDescription
+   :members:
 
 Pilots
 ------
-.. autoclass:: radical.pilot.ComputePilot
-   :members: 
+.. autoclass:: radical.pilot.Pilot
+   :members:
 
-ComputeUnits and UnitManagers
+Tasks and TaskManagers
 =============================
 
-UnitManager
+TaskManager
 -----------
-.. autoclass:: radical.pilot.UnitManager
-   :members: 
+.. autoclass:: radical.pilot.TaskManager
+   :members:
    :special-members: __init__
 
-ComputeUnitDescription
+TaskDescription
 -----------------------
-.. autoclass:: radical.pilot.ComputeUnitDescription
-   :members: 
+.. autoclass:: radical.pilot.TaskDescription
+   :members:
 
-ComputeUnit
+Task
 -----------
-.. autoclass:: radical.pilot.ComputeUnit
-   :members: 
+.. autoclass:: radical.pilot.Task
+   :members:
 
 
 .. comment
 
     State Models
     ============
-    
-    ComputeUnit State Model
+
+    Task State Model
     -----------------------
-    
+
     .. image:: images/cu_state_model.png
-    
-    ComputePilot State Model
+
+    Pilot State Model
     ------------------------
-    
+
     .. image:: images/pilot_state_model.png
-    
-    #. A new compute pilot is launched via :func:`radical.pilot.PilotManager.submit_pilots`
-    
+
+    #. A new pilot is launched via :func:`radical.pilot.PilotManager.submit_pilots`
+
     #. The pilot is submitted to the remote resource and enters ``LAUNCHING`` state.
-    
+
     #. The pilot has been succesfully launched on the remote machine and is now waiting to become ``ACTIVE``.
-    
+
     #. The pilot has been launched by the queueing system and is now in ``ACTIVE STATE``.
-    
+
     #. The pilot has finished execution regularly and enters ``DONE`` state.
-    
+
     #. An error has occured during preparation for pilot launching and the pilot enters ``FAILED`` state.
-    
-    
+
+
     #. An error has occured during pilot launching and the pilot enters ``FAILED`` state.
-    
+
     #. An error has occured on the backend and the pilot couldn't become active and the pilot enters ``FAILED`` state.
-    
+
     #. An error has occured during pilot runtime and the pilot enters ``FAILED`` state.
-    
-    #. The active pilot has been canceled via the :func:`radical.pilot.ComputePilot.cancel` call and enters ``CANCELED`` state.
-    
-    
+
+    #. The active pilot has been canceled via the :func:`radical.pilot.Pilot.cancel` call and enters ``CANCELED`` state.
+
+
     State Model Evolution
     ----------------------
-    
+
     The RADICAL-Pilot state model is evolving over time.  Below are the past,
-    current and future Compute unit states, and their (expected) definitions and mappings:
-    
-    Unit states up to version 0.27:
-    
+    current and future Task states, and their (expected) definitions and mappings:
+
+    Task states up to version 0.27:
+
     .. code-block:: python
-    
+
           NEW                     - created in    umgr
           UNSCHEDULED             - passed  to    umgr scheduler, but not assigned to a pilot
           PENDING_INPUT_STAGING   - passed  to    staging-in, assigned to a pilot, waiting for file staging
@@ -120,11 +120,11 @@ ComputeUnit
           DONE                    - final
           CANCELED                - final
           FAILED                  - final
-    
-    Unit states in version 0.28:
-    
+
+    Task states in version 0.28:
+
     .. code-block:: python
-    
+
           NEW                     - created in    umgr
           UNSCHEDULED             - passed  to    umgr scheduler, but not assigned to a pilot
           SCHEDULING              - picked  up by umgr scheduler, assigning cu to a pilot
@@ -138,11 +138,11 @@ ComputeUnit
           DONE                    - final
           CANCELED                - final
           FAILED                  - final
-    
-    Unit states after module refactoring:
-    
+
+    Task states after module refactoring:
+
     .. code-block:: python
-    
+
           NEW                          - created in    umgr
           UMGR_SCHEDULING_PENDING      - passed  to    umgr  scheduler
           UMGR_SCHEDULING              - picked  up by umgr  scheduler, assigning cu to a pilot
@@ -161,8 +161,8 @@ ComputeUnit
           DONE                         - final
           CANCELED                     - final
           FAILED                       - final
-    
-    
+
+
     +-------------------------+------------------------+------------------------------+
     |  `< 0.27`               | `0.28`                 | after module refactoring     |
     +=========================+========================+==============================+
@@ -202,4 +202,4 @@ ComputeUnit
     +-------------------------+------------------------+------------------------------+
     |  FAILED                 | FAILED                 | FAILED                       |
     +-------------------------+------------------------+------------------------------+
-    
+

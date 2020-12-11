@@ -36,13 +36,13 @@ def test_ordered_scheduler():
                    'exit_on_error' : True,
                    'cores'         : 10
                   }
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
         pmgr  = rp.PilotManager(session=session)
         pilot = pmgr.submit_pilots(pdesc)
 
         report.header('submit pipelines')
 
-        umgr = rp.UnitManager(session=session)
+        umgr = rp.TaskManager(session=session)
         umgr.add_pilots(pilot)
 
         n_pipes  = 2
@@ -53,7 +53,7 @@ def test_ordered_scheduler():
         for p in range(n_pipes):
             for s in range(n_stages):
                 for t in range(n_tasks):
-                    cud = rp.ComputeUnitDescription()
+                    cud = rp.TaskDescription()
                     cud.executable       = '%s/pipeline_task.sh' % pwd
                     cud.arguments        = [p, s, t, 10]
                     cud.cpu_processes    = 1
@@ -67,14 +67,14 @@ def test_ordered_scheduler():
         import random
         random.shuffle(cuds)
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        umgr.submit_units(cuds)
+        # assigning Tasks to the Pilots.
+        umgr.submit_tasks(cuds)
 
-        # Wait for all compute units to reach a final state
+        # Wait for all tasks to reach a final state
         report.header('gather results')
-        umgr.wait_units()
+        umgr.wait_tasks()
 
 
     except Exception as e:

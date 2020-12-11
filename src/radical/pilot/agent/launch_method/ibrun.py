@@ -55,7 +55,7 @@ class IBRun(LaunchMethod):
         #   NOTE: in case of performance issue please consider this parameter
         #   at the first place
 
-        assert (slots.get('nodes') is not None), 'unit.slots.nodes is not set'
+        assert (slots.get('nodes') is not None), 'task.slots.nodes is not set'
 
         ibrun_offset = 0
         offsets      = list()

@@ -120,9 +120,9 @@ class FUNCS(AgentExecutingComponent) :
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_units':
+        if cmd == 'cancel_tasks':
 
-            self._log.info("cancel_units command (%s)" % arg)
+            self._log.info("cancel_tasks command (%s)" % arg)
             with self._cancel_lock:
                 self._cus_to_cancel.extend(arg['uids'])
 
@@ -161,7 +161,7 @@ class FUNCS(AgentExecutingComponent) :
             fout.write('export RP_GTOD="%s"\n'       % self.gtod)
             fout.write('export RP_TMP="%s"\n'        % self._cu_tmp)
 
-            # also add any env vars requested in the unit description
+            # also add any env vars requested in the task description
             if descr.get('environment', []):
                 for key,val in descr['environment'].items():
                     fout.write('export "%s=%s"\n' % (key, val))
@@ -193,16 +193,16 @@ class FUNCS(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
+    def work(self, tasks):
 
-        if not isinstance(units, list):
-            units = [units]
+        if not isinstance(tasks, list):
+            tasks = [tasks]
 
-        self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
+        self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        for unit in units:
-            assert(unit['description']['cpu_process_type'] == 'FUNC')
-            self._funcs_req.put(unit)
+        for task in tasks:
+            assert(task['description']['cpu_process_type'] == 'FUNC')
+            self._funcs_req.put(task)
 
 
     # --------------------------------------------------------------------------
@@ -211,20 +211,20 @@ class FUNCS(AgentExecutingComponent) :
 
         while not self._terminate.is_set():
 
-            # pull units from "funcs_out_queue"
-            units = self._funcs_res.get_nowait(1000)
+            # pull tasks from "funcs_out_queue"
+            tasks = self._funcs_res.get_nowait(1000)
 
-            if units:
+            if tasks:
 
-                for unit in units:
-                    unit['target_state'] = unit['state']
-                    unit['pilot']        = self._pid
+                for task in tasks:
+                    task['target_state'] = task['state']
+                    task['pilot']        = self._pid
 
                   # self._log.debug('got %s [%s] [%s] [%s]',
-                  #                 unit['uid'],    unit['state'],
-                  #                 unit['stdout'], unit['stderr'])
+                  #                 task['uid'],    task['state'],
+                  #                 task['stdout'], task['stderr'])
 
-                self.advance(units, rps.AGENT_STAGING_OUTPUT_PENDING,
+                self.advance(tasks, rps.AGENT_STAGING_OUTPUT_PENDING,
                              publish=True, push=True)
             else:
                 time.sleep(0.1)

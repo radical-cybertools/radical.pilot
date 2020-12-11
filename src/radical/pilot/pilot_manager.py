@@ -47,19 +47,19 @@ class PilotManager(rpu.Component):
         p1 = pm.submit_pilots(pd)  # create first  pilot with 16 cores
         p2 = pm.submit_pilots(pd)  # create second pilot with 16 cores
 
-        # Create a workload of 128 '/bin/sleep' units
+        # Create a workload of 128 '/bin/sleep' tasks
         tasks = []
-        for unit_count in range(0, 128):
+        for task_count in range(0, 128):
             cu = rp.TaskDescription()
             cu.executable = "/bin/sleep"
             cu.arguments = ['60']
             tasks.append(cu)
 
         # Combine the two pilots, the workload and a scheduler via
-        # a UnitManager.
-        um = rp.UnitManager(session=session, scheduler=rp.SCHEDULER_ROUND_ROBIN)
+        # a TaskManager.
+        um = rp.TaskManager(session=session, scheduler=rp.SCHEDULER_ROUND_ROBIN)
         um.add_pilot(p1)
-        um.submit_units(tasks)
+        um.submit_tasks(tasks)
 
 
     The pilot manager can issue notification on pilot state changes.  Whenever

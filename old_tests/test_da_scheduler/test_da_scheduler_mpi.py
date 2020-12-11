@@ -11,7 +11,7 @@ import copy
 try:
     import mock
 except ImportError:
-    from unittest import mock
+    from tasktest import mock
 
 # User Input for test
 #-----------------------------------------------------------------------------------------------------------------------
@@ -84,7 +84,7 @@ def tearDown():
 @mock.patch.object(Continuous, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
 @mock.patch('radical.utils.raise_on')
-def test_mpi_unit_with_continuous_scheduler(
+def test_mpi_task_with_continuous_scheduler(
         mocked_init,
         mocked_method,
         mocked_profiler,

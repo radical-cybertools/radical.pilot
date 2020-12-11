@@ -19,7 +19,7 @@ from .constants  import *
 from .session                   import Session
 from .context                   import Context
 
-from .unit_manager              import UnitManager
+from .task_manager              import TaskManager
 from .task                      import Task
 from .task_description          import TaskDescription
 from .task_description          import POSIX, MPI, OpenMP, CUDA, FUNC

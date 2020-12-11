@@ -299,7 +299,7 @@ ignore-long-lines=^\s*(# )?<?https?://\S+>?$
 # Number of spaces of indent required inside a hanging  or continued line.
 # indent-after-paren=4
 
-# String used as indentation unit. This is usually "    " (4 spaces) or "\t" (1
+# String used as indentation task. This is usually "    " (4 spaces) or "\t" (1
 # tab).
 indent-string='    '
 

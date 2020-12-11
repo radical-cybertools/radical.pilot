@@ -11,14 +11,14 @@ from .base import AgentSchedulingComponent
 # ------------------------------------------------------------------------------
 #
 # This is a continuous scheduler with awareness of a node's file-storage and
-# memory capabilities.  The scheduler respects node tagging (place unit on same
-# node as other units with the same tag).
+# memory capabilities.  The scheduler respects node tagging (place task on same
+# node as other tasks with the same tag).
 #
 #
 # Continuous:
 #
 # The scheduler attempts to find continuous stretches of nodes to place
-# a multinode-unit.
+# a multinode-task.
 #
 #
 # Local Storage:
@@ -49,14 +49,14 @@ from .base import AgentSchedulingComponent
 #              ]
 #
 # lfs storage and memory is specified in MByte.  The scheduler assumes that
-# both are freed when the unit finishes.
+# both are freed when the task finishes.
 #
 #
-# Unit Tagging:
+# Task Tagging:
 #
-# The scheduler attempts to schedule units with the same tag onto the same node,
-# so that the unit can reuse the previous unit's data.  This assumes that
-# storage is not freed when the units finishes.
+# The scheduler attempts to schedule tasks with the same tag onto the same node,
+# so that the task can reuse the previous task's data.  This assumes that
+# storage is not freed when the tasks finishes.
 #
 # FIXME: the alert reader will realize a discrepancy in the above set of
 #        assumptions.
@@ -86,7 +86,7 @@ class Continuous(AgentSchedulingComponent):
 
         # * scattered:
         #   This is the continuous scheduler, because it attempts to allocate
-        #   a *continuous* set of cores/nodes for a unit.  It does, however,
+        #   a *continuous* set of cores/nodes for a task.  It does, however,
         #   also allow to scatter the allocation over discontinuous nodes if
         #   this option is set.  This implementation is not optimized for the
         #   scattered mode!  The default is 'False'.
@@ -153,15 +153,15 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def unschedule_unit(self, unit):
+    def unschedule_task(self, task):
         '''
         This method is called when previously aquired resources are not needed
         anymore.  `slots` are the resource slots as previously returned by
-        `schedule_unit()`.
+        `schedule_task()`.
         '''
 
         # reflect the request in the nodelist state (set to `FREE`)
-        self._change_slot_states(unit['slots'], rpc.FREE)
+        self._change_slot_states(task['slots'], rpc.FREE)
 
 
     # --------------------------------------------------------------------------
@@ -275,7 +275,7 @@ class Continuous(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     #
-    def schedule_unit(self, unit):
+    def schedule_task(self, task):
         '''
         Find an available set of slots, potentially across node boundaries (in
         the MPI case).  By default, we only allow for partial allocations on the
@@ -299,9 +299,9 @@ class Continuous(AgentSchedulingComponent):
         on a single node.
         '''
 
-      # self._log.debug('find_resources %s', unit['uid'])
+      # self._log.debug('find_resources %s', task['uid'])
 
-        cud = unit['description']
+        cud = task['description']
         mpi = bool('mpi' in cud['cpu_process_type'].lower())
 
         # dig out the allocation request details
@@ -375,7 +375,7 @@ class Continuous(AgentSchedulingComponent):
           # self._log.debug('req1: %s = %s + %s', req_slots, rem_slots,
           #                                       len(alc_slots))
 
-            # Check if a unit is tagged to use this node.  This means we check
+            # Check if a task is tagged to use this node.  This means we check
             #   - if a tag exists
             #   - if the tag has been used before
             #   - if the previous use included this node
@@ -388,7 +388,7 @@ class Continuous(AgentSchedulingComponent):
 
             # if only a small set of cores/gpus remains unallocated (ie. less
             # than node size), we are in fact looking for the last node.  Note
-            # that this can also be the first node, for small units.
+            # that this can also be the first node, for small tasks.
             if  rem_slots < slots_per_node:
                 is_last = True
 
@@ -460,8 +460,8 @@ class Continuous(AgentSchedulingComponent):
                 }
 
 
-        # allocation worked!  If the unit was tagged, store the node IDs for
-        # this tag, so that later units can reuse that information
+        # allocation worked!  If the task was tagged, store the node IDs for
+        # this tag, so that later tasks can reuse that information
         if tag:
             self._tag_history[tag] = [node['uid'] for node in slots['nodes']]
 

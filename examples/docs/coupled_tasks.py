@@ -72,12 +72,12 @@ if __name__ == "__main__":
         pilot = pmgr.submit_pilots(pdesc)
 
         # Combine the Pilot, the Tasks and a scheduler via
-        # a UnitManager object.
-        print("Initializing Unit Manager ...")
-        umgr = rp.UnitManager (session=session)
+        # a TaskManager object.
+        print("Initializing Task Manager ...")
+        umgr = rp.TaskManager (session=session)
 
-        # Add the created Pilot to the UnitManager.
-        print("Registering  Pilot with Unit Manager ...")
+        # Add the created Pilot to the TaskManager.
+        print("Registering  Pilot with Task Manager ...")
         umgr.add_pilots(pilot)
 
         # submit A cus to pilot job
@@ -97,8 +97,8 @@ if __name__ == "__main__":
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        print("Submit Tasks 'A' to Unit Manager ...")
-        cu_set_A = umgr.submit_units(cudesc_list_A)
+        print("Submit Tasks 'A' to Task Manager ...")
+        cu_set_A = umgr.submit_tasks(cudesc_list_A)
 
         # submit B cus to pilot job
         cudesc_list_B = []
@@ -117,13 +117,13 @@ if __name__ == "__main__":
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        print("Submit Tasks 'B' to Unit Manager ...")
-        cu_set_B = umgr.submit_units(cudesc_list_B)
+        print("Submit Tasks 'B' to Task Manager ...")
+        cu_set_B = umgr.submit_tasks(cudesc_list_B)
 
 
         # ---------------------------------------------------------------------
         print("Waiting for 'A' and 'B' CUs to complete...")
-        umgr.wait_units()
+        umgr.wait_tasks()
         print("Executing 'C' tasks now...")
         # ---------------------------------------------------------------------
 
@@ -145,12 +145,12 @@ if __name__ == "__main__":
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        print("Submit Tasks 'C' to Unit Manager ...")
-        cu_set_C = umgr.submit_units(cudesc_list_C)
+        print("Submit Tasks 'C' to Task Manager ...")
+        cu_set_C = umgr.submit_tasks(cudesc_list_C)
 
         # ---------------------------------------------------------------------
         print("Waiting for 'C' CUs to complete...")
-        umgr.wait_units()
+        umgr.wait_tasks()
         print("All CUs completed successfully!")
 
 

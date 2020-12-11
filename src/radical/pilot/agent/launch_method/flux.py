@@ -121,16 +121,16 @@ class Flux(LaunchMethod):
 
   # # --------------------------------------------------------------------------
   # #
-  # def construct_command(self, unit, launch_script_hop=None):
+  # def construct_command(self, task, launch_script_hop=None):
   #
-  #     uid          = unit['uid']
-  #     cud          = unit['description']
+  #     uid          = task['uid']
+  #     cud          = task['description']
   #     procs        = cud['cpu_processes']
   #     cpn          = cud['cpu_threads']
   #     gpn          = cud['gpu_processes']
   #     task_exec    = cud['executable']
   #     task_args    = cud.get('arguments') or list()
-  #     task_sandbox = unit['unit_sandbox_path']
+  #     task_sandbox = task['task_sandbox_path']
   #
   #     self._log.debug('prep %s', uid)
   #

@@ -42,7 +42,7 @@ if __name__ == '__main__':
         # read the config used for resource details
         config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
         pmgr   = rp.PilotManager(session=session)
-        umgr   = rp.UnitManager(session=session)
+        umgr   = rp.TaskManager(session=session)
 
         report.header('submit pilots')
 
@@ -64,10 +64,10 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        n = 1024  # number of units to run
-        report.header('submit %d units' % n)
+        n = 1024  # number of tasks to run
+        report.header('submit %d tasks' % n)
 
-        # Register the Pilot in a UnitManager object.
+        # Register the Pilot in a TaskManager object.
         umgr.add_pilots(pilot)
 
         # Create a workload of Tasks.
@@ -90,10 +90,10 @@ if __name__ == '__main__':
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        umgr.submit_units(cuds)
+        umgr.submit_tasks(cuds)
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
-        umgr.wait_units()
+        umgr.wait_tasks()
 
 
     except Exception as e:

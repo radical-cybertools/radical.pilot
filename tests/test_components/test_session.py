@@ -7,7 +7,7 @@ import glob
 import os
 import shutil
 
-from unittest import TestCase, mock
+from tasktest import TestCase, mock
 
 import radical.pilot as rp
 import radical.utils as ru

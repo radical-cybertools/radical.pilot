@@ -43,14 +43,14 @@ def rec_makedir(target):
 #
 @ffi.def_extern()
 def launch_cb(task, jdata, status, cbdata):
-    return ffi.from_handle(cbdata).unit_spawned_cb(task, status)
+    return ffi.from_handle(cbdata).task_spawned_cb(task, status)
 
 
 # ------------------------------------------------------------------------------
 #
 @ffi.def_extern()
 def finish_cb(task, jdata, status, cbdata):
-    return ffi.from_handle(cbdata).unit_completed_cb(task, status)
+    return ffi.from_handle(cbdata).task_completed_cb(task, status)
 
 
 # ------------------------------------------------------------------------------
@@ -114,9 +114,9 @@ class ORTE(AgentExecutingComponent):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_units':
+        if cmd == 'cancel_tasks':
 
-            self._log.info("cancel_units command (%s)" % arg)
+            self._log.info("cancel_tasks command (%s)" % arg)
             with self._cancel_lock:
                 self._cus_to_cancel.extend(arg['uids'])
 
@@ -169,20 +169,20 @@ class ORTE(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
+    def work(self, tasks):
 
-        if not isinstance(units, list):
-            units = [units]
+        if not isinstance(tasks, list):
+            tasks = [tasks]
 
-        self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
+        self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        for unit in units:
-            self._handle_unit(unit)
+        for task in tasks:
+            self._handle_task(task)
 
 
     # --------------------------------------------------------------------------
     #
-    def _handle_unit(self, cu):
+    def _handle_task(self, cu):
 
         # prep stdout/err so that we can append w/o checking for None
         cu['stdout'] = ''
@@ -202,17 +202,17 @@ class ORTE(AgentExecutingComponent):
             if not launcher:
                 raise RuntimeError("no launcher")
 
-            self._log.debug("Launching unit with %s (%s).",
+            self._log.debug("Launching task with %s (%s).",
                             launcher.name, launcher.launch_command)
 
-            assert(cu['slots']), 'unit unscheduled'
-            # Start a new subprocess to launch the unit
+            assert(cu['slots']), 'task unscheduled'
+            # Start a new subprocess to launch the task
             self.spawn(launcher=launcher, cu=cu)
 
         except Exception as e:
-            # append the startup error to the units stderr.  This is
+            # append the startup error to the tasks stderr.  This is
             # not completely correct (as this text is not produced
-            # by the unit), but it seems the most intuitive way to
+            # by the task), but it seems the most intuitive way to
             # communicate that error to the application/user.
             self._log.exception("error running CU: %s", str(e))
             cu['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
@@ -227,7 +227,7 @@ class ORTE(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def unit_spawned_cb(self, task, status):
+    def task_spawned_cb(self, task, status):
 
         with self.task_map_lock:
             cu = self.task_map[task]
@@ -237,9 +237,9 @@ class ORTE(AgentExecutingComponent):
             with self.task_map_lock:
                 del self.task_map[task]
 
-            # unit launch failed
+            # task launch failed
             self._prof.prof('exec_fail', uid=uid)
-            self._log.error("unit %s startup failed: %s", uid, status)
+            self._log.error("task %s startup failed: %s", uid, status)
             self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
             cu['target_state'] = rps.FAILED
@@ -248,13 +248,13 @@ class ORTE(AgentExecutingComponent):
 
         else:
             cu['started'] = time.time()
-            self._log.debug("unit %s startup ok", uid)
+            self._log.debug("task %s startup ok", uid)
             self.advance(cu, rps.AGENT_EXECUTING, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
     #
-    def unit_completed_cb(self, task, exit_code):
+    def task_completed_cb(self, task, exit_code):
 
         timestamp = time.time()
 
@@ -263,7 +263,7 @@ class ORTE(AgentExecutingComponent):
             del self.task_map[task]
 
         self._prof.prof('exec_stop', uid=cu['uid'])
-        self._log.info("unit %s finished [%s]", cu['uid'], exit_code)
+        self._log.info("task %s finished [%s]", cu['uid'], exit_code)
 
         cu['exit_code'] = exit_code
         cu['finished']  = timestamp
@@ -271,11 +271,11 @@ class ORTE(AgentExecutingComponent):
         self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
 
         if exit_code != 0:
-            # unit failed - fail after staging output
+            # task failed - fail after staging output
             cu['target_state'] = rps.FAILED
 
         else:
-            # unit finished cleanly.  We always move to stageout, even if there
+            # task finished cleanly.  We always move to stageout, even if there
             # are no staging directives -- at the very least, we'll upload
             # stdout/stderr
             cu['target_state'] = rps.DONE
@@ -327,7 +327,7 @@ class ORTE(AgentExecutingComponent):
     #
     def spawn(self, launcher, cu):
 
-        sandbox = cu['unit_sandbox_path']
+        sandbox = cu['task_sandbox_path']
 
         if False:
             cu_tmpdir = '%s/%s' % (self.tmpdir, cu['uid'])
@@ -395,8 +395,8 @@ class ORTE(AgentExecutingComponent):
             "RP_PILOT_ID=%s"   % self._cfg['pid'],
             "RP_AGENT_ID=%s"   % self._cfg['aid'],
             "RP_SPAWNER_ID=%s" % self.uid,
-            "RP_UNIT_ID=%s"    % cu['uid'],
-            "RP_UNIT_NAME=%s"  % cu['description'].get('name'),
+            "RP_TASK_ID=%s"    % cu['uid'],
+            "RP_TASK_NAME=%s"  % cu['description'].get('name'),
             "RP_PILOT_STAGING=%s/staging_area" % self._pwd
         ]
         for env in rp_envs:
@@ -436,7 +436,7 @@ class ORTE(AgentExecutingComponent):
         arg_list.append(ffi.new("char[]", str("%s; exit $RETVAL"
                                             % str(task_command))))
 
-        self._log.debug("Launching unit %s via %s %s", cu['uid'],
+        self._log.debug("Launching task %s via %s %s", cu['uid'],
                         orte_command, task_command)
 
         # NULL termination, required by ORTE

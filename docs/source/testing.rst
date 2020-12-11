@@ -9,8 +9,8 @@ Introduction
 ============
 
 Along with RADICAL-Pilot functionalities, we are developing a growing set of
-unit tests. The source code of the unit tests can be found in
-``src/radical/pilot/tests``. You can run the unit tests via `pytest`:
+task tests. The source code of the task tests can be found in
+``src/radical/pilot/tests``. You can run the task tests via `pytest`:
 
 .. code-block:: bash
 
@@ -26,9 +26,9 @@ Remote Testing
    Remote Testing is disabled in the current release!
 
 
-By default, the unit tests of RADICAL-Pilot use pilot agents launched on the
+By default, the task tests of RADICAL-Pilot use pilot agents launched on the
 local machine (`localhost`). However, it is possible to run a subset of the
-unit tests (``src/radical/pilot/tests/remote/``) on a remote machine. Remote
+task tests (``src/radical/pilot/tests/remote/``) on a remote machine. Remote
 testing can  be controlled via a set of environment variables:
 
 +-------------------------------------------+-------------------------------------+
@@ -44,13 +44,13 @@ testing can  be controlled via a set of environment variables:
 +-------------------------------------------+-------------------------------------+
 | ``RADICAL_PILOT_TEST_REMOTE_CORES``       | Number of cores to allocate.        |
 +-------------------------------------------+-------------------------------------+
-| ``RADICAL_PILOT_TEST_REMOTE_NUM_CUS``     | Number of Compute Units to run.     |
+| ``RADICAL_PILOT_TEST_REMOTE_NUM_CUS``     | Number of Tasks to run.     |
 +-------------------------------------------+-------------------------------------+
 | ``RADICAL_PILOT_TEST_TIMEOUT``            | Test timeout in minutes.            |
 +-------------------------------------------+-------------------------------------+
 
 
-For example, if you want to run the unit tests on the XSEDE _Bridges_ cluster
+For example, if you want to run the task tests on the XSEDE _Bridges_ cluster
 (https://portal.xsede.org/psc-bridges), run
 
 .. code-block:: bash
