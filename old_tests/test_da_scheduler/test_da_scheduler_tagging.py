@@ -135,7 +135,7 @@ def test_nonmpi_task_with_tagging(
             'lfs': component._lrms_lfs_per_node
         }))
 
-    # Allocate first CUD -- should land on first node
+    # Allocate first TD -- should land on first node
     cu = nompi()
     cu['uid'] = 'task.000000'
     component._try_allocation(cu)
@@ -151,7 +151,7 @@ def test_nonmpi_task_with_tagging(
                      'lm_info': 'INFO',
                      'gpus_per_node': 1}
 
-    # Assert resulting node list values after first CUD
+    # Assert resulting node list values after first TD
     assert component.nodes == [{'lfs': {'size': 4096, 'path': 'abc'},
                                 'cores': [1, 0],
                                 'name': 'a',
@@ -178,7 +178,7 @@ def test_nonmpi_task_with_tagging(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    # Allocate second CUD -- should land on first node
+    # Allocate second TD -- should land on first node
     cu = nompi()
     cu['uid'] = 'task.000001'
     cu['description']['tag'] = 'task.000000'
@@ -196,7 +196,7 @@ def test_nonmpi_task_with_tagging(
                      'lm_info': 'INFO',
                      'gpus_per_node': 1}
 
-    # Assert resulting node list values after second CUD
+    # Assert resulting node list values after second TD
     assert component.nodes == [{'lfs': {'size': 3072, 'path': 'abc'},
                                 'cores': [1, 1],
                                 'name': 'a',
@@ -223,7 +223,7 @@ def test_nonmpi_task_with_tagging(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    # Allocate third CUD -- should return None as first node is not released
+    # Allocate third TD -- should return None as first node is not released
     cu = nompi()    
     cu['uid'] = 'task.000002'
     cu['description']['cpu_threads'] = 1
@@ -264,7 +264,7 @@ def test_nonmpi_task_with_tagging(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    # Allocate fourth CUD -- should land on first node
+    # Allocate fourth TD -- should land on first node
     cu = nompi()    
     cu['uid'] = 'task.000002'
     cu['description']['cpu_threads'] = 1
@@ -348,7 +348,7 @@ def test_mpi_task_with_tagging(
             'lfs': component._lrms_lfs_per_node
         }))
 
-    # Allocate first CUD -- should land on first node
+    # Allocate first TD -- should land on first node
     cu = mpi()
     cu['uid'] = 'task.000000'
     cu['description']['cpu_processes'] = 2
@@ -367,7 +367,7 @@ def test_mpi_task_with_tagging(
                      'lm_info': 'INFO',
                      'gpus_per_node': 1}
 
-    # Assert resulting node list values after first CUD
+    # Assert resulting node list values after first TD
     assert component.nodes == [{'lfs': {'size': 3072, 'path': 'abc'},
                                 'cores': [1, 1],
                                 'name': 'a',
@@ -394,7 +394,7 @@ def test_mpi_task_with_tagging(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    # Allocate second CUD -- should return None as the first node is
+    # Allocate second TD -- should return None as the first node is
     # not yet released
     cu = mpi()
     cu['uid'] = 'task.000001'
@@ -404,7 +404,7 @@ def test_mpi_task_with_tagging(
     assert slot2 == None
     assert component._tag_history == {'task.000000': [1]}
 
-    # Allocate third CUD -- should land on second and third node
+    # Allocate third TD -- should land on second and third node
     cu = mpi()
     cu['uid'] = 'task.000002'
     cu['description']['cpu_processes'] = 2
@@ -455,7 +455,7 @@ def test_mpi_task_with_tagging(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    # Allocate fourth CUD -- should return None as the second node is not
+    # Allocate fourth TD -- should return None as the second node is not
     # yet released
     cu = mpi()
     cu['uid'] = 'task.000003'
@@ -467,7 +467,7 @@ def test_mpi_task_with_tagging(
     assert component._tag_history == {'task.000000': [1],
                                       'task.000002': [2, 3]}
 
-    # Release first node and allocate second CUD again
+    # Release first node and allocate second TD again
     component._release_slot(slot1)
 
     assert component.nodes == [{'lfs': {'size': 5120, 'path': 'abc'},
@@ -514,7 +514,7 @@ def test_mpi_task_with_tagging(
                                       'task.000001': [1],
                                       'task.000002': [2, 3]}
 
-    # Release second and third nodes and allocate fourth CUD again
+    # Release second and third nodes and allocate fourth TD again
     component._release_slot(slot3)
 
     assert component.nodes == [{'lfs': {'size': 4096, 'path': 'abc'},

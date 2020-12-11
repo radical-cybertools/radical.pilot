@@ -130,8 +130,8 @@ class Yarn(AgentSchedulingComponent):
     #
     def _allocate_slot(self, cu):
         """
-        Attempt to allocate cores for a specific CU.  If it succeeds, send the
-        CU off to the ExecutionWorker.
+        Attempt to allocate cores for a specific Task.  If it succeeds, send the
+        Task off to the ExecutionWorker.
 
         In this implementation it checks if the number of cores and memory size
         that exist in the YARN cluster are enough for an application to fit in

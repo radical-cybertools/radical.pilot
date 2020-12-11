@@ -85,11 +85,11 @@ TARBALL  = 'Tarball'   # remote staging will be executed using a tarball.
 import radical.saga.filesystem as _rsf
 
 CREATE_PARENTS = _rsf.CREATE_PARENTS  # Create parent directories if needed
-NON_FATAL      = 8192                # Don't fail the CU if input is missing
+NON_FATAL      = 8192                # Don't fail the Task if input is missing
 
 
 #
-# CU MPI flags
+# Task MPI flags
 #
 SERIAL         = 'Serial'
 MPI            = 'MPI'

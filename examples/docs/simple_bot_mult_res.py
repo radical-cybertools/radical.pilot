@@ -152,13 +152,13 @@ if __name__ == "__main__":
         cudesc_list = []
         for i in range(NUMBER_JOBS):
 
-            # -------- BEGIN USER DEFINED CU DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED Task DESCRIPTION --------- #
             cudesc = rp.TaskDescription()
             cudesc.environment = {'CU_NO': i}
             cudesc.executable  = "/bin/echo"
-            cudesc.arguments   = ['I am CU number $CU_NO from $HOSTNAME']
+            cudesc.arguments   = ['I am Task number $CU_NO from $HOSTNAME']
             cudesc.cores       = 1
-            # -------- END USER DEFINED CU DESCRIPTION --------- #
+            # -------- END USER DEFINED Task DESCRIPTION --------- #
 
             cudesc_list.append(cudesc)
 

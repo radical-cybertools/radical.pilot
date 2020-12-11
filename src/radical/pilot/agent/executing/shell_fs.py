@@ -60,7 +60,7 @@ class ShellFS(AgentExecutingComponent):
         self._deactivate += 'unset VIRTUAL_ENV\n\n'
 
         # FIXME: we should not alter the environment of the running agent, but
-        #        only make sure that the CU finds a pristine env.  That also
+        #        only make sure that the Task finds a pristine env.  That also
         #        holds for the unsetting below -- AM
         if old_path : os.environ['PATH']        = old_path
         if old_ppath: os.environ['PYTHONPATH']  = old_ppath
@@ -100,7 +100,7 @@ class ShellFS(AgentExecutingComponent):
                 if e.startswith(r):
                     os.environ.pop(e, None)
 
-        # if we need to transplant any original env into the CU, we dig the
+        # if we need to transplant any original env into the Task, we dig the
         # respective keys from the dump made by bootstrap_0.sh
         self._env_cu_export = dict()
         if self._cfg.get('export_to_cu'):
@@ -252,7 +252,7 @@ class ShellFS(AgentExecutingComponent):
             # not completely correct (as this text is not produced
             # by the task), but it seems the most intuitive way to
             # communicate that error to the application/user.
-            self._log.exception("error running CU: %s", e)
+            self._log.exception("error running Task: %s", e)
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             if cu.get('slots'):
@@ -275,7 +275,7 @@ class ShellFS(AgentExecutingComponent):
         descr   = cu['description']
         sandbox = cu['task_sandbox_path']
 
-        env  += "# CU environment\n"
+        env  += "# Task environment\n"
         env  += "export RP_SESSION_ID=%s\n"     % self._cfg['sid']
         env  += "export RP_PILOT_ID=%s\n"       % self._cfg['pid']
         env  += "export RP_AGENT_ID=%s\n"       % self._cfg['aid']
@@ -303,14 +303,14 @@ prof(){
                 env += "export %s=%s\n"  %  (e, descr['environment'][e])
         env  += "\n"
 
-        cwd  += "# CU sandbox\n"
+        cwd  += "# Task sandbox\n"
         cwd  += "mkdir -p %s\n" % sandbox
         cwd  += "cd       %s\n" % sandbox
         cwd  += "\n"
 
         if  descr['pre_exec'] :
             fail  = ' (echo "pre_exec failed"; false) || exit'
-            pre  += "\n# CU pre-exec\n"
+            pre  += "\n# Task pre-exec\n"
             pre  += 'prof cu_pre_start\n'
             for elem in descr['pre_exec']:
                 pre += "%s || %s\n" % (elem, fail)
@@ -320,7 +320,7 @@ prof(){
 
         if  descr['post_exec'] :
             fail  = ' (echo "post_exec failed"; false) || exit'
-            post += "\n# CU post-exec\n"
+            post += "\n# Task post-exec\n"
             post += 'prof cu_post_start\n'
             for elem in descr['post_exec']:
                 post += "%s || %s\n" % (elem, fail)
@@ -358,7 +358,7 @@ prof(){
         script += "\n# ------------------------------------------------------\n"
         script += "%s"        %  cwd
         script += "%s"        %  pre
-        script += "\n# CU execution\n"
+        script += "\n# Task execution\n"
         script += 'prof cu_exec_start\n'
         script += "%s %s\n\n" % (cmd, io)
         script += "RETVAL=$?\n"

@@ -242,7 +242,7 @@ def run_workload(pilot):
     cuds = list()
     for i in range(0, n):
 
-        # create a new CU description, and fill it.
+        # create a new Task description, and fill it.
         # Here we don't use dict initialization.
         cud = rp.TaskDescription()
         # trigger an error now and then

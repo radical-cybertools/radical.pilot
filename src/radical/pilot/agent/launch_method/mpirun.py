@@ -52,7 +52,7 @@ class MPIRun(LaunchMethod):
             self._mpt = True
 
         # don't use the full pathname as the user might load a different
-        # compiler / MPI library suite from his CU pre_exec that requires
+        # compiler / MPI library suite from his Task pre_exec that requires
         # the launcher from that version -- see #572.
         # FIXME: then why are we doing this LM setup in the first place??
         if self.launch_command:
@@ -136,7 +136,7 @@ class MPIRun(LaunchMethod):
             self._dplace += ','.join(core_list)
 
 
-        # If we have a CU with many cores, we will create a hostfile and pass
+        # If we have a Task with many cores, we will create a hostfile and pass
         # that as an argument instead of the individual hosts
         hosts_string     = ''
         mpt_hosts_string = ''

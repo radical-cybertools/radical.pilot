@@ -105,7 +105,7 @@ class MPIExec(LaunchMethod):
                 host_slots[node_name] = 0
             host_slots[node_name] += len(node['core_map'])
 
-        # If we have a CU with many cores, and the compression didn't work
+        # If we have a Task with many cores, and the compression didn't work
         # out, we will create a hostfile and pass that as an argument
         # instead of the individual hosts.  The hostfile has this format:
         #

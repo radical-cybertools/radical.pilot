@@ -134,7 +134,7 @@ if __name__ == "__main__":
         cud2.input_staging = sd_inter_in
         cud2.output_staging = OUTPUT_FILE
 
-        # Submit the second CU for execution.
+        # Submit the second Task for execution.
         umgr.submit_tasks(cud2)
 
         # Wait for the task to finish.

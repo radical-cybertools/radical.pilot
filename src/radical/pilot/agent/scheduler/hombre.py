@@ -112,7 +112,7 @@ class Hombre(AgentSchedulingComponent):
         # ---------------------------------------------------------------------
         # create as many equal sized chunks from the available nodes as
         # possible, and put them into the `free` list.  The actual scheduling
-        # algorithm will blindly pick chunks from that list whenever a new CUD
+        # algorithm will blindly pick chunks from that list whenever a new TD
         # arrives.
         cblock   = cud['cpu_threads']
         ncblocks = cud['cpu_processes']

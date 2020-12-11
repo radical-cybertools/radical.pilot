@@ -174,7 +174,7 @@ class Popen(AgentExecutingComponent) :
             # not completely correct (as this text is not produced
             # by the task), but it seems the most intuitive way to
             # communicate that error to the application/user.
-            self._log.exception("error running CU")
+            self._log.exception("error running Task")
             if cu.get('stderr') is None:
                 cu['stderr'] = ''
             cu['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
@@ -355,8 +355,8 @@ prof(){
 
                 cus = list()
                 try:
-                    # we don't want to only wait for one CU -- then we would
-                    # pull CU state too frequently.  OTOH, we also don't want to
+                    # we don't want to only wait for one Task -- then we would
+                    # pull Task state too frequently.  OTOH, we also don't want to
                     # learn about CUs until all slots are filled, because then
                     # we may not be able to catch finishing CUs in time -- so
                     # there is a fine balance here.  Balance means 100 (FIXME).

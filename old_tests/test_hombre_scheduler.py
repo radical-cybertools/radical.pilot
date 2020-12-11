@@ -142,28 +142,28 @@ def test_nonmpi_task_withhombre_scheduler(mocked_init,
                                              ]
                          })
 
-    # Allocate first CUD -- should land on second node
+    # Allocate first TD -- should land on second node
     cud  = cud_nonmpi()
     slot = component._allocate_slot(cud)
     chk = all_slots[-1]
 
     assert(slot == chk)
 
-    # Allocate second CUD -- should also land on second node
+    # Allocate second TD -- should also land on second node
     cud  = cud_nonmpi()
     slot = component._allocate_slot(cud)
     chk = all_slots[-2]
 
     assert(slot == chk)
 
-    # Allocate third CUD -- should land on first node
+    # Allocate third TD -- should land on first node
     cud  = cud_nonmpi()
     slot = component._allocate_slot(cud)
     chk = all_slots[-3]
 
     assert(slot == chk)
 
-    # Allocate fourth CUD -- should also land on tecond node
+    # Allocate fourth TD -- should also land on tecond node
     cud  = cud_nonmpi()
     slot = component._allocate_slot(cud)
     assert slot == all_slots[-4]
@@ -238,14 +238,14 @@ def test_mpi_task_withhombre_scheduler(mocked_init,
                       'nodes'          : [[1, '1', [[0], [1], [2]], [[0]]]]
                  }]
 
-    # Allocate first CUD -- should land on second node
+    # Allocate first TD -- should land on second node
     cud  = cud_mpi()
     slot = component._allocate_slot(cud)
     chk  = all_slots[-1]
 
     assert(slot == chk)
 
-    # Allocate second CUD -- should land on first node
+    # Allocate second TD -- should land on first node
     cud  = cud_mpi()
     slot = component._allocate_slot(cud)
     assert slot == all_slots[-2]

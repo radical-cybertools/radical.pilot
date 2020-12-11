@@ -15,7 +15,7 @@ class DataTaskDescription(Description):
     returned.
 
     This ID can then be used for state queries and lifecycle management
-    (e.g. canceling a CU).
+    (e.g. canceling a Task).
 
     In case (ii), the runtime system of the Compute-Data Service is responsible
     for placing CUs and DUs on a Pilot.

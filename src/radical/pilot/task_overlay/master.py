@@ -193,7 +193,7 @@ class Master(rpu.Component):
         ru.rec_makedir(sbox)
         ru.write_json(cfg, fname)
 
-        # grab default settings via CUD construction
+        # grab default settings via TD construction
         descr_complete = TaskDescription(descr).as_dict()
 
         # create task dict

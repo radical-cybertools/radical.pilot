@@ -95,7 +95,7 @@ if __name__ == '__main__':
             path  = '/tmp/stage_in_folder_%d/' % i
             fname = 'input_file.dat'
             full  = '%s/%s'  % (path, fname)
-            # create a new CU description, and fill it.
+            # create a new Task description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.TaskDescription()
             cud.executable     = '/usr/bin/wc'

@@ -112,7 +112,7 @@ def test_mpi_task_with_continuous_scheduler(
             'lfs': component._lrms_lfs_per_node
         }))
 
-    # Allocate first CUD -- should land on first node
+    # Allocate first TD -- should land on first node
     cud = mpi()
     cud['cpu_processes'] = 2
     cud['cpu_threads'] = 1
@@ -128,7 +128,7 @@ def test_mpi_task_with_continuous_scheduler(
                     'lm_info': 'INFO',
                     'gpus_per_node': component._lrms_gpus_per_node}
 
-    # Assert resulting node list values after first CUD
+    # Assert resulting node list values after first TD
     assert component.nodes == [{'lfs': {'size': 3072, 'path': 'abc'},
                                 'cores': [1, 1, 0, 0],
                                 'name': 'a',
@@ -155,7 +155,7 @@ def test_mpi_task_with_continuous_scheduler(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    # Allocate second CUD -- should land on first node
+    # Allocate second TD -- should land on first node
     cud = mpi()
     cud['cpu_processes'] = 1
     cud['cpu_threads'] = 2
@@ -171,7 +171,7 @@ def test_mpi_task_with_continuous_scheduler(
                     'lm_info': 'INFO',
                     'gpus_per_node': component._lrms_gpus_per_node}
 
-    # Assert resulting node list values after second CUD
+    # Assert resulting node list values after second TD
     assert component.nodes == [{'lfs': {'size': 2048, 'path': 'abc'},
                                 'cores': [1, 1, 1, 1],
                                 'name': 'a',
@@ -198,7 +198,7 @@ def test_mpi_task_with_continuous_scheduler(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    # Allocate third CUD -- should land on second node since no cores are
+    # Allocate third TD -- should land on second node since no cores are
     # available on the first
     cud = mpi()
     cud['cpu_processes'] = 1
@@ -215,7 +215,7 @@ def test_mpi_task_with_continuous_scheduler(
                     'lm_info': 'INFO',
                     'gpus_per_node': component._lrms_gpus_per_node}
 
-    # Assert resulting node list values after third CUD
+    # Assert resulting node list values after third TD
     assert component.nodes == [{'lfs': {'size': 2048, 'path': 'abc'},
                                 'cores': [1, 1, 1, 1],
                                 'name': 'a',
@@ -242,7 +242,7 @@ def test_mpi_task_with_continuous_scheduler(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    # Allocate fourth CUD -- should land on second and third nodes
+    # Allocate fourth TD -- should land on second and third nodes
     cud = mpi()
     cud['cpu_processes'] = 2
     cud['cpu_threads'] = 2
@@ -263,7 +263,7 @@ def test_mpi_task_with_continuous_scheduler(
                     'lm_info': 'INFO',
                     'gpus_per_node': component._lrms_gpus_per_node}
 
-    # Assert resulting node list values after fourth CUD
+    # Assert resulting node list values after fourth TD
     assert component.nodes == [{'lfs': {'size': 2048, 'path': 'abc'},
                                 'cores': [1, 1, 1, 1],
                                 'name': 'a',

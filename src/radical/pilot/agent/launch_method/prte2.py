@@ -34,7 +34,7 @@ class PRTE2(LaunchMethod):
 
         # We remove all PRUN related environment variables from the launcher
         # environment, so that we can use PRUN for both launch of the
-        # (sub-)agent and CU execution.
+        # (sub-)agent and Task execution.
         self.env_removables.extend(['OMPI_', 'OPAL_', 'PMIX_'])
 
         self._verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))

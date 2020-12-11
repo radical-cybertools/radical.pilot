@@ -28,7 +28,7 @@ class MPIRunRSH(LaunchMethod):
             raise Exception("mpirun_rsh could not be found")
 
         # We don't use the full pathname as the user might load a different
-        # compiler / MPI library suite from his CU pre_exec that requires
+        # compiler / MPI library suite from his Task pre_exec that requires
         # the launcher from that version, as experienced on stampede in #572.
         self.launch_command = 'mpirun_rsh'
 

@@ -421,7 +421,7 @@ class TaskDescription(ru.Description):
 
         if not self.get('executable') and \
            not self.get('kernel')     :
-            raise ValueError("CU description needs 'executable' or 'kernel'")
+            raise ValueError("Task description needs 'executable' or 'kernel'")
 
 
 # ------------------------------------------------------------------------------

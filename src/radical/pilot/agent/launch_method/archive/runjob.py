@@ -87,7 +87,7 @@ class Runjob(LaunchMethod):
             # will be expanded in the shell script.
             task_exec = '`which %s`' % task_exec
             # Note: We can't use the expansion from here,
-            #       as the pre-execs of the CU aren't run yet!!
+            #       as the pre-execs of the Task aren't run yet!!
 
         # And finally add the executable and the arguments
         # usage: runjob <runjob flags> : /bin/hostname -f

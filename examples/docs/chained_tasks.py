@@ -92,13 +92,13 @@ if __name__ == "__main__":
         cudesc_list_A = []
         for i in range(NUMBER_CHAINS):
 
-            # -------- BEGIN USER DEFINED CU A_n DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED Task A_n DESCRIPTION --------- #
             cudesc = rp.TaskDescription()
             cudesc.environment = {"CU_LIST": "A", "CU_NO": "%02d" % i}
             cudesc.executable  = CU_A_EXECUTABLE
-            cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
+            cudesc.arguments   = ['"$CU_LIST Task with id $CU_NO"']
             cudesc.cores       = 1
-            # -------- END USER DEFINED CU A_n DESCRIPTION --------- #
+            # -------- END USER DEFINED Task A_n DESCRIPTION --------- #
 
             cudesc_list_A.append(cudesc)
 
@@ -109,8 +109,8 @@ if __name__ == "__main__":
         cu_list_A = umgr.submit_tasks(cudesc_list_A)
 
         # Chaining cus i.e submit a task, when task from A is
-        # successfully executed.  A B CU reads the content of the output file of
-        # an A CU and writes it into its own output file.
+        # successfully executed.  A B Task reads the content of the output file of
+        # an A Task and writes it into its own output file.
         cu_list_B = []
 
         # We create a copy of cu_list_A so that we can remove elements from it,
@@ -121,17 +121,17 @@ if __name__ == "__main__":
                 idx = cu_list_A_copy.index(cu_a)
 
                 cu_a.wait ()
-                print("'A' Task '%s' done. Submitting 'B' CU ..." % idx)
+                print("'A' Task '%s' done. Submitting 'B' Task ..." % idx)
 
-                # -------- BEGIN USER DEFINED CU B_n DESCRIPTION --------- #
+                # -------- BEGIN USER DEFINED Task B_n DESCRIPTION --------- #
                 cudesc = rp.TaskDescription()
                 cudesc.environment = {'CU_LIST': 'B', 'CU_NO': "%02d" % idx}
                 cudesc.executable  = CU_B_EXECUTABLE
-                cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
+                cudesc.arguments   = ['"$CU_LIST Task with id $CU_NO"']
                 cudesc.cores       = 1
-                # -------- END USER DEFINED CU B_n DESCRIPTION --------- #
+                # -------- END USER DEFINED Task B_n DESCRIPTION --------- #
 
-                # Submit CU to Pilot Job
+                # Submit Task to Pilot Job
                 cu_b = umgr.submit_tasks(cudesc)
                 cu_list_B.append(cu_b)
                 cu_list_A.remove(cu_a)

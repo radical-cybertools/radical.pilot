@@ -84,13 +84,13 @@ if __name__ == "__main__":
         cudesc_list_A = []
         for idx in range(NUMBER_COUPLES):
 
-            # -------- BEGIN USER DEFINED CU 1 DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED Task 1 DESCRIPTION --------- #
             cudesc = rp.TaskDescription()
             cudesc.environment = {"CU_LIST": "A", "CU_NO": "%02d" % idx}
             cudesc.executable  = "/bin/echo"
-            cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
+            cudesc.arguments   = ['"$CU_LIST Task with id $CU_NO"']
             cudesc.cores       = CU_A_CORES
-            # -------- END USER DEFINED CU 1 DESCRIPTION --------- #
+            # -------- END USER DEFINED Task 1 DESCRIPTION --------- #
 
             cudesc_list_A.append(cudesc)
 
@@ -104,13 +104,13 @@ if __name__ == "__main__":
         cudesc_list_B = []
         for idx in range(NUMBER_COUPLES):
 
-            # -------- BEGIN USER DEFINED CU 2 DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED Task 2 DESCRIPTION --------- #
             cudesc = rp.TaskDescription()
             cudesc.environment = {"CU_LIST": "B", "CU_NO": "%02d" % idx}
             cudesc.executable  = "/bin/echo"
-            cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
+            cudesc.arguments   = ['"$CU_LIST Task with id $CU_NO"']
             cudesc.cores       = CU_B_CORES
-            # -------- END USER DEFINED CU 2 DESCRIPTION --------- #
+            # -------- END USER DEFINED Task 2 DESCRIPTION --------- #
 
             cudesc_list_B.append(cudesc)
 
@@ -132,13 +132,13 @@ if __name__ == "__main__":
         cudesc_list_C = []
         for idx in range(NUMBER_COUPLES):
 
-            # -------- BEGIN USER DEFINED CU 3 DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED Task 3 DESCRIPTION --------- #
             cudesc = rp.TaskDescription()
             cudesc.environment = {"CU_SET": "C", "CU_NO": "%02d" % idx}
             cudesc.executable  = "/bin/echo"
-            cudesc.arguments   = ['"$CU_SET CU with id $CU_NO"']
+            cudesc.arguments   = ['"$CU_SET Task with id $CU_NO"']
             cudesc.cores       = CU_C_CORES
-            # -------- END USER DEFINED CU 3 DESCRIPTION --------- #
+            # -------- END USER DEFINED Task 3 DESCRIPTION --------- #
 
             cudesc_list_C.append(cudesc)
 

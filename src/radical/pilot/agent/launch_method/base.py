@@ -91,7 +91,7 @@ class LaunchMethod(object):
         self._log     = self._session._log    # pylint: disable=protected-access
         self._log.debug('create LaunchMethod: %s', type(self))
 
-        # A per-launch_method list of env vars to remove from the CU env
+        # A per-launch_method list of env vars to remove from the Task env
         self.env_removables = []
 
         self._configure()

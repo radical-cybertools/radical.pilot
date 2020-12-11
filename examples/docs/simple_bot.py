@@ -26,7 +26,7 @@ if __name__ == "__main__":
     RESOURCE_LABEL = 'local.localhost'
     PILOT_CORES    =  2
     BAG_SIZE       = 10  # The number of tasks
-    CU_CORES       =  1  # The cores each CU will take.
+    CU_CORES       =  1  # The cores each Task will take.
     QUEUE          = None
     # we use a reporter class for nicer output
     report = ru.Reporter(name='radical.pilot')
@@ -76,17 +76,17 @@ if __name__ == "__main__":
 
         report.info('Create %d Task Description(s)\n\t' % BAG_SIZE)
 
-        # create CU descriptions
+        # create Task descriptions
         cudesc_list = []
         for i in range(BAG_SIZE):
 
-            # -------- BEGIN USER DEFINED CU DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED Task DESCRIPTION --------- #
             cudesc = rp.TaskDescription()
             cudesc.executable  = "/bin/echo"
-            cudesc.arguments   = ['I am CU number $CU_NO']
+            cudesc.arguments   = ['I am Task number $CU_NO']
             cudesc.environment = {'CU_NO': i}
             cudesc.cores       = 1
-            # -------- END USER DEFINED CU DESCRIPTION --------- #
+            # -------- END USER DEFINED Task DESCRIPTION --------- #
 
             cudesc_list.append(cudesc)
             report.progress()
@@ -101,7 +101,7 @@ if __name__ == "__main__":
         umgr.wait_tasks()
 
         for task in cu_set:
-            print("* CU %s, state %s, exit code: %s, stdout: %s"
+            print("* Task %s, state %s, exit code: %s, stdout: %s"
                 % (task.uid, task.state, task.exit_code, task.stdout.strip()))
 
 

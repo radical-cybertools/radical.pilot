@@ -109,7 +109,7 @@ def test_nonmpi_task_with_continuous_scheduler(mocked_init,
             'lfs'  :              component._lrms_lfs_per_node
         }))
 
-    # Allocate first CUD -- should land on first node
+    # Allocate first TD -- should land on first node
     cud  = nompi()
     slot = component._allocate_slot(cud)
     assert slot == {'lm_info'       : 'INFO',
@@ -123,7 +123,7 @@ def test_nonmpi_task_with_continuous_scheduler(mocked_init,
                                        'lfs'      : {'size': 1024,'path': 'abc'}
                                        }]}
 
-    # Assert resulting node list values after first CUD
+    # Assert resulting node list values after first TD
     assert component.nodes == [{'uid'  : 1,
                                 'name' : 'a',
                                 'cores': [1, 0],
@@ -151,7 +151,7 @@ def test_nonmpi_task_with_continuous_scheduler(mocked_init,
                                 'lfs'  : {'size': 5120,'path': 'abc'}}
                                ]
 
-    # Allocate second CUD -- should land on first node
+    # Allocate second TD -- should land on first node
     cud  = nompi()
     slot = component._allocate_slot(cud)
     assert slot == {'lm_info'       : 'INFO',
@@ -165,7 +165,7 @@ def test_nonmpi_task_with_continuous_scheduler(mocked_init,
                                         'lfs'     : {'size': 1024,'path': 'abc'} 
                                         }]}
 
-    # Allocate third CUD -- should land on second node
+    # Allocate third TD -- should land on second node
     cud  = nompi()
     slot = component._allocate_slot(cud)
     assert slot == {'lm_info'       : 'INFO',
@@ -179,7 +179,7 @@ def test_nonmpi_task_with_continuous_scheduler(mocked_init,
                                         'lfs'     : {'size': 1024,'path': 'abc'} 
                                         }]}
 
-    # Allocate four CUD -- should land on third node
+    # Allocate four TD -- should land on third node
     cud = nompi()
     cud['lfs_per_process'] = 5120
     slot = component._allocate_slot(cud)
@@ -229,7 +229,7 @@ def test_nonmpi_task_with_continuous_scheduler(mocked_init,
                                         'lfs'     : {'size': 5120,'path': 'abc'} 
                                         }]}
 
-    # Allocate CUD with to land on second node
+    # Allocate TD with to land on second node
     cud = nompi()
     cud['lfs_per_process'] = 4096
     slot = component._allocate_slot(cud)
@@ -244,7 +244,7 @@ def test_nonmpi_task_with_continuous_scheduler(mocked_init,
                                         'lfs'     : {'size': 4096,'path': 'abc'} 
                                         }]}
 
-    # Allocate CUD with no lfs requirement
+    # Allocate TD with no lfs requirement
     cud = nompi()
     cud['lfs_per_process'] = 0
     slot = component._allocate_slot(cud)
@@ -288,7 +288,7 @@ def test_nonmpi_task_with_continuous_scheduler(mocked_init,
                                 'lfs'  : {'size': 0,'path': 'abc'}}
                                ]
 
-    # Allocate CUD which cannot fit on available resources
+    # Allocate TD which cannot fit on available resources
     cud = nompi()
     cud['lfs_per_process'] = 5120
     slot = component._allocate_slot(cud)
@@ -338,7 +338,7 @@ def test_nonmpi_task_with_continuous_scheduler(mocked_init,
                                 'lfs'  : {'size': 0, 'path': 'abc'}
                                 }]
 
-    # Allocate CUD to run multi threaded application
+    # Allocate TD to run multi threaded application
     cud = nompi()
     cud['cpu_processes'] = 1
     cud['cpu_threads']   = 2
@@ -388,7 +388,7 @@ def test_nonmpi_task_with_continuous_scheduler(mocked_init,
     # Deallocate slot
     component._release_slot(slot)
 
-    # Allocate CUD to run multi process, non-mpi application
+    # Allocate TD to run multi process, non-mpi application
     cud = nompi()
     cud['cpu_processes']   = 2
     cud['cpu_threads']     = 1

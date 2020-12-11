@@ -37,7 +37,7 @@ class PilotDescription (Description) :
         # resource requirements
         'candidate_hosts',          # List of specific hostnames to run on.
         'cpu_architecture',         # Specify specific arch required.
-        'total_physical_memory',    # mem for CU usage
+        'total_physical_memory',    # mem for Task usage
         'operating_system_type',    # Specify specific OS required.
         'queue'                     # Specify queue name of backend system.
     """

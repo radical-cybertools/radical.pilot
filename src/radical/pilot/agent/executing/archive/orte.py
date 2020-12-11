@@ -214,7 +214,7 @@ class ORTE(AgentExecutingComponent):
             # not completely correct (as this text is not produced
             # by the task), but it seems the most intuitive way to
             # communicate that error to the application/user.
-            self._log.exception("error running CU: %s", str(e))
+            self._log.exception("error running Task: %s", str(e))
             cu['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
                             % (str(e), traceback.format_exc())
 
@@ -288,7 +288,7 @@ class ORTE(AgentExecutingComponent):
     #
     def init_orte(self, cu):
 
-        # FIXME: it feels as a hack to get the DVM URI from the CU
+        # FIXME: it feels as a hack to get the DVM URI from the Task
 
         slots = cu['slots']
 
@@ -409,7 +409,7 @@ class ORTE(AgentExecutingComponent):
                 arg_list.append(ffi.new("char[]", "-x"))
                 arg_list.append(ffi.new("char[]", "%s=%s" % (key, val)))
 
-        # Set environment variables specified for this CU
+        # Set environment variables specified for this Task
         if cu['description']['environment']:
             for key,val in cu['description']['environment'].items():
                 arg_list.append(ffi.new("char[]", "-x"))
@@ -419,7 +419,7 @@ class ORTE(AgentExecutingComponent):
         arg_list.append(ffi.new("char[]", "--output-filename"))
         arg_list.append(ffi.new("char[]", "%s:nojobid,nocopy" % str(sandbox)))
 
-        # Save retval of actual CU application (in case we have post-exec)
+        # Save retval of actual Task application (in case we have post-exec)
         task_command += "; RETVAL=$?"
 
         # Wrap in (sub)shell for output redirection
@@ -465,7 +465,7 @@ class ORTE(AgentExecutingComponent):
             if rc:
                 raise Exception("submit job failed with error: %d" % rc)
 
-            self.task_map[index[0]] = cu      # map ORTE index to CU
+            self.task_map[index[0]] = cu      # map ORTE index to Task
             self._prof.prof('exec_ok', uid=cu['uid'])
 
         self._log.debug("Task %d submitted!", cu['uid'])

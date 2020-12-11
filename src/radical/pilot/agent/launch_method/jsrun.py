@@ -52,7 +52,7 @@ class JSRUN(LaunchMethod):
     #
     def _create_resource_set_file(self, slots, uid, sandbox):
         """
-        This method takes as input a CU slots and creates the necessary
+        This method takes as input a Task slots and creates the necessary
         resource set file. This resource set file is then used by jsrun to
         place and execute tasks on nodes.
 

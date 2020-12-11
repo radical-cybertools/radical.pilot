@@ -37,9 +37,9 @@ class Task(object):
     """
 
     # --------------------------------------------------------------------------
-    # In terms of implementation, a CU is not much more than a dict whose
+    # In terms of implementation, a Task is not much more than a dict whose
     # content are dynamically updated to reflect the state progression through
-    # the UMGR components.  As a CU is always created via a UMGR, it is
+    # the UMGR components.  As a Task is always created via a UMGR, it is
     # considered to *belong* to that UMGR, and all activities are actually
     # implemented by that UMGR.
     #

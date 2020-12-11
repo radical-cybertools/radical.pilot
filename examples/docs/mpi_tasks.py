@@ -131,14 +131,14 @@ if __name__ == "__main__":
         cudesc_list = []
         for i in range(NUMBER_JOBS):
 
-            # -------- BEGIN USER DEFINED CU DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED Task DESCRIPTION --------- #
             cudesc = rp.TaskDescription()
             cudesc.executable    = "python"
             cudesc.arguments     = ["helloworld_mpi.py"]
             cudesc.input_staging = ["../helloworld_mpi.py"]
             cudesc.cores         = 8
             cudesc.mpi           = True
-            # -------- END USER DEFINED CU DESCRIPTION --------- #
+            # -------- END USER DEFINED Task DESCRIPTION --------- #
 
             cudesc_list.append(cudesc)
 

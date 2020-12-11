@@ -33,14 +33,14 @@ if __name__ == '__main__':
         umgr.add_pilots(pilot)
 
         pwd  = os.path.dirname(os.path.abspath(__file__))
-        CUD  = rp.TaskDescription
+        TD  = rp.TaskDescription
         cuds = list()
 
         for i in range(n_master):
-            cuds.append(CUD({'executable': '%s/rp_app_master.py' % pwd,
+            cuds.append(TD({'executable': '%s/rp_app_master.py' % pwd,
                              'arguments' : [n_worker]}))
         for i in range(n_worker):
-            cuds.append(CUD({'executable': '%s/rp_app_worker.py' % pwd}))
+            cuds.append(TD({'executable': '%s/rp_app_worker.py' % pwd}))
 
         umgr.submit_tasks(cuds)
         umgr.wait_tasks()

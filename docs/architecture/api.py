@@ -101,7 +101,7 @@ Data Task States
 ----------------
 
 Data Task states differ slightly from the Task states: DUs don't have
-a DONE state (as DUs don't have a lifetime), and the CU state 'RUNNING'
+a DONE state (as DUs don't have a lifetime), and the Task state 'RUNNING'
 corresponds to the DU state 'Avalable'.
 
 The documentation below again documents the exact meaning of the states for DUs.
@@ -194,8 +194,8 @@ class NoSuccess (rse.NoSuccess) :
 Glossary
 --------
 
-CU  = Task
-CUD = CU Description
+Task  = Task
+TD = Task Description
 
 DU  = Data Task
 DUD = DU Description
@@ -254,13 +254,13 @@ class TaskDescription(TaskDescription):
     Class members:
 
         # Action description
-        'name',                 # Non-unique name/label of CU.
+        'name',                 # Non-unique name/label of Task.
         'executable',           # The "action" to execute
         'arguments',            # Arguments to the "action"
-        'cleanup',              # cleanup after the CU has finished
+        'cleanup',              # cleanup after the Task has finished
         'environment',          # "environment" settings for the "action"
-        'start_time',           # When should the CU start
-        'working_directory',    # Where to start the CU
+        'start_time',           # When should the Task start
+        'working_directory',    # Where to start the Task
 
         # I/O
         'input',                # stdin
@@ -279,7 +279,7 @@ class TaskDescription(TaskDescription):
         'cpu_architecture',     # Specific requirement for binary
         'operating_system_type',# Specific OS version required?
         'total_physical_memory',# May not be physical, but in sync with saga.
-        'wall_time_limit',      # CU will not run longer than this.
+        'wall_time_limit',      # Task will not run longer than this.
 
         # Startup ordering dependencies
         # (Are only considered within scope of bulk submission.)
@@ -309,14 +309,14 @@ class Task():
         """
         Task constructor.
 
-        Use the 'get_task()' call on the US for bulk and async CU construction.
+        Use the 'get_task()' call on the US for bulk and async Task construction.
 
         Keyword argument(s)::
             id(string):  ID referencing the task to be referenced by the created
                          object instance..
 
         Return::
-            Task: class instance representing the referenced CU.
+            Task: class instance representing the referenced Task.
 
         Raises::
             DoesNotExist
@@ -402,7 +402,7 @@ class Task():
 # ------------------------------------------------------------------------------
 #
 class DataTaskDescription(TaskDescription):
-    """Describe a DU used for input or output of a CU.
+    """Describe a DU used for input or output of a Task.
 
     Class members:
 
@@ -632,7 +632,7 @@ class PilotDescription(dict):
         # resource requirements
         'candidate_hosts',          # List of specific hostnames to run on.
         'cpu_architecture',         # Specify specific arch required.
-        'total_physical_memory',    # mem for CU usage
+        'total_physical_memory',    # mem for Task usage
         'operating_system_type',    # Specify specific OS required.
         'queue'                     # Specify queue name of backend system.
     """
@@ -896,7 +896,7 @@ class DataPilot():
 #
 class TaskService():
     """Service that brings the Pilot's and DataPilot's together.
-       and adds some scheduling, and enacts DU/CU dependencies.
+       and adds some scheduling, and enacts DU/Task dependencies.
 
     """
 
@@ -1015,11 +1015,11 @@ class TaskService():
         pass
 
     def submit_task(self, uds):
-        """Accepts a CUD or DUD and returns a CU or DU.
+        """Accepts a TD or DUD and returns a Task or DU.
 
         Keyword argument(s)::
 
-            uds(TaskDescription): The CUD.
+            uds(TaskDescription): The TD.
             or
             uds(DataTaskDescription): The DUD.
             or
@@ -1061,7 +1061,7 @@ class TaskService():
         pass
 
     def get_task (self, uids):
-        """Get a DU or CU based on its id.
+        """Get a DU or Task based on its id.
 
         Keyword argument::
 

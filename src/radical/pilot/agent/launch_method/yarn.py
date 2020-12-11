@@ -361,7 +361,7 @@ class Yarn(LaunchMethod):
         # ----------------------------------------------------------------------
         # Create YARN script
         # This funcion creates the necessary script for the execution of the
-        # CU's workload in a YARN application. The function is responsible
+        # Task's workload in a YARN application. The function is responsible
         # to set all the necessary variables, stage in, stage out and create
         # the execution command that will run in the distributed shell that
         # the YARN application provides. There reason for staging out is

@@ -90,13 +90,13 @@ if __name__ == '__main__':
         cuds = list()
         for i in range(0, n):
 
-            # create a new CU description, and fill it.
+            # create a new Task description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.TaskDescription()
             cud.executable     = 'ls'
             cud.arguments      = ['-la']
 
-            # Move multiple files to a CU by using a tarball
+            # Move multiple files to a Task by using a tarball
             cud.input_staging  = [{'source': 'client:///input.dat',
                                    'target': 'task:///input.dat',
                                    'action': rp.TARBALL},

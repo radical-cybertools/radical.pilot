@@ -136,7 +136,7 @@ if __name__ == "__main__":
         # assigning Tasks to the Pilots.
         tasks = umgr.submit_tasks(cuds)
 
-        # the pilots have a total of 4 cores, and run for 10 min.  A CU needs about
+        # the pilots have a total of 4 cores, and run for 10 min.  A Task needs about
         # 10 seconds, so we can handle about 24 tasks per minute, and need a total
         # of about 3 minutes.  We now wait for 60 seconds, and then cancel the first
         # pilot.  The 2 tasks currently running on that pilot will fail, and

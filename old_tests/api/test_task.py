@@ -111,7 +111,7 @@ class TestTask(tasktest.TestCase):
         assert cu.state == radical.pilot.AGENT_EXECUTING
         assert cu.start_time is not None
 
-        # Cancel the CU!
+        # Cancel the Task!
         cu.cancel()
 
         cu.wait(timeout=60)
@@ -162,7 +162,7 @@ class TestTask(tasktest.TestCase):
         assert cu.state == radical.pilot.AGENT_EXECUTING
         assert cu.start_time is not None
 
-        # Cancel the CU!
+        # Cancel the Task!
         um.cancel_tasks(cu.uid)
 
         cu.wait(timeout=60)

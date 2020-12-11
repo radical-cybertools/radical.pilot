@@ -83,7 +83,7 @@ class ABDS(AgentExecutingComponent):
         self.gtod   = "%s/gtod" % self._pwd
         self.tmpdir = tempfile.gettempdir()
 
-        # if we need to transplant any original env into the CU, we dig the
+        # if we need to transplant any original env into the Task, we dig the
         # respective keys from the dump made by bootstrap_0.sh
         self._env_cu_export = dict()
         if self._cfg.get('export_to_cu'):
@@ -206,7 +206,7 @@ class ABDS(AgentExecutingComponent):
             # not completely correct (as this text is not produced
             # by the task), but it seems the most intuitive way to
             # communicate that error to the application/user.
-            self._log.exception("error running CU")
+            self._log.exception("error running Task")
             cu['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
                             % (str(e), traceback.format_exc())
 
@@ -393,8 +393,8 @@ prof(){
 
                 try:
 
-                    # we don't want to only wait for one CU -- then we would
-                    # pull CU state too frequently.  OTOH, we also don't want to
+                    # we don't want to only wait for one Task -- then we would
+                    # pull Task state too frequently.  OTOH, we also don't want to
                     # learn about CUs until all slots are filled, because then
                     # we may not be able to catch finishing CUs in time -- so
                     # there is a fine balance here.  Balance means 100 (FIXME).
@@ -442,7 +442,7 @@ prof(){
 
             #-------------------------------------------------------------------
             # This code snippet reads the YARN application report file and if
-            # the application is RUNNING it update the state of the CU with the
+            # the application is RUNNING it update the state of the Task with the
             # right time stamp. In any other case it works as it was.
             logfile = '%s/%s' % (sandbox, '/YarnApplicationReport.log')
             if cu['state']==rps.AGENT_EXECUTING_PENDING \

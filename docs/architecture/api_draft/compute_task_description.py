@@ -8,16 +8,16 @@ from   description import Description
 class TaskDescription (Description) :
     """
     # Action description
-    'name',                 # Non-unique name/label of CU.
+    'name',                 # Non-unique name/label of Task.
     'executable',           # The "action" to execute
     'arguments',            # Arguments to the "action"
     'environment',          # "environment" settings for the "action"
-    'cleanup',              # cleanup after the CU has finished
-    'start_time',           # When should the CU start
-    'run_time',             # When is the CU expected to finish
+    'cleanup',              # cleanup after the Task has finished
+    'start_time',           # When should the Task start
+    'run_time',             # When is the Task expected to finish
 
     # I/O
-    'working_directory',    # Where to start the CU
+    'working_directory',    # Where to start the Task
     'input',                # stdin
     'error',                # stderr
     'output',               # stdout
