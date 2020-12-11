@@ -49,10 +49,10 @@ class TaskManager(rpu.Component):
         # Create a workload of 128 '/bin/sleep' tasks
         tasks = []
         for task_count in range(0, 128):
-            cu = rp.TaskDescription()
-            cu.executable = "/bin/sleep"
-            cu.arguments = ['60']
-            tasks.append(cu)
+            t = rp.TaskDescription()
+            t.executable = "/bin/sleep"
+            t.arguments = ['60']
+            tasks.append(t)
 
         # Combine the two pilots, the workload and a scheduler via
         # a TaskManager.

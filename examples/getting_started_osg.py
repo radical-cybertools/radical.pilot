@@ -130,9 +130,9 @@ if __name__ == "__main__":
 
         umgr.wait_tasks()
 
-        for cu in tasks:
+        for t in tasks:
             print("* Task %s state %s, exit code: %s, stdout: %s, pilot: %s"
-                % (cu.uid, cu.state, cu.exit_code, cu.stdout, cu.pilot))
+                % (t.uid, t.state, t.exit_code, t.stdout, t.pilot))
 
       # os.system("radicalpilot-stats -m stat,plot -s %s > %s.stat"
       #          % (session.uid, session_name))

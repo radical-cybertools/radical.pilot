@@ -37,17 +37,17 @@ class TestBase(tasktest.TestCase):
         global_launcher = []
         global_cu = []
 
-        def spawn_side_effect(launcher, cu):
+        def spawn_side_effect(launcher, t):
             nonlocal global_launcher
             nonlocal global_cu
             global_launcher.append(launcher)
-            global_cu.append(cu)
+            global_cu.append(t)
 
         tests = self.setUp()
-        cu    = dict()
+        t    = dict()
 
-        cu['uid']         = tests['task']['uid']
-        cu['description'] = tests['task']['description']
+        t['uid']         = tests['task']['uid']
+        t['description'] = tests['task']['description']
 
         component = Popen()
         component._mpi_launcher          = mock.Mock()
@@ -58,11 +58,11 @@ class TestBase(tasktest.TestCase):
         component._task_launcher.command = 'ssh'
 
         component.spawn = mock.MagicMock(side_effect=spawn_side_effect
-                               (launcher=component._mpi_launcher, cu=cu))
+                               (launcher=component._mpi_launcher, t=t))
 
         component._log = ru.Logger('dummy')
-        component._handle_task(cu)
-        self.assertEqual(cu, global_cu[0])
+        component._handle_task(t)
+        self.assertEqual(t, global_cu[0])
 
 
     # --------------------------------------------------------------------------
@@ -76,35 +76,35 @@ class TestBase(tasktest.TestCase):
         global_publish = None
         global_push    = None
 
-        def _advance_side_effect(cu, state, publish, push):
+        def _advance_side_effect(t, state, publish, push):
             nonlocal global_cu
             nonlocal global_state
             nonlocal global_publish
             nonlocal global_push
 
-            global_cu.append(cu)
+            global_cu.append(t)
             global_state   = 'FAILED'
             global_publish = True
             global_push    = True
 
         tests = self.setUp()
-        cu = dict()
-        cu = tests['task']
-        cu['target_state'] = None
-        cu['proc']         = mock.Mock()
-        cu['proc'].poll    = mock.Mock(return_value=1)
-        cu['proc'].wait    = mock.Mock(return_value=1)
+        t = dict()
+        t = tests['task']
+        t['target_state'] = None
+        t['proc']         = mock.Mock()
+        t['proc'].poll    = mock.Mock(return_value=1)
+        t['proc'].wait    = mock.Mock(return_value=1)
 
         component = Popen()
         component._cus_to_watch = list()
         component._cus_to_cancel = list()
-        component._cus_to_watch.append(cu)
+        component._cus_to_watch.append(t)
         component.advance = mock.MagicMock(side_effect=_advance_side_effect)
         component._prof = mock.Mock()
         component.publish = mock.Mock()
         component._log = ru.Logger('dummy')
         component._check_running()
-        self.assertEqual(cu['target_state'], global_state)
+        self.assertEqual(t['target_state'], global_state)
 
     # --------------------------------------------------------------------------
     #
@@ -117,10 +117,10 @@ class TestBase(tasktest.TestCase):
                    mocked_launchmethod, mocked_construct_command):
         tests = self.setUp()
         _pids = []
-        cu = dict()
-        cu = tests['task']
-        cu['slots'] = tests['setup']['lm']['slots']
-        cu['task_sandbox_path'] = tests['setup']['lm']['task_sandbox']
+        t = dict()
+        t = tests['task']
+        t['slots'] = tests['setup']['lm']['slots']
+        t['task_sandbox_path'] = tests['setup']['lm']['task_sandbox']
 
         launcher  = LaunchMethod()
         component = Popen()
@@ -137,7 +137,7 @@ class TestBase(tasktest.TestCase):
         component._watch_queue = mock.Mock()
         component._log         = ru.Logger('dummy')
 
-        component.spawn(launcher=launcher, cu=cu)
+        component.spawn(launcher=launcher, t=t)
         self.assertEqual(len(_pids), 0)
 
 

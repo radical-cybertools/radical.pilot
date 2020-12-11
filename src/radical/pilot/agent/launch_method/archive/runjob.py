@@ -33,10 +33,10 @@ class Runjob(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        slots        = cu['slots']
-        td          = cu['description']
+        slots        = t['slots']
+        td          = t['description']
         task_exec    = td['executable']
         task_cores   = td.get('cpu_processes', 0) + td.get('gpu_processes', 0)
                                                          # FIXME: handle threads

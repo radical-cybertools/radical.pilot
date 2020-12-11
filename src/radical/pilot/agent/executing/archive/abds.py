@@ -126,7 +126,7 @@ class ABDS(AgentExecutingComponent):
     # --------------------------------------------------------------------------
     #
     def _populate_cu_environment(self):
-        """Derive the environment for the cu's from our own environment."""
+        """Derive the environment for the t's from our own environment."""
 
         # Get the environment of the agent
         new_env = copy.deepcopy(os.environ)
@@ -182,24 +182,24 @@ class ABDS(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _handle_task(self, cu):
+    def _handle_task(self, t):
 
         try:
-            if cu['description']['mpi']:
+            if t['description']['mpi']:
                 launcher = self._mpi_launcher
             else :
                 launcher = self._task_launcher
 
             if not launcher:
-                raise RuntimeError("no launcher (mpi=%s)" % cu['description']['mpi'])
+                raise RuntimeError("no launcher (mpi=%s)" % t['description']['mpi'])
 
             self._log.debug("Launching task with %s (%s).", launcher.name, launcher.launch_command)
 
-            assert(cu['slots']) # FIXME: no assert, but check
-            self._prof.prof('exec', msg='task launch', uid=cu['uid'])
+            assert(t['slots']) # FIXME: no assert, but check
+            self._prof.prof('exec', msg='task launch', uid=t['uid'])
 
             # Start a new subprocess to launch the task
-            self.spawn(launcher=launcher, cu=cu)
+            self.spawn(launcher=launcher, t=t)
 
         except Exception as e:
             # append the startup error to the tasks stderr.  This is
@@ -207,52 +207,52 @@ class ABDS(AgentExecutingComponent):
             # by the task), but it seems the most intuitive way to
             # communicate that error to the application/user.
             self._log.exception("error running Task")
-            cu['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
+            t['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            if cu['slots']:
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+            if t['slots']:
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
 
-            self.advance(cu, rps.FAILED, publish=True, push=False)
+            self.advance(t, rps.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
     #
-    def spawn(self, launcher, cu):
+    def spawn(self, launcher, t):
 
-        self._prof.prof('spawn', msg='task spawn', uid=cu['uid'])
+        self._prof.prof('spawn', msg='task spawn', uid=t['uid'])
 
-        sandbox = cu['task_sandbox_path']
+        sandbox = t['task_sandbox_path']
 
         # make sure the sandbox exists
         rpu.rec_makedir(sandbox)
 
         # prep stdout/err so that we can append w/o checking for None
-        cu['stdout']  = ''
-        cu['stderr']  = ''
+        t['stdout']  = ''
+        t['stderr']  = ''
 
-        launch_script_name = '%s/%s.sh' % (sandbox, cu['uid'])
+        launch_script_name = '%s/%s.sh' % (sandbox, t['uid'])
 
         with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/sh\n\n')
 
             # Create string for environment variable setting
             env_string  = ''
-            if cu['description']['environment']:
-                for key,val in cu['description']['environment'].items():
+            if t['description']['environment']:
+                for key,val in t['description']['environment'].items():
                     env_string += 'export %s="%s"\n' % (key, val)
             env_string += 'export RP_SESSION_ID="%s"\n'   % self._cfg['sid']
             env_string += 'export RP_PILOT_ID="%s"\n'     % self._cfg['pid']
             env_string += 'export RP_AGENT_ID="%s"\n'     % self._cfg['aid']
             env_string += 'export RP_SPAWNER_ID="%s"\n'   % self.uid
-            env_string += 'export RP_TASK_ID="%s"\n'      % cu['uid']
-            env_string += 'export RP_TASK_NAME="%s"\n'    % cu['description'].get('name')
+            env_string += 'export RP_TASK_ID="%s"\n'      % t['uid']
+            env_string += 'export RP_TASK_NAME="%s"\n'    % t['description'].get('name')
             env_string += 'export RP_GTOD="%s"\n'         % self.gtod
             env_string += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
                                                           % self._pwd
             if self._prof.enabled:
-                env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
+                env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, t['uid'])
 
             # also add any env vars requested for export by the resource config
             for k,v in self._env_cu_export.items():
@@ -271,8 +271,8 @@ prof(){
 '''
 
             # also add any env vars requested in the task description
-            if cu['description']['environment']:
-                for key,val in cu['description']['environment'].items():
+            if t['description']['environment']:
+                for key,val in t['description']['environment'].items():
                     env_string += 'export %s=%s\n' % (key, val)
 
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
@@ -281,13 +281,13 @@ prof(){
             launch_script.write('\n# Change to task sandbox\ncd %s\n' % sandbox)
 
             # Before the Big Bang there was nothing
-            if cu['description']['pre_exec']:
+            if t['description']['pre_exec']:
                 pre_exec_string = ''
-                if isinstance(cu['description']['pre_exec'], list):
-                    for elem in cu['description']['pre_exec']:
+                if isinstance(t['description']['pre_exec'], list):
+                    for elem in t['description']['pre_exec']:
                         pre_exec_string += "%s\n" % elem
                 else:
-                    pre_exec_string += "%s\n" % cu['description']['pre_exec']
+                    pre_exec_string += "%s\n" % t['description']['pre_exec']
                 # Note: extra spaces below are for visual alignment
                 launch_script.write("\n# Pre-exec commands\n")
                 launch_script.write('prof cu_pre_start\n')
@@ -302,7 +302,7 @@ prof(){
             # The actual command line, constructed per launch-method
             try:
                 self._log.debug("Launch Script Name %s",launch_script_name)
-                launch_command, hop_cmd = launcher.construct_command(cu, launch_script_name)
+                launch_command, hop_cmd = launcher.construct_command(t, launch_script_name)
                 self._log.debug("Launch Command %s from %s", launch_command, launcher.name)
 
                 if hop_cmd : cmdline = hop_cmd
@@ -321,13 +321,13 @@ prof(){
             launch_script.write('prof cu_exec_stop\n')
 
             # After the universe dies the infrared death, there will be nothing
-            if cu['description']['post_exec']:
+            if t['description']['post_exec']:
                 post_exec_string = ''
-                if isinstance(cu['description']['post_exec'], list):
-                    for elem in cu['description']['post_exec']:
+                if isinstance(t['description']['post_exec'], list):
+                    for elem in t['description']['post_exec']:
                         post_exec_string += "%s\n" % elem
                 else:
-                    post_exec_string += "%s\n" % cu['description']['post_exec']
+                    post_exec_string += "%s\n" % t['description']['post_exec']
                 launch_script.write("\n# Post-exec commands\n")
                 launch_script.write('prof cu_post_start\n')
                 launch_script.write('%s\n' % post_exec_string)
@@ -343,24 +343,24 @@ prof(){
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
-        self._prof.prof('control', msg='launch script constructed', uid=cu['uid'])
+        self._prof.prof('control', msg='launch script constructed', uid=t['uid'])
 
         # prepare stdout/stderr
-        stdout_file = cu['description'].get('stdout') or '%s.out' % cu['uid']
-        stderr_file = cu['description'].get('stderr') or '%s.err' % cu['uid']
+        stdout_file = t['description'].get('stdout') or '%s.out' % t['uid']
+        stderr_file = t['description'].get('stderr') or '%s.err' % t['uid']
 
-        cu['stdout_file'] = os.path.join(sandbox, stdout_file)
-        cu['stderr_file'] = os.path.join(sandbox, stderr_file)
+        t['stdout_file'] = os.path.join(sandbox, stdout_file)
+        t['stderr_file'] = os.path.join(sandbox, stderr_file)
 
-        _stdout_file_h = open(cu['stdout_file'], "w+")
-        _stderr_file_h = open(cu['stderr_file'], "w+")
-        self._prof.prof('control', msg='stdout and stderr files created', uid=cu['uid'])
+        _stdout_file_h = open(t['stdout_file'], "w+")
+        _stderr_file_h = open(t['stderr_file'], "w+")
+        self._prof.prof('control', msg='stdout and stderr files created', uid=t['uid'])
 
-        self._log.info("Launching task %s via %s in %s", cu['uid'], cmdline, sandbox)
+        self._log.info("Launching task %s via %s in %s", t['uid'], cmdline, sandbox)
 
-        self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['uid'])
+        self._prof.prof('spawn', msg='spawning passed to popen', uid=t['uid'])
 
-        cu['proc'] = subprocess.Popen(args               = cmdline,
+        t['proc'] = subprocess.Popen(args               = cmdline,
                                       bufsize            = 0,
                                       executable         = None,
                                       stdin              = None,
@@ -375,8 +375,8 @@ prof(){
                                       startupinfo        = None,
                                       creationflags      = 0)
 
-        self._prof.prof('spawn', msg='spawning passed to popen', uid=cu['uid'])
-        self._watch_queue.put(cu)
+        self._prof.prof('spawn', msg='spawning passed to popen', uid=t['uid'])
+        self._watch_queue.put(t)
 
 
     # --------------------------------------------------------------------------
@@ -409,10 +409,10 @@ prof(){
                     pass
 
                 # add all cus we found to the watchlist
-                for cu in cus :
+                for t in cus :
 
-                    self._prof.prof('passed', msg="ExecWatcher picked up task", uid=cu['uid'])
-                    self._cus_to_watch.append (cu)
+                    self._prof.prof('passed', msg="ExecWatcher picked up task", uid=t['uid'])
+                    self._cus_to_watch.append (t)
 
                 # check on the known cus.
                 action = self._check_running()
@@ -436,16 +436,16 @@ prof(){
 
         action = 0
 
-        for cu in self._cus_to_watch:
+        for t in self._cus_to_watch:
 
-            sandbox = '%s/%s' % (self._pwd, cu['uid'])
+            sandbox = '%s/%s' % (self._pwd, t['uid'])
 
             #-------------------------------------------------------------------
             # This code snippet reads the YARN application report file and if
             # the application is RUNNING it update the state of the Task with the
             # right time stamp. In any other case it works as it was.
             logfile = '%s/%s' % (sandbox, '/YarnApplicationReport.log')
-            if cu['state']==rps.AGENT_EXECUTING_PENDING \
+            if t['state']==rps.AGENT_EXECUTING_PENDING \
                     and os.path.isfile(logfile):
 
                 yarnreport = open(logfile,'r')
@@ -458,80 +458,80 @@ prof(){
                         line = report_line.split(',')
                         ts   = (int(line[3].split('=')[1])/1000)
                         action += 1
-                        proc = cu['proc']
+                        proc = t['proc']
                         self._log.debug('Proc Print {0}'.format(proc))
-                        del(cu['proc'])  # proc is not json serializable
-                        self.advance(cu, rps.AGENT_EXECUTING, publish=True,
+                        del(t['proc'])  # proc is not json serializable
+                        self.advance(t, rps.AGENT_EXECUTING, publish=True,
                                      push=False,ts=ts)
-                        cu['proc']    = proc
+                        t['proc']    = proc
 
                         # FIXME: Ioannis, what is this supposed to do?
-                        # I wanted to update the state of the cu but keep it in the watching
+                        # I wanted to update the state of the t but keep it in the watching
                         # queue. I am not sure it is needed anymore.
-                        index = self._cus_to_watch.index(cu)
-                        self._cus_to_watch[index]=cu
+                        index = self._cus_to_watch.index(t)
+                        self._cus_to_watch[index]=t
 
             else :
                 # poll subprocess object
-                exit_code = cu['proc'].poll()
+                exit_code = t['proc'].poll()
                 now       = time.time()
 
                 if exit_code is None:
                     # Process is still running
 
-                    if cu['uid'] in self._cus_to_cancel:
+                    if t['uid'] in self._cus_to_cancel:
 
                         # FIXME: there is a race condition between the state poll
                         # above and the kill command below.  We probably should pull
                         # state after kill again?
 
-                        # We got a request to cancel this cu
+                        # We got a request to cancel this t
                         action += 1
-                        cu['proc'].kill()
-                        cu['proc'].wait() # make sure proc is collected
+                        t['proc'].kill()
+                        t['proc'].wait() # make sure proc is collected
 
                         with self._cancel_lock:
-                            self._cus_to_cancel.remove(cu['uid'])
+                            self._cus_to_cancel.remove(t['uid'])
 
-                        self._prof.prof('final', msg="execution canceled", uid=cu['uid'])
+                        self._prof.prof('final', msg="execution canceled", uid=t['uid'])
 
-                        self._cus_to_watch.remove(cu)
+                        self._cus_to_watch.remove(t)
 
-                        del(cu['proc'])  # proc is not json serializable
-                        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
-                        self.advance(cu, rps.CANCELED, publish=True, push=False)
+                        del(t['proc'])  # proc is not json serializable
+                        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
+                        self.advance(t, rps.CANCELED, publish=True, push=False)
 
                 else:
-                    self._prof.prof('exec', msg='execution complete', uid=cu['uid'])
+                    self._prof.prof('exec', msg='execution complete', uid=t['uid'])
 
 
                     # make sure proc is collected
-                    cu['proc'].wait()
+                    t['proc'].wait()
 
                     # we have a valid return code -- task is final
                     action += 1
-                    self._log.info("Task %s has return code %s.", cu['uid'], exit_code)
+                    self._log.info("Task %s has return code %s.", t['uid'], exit_code)
 
-                    cu['exit_code'] = exit_code
+                    t['exit_code'] = exit_code
 
                     # Free the Slots, Flee the Flots, Ree the Frots!
-                    self._cus_to_watch.remove(cu)
-                    del(cu['proc'])  # proc is not json serializable
-                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+                    self._cus_to_watch.remove(t)
+                    del(t['proc'])  # proc is not json serializable
+                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
 
                     if exit_code != 0:
                         # The task failed - fail after staging output
-                        self._prof.prof('final', msg="execution failed", uid=cu['uid'])
-                        cu['target_state'] = rps.FAILED
+                        self._prof.prof('final', msg="execution failed", uid=t['uid'])
+                        t['target_state'] = rps.FAILED
 
                     else:
                         # The task finished cleanly, see if we need to deal with
                         # output data.  We always move to stageout, even if there are no
                         # directives -- at the very least, we'll upload stdout/stderr
-                        self._prof.prof('final', msg="execution succeeded", uid=cu['uid'])
-                        cu['target_state'] = rps.DONE
+                        self._prof.prof('final', msg="execution succeeded", uid=t['uid'])
+                        t['target_state'] = rps.DONE
 
-                    self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
+                    self.advance(t, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
 
         return action
 

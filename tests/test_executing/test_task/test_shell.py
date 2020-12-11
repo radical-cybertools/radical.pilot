@@ -33,17 +33,17 @@ class TestBase(tasktest.TestCase):
         global_launcher = []
         global_cu = []
 
-        def spawn_side_effect(launcher, cu):
+        def spawn_side_effect(launcher, t):
             nonlocal global_launcher
             nonlocal global_cu
             global_launcher.append(launcher)
-            global_cu.append(cu)
+            global_cu.append(t)
 
         tests = self.setUp()
-        cu = dict()
-        cu['uid']         = tests['task']['uid']
-        cu['description'] = tests['task']['description']
-        cu['stderr']      = 'tests/test_executing/test_task/test_cases/'
+        t = dict()
+        t['uid']         = tests['task']['uid']
+        t['description'] = tests['task']['description']
+        t['stderr']      = 'tests/test_executing/test_task/test_cases/'
 
         component = Shell()
         component._cus_to_cancel         = []
@@ -58,10 +58,10 @@ class TestBase(tasktest.TestCase):
         component._log                   = ru.Logger('dummy')
 
         component.spawn = mock.MagicMock(side_effect=spawn_side_effect
-                (launcher=component._mpi_launcher, cu=cu))
+                (launcher=component._mpi_launcher, t=t))
 
-        component._handle_task(cu)
-        self.assertEqual(cu, global_cu[0])
+        component._handle_task(t)
+        self.assertEqual(t, global_cu[0])
 
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

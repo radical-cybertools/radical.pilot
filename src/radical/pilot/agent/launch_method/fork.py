@@ -32,12 +32,12 @@ class Fork(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
         # NOTE: ignore thread and process counts, and expect application to do
         #       the needful
 
-        td          = cu['description']
+        td          = t['description']
         task_exec    = td['executable']
         task_args    = td.get('arguments') or []
         task_argstr  = self._create_arg_string(task_args)

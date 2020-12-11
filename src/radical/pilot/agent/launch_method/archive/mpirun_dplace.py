@@ -46,10 +46,10 @@ class MPIRunDPlace(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        slots        = cu['slots']
-        td          = cu['description']
+        slots        = t['slots']
+        td          = t['description']
         task_exec    = td['executable']
         task_threads = td['cpu_thread']
         task_env     = td.get('environment') or dict()

@@ -132,17 +132,17 @@ class Popen(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def _handle_task(self, cu):
+    def _handle_task(self, t):
 
         try:
-            descr = cu['description']
+            descr = t['description']
 
             # ensure that the named env exists
             env = descr.get('named_env')
             if env:
                 if not os.path.isdir('%s/%s' % (self._pwd, env)):
                     raise ValueError('invalid named env %s for task %s'
-                                    % (env, cu['uid']))
+                                    % (env, t['uid']))
                 pre = ru.as_list(descr.get('pre_exec'))
                 pre.insert(0, '. %s/%s/bin/activate' % (self._pwd, env))
                 pre.insert(0, '. %s/deactivate'      % (self._pwd))
@@ -150,8 +150,8 @@ class Popen(AgentExecutingComponent) :
 
 
             # prep stdout/err so that we can append w/o checking for None
-            cu['stdout'] = ''
-            cu['stderr'] = ''
+            t['stdout'] = ''
+            t['stderr'] = ''
 
             cpt = descr['cpu_process_type']
           # gpt = descr['gpu_process_type']  # FIXME: use
@@ -167,7 +167,7 @@ class Popen(AgentExecutingComponent) :
                             launcher.name, launcher.launch_command)
 
             # Start a new subprocess to launch the task
-            self.spawn(launcher=launcher, cu=cu)
+            self.spawn(launcher=launcher, t=t)
 
         except Exception as e:
             # append the startup error to the tasks stderr.  This is
@@ -175,41 +175,41 @@ class Popen(AgentExecutingComponent) :
             # by the task), but it seems the most intuitive way to
             # communicate that error to the application/user.
             self._log.exception("error running Task")
-            if cu.get('stderr') is None:
-                cu['stderr'] = ''
-            cu['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
+            if t.get('stderr') is None:
+                t['stderr'] = ''
+            t['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            self._prof.prof('unschedule_start', uid=cu['uid'])
-            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+            self._prof.prof('unschedule_start', uid=t['uid'])
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
 
-            self.advance(cu, rps.FAILED, publish=True, push=False)
+            self.advance(t, rps.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
     #
-    def spawn(self, launcher, cu):
+    def spawn(self, launcher, t):
 
-        descr   = cu['description']
-        sandbox = cu['task_sandbox_path']
+        descr   = t['description']
+        sandbox = t['task_sandbox_path']
 
         # make sure the sandbox exists
-        self._prof.prof('exec_mkdir', uid=cu['uid'])
+        self._prof.prof('exec_mkdir', uid=t['uid'])
         rpu.rec_makedir(sandbox)
-        self._prof.prof('exec_mkdir_done', uid=cu['uid'])
+        self._prof.prof('exec_mkdir_done', uid=t['uid'])
 
-        launch_script_name = '%s/%s.sh' % (sandbox, cu['uid'])
-        slots_fname        = '%s/%s.sl' % (sandbox, cu['uid'])
+        launch_script_name = '%s/%s.sh' % (sandbox, t['uid'])
+        slots_fname        = '%s/%s.sl' % (sandbox, t['uid'])
 
         self._log.debug("Created launch_script: %s", launch_script_name)
 
         # prep stdout/err so that we can append w/o checking for None
-        cu['stdout'] = ''
-        cu['stderr'] = ''
+        t['stdout'] = ''
+        t['stderr'] = ''
 
         with open(slots_fname, "w") as launch_script:
-            launch_script.write('\n%s\n\n' % pprint.pformat(cu['slots']))
+            launch_script.write('\n%s\n\n' % pprint.pformat(t['slots']))
 
         with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/sh\n\n')
@@ -222,15 +222,15 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_PILOT_ID="%s"\n'      % self._cfg['pid']
             env_string += 'export RP_AGENT_ID="%s"\n'      % self._cfg['aid']
             env_string += 'export RP_SPAWNER_ID="%s"\n'    % self.uid
-            env_string += 'export RP_TASK_ID="%s"\n'       % cu['uid']
-            env_string += 'export RP_TASK_NAME="%s"\n'     % cu['description'].get('name')
+            env_string += 'export RP_TASK_ID="%s"\n'       % t['uid']
+            env_string += 'export RP_TASK_NAME="%s"\n'     % t['description'].get('name')
             env_string += 'export RP_GTOD="%s"\n'          % self.gtod
             env_string += 'export RP_TMP="%s"\n'           % self._cu_tmp
             env_string += 'export RP_PILOT_SANDBOX="%s"\n' % self._pwd
             env_string += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
                                                            % self._pwd
             if self._prof.enabled:
-                env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
+                env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, t['uid'])
 
             else:
                 env_string += 'unset  RP_PROF\n'
@@ -256,7 +256,7 @@ prof(){
 
             # The actual command line, constructed per launch-method
             try:
-                launch_command, hop_cmd = launcher.construct_command(cu, launch_script_name)
+                launch_command, hop_cmd = launcher.construct_command(t, launch_script_name)
 
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
@@ -317,19 +317,19 @@ prof(){
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
 
         # prepare stdout/stderr
-        stdout_file = descr.get('stdout') or '%s.out' % cu['uid']
-        stderr_file = descr.get('stderr') or '%s.err' % cu['uid']
+        stdout_file = descr.get('stdout') or '%s.out' % t['uid']
+        stderr_file = descr.get('stderr') or '%s.err' % t['uid']
 
-        cu['stdout_file'] = os.path.join(sandbox, stdout_file)
-        cu['stderr_file'] = os.path.join(sandbox, stderr_file)
+        t['stdout_file'] = os.path.join(sandbox, stdout_file)
+        t['stderr_file'] = os.path.join(sandbox, stderr_file)
 
-        _stdout_file_h = open(cu['stdout_file'], 'a')
-        _stderr_file_h = open(cu['stderr_file'], 'a')
+        _stdout_file_h = open(t['stdout_file'], 'a')
+        _stderr_file_h = open(t['stderr_file'], 'a')
 
-        self._log.info("Launching task %s via %s in %s", cu['uid'], cmdline, sandbox)
+        self._log.info("Launching task %s via %s in %s", t['uid'], cmdline, sandbox)
 
-        self._prof.prof('exec_start', uid=cu['uid'])
-        cu['proc'] = subprocess.Popen(args       = cmdline,
+        self._prof.prof('exec_start', uid=t['uid'])
+        t['proc'] = subprocess.Popen(args       = cmdline,
                                       executable = None,
                                       stdin      = None,
                                       stdout     = _stdout_file_h,
@@ -338,12 +338,12 @@ prof(){
                                       close_fds  = True,
                                       shell      = True,
                                       cwd        = sandbox)
-        self._prof.prof('exec_ok', uid=cu['uid'])
+        self._prof.prof('exec_ok', uid=t['uid'])
 
         # store pid for last-effort termination
-        _pids.append(cu['proc'].pid)
+        _pids.append(t['proc'].pid)
 
-        self._watch_queue.put(cu)
+        self._watch_queue.put(t)
 
 
     # --------------------------------------------------------------------------
@@ -369,8 +369,8 @@ prof(){
                     pass
 
                 # add all cus we found to the watchlist
-                for cu in cus :
-                    self._cus_to_watch.append (cu)
+                for t in cus :
+                    self._cus_to_watch.append (t)
 
                 # check on the known cus.
                 action = self._check_running()
@@ -391,16 +391,16 @@ prof(){
     def _check_running(self):
 
         action = 0
-        for cu in self._cus_to_watch:
+        for t in self._cus_to_watch:
 
             # poll subprocess object
-            exit_code = cu['proc'].poll()
-            uid       = cu['uid']
+            exit_code = t['proc'].poll()
+            uid       = t['uid']
 
             if exit_code is None:
                 # Process is still running
 
-                if cu['uid'] in self._cus_to_cancel:
+                if t['uid'] in self._cus_to_cancel:
 
                     # FIXME: there is a race condition between the state poll
                     # above and the kill command below.  We probably should pull
@@ -408,61 +408,61 @@ prof(){
 
                     self._prof.prof('exec_cancel_start', uid=uid)
 
-                    # We got a request to cancel this cu - send SIGTERM to the
+                    # We got a request to cancel this t - send SIGTERM to the
                     # process group (which should include the actual launch
                     # method)
-                  # cu['proc'].kill()
+                  # t['proc'].kill()
                     action += 1
                     try:
-                        os.killpg(cu['proc'].pid, signal.SIGTERM)
+                        os.killpg(t['proc'].pid, signal.SIGTERM)
                     except OSError:
                         # task is already gone, we ignore this
                         pass
-                    cu['proc'].wait()  # make sure proc is collected
+                    t['proc'].wait()  # make sure proc is collected
 
                     with self._cancel_lock:
                         self._cus_to_cancel.remove(uid)
 
                     self._prof.prof('exec_cancel_stop', uid=uid)
 
-                    del(cu['proc'])  # proc is not json serializable
-                    self._prof.prof('unschedule_start', uid=cu['uid'])
-                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
-                    self.advance(cu, rps.CANCELED, publish=True, push=False)
+                    del(t['proc'])  # proc is not json serializable
+                    self._prof.prof('unschedule_start', uid=t['uid'])
+                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
+                    self.advance(t, rps.CANCELED, publish=True, push=False)
 
                     # we don't need to watch canceled CUs
-                    self._cus_to_watch.remove(cu)
+                    self._cus_to_watch.remove(t)
 
             else:
 
                 self._prof.prof('exec_stop', uid=uid)
 
                 # make sure proc is collected
-                cu['proc'].wait()
+                t['proc'].wait()
 
                 # we have a valid return code -- task is final
                 action += 1
                 self._log.info("Task %s has return code %s.", uid, exit_code)
 
-                cu['exit_code'] = exit_code
+                t['exit_code'] = exit_code
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
-                self._cus_to_watch.remove(cu)
-                del(cu['proc'])  # proc is not json serializable
-                self._prof.prof('unschedule_start', uid=cu['uid'])
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+                self._cus_to_watch.remove(t)
+                del(t['proc'])  # proc is not json serializable
+                self._prof.prof('unschedule_start', uid=t['uid'])
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
 
                 if exit_code != 0:
                     # The task failed - fail after staging output
-                    cu['target_state'] = rps.FAILED
+                    t['target_state'] = rps.FAILED
 
                 else:
                     # The task finished cleanly, see if we need to deal with
                     # output data.  We always move to stageout, even if there are no
                     # directives -- at the very least, we'll upload stdout/stderr
-                    cu['target_state'] = rps.DONE
+                    t['target_state'] = rps.DONE
 
-                self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
+                self.advance(t, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
 
         return action
 

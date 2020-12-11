@@ -684,7 +684,7 @@ class ContinuousSummit(AgentSchedulingComponent):
 
         if not self._cross_socket_threads:
             if threads_per_proc > self._rm_cores_per_socket:
-                raise ValueError('cu does not fit on socket')
+                raise ValueError('t does not fit on socket')
 
         cores_per_node = self._rm_cores_per_socket * self._rm_sockets_per_node
         gpus_per_node  = self._rm_gpus_per_socket  * self._rm_sockets_per_node

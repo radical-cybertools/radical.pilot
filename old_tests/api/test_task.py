@@ -53,19 +53,19 @@ class TestTask(tasktest.TestCase):
         cudesc.executable = "/bin/sleep"
         cudesc.arguments = ['10']
 
-        cu = um.submit_tasks(cudesc)
+        t = um.submit_tasks(cudesc)
 
-        assert cu is not None
-        assert cu.submission_time is not None
-        assert cu.start_time is None # MS: I dont understand this assertion
+        assert t is not None
+        assert t.submission_time is not None
+        assert t.start_time is None # MS: I dont understand this assertion
 
-        cu.wait(state=[radical.pilot.AGENT_EXECUTING, radical.pilot.FAILED], timeout=5*60)
-        assert cu.state == radical.pilot.AGENT_EXECUTING
-        assert cu.start_time is not None
+        t.wait(state=[radical.pilot.AGENT_EXECUTING, radical.pilot.FAILED], timeout=5*60)
+        assert t.state == radical.pilot.AGENT_EXECUTING
+        assert t.start_time is not None
 
-        cu.wait(timeout=5*60)
-        assert cu.state == radical.pilot.DONE
-        assert cu.stop_time is not None
+        t.wait(timeout=5*60)
+        assert t.state == radical.pilot.DONE
+        assert t.stop_time is not None
 
         session.close()
 
@@ -101,22 +101,22 @@ class TestTask(tasktest.TestCase):
         cudesc.executable = "/bin/sleep"
         cudesc.arguments = ["30"]
 
-        cu = um.submit_tasks(cudesc)
+        t = um.submit_tasks(cudesc)
 
-        assert cu is not None
-        assert cu.submission_time is not None
+        assert t is not None
+        assert t.submission_time is not None
 
         # Make sure it is running!
-        cu.wait(state=radical.pilot.AGENT_EXECUTING, timeout=60)
-        assert cu.state == radical.pilot.AGENT_EXECUTING
-        assert cu.start_time is not None
+        t.wait(state=radical.pilot.AGENT_EXECUTING, timeout=60)
+        assert t.state == radical.pilot.AGENT_EXECUTING
+        assert t.start_time is not None
 
         # Cancel the Task!
-        cu.cancel()
+        t.cancel()
 
-        cu.wait(timeout=60)
-        assert cu.state == radical.pilot.CANCELED
-        assert cu.stop_time is not None
+        t.wait(timeout=60)
+        assert t.state == radical.pilot.CANCELED
+        assert t.stop_time is not None
 
         session.close()
 
@@ -152,21 +152,21 @@ class TestTask(tasktest.TestCase):
         cudesc.executable = "/bin/sleep"
         cudesc.arguments = ["60"]
 
-        cu = um.submit_tasks(cudesc)
+        t = um.submit_tasks(cudesc)
 
-        assert cu is not None
-        assert cu.submission_time is not None
+        assert t is not None
+        assert t.submission_time is not None
 
         # Make sure it is running!
-        cu.wait(state=radical.pilot.AGENT_EXECUTING, timeout=60)
-        assert cu.state == radical.pilot.AGENT_EXECUTING
-        assert cu.start_time is not None
+        t.wait(state=radical.pilot.AGENT_EXECUTING, timeout=60)
+        assert t.state == radical.pilot.AGENT_EXECUTING
+        assert t.start_time is not None
 
         # Cancel the Task!
-        um.cancel_tasks(cu.uid)
+        um.cancel_tasks(t.uid)
 
-        cu.wait(timeout=60)
-        assert cu.state == radical.pilot.CANCELED
-        assert cu.stop_time is not None
+        t.wait(timeout=60)
+        assert t.state == radical.pilot.CANCELED
+        assert t.stop_time is not None
 
         session.close()

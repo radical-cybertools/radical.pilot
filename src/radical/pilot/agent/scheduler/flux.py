@@ -108,7 +108,7 @@ class Flux(AgentSchedulingComponent):
   # # --------------------------------------------------------------------------
   # #
   # def _populate_cu_environment(self):
-  #     """Derive the environment for the cu's from our own environment."""
+  #     """Derive the environment for the t's from our own environment."""
   #
   #     # Get the environment of the agent
   #     new_env = copy.deepcopy(os.environ)

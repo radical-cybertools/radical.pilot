@@ -239,25 +239,25 @@ class PRTE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
         time.sleep(0.1)
 
-        slots        = cu['slots']
-        td          = cu['description']
+        slots        = t['slots']
+        td          = t['description']
         task_exec    = td['executable']
         task_env     = td.get('environment') or dict()
         task_args    = td.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
-        n_threads = cu['description'].get('cpu_threads',   1)
-        n_procs   = cu['description'].get('cpu_processes', 1)
+        n_threads = t['description'].get('cpu_threads',   1)
+        n_procs   = t['description'].get('cpu_processes', 1)
 
         if not n_procs  : n_procs   = 1
         if not n_threads: n_threads = 1
 
       # import pprint
-        self._log.debug('prep %s', cu['uid'])
+        self._log.debug('prep %s', t['uid'])
 
         if 'lm_info' not in slots:
             raise RuntimeError('No lm_info to launch via %s: %s'

@@ -35,10 +35,10 @@ class APRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        td        = cu['description']
-        slots      = cu['slots']
+        td        = t['description']
+        slots      = t['slots']
         executable = td['executable']
         args       = td['arguments']
         argstr     = self._create_arg_string(args)
@@ -48,7 +48,7 @@ class APRun(LaunchMethod):
 
         # we get something like the following from the scheduler:
         #
-        #     cu = { ...
+        #     t = { ...
         #       'cpu_processes'    : 4,
         #       'cpu_process_type' : 'mpi',
         #       'cpu_threads'      : 2,

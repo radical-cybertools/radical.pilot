@@ -111,10 +111,10 @@ if __name__ == "__main__":
         cus = list()
 
         for task_count in range(0, 512):
-            cu = rp.TaskDescription()
-            cu.executable = '/bin/sleep'
-            cu.arguments = ['10']
-            cus.append(cu)
+            t = rp.TaskDescription()
+            t.executable = '/bin/sleep'
+            t.arguments = ['10']
+            cus.append(t)
 
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start

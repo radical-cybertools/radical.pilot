@@ -29,10 +29,10 @@ class DPlace(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        slots        = cu['slots']
-        td          = cu['description']
+        slots        = t['slots']
+        td          = t['description']
         task_exec    = td['executable']
         task_cores   = td['cpu_processes']  # FIXME: also use cpu_threads
         task_args    = td.get('arguments') or []

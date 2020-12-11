@@ -350,7 +350,7 @@ class Task(object):
         #       However, the full path as visible from the umgr side might not
         #       be what the agent is seeing, specifically in the case of
         #       non-shared filesystems (OSG).  The agent thus uses
-        #       `$PWD/cu['uid']` as sandbox, with the assumption that this will
+        #       `$PWD/t['uid']` as sandbox, with the assumption that this will
         #       get mapped to whatever is here returned as sandbox URL.
         #
         #       There is thus implicit knowledge shared between the RP client

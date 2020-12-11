@@ -56,8 +56,8 @@ def setUp():
 
 
 def nompi():
-    cu = dict()
-    cu['description'] = {
+    t = dict()
+    t['description'] = {
         'environment': dict(),
         'cpu_process_type': None,
         'gpu_process_type': None,
@@ -67,13 +67,13 @@ def nompi():
         'lfs_per_process': 1024
     }
     
-    return cu
+    return t
 #-----------------------------------------------------------------------------------------------------------------------
 
 
 def mpi():
-    cu = dict()
-    cu['description'] = {
+    t = dict()
+    t['description'] = {
 
         'environment': dict(),
         'cpu_process_type': 'MPI',
@@ -85,7 +85,7 @@ def mpi():
 
     }
     
-    return cu
+    return t
 #-----------------------------------------------------------------------------------------------------------------------
 # Cleanup any folders and files to leave the system state
 # as prior to the test
@@ -136,10 +136,10 @@ def test_nonmpi_task_with_tagging(
         }))
 
     # Allocate first TD -- should land on first node
-    cu = nompi()
-    cu['uid'] = 'task.000000'
-    component._try_allocation(cu)
-    slot1 = cu['slots']
+    t = nompi()
+    t['uid'] = 'task.000000'
+    component._try_allocation(t)
+    slot1 = t['slots']
     assert component._tag_history == {'task.000000': [1]}
     assert slot1 == {'cores_per_node': 2,
                      'lfs_per_node': component._lrms_lfs_per_node,
@@ -179,11 +179,11 @@ def test_nonmpi_task_with_tagging(
                                 'uid': 5}]
 
     # Allocate second TD -- should land on first node
-    cu = nompi()
-    cu['uid'] = 'task.000001'
-    cu['description']['tag'] = 'task.000000'
-    component._try_allocation(cu)
-    slot2 = cu['slots']
+    t = nompi()
+    t['uid'] = 'task.000001'
+    t['description']['tag'] = 'task.000000'
+    component._try_allocation(t)
+    slot2 = t['slots']
     assert component._tag_history == {'task.000000': [1],
                                       'task.000001': [1]}
     assert slot2 == {'cores_per_node': 2,
@@ -224,13 +224,13 @@ def test_nonmpi_task_with_tagging(
                                 'uid': 5}]
 
     # Allocate third TD -- should return None as first node is not released
-    cu = nompi()    
-    cu['uid'] = 'task.000002'
-    cu['description']['cpu_threads'] = 1
-    cu['description']['tag'] = 'task.000000'
+    t = nompi()    
+    t['uid'] = 'task.000002'
+    t['description']['cpu_threads'] = 1
+    t['description']['tag'] = 'task.000000'
 
-    component._try_allocation(cu)
-    slot3 = cu['slots']
+    component._try_allocation(t)
+    slot3 = t['slots']
     assert slot3 == None
     assert component._tag_history == {'task.000000': [1],
                                       'task.000001': [1]}
@@ -265,13 +265,13 @@ def test_nonmpi_task_with_tagging(
                                 'uid': 5}]
 
     # Allocate fourth TD -- should land on first node
-    cu = nompi()    
-    cu['uid'] = 'task.000002'
-    cu['description']['cpu_threads'] = 1
-    cu['description']['tag'] = 'task.000000'
+    t = nompi()    
+    t['uid'] = 'task.000002'
+    t['description']['cpu_threads'] = 1
+    t['description']['tag'] = 'task.000000'
 
-    component._try_allocation(cu)
-    slot4 = cu['slots']
+    component._try_allocation(t)
+    slot4 = t['slots']
     assert slot4 == {'cores_per_node': 2,
                      'lfs_per_node': component._lrms_lfs_per_node,
                      'nodes': [{'lfs': {'size': 1024, 'path': 'abc'},
@@ -349,13 +349,13 @@ def test_mpi_task_with_tagging(
         }))
 
     # Allocate first TD -- should land on first node
-    cu = mpi()
-    cu['uid'] = 'task.000000'
-    cu['description']['cpu_processes'] = 2
-    cu['description']['cpu_threads'] = 1
-    cu['description']['lfs_per_process'] = 1024
-    component._try_allocation(cu)
-    slot1 = cu['slots']
+    t = mpi()
+    t['uid'] = 'task.000000'
+    t['description']['cpu_processes'] = 2
+    t['description']['cpu_threads'] = 1
+    t['description']['lfs_per_process'] = 1024
+    component._try_allocation(t)
+    slot1 = t['slots']
     assert component._tag_history == {'task.000000': [1]}
     assert slot1 == {'cores_per_node': 2,
                      'lfs_per_node': component._lrms_lfs_per_node,
@@ -396,21 +396,21 @@ def test_mpi_task_with_tagging(
 
     # Allocate second TD -- should return None as the first node is
     # not yet released
-    cu = mpi()
-    cu['uid'] = 'task.000001'
-    cu['description']['tag'] = 'task.000000'
-    component._try_allocation(cu)
-    slot2 = cu['slots']
+    t = mpi()
+    t['uid'] = 'task.000001'
+    t['description']['tag'] = 'task.000000'
+    component._try_allocation(t)
+    slot2 = t['slots']
     assert slot2 == None
     assert component._tag_history == {'task.000000': [1]}
 
     # Allocate third TD -- should land on second and third node
-    cu = mpi()
-    cu['uid'] = 'task.000002'
-    cu['description']['cpu_processes'] = 2
-    cu['description']['cpu_threads'] = 2    
-    component._try_allocation(cu)
-    slot3 = cu['slots']
+    t = mpi()
+    t['uid'] = 'task.000002'
+    t['description']['cpu_processes'] = 2
+    t['description']['cpu_threads'] = 2    
+    component._try_allocation(t)
+    slot3 = t['slots']
     assert slot3 == {'cores_per_node': 2,
                      'lfs_per_node': component._lrms_lfs_per_node,
                      'nodes': [{'lfs': {'size': 1024, 'path': 'abc'},
@@ -457,12 +457,12 @@ def test_mpi_task_with_tagging(
 
     # Allocate fourth TD -- should return None as the second node is not
     # yet released
-    cu = mpi()
-    cu['uid'] = 'task.000003'
-    cu['description']['cpu_threads'] = 2    
-    cu['description']['tag'] = 'task.000002'
-    component._try_allocation(cu)
-    slot4 = cu['slots']
+    t = mpi()
+    t['uid'] = 'task.000003'
+    t['description']['cpu_threads'] = 2    
+    t['description']['tag'] = 'task.000002'
+    component._try_allocation(t)
+    slot4 = t['slots']
     assert slot4 == None
     assert component._tag_history == {'task.000000': [1],
                                       'task.000002': [2, 3]}
@@ -496,11 +496,11 @@ def test_mpi_task_with_tagging(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    cu = mpi()
-    cu['uid'] = 'task.000001'
-    cu['description']['tag'] = 'task.000000'
-    component._try_allocation(cu)
-    slot2 = cu['slots']
+    t = mpi()
+    t['uid'] = 'task.000001'
+    t['description']['tag'] = 'task.000000'
+    component._try_allocation(t)
+    slot2 = t['slots']
     assert slot2 == {'cores_per_node': 2,
                      'lfs_per_node': component._lrms_lfs_per_node,
                      'nodes': [{'lfs': {'size': 1024, 'path': 'abc'},
@@ -543,12 +543,12 @@ def test_mpi_task_with_tagging(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    cu = mpi()    
-    cu['uid'] = 'task.000003'
-    cu['description']['tag'] = 'task.000002'
-    cu['description']['cpu_threads'] = 2
-    component._try_allocation(cu)
-    slot4 = cu['slots']
+    t = mpi()    
+    t['uid'] = 'task.000003'
+    t['description']['tag'] = 'task.000002'
+    t['description']['cpu_threads'] = 2
+    component._try_allocation(t)
+    slot4 = t['slots']
     assert slot4 == {'cores_per_node': 2,
                      'lfs_per_node': component._lrms_lfs_per_node,
                      'nodes': [{'lfs': {'size': 1024, 'path': 'abc'},

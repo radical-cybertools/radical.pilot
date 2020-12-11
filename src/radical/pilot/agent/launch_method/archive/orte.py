@@ -210,10 +210,10 @@ class ORTE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        slots        = cu['slots']
-        td          = cu['description']
+        slots        = t['slots']
+        td          = t['description']
         task_exec    = td['executable']
         task_mpi     = bool('mpi' in td.get('cpu_process_type', '').lower())
         task_cores   = td.get('cpu_processes', 0) + td.get('gpu_processes', 0)
@@ -221,7 +221,7 @@ class ORTE(LaunchMethod):
         task_args    = td.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
-        self._log.debug('prep %s', cu['uid'])
+        self._log.debug('prep %s', t['uid'])
 
         if 'lm_info' not in slots:
             raise RuntimeError('No lm_info to launch via %s: %s'

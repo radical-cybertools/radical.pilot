@@ -91,9 +91,9 @@ if __name__ == '__main__':
         td.executable  = "radical-synapse-version"
         td.cpu_processes = 1
 
-        cu = umgr.submit_tasks(td)
-        umgr.wait_tasks(cu.uid)
-        assert(cu.state == rp.DONE)
+        t = umgr.submit_tasks(td)
+        umgr.wait_tasks(t.uid)
+        assert(t.state == rp.DONE)
 
 
         report.header('submit synapse workload tasks')

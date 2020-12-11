@@ -43,10 +43,10 @@ class MPIRunRSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        opaque_slots = cu['slots']
-        td          = cu['description']
+        opaque_slots = t['slots']
+        td          = t['description']
         task_exec    = td['executable']
         task_cores   = td['cores']
         task_env     = td.get('environment') or dict()

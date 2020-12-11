@@ -76,12 +76,12 @@ class MPIRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        slots        = cu['slots']
-        uid          = cu['uid']
-        td          = cu['description']
-        sandbox      = cu['task_sandbox_path']
+        slots        = t['slots']
+        uid          = t['uid']
+        td          = t['description']
+        sandbox      = t['task_sandbox_path']
         task_exec    = td['executable']
         task_threads = td.get('cpu_threads', 1)
         task_env     = td.get('environment') or dict()
@@ -110,9 +110,9 @@ class MPIRun(LaunchMethod):
         # Cheyenne is the only machine that requires mpirun_mpt.  We then
         # have to set MPI_SHEPHERD=true
         if self._mpt:
-            if not cu['description'].get('environment'):
-                cu['description']['environment'] = dict()
-            cu['description']['environment']['MPI_SHEPHERD'] = 'true'
+            if not t['description'].get('environment'):
+                t['description']['environment'] = dict()
+            t['description']['environment']['MPI_SHEPHERD'] = 'true'
 
         # Extract all the hosts from the slots
         host_list = list()

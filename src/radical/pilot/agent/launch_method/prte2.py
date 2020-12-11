@@ -249,12 +249,12 @@ class PRTE2(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
         time.sleep(0.1)
 
-        slots     = cu['slots']
-        td       = cu['description']
+        slots     = t['slots']
+        td       = t['description']
 
         task_exec = td['executable']
         task_args = td.get('arguments') or []

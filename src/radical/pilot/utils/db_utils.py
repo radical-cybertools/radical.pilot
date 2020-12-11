@@ -166,7 +166,7 @@ def get_session_slothist(db, sid, cache=None, cachedir=None):
                         started = event['timestamp']
 
                 if not started or not finished:
-                  # print "no start/end for cu %s - ignored" % task_doc['uid']
+                  # print "no start/end for t %s - ignored" % task_doc['uid']
                     continue
 
                 for slot_id in task_doc['opaque_slots']:

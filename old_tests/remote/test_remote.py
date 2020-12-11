@@ -70,17 +70,17 @@ class TestRemoteSubmission(tasktest.TestCase):
 
         cus = um.submit_tasks(cudescs)
 
-        for cu in cus:
-            assert cu is not None
-            assert cu.start_time is None
-            assert cu.stop_time is None
+        for t in cus:
+            assert t is not None
+            assert t.start_time is None
+            assert t.stop_time is None
 
         ret = um.wait_tasks(timeout=5*60)
         print "Return states from wait: %s" % ret
 
-        for cu in cus:
-            assert cu.state == rp.DONE, "state: %s" % cu.state
-            assert cu.stop_time is not None
+        for t in cus:
+            assert t.state == rp.DONE, "state: %s" % t.state
+            assert t.stop_time is not None
 
         pm.cancel_pilots()
 
@@ -109,8 +109,8 @@ class TestRemoteSubmission(tasktest.TestCase):
         pilot = pm.submit_pilots(descriptions=cpd)
 
         assert pilot is not None
-        #assert cu.start_time is None
-        #assert cu.start_time is None
+        #assert t.start_time is None
+        #assert t.start_time is None
 
         pilot.wait(state=rp.PMGR_ACTIVE, timeout=5*60)
         assert pilot.state == rp.PMGR_ACTIVE
@@ -148,8 +148,8 @@ class TestRemoteSubmission(tasktest.TestCase):
         pilot = pm.submit_pilots(descriptions=cpd)
 
         assert pilot is not None
-        #assert cu.start_time is None
-        #assert cu.start_time is None
+        #assert t.start_time is None
+        #assert t.start_time is None
 
         pilot.wait(state=rp.PMGR_ACTIVE, timeout=5*60)
         assert pilot.state == rp.PMGR_ACTIVE, "Expected state 'PMGR_ACTIVE' but got %s" % pilot.state

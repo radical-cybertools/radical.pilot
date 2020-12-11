@@ -293,7 +293,7 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 

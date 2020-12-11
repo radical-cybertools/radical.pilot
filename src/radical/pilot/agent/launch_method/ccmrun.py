@@ -28,11 +28,11 @@ class CCMRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
         # NOTE: we actually ignore the slots defined by the scheduler
 
-        td          = cu['description']
+        td          = t['description']
         task_exec    = td['executable']
         task_cores   = td['cpu_processes']  # FIXME: cpu_threads
         task_args    = td.get('arguments') or []

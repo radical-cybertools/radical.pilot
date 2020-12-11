@@ -78,13 +78,13 @@ if __name__ == '__main__':
         n = 4   # number of tasks to run
 
         # create a folder to the remote machine
-        cu               = rp.TaskDescription()
-        cu.executable    = 'python'
-        cu.arguments     = ['make_folders.py', n]
-        cu.input_staging = ['make_folders.py']
+        t               = rp.TaskDescription()
+        t.executable    = 'python'
+        t.arguments     = ['make_folders.py', n]
+        t.input_staging = ['make_folders.py']
 
         print("Creating dummy folder")
-        umgr.submit_tasks([cu])
+        umgr.submit_tasks([t])
         umgr.wait_tasks()
         print('Dummy folder created')
 

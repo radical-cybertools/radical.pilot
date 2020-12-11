@@ -58,10 +58,10 @@ class MPIExec(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        slots        = cu['slots']
-        td          = cu['description']
+        slots        = t['slots']
+        td          = t['description']
         task_exec    = td['executable']
         task_env     = td.get('environment') or dict()
         task_args    = td.get('arguments')   or list()
@@ -152,7 +152,7 @@ class MPIExec(LaunchMethod):
 
             # Create a hostfile from the list of hosts.  We create that in the
             # task sandbox
-            hostfile = '%s/mpi_hostfile' % cu['task_sandbox_path']
+            hostfile = '%s/mpi_hostfile' % t['task_sandbox_path']
             with open(hostfile, 'w') as f:
                 for node,nslots in list(host_slots.items()):
                     f.write('%20s \tslots=%s\n' % (node, nslots))

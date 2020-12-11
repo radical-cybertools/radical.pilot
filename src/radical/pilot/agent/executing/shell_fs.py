@@ -218,21 +218,21 @@ class ShellFS(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _handle_task(self, cu):
+    def _handle_task(self, t):
 
         # check that we don't start any tasks which need cancelling
-        if cu['uid'] in self._to_cancel:
+        if t['uid'] in self._to_cancel:
 
             with self._cancel_lock:
-                self._to_cancel.remove(cu['uid'])
+                self._to_cancel.remove(t['uid'])
 
-            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
-            self.advance(cu, rps.CANCELED, publish=True, push=False)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
+            self.advance(t, rps.CANCELED, publish=True, push=False)
             return True
 
         # launch the new task
         try:
-            mpi = cu['description'].get('mpi', False)
+            mpi = t['description'].get('mpi', False)
             if mpi: launcher = self._mpi_launcher
             else  : launcher = self._task_launcher
 
@@ -242,9 +242,9 @@ class ShellFS(AgentExecutingComponent):
             self._log.debug("Launching with %s (%s).", launcher.name,
                             launcher.launch_command)
 
-            assert(cu['slots'])
+            assert(t['slots'])
 
-            self.spawn(launcher=launcher, cu=cu)
+            self.spawn(launcher=launcher, t=t)
 
 
         except Exception as e:
@@ -255,15 +255,15 @@ class ShellFS(AgentExecutingComponent):
             self._log.exception("error running Task: %s", e)
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            if cu.get('slots'):
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+            if t.get('slots'):
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
 
-            self.advance(cu, rps.FAILED, publish=True, push=False)
+            self.advance(t, rps.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
     #
-    def _cu_to_cmd (self, cu, launcher) :
+    def _cu_to_cmd (self, t, launcher) :
 
         env   = self._deactivate
         cwd   = ""
@@ -272,18 +272,18 @@ class ShellFS(AgentExecutingComponent):
         io    = ""
         cmd   = ""
 
-        descr   = cu['description']
-        sandbox = cu['task_sandbox_path']
+        descr   = t['description']
+        sandbox = t['task_sandbox_path']
 
         env  += "# Task environment\n"
         env  += "export RP_SESSION_ID=%s\n"     % self._cfg['sid']
         env  += "export RP_PILOT_ID=%s\n"       % self._cfg['pid']
         env  += "export RP_AGENT_ID=%s\n"       % self._cfg['aid']
         env  += "export RP_SPAWNER_ID=%s\n"     % self.uid
-        env  += "export RP_TASK_ID=%s\n"        % cu['uid']
+        env  += "export RP_TASK_ID=%s\n"        % t['uid']
         env  += 'export RP_GTOD="%s"\n'         % self.gtod
         if self._prof.enabled:
-            env += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
+            env += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, t['uid'])
         env  += '''
 prof(){
     test -z "$RP_PROF" && return
@@ -327,16 +327,16 @@ prof(){
             post += 'prof cu_post_stop\n'
             post += "\n"
 
-        stdout_file = descr.get('stdout') or '%s.out' % cu['uid']
-        stderr_file = descr.get('stderr') or '%s.err' % cu['uid']
+        stdout_file = descr.get('stdout') or '%s.out' % t['uid']
+        stderr_file = descr.get('stderr') or '%s.err' % t['uid']
 
-        cu['stdout_file'] = os.path.join(sandbox, stdout_file)
-        cu['stderr_file'] = os.path.join(sandbox, stderr_file)
+        t['stdout_file'] = os.path.join(sandbox, stdout_file)
+        t['stderr_file'] = os.path.join(sandbox, stderr_file)
 
-        io  += "1>%s " % cu['stdout_file']
-        io  += "2>%s " % cu['stderr_file']
+        io  += "1>%s " % t['stdout_file']
+        io  += "2>%s " % t['stderr_file']
 
-        cmd, hop_cmd  = launcher.construct_command(cu, '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"')
+        cmd, hop_cmd  = launcher.construct_command(t, '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"')
 
         script  = '\n%s\n' % env
         script += 'prof cu_start\n'
@@ -365,7 +365,7 @@ prof(){
         script += 'prof cu_exec_stop\n'
         script += "%s"        %  post
         script += "# notify the agent\n"
-        script += "echo \"FINAL %s $RETVAL\" > %s\n" % (cu['uid'],
+        script += "echo \"FINAL %s $RETVAL\" > %s\n" % (t['uid'],
                                                         self._fifo_inf_name)
         script += "exit $RETVAL\n"
         script += "# ------------------------------------------------------\n\n"
@@ -377,10 +377,10 @@ prof(){
 
     # --------------------------------------------------------------------------
     #
-    def spawn(self, launcher, cu):
+    def spawn(self, launcher, t):
 
-        uid     = cu['uid']
-        sandbox = cu['sandbox']
+        uid     = t['uid']
+        sandbox = t['sandbox']
 
         try:
             os.makedirs(sandbox)
@@ -388,12 +388,12 @@ prof(){
             pass
 
         # prep stdout/err so that we can append w/o checking for None
-        cu['stdout'] = ''
-        cu['stderr'] = ''
+        t['stdout'] = ''
+        t['stderr'] = ''
 
         # we got an allocation: go off and launch the process.  we get
         # a multiline command, so use the wrapper's BULK/LRUN mode.
-        cmd = self._cu_to_cmd (cu, launcher)
+        cmd = self._cu_to_cmd (t, launcher)
         with open("%s/%s.sh" % (sandbox, uid), 'w+') as fout:
             fout.write(cmd)
 
@@ -402,7 +402,7 @@ prof(){
         self._fifo_cmd.flush()
 
         with self._registry_lock :
-            self._registry[uid] = cu
+            self._registry[uid] = t
 
         # FIXME: HERE
 
@@ -462,32 +462,32 @@ prof(){
         self._prof.prof('exec_stop', uid=uid)
 
         with self._registry_lock:
-            cu = self._registry[uid]
+            t = self._registry[uid]
             del(self._registry[uid])
 
         # free task slots.
-        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
 
         if ret is None:
-            cu['exit_code'] = None
+            t['exit_code'] = None
         else:
-            cu['exit_code'] = int(ret)
+            t['exit_code'] = int(ret)
 
-        if   cu['exit_code'] == 0   : rp_state = rps.DONE
-        elif cu['exit_code'] is None: rp_state = rps.CANCELED
+        if   t['exit_code'] == 0   : rp_state = rps.DONE
+        elif t['exit_code'] is None: rp_state = rps.CANCELED
         else                        : rp_state = rps.FAILED
 
         if rp_state in [rps.FAILED, rps.CANCELED] :
             # The task failed - fail after staging output
-            cu['target_state'] = rps.FAILED
+            t['target_state'] = rps.FAILED
 
         else:
             # The task finished cleanly, see if we need to deal with
             # output data.  We always move to stageout, even if there are no
             # directives -- at the very least, we'll upload stdout/stderr
-            cu['target_state'] = rps.DONE
+            t['target_state'] = rps.DONE
 
-        self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
+        self.advance(t, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
 
 
 # ------------------------------------------------------------------------------

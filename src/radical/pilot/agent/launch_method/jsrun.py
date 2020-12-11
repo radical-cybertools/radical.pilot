@@ -127,15 +127,15 @@ class JSRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        uid          = cu['uid']
-        slots        = cu['slots']
-        td          = cu['description']
+        uid          = t['uid']
+        slots        = t['slots']
+        td          = t['description']
         task_exec    = td['executable']
         task_args    = td.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
-        task_sandbox = cu['task_sandbox_path']
+        task_sandbox = t['task_sandbox_path']
 
         assert(slots), 'missing slots for %s' % uid
 

@@ -128,7 +128,7 @@ class Yarn(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _allocate_slot(self, cu):
+    def _allocate_slot(self, t):
         """
         Attempt to allocate cores for a specific Task.  If it succeeds, send the
         Task off to the ExecutionWorker.
@@ -152,8 +152,8 @@ class Yarn(AgentSchedulingComponent):
         # accept. It needs to go either from the configuration file or find a
         # way to take this value for the YARN scheduler config.
 
-        cores_requested = cu['description']['cpu_processes'] \
-                        * cu['description']['cpu_threads']
+        cores_requested = t['description']['cpu_processes'] \
+                        * t['description']['cpu_threads']
         mem_requested   = 2048
         slots           = None
 
