@@ -88,7 +88,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 10
+        n = 1024 * 2
         report.progress_tgt(n, label='create')
 
         cuds = list()
@@ -99,7 +99,7 @@ if __name__ == '__main__':
             cud = rp.ComputeUnitDescription()
             cud.pre_exec         = []
             cud.executable       = mathma # Function reference
-            cud.arguments        = [5,7]  # Function arguments
+            cud.arguments        = [5, 7]  # Function arguments
             cud.gpu_processes    = 0
             cud.cpu_processes    = 1
             cud.cpu_threads      = 1

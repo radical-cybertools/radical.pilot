@@ -76,7 +76,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 10
+        n = 1024 * 2
         report.progress_tgt(n, label='create')
 
         cuds = list()

@@ -30,7 +30,6 @@ if ve and ve not in ['', 'None', None]:
 
     activate = "%s/bin/activate_this.py" % ve
 
-  # execfile(activate, dict(__file__=activate))
     exec(open(activate).read(), dict(__file__=activate))
 
 
@@ -269,6 +268,18 @@ class Executor(object):
 
             self._prof.prof('task_get', comp=wid, uid=tid)
           # self._log.debug('get %s: %s', tid, cmd)
+            
+            def check_obj(exe):
+                '''
+                Check the object type if pickled or not
+                to distinguish between exec and eval
+                '''
+                try:
+                    isinstance(pickle.loads(codecs.decode(func.encode(), 
+                                                          "base64")),dict)
+                    return True
+                except:
+                    return False
 
             try:
                 for pre in pres:
@@ -278,13 +289,12 @@ class Executor(object):
                                 globals()[mod] = ru.import_module(mod)
                                 locals() [mod] = globals()[mod]
 
-
-                if isinstance(exe, dict):
+                if check_obj(exe) is True:
 
                     try:
                         function_code = self.prepare_func(exe, args)
                     except Exception:
-                        self._log.debug("Setting the function for execution failed!.")
+                        self._log.debug("Setting the function for execution failed!")
                         raise
                     
                     @contextlib.contextmanager
