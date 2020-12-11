@@ -41,7 +41,7 @@ if __name__ == '__main__':
                    'access_schema' :     config[resource]['schema'],
                    'cores'         : 8
                   }
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
         pmgr  = rp.PilotManager(session=session)
         pilot = pmgr.submit_pilots(pdesc)
 
@@ -65,7 +65,7 @@ if __name__ == '__main__':
         cudis = list()
         for f in ['grompp.mdp', 'mdout.mdp', 'start.gro',
                   'topol.top',  'topol.tpr']:
-            cudis.append({'source': 'pilot:///gromacs/%s' % f, 
+            cudis.append({'source': 'pilot:///gromacs/%s' % f,
                           'target': 'unit:///%s' % f,
                           'action': rp.LINK})
 
@@ -77,7 +77,7 @@ if __name__ == '__main__':
 
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.ComputeUnitDescription()
+            cud = rp.TaskDescription()
             cud.executable       = 'date'
           # cud.arguments        = '1'.split()
           # cud.executable       = 'gmx'

@@ -40,12 +40,12 @@ if __name__ == "__main__":
             input_file = 'input_file-%d.txt' % (idx + 1)
             os.system('/bin/echo "%s" > %s' % (occ, input_file))
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session=session)
 
         # Define a C-core on $RESOURCE that runs for M minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
-        pdesc = rp.ComputePilotDescription()
+        pdesc = rp.PilotDescription()
         pdesc.resource = "local.localhost"
         pdesc.runtime  = 5  # M minutes
         pdesc.cores    = 2  # C cores
@@ -76,11 +76,11 @@ if __name__ == "__main__":
                      'action': rp.LINK
         }
 
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
+        # Combine the Pilot, the Tasks and a scheduler via
         # a UnitManager object.
         umgr = rp.UnitManager(session=session)
 
-        # Add the previously created ComputePilot to the UnitManager.
+        # Add the previously created Pilot to the UnitManager.
         umgr.add_pilots(pilot)
 
         compute_unit_descs = []
@@ -95,7 +95,7 @@ if __name__ == "__main__":
 
             # Actual task description.
             # Concatenate the shared input and the task specific input.
-            cud = rp.ComputeUnitDescription()
+            cud = rp.TaskDescription()
             cud.executable = '/bin/bash'
             cud.arguments = ['-c', 'cat %s %s > %s' %
                              (SHARED_INPUT_FILE, input_file, output_file)]
@@ -105,17 +105,17 @@ if __name__ == "__main__":
 
             compute_unit_descs.append(cud)
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
+        # assigning Tasks to the Pilots.
         units = umgr.submit_units(compute_unit_descs)
 
-        # Wait for all compute units to finish.
+        # Wait for all tasks to finish.
         umgr.wait_units()
 
         for unit in umgr.get_units():
 
-            # Get the stdout and stderr streams of the ComputeUnit.
+            # Get the stdout and stderr streams of the Task.
             print(" STDOUT: %s" % unit.stdout)
             print(" STDERR: %s" % unit.stderr)
 

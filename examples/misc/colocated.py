@@ -39,7 +39,7 @@ if __name__ == '__main__':
                    'exit_on_error' : True,
                    'cores'         : 32
                   }
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
         pmgr  = rp.PilotManager(session=session)
         pilot = pmgr.submit_pilots(pdesc)
 
@@ -61,7 +61,7 @@ if __name__ == '__main__':
         cuds = list()
         for b in range(n_bags):
             for tid,s in enumerate(task_size):
-                cud = rp.ComputeUnitDescription()
+                cud = rp.TaskDescription()
                 cud.executable       = '%s/colocated_task.sh' % pwd
                 cud.arguments        = [b, bag_size, tid]
                 cud.cpu_processes    = s

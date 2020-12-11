@@ -46,10 +46,10 @@ if __name__ == '__main__':
 
         report.header('submit pilots')
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session=session)
 
-        # Register the ComputePilot in a UnitManager object.
+        # Register the Pilot in a UnitManager object.
         umgr = rp.UnitManager(session=session)
 
         n = 1
@@ -69,7 +69,7 @@ if __name__ == '__main__':
                       'cores'         : config[resource].get('cores', 1),
                       'gpus'          : config[resource].get('gpus', 0),
                 }
-                pdesc = rp.ComputePilotDescription(pd_init)
+                pdesc = rp.PilotDescription(pd_init)
                 pdescs.append(pdesc)
 
         # Launch the pilot.
@@ -79,8 +79,8 @@ if __name__ == '__main__':
         report.header('submit units')
 
 
-        # Create a workload of ComputeUnits.
-        # Each compute unit runs '/bin/date'.
+        # Create a workload of Tasks.
+        # Each task runs '/bin/date'.
         n = 128  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
 
@@ -89,7 +89,7 @@ if __name__ == '__main__':
 
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.ComputeUnitDescription()
+            cud = rp.TaskDescription()
             if i % 10:
                 cud.executable = '/bin/date'
             else:
@@ -100,12 +100,12 @@ if __name__ == '__main__':
 
         report.ok('>>ok\n')
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
+        # assigning Tasks to the Pilots.
         units = umgr.submit_units(cuds)
 
-        # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+        # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
 

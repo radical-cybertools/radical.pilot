@@ -39,7 +39,7 @@ def pilot_state_cb(pilots):
     # Note that other error handling semantics are available, depending on your
     # application requirements. For example, upon a pilot failure, the
     # application could spawn a replacement pilot, or reduce the number of
-    # compute units to match the remaining set of pilots.
+    # tasks to match the remaining set of pilots.
 
     for pilot in pilots:
         print("[Callback]: Pilot '%s' state: %s." % (pilot.uid, pilot.state))
@@ -53,12 +53,12 @@ def pilot_state_cb(pilots):
 def unit_state_cb(units):
     """ this callback is invoked on all unit state changes """
 
-    # The approach to compute unit state callbacks is the same as the one to
-    # pilot state callbacks. Only difference is that compute unit state
-    # callbacks are invoked by the unit manager on changes of compute unit
+    # The approach to task state callbacks is the same as the one to
+    # pilot state callbacks. Only difference is that task state
+    # callbacks are invoked by the unit manager on changes of task
     # states.
     #
-    # The example below does not really create any ComputeUnit object, we only
+    # The example below does not really create any Task object, we only
     # include the callback here for documentation on the approaches to error
     # handling.
     #
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     # 'finally' clause...
     try:
 
-        # create the compute unit and pilot managers.
+        # create the task and pilot managers.
         umgr = rp.UnitManager(session=session)
         pmgr = rp.PilotManager(session=session)
 
@@ -104,7 +104,7 @@ if __name__ == "__main__":
         pmgr.register_callback(pilot_state_cb)
 
         # Create a local pilot.
-        pd = rp.ComputePilotDescription()
+        pd = rp.PilotDescription()
         pd.resource  = "local.localhost"
         pd.cores     = 64
         pd.runtime   = 60
@@ -117,7 +117,7 @@ if __name__ == "__main__":
         n    = 1024 * 3
         cuds = list()
         for _ in range(n):
-            cud = rp.ComputeUnitDescription()
+            cud = rp.TaskDescription()
             if random.random() < 0.5:
                 cud.executable = '/bin/true'
             else:

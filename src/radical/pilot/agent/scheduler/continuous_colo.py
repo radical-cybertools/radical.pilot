@@ -9,7 +9,7 @@ import radical.utils as ru
 from .continuous import Continuous
 
 from ... import states    as rps
-from ... import compute_unit_description as rpcud
+from ... import task_description as rpcud
 
 
 # ------------------------------------------------------------------------------

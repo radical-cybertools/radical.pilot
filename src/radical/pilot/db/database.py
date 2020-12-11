@@ -300,7 +300,7 @@ class DBSession(object):
     #
     def get_units(self, umgr_uid, unit_ids=None):
         """
-        Get yerself a bunch of compute units.
+        Get yerself a bunch of tasks.
 
         return dict {uid:unit}
         """

@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
         report.header('submit pilots')
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session=session)
 
         total_cores = config[resource]['cores']
@@ -64,7 +64,7 @@ if __name__ == '__main__':
         part2_cores = total_cores - part1_cores
 
         if not part1_cores * part2_cores:
-            raise ValueError('insufficient cores for partinioning [%d, %d]' 
+            raise ValueError('insufficient cores for partinioning [%d, %d]'
                              % (part1_cores, part2_cores))
 
         # Define an [n]-core local pilot that runs for [x] minutes
@@ -77,26 +77,26 @@ if __name__ == '__main__':
                    'access_schema': config[resource]['schema'],
 
                    'agent_cores'  : 'automatic',  # auto-add to partition sizes
-                   'partitions'   : [{'config': 'aprun', 'cores' : part1_cores}, 
+                   'partitions'   : [{'config': 'aprun', 'cores' : part1_cores},
                                      {'config': 'orte',  'cores' : part2_cores}]
                   }
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
         print('pilot info: %d cores (%d + %d)'
-               % (pilot.cores, pilot.partitions[0].cores, 
+               % (pilot.cores, pilot.partitions[0].cores,
                   pilot.partitions[1].cores))
 
         report.header('submit units')
 
-        # Register the ComputePilot in a UnitManager object.
+        # Register the Pilot in a UnitManager object.
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
-        # Create a workload of ComputeUnits.
-        # Each compute unit runs '/bin/date'.
+        # Create a workload of Tasks.
+        # Each task runs '/bin/date'.
 
         n = 256  # number of units to run
         report.info('create %d unit description(s)\n\t' % n)
@@ -106,18 +106,18 @@ if __name__ == '__main__':
 
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.ComputeUnitDescription()
+            cud = rp.TaskDescription()
             cud.executable = '/bin/date'
             cuds.append(cud)
             report.progress()
         report.ok('>>ok\n')
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
+        # assigning Tasks to the Pilots.
         units = umgr.submit_units(cuds)
 
-        # Wait for all compute units to reach
+        # Wait for all tasks to reach
         # a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()

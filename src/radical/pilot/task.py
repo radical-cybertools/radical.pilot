@@ -11,17 +11,17 @@ import radical.utils as ru
 from . import states    as rps
 from . import constants as rpc
 
-from . import compute_unit_description as cud
+from . import task_description as cud
 
 from .staging_directives import expand_description
 
 
 # ------------------------------------------------------------------------------
 #
-class ComputeUnit(object):
+class Task(object):
     """
-    A ComputeUnit represent a 'task' that is executed on a ComputePilot.
-    ComputeUnits allow to control and query the state of this task.
+    A Task represent a 'task' that is executed on a Pilot.
+    Tasks allow to control and query the state of this task.
 
     .. note:: A unit cannot be created directly. The factory method
               :meth:`rp.UnitManager.submit_units` has to be used instead.
@@ -30,7 +30,7 @@ class ComputeUnit(object):
 
                       umgr = rp.UnitManager(session=s)
 
-                      ud = rp.ComputeUnitDescription()
+                      ud = rp.TaskDescription()
                       ud.executable = "/bin/date"
 
                       unit = umgr.submit_units(ud)

@@ -141,7 +141,7 @@ class Popen(AgentExecutingComponent) :
             env = descr.get('named_env')
             if env:
                 if not os.path.isdir('%s/%s' % (self._pwd, env)):
-                    raise ValueError('invalid named env %s for task %s' 
+                    raise ValueError('invalid named env %s for task %s'
                                     % (env, cu['uid']))
                 pre = ru.as_list(descr.get('pre_exec'))
                 pre.insert(0, '. %s/%s/bin/activate' % (self._pwd, env))
@@ -177,7 +177,7 @@ class Popen(AgentExecutingComponent) :
             self._log.exception("error running CU")
             if cu.get('stderr') is None:
                 cu['stderr'] = ''
-            cu['stderr'] += "\nPilot cannot start compute unit:\n%s\n%s" \
+            cu['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!

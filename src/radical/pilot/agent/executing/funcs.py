@@ -133,7 +133,7 @@ class FUNCS(AgentExecutingComponent) :
     #
     def _spawn(self, launcher, funcs):
 
-        # NOTE: see documentation of funcs['sandbox'] semantics in the ComputeUnit
+        # NOTE: see documentation of funcs['sandbox'] semantics in the Task
         #       class definition.
         sandbox = '%s/%s'     % (self._pwd, funcs['uid'])
         fname   = '%s/%s.sh'  % (sandbox,   funcs['uid'])

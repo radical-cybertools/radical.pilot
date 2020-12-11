@@ -20,13 +20,13 @@ from .session                   import Session
 from .context                   import Context
 
 from .unit_manager              import UnitManager
-from .compute_unit              import ComputeUnit
-from .compute_unit_description  import ComputeUnitDescription
-from .compute_unit_description  import POSIX, MPI, OpenMP, CUDA, FUNC
+from .task                      import Task
+from .task_description          import TaskDescription
+from .task_description          import POSIX, MPI, OpenMP, CUDA, FUNC
 
 from .pilot_manager             import PilotManager
-from .compute_pilot             import ComputePilot
-from .compute_pilot_description import ComputePilotDescription
+from .pilot                     import Pilot
+from .pilot_description         import PilotDescription
 
 
 # ------------------------------------------------------------------------------

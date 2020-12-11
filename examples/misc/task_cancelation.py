@@ -22,7 +22,7 @@ if __name__ == '__main__':
                    'runtime'       : 60,
                    'cores'         :  8
                   }
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
         pilot = pmgr.submit_pilots(pdesc)
         umgr  = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
@@ -37,7 +37,7 @@ if __name__ == '__main__':
         cuds    = list()
         for _ in range(32):
 
-            cud = rp.ComputeUnitDescription()
+            cud = rp.TaskDescription()
             cud.executable = '%s/examples/hello_rp.sh' % os.getcwd()
             cud.arguments  = [10]
             cuds.append(cud)

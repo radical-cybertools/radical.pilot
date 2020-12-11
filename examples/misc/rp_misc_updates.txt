@@ -3,7 +3,7 @@
 session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018359.0002
 session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0009
 
-/misc/ordered_pipelines.py (DONE) 
+/misc/ordered_pipelines.py (DONE)
 1. config = ru.read_json('%s/../config.json' %pwd) is the update.
 This is to read the config file successfully.
 session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018359.0009
@@ -17,7 +17,7 @@ session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0010
 session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0003
 session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0013
 
-/misc/rp_app_master.py 
+/misc/rp_app_master.py
 /misc/rp_app_worker.py are removed because
 following are not available in os.environ
 'RP_UNIT_ID','RP_WORK_QUEUE_IN', 'RP_RESULT_QUEUE_OUT'
@@ -33,8 +33,8 @@ It may work with correct arguments.
 session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0060
 
 /misc/wl_shape_02.py (DONE)
-1. pilot.stage_in source path is fixed, and an empty gromacs folder is created 
-(maybe this folder should contain some specific scripts similar to those saved 
+1. pilot.stage_in source path is fixed, and an empty gromacs folder is created
+(maybe this folder should contain some specific scripts similar to those saved
 under ../data/gromacs_mdrun_0/ folder)
 session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0025
 
@@ -57,7 +57,7 @@ session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0031
 4. unit.execution_locations, unit.start_time, unit.stop_time are excluded from print
 statement since unit has not such methods.
 5. rp.UnitManager constructor is called only with session (scheduler is excluded).
-However, state of ComputePilots are CANCELED. In addition, stats plotter cooments are removed
+However, state of Pilots are CANCELED. In addition, stats plotter cooments are removed
 since bin/radicalpilot-stats is not working
 session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0056
 
@@ -71,7 +71,7 @@ However, call_back error is reported in pmgr log file. Further update is needed.
 session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0053
 
 
-/misc/backfilling_recovery.py 
+/misc/backfilling_recovery.py
 1. rp.Session argument 'name' is updated 'uid'
 2. resource in pilot decription "localhost" is updated as "local.localhost"
 3. state argument 'rp.ACTIVE' is updated as 'rp.PMGR_ACTIVE'

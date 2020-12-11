@@ -25,7 +25,7 @@ def pilot_state_cb (pilot, state):
     if not pilot:
         return
 
-    print("[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
+    print("[Callback]: Pilot '%s' state: %s." % (pilot.uid, state))
 
     if state == rp.FAILED:
         sys.exit (1)
@@ -80,7 +80,7 @@ if __name__ == "__main__":
       # c.user_pass = "PutYourPasswordHere"
         session.add_context(c)
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         print("Initializing Pilot Manager ...")
         pmgr = rp.PilotManager(session=session)
 
@@ -100,17 +100,17 @@ if __name__ == "__main__":
         # https://radicalpilot.readthedocs.io/en/stable/ \
         #        machconf.html#preconfigured-resources
         #
-        pdesc = rp.ComputePilotDescription ()
+        pdesc = rp.PilotDescription ()
         pdesc.resource = "local.localhost"
         pdesc.runtime  = 10
         pdesc.cores    = 16
         pdesc.cleanup  = True
 
         # submit the pilot.
-        print("Submitting Compute Pilot to Pilot Manager ...")
+        print("Submitting  Pilot to Pilot Manager ...")
         pilot = pmgr.submit_pilots(pdesc)
 
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
+        # Combine the Pilot, the Tasks and a scheduler via
         # a UnitManager object.
         print("Initializing Unit Manager ...")
         umgr = rp.UnitManager (session=session,
@@ -121,8 +121,8 @@ if __name__ == "__main__":
         # change their state.
         umgr.register_callback(unit_state_cb)
 
-        # Add the created ComputePilot to the UnitManager.
-        print("Registering Compute Pilot with Unit Manager ...")
+        # Add the created Pilot to the UnitManager.
+        print("Registering  Pilot with Unit Manager ...")
         umgr.add_pilots(pilot)
 
         NUMBER_JOBS  = 10  # the total number of cus to run
@@ -132,7 +132,7 @@ if __name__ == "__main__":
         for i in range(NUMBER_JOBS):
 
             # -------- BEGIN USER DEFINED CU DESCRIPTION --------- #
-            cudesc = rp.ComputeUnitDescription()
+            cudesc = rp.TaskDescription()
             cudesc.executable    = "python"
             cudesc.arguments     = ["helloworld_mpi.py"]
             cudesc.input_staging = ["../helloworld_mpi.py"]
@@ -142,10 +142,10 @@ if __name__ == "__main__":
 
             cudesc_list.append(cudesc)
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        print("Submit Compute Units to Unit Manager ...")
+        # assigning Tasks to the Pilots.
+        print("Submit Tasks to Unit Manager ...")
         cu_set = umgr.submit_units (cudesc_list)
 
         print("Waiting for CUs to complete ...")

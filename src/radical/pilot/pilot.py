@@ -14,18 +14,18 @@ from . import constants as rpc
 
 # ------------------------------------------------------------------------------
 #
-class ComputePilot(object):
+class Pilot(object):
     '''
-    A ComputePilot represent a resource overlay on a local or remote resource.
+    A Pilot represent a resource overlay on a local or remote resource.
 
-    .. note:: A ComputePilot cannot be created directly. The factory method
+    .. note:: A Pilot cannot be created directly. The factory method
               :meth:`radical.pilot.PilotManager.submit_pilots` has to be
               used instead.
 
         **Example**::
 
               pm = radical.pilot.PilotManager(session=s)
-              pd = radical.pilot.ComputePilotDescription()
+              pd = radical.pilot.PilotDescription()
 
               pd.resource = "local.localhost"
               pd.cores    = 2
@@ -56,7 +56,7 @@ class ComputePilot(object):
         # sanity checks on description
         for check in ['resource', 'cores', 'runtime']:
             if not self._descr.get(check):
-                raise ValueError("ComputePilotDescription needs '%s'" % check)
+                raise ValueError("PilotDescription needs '%s'" % check)
 
         # initialize state
         self._pmgr       = pmgr
@@ -572,7 +572,7 @@ class ComputePilot(object):
         environment will be delayed until the env preparation completed, or will
         fail if the env preparation failed.
 
-        Format: see `ComputePilotDescription`
+        Format: see `PilotDescription`
         '''
 
         # send the prep_env request to the pilot

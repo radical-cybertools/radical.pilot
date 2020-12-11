@@ -75,7 +75,7 @@ def dec_all_methods(dec):
 class ContinuousSummit(AgentSchedulingComponent):
     '''
     The Continuous scheduler attempts to place threads and processes of
-    a compute units onto consecutive cores, gpus and nodes in the cluster.
+    a tasks onto consecutive cores, gpus and nodes in the cluster.
     '''
 
     # --------------------------------------------------------------------------
@@ -661,7 +661,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         Find a suitable set of cores and gpus *within a single node*.
 
         Input:
-        cud: Compute Unit description. Needs to specify at least one CPU
+        cud: Task description. Needs to specify at least one CPU
         process and one thread per CPU process, or one GPU process.
         """
 

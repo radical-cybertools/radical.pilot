@@ -23,17 +23,17 @@ if __name__ == '__main__':
                    'runtime'       : 60,
                    'exit_on_error' : True,
                    'cores'         : n_master * 1 + n_worker * 1,
-                   'app_comm'      : ['app_pubsub', 
-                                      'work_queue', 
+                   'app_comm'      : ['app_pubsub',
+                                      'work_queue',
                                       'result_queue']
                   }
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
         pilot = pmgr.submit_pilots(pdesc)
         umgr  = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
         pwd  = os.path.dirname(os.path.abspath(__file__))
-        CUD  = rp.ComputeUnitDescription
+        CUD  = rp.TaskDescription
         cuds = list()
 
         for i in range(n_master):

@@ -13,7 +13,7 @@ from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
 
-from . import compute_unit_description as rpcud
+from . import task_description as rpcud
 
 
 # bulk callbacks are implemented, but are currently not used nor exposed.
@@ -26,11 +26,11 @@ if os.environ.get('RADICAL_PILOT_BULK_CB', '').lower() in ['true', 'yes', '1']:
 #
 class UnitManager(rpu.Component):
     """
-    A UnitManager manages :class:`radical.pilot.ComputeUnit` instances which
+    A UnitManager manages :class:`radical.pilot.Task` instances which
     represent the **executable** workload in RADICAL-Pilot. A UnitManager
-    connects the ComputeUnits with one or more :class:`Pilot` instances (which
+    connects the Tasks with one or more :class:`Pilot` instances (which
     represent the workload **executors** in RADICAL-Pilot) and a **scheduler**
-    which determines which :class:`ComputeUnit` gets executed on which
+    which determines which :class:`Task` gets executed on which
     :class:`Pilot`.
 
     **Example**::
@@ -39,26 +39,26 @@ class UnitManager(rpu.Component):
 
         pm = rp.PilotManager(session=s)
 
-        pd = rp.ComputePilotDescription()
+        pd = rp.PilotDescription()
         pd.resource = "futuregrid.alamo"
         pd.cores = 16
 
         p1 = pm.submit_pilots(pd) # create first pilot with 16 cores
         p2 = pm.submit_pilots(pd) # create second pilot with 16 cores
 
-        # Create a workload of 128 '/bin/sleep' compute units
-        compute_units = []
+        # Create a workload of 128 '/bin/sleep' tasks
+        tasks = []
         for unit_count in range(0, 128):
-            cu = rp.ComputeUnitDescription()
+            cu = rp.TaskDescription()
             cu.executable = "/bin/sleep"
             cu.arguments = ['60']
-            compute_units.append(cu)
+            tasks.append(cu)
 
         # Combine the two pilots, the workload and a scheduler via
         # a UnitManager.
         um = rp.UnitManager(session=session, scheduler=rp.SCHEDULER_ROUND_ROBIN)
         um.add_pilot(p1)
-        um.submit_units(compute_units)
+        um.submit_units(tasks)
 
 
     The unit manager can issue notification on unit state changes.  Whenever
@@ -329,7 +329,7 @@ class UnitManager(rpu.Component):
 
                     self._log.debug('unit %s is  restartable', unit['uid'])
                     unit['restarted'] = True
-                    ud = rpcud.ComputeUnitDescription(unit['description'])
+                    ud = rpcud.TaskDescription(unit['description'])
                     to_restart.append(ud)
                     # FIXME: increment some restart counter in the description?
                     # FIXME: reference the resulting new uid in the old unit.
@@ -670,8 +670,8 @@ class UnitManager(rpu.Component):
 
         **Arguments:**
 
-            * **pilots** [:class:`radical.pilot.ComputePilot` or list of
-              :class:`radical.pilot.ComputePilot`]: The pilot objects that will be
+            * **pilots** [:class:`radical.pilot.Pilot` or list of
+              :class:`radical.pilot.Pilot`]: The pilot objects that will be
               added to the unit manager.
         """
 
@@ -708,7 +708,7 @@ class UnitManager(rpu.Component):
         Lists the UIDs of the pilots currently associated with the unit manager.
 
         **Returns:**
-              * A list of :class:`radical.pilot.ComputePilot` UIDs [`string`].
+              * A list of :class:`radical.pilot.Pilot` UIDs [`string`].
         """
 
         with self._pilots_lock:
@@ -722,7 +722,7 @@ class UnitManager(rpu.Component):
         Get the pilots instances currently associated with the unit manager.
 
         **Returns:**
-              * A list of :class:`radical.pilot.ComputePilot` instances.
+              * A list of :class:`radical.pilot.Pilot` instances.
         """
 
         with self._pilots_lock:
@@ -777,11 +777,11 @@ class UnitManager(rpu.Component):
     #
     def list_units(self):
         """
-        Returns the UIDs of the :class:`radical.pilot.ComputeUnit` managed by
+        Returns the UIDs of the :class:`radical.pilot.Task` managed by
         this unit manager.
 
         **Returns:**
-              * A list of :class:`radical.pilot.ComputeUnit` UIDs [`string`].
+              * A list of :class:`radical.pilot.Task` UIDs [`string`].
         """
 
         with self._pilots_lock:
@@ -792,19 +792,19 @@ class UnitManager(rpu.Component):
     #
     def submit_units(self, descriptions):
         """
-        Submits on or more :class:`radical.pilot.ComputeUnit` instances to the
+        Submits on or more :class:`radical.pilot.Task` instances to the
         unit manager.
 
         **Arguments:**
-            * **descriptions** [:class:`radical.pilot.ComputeUnitDescription`
-              or list of :class:`radical.pilot.ComputeUnitDescription`]: The
-              description of the compute unit instance(s) to create.
+            * **descriptions** [:class:`radical.pilot.TaskDescription`
+              or list of :class:`radical.pilot.TaskDescription`]: The
+              description of the task instance(s) to create.
 
         **Returns:**
-              * A list of :class:`radical.pilot.ComputeUnit` objects.
+              * A list of :class:`radical.pilot.Task` objects.
         """
 
-        from .compute_unit import ComputeUnit
+        from .task import Task
 
         ret_list = True
         if not isinstance(descriptions, list):
@@ -814,15 +814,15 @@ class UnitManager(rpu.Component):
         if len(descriptions) == 0:
             raise ValueError('cannot submit no unit descriptions')
 
-        # we return a list of compute units
+        # we return a list of tasks
         self._rep.progress_tgt(len(descriptions), label='submit')
         units = list()
         for ud in descriptions:
 
             if not ud.executable:
-                raise ValueError('compute unit executable must be defined')
+                raise ValueError('task executable must be defined')
 
-            unit = ComputeUnit(umgr=self, descr=ud)
+            unit = Task(umgr=self, descr=ud)
             units.append(unit)
 
             # keep units around
@@ -856,14 +856,14 @@ class UnitManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def get_units(self, uids=None):
-        """Returns one or more compute units identified by their IDs.
+        """Returns one or more tasks identified by their IDs.
 
         **Arguments:**
             * **uids** [`string` or `list of strings`]: The IDs of the
-              compute unit objects to return.
+              task objects to return.
 
         **Returns:**
-              * A list of :class:`radical.pilot.ComputeUnit` objects.
+              * A list of :class:`radical.pilot.Task` objects.
         """
 
         if not uids:
@@ -891,11 +891,11 @@ class UnitManager(rpu.Component):
     #
     def wait_units(self, uids=None, state=None, timeout=None):
         """
-        Returns when one or more :class:`radical.pilot.ComputeUnits` reach a
+        Returns when one or more :class:`radical.pilot.Tasks` reach a
         specific state.
 
         If `uids` is `None`, `wait_units` returns when **all**
-        ComputeUnits reach the state defined in `state`.  This may include
+        Tasks reach the state defined in `state`.  This may include
         units which have previously terminated or waited upon.
 
         **Example**::
@@ -905,15 +905,15 @@ class UnitManager(rpu.Component):
         **Arguments:**
 
             * **uids** [`string` or `list of strings`]
-              If uids is set, only the ComputeUnits with the specified
+              If uids is set, only the Tasks with the specified
               uids are considered. If uids is `None` (default), all
-              ComputeUnits are considered.
+              Tasks are considered.
 
             * **state** [`string`]
-              The state that ComputeUnits have to reach in order for the call
+              The state that Tasks have to reach in order for the call
               to return.
 
-              By default `wait_units` waits for the ComputeUnits to
+              By default `wait_units` waits for the Tasks to
               reach a terminal state, which can be one of the following:
 
               * :data:`radical.pilot.rps.DONE`
@@ -1018,7 +1018,7 @@ class UnitManager(rpu.Component):
     #
     def cancel_units(self, uids=None):
         """
-        Cancel one or more :class:`radical.pilot.ComputeUnits`.
+        Cancel one or more :class:`radical.pilot.Tasks`.
 
         Note that cancellation of units is *immediate*, i.e. their state is
         immediately set to `CANCELED`, even if some RP component may still
@@ -1034,7 +1034,7 @@ class UnitManager(rpu.Component):
 
         **Arguments:**
             * **uids** [`string` or `list of strings`]: The IDs of the
-              compute units objects to cancel.
+              tasks objects to cancel.
         """
 
         if not uids:
@@ -1086,7 +1086,7 @@ class UnitManager(rpu.Component):
         """
         Registers a new callback function with the UnitManager.  Manager-level
         callbacks get called if the specified metric changes.  The default
-        metric `UNIT_STATE` fires the callback if any of the ComputeUnits
+        metric `UNIT_STATE` fires the callback if any of the Tasks
         managed by the PilotManager change their state.
 
         All callback functions need to have the same signature::

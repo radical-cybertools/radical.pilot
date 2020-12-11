@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
         report.header('submit pilots')
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session=session)
 
         # Define an [n]-core local pilot that runs for [x] minutes
@@ -66,7 +66,7 @@ if __name__ == '__main__':
                        'cores'         : config[resource].get('cores', 1),
                        'gpus'          : config[resource].get('gpus', 0),
                       }
-            pdescs.append(rp.ComputePilotDescription(pd_init))
+            pdescs.append(rp.PilotDescription(pd_init))
 
         # Launch the pilots.
         pilots = pmgr.submit_pilots(pdescs)
@@ -76,12 +76,12 @@ if __name__ == '__main__':
 
             report.header('submit units [%d]' % gen)
 
-            # Register the ComputePilot in a UnitManager object.
+            # Register the Pilot in a UnitManager object.
             umgr = rp.UnitManager(session=session)
             umgr.add_pilots(pilots)
 
-            # Create a workload of ComputeUnits.
-            # Each compute unit reports the id of the pilot it runs on.
+            # Create a workload of Tasks.
+            # Each task reports the id of the pilot it runs on.
 
             n = 128   # number of units to run
             report.info('create %d unit description(s)\n\t' % n)
@@ -91,7 +91,7 @@ if __name__ == '__main__':
 
                 # create a new CU description, and fill it.
                 # Here we don't use dict initialization.
-                cud = rp.ComputeUnitDescription()
+                cud = rp.TaskDescription()
                 cud.executable = '/bin/echo'
                 cud.arguments  = ['$RP_PILOT_ID']
 

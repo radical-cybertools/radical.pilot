@@ -3,7 +3,7 @@
 
     "wrangler_ssh": {
         "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["gsissh", "ssh", "go"],
         "mandatory_args"              : ["project"],
         "gsissh"                      :
@@ -45,7 +45,7 @@
 
     "wrangler_yarn": {
         "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["gsissh", "ssh", "go"],
         "mandatory_args"              : ["project"],
         "gsissh"                      :
@@ -86,7 +86,7 @@
 
     "wrangler_spark": {
         "description"                 : "The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["gsissh", "ssh", "go"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
@@ -129,7 +129,7 @@
 
     "stampede2_ssh": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
         "gsissh"                      :
@@ -171,7 +171,7 @@
 
     "stampede2_mpirun": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
         "gsissh"                      :
@@ -213,7 +213,7 @@
 
     "stampede2_ibrun": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
         "gsissh"                      :
@@ -257,7 +257,7 @@
 
     "stampede2_srun": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
         "gsissh"                      :
@@ -299,7 +299,7 @@
 
     "comet_ssh": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
@@ -334,7 +334,7 @@
 
     "comet_ssh_funcs": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
@@ -368,7 +368,7 @@
 
     "comet_spark": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
@@ -407,7 +407,7 @@
 
     "comet_mpirun": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
@@ -556,7 +556,7 @@
 
     "bridges_mpiexec": {
         "description"                 : "The XSEDE 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription.",
         "schemas"                     : ["gsissh", "ssh", "go"],
       # "mandatory_args"              : [],
         "gsissh"                      :
@@ -602,7 +602,7 @@
 
     "bridges": {
         "description"                 : "The XSEDE 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription.",
         "schemas"                     : ["gsissh", "ssh", "go"],
       # "mandatory_args"              : [],
         "gsissh"                      :

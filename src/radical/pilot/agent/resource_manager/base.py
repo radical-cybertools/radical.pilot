@@ -47,7 +47,7 @@ class ResourceManager(object):
     The ResourceManager will reserve nodes for the agent execution, by deriving
     the respectively required node count from the config's 'agents' section.
     Those nodes will be listed in ResourceManager.agent_node_list. Schedulers
-    MUST NOT use the agent_node_list to place compute units -- CUs are limited
+    MUST NOT use the agent_node_list to place tasks -- CUs are limited
     to the nodes in ResourceManager.node_list.
     """
 

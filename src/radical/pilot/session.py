@@ -24,7 +24,7 @@ class Session(rs.Session):
     A Session is the root object of all RP objects in an application instance:
     it holds :class:`radical.pilot.PilotManager` and
     :class:`radical.pilot.UnitManager` instances which in turn hold
-    :class:`radical.pilot.ComputePilot` and :class:`radical.pilot.ComputeUnit`
+    :class:`radical.pilot.Pilot` and :class:`radical.pilot.Task`
     instances, and several other components which operate on those stateful
     entities.
     '''
@@ -616,7 +616,7 @@ class Session(rs.Session):
                session = rp.Session()
                session.add_resource_config(rc)
 
-               pd = rp.ComputePilotDescription()
+               pd = rp.PilotDescription()
                pd.resource = 'local.mycluster'
                pd.cores    = 16
                pd.runtime  = 5 # minutes

@@ -52,7 +52,7 @@ fi
 # Copyright 2013-2015, RADICAL @ Rutgers
 # Licensed under the MIT License
 #
-# This script launches a radical.pilot compute pilot.  If needed, it creates and
+# This script launches a radical.pilot pilot.  If needed, it creates and
 # populates a virtualenv on the fly, into $VIRTENV.
 #
 # https://xkcd.com/1987/

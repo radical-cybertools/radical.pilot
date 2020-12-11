@@ -50,7 +50,7 @@ if __name__ == "__main__":
         #
 
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         print("Initializing Pilot Manager ...")
         pmgr = rp.PilotManager(session=session)
 
@@ -68,24 +68,24 @@ if __name__ == "__main__":
         # https://radicalpilot.readthedocs.io/en/stable/ \
         #        machconf.html#preconfigured-resources
         #
-        pdesc = rp.ComputePilotDescription ()
+        pdesc = rp.PilotDescription ()
         pdesc.resource = RESOURCE_LABEL
         pdesc.runtime  = 30
         pdesc.cores    = PILOT_CORES
         pdesc.cleanup  = True
 
         # submit the pilot.
-        print("Submitting Compute Pilot to Pilot Manager ...")
+        print("Submitting Pilot to Pilot Manager ...")
         pilot = pmgr.submit_pilots(pdesc)
 
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
+        # Combine the Pilot, the Tasks and a scheduler via
         # a UnitManager object.
         print("Initializing Unit Manager ...")
         umgr = rp.UnitManager (session=session)
 
 
-        # Add the created ComputePilot to the UnitManager.
-        print("Registering Compute Pilot with Unit Manager ...")
+        # Add the created Pilot to the UnitManager.
+        print("Registering  Pilot with Unit Manager ...")
         umgr.add_pilots(pilot)
 
         # submit A cus to pilot job
@@ -93,7 +93,7 @@ if __name__ == "__main__":
         for i in range(NUMBER_CHAINS):
 
             # -------- BEGIN USER DEFINED CU A_n DESCRIPTION --------- #
-            cudesc = rp.ComputeUnitDescription()
+            cudesc = rp.TaskDescription()
             cudesc.environment = {"CU_LIST": "A", "CU_NO": "%02d" % i}
             cudesc.executable  = CU_A_EXECUTABLE
             cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
@@ -102,13 +102,13 @@ if __name__ == "__main__":
 
             cudesc_list_A.append(cudesc)
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        print("Submit 'A' Compute Units to Unit Manager ...")
+        # assigning Tasks to the Pilots.
+        print("Submit 'A' Tasks to Unit Manager ...")
         cu_list_A = umgr.submit_units(cudesc_list_A)
 
-        # Chaining cus i.e submit a compute unit, when compute unit from A is
+        # Chaining cus i.e submit a task, when task from A is
         # successfully executed.  A B CU reads the content of the output file of
         # an A CU and writes it into its own output file.
         cu_list_B = []
@@ -121,10 +121,10 @@ if __name__ == "__main__":
                 idx = cu_list_A_copy.index(cu_a)
 
                 cu_a.wait ()
-                print("'A' Compute Unit '%s' done. Submitting 'B' CU ..." % idx)
+                print("'A' Task '%s' done. Submitting 'B' CU ..." % idx)
 
                 # -------- BEGIN USER DEFINED CU B_n DESCRIPTION --------- #
-                cudesc = rp.ComputeUnitDescription()
+                cudesc = rp.TaskDescription()
                 cudesc.environment = {'CU_LIST': 'B', 'CU_NO': "%02d" % idx}
                 cudesc.executable  = CU_B_EXECUTABLE
                 cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
@@ -136,13 +136,13 @@ if __name__ == "__main__":
                 cu_list_B.append(cu_b)
                 cu_list_A.remove(cu_a)
 
-        print("Waiting for 'B' Compute Units to complete ...")
+        print("Waiting for 'B' Tasks to complete ...")
         for cu_b in cu_list_B :
             cu_b.wait ()
-            print("'B' Compute Unit '%s' finished with output:" % (cu_b.uid))
+            print("'B' Task '%s' finished with output:" % (cu_b.uid))
             print(cu_b.stdout)
 
-        print("All Compute Units completed successfully!")
+        print("All Tasks completed successfully!")
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

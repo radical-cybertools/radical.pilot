@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
         report.header('submit pilots')
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
@@ -59,7 +59,7 @@ if __name__ == '__main__':
                    'cores'         : config[resource].get('cores', 1),
                    'gpus'          : config[resource].get('gpus', 0),
                   }
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -67,11 +67,11 @@ if __name__ == '__main__':
         n = 1024  # number of units to run
         report.header('submit %d units' % n)
 
-        # Register the ComputePilot in a UnitManager object.
+        # Register the Pilot in a UnitManager object.
         umgr.add_pilots(pilot)
 
-        # Create a workload of ComputeUnits.
-        # Each compute unit runs '/bin/date'.
+        # Create a workload of Tasks.
+        # Each task runs '/bin/date'.
 
         report.progress_tgt(n, label='create')
         cuds = list()
@@ -79,7 +79,7 @@ if __name__ == '__main__':
 
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.ComputeUnitDescription()
+            cud = rp.TaskDescription()
             cud.executable    = '/bin/date'
             cud.cpu_processes = 1
             cuds.append(cud)
@@ -87,12 +87,12 @@ if __name__ == '__main__':
 
         report.progress_done()
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
+        # assigning Tasks to the Pilots.
         umgr.submit_units(cuds)
 
-        # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+        # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
         umgr.wait_units()
 
 

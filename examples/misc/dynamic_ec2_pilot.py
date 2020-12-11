@@ -213,7 +213,7 @@ def start_pilot(cr=None):
     session.contexts.append(ssh_ctx)
 
     # submit a pilot to it.
-    pd = rp.ComputePilotDescription()
+    pd = rp.PilotDescription()
     pd.resource      = 'ec2.vm'
     pd.runtime       = 10
     pd.cores         = 1
@@ -229,12 +229,12 @@ def run_workload(pilot):
 
     report.header('submit units')
 
-    # Register the ComputePilot in a UnitManager object.
+    # Register the Pilot in a UnitManager object.
     umgr = rp.UnitManager(session=pilot.session)
     umgr.add_pilots(pilot)
 
-    # Create a workload of ComputeUnits.
-    # Each compute unit runs '/bin/date'.
+    # Create a workload of Tasks.
+    # Each task runs '/bin/date'.
 
     n = 128   # number of units to run
     report.info('create %d unit description(s)\n\t' % n)
@@ -244,7 +244,7 @@ def run_workload(pilot):
 
         # create a new CU description, and fill it.
         # Here we don't use dict initialization.
-        cud = rp.ComputeUnitDescription()
+        cud = rp.TaskDescription()
         # trigger an error now and then
         if not i % 10: cud.executable = '/bin/data'  # does not exist
         else         : cud.executable = '/bin/hostname'
@@ -253,12 +253,12 @@ def run_workload(pilot):
         report.progress()
     report.ok('>>ok\n')
 
-    # Submit the previously created ComputeUnit descriptions to the
+    # Submit the previously created Task descriptions to the
     # PilotManager. This will trigger the selected scheduler to start
-    # assigning ComputeUnits to the ComputePilots.
+    # assigning Tasks to the Pilots.
     units = umgr.submit_units(cuds)
 
-    # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+    # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
     report.header('gather results')
     umgr.wait_units()
 

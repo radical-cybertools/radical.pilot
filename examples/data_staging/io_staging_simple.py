@@ -18,7 +18,7 @@ import radical.pilot as rp
 def pilot_state_cb (pilot, state):
     """ this callback is invoked on all pilot state changes """
 
-    print("[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
+    print("[Callback]: Pilot '%s' state: %s." % (pilot.uid, state))
 
     if state == rp.FAILED:
         sys.exit (1)
@@ -29,7 +29,7 @@ def pilot_state_cb (pilot, state):
 def unit_state_cb (unit, state):
     """ this callback is invoked on all unit state changes """
 
-    print("[Callback]: ComputeUnit '%s' state: %s." % (unit.uid, state))
+    print("[Callback]: Task '%s' state: %s." % (unit.uid, state))
 
     if state == rp.FAILED:
         sys.exit (1)
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     # clause...
     try:
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session=session)
 
         # Register our callback with the PilotManager. This callback will get
@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
         # Define a single-core local pilot that runs for 5 minutes and cleans up
         # after itself.
-        pdesc = rp.ComputePilotDescription()
+        pdesc = rp.PilotDescription()
         pdesc.resource = "local.localhost"
         pdesc.cores    = 1
         pdesc.runtime  = 5
@@ -74,19 +74,19 @@ if __name__ == "__main__":
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        # Create a Compute Unit that sorts the local password file and writes the
+        # Create a Taskt that sorts the local password file and writes the
         # output to result.dat.
         #
         #  The exact command that is executed by the agent is:
         #    "/usr/bin/sort -o result.dat passwd"
         #
-        cud = rp.ComputeUnitDescription()
+        cud = rp.TaskDescription()
         cud.executable     = "/usr/bin/sort"
         cud.arguments      = ["-o", "result.dat", "passwd"]
         cud.input_staging  = "/etc/passwd"
         cud.output_staging = "result.dat"
 
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
+        # Combine the Pilot, the Tasks and a scheduler via
         # a UnitManager object.
         umgr = rp.UnitManager(session=session)
 
@@ -95,15 +95,15 @@ if __name__ == "__main__":
         # change their state.
         umgr.register_callback(unit_state_cb)
 
-        # Add the previously created ComputePilot to the UnitManager.
+        # Add the previously created Pilot to the UnitManager.
         umgr.add_pilots(pilot)
 
-        # Submit the previously created ComputeUnit description to the
+        # Submit the previously created Task description to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning the ComputeUnit to the ComputePilot.
+        # assigning the Task to the Pilot.
         unit = umgr.submit_units(cud)
 
-        # Wait for the compute unit to reach a terminal state (DONE or FAILED).
+        # Wait for the task to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
 
         print("* Task %s state: %s, exit code: %s,"

@@ -54,15 +54,15 @@ FUNC                   = 'FUNC'
 
 # ------------------------------------------------------------------------------
 #
-class ComputeUnitDescription(ru.Description):
+class TaskDescription(ru.Description):
     """
-    A ComputeUnitDescription object describes the requirements and properties
-    of a :class:`radical.pilot.ComputeUnit` and is passed as a parameter to
+    A TaskDescription object describes the requirements and properties
+    of a :class:`radical.pilot.Task` and is passed as a parameter to
     :meth:`radical.pilot.UnitManager.submit_units` to instantiate and run
     a new unit.
 
 
-    .. note:: A ComputeUnitDescription **MUST** define at least an
+    .. note:: A TaskDescription **MUST** define at least an
               `executable` or `kernel` -- all other elements are optional.
 
 
@@ -131,7 +131,7 @@ class ComputeUnitDescription(ru.Description):
 
     .. data:: name
 
-       A descriptive name for the compute unit (`string`).  This attribute can
+       A descriptive name for the task (`string`).  This attribute can
        be used to map individual units back to application level workloads.
 
        default: `None`
@@ -409,7 +409,7 @@ class ComputeUnitDescription(ru.Description):
     #
     def __init__(self, from_dict=None):
 
-        ru.Description.__init__(self, from_dict=ComputeUnitDescription._defaults)
+        ru.Description.__init__(self, from_dict=TaskDescription._defaults)
 
         if from_dict:
             self.update(from_dict)

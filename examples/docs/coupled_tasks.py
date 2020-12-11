@@ -43,7 +43,7 @@ if __name__ == "__main__":
     try:
 
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         print("Initializing Pilot Manager ...")
         pmgr = rp.PilotManager(session=session)
 
@@ -60,7 +60,7 @@ if __name__ == "__main__":
         # A list of preconfigured resources can be found at:
         # https://radicalpilot.readthedocs.io/en/stable/machconf.html#preconfigured-resources
         #
-        pdesc = rp.ComputePilotDescription ()
+        pdesc = rp.PilotDescription ()
         pdesc.resource = RESOURCE_LABEL
         pdesc.runtime  = 30
         pdesc.cores    = PILOT_CORES
@@ -68,16 +68,16 @@ if __name__ == "__main__":
         pdesc.queue    = QUEUE
 
         # submit the pilot.
-        print("Submitting Compute Pilot to Pilot Manager ...")
+        print("Submitting  Pilot to Pilot Manager ...")
         pilot = pmgr.submit_pilots(pdesc)
 
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
+        # Combine the Pilot, the Tasks and a scheduler via
         # a UnitManager object.
         print("Initializing Unit Manager ...")
         umgr = rp.UnitManager (session=session)
 
-        # Add the created ComputePilot to the UnitManager.
-        print("Registering Compute Pilot with Unit Manager ...")
+        # Add the created Pilot to the UnitManager.
+        print("Registering  Pilot with Unit Manager ...")
         umgr.add_pilots(pilot)
 
         # submit A cus to pilot job
@@ -85,7 +85,7 @@ if __name__ == "__main__":
         for idx in range(NUMBER_COUPLES):
 
             # -------- BEGIN USER DEFINED CU 1 DESCRIPTION --------- #
-            cudesc = rp.ComputeUnitDescription()
+            cudesc = rp.TaskDescription()
             cudesc.environment = {"CU_LIST": "A", "CU_NO": "%02d" % idx}
             cudesc.executable  = "/bin/echo"
             cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
@@ -94,10 +94,10 @@ if __name__ == "__main__":
 
             cudesc_list_A.append(cudesc)
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        print("Submit Compute Units 'A' to Unit Manager ...")
+        # assigning Tasks to the Pilots.
+        print("Submit Tasks 'A' to Unit Manager ...")
         cu_set_A = umgr.submit_units(cudesc_list_A)
 
         # submit B cus to pilot job
@@ -105,7 +105,7 @@ if __name__ == "__main__":
         for idx in range(NUMBER_COUPLES):
 
             # -------- BEGIN USER DEFINED CU 2 DESCRIPTION --------- #
-            cudesc = rp.ComputeUnitDescription()
+            cudesc = rp.TaskDescription()
             cudesc.environment = {"CU_LIST": "B", "CU_NO": "%02d" % idx}
             cudesc.executable  = "/bin/echo"
             cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
@@ -114,10 +114,10 @@ if __name__ == "__main__":
 
             cudesc_list_B.append(cudesc)
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        print("Submit Compute Units 'B' to Unit Manager ...")
+        # assigning Tasks to the Pilots.
+        print("Submit Tasks 'B' to Unit Manager ...")
         cu_set_B = umgr.submit_units(cudesc_list_B)
 
 
@@ -133,7 +133,7 @@ if __name__ == "__main__":
         for idx in range(NUMBER_COUPLES):
 
             # -------- BEGIN USER DEFINED CU 3 DESCRIPTION --------- #
-            cudesc = rp.ComputeUnitDescription()
+            cudesc = rp.TaskDescription()
             cudesc.environment = {"CU_SET": "C", "CU_NO": "%02d" % idx}
             cudesc.executable  = "/bin/echo"
             cudesc.arguments   = ['"$CU_SET CU with id $CU_NO"']
@@ -142,10 +142,10 @@ if __name__ == "__main__":
 
             cudesc_list_C.append(cudesc)
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        print("Submit Compute Units 'C' to Unit Manager ...")
+        # assigning Tasks to the Pilots.
+        print("Submit Tasks 'C' to Unit Manager ...")
         cu_set_C = umgr.submit_units(cudesc_list_C)
 
         # ---------------------------------------------------------------------

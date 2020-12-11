@@ -41,7 +41,7 @@ if __name__ == '__main__':
                    'access_schema' : config[resource]['schema'],
                    'cores'         : config[resource]['cores']
                   }
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
         pmgr  = rp.PilotManager(session=session)
         pilot = pmgr.submit_pilots(pdesc)
 
@@ -61,11 +61,11 @@ if __name__ == '__main__':
         for p in range(n_pipes):
             for s in range(n_stages):
                 for t in range(n_tasks):
-                    cud = rp.ComputeUnitDescription()
+                    cud = rp.TaskDescription()
                     cud.executable       = '%s/pipeline_task.sh' % pwd
                     cud.arguments        = [p, s, t, 10]
                     cud.cpu_processes    = 1
-                    cud.tags             = {'order': {'ns'   : p, 
+                    cud.tags             = {'order': {'ns'   : p,
                                                       'order': s,
                                                       'size' : n_tasks}}
                     cud.name             =  'p%03d-s%03d-t%03d' % (p, s, t)
@@ -75,12 +75,12 @@ if __name__ == '__main__':
         import random
         random.shuffle(cuds)
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
+        # assigning Tasks to the Pilots.
         umgr.submit_units(cuds)
 
-        # Wait for all compute units to reach a final state
+        # Wait for all tasks to reach a final state
         report.header('gather results')
         umgr.wait_units()
 

@@ -50,7 +50,7 @@ if __name__ == '__main__':
 
         report.header('submit pilots')
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session=session)
 
         # Define an [n]-core local pilot that runs for [x] minutes
@@ -65,7 +65,7 @@ if __name__ == '__main__':
                    'cores'         : config[resource].get('cores', 1),
                    'gpus'          : config[resource].get('gpus', 0),
                   }
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
@@ -73,7 +73,7 @@ if __name__ == '__main__':
 
         report.header('submit units')
 
-        # Register the ComputePilot in a UnitManager object.
+        # Register the Pilot in a UnitManager object.
         umgr = rp.UnitManager(session=session)
         umgr.add_pilots(pilot)
 
@@ -92,7 +92,7 @@ if __name__ == '__main__':
 
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.ComputeUnitDescription()
+            cud = rp.TaskDescription()
             cud.executable     = 'ls'
             cud.arguments      = ['-la']
 
@@ -108,12 +108,12 @@ if __name__ == '__main__':
             report.progress()
         report.ok('>>ok\n')
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
+        # assigning Tasks to the Pilots.
         units = umgr.submit_units(cuds)
 
-        # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+        # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
         umgr.wait_units()
 

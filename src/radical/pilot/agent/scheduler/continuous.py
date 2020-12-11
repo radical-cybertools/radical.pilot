@@ -66,7 +66,7 @@ from .base import AgentSchedulingComponent
 class Continuous(AgentSchedulingComponent):
     '''
     The Continuous scheduler attempts to place threads and processes of
-    a compute units onto nodes in the cluster.
+    a tasks onto nodes in the cluster.
     '''
 
     # --------------------------------------------------------------------------

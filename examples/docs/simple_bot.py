@@ -41,7 +41,7 @@ if __name__ == "__main__":
     # the whole RP stack down via a 'session.close()' in the 'finally' clause.
     try:
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session=session)
 
         #
@@ -53,7 +53,7 @@ if __name__ == "__main__":
         # https://radicalpilot.readthedocs.io/en/stable/ \
         #        machconf.html#preconfigured-resources
         #
-        pdesc = rp.ComputePilotDescription ()
+        pdesc = rp.PilotDescription ()
         pdesc.resource = RESOURCE_LABEL  # this is a "label", not a hostname
         pdesc.cores    =  PILOT_CORES
         pdesc.runtime  = 30    # minutes
@@ -61,15 +61,15 @@ if __name__ == "__main__":
         pdesc.queue = QUEUE
 
         # submit the pilot.
-        report.header("Submitting Compute Pilot to Pilot Manager ...")
+        report.header("Submitting  Pilot to Pilot Manager ...")
         pilot = pmgr.submit_pilots(pdesc)
 
-        # create a UnitManager which schedules ComputeUnits over pilots.
+        # create a UnitManager which schedules Tasks over pilots.
         report.header("Initializing Unit Manager ...")
         umgr = rp.UnitManager (session=session)
 
 
-        # Add the created ComputePilot to the UnitManager.
+        # Add the created Pilot to the UnitManager.
         report.ok('>>ok\n')
 
         umgr.add_pilots(pilot)
@@ -81,7 +81,7 @@ if __name__ == "__main__":
         for i in range(BAG_SIZE):
 
             # -------- BEGIN USER DEFINED CU DESCRIPTION --------- #
-            cudesc = rp.ComputeUnitDescription()
+            cudesc = rp.TaskDescription()
             cudesc.executable  = "/bin/echo"
             cudesc.arguments   = ['I am CU number $CU_NO']
             cudesc.environment = {'CU_NO': i}
@@ -91,10 +91,10 @@ if __name__ == "__main__":
             cudesc_list.append(cudesc)
             report.progress()
         report.ok('>>>ok\n')
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        report.header("Submit Compute Units to Unit Manager ...")
+        # assigning Tasks to the Pilots.
+        report.header("Submit Tasks to Unit Manager ...")
         cu_set = umgr.submit_units (cudesc_list)
 
         report.header("Waiting for CUs to complete ...")

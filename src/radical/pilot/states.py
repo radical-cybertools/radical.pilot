@@ -260,7 +260,7 @@ if 'RP_ENABLE_OLD_DEFINES' in _os.environ:
     ACTIVE_PENDING         = PMGR_ACTIVE_PENDING
     ACTIVE                 = PMGR_ACTIVE
 
-    # compute unit states
+    # task states
     UNSCHEDULED            = UMGR_SCHEDULING_PENDING
     SCHEDULING             = UMGR_SCHEDULING
     PENDING_INPUT_STAGING  = UMGR_STAGING_INPUT_PENDING

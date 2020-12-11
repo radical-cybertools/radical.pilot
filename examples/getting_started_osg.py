@@ -38,7 +38,7 @@ def pilot_state_cb (pilot, state):
     if not pilot:
         return
 
-    print("[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
+    print("[Callback]: Pilot '%s' state: %s." % (pilot.uid, state))
 
 
 # ------------------------------------------------------------------------------
@@ -96,7 +96,7 @@ if __name__ == "__main__":
 
         cuds = list()
         for unit_count in range(0, UNITS):
-            cud = rp.ComputeUnitDescription()
+            cud = rp.TaskDescription()
             cud.executable     = "/bin/sh"
             cud.arguments      = ["-c", "echo $HOSTNAME:$OSG_HOSTNAME && sleep %d" % SLEEP]
             cud.cores          = 1
@@ -104,7 +104,7 @@ if __name__ == "__main__":
 
         units = umgr.submit_units(cuds)
 
-        pdesc = rp.ComputePilotDescription()
+        pdesc = rp.PilotDescription()
         pdesc.resource        = resource
         pdesc.cores           = config[resource].get('cores', 1),
         pdesc.gpus            = config[resource].get('gpus', 0),

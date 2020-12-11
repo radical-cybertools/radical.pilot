@@ -215,7 +215,7 @@ class ORTE(AgentExecutingComponent):
             # by the unit), but it seems the most intuitive way to
             # communicate that error to the application/user.
             self._log.exception("error running CU: %s", str(e))
-            cu['stderr'] += "\nPilot cannot start compute unit:\n%s\n%s" \
+            cu['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!

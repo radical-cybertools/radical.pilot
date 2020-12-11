@@ -20,7 +20,7 @@ def pilot_state_cb (pilot, state):
     if not pilot:
         return
 
-    print("[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
+    print("[Callback]: Pilot '%s' state: %s." % (pilot.uid, state))
 
     if state == rp.FAILED:
         sys.exit (1)
@@ -75,13 +75,13 @@ if __name__ == "__main__":
         for occ in radical_cockpit_occupants:
             os.system('/bin/echo "%s" >> %s' % (occ, INPUT_FILE))
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session)
         pmgr.register_callback(pilot_state_cb)
 
         # Define a C-core on stamped that runs for M minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
-        pdesc = rp.ComputePilotDescription()
+        pdesc = rp.PilotDescription()
         pdesc.resource = "local.localhost"
         pdesc.runtime = 15  # M minutes
         pdesc.cores = 2  # C cores
@@ -89,12 +89,12 @@ if __name__ == "__main__":
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
+        # Combine the Pilot, the Tasks and a scheduler via
         # a UnitManager object.
         umgr = rp.UnitManager(session=session)
         umgr.register_callback(unit_state_cb, rp.UNIT_STATE)
 
-        # Add the previously created ComputePilot to the UnitManager.
+        # Add the previously created Pilot to the UnitManager.
         umgr.add_pilots(pilot)
 
         # Configure the staging directive for intermediate data
@@ -106,7 +106,7 @@ if __name__ == "__main__":
         }
 
         # Task 1: Sort the input file and output to intermediate file
-        cud1 = rp.ComputeUnitDescription()
+        cud1 = rp.TaskDescription()
         cud1.executable = 'sort'
         cud1.arguments = ['-o', INTERMEDIATE_FILE, INPUT_FILE]
         cud1.input_staging = INPUT_FILE
@@ -115,7 +115,7 @@ if __name__ == "__main__":
         # Submit the first task for execution.
         umgr.submit_units(cud1)
 
-        # Wait for the compute unit to finish.
+        # Wait for the task to finish.
         umgr.wait_units()
 
         # Configure the staging directive for input intermediate data
@@ -127,7 +127,7 @@ if __name__ == "__main__":
         }
 
         # Task 2: Take the first line of the sort intermediate file and write to output
-        cud2 = rp.ComputeUnitDescription()
+        cud2 = rp.TaskDescription()
         cud2.executable = '/bin/bash'
         cud2.arguments = ['-c', 'head -n1 %s > %s' %
                           (INTERMEDIATE_FILE, OUTPUT_FILE)]
@@ -137,7 +137,7 @@ if __name__ == "__main__":
         # Submit the second CU for execution.
         umgr.submit_units(cud2)
 
-        # Wait for the compute unit to finish.
+        # Wait for the task to finish.
         umgr.wait_units()
 
     except Exception as e:

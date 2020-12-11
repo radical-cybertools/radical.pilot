@@ -19,7 +19,7 @@ import radical.pilot as rp
 def pilot_state_cb (pilot, state):
     """ this callback is invoked on all pilot state changes """
 
-    print("[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
+    print("[Callback]: Pilot '%s' state: %s." % (pilot.uid, state))
 
 
 # ------------------------------------------------------------------------------
@@ -27,7 +27,7 @@ def pilot_state_cb (pilot, state):
 def unit_state_cb (unit, state):
     """ this callback is invoked on all unit state changes """
 
-    print("[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state))
+    print("[Callback]: Task  '%s' state: %s." % (unit.uid, state))
 
 
 # ------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     # clause...
     try:
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager (session=session)
 
         # Register our callback with the PilotManager. This callback will get
@@ -86,12 +86,12 @@ if __name__ == "__main__":
         # Define a 4-core local pilot that runs for 10 minutes and cleans up
         # after itself.
 
-        pdesc1 = rp.ComputePilotDescription()
+        pdesc1 = rp.PilotDescription()
         pdesc1.resource = "local.localhost"
         pdesc1.runtime  = 10  # minutes
         pdesc1.cores    =  2
 
-        pdesc2 = rp.ComputePilotDescription()
+        pdesc2 = rp.PilotDescription()
         pdesc2.resource = "local.localhost"
         pdesc2.runtime  = 10  # minutes
         pdesc2.cores    =  2
@@ -103,7 +103,7 @@ if __name__ == "__main__":
         pmgr.wait_pilots (state=[rp.PMGR_ACTIVE, rp.DONE, rp.FAILED])
 
 
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
+        # Combine the Pilot, the Tasks and a scheduler via
         # a UnitManager object.
         umgr = rp.UnitManager (session   = session,
                                scheduler = rp.SCHEDULER_BACKFILLING)
@@ -118,22 +118,22 @@ if __name__ == "__main__":
         umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
 
 
-        # Add the previously created ComputePilot to the UnitManager.
+        # Add the previously created Pilot to the UnitManager.
         umgr.add_pilots (pilots)
 
-        # Create a workload of restartable ComputeUnits (tasks).
+        # Create a workload of restartable Tasks (tasks).
         cuds = []
         for unit_count in range(0, 32):
-            cud = rp.ComputeUnitDescription()
+            cud = rp.TaskDescription()
             cud.executable    = "/bin/sleep"
             cud.arguments     = ["10"]
             cud.restartable   = True
 
             cuds.append(cud)
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
+        # assigning Tasks to the Pilots.
         units = umgr.submit_units(cuds)
 
         # the pilots have a total of 4 cores, and run for 10 min.  A CU needs about
@@ -146,7 +146,7 @@ if __name__ == "__main__":
         pilots[0].wait(state=rp.PMGR_ACTIVE)
         pilots[0].cancel()
 
-        # Wait for all compute units to reach a terminal state (DONE or FAILED).
+        # Wait for all tasks to reach a terminal state (DONE or FAILED).
         umgr.wait_units()
 
         print('units all completed')

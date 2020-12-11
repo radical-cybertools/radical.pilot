@@ -7,7 +7,7 @@ import threading         as mt
 
 import radical.utils     as ru
 
-from .. import Session, ComputeUnitDescription
+from .. import Session, TaskDescription
 from .. import utils     as rpu
 from .. import states    as rps
 from .. import constants as rpc
@@ -194,7 +194,7 @@ class Master(rpu.Component):
         ru.write_json(cfg, fname)
 
         # grab default settings via CUD construction
-        descr_complete = ComputeUnitDescription(descr).as_dict()
+        descr_complete = TaskDescription(descr).as_dict()
 
         # create task dict
         task = dict()

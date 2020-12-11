@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
     session   = rp.Session()
     try:
-        pd = rp.ComputePilotDescription(cfg.pilot_descr)
+        pd = rp.PilotDescription(cfg.pilot_descr)
         pd.cores   = nodes * cpn
         pd.gpus    = nodes * gpn
         pd.runtime = cfg.runtime
@@ -39,7 +39,7 @@ if __name__ == '__main__':
         tds = list()
 
         for i in range(n_masters):
-            td = rp.ComputeUnitDescription(cfg.master_descr)
+            td = rp.TaskDescription(cfg.master_descr)
             td.executable     = "python3"
             td.cpu_threads    = cpn
             td.gpu_processes  = gpn

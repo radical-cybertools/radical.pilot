@@ -551,7 +551,7 @@ class Agent_0(rpu.Worker):
     #
     def _check_units_cb(self):
 
-        # Check for compute units waiting for input staging and log pull.
+        # Check for tasks waiting for input staging and log pull.
         #
         # FIXME: Unfortunately, 'find_and_modify' is not bulkable, so we have
         #        to use 'find'.  To avoid finding the same units over and over
