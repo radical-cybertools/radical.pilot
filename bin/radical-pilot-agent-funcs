@@ -233,12 +233,12 @@ class Executor(object):
 
         function_info = pickle.loads(codecs.decode(func.encode(), "base64"))
 
-        (fn_name,fn, fn_args, fn_kwargs) = self.decompose(function_info)
+        fn_name, fn, fn_args, fn_kwargs = self.decompose(function_info)
         u_ns.update({'__cud_args'  : fn_args,
                      '__cud_kwargs': fn_kwargs,
                      '__cud_output': None})
         source = fn.split('\n')
-        fn_call = "__cud_output = {0}({1})".format(fn_name,','.join(args))
+        fn_call = "__cud_output = %s(%s)" % (fn_name, ','.join(args))
         source.append(fn_call)
         code = "\n".join(source)
         return code
@@ -280,11 +280,12 @@ class Executor(object):
                 to distinguish between exec and eval
                 '''
                 try:
-                    isinstance(pickle.loads(codecs.decode(func.encode(),
-                                                          "base64")),dict)
-                    return True
+                    x = pickle.loads(codecs.decode(exe.encode(),"base64"))
+                    if isinstance(x,dict) is True:
+                       return True
+
                 except:
-                    return False
+                       return False
 
             try:
                 for pre in pres:
