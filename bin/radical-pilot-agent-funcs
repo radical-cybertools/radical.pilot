@@ -74,14 +74,17 @@ class Executor(object):
 
         self._prof.prof('init_start', uid=self._uid)
 
-        addr_req = self._cfg.get('req_get')
-        addr_res = self._cfg.get('res_put')
+        addr_req  = self._cfg.get('req_get')
+        addr_res  = self._cfg.get('res_put')
+        addr_ctrl = self._cfg.get('ctrl')
 
         self._log.debug('req get addr: %s', addr_req)
         self._log.debug('res put addr: %s', addr_res)
+        self._log.debug('ctrl    addr: %s', addr_ctrl)
 
         assert(addr_req)
         assert(addr_res)
+        assert(addr_ctrl)
 
         # connect to
         #
@@ -89,9 +92,9 @@ class Executor(object):
         #   - the queue were we send completed tasks
         #   - the command queue (for termination)
         #
-        self._zmq_req = ru.zmq.Getter(channel='funcs_req_queue', url=addr_req)
-        self._zmq_res = ru.zmq.Putter(channel='funcs_res_queue', url=addr_res)
-      # self._zmq_ctl = ru.zmq.Getter(channel='CTL', url=addr['CTL_GET'])
+        self._zmq_req  = ru.zmq.Getter(channel='funcs_req_queue', url=addr_req)
+        self._zmq_res  = ru.zmq.Putter(channel='funcs_res_queue', url=addr_res)
+        self._zmq_ctrl = ru.zmq.Getter(channel='control_pubsub',  url=addr_ctrl)
 
         # use mp.Queue instances to proxy tasks to the worker processes
         self._mpq_work    = mp.Queue()
@@ -135,29 +138,32 @@ class Executor(object):
         listen on the command channel for things to do (like, terminate).
         '''
 
-        while True:
+        try:
+            while True:
 
-          # msgs = self._zmq_ctl.get_nowait(100)
-            msgs = None
-            time.sleep(1)
+                msgs = self._zmq_ctrl.get_nowait(100)
+                time.sleep(1)
 
-            if not msgs:
-                continue
+                if not msgs:
+                    continue
 
-            for msg in msgs:
+                for msg in msgs:
 
-                self._prof.prof('cmd', uid=self._uid, msg=msg['cmd'])
+                    self._prof.prof('cmd', uid=self._uid, msg=msg['cmd'])
 
-                if msg['cmd'] == 'term':
+                    if msg['cmd'] == 'term':
 
-                    # kill worker processes
-                    for worker in self._workers:
-                        worker.terminate()
+                        sys.exit(0)
 
-                    sys.exit(0)
+                    else:
+                        self._log.error('unknown command %s', msg)
 
-                else:
-                    self._log.error('unknown command %s', msg)
+        finally:
+
+            # kill worker processes
+            for worker in self._workers:
+                worker.terminate()
+                worker.join()
 
 
     # --------------------------------------------------------------------------
@@ -225,7 +231,7 @@ class Executor(object):
         u_ns = locals()
         u_ns.update({'__builtins__': __builtins__})
         function_info = {}
-        
+
         function_info = pickle.loads(codecs.decode(func.encode(), "base64"))
 
         (fn_name,fn, fn_args, fn_kwargs) = self.decompose(function_info)
@@ -268,14 +274,14 @@ class Executor(object):
 
             self._prof.prof('task_get', comp=wid, uid=tid)
           # self._log.debug('get %s: %s', tid, cmd)
-            
+
             def check_obj(exe):
                 '''
                 Check the object type if pickled or not
                 to distinguish between exec and eval
                 '''
                 try:
-                    isinstance(pickle.loads(codecs.decode(func.encode(), 
+                    isinstance(pickle.loads(codecs.decode(func.encode(),
                                                           "base64")),dict)
                     return True
                 except:
@@ -296,7 +302,7 @@ class Executor(object):
                     except Exception:
                         self._log.debug("Setting the function for execution failed!")
                         raise
-                    
+
                     @contextlib.contextmanager
                     def stdoutIO(stdout=None):
                         old = sys.stdout
@@ -305,10 +311,10 @@ class Executor(object):
                         sys.stdout = stdout
                         yield stdout
                         sys.stdout = old
-                    
+
                     with stdoutIO() as s:
                          exec(function_code)
-                    
+
                     task['stdout'] = s.getvalue()
 
                 else:

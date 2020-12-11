@@ -76,6 +76,10 @@ class FUNCS(AgentExecutingComponent) :
                 cfg     = self._cfg,
                 session = self._session)
 
+        # get address of control pubsub
+        fname   = '%s/%s.cfg' % (self._cfg.path, rpc.CONTROL_PUBSUB)
+        ctl_cfg = ru.read_json(fname)
+
         # now run the func launcher on all nodes
         ve  = os.environ.get('VIRTUAL_ENV',  '')
         exe = ru.which('radical-pilot-agent-funcs')
@@ -99,7 +103,8 @@ class FUNCS(AgentExecutingComponent) :
                                                        }]
                                     },
                      'cfg'        : {'req_get'      : req_cfg['get'],
-                                     'res_put'      : res_cfg['put']
+                                     'res_put'      : res_cfg['put'],
+                                     'ctrl'         : ctl_cfg['sub']
                                     }
                     }
             self._spawn(self._launcher, funcs)
