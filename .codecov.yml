@@ -4,5 +4,10 @@ coverage:
       default:
         target: auto
         threshold: 1%
-        paths: 
+        paths:
           - "src"
+
+
+github_checks:
+  annotations: false
+
