@@ -3,8 +3,8 @@
 
 import pytest
 
-from tasktest import TestCase
-from tasktest import mock
+from unittest import TestCase
+from unittest import mock
 
 from radical.pilot.agent.launch_method.base import LaunchMethod
 

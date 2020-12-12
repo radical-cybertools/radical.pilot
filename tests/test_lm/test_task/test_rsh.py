@@ -4,7 +4,7 @@
 import os
 import pytest
 
-from   tasktest     import mock
+from   unittest     import mock
 from   .test_common import setUp
 
 import radical.utils as ru

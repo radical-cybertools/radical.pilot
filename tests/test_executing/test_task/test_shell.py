@@ -3,9 +3,9 @@
 #
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 
-import tasktest
+import unittest
 
-from tasktest import mock
+from unittest import mock
 
 import radical.utils as ru
 
@@ -14,7 +14,7 @@ from radical.pilot.agent.executing.shell import Shell
 
 # ------------------------------------------------------------------------------
 #
-class TestBase(tasktest.TestCase):
+class TestBase(unittest.TestCase):
 
     # ------------------------------------------------------------------------------
     #

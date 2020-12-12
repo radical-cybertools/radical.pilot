@@ -5,16 +5,16 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import pytest
-import tasktest
+import unittest
 
-from tasktest import mock
+from unittest import mock
 
 from radical.pilot.agent.executing.base import AgentExecutingComponent
 
 
 # ------------------------------------------------------------------------------
 #
-class TestBase(tasktest.TestCase):
+class TestBase(unittest.TestCase):
 
     # --------------------------------------------------------------------------
     #

@@ -1,6 +1,6 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-from tasktest import mock
+from unittest import mock
 
 import radical.utils as ru
 

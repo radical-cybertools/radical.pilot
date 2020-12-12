@@ -1,7 +1,7 @@
 
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-from tasktest import mock
+from unittest import mock
 
 from   .test_common                             import setUp
 from   radical.pilot.agent.launch_method.ccmrun import CCMRun

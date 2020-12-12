@@ -2,7 +2,7 @@
 
 import glob
 
-from tasktest import TestCase, mock
+from unittest import TestCase, mock
 
 import radical.utils as ru
 

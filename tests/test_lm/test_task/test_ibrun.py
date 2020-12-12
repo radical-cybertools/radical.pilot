@@ -3,7 +3,7 @@
 
 import pytest
 
-from tasktest import mock
+from unittest import mock
 
 import radical.utils as ru
 

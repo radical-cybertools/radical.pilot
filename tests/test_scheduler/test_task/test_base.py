@@ -3,8 +3,8 @@
 
 import threading
 
-from tasktest import mock
-from tasktest import TestCase
+from unittest import mock
+from unittest import TestCase
 
 import radical.utils as ru
 
