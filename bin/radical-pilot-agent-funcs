@@ -11,11 +11,11 @@ import radical.utils   as ru
 
 # wtf
 import queue
-mp.Queue.Empty = queue.Empty
 
 # FIXME: the func executor may need a small bootstrapper
 
 pwd = sys.argv[1]
+
 
 # ------------------------------------------------------------------------------
 # activate virtenv if needed
@@ -26,7 +26,9 @@ if len(sys.argv) > 2:
 if ve and ve not in ['', 'None', None]:
 
     activate = "%s/bin/activate_this.py" % ve
-    execfile(activate, dict(__file__=activate))
+
+  # execfile(activate, dict(__file__=activate))
+    exec(open(activate).read(), dict(__file__=activate))
 
 
 # ------------------------------------------------------------------------------
@@ -54,8 +56,8 @@ class Executor(object):
 
         self._nw   = n_workers
         self._uid  = os.environ['RP_FUNCS_ID']
-        self._log  = ru.Logger(self._uid,   path=pwd)
-        self._prof = ru.Profiler(self._uid, path=pwd)
+        self._log  = ru.Logger(self._uid,   ns='radical.pilot', path=pwd)
+        self._prof = ru.Profiler(self._uid, ns='radical.pilot', path=pwd)
         self._cfg  = ru.read_json('%s/%s.cfg' % (pwd, self._uid))
 
         self._initialize()
@@ -70,19 +72,22 @@ class Executor(object):
 
         self._prof.prof('init_start', uid=self._uid)
 
-        addr_wrk = self._cfg['addr_wrk']
-        addr_res = self._cfg['addr_res']
+        addr_req = self._cfg.get('req_get')
+        addr_res = self._cfg.get('res_put')
 
-        self._log.debug('=== wrk in  addr: %s', addr_wrk)
-        self._log.debug('=== res out addr: %s', addr_res)
+        self._log.debug('req get addr: %s', addr_req)
+        self._log.debug('res put addr: %s', addr_res)
 
-        # connect to 
+        assert(addr_req)
+        assert(addr_res)
+
+        # connect to
         #
         #   - the queue which feeds us tasks
         #   - the queue were we send completed tasks
         #   - the command queue (for termination)
         #
-        self._zmq_wrk = ru.zmq.Getter(channel='funcs_wrk_queue', url=addr_wrk)
+        self._zmq_req = ru.zmq.Getter(channel='funcs_req_queue', url=addr_req)
         self._zmq_res = ru.zmq.Putter(channel='funcs_res_queue', url=addr_res)
       # self._zmq_ctl = ru.zmq.Getter(channel='CTL', url=addr['CTL_GET'])
 
@@ -105,7 +110,7 @@ class Executor(object):
 
         # start one worker per core
         if not self._nw:
-            self._nw = mp.cpu_count() 
+            self._nw = mp.cpu_count()
 
         self._log.debug('#workers: %d', self._nw)
 
@@ -113,6 +118,7 @@ class Executor(object):
         for i in range(self._nw):
             wid  = '%s.%03d' % (self._uid, i)
             proc = mp.Process(target=self._work, args=[self._uid, wid])
+            proc.daemon = True
             proc.start()
             self._workers.append(proc)
 
@@ -167,16 +173,14 @@ class Executor(object):
 
         while not self._term.is_set():
 
-          # self._log.debug('=== get')
-            tasks = self._zmq_wrk.get_nowait(1000)
+            tasks = self._zmq_req.get_nowait(1000)
 
             if tasks:
 
-                self._log.debug('=== got %d tasks', len(tasks))
+                self._log.debug('got %d tasks', len(tasks))
 
                 # send task individually to load balance workers
                 for task in tasks:
-                    self._log.debug('=== got %s', task['uid'])
                     self._mpq_work.put(task)
 
 
@@ -193,13 +197,11 @@ class Executor(object):
             try:
                 task = self._mpq_result.get(block=True, timeout=0.1)
 
-            except mp.Queue.Empty:
+            except queue.Empty:
                 continue
 
             if task:
-                self._log.debug('=== put %s', task['uid'])
                 self._zmq_res.put(task)
-                self._log.debug('=== put %s done', task['uid'])
 
 
     # --------------------------------------------------------------------------
@@ -217,23 +219,30 @@ class Executor(object):
             try:
                 task = self._mpq_work.get(block=True, timeout=0.1)
 
-            except mp.Queue.Empty:
+            except queue.Empty:
                 continue
 
-            import pprint
-            pprint.pprint(task)
+          # import pprint
+          # pprint.pprint(task)
 
             tid   = task['uid']
             descr = task['description']
             exe   = descr['executable']
-            args  = descr.get('arguments', [])
-            cmd   = '%s(%s)' % (exe, ','.join(args)) 
+            args  = descr.get('arguments', list())
+            pres  = descr.get('pre_exec',  list())
+            cmd   = '%s(%s)' % (exe, ','.join(args))
 
             self._prof.prof('task_get', comp=wid, uid=tid)
           # self._log.debug('get %s: %s', tid, cmd)
 
-
             try:
+                for pre in pres:
+                    if pre.split()[0] == 'import':
+                        for mod in pre.split()[1:]:
+                            if mod not in globals():
+                                globals()[mod] = ru.import_module(mod)
+                                locals() [mod] = globals()[mod]
+
                 task['stdout'] = eval(cmd)
                 task['stderr'] = None
                 task['state']  = 'DONE'
