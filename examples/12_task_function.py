@@ -57,9 +57,9 @@ if __name__ == '__main__':
                    'runtime'       : 60,  # pilot runtime (min)
                    'exit_on_error' : True,
                    'project'       : config[resource].get('project', None),
-                   'queue'         : config[resource].get('queue', None),
-                   'access_schema' : config[resource].get('schema', None),
-                   'cores'         : config[resource].get('cores', 1),
+                   'queue'         : config[resource].get('queue',   None),
+                   'access_schema' : config[resource].get('schema',  None),
+                   'cores'         : 8,
                    'gpus'          : config[resource].get('gpus', 0),
                   }
         pdesc = rp.PilotDescription(pd_init)
@@ -77,24 +77,25 @@ if __name__ == '__main__':
         # Each task runs '/bin/date'.
 
         n = 1024 * 2
-        report.info('create %d task description(s)\n\t' % n)
+        report.progress_tgt(n, label='create')
 
         tds = list()
         for i in range(0, n):
 
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            td = rp.TaskDescription()
-            td.executable       = 'time.time'
-            td.arguments        = []
-            td.pre_exec         = ['import time']
-            td.gpu_processes    = 0
-            td.cpu_processes    = 1
-            td.cpu_threads      = 1
-            td.cpu_process_type = rp.FUNC
-            tds.append(td)
+            cud = rp.ComputeUnitDescription()
+            cud.pre_exec         = ['import math']
+            cud.executable       = 'math.exp'
+            cud.arguments        = [i]
+            cud.gpu_processes    = 0
+            cud.cpu_processes    = 1
+            cud.cpu_threads      = 1
+            cud.cpu_process_type = rp.FUNC
+            cuds.append(cud)
             report.progress()
-        report.ok('>>ok\n')
+
+        report.progress_done()
 
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
@@ -106,8 +107,8 @@ if __name__ == '__main__':
         report.header('gather results')
         umgr.wait_tasks()
 
-        for task in (tasks[:10] + tasks[-10:]):
-            if task.state == rp.DONE:
+        for unit in (units[-10:]):
+            if unit.state == rp.DONE:
                 print('\t+ %s: %-10s: %10s: %s'
                      % (task.uid, task.state, task.pilot, task.stdout))
             else:
