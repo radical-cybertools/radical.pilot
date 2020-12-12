@@ -764,7 +764,8 @@ class Component(object):
         '''
 
         states = ru.as_list(states)
-        assert(states), 'missing states for output registration'
+        if not states:
+            states = [None]  # worker handles stateless entities
 
         for state in states:
 
@@ -821,7 +822,8 @@ class Component(object):
         '''
 
         states = ru.as_list(states)
-        assert(states), 'missing states for output unregistration'
+        if not states:
+            states = [None]  # worker handles stateless entities
 
         for state in states:
 
