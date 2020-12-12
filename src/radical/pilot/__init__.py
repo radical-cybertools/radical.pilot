@@ -28,6 +28,10 @@ from .pilot_manager             import PilotManager
 from .pilot                     import Pilot
 from .pilot_description         import PilotDescription
 
+from .deprecated                import ComputePilot, ComputePilotDescription
+from .deprecated                import ComputeUnit,  ComputeUnitDescription
+from .deprecated                import UnitManager
+
 
 # ------------------------------------------------------------------------------
 # make submodules available -- mostly for internal use
