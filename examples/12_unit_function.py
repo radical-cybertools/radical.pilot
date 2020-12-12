@@ -57,9 +57,9 @@ if __name__ == '__main__':
                    'runtime'       : 60,  # pilot runtime (min)
                    'exit_on_error' : True,
                    'project'       : config[resource].get('project', None),
-                   'queue'         : config[resource].get('queue', None),
-                   'access_schema' : config[resource].get('schema', None),
-                   'cores'         : config[resource].get('cores', 1),
+                   'queue'         : config[resource].get('queue',   None),
+                   'access_schema' : config[resource].get('schema',  None),
+                   'cores'         : 8,
                    'gpus'          : config[resource].get('gpus', 0),
                   }
         pdesc = rp.ComputePilotDescription(pd_init)
@@ -76,8 +76,8 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 1024 * 2
-        report.info('create %d unit description(s)\n\t' % n)
+        n = 10
+        report.progress_tgt(n, label='create')
 
         cuds = list()
         for i in range(0, n):
@@ -85,16 +85,17 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.executable       = 'time.time'
-            cud.arguments        = []
-            cud.pre_exec         = ['import time']
+            cud.pre_exec         = ['import math']
+            cud.executable       = 'math.exp'
+            cud.arguments        = [i]
             cud.gpu_processes    = 0
             cud.cpu_processes    = 1
             cud.cpu_threads      = 1
             cud.cpu_process_type = rp.FUNC
             cuds.append(cud)
             report.progress()
-        report.ok('>>ok\n')
+
+        report.progress_done()
 
         # Submit the previously created ComputeUnit descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
@@ -106,7 +107,7 @@ if __name__ == '__main__':
         report.header('gather results')
         umgr.wait_units()
 
-        for unit in (units[:10] + units[-10:]):
+        for unit in (units[-10:]):
             if unit.state == rp.DONE:
                 print('\t+ %s: %-10s: %10s: %s'
                      % (unit.uid, unit.state, unit.pilot, unit.stdout))
