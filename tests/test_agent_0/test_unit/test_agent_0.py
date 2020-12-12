@@ -21,7 +21,7 @@ class TestComponent(TestCase):
         global_control = []
 
         def _publish_side_effect(publish_type, cmd):
-            nonlocal global_control            
+            nonlocal global_control
             global_control.append((publish_type, cmd))
 
         def _prepare_env_side_effect(env_id, spec):
@@ -51,25 +51,24 @@ class TestComponent(TestCase):
                        'rpc': 'hello'}
               }
         self.assertTrue(agent_cmp._check_control(None, msg))
-        self.assertEqual(global_control[0], ('control_pubsub', 
-                                           {'cmd': 'rpc_res', 
-                                            'arg': {'uid': 'rpc.0000', 
-                                                    'err': "'arg'", 
+        self.assertEqual(global_control[0], ('control_pubsub',
+                                           {'cmd': 'rpc_res',
+                                            'arg': {'uid': 'rpc.0000',
+                                                    'err': "'arg'",
                                                     'ret': None}
                                            }))
 
         msg = {'cmd': 'rpc_req',
                'arg': {'uid': 'rpc.0000',
                        'rpc': 'hello',
-                       'arg': 'World'}
+                       'arg': ['World']}
               }
         self.assertTrue(agent_cmp._check_control(None, msg))
-        print(global_control)
-        self.assertEqual(global_control[1], ('control_pubsub', 
-                                             {'cmd': 'rpc_res', 
-                                              'arg': {'uid': 'rpc.0000', 
-                                                      'err': None, 
-                                                      'ret': 'hello W o r l d'}
+        self.assertEqual(global_control[1], ('control_pubsub',
+                                             {'cmd': 'rpc_res',
+                                              'arg': {'uid': 'rpc.0000',
+                                                      'err': None,
+                                                      'ret': 'hello World'}
                                              }))
         msg = {'cmd': 'rpc_req',
                'arg': {'uid': 'rpc.0000',
@@ -78,9 +77,9 @@ class TestComponent(TestCase):
                       }
               }
         self.assertTrue(agent_cmp._check_control(None, msg))
-        self.assertEqual(global_control[2], ('control_pubsub', 
-                                             {'cmd': 'rpc_res', 
-                                              'arg': {'uid': 'rpc.0000', 
-                                                      'err': None, 
+        self.assertEqual(global_control[2], ('control_pubsub',
+                                             {'cmd': 'rpc_res',
+                                              'arg': {'uid': 'rpc.0000',
+                                                      'err': None,
                                                       'ret': ('radical', 'spec')}
                                              }))
