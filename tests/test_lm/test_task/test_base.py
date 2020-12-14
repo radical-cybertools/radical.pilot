@@ -36,7 +36,7 @@ class TestBase(TestCase):
         self.assertEqual(flavor, 'unknown')
 
         ru.sh_callout.side_effect = [['test',1,1],['mpirun (Open MPI) 2.1.2\n\n\
-                 Report bugs to http://www.open-mpi.org/commtasky/help/\n',3,0]]
+                 Report bugs to http://www.open-mpi.org/community/help/\n',3,0]]
         version, flavor = lm._get_mpi_info('mpirun')
         self.assertEqual(version, '2.1.2')
         self.assertEqual(flavor,'OMPI')
