@@ -8,7 +8,7 @@ from ... import utils as rpu
 
 
 # ------------------------------------------------------------------------------
-# 'enum' for RP's umgr staging input types
+# 'enum' for RP's tmgr staging input types
 RP_USI_NAME_DEFAULT = "DEFAULT"
 
 

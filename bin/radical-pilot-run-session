@@ -33,8 +33,8 @@ def run_record(rec):
         pmgr    = rp.PilotManager(session=session)
         rep.ok('pilot manager: %s' % pmgr.uid)
 
-        umgr    = rp.TaskManager(session=session)
-        rep.ok('task manager : %s' % umgr.uid)
+        tmgr    = rp.TaskManager(session=session)
+        rep.ok('task manager : %s' % tmgr.uid)
 
         rep.header('create pilots')
         pds = list()
@@ -49,7 +49,7 @@ def run_record(rec):
         rep.ok('pilots submitted')
 
         rep.header('using pilots')
-        umgr.add_pilots(pilots)
+        tmgr.add_pilots(pilots)
 
         batch = 0
         while True:
@@ -69,11 +69,11 @@ def run_record(rec):
                 uds.append(ud)
                 args = ud_dict.get('arguments', [])
                 rep.info('%s  %s [%3d cores]' % (ud.executable, ' '.join(args), ud.cores))
-            tasks = umgr.submit_tasks(uds)
+            tasks = tmgr.submit_tasks(uds)
             rep.ok('tasks submitted  [batch %d]' % batch)
     
             rep.info('wait for tasks [batch %d]' % batch)
-            umgr.wait_tasks()
+            tmgr.wait_tasks()
             rep.ok('tasks all done   [batch %d]' % batch)
     
             for u in tasks:

@@ -91,11 +91,11 @@ if __name__ == "__main__":
 
         # Combine the Pilot, the Tasks and a scheduler via
         # a TaskManager object.
-        umgr = rp.TaskManager(session=session)
-        umgr.register_callback(task_state_cb, rp.TASK_STATE)
+        tmgr = rp.TaskManager(session=session)
+        tmgr.register_callback(task_state_cb, rp.TASK_STATE)
 
         # Add the previously created Pilot to the TaskManager.
-        umgr.add_pilots(pilot)
+        tmgr.add_pilots(pilot)
 
         # Configure the staging directive for intermediate data
         sd_inter_out = {
@@ -113,10 +113,10 @@ if __name__ == "__main__":
         cud1.output_staging = sd_inter_out
 
         # Submit the first task for execution.
-        umgr.submit_tasks(cud1)
+        tmgr.submit_tasks(cud1)
 
         # Wait for the task to finish.
-        umgr.wait_tasks()
+        tmgr.wait_tasks()
 
         # Configure the staging directive for input intermediate data
         sd_inter_in = {
@@ -135,10 +135,10 @@ if __name__ == "__main__":
         cud2.output_staging = OUTPUT_FILE
 
         # Submit the second Task for execution.
-        umgr.submit_tasks(cud2)
+        tmgr.submit_tasks(cud2)
 
         # Wait for the task to finish.
-        umgr.wait_tasks()
+        tmgr.wait_tasks()
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

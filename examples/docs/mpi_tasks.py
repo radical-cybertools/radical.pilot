@@ -113,17 +113,17 @@ if __name__ == "__main__":
         # Combine the Pilot, the Tasks and a scheduler via
         # a TaskManager object.
         print("Initializing Task Manager ...")
-        umgr = rp.TaskManager (session=session,
+        tmgr = rp.TaskManager (session=session,
                                scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
 
         # Register our callback with the TaskManager. This callback will get
         # called every time any of the tasks managed by the TaskManager
         # change their state.
-        umgr.register_callback(task_state_cb)
+        tmgr.register_callback(task_state_cb)
 
         # Add the created Pilot to the TaskManager.
         print("Registering  Pilot with Task Manager ...")
-        umgr.add_pilots(pilot)
+        tmgr.add_pilots(pilot)
 
         NUMBER_JOBS  = 10  # the total number of cus to run
 
@@ -146,10 +146,10 @@ if __name__ == "__main__":
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
         print("Submit Tasks to Task Manager ...")
-        cu_set = umgr.submit_tasks (cudesc_list)
+        cu_set = tmgr.submit_tasks (cudesc_list)
 
         print("Waiting for CUs to complete ...")
-        umgr.wait_tasks()
+        tmgr.wait_tasks()
         print("All CUs completed successfully!")
 
         for task in cu_set:

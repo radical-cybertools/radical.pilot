@@ -28,7 +28,7 @@ class DBSession(object):
         session : document describing this rp.Session (singleton)
         pmgr    : document describing a rp.PilotManager
         pilots  : document describing a rp.Pilot
-        umgr    : document describing a rp.TaskManager
+        tmgr    : document describing a rp.TaskManager
         tasks   : document describing a rp.Task
         """
 
@@ -308,19 +308,19 @@ class DBSession(object):
             return None
           # raise Exception("No active session.")
 
-        # we only pull tasks which are not yet owned by the umgr
+        # we only pull tasks which are not yet owned by the tmgr
 
         if not task_ids:
             cursor = self._c.find({'type'   : 'task',
-                                   'umgr'   : umgr_uid,
-                                   'control': {'$ne' : 'umgr'},
+                                   'tmgr'   : umgr_uid,
+                                   'control': {'$ne' : 'tmgr'},
                                    })
 
         else:
             cursor = self._c.find({'type'   : 'task',
-                                   'umgr'   : umgr_uid,
+                                   'tmgr'   : umgr_uid,
                                    'uid'    : {'$in' : task_ids},
-                                   'control': {'$ne' : 'umgr'  },
+                                   'control': {'$ne' : 'tmgr'  },
                                    })
 
         # make sure we return every task doc only once
@@ -348,7 +348,7 @@ class DBSession(object):
           # raise Exception('No active session.')
 
         umgr_doc['_id']  = umgr_doc['uid']
-        umgr_doc['type'] = 'umgr'
+        umgr_doc['type'] = 'tmgr'
 
         # FIXME: evaluate retval
         self._c.insert(ru.demunch(umgr_doc))
@@ -389,7 +389,7 @@ class DBSession(object):
             for doc in subset:
                 doc['_id']     = doc['uid']
                 doc['type']    = 'task'
-                doc['control'] = 'umgr'
+                doc['control'] = 'tmgr'
                 doc['states']  = [doc['state']]
                 doc['cmd']     = list()
                 bulk.insert(ru.demunch(doc))

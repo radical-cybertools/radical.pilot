@@ -483,7 +483,7 @@ class Agent_0(rpu.Worker):
         # Check if there's a command waiting
         # FIXME: this pull should be done by the update worker, and commands
         #        should then be communicated over the command pubsub
-        # FIXME: commands go to pmgr, umgr, session docs
+        # FIXME: commands go to pmgr, tmgr, session docs
         # FIXME: check if pull/wipe are atomic
         # FIXME: long runnign commands can time out on hb
         retdoc = self._dbs._c.find_and_modify(

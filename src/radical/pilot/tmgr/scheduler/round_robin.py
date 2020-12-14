@@ -30,7 +30,7 @@ class RoundRobin(UMGRSchedulingComponent):
         self._pids = list()
         self._idx  = 0
 
-        self._log.debug('RoundRobin umgr scheduler configured')
+        self._log.debug('RoundRobin tmgr scheduler configured')
 
 
     # --------------------------------------------------------------------------

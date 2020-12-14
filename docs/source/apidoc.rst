@@ -108,15 +108,15 @@ Task
 
     .. code-block:: python
 
-          NEW                     - created in    umgr
-          UNSCHEDULED             - passed  to    umgr scheduler, but not assigned to a pilot
+          NEW                     - created in    tmgr
+          UNSCHEDULED             - passed  to    tmgr scheduler, but not assigned to a pilot
           PENDING_INPUT_STAGING   - passed  to    staging-in, assigned to a pilot, waiting for file staging
-          STAGING_INPUT           - picked  up by staging-in, transfering files (in umgr and/or agent)
+          STAGING_INPUT           - picked  up by staging-in, transfering files (in tmgr and/or agent)
           PENDING_EXECUTION       - passed  to    agent scheduler, agent waiting to assign cores
           SCHEDULING              - picked  up by agent scheduler, attempts to assign cores for execution
           EXECUTING               - picked  up by agent exec worker, cu is consuming cores
           PENDING_OUTPUT_STAGING  - passed  to    staging-out, execution done, waiting for file transfer
-          STAGING_OUTPUT          - picked  up by staging-out, transferring files  (in umgr and/or agent)
+          STAGING_OUTPUT          - picked  up by staging-out, transferring files  (in tmgr and/or agent)
           DONE                    - final
           CANCELED                - final
           FAILED                  - final
@@ -125,16 +125,16 @@ Task
 
     .. code-block:: python
 
-          NEW                     - created in    umgr
-          UNSCHEDULED             - passed  to    umgr scheduler, but not assigned to a pilot
-          SCHEDULING              - picked  up by umgr scheduler, assigning cu to a pilot
+          NEW                     - created in    tmgr
+          UNSCHEDULED             - passed  to    tmgr scheduler, but not assigned to a pilot
+          SCHEDULING              - picked  up by tmgr scheduler, assigning cu to a pilot
           PENDING_INPUT_STAGING   - passed  to    staging-in, assigned to a pilot, waiting for file staging
-          STAGING_INPUT           - picked  up by staging-in, transfering files (in umgr and/or agent)
+          STAGING_INPUT           - picked  up by staging-in, transfering files (in tmgr and/or agent)
           PENDING_EXECUTION       - passed  to    agent scheduler, agent waiting to assign cores
           ALLOCATING              - picked  up by agent scheduler, attempts to assign cores for execution
           EXECUTING               - picked  up by agent exec worker, cu is consuming cores
           PENDING_OUTPUT_STAGING  - passed  to    staging-out, execution done, waiting for file transfer
-          STAGING_OUTPUT          - picked  up by staging-out, transferring files  (in umgr and/or agent)
+          STAGING_OUTPUT          - picked  up by staging-out, transferring files  (in tmgr and/or agent)
           DONE                    - final
           CANCELED                - final
           FAILED                  - final
@@ -143,11 +143,11 @@ Task
 
     .. code-block:: python
 
-          NEW                          - created in    umgr
-          UMGR_SCHEDULING_PENDING      - passed  to    umgr  scheduler
-          UMGR_SCHEDULING              - picked  up by umgr  scheduler, assigning cu to a pilot
-          UMGR_STAGING_INPUT_PENDING   - passed  to    umgr  staging-in, pilot is assigned
-          UMGR_STAGING_INPUT           - picked  up by umgr  staging-in, performing file staging
+          NEW                          - created in    tmgr
+          UMGR_SCHEDULING_PENDING      - passed  to    tmgr  scheduler
+          UMGR_SCHEDULING              - picked  up by tmgr  scheduler, assigning cu to a pilot
+          UMGR_STAGING_INPUT_PENDING   - passed  to    tmgr  staging-in, pilot is assigned
+          UMGR_STAGING_INPUT           - picked  up by tmgr  staging-in, performing file staging
           AGENT_STAGING_INPUT_PENDING  - passed  to    agent staging-in
           AGENT_STAGING_INPUT          - picked  up by agent staging-in, performing file staging
           AGENT_SCHEDULING_PENDING     - passed  to    agent scheduler, agent did not assign cores
@@ -156,8 +156,8 @@ Task
           EXECUTING                    - picked  up by exec  worker, cores are 'consumed'
           AGENT_STAGING_OUTPUT_PENDING - passed  to    agent staging-out
           AGENT_STAGING_OUTPUT         - picked  up by agent staging-out, performing file staging
-          UMGR_STAGING_OUTPUT_PENDING  - passed  to    umgr  staging-out
-          UMGR_STAGING_OUTPUT          - picked  up by umgr  staging-out, performing file staging
+          UMGR_STAGING_OUTPUT_PENDING  - passed  to    tmgr  staging-out
+          UMGR_STAGING_OUTPUT          - picked  up by tmgr  staging-out, performing file staging
           DONE                         - final
           CANCELED                     - final
           FAILED                       - final

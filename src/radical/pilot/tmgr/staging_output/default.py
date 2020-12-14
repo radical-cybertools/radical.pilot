@@ -18,7 +18,7 @@ from .base import UMGRStagingOutputComponent
 #
 class Default(UMGRStagingOutputComponent):
     """
-    This component performs all umgr side output staging directives for compute
+    This component performs all tmgr side output staging directives for compute
     tasks.  It gets tasks from the umgr_staging_output_queue, in
     UMGR_STAGING_OUTPUT_PENDING state, will advance them to UMGR_STAGING_OUTPUT
     state while performing the staging, and then moves then to the respective

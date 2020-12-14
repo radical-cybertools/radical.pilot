@@ -18,7 +18,7 @@ and we only send 'things', ie. pilots or tasks, which are represented by plain
 python dicts.  All 'things' are guaranteed to have the following fields:
 
     'uid':    string, unique ID
-    'type':   string, entity type (session | umgr | task | pmgr | pilot)
+    'type':   string, entity type (session | tmgr | task | pmgr | pilot)
     'state':  string, state of the thing if stateful, 'None' otherwise
 
 
@@ -71,12 +71,12 @@ see also code comments in rp/worker/update.py
     
     
     'cmd' : 'add_pilot'
-    'arg' : {'from'  : <string>,      # on what umgr?
+    'arg' : {'from'  : <string>,      # on what tmgr?
              'uid'   : <string>}      # what pilot is added?
     
     
     'cmd' : 'remove_pilot'
-    'arg' : {'from'  : <string>,      # from what umgr?
+    'arg' : {'from'  : <string>,      # from what tmgr?
              'uid'   : <string>}      # what pilot is removed?
 
 

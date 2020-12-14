@@ -80,8 +80,8 @@ indication on event ordering *within each individual component*.
 
 ### TaskManager (Component)
 
-    setup_done          : manager has bootstrapped                   (uid: umgr)
-    get                 : tasks   received from application          (uid: umgr, msg: 'bulk size: %d')
+    setup_done          : manager has bootstrapped                   (uid: tmgr)
+    get                 : tasks   received from application          (uid: tmgr, msg: 'bulk size: %d')
     get                 : task    received from application          (uid: task)
 
 

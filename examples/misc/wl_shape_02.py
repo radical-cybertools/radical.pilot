@@ -53,8 +53,8 @@ if __name__ == '__main__':
 
         report.header('submit tasks')
 
-        umgr = rp.TaskManager(session=session)
-        umgr.add_pilots(pilot)
+        tmgr = rp.TaskManager(session=session)
+        tmgr.add_pilots(pilot)
 
         args = 'mdrun -o traj.trr -e ener.edr -s topol.tpr -g mdlog.log ' \
              + '-c outgro -cpo state.cpt'
@@ -94,9 +94,9 @@ if __name__ == '__main__':
             report.progress()
         report.ok('>>ok\n')
 
-        umgr.submit_tasks(tds)
+        tmgr.submit_tasks(tds)
         report.header('gather results')
-        umgr.wait_tasks()
+        tmgr.wait_tasks()
 
 
     finally:

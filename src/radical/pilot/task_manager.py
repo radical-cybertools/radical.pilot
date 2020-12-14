@@ -87,15 +87,15 @@ class TaskManager(rpu.Component):
         """
 
         self._pilots      = dict()
-        self._pilots_lock = ru.RLock('umgr.pilots_lock')
+        self._pilots_lock = ru.RLock('tmgr.pilots_lock')
         self._tasks       = dict()
-        self._tasks_lock  = ru.RLock('umgr.tasks_lock')
+        self._tasks_lock  = ru.RLock('tmgr.tasks_lock')
         self._callbacks   = dict()
-        self._cb_lock     = ru.RLock('umgr.cb_lock')
+        self._cb_lock     = ru.RLock('tmgr.cb_lock')
         self._terminate   = mt.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
-        self._uid         = ru.generate_id('umgr.%(item_counter)04d',
+        self._uid         = ru.generate_id('tmgr.%(item_counter)04d',
                                            ru.ID_CUSTOM, ns=session.uid)
 
         for m in rpc.UMGR_METRICS:
@@ -110,7 +110,7 @@ class TaskManager(rpu.Component):
             name = cfg
             cfg  = None
 
-        cfg           = ru.Config('radical.pilot.umgr', name=name, cfg=cfg)
+        cfg           = ru.Config('radical.pilot.tmgr', name=name, cfg=cfg)
         cfg.uid       = self._uid
         cfg.owner     = self._uid
         cfg.sid       = session.uid
@@ -127,7 +127,7 @@ class TaskManager(rpu.Component):
         rpu.Component.__init__(self, cfg, session=session)
         self.start()
 
-        self._log.info('started umgr %s', self._uid)
+        self._log.info('started tmgr %s', self._uid)
         self._rep.info('<<create task manager')
 
         # create pmgr bridges and components, use session cmgr for that
@@ -140,7 +140,7 @@ class TaskManager(rpu.Component):
         self.register_output(rps.UMGR_SCHEDULING_PENDING,
                              rpc.UMGR_SCHEDULING_QUEUE)
 
-        # the umgr will also collect tasks from the agent again, for output
+        # the tmgr will also collect tasks from the agent again, for output
         # staging and finalization
         if self._cfg.bridges.umgr_staging_output_queue:
             self._has_sout = True
@@ -204,7 +204,7 @@ class TaskManager(rpu.Component):
 
         # we do not cancel tasks at this point, in case any component or pilot
         # wants to continue to progress task states, which should indeed be
-        # independent from the umgr life cycle.
+        # independent from the tmgr life cycle.
 
         if self._closed:
             return
@@ -258,9 +258,9 @@ class TaskManager(rpu.Component):
         if self._terminate.is_set():
             return False
 
-        # we register this callback for pilots added to this umgr.  It will
+        # we register this callback for pilots added to this tmgr.  It will
         # specifically look out for pilots which complete, and will make sure
-        # that all tasks are pulled back into umgr control if that happens
+        # that all tasks are pulled back into tmgr control if that happens
         # prematurely.
         #
         # If we find tasks which have not completed the agent part of the task
@@ -269,16 +269,16 @@ class TaskManager(rpu.Component):
         # avoids state model confusion (the state model is right now expected to
         # be linear), but is not intuitive for the application (FIXME).
         #
-        # FIXME: there is a race with the umgr scheduler which may, just now,
+        # FIXME: there is a race with the tmgr scheduler which may, just now,
         #        and before being notified about the pilot's demise, send new
         #        tasks to the pilot.
 
-        # we only look into pilot states when the umgr is still active
-        # FIXME: note that there is a race in that the umgr can be closed while
+        # we only look into pilot states when the tmgr is still active
+        # FIXME: note that there is a race in that the tmgr can be closed while
         #        we are in the cb.
         # FIXME: `self._closed` is not an `mt.Event`!
         if self._closed:
-            self._log.debug('umgr closed, ignore pilot cb %s',
+            self._log.debug('tmgr closed, ignore pilot cb %s',
                             ['%s:%s' % (p.uid, p.state) for p in pilots])
             return True
 
@@ -296,7 +296,7 @@ class TaskManager(rpu.Component):
                 task_cursor = self.session._dbs._c.find({
                     'type'    : 'task',
                     'pilot'   : pilot.uid,
-                    'umgr'    : self.uid,
+                    'tmgr'    : self.uid,
                     'control' : {'$in' : ['agent_pending', 'agent']}})
 
                 if not task_cursor.count():
@@ -317,7 +317,7 @@ class TaskManager(rpu.Component):
 
                 self._session._dbs._c.update({'type'  : 'task',
                                               'uid'   : {'$in'     : uids}},
-                                             {'$set'  : {'control' : 'umgr'}},
+                                             {'$set'  : {'control' : 'tmgr'}},
                                              multi=True)
                 to_restart = list()
                 for task in tasks:
@@ -378,14 +378,14 @@ class TaskManager(rpu.Component):
             return False
 
         # pull tasks from the agent which are about to get back
-        # under umgr control, and push them into the respective queues
+        # under tmgr control, and push them into the respective queues
         # FIXME: this should also be based on a tailed cursor
         # FIXME: Unfortunately, 'find_and_modify' is not bulkable, so we have
         #        to use 'find'.  To avoid finding the same tasks over and over
         #        again, we update the 'control' field *before* running the next
         #        find -- so we do it right here.
         task_cursor = self.session._dbs._c.find({'type'    : 'task',
-                                                 'umgr'    : self.uid,
+                                                 'tmgr'    : self.uid,
                                                  'control' : 'umgr_pending'})
 
         if not task_cursor.count():
@@ -400,11 +400,11 @@ class TaskManager(rpu.Component):
         self._log.info("tasks pulled:    %d", len(uids))
 
         for task in tasks:
-            task['control'] = 'umgr'
+            task['control'] = 'tmgr'
 
         self._session._dbs._c.update({'type'  : 'task',
                                       'uid'   : {'$in'     : uids}},
-                                     {'$set'  : {'control' : 'umgr'}},
+                                     {'$set'  : {'control' : 'tmgr'}},
                                      multi=True)
 
         self._log.info("tasks pulled: %4d", len(tasks))
@@ -491,7 +491,7 @@ class TaskManager(rpu.Component):
                 if to_notify:
                     cb_requests += to_notify
             else:
-                self._log.debug('umgr state cb ignores %s/%s', thing.get('uid'),
+                self._log.debug('tmgr state cb ignores %s/%s', thing.get('uid'),
                         thing.get('state'))
 
         if cb_requests:
@@ -521,7 +521,7 @@ class TaskManager(rpu.Component):
 
             # we don't care about tasks we don't know
             if uid not in self._tasks:
-                self._log.debug('umgr: unknown: %s', uid)
+                self._log.debug('tmgr: unknown: %s', uid)
                 return None
 
             task = self._tasks[uid]
@@ -530,7 +530,7 @@ class TaskManager(rpu.Component):
             current = task.state
             target  = task_dict['state']
             if current == target:
-                self._log.debug('umgr: static: %s', uid)
+                self._log.debug('tmgr: static: %s', uid)
                 return None
 
             target, passed = rps._task_state_progress(uid, current, target)
@@ -550,7 +550,7 @@ class TaskManager(rpu.Component):
                     self.advance(task_dict, s, publish=publish, push=False,
                                  prof=False)
 
-            self._log.debug('umgr: notify: %s %s %s', len(to_notify), task_dict,
+            self._log.debug('tmgr: notify: %s %s %s', len(to_notify), task_dict,
                     task_dict['state'])
             return to_notify
 
@@ -631,7 +631,7 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     # FIXME: this needs to go to the scheduler
-    def _default_wait_queue_size_cb(self, umgr, wait_queue_size):
+    def _default_wait_queue_size_cb(self, tmgr, wait_queue_size):
 
         # FIXME: this needs to come from the scheduler?
         if self._terminate.is_set():
@@ -698,7 +698,7 @@ class TaskManager(rpu.Component):
         # publish to the command channel for the scheduler to pick up
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'add_pilots',
                                           'arg' : {'pilots': pilot_docs,
-                                                   'umgr'  : self.uid}})
+                                                   'tmgr'  : self.uid}})
 
 
     # --------------------------------------------------------------------------
@@ -770,7 +770,7 @@ class TaskManager(rpu.Component):
         # publish to the command channel for the scheduler to pick up
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'remove_pilots',
                                           'arg' : {'pids'  : pilot_ids,
-                                                   'umgr'  : self.uid}})
+                                                   'tmgr'  : self.uid}})
 
 
     # --------------------------------------------------------------------------
@@ -822,7 +822,7 @@ class TaskManager(rpu.Component):
             if not ud.executable:
                 raise ValueError('task executable must be defined')
 
-            task = Task(umgr=self, descr=ud)
+            task = Task(tmgr=self, descr=ud)
             tasks.append(task)
 
             # keep tasks around
@@ -1068,7 +1068,7 @@ class TaskManager(rpu.Component):
         # we *always* issue the cancellation command to the local components
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_tasks',
                                           'arg' : {'uids' : uids,
-                                                   'umgr' : self.uid}})
+                                                   'tmgr' : self.uid}})
 
         # we also inform all pilots about the cancelation request
         self._session._dbs.pilot_command(cmd='cancel_tasks', arg={'uids':uids})
@@ -1126,7 +1126,7 @@ class TaskManager(rpu.Component):
             metric = rpc.TASK_STATE
 
         if  metric not in rpc.UMGR_METRICS:
-            raise ValueError ("Metric '%s' not available on the umgr" % metric)
+            raise ValueError ("Metric '%s' not available on the tmgr" % metric)
 
         if not uid:
             uid = '*'
@@ -1163,7 +1163,7 @@ class TaskManager(rpu.Component):
 
         for metric in metrics:
             if metric not in rpc.UMGR_METRICS :
-                raise ValueError ("invalid umgr metric '%s'" % metric)
+                raise ValueError ("invalid tmgr metric '%s'" % metric)
 
         with self._cb_lock:
 

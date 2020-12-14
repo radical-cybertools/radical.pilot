@@ -50,7 +50,7 @@ if __name__ == '__main__':
         pmgr = rp.PilotManager(session=session)
 
         # Register the Pilot in a TaskManager object.
-        umgr = rp.TaskManager(session=session)
+        tmgr = rp.TaskManager(session=session)
 
         n = 1
         pdescs = list()
@@ -74,7 +74,7 @@ if __name__ == '__main__':
 
         # Launch the pilot.
         pilots = pmgr.submit_pilots(pdescs)
-        umgr.add_pilots(pilots)
+        tmgr.add_pilots(pilots)
 
         report.header('submit tasks')
 
@@ -103,11 +103,11 @@ if __name__ == '__main__':
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        tasks = umgr.submit_tasks(tds)
+        tasks = tmgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
-        umgr.wait_tasks()
+        tmgr.wait_tasks()
 
         report.info('\n')
         for task in tasks:

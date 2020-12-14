@@ -13,7 +13,7 @@ from ... import constants as rpc
 
 
 # ------------------------------------------------------------------------------
-# 'enum' for RPs's umgr scheduler types
+# 'enum' for RPs's tmgr scheduler types
 SCHEDULER_ROUND_ROBIN  = "round_robin"
 SCHEDULER_BACKFILLING  = "backfilling"
 
@@ -203,11 +203,11 @@ class UMGRSchedulingComponent(rpu.Component):
     #
     def _base_command_cb(self, topic, msg):
 
-        # we'll wait for commands from the umgr, to learn about pilots we can
+        # we'll wait for commands from the tmgr, to learn about pilots we can
         # use or we should stop using. We also track task cancelation, as all
         # components do.
         #
-        # make sure command is for *this* scheduler by matching the umgr uid.
+        # make sure command is for *this* scheduler by matching the tmgr uid.
 
         cmd = msg['cmd']
 
@@ -217,11 +217,11 @@ class UMGRSchedulingComponent(rpu.Component):
             return True
 
         arg   = msg['arg']
-        umgr  = arg['umgr']
+        tmgr  = arg['tmgr']
 
         self._log.info('scheduler command: %s: %s' % (cmd, arg))
 
-        if umgr and umgr != self._umgr:
+        if tmgr and tmgr != self._umgr:
             # this is not the command we are looking for
             return True
 

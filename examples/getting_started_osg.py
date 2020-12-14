@@ -15,7 +15,7 @@ SLEEP    =    10
 PILOTS   =     2
 TASKS    =    10
 CNT      =     0
-SCHED    = rp.umgr.scheduler.SCHEDULER_BACKFILLING
+SCHED    = rp.tmgr.scheduler.SCHEDULER_BACKFILLING
 
 resources = {
     'osg.xsede-virt-clust' : {
@@ -59,7 +59,7 @@ def task_state_cb (task, state):
 
 # ------------------------------------------------------------------------------
 #
-def wait_queue_size_cb(umgr, wait_queue_size):
+def wait_queue_size_cb(tmgr, wait_queue_size):
 
     print("[Callback]: wait_queue_size: %s." % wait_queue_size)
 
@@ -90,9 +90,9 @@ if __name__ == "__main__":
         pmgr = rp.PilotManager(session=session)
         pmgr.register_callback(pilot_state_cb)
 
-        umgr = rp.TaskManager(session=session, scheduler=SCHED)
-        umgr.register_callback(task_state_cb,      rp.TASK_STATE)
-        umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
+        tmgr = rp.TaskManager(session=session, scheduler=SCHED)
+        tmgr.register_callback(task_state_cb,      rp.TASK_STATE)
+        tmgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
 
         tds = list()
         for task_count in range(0, TASKS):
@@ -102,7 +102,7 @@ if __name__ == "__main__":
             td.cores          = 1
             tds.append(td)
 
-        tasks = umgr.submit_tasks(tds)
+        tasks = tmgr.submit_tasks(tds)
 
         pdesc = rp.PilotDescription()
         pdesc.resource        = resource
@@ -126,9 +126,9 @@ if __name__ == "__main__":
         # TODO: bulk submit pilots here
         for p in range(PILOTS):
             pilot = pmgr.submit_pilots(pdesc)
-            umgr.add_pilots(pilot)
+            tmgr.add_pilots(pilot)
 
-        umgr.wait_tasks()
+        tmgr.wait_tasks()
 
         for t in tasks:
             print("* Task %s state %s, exit code: %s, stdout: %s, pilot: %s"

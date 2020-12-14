@@ -134,17 +134,17 @@ if __name__ == "__main__":
         # a TaskManager object. The scheduler that supports multi-pilot sessions
         # is Round Robin. Direct Submittion does not.
         print("Initializing Task Manager ...")
-        umgr = rp.TaskManager (session=session,
+        tmgr = rp.TaskManager (session=session,
                                scheduler=rp.SCHEDULER_ROUND_ROBIN)
 
         # Register our callback with the TaskManager. This callback will get
         # called every time any of the tasks managed by the TaskManager
         # change their state.
-        umgr.register_callback(task_state_cb)
+        tmgr.register_callback(task_state_cb)
 
         # Add the created Pilot to the TaskManager.
         print("Registering  Pilots with Task Manager ...")
-        umgr.add_pilots(pilots)
+        tmgr.add_pilots(pilots)
 
         NUMBER_JOBS  = 64  # the total number of cus to run
 
@@ -166,10 +166,10 @@ if __name__ == "__main__":
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
         print("Submit Tasks to Task Manager ...")
-        cu_set = umgr.submit_tasks (cudesc_list)
+        cu_set = tmgr.submit_tasks (cudesc_list)
 
         print("Waiting for CUs to complete ...")
-        umgr.wait_tasks()
+        tmgr.wait_tasks()
         print("All CUs completed successfully!")
 
 

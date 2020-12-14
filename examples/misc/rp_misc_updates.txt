@@ -78,7 +78,7 @@ session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0053
 4. declaration of cud.cores is removed since it is not in taskmanager schema
 5. task.execution_locations, task.start_time, task.stop_time are excluded from print
 statement since task has not such methods.
-However, call_back error is reported in umgr log file. Further update is needed.
+However, call_back error is reported in tmgr log file. Further update is needed.
 session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0052
 
 /misc/gpu_pilot.py
@@ -91,7 +91,7 @@ session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0061
 3. declaration of cud.cores and cud.mpi are removed since they are not in taskmanager schema.
 4. task.execution_locations, task.start_time, task.stop_time are excluded from print
 statement since task has not such methods.
-However, call_back error is reported in umgr log file. Further update is needed.
+However, call_back error is reported in tmgr log file. Further update is needed.
 rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0062
 
 

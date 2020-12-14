@@ -662,7 +662,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - make sure a canceled pilot stays canceled
   - make cb return codes consistent
   - make sure profs are flushed on termination
-  - make sure the umgr only pulls tasks its interested in
+  - make sure the tmgr only pulls tasks its interested in
   - profile mkdir
   - publish resource_details (incl. lm_info) again
   - re-add a profile flag to advance()

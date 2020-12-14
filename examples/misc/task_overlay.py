@@ -60,12 +60,12 @@ if __name__ == '__main__':
             tds.append(td)
 
         pmgr  = rp.PilotManager(session=session)
-        umgr  = rp.TaskManager(session=session)
+        tmgr  = rp.TaskManager(session=session)
         pilot = pmgr.submit_pilots(pd)
-        task  = umgr.submit_tasks(tds)
+        task  = tmgr.submit_tasks(tds)
 
-        umgr.add_pilots(pilot)
-        umgr.wait_tasks()
+        tmgr.add_pilots(pilot)
+        tmgr.wait_tasks()
 
     finally:
         session.close(download=True)

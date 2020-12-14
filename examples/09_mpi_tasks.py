@@ -76,8 +76,8 @@ if __name__ == '__main__':
         report.header('submit tasks')
 
         # Register the Pilot in a TaskManager object.
-        umgr = rp.TaskManager(session=session)
-        umgr.add_pilots(pilot)
+        tmgr = rp.TaskManager(session=session)
+        tmgr.add_pilots(pilot)
 
         # Create a workload of Tasks.
         # Each task runs a MPI test application.
@@ -107,11 +107,11 @@ if __name__ == '__main__':
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        tasks = umgr.submit_tasks(tds)
+        tasks = tmgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED)
         report.header('gather results')
-        umgr.wait_tasks()
+        tmgr.wait_tasks()
 
         report.info('\n')
         for task in tasks:

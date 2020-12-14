@@ -57,12 +57,12 @@ if __name__ == '__main__':
         # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session=session)
 
-        scheduler = rp.umgr.scheduler.SCHEDULER_BACKFILLING
-      # scheduler = rp.umgr.scheduler.SCHEDULER_ROUND_ROBIN
+        scheduler = rp.tmgr.scheduler.SCHEDULER_BACKFILLING
+      # scheduler = rp.tmgr.scheduler.SCHEDULER_ROUND_ROBIN
       # scheduler = None
 
         # Register the Pilot in a TaskManager object.
-        umgr = rp.TaskManager(session=session, scheduler=scheduler)
+        tmgr = rp.TaskManager(session=session, scheduler=scheduler)
         def task_cb(task, state):
             if state in rp.FINAL:
                 global n_done
@@ -71,7 +71,7 @@ if __name__ == '__main__':
                       n_tasks, time.time() - start, task.pilot))
           # if state in [rp.FAILED]:
           #     session.close()
-        umgr.register_callback(task_cb)
+        tmgr.register_callback(task_cb)
 
         pdescs = list()
         for resource in resources:
@@ -105,7 +105,7 @@ if __name__ == '__main__':
 
         # Launch the pilot.
         pilots = pmgr.submit_pilots(pdescs)
-        umgr.add_pilots(pilots)
+        tmgr.add_pilots(pilots)
 
         def pilot_cb(pilot, state):
             print('pilot: %s - %s - %5.1f' % (pilot.uid, state,
@@ -145,13 +145,13 @@ if __name__ == '__main__':
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
         start  = time.time()
-        tasks  = umgr.submit_tasks(tds)
+        tasks  = tmgr.submit_tasks(tds)
         stop   = time.time()
         print(' === > %s' % (stop - start))
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
-        umgr.wait_tasks()
+        tmgr.wait_tasks()
 
         report.info('\n')
         for task in tasks:

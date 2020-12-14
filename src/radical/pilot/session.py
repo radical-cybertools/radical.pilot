@@ -84,7 +84,7 @@ class Session(rs.Session):
         self._primary = _primary
 
         self._pmgrs   = dict()  # map IDs to pmgr instances
-        self._umgrs   = dict()  # map IDs to umgr instances
+        self._umgrs   = dict()  # map IDs to tmgr instances
         self._cmgr    = None    # only primary sessions have a cmgr
 
         self._cfg     = ru.Config('radical.pilot.session',  name=name, cfg=cfg)
@@ -263,10 +263,10 @@ class Session(rs.Session):
             # cleanup implies terminate
             terminate = True
 
-        for umgr_uid, umgr in self._umgrs.items():
-            self._log.debug("session %s closes umgr   %s", self._uid, umgr_uid)
-            umgr.close()
-            self._log.debug("session %s closed umgr   %s", self._uid, umgr_uid)
+        for umgr_uid, tmgr in self._umgrs.items():
+            self._log.debug("session %s closes tmgr   %s", self._uid, umgr_uid)
+            tmgr.close()
+            self._log.debug("session %s closed tmgr   %s", self._uid, umgr_uid)
 
         for pmgr_uid, pmgr in self._pmgrs.items():
             self._log.debug("session %s closes pmgr   %s", self._uid, pmgr_uid)
@@ -535,10 +535,10 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _register_umgr(self, umgr):
+    def _register_umgr(self, tmgr):
 
-        self._dbs.insert_umgr(umgr.as_dict())
-        self._umgrs[umgr.uid] = umgr
+        self._dbs.insert_umgr(tmgr.as_dict())
+        self._umgrs[tmgr.uid] = tmgr
 
 
     # --------------------------------------------------------------------------

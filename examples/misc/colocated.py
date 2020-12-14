@@ -45,8 +45,8 @@ if __name__ == '__main__':
 
         report.header('submit bags of tasks')
 
-        umgr = rp.TaskManager(session=session)
-        umgr.add_pilots(pilot)
+        tmgr = rp.TaskManager(session=session)
+        tmgr.add_pilots(pilot)
 
         # run N bags of tasks, where each bag contains M tasks of different
         # sizes.  All tasks within the same bag are to get scheduled on the
@@ -75,10 +75,10 @@ if __name__ == '__main__':
 
         random.shuffle(tds)
 
-        umgr.submit_tasks(tds)
+        tmgr.submit_tasks(tds)
 
         report.header('gather results')
-        umgr.wait_tasks()
+        tmgr.wait_tasks()
 
 
     except Exception as e:

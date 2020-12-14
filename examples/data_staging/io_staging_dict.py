@@ -99,23 +99,23 @@ if __name__ == "__main__":
 
         # Combine the Pilot, the Tasks and a scheduler via
         # a TaskManager object.
-        umgr = rp.TaskManager(session)
+        tmgr = rp.TaskManager(session)
 
         # Register our callback with the TaskManager. This callback will get
         # called every time any of the tasks managed by the TaskManager
         # change their state.
-        umgr.register_callback(task_state_cb)
+        tmgr.register_callback(task_state_cb)
 
         # Add the previously created Pilot to the TaskManager.
-        umgr.add_pilots(pilot)
+        tmgr.add_pilots(pilot)
 
         # Submit the previously created Task description to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning the Task to the Pilot.
-        task = umgr.submit_tasks(td)
+        task = tmgr.submit_tasks(td)
 
         # Wait for the task to reach a terminal state (DONE or FAILED).
-        umgr.wait_tasks()
+        tmgr.wait_tasks()
 
         print("* Task %s state: %s, exit code: %s" %
               (task.uid, task.state, task.exit_code))

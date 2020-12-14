@@ -98,7 +98,7 @@ def tearDown():
 #-----------------------------------------------------------------------------------------------------------------------
 
 
-# Test umgr input staging of a single file
+# Test tmgr input staging of a single file
 #-----------------------------------------------------------------------------------------------------------------------
 @mock.patch.object(Continuous, '__init__', return_value=None)
 @mock.patch.object(Continuous, 'advance')

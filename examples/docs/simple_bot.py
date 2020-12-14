@@ -66,13 +66,13 @@ if __name__ == "__main__":
 
         # create a TaskManager which schedules Tasks over pilots.
         report.header("Initializing Task Manager ...")
-        umgr = rp.TaskManager (session=session)
+        tmgr = rp.TaskManager (session=session)
 
 
         # Add the created Pilot to the TaskManager.
         report.ok('>>ok\n')
 
-        umgr.add_pilots(pilot)
+        tmgr.add_pilots(pilot)
 
         report.info('Create %d Task Description(s)\n\t' % BAG_SIZE)
 
@@ -95,10 +95,10 @@ if __name__ == "__main__":
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
         report.header("Submit Tasks to Task Manager ...")
-        cu_set = umgr.submit_tasks (cudesc_list)
+        cu_set = tmgr.submit_tasks (cudesc_list)
 
         report.header("Waiting for CUs to complete ...")
-        umgr.wait_tasks()
+        tmgr.wait_tasks()
 
         for task in cu_set:
             print("* Task %s, state %s, exit code: %s, stdout: %s"

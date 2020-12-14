@@ -28,29 +28,29 @@ class Task(object):
 
                 **Example**::
 
-                      umgr = rp.TaskManager(session=s)
+                      tmgr = rp.TaskManager(session=s)
 
                       ud = rp.TaskDescription()
                       ud.executable = "/bin/date"
 
-                      task = umgr.submit_tasks(ud)
+                      task = tmgr.submit_tasks(ud)
     """
 
     # --------------------------------------------------------------------------
     # In terms of implementation, a Task is not much more than a dict whose
     # content are dynamically updated to reflect the state progression through
-    # the UMGR components.  As a Task is always created via a UMGR, it is
-    # considered to *belong* to that UMGR, and all activities are actually
-    # implemented by that UMGR.
+    # the TMGR components.  As a Task is always created via a TMGR, it is
+    # considered to *belong* to that TMGR, and all activities are actually
+    # implemented by that TMGR.
     #
     # Note that this implies that we could create CUs before submitting them
-    # to a UMGR, w/o any problems. (FIXME?)
+    # to a TMGR, w/o any problems. (FIXME?)
     # --------------------------------------------------------------------------
 
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, umgr, descr):
+    def __init__(self, tmgr, descr):
 
         # NOTE GPU: we allow `mpi` for backward compatibility - but need to
         #      convert the bool into a decent value for `cpu_process_type`
@@ -62,7 +62,7 @@ class Task(object):
 
         # 'static' members
         self._descr = descr.as_dict()
-        self._umgr  = umgr
+        self._umgr  = tmgr
 
         # initialize state
         self._session          = self._umgr.session
@@ -70,7 +70,7 @@ class Task(object):
                                                 ru.ID_CUSTOM,
                                                 ns=self._session.uid)
         self._state            = rps.NEW
-        self._log              = umgr._log
+        self._log              = tmgr._log
         self._exit_code        = None
         self._stdout           = None
         self._stderr           = None
@@ -153,7 +153,7 @@ class Task(object):
             if val is not None:
                 setattr(self, "_%s" % key, val)
 
-        # callbacks are not invoked here anymore, but are bulked in the umgr
+        # callbacks are not invoked here anymore, but are bulked in the tmgr
 
 
     # --------------------------------------------------------------------------
@@ -165,7 +165,7 @@ class Task(object):
 
         ret = {
             'type':             'task',
-            'umgr':             self.umgr.uid,
+            'tmgr':             self.tmgr.uid,
             'uid':              self.uid,
             'name':             self.name,
             'state':            self.state,
@@ -200,7 +200,7 @@ class Task(object):
     # --------------------------------------------------------------------------
     #
     @property
-    def umgr(self):
+    def tmgr(self):
         """
         Returns the task's manager.
 
@@ -346,8 +346,8 @@ class Task(object):
         """
 
         # NOTE: The task has a sandbox property, containing the full sandbox
-        #       path, which is used by the umgr to stage data back and forth.
-        #       However, the full path as visible from the umgr side might not
+        #       path, which is used by the tmgr to stage data back and forth.
+        #       However, the full path as visible from the tmgr side might not
         #       be what the agent is seeing, specifically in the case of
         #       non-shared filesystems (OSG).  The agent thus uses
         #       `$PWD/t['uid']` as sandbox, with the assumption that this will

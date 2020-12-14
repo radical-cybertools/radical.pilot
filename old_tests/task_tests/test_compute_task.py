@@ -22,7 +22,7 @@ def test_cu_sandbox():
 
     try:
         session = rp.Session()
-        umgr    = rp.TaskManager(session=session)
+        tmgr    = rp.TaskManager(session=session)
     
         for sbox_in, sbox_out in sboxes:
 
@@ -32,11 +32,11 @@ def test_cu_sandbox():
 
             if not sbox_out:
                 with pytest.raises(ValueError):
-                    task = umgr.submit_tasks(td)
+                    task = tmgr.submit_tasks(td)
 
                 continue
 
-            task   = umgr.submit_tasks(td)
+            task   = tmgr.submit_tasks(td)
             u_dict = task.as_dict()
             check  = session._get_task_sandbox(u_dict, p_dict)
 

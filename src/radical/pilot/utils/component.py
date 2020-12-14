@@ -18,7 +18,7 @@ from ..          import states         as rps
 class ComponentManager(object):
     '''
     RP spans a hierarchy of component instances: the application has a pmgr and
-    umgr, and the umgr has a staging component and a scheduling component, and
+    tmgr, and the tmgr has a staging component and a scheduling component, and
     the pmgr has a launching component, and components also can have bridges,
     etc. etc.  This ComponentManager centralises the code needed to spawn,
     manage and terminate such components - any code which needs to create
@@ -497,7 +497,7 @@ class Component(object):
         #
         from radical.pilot import worker       as rpw
         from radical.pilot import pmgr         as rppm
-        from radical.pilot import umgr         as rpum
+        from radical.pilot import tmgr         as rpum
         from radical.pilot import agent        as rpa
         from radical.pilot import task_overlay as rpt
       # from radical.pilot import constants as rpc

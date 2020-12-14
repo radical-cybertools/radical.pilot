@@ -46,8 +46,8 @@ def test_local_tagging():
     report.header('submit tasks')
 
     # Register the Pilot in a TaskManager object.
-    umgr = rp.TaskManager(session=session)
-    umgr.add_pilots(pilot)
+    tmgr = rp.TaskManager(session=session)
+    tmgr.add_pilots(pilot)
 
     # Create a workload of Tasks.
 
@@ -76,12 +76,12 @@ def test_local_tagging():
     # Submit the previously created Task descriptions to the
     # PilotManager. This will trigger the selected scheduler to start
     # assigning Tasks to the Pilots.
-    cus = umgr.submit_tasks(tds)
+    cus = tmgr.submit_tasks(tds)
 
     # Wait for all tasks to reach a final state
     # (DONE, CANCELED or FAILED).
     report.header('gather results')
-    umgr.wait_tasks()
+    tmgr.wait_tasks()
 
     n = 5  # number of tasks to run
     report.info('create %d task description(s)\n\t' % n)
@@ -109,11 +109,11 @@ def test_local_tagging():
     # Submit the previously created Task descriptions to the
     # PilotManager. This will trigger the selected scheduler to start
     # assigning Tasks to the Pilots.
-    cus = umgr.submit_tasks(tds)
+    cus = tmgr.submit_tasks(tds)
 
     # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
     report.header('gather results')
-    umgr.wait_tasks()
+    tmgr.wait_tasks()
 
     for i in range(0, n):
         assert open('s1_t%s_hostname.txt' % i,'r').readline().strip() == \

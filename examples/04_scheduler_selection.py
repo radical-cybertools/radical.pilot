@@ -84,8 +84,8 @@ if __name__ == '__main__':
 
         # Combine the Pilot, the Tasks and a scheduler via
         # a TaskManager object.
-        umgr = rp.TaskManager(session=session, scheduler=SCHED)
-        umgr.add_pilots(pilots)
+        tmgr = rp.TaskManager(session=session, scheduler=SCHED)
+        tmgr.add_pilots(pilots)
 
         # Create a workload of Tasks.
         # Each task reports the id of the pilot it runs on.
@@ -109,11 +109,11 @@ if __name__ == '__main__':
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        tasks = umgr.submit_tasks(tds)
+        tasks = tmgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
-        umgr.wait_tasks()
+        tmgr.wait_tasks()
 
         report.info('\n')
         counts = dict()

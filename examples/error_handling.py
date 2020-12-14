@@ -94,13 +94,13 @@ if __name__ == "__main__":
     try:
 
         # create the task and pilot managers.
-        umgr = rp.TaskManager(session=session)
+        tmgr = rp.TaskManager(session=session)
         pmgr = rp.PilotManager(session=session)
 
         # Register our callbacks with the managers. The callbacks will get
         # called every time any of the pilots or tasks change their state,
         # including on FAILED states.
-        umgr.register_callback(task_state_cb)
+        tmgr.register_callback(task_state_cb)
         pmgr.register_callback(pilot_state_cb)
 
         # Create a local pilot.
@@ -110,7 +110,7 @@ if __name__ == "__main__":
         pd.runtime   = 60
 
         pilot = pmgr.submit_pilots(pd)
-        umgr.add_pilots(pilot)
+        tmgr.add_pilots(pilot)
 
 
         # we submit n tasks, some of which will fail.
@@ -125,10 +125,10 @@ if __name__ == "__main__":
             tds.append(td)
 
         # submit the tasks...
-        cus = umgr.submit_tasks(tds)
+        cus = tmgr.submit_tasks(tds)
 
         # ... and wait for their completion.
-        state = umgr.wait_tasks(state=rp.FINAL)
+        state = tmgr.wait_tasks(state=rp.FINAL)
 
 
     except Exception as e:

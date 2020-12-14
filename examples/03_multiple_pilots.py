@@ -77,8 +77,8 @@ if __name__ == '__main__':
             report.header('submit tasks [%d]' % gen)
 
             # Register the Pilot in a TaskManager object.
-            umgr = rp.TaskManager(session=session)
-            umgr.add_pilots(pilots)
+            tmgr = rp.TaskManager(session=session)
+            tmgr.add_pilots(pilots)
 
             # Create a workload of Tasks.
             # Each task reports the id of the pilot it runs on.
@@ -98,9 +98,9 @@ if __name__ == '__main__':
                 tds.append(td)
                 report.progress()
             report.ok('>>ok\n')
-            tasks = umgr.submit_tasks(tds)
+            tasks = tmgr.submit_tasks(tds)
             report.header('gather results')
-            umgr.wait_tasks()
+            tmgr.wait_tasks()
 
         report.info('\n')
         counts = dict()

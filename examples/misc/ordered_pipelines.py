@@ -47,8 +47,8 @@ if __name__ == '__main__':
 
         report.header('submit pipelines')
 
-        umgr = rp.TaskManager(session=session)
-        umgr.add_pilots(pilot)
+        tmgr = rp.TaskManager(session=session)
+        tmgr.add_pilots(pilot)
 
         if len(sys.argv) > 2: N = int(sys.argv[2])
         else                : N = 8
@@ -78,11 +78,11 @@ if __name__ == '__main__':
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        umgr.submit_tasks(tds)
+        tmgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state
         report.header('gather results')
-        umgr.wait_tasks()
+        tmgr.wait_tasks()
 
 
     except Exception as e:

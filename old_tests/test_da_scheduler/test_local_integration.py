@@ -47,8 +47,8 @@ def test_local_integration():
     pilot = pmgr.submit_pilots(pdesc)
 
     # Register the Pilot in a TaskManager object.
-    umgr = rp.TaskManager(session=session)
-    umgr.add_pilots(pilot)
+    tmgr = rp.TaskManager(session=session)
+    tmgr.add_pilots(pilot)
 
     # Run 16 tasks that each require 1 core and 10MB of LFS
     n = 16  
@@ -73,10 +73,10 @@ def test_local_integration():
     # Submit the previously created Task descriptions to the
     # PilotManager. This will trigger the selected scheduler to start
     # assigning Tasks to the Pilots.
-    cus = umgr.submit_tasks(tds)
+    cus = tmgr.submit_tasks(tds)
 
     # Wait for all tasks to finish
-    umgr.wait_tasks()
+    tmgr.wait_tasks()
 
     n = 16  
     cuds2 = list()
@@ -102,11 +102,11 @@ def test_local_integration():
     # # Submit the previously created Task descriptions to the
     # # PilotManager. This will trigger the selected scheduler to start
     # # assigning Tasks to the Pilots.
-    cus2 = umgr.submit_tasks(cuds2)
+    cus2 = tmgr.submit_tasks(cuds2)
 
 
     # # Wait for all tasks to finish
-    umgr.wait_tasks()
+    tmgr.wait_tasks()
 
     for i in range(0, n):
         assert open('s1_t%s_hostname.txt'%i,'r').readline().strip() == open('s2_t%s_hostname.txt'%i,'r').readline().strip()

@@ -73,7 +73,7 @@ class Default(AgentStagingOutputComponent):
 
             uid = task['uid']
 
-            # From here on, any state update will hand control over to the umgr
+            # From here on, any state update will hand control over to the tmgr
             # again.  The next task update should thus push *all* task details,
             # not only state.
             task['$all']    = True
@@ -238,7 +238,7 @@ class Default(AgentStagingOutputComponent):
                               'invalid staging action'
 
             # we only handle staging which does *not* include 'client://' src or
-            # tgt URLs - those are handled by the umgr staging components
+            # tgt URLs - those are handled by the tmgr staging components
             if src.startswith('client://'):
                 self._log.debug('skip staging for src %s', src)
                 self._prof.prof('staging_out_skip', uid=uid, msg=did)
@@ -306,7 +306,7 @@ class Default(AgentStagingOutputComponent):
                 # from tasks are supported.
                 # FIXME: we only handle srm staging right now, and only for
                 #        a specific target proxy. Other TRANSFER directives are
-                #        left to umgr output staging.  We should use SAGA to
+                #        left to tmgr output staging.  We should use SAGA to
                 #        attempt all staging ops which do not target the client
                 #        machine.
                 # if tgt.schema == 'srm':
@@ -321,7 +321,7 @@ class Default(AgentStagingOutputComponent):
 
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
-        # all agent staging is done -- pass on to umgr output staging
+        # all agent staging is done -- pass on to tmgr output staging
         self.advance(task, rps.UMGR_STAGING_OUTPUT_PENDING,
                            publish=True, push=False)
 

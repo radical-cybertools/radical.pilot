@@ -34,7 +34,7 @@
 #
 #   - the `pmgr.PilotLaunching` component manages pilots in
 #     `PMGR_PILOT_LAUNCHING` state, ie. it launches pilots onto target resources
-#   - the `umgr.StagingInput` component manages tasks in the
+#   - the `tmgr.StagingInput` component manages tasks in the
 #     `UMGR_STAGING_INPUT` state, ie. it stages input files for tasks
 #   - the `AGENT_EXECUTING` component manages tasks in `AGENT_EXECUTING` state,
 #     ie. it executes tasks.

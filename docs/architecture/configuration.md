@@ -12,7 +12,7 @@ There exist multiple dimensions of configurability, using different means:
 
   * *resource configuration files* contain settings which adapt RP to different
     resource types;
-  * *agent, session, umgr and pmgr configuration files* contain settings which
+  * *agent, session, tmgr and pmgr configuration files* contain settings which
     tune RP towards certain use cases and experiments
   * *environment variables* control RP's logging and profiling behavior
 

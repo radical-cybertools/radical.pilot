@@ -82,7 +82,7 @@ def get_session_docs(db, sid, cache=None, cachedir=None):
     json_data['session'] = bson2json(list(db[sid].find({'type': 'session'})))
     json_data['pmgr'   ] = bson2json(list(db[sid].find({'type': 'pmgr'   })))
     json_data['pilot'  ] = bson2json(list(db[sid].find({'type': 'pilot'  })))
-    json_data['umgr'   ] = bson2json(list(db[sid].find({'type': 'umgr'   })))
+    json_data['tmgr'   ] = bson2json(list(db[sid].find({'type': 'tmgr'   })))
     json_data['task'   ] = bson2json(list(db[sid].find({'type': 'task'   })))
 
     if  len(json_data['session']) == 0:

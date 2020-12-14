@@ -32,15 +32,15 @@ def task_state_cb (task, state):
 
 # ------------------------------------------------------------------------------
 #
-def wait_queue_size_cb(umgr, wait_queue_size):
+def wait_queue_size_cb(tmgr, wait_queue_size):
     """
     this callback is called when the size of the task managers wait_queue
     changes.
     """
     print("[Callback]: TaskManager  '%s' wait_queue_size changed to %s."
-        % (umgr.uid, wait_queue_size))
+        % (tmgr.uid, wait_queue_size))
 
-    pilots = umgr.get_pilots ()
+    pilots = tmgr.get_pilots ()
     for pilot in pilots:
         print("pilot %s: %s" % (pilot.uid, pilot.state))
 
@@ -50,7 +50,7 @@ def wait_queue_size_cb(umgr, wait_queue_size):
                                 rp.LAUNCHING     ,
                                 rp.PENDING_ACTIVE]:
                 print("cancel pilot %s" % pilot.uid)
-                umgr.remove_pilot (pilot.uid)
+                tmgr.remove_pilot (pilot.uid)
                 pilot.cancel ()
 
 
@@ -105,21 +105,21 @@ if __name__ == "__main__":
 
         # Combine the Pilot, the Tasks and a scheduler via
         # a TaskManager object.
-        umgr = rp.TaskManager (session   = session,
+        tmgr = rp.TaskManager (session   = session,
                                scheduler = rp.SCHEDULER_BACKFILLING)
 
         # Register our callback with the TaskManager. This callback will get
         # called every time any of the tasks managed by the TaskManager
         # change their state.
-        umgr.register_callback (task_state_cb, rp.TASK_STATE)
+        tmgr.register_callback (task_state_cb, rp.TASK_STATE)
 
         # Register also a callback which tells us when all tasks have been
         # assigned to pilots
-        umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
+        tmgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
 
 
         # Add the previously created Pilot to the TaskManager.
-        umgr.add_pilots (pilots)
+        tmgr.add_pilots (pilots)
 
         # Create a workload of restartable Tasks (tasks).
         tds = []
@@ -134,7 +134,7 @@ if __name__ == "__main__":
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        tasks = umgr.submit_tasks(tds)
+        tasks = tmgr.submit_tasks(tds)
 
         # the pilots have a total of 4 cores, and run for 10 min.  A Task needs about
         # 10 seconds, so we can handle about 24 tasks per minute, and need a total
@@ -147,7 +147,7 @@ if __name__ == "__main__":
         pilots[0].cancel()
 
         # Wait for all tasks to reach a terminal state (DONE or FAILED).
-        umgr.wait_tasks()
+        tmgr.wait_tasks()
 
         print('tasks all completed')
         print('----------------------------------------------------------------------')

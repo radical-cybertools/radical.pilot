@@ -35,7 +35,7 @@ TASK_BULK_MKDIR_MECHANISM = 'tar'
 #
 class Default(UMGRStagingInputComponent):
     """
-    This component performs all umgr side input staging directives for compute
+    This component performs all tmgr side input staging directives for compute
     tasks.  It gets tasks from the umgr_staging_input_queue, in
     UMGR_STAGING_INPUT_PENDING state, will advance them to UMGR_STAGING_INPUT
     state while performing the staging, and then moves then to the
@@ -148,7 +148,7 @@ class Default(UMGRStagingInputComponent):
         # performing that operation.  That implies that the agent needs to check
         # sandbox existence before attempting to create them now.
         #
-        # Note that this relies on the umgr scheduler to assigning the sandbox
+        # Note that this relies on the tmgr scheduler to assigning the sandbox
         # to the task.
         #
         # Note further that we need to make sure that all tasks are actually

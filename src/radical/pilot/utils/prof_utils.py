@@ -637,8 +637,8 @@ def get_session_description(sid, src=None, dburl=None):
                 for elem in json:
                     fix_uids(elem)
             elif isinstance(json, dict):
-                if 'taskmanager' in json and 'umgr' not in json:
-                    json['umgr'] = json['taskmanager']
+                if 'taskmanager' in json and 'tmgr' not in json:
+                    json['tmgr'] = json['taskmanager']
                 if 'pilotmanager' in json and 'pmgr' not in json:
                     json['pmgr'] = json['pilotmanager']
                 if '_id' in json and 'uid' not in json:
@@ -659,7 +659,7 @@ def get_session_description(sid, src=None, dburl=None):
     tree[sid] = {'uid'      : sid,
                  'etype'    : 'session',
                  'cfg'      : json['session']['cfg'],
-                 'has'      : ['umgr', 'pmgr'],
+                 'has'      : ['tmgr', 'pmgr'],
                  'children' : list()
                 }
 
@@ -673,12 +673,12 @@ def get_session_description(sid, src=None, dburl=None):
                      'children' : list()
                     }
 
-    for umgr in sorted(json['umgr'], key=lambda k: k['uid']):
-        uid = umgr['uid']
+    for tmgr in sorted(json['tmgr'], key=lambda k: k['uid']):
+        uid = tmgr['uid']
         tree[sid]['children'].append(uid)
         tree[uid] = {'uid'      : uid,
-                     'etype'    : 'umgr',
-                     'cfg'      : umgr['cfg'],
+                     'etype'    : 'tmgr',
+                     'cfg'      : tmgr['cfg'],
                      'has'      : ['task'],
                      'children' : list()
                     }
@@ -702,9 +702,9 @@ def get_session_description(sid, src=None, dburl=None):
     for task in sorted(json['task'], key=lambda k: k['uid']):
         uid  = task['uid']
         pid  = task['pilot']
-        umgr = task['umgr']
+        tmgr = task['tmgr']
         tree[pid ]['children'].append(uid)
-        tree[umgr]['children'].append(uid)
+        tree[tmgr]['children'].append(uid)
         tree[uid] = {'uid'         : uid,
                      'etype'       : 'task',
                      'cfg'         : task,

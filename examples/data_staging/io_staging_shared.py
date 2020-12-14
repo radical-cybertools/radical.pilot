@@ -78,10 +78,10 @@ if __name__ == "__main__":
 
         # Combine the Pilot, the Tasks and a scheduler via
         # a TaskManager object.
-        umgr = rp.TaskManager(session=session)
+        tmgr = rp.TaskManager(session=session)
 
         # Add the previously created Pilot to the TaskManager.
-        umgr.add_pilots(pilot)
+        tmgr.add_pilots(pilot)
 
         task_descs = []
 
@@ -108,12 +108,12 @@ if __name__ == "__main__":
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        tasks = umgr.submit_tasks(task_descs)
+        tasks = tmgr.submit_tasks(task_descs)
 
         # Wait for all tasks to finish.
-        umgr.wait_tasks()
+        tmgr.wait_tasks()
 
-        for task in umgr.get_tasks():
+        for task in tmgr.get_tasks():
 
             # Get the stdout and stderr streams of the Task.
             print(" STDOUT: %s" % task.stdout)

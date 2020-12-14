@@ -78,8 +78,8 @@ if __name__ == '__main__':
         report.header('submit synapse installer task')
 
         # Register the Pilot in a TaskManager object.
-        umgr = rp.TaskManager(session=session)
-        umgr.add_pilots(pilots)
+        tmgr = rp.TaskManager(session=session)
+        tmgr.add_pilots(pilots)
 
         # we create one pseudo task which installs radical.synapse in the pilot
         # ve
@@ -91,8 +91,8 @@ if __name__ == '__main__':
         td.executable  = "radical-synapse-version"
         td.cpu_processes = 1
 
-        t = umgr.submit_tasks(td)
-        umgr.wait_tasks(t.uid)
+        t = tmgr.submit_tasks(td)
+        tmgr.wait_tasks(t.uid)
         assert(t.state == rp.DONE)
 
 
@@ -121,12 +121,12 @@ if __name__ == '__main__':
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
-        tasks = umgr.submit_tasks(tds)
+        tasks = tmgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state
         # (DONE, CANCELED or FAILED).
         report.header('gather results')
-        umgr.wait_tasks()
+        tmgr.wait_tasks()
 
         report.info('\n')
         for task in tasks:

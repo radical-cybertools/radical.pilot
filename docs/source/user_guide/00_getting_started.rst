@@ -198,10 +198,10 @@ via the ``add_pilot`` call):
 .. code-block:: python
 
         # create a task manager, submit tasks, and wait for their completion
-        umgr = rp.TaskManager(session=session)
-        umgr.add_pilots(pilot)
-        umgr.submit_tasks(cuds)
-        umgr.wait_tasks()
+        tmgr = rp.TaskManager(session=session)
+        tmgr.add_pilots(pilot)
+        tmgr.submit_tasks(cuds)
+        tmgr.wait_tasks()
 
 
 Executing the Example

@@ -41,7 +41,7 @@ _EVENT_ENCODING = {
             rp.CANCELED                :  6,
             rp.FAILED                  :  7
         },
-        'umgr': {
+        'tmgr': {
         },
         'task': {
             rp.NEW                          :  1,
@@ -219,7 +219,7 @@ def sort_session (db, session, cachedir) :
         print("  %s" %  doc['_id'])
 
     print("task manager")
-    for doc in docs['umgr'] :
+    for doc in docs['tmgr'] :
         print("  %s" %  doc['_id'])
 
     print("tasks")

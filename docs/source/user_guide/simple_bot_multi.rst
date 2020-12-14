@@ -62,7 +62,7 @@ scheduler.
 
 .. code-block:: python
 
-   umgr = rp.TaskManager (session=session,
+   tmgr = rp.TaskManager (session=session,
                           scheduler=rp.SCHEDULER_ROUND_ROBIN)
 
 

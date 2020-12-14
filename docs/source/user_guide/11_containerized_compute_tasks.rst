@@ -180,8 +180,8 @@ Below is the RP python script to run our container on Bridges:
             report.header('submit tasks')
 
             # Register the Pilot in a TaskManager object.
-            umgr = rp.TaskManager(session=session)
-            umgr.add_pilots(pilot)
+            tmgr = rp.TaskManager(session=session)
+            tmgr.add_pilots(pilot)
 
             # Create a workload of Tasks.
 
@@ -220,11 +220,11 @@ Below is the RP python script to run our container on Bridges:
             # Submit the previously created Task descriptions to the
             # PilotManager. This will trigger the selected scheduler to start
             # assigning Tasks to the Pilots.
-            umgr.submit_tasks(cuds)
+            tmgr.submit_tasks(cuds)
 
             # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
             report.header('gather results')
-            umgr.wait_tasks()
+            tmgr.wait_tasks()
 
 
         except Exception as e:

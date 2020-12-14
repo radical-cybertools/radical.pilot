@@ -139,7 +139,7 @@ class Default(AgentStagingInputComponent):
                               rpc.TRANSFER, rpc.TARBALL])
 
             # we only handle staging which does *not* include 'client://' src or
-            # tgt URLs - those are handled by the umgr staging components
+            # tgt URLs - those are handled by the tmgr staging components
             if src.startswith('client://') and action != rpc.TARBALL:
                 self._log.debug('skip staging for src %s', src)
                 self._prof.prof('staging_in_skip', uid=uid, msg=did)
@@ -211,7 +211,7 @@ class Default(AgentStagingInputComponent):
                 # NOTE:  TRANSFER directives don't arrive here right now.
                 # FIXME: we only handle srm staging right now, and only for
                 #        a specific target proxy. Other TRANSFER directives are
-                #        left to umgr input staging.  We should use SAGA to
+                #        left to tmgr input staging.  We should use SAGA to
                 #        attempt all staging ops which do not involve the client
                 #        machine.
                 if src.schema == 'srm':

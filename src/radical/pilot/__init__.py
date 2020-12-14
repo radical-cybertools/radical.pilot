@@ -37,7 +37,7 @@ from .deprecated                import UnitManager
 # make submodules available -- mostly for internal use
 from . import utils
 from . import worker
-from . import umgr
+from . import tmgr
 from . import pmgr
 from . import agent
 
