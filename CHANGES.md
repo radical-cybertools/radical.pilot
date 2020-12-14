@@ -33,7 +33,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - Fix #2221
   - Fix read_config
   - doc fixes / additions
-  - adding task tests, component tests
+  - adding unit tests, component tests
   - remove old examples
   - fixing rp_analytics #2114
   - inject workers as MPI task
@@ -41,7 +41,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - mpirun configs for traverse, stampede2
   - ru.Config is responsible to pick configs from correct paths
   - test agent execution/base
-  - task test for popen/spawn #1881
+  - unit test for popen/spawn #1881
 
 
 1.5.4 Release                                                         2020-10-01
@@ -54,7 +54,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
 --------------------------------------------------------------------------------
 
   - Arbitrary udurations for consumed resources
-  - Fix task tests
+  - Fix unit tests
   - Fix python stack on Summit
   - add module test
   - added PRTE2 for PRRTEv2
@@ -252,7 +252,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - archive ORTE
   - increase bootstrap timeouts
   - consolidate MPI related launch methods
-  - task testing and linting
+  - unit testing and linting
   - archive ORTE, issue #1915
   - fix `get_mpi_info` for Open MPI
   - base classes to raise notimplemented. issue #1920
@@ -337,7 +337,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
 0.62.0  Release                                                       2019-06-08
 --------------------------------------------------------------------------------
 
-  - add task test
+  - add unit test
   - trigger tests
   - remove obsolete fifo scheduler (use the ordered scheduler instead)
   - add ordered scheduler

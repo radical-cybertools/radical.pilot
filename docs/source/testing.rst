@@ -9,8 +9,8 @@ Introduction
 ============
 
 Along with RADICAL-Pilot functionalities, we are developing a growing set of
-task tests. The source code of the task tests can be found in
-``src/radical/pilot/tests``. You can run the task tests via `pytest`:
+unit tests. The source code of the unit tests can be found in
+``src/radical/pilot/tests``. You can run the unit tests via `pytest`:
 
 .. code-block:: bash
 
@@ -26,9 +26,9 @@ Remote Testing
    Remote Testing is disabled in the current release!
 
 
-By default, the task tests of RADICAL-Pilot use pilot agents launched on the
+By default, the unit tests of RADICAL-Pilot use pilot agents launched on the
 local machine (`localhost`). However, it is possible to run a subset of the
-task tests (``src/radical/pilot/tests/remote/``) on a remote machine. Remote
+unit tests (``src/radical/pilot/tests/remote/``) on a remote machine. Remote
 testing can  be controlled via a set of environment variables:
 
 +-------------------------------------------+-------------------------------------+
@@ -50,7 +50,7 @@ testing can  be controlled via a set of environment variables:
 +-------------------------------------------+-------------------------------------+
 
 
-For example, if you want to run the task tests on the XSEDE _Bridges_ cluster
+For example, if you want to run the unit tests on the XSEDE _Bridges_ cluster
 (https://portal.xsede.org/psc-bridges), run
 
 .. code-block:: bash
