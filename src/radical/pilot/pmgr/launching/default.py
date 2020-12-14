@@ -13,7 +13,6 @@ import shutil
 import tempfile
 
 import radical.saga            as rs
-import radical.saga.filesystem as rsfs
 import radical.utils           as ru
 
 from ...  import states        as rps
@@ -608,42 +607,8 @@ class Default(PMGRLaunchingComponent):
                                    'action': rpc.TRANSFER})
         shutil.rmtree(tmp_dir)
 
-     ## # NOTE: the untar was moved into the bootstrapper (see `-z`).  That
-     ## #       is actually only correct for the single-pilot case...
-     ## # TODO: one tarball per pilot
-     ## #
-     ## # we now need to untar on the target machine.
-     ## js_url = ru.Url(pilots[0]['js_url'])
-     ##
-     ## # well, we actually don't need to talk to the rm, but only need
-     ## # a shell on the headnode.  That seems true for all ResourceManager we use right
-     ## # now.  So, lets convert the URL:
-     ## if '+' in js_url.scheme:
-     ##     parts = js_url.scheme.split('+')
-     ##     if 'gsissh' in parts: js_url.scheme = 'gsissh'
-     ##     elif  'ssh' in parts: js_url.scheme = 'ssh'
-     ## else:
-     ##     # In the non-combined '+' case we need to distinguish between
-     ##     # a url that was the result of a hop or a local rm.
-     ##     if js_url.scheme not in ['ssh', 'gsissh']:
-     ##         js_url.scheme = 'fork'
-     ##         js_url.host   = 'localhost'
-     ##
-     ## with self._cache_lock:
-     ##     if  js_url in self._saga_js_cache:
-     ##         js_tmp  = self._saga_js_cache[js_url]
-     ##     else:
-     ##         js_tmp  = rs.job.Service(js_url, session=self._session)
-     ##         self._saga_js_cache[js_url] = js_tmp
-     ##
-     ## cmd = "tar zmxvf %s/%s -C / ; rm -f %s" % \
-     ## cmd = "tar zmxvf %s/%s -C %s" % \
-     ##         (session_sandbox, tar_name, session_sandbox)
-     ## j = js_tmp.run_job(cmd)
-     ## j.wait()
-     ##
-     ## self._log.debug('tar cmd : %s', cmd)
-     ## self._log.debug('tar done: %s, %s, %s', j.state, j.stdout, j.stderr)
+        # FIXME: the untar was moved into the bootstrapper (see `-z`).  That
+        #        is actually only correct for the single-pilot case...
 
         for pilot in pilots:
             self._prof.prof('staging_in_stop',  uid=pilot['uid'])
@@ -1206,7 +1171,7 @@ class Default(PMGRLaunchingComponent):
         '''
 
         resource_sandbox = self._session._get_resource_sandbox(pilot)
-        session_sandbox  = self._session._get_session_sandbox (pilot)
+      # session_sandbox  = self._session._get_session_sandbox (pilot)
         pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
         client_sandbox   = self._session._get_client_sandbox()
 
@@ -1241,7 +1206,7 @@ class Default(PMGRLaunchingComponent):
         '''
 
         resource_sandbox = self._session._get_resource_sandbox(pilot)
-        session_sandbox  = self._session._get_session_sandbox (pilot)
+      # session_sandbox  = self._session._get_session_sandbox (pilot)
         pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
         client_sandbox   = self._session._get_client_sandbox()
 
@@ -1314,15 +1279,10 @@ class Default(PMGRLaunchingComponent):
 
         if cmd == 'staging_result':
 
-            sds = arg['sds']
-            states = {sd['uid']: sd['state'] for sd in self._active_sds.values()}
-
             with self._sds_lock:
                 for sd in arg['sds']:
                     if sd['uid'] in self._active_sds:
                         self._active_sds[sd['uid']]['state'] = sd['state']
-
-            states = {sd['uid']: sd['state'] for sd in self._active_sds.values()}
 
         return True
 

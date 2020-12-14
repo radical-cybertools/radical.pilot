@@ -499,15 +499,10 @@ class PilotManager(rpu.Component):
 
         if cmd == 'staging_result':
 
-            sds = arg['sds']
-            states = {sd['uid']: sd['state'] for sd in self._active_sds.values()}
-
             with self._sds_lock:
                 for sd in arg['sds']:
                     if sd['uid'] in self._active_sds:
                         self._active_sds[sd['uid']]['state'] = sd['state']
-
-            states = {sd['uid']: sd['state'] for sd in self._active_sds.values()}
 
         return True
 
