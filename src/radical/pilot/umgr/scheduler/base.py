@@ -327,7 +327,7 @@ class UMGRSchedulingComponent(rpu.Component):
     def _assign_pilot(self, task, pilot):
         '''
         assign a task to a pilot.
-        This is also a good opporttasky to determine the task sandbox(es).
+        This is also a good opportunity to determine the task sandbox(es).
         '''
 
         pid = pilot['uid']

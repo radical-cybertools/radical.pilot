@@ -469,7 +469,7 @@ prof(){
 
                 if not line:
 
-                    # just a read timeout, i.e. an opporttasky to check for
+                    # just a read timeout, i.e. an opportunity to check for
                     # termination signals...
                     if  self._terminate.is_set() :
                         self._log.debug ("stop monitoring")
