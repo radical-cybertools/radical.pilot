@@ -422,7 +422,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
 --------------------------------------------------------------------------------
 
   - improve event documentation
-  - support CU level metadata
+  - support Task level metadata
 
 
 0.50.16 Release                                                       2018-10-26
@@ -641,7 +641,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - apply RU's managed process to termination stress test
   - attempt to localize aprun tasks
   - better hops for titan
-  - better integration of CU script and app profs
+  - better integration of Task script and app profs
   - catch up with config changes for local testing
   - centralize URL derivation for pilot job service endpoints, hops, and sandboxes
   - clarify use of namespace vs. full qualified URL in the context of RP file staging
@@ -762,7 +762,7 @@ Version 0.46                                                          2017-08-11
   - add conf for spark n wrangler, comet
   - add docs to the cu env inject
   - expose spark's master url
-  - fix CU env setting (stampede)
+  - fix Task env setting (stampede)
   - configuration for spark and anaconda
   - resource config entries for titan
   - disable PYTHONHOME setting in titan_aprun
@@ -791,7 +791,7 @@ Version 0.46                                                          2017-08-11
   - add a local confiuration for bw
   - add early binding eample for osg
   - add greenfield config (only works for single-node runs at the moment)
-  - add PYTHONPATH to the vars we reset for CU envs
+  - add PYTHONPATH to the vars we reset for Task envs
   - allow overloading of agent config
   - fix #1071
   - fix synapse example
@@ -875,7 +875,7 @@ Version 0.46                                                          2017-08-11
     - ORTE used for more resources
     - improved examples, profiling
     - communication cleanup
-    - large CU support
+    - large Task support
     - lrms hook fixes
     - agent code splitup
 
@@ -996,7 +996,7 @@ Version 0.46                                                          2017-08-11
   - several resource specific configuration fixes (mostly stampede, archer, bw)
   - backport stdout/stderr/log retrieval
   - better logging of clone/drops, better error handling for configs
-  - fix, improve profiling of CU execution
+  - fix, improve profiling of Task execution
   - make profile an object
   - use ZMQ pubsub and queues for agent/sub-agent communication
   - decouple launch methods from scheduler for most LMs
@@ -1258,7 +1258,7 @@ API Changes:
 0.10 Release                                                       Apr. 29. 2014
 --------------------------------------------------------------------------------
 
-  - Support for state transition introspection via CU/Pilot state\_history
+  - Support for state transition introspection via Task/Pilot state\_history
   - Cleaned up an streamlined Input and Outpout file transfer workers
   - Support for interchangeable pilot agents
   - Closed tickets:
@@ -1304,7 +1304,7 @@ API Changes:
 
   - Tutorial 2 release (Github only)
   - Added support for multiprocessing worker
-  - Support for CU stdout and stderr transfer via MongoDB GridFS
+  - Support for Task stdout and stderr transfer via MongoDB GridFS
   - Closed tickets:
     - https://github.com/saga-project/saga-pilot/issues?milestone=7&page=1&state=closed
 

@@ -182,7 +182,7 @@ Our example creates 128 tasks, each running the executable `/bin/date`:
         n    = 128   # number of tasks to run
         cuds = list()
         for i in range(0, n):
-            # create a new CU description, and fill it.
+            # create a new Task description, and fill it.
             cud = rp.TaskDescription()
             cud.executable = '/bin/date'
             cuds.append(cud)

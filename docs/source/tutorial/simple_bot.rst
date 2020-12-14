@@ -48,7 +48,7 @@ and change the code below that line, according to the instructions in the commen
 
 .. Let's discuss the above example. We define our executable as "/bin/echo," the
 .. simple UNIX command that writes arguments to standard output. Next, we need to
-.. provide the arguments. In this case, "I am CU number $CU_NO," would correspond
+.. provide the arguments. In this case, "I am Task number $CU_NO," would correspond
 .. to typing ``/bin/echo 'I am task number $CU_NO'`` on command line.  ``$CU_NO``
 .. is an environment variable, so we will need to provide a value for it, as is
 .. done on the next line: ``{'CU_NO': i}``. Note that this block of code is in

@@ -67,12 +67,12 @@ For RP it makes no difference if new tasks arrive while other tasks are
 executing.
 
 
-What is a Task (CU)?
+What is a Task (Task)?
 ============================
 
-In RP, tasks are called ``Tasks`` (CU, or 'task'), indicating that are
-independent and self-contained tasks of computation. Each CU represents a
-self-contained, executable part of the application's workload.  A CU is
+In RP, tasks are called ``Tasks`` (Task, or 'task'), indicating that are
+independent and self-contained tasks of computation. Each Task represents a
+self-contained, executable part of the application's workload.  A Task is
 described by the following attributes:
 
   * `executable`    : the name of the executable to be run on the target machines
@@ -108,13 +108,13 @@ walltime). Once each pilot is defined, the application can schedule
 Figure 1 shows a high-level representation of RP architecture (yellow boxes)
 when deployed on two HPC platforms (Resource A and B), executing an
 application (Application) with 5 pilots (green boxes) and 36 CUs (red
-circles). Application contains pilot and CU descriptions; RP Client has two
+circles). Application contains pilot and Task descriptions; RP Client has two
 components: Pilot Manager and Task Manager. Pilot descriptions are passed to
 the Pilot Manager and Task descriptions to the Task Manager. The Pilot Manager
 uses Pilot Launcher to launch 2 of the 5 described pilots. One pilot is
 submitted to the local Resource Management (RM) system of Resource A, the
 other pilot to the RM of Resource B. Once instantiated, each pilot becomes
-available for CU execution. At that point, RP Task Manager sends 2 tasks to
+available for Task execution. At that point, RP Task Manager sends 2 tasks to
 Resource A and 5 tasks to Resource B.
 
 .. figure:: architecture.png
@@ -173,14 +173,14 @@ How do I monitor pilots and CUs?
 ================================
 
 Pilots and tasks progress according to state models. Figure 2 shows the state
-models of a pilot (left) and of a CU (right). States ending in ``pending``
+models of a pilot (left) and of a Task (right). States ending in ``pending``
 (light blue boxes) indicate that pilots or tasks are queued in one of the RP
 components. All the other states (blue boxes) indicate that pilots or tasks
 are managed by an RP component.
 
 .. figure:: global-state-model-plain.png
    :width: 400pt
-   :alt: Pilot and CU state models.
+   :alt: Pilot and Task state models.
 
    Figure 2. (left) Pilot state model; (right) Task state model.
 

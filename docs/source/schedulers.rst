@@ -42,7 +42,7 @@ the cost of additional communication round trips.  It depends on the actual
 application workload if that load balancing is beneficial or not.
 
 Backfilling is most beneficial for large numbers of pilots and for relatively
-long running tasks (where the CU runtime is significantly longer than the
+long running tasks (where the Task runtime is significantly longer than the
 communication round trip time between task manager and pilot agent).
 
 In general we recommend to *not* use backfilling for:

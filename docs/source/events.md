@@ -90,12 +90,12 @@ indication on event ordering *within each individual component*.
 
 ### UMGRStagingInputComponent (Component)
 
-    create_sandbox_start: create_task_sandbox starts                 (uid: task, [CU-DS])
-    create_sandbox_stop : create_task_sandbox stops                  (uid: task, [CU-DS])
-    staging_in_start    : staging request starts                     (uid: task, msg: did, [CU-DS])
-    staging_in_stop     : staging request stops                      (uid: task, msg: did, [CU-DS])
-    staging_in_tar_start: tar optimization starts                    (uid: task, msg: did, [CU-DS])
-    staging_in_tar_stop : tar optimization stops                     (uid: task, msg: did, [CU-DS])
+    create_sandbox_start: create_task_sandbox starts                 (uid: task, [Task-DS])
+    create_sandbox_stop : create_task_sandbox stops                  (uid: task, [Task-DS])
+    staging_in_start    : staging request starts                     (uid: task, msg: did, [Task-DS])
+    staging_in_stop     : staging request stops                      (uid: task, msg: did, [Task-DS])
+    staging_in_tar_start: tar optimization starts                    (uid: task, msg: did, [Task-DS])
+    staging_in_tar_stop : tar optimization stops                     (uid: task, msg: did, [Task-DS])
 
     partial orders
     * per task          : create_sandbox_start, create_sandbox_stop,
@@ -164,10 +164,10 @@ indication on event ordering *within each individual component*.
 
 ### AgentStagingInputComponent (Component)
 
-    staging_in_start    : staging request starts                     (uid: task, msg: did, [CU-DS])
-    staging_in_skip     : staging request is not handled here        (uid: task, msg: did, [CU-DS])
-    staging_in_fail     : staging request failed                     (uid: task, msg: did, [CU-DS])
-    staging_in_stop     : staging request stops                      (uid: task, msg: did, [CU-DS])
+    staging_in_start    : staging request starts                     (uid: task, msg: did, [Task-DS])
+    staging_in_skip     : staging request is not handled here        (uid: task, msg: did, [Task-DS])
+    staging_in_fail     : staging request failed                     (uid: task, msg: did, [Task-DS])
+    staging_in_stop     : staging request stops                      (uid: task, msg: did, [Task-DS])
 
     partial orders
     * per file          : staging_in_skip 
@@ -214,10 +214,10 @@ indication on event ordering *within each individual component*.
     staging_stderr_stop : reading task stderr stops                  (uid: task)
     staging_uprof_start : reading task profile starts                (uid: task, [APP])
     staging_uprof_stop  : reading task profile stops                 (uid: task, [APP])
-    staging_out_start   : staging request starts                     (uid: task, msg: did, [CU-DS])
-    staging_out_skip    : staging request is not handled here        (uid: task, msg: did, [CU-DS])
-    staging_out_fail    : staging request failed                     (uid: task, msg: did, [CU-DS])
-    staging_out_stop    : staging request stops                      (uid: task, msg: did, [CU-DS])
+    staging_out_start   : staging request starts                     (uid: task, msg: did, [Task-DS])
+    staging_out_skip    : staging request is not handled here        (uid: task, msg: did, [Task-DS])
+    staging_out_fail    : staging request failed                     (uid: task, msg: did, [Task-DS])
+    staging_out_stop    : staging request stops                      (uid: task, msg: did, [Task-DS])
 
     partial orders 
     * per task          : staging_stdout_start, staging_stdout_stop,
@@ -229,8 +229,8 @@ indication on event ordering *within each individual component*.
 
 ### UMGRStagingOutputComponent (Component)
 
-    staging_out_start   : staging request starts                     (uid: task, msg: did, [CU-DS])
-    staging_out_stop    : staging request stops                      (uid: task, msg: did, [CU-DS])
+    staging_out_start   : staging request starts                     (uid: task, msg: did, [Task-DS])
+    staging_out_stop    : staging request stops                      (uid: task, msg: did, [Task-DS])
 
     partial orders
     * per file          : staging_out_start, staging_out_stop
@@ -263,10 +263,10 @@ indication on event ordering *within each individual component*.
     - [CFG]           - only for some RP configurations
       - [CFG-R]       - only for some bootstrapping configurations
       - [CFG-DVM]     - only for launch methods which use a DVM
-    - [CU]            - only for some CU descriptions
-      - [CU-DS]       - only for tasks specifying data staging directives
-      - [CU-PRE]      - only for tasks specifying pre-exec directives
-      - [CU-POST]     - only for tasks specifying post-exec directives
+    - [Task]            - only for some Task descriptions
+      - [Task-DS]       - only for tasks specifying data staging directives
+      - [Task-PRE]      - only for tasks specifying pre-exec directives
+      - [Task-POST]     - only for tasks specifying post-exec directives
     - [PILOT]         - only for certain pilot
     - [APP]           - only for applications writing compatible profiles
     - [RUNTIME]       - only on  certain runtime decisions and system configuration

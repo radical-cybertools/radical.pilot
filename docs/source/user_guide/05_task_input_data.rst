@@ -8,18 +8,18 @@ Staging Task Input Data
 The vast majority of applications operate on data, and many of those read input
 data from files.  Since RP provides an abstraction above the resource layer, it
 can run a Task on any pilot the application created (see
-:ref:`chapter_user_guide_04`).  To ensure that the CU finds the data it needs on
+:ref:`chapter_user_guide_04`).  To ensure that the Task finds the data it needs on
 the resource where it runs, RP provides a mechanism to stage input data
 automatically.
 
 For each task, the application can specify
 
   * `source`: what data files need to be staged;
-  * `target`: what should the path be in the context of the CU execution; 
+  * `target`: what should the path be in the context of the Task execution; 
   * `action`: how should data be staged.
 
 If `source` and `target` file names are the same, and if `action` is the default
-`rp.TRANSFER`, then you can simply specify CU input data by giving a list of
+`rp.TRANSFER`, then you can simply specify Task input data by giving a list of
 file names (we'll discuss more complex staging directives in a :ref:`later
 <chapter_user_guide_06>` example):
 
