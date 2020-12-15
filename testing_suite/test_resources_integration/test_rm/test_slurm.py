@@ -24,7 +24,6 @@ class TestTask(TestCase):
         component.lm_info = {'cores_per_node': None}
         component._configure()
         node = os.environ['SLURM_NODELIST']
-        nodes = os.environ['SLURM_NNODES']
         cores_per_node = int(os.environ['SLURM_CPUS_ON_NODE'])
 
         self.assertEqual(component.node_list, [[node, node]])
