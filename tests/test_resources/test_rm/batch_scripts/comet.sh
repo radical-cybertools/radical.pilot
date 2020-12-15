@@ -23,5 +23,5 @@ pytest -vvv tests/test_resources/test_rm/test_slurm.py > output.log 2>&1
 
 if test "$?" = 1
 then
-    python radical.pilot/tests/utils/issue.py output.log
+    python tests/utils/integration_test_issue.py.py output.log
 fi
