@@ -1,7 +1,6 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import os
-import pytest
 
 from unittest import mock, TestCase
 
@@ -26,13 +25,13 @@ class TestTask(TestCase):
         component._configure()
         node = os.environ['SLURM_NODELIST']
         nodes = os.environ['SLURM_NNODES']
-        cores_per_node = os.environ['SLURM_CPUS_ON_NODE']
+        cores_per_node = int(os.environ['SLURM_CPUS_ON_NODE'])
 
-        assert component.node_list == [[node, node]]
-        assert component.cores_per_node == cores_per_node
-        assert component.gpus_per_node == 0
-        assert component.lfs_per_node == {'path': None, 'size': 0}
-    # ------------------------------------------------------------------------------
+        self.assertEqual(component.node_list, [[node, node]])
+        self.assertEqual(component.cores_per_node, cores_per_node)
+        self.assertEqual(component.gpus_per_node, 0)
+        self.assertEqual(component.lfs_per_node, {'path': None, 'size': 0})
+    # --------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter
