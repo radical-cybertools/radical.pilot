@@ -1,22 +1,24 @@
-{"cfg": {"rm_info" : [{"rm_info" : "INFO",
-                      "node_list" : [["a", 1],
-                                     ["b", 2],
-                                     ["c", 3]],
-                      "cores_per_node" : 8,
-                      "gpus_per_node" : 2,
-                      "lfs_per_node" : {"size": 0, "path": "/dev/null"},
-                      "mem_per_node" : 128},
-
-                     {"rm_info" : "INFO",
-                      "node_list" : [["a", 1],
-                                     ["b", 2],
-                                     ["c", 3]],
-                      "cores_per_node" : 12,
-                      "gpus_per_node" : 2,
-                      "lfs_per_node" : {"size": 0, "path": "/dev/null"},
-                      "mem_per_node" : 128
-                     }]
-        },
+{
+    "configure": {
+        "rm_info" : [
+            {
+                "node_list"      : [["a", 1], ["b", 2], ["c", 3]],
+                "lm_info"        : {"cores_per_node": 8},
+                "cores_per_node" : 8,
+                "gpus_per_node"  : 2,
+                "lfs_per_node"   : {"size": 0, "path": "/dev/null"},
+                "mem_per_node"   : 128
+            },
+            {
+                "node_list"      : [["a", 1], ["b", 2], ["c", 3]],
+                "lm_info"        : {"cores_per_node": 12},
+                "cores_per_node" : 12,
+                "gpus_per_node"  : 2,
+                "lfs_per_node"   : {"size": 0, "path": "/dev/null"},
+                "mem_per_node"   : 128
+            }
+        ]
+    },
  "allocate" : {"nodes"  : [[{"lfs": {"size": 0, "path": "/dev/null"},
                                   "cores": [0,0,0,0,0,0,0,0,
                                             0,0,0,0,0,0,0,0],
