@@ -27,7 +27,7 @@ pytest -vvv $TEST > output.log 2>&1
 
 if test "$?" = 1
 then
-    python radical.pilot/tests/utils/integration_test_issue.py.py 'SDSC Comet' output.log
+    python radical.pilot/tests/utils/integration_test_issue.py 'SDSC Comet' output.log
 fi
 
 sbatch comet.sh

@@ -8,6 +8,7 @@ The script defines the following to execute the test:
     Example:
     ```
     TEST="radical.pilot/tests/test_resources/test_rm/test_slurm.py"
+    ```
 
 - Moves to the assigned folder for testing, which is the same as submitting the script, removes any prior copy of RP's repo, the previous virtual environment variable, and clones the `devel` branch only.
 
