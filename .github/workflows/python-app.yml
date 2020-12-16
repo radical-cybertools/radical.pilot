@@ -59,8 +59,8 @@ jobs:
         NEW=`echo $LOG | cut -d ' ' -f2`
         OLD=`echo $LOG | cut -d ' ' -f3`
         DIFF=`git diff  --name-only --diff-filter=db $NEW..$OLD`
-        DIFF=$(echo $DIFF | grep -o -e '\b[^ ]*.py\b' | sed "s|^|$PWD/|")
-        test -z "$DIFF" && echo 'nothing to flake8' || flake8 $DIFF
+        FILTERED=$(for f in $DIFF; do echo $f; done | grep -v '/archive/' | grep -e '\.py$' |  sed "s|^|$PWD/|")
+        test -z "$FILTERED" && echo 'nothing to flake8' || flake8 $FILTERED
 
   pylint:
     runs-on: ubuntu-latest
@@ -88,5 +88,5 @@ jobs:
         NEW=`echo $LOG | cut -d ' ' -f2`
         OLD=`echo $LOG | cut -d ' ' -f3`
         DIFF=`git diff  --name-only --diff-filter=db $NEW..$OLD`
-        DIFF=$(echo $DIFF | grep -o -e '\b[^ ]*.py\b' | sed "s|^|$PWD/|")
-        test -z "$DIFF" && echo 'nothing to pylint' || pylint $DIFF
+        FILTERED=$(for f in $DIFF; do echo $f; done | grep -v '/archive/' | grep -e '\.py$' |  sed "s|^|$PWD/|")
+        test -z "$FILTERED" && echo 'nothing to pylint' || pylint $FILTERED
