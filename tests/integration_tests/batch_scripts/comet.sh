@@ -26,7 +26,7 @@ pytest -vvv $TEST > output.log 2>&1
 
 if test "$?" = 1
 then
-    python radical.pilot/tests/utils/integration_test_issue.py 'SDSC Comet' output.log
+    tests/bin/integration_test_issue.py -r 'SDSC Comet' -l output.log
     sbatch --begin='now+4weeks' comet.sh 
 else
     sbatch --begin='now+1week' comet.sh 
