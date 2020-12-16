@@ -94,6 +94,14 @@ class Continuous(AgentSchedulingComponent):
         #
         self._scattered = self._cfg.get('scattered', False)
 
+        # the config can override core and gpu detection,
+        # and decide to block some resources
+        blocked_cores = self._cfg.resource_cfg.blocked_cores or []
+        blocked_gpus  = self._cfg.resource_cfg.blocked_gpus  or []
+        if blocked_cores or blocked_gpus:
+            self._log.info('blocked cores: %s' % blocked_cores)
+            self._log.info('blocked gpus : %s' % blocked_gpus)
+
         self.nodes = []
         for node, node_uid in self._rm_node_list:
 
@@ -130,11 +138,23 @@ class Continuous(AgentSchedulingComponent):
                         idx = s * 21 * smt + i
                         node_entry['cores'][idx] = rpc.DOWN
 
+            for idx in blocked_cores:
+                assert(len(node_entry['cores']) > idx)
+                node_entry['cores'][idx] = rpc.DOWN
+
+            for idx in blocked_gpus:
+                assert(len(node_entry['gpus']) > idx)
+                node_entry['gpus'][idx] = rpc.DOWN
+
             self.nodes.append(node_entry)
 
         if self._rm_cores_per_node > 40 and \
            self._cfg['task_launch_method'] == 'JSRUN':
             self._rm_cores_per_node -= 1
+
+        if blocked_cores or blocked_gpus:
+            self._rm_cores_per_node -= len(blocked_cores)
+            self._rm_gpus_per_node  -= len(blocked_gpus)
 
 
     # --------------------------------------------------------------------------
