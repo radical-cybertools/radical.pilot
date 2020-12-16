@@ -233,7 +233,7 @@ class AgentSchedulingComponent(rpu.Component):
         # during agent startup.  We dig them out of the config at this point.
         #
         # NOTE: this information is insufficient for the torus scheduler!
-        self._pid                 = self._cfg['pid']
+        self._pid               = self._cfg['pid']
         self._rm_info           = self._cfg['rm_info']
         self._rm_lm_info        = self._cfg['rm_info']['lm_info']
         self._rm_node_list      = self._cfg['rm_info']['node_list']
