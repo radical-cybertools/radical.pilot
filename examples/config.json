@@ -19,7 +19,7 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : "local",
-        "cores"    : 64
+        "cores"    : 16
     },
 
     "local.local" : {
