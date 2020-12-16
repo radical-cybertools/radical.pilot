@@ -48,35 +48,60 @@ class TestContinuous(TestCase):
     @mock.patch.object(Continuous, '__init__', return_value=None)
     def test_configure(self, mocked_init):
 
-        cfg, _ = self.setUp()
         component = Continuous(cfg=None, session=None)
-        component._cfg =  mock.Mock()
+        component._uid = 'agent_scheduling.0000'
         component._log = ru.Logger('dummy')
-        component._rm_node_list = [["a", 1],
-                                   ["b", 2],["c",3]]
-        component._rm_cores_per_node = 8
-        component._rm_gpus_per_node  = 2
-        component._rm_lfs_per_node   = {"path": "/dev/null", "size": 0}
-        component._rm_mem_per_node   = 128
-        component.nodes = [{'name'  : 'a',
-                          'uid'   : 2,
-                          'cores' : [1, 2, 3, 4, 6, 0, 9, 8],
-                          'lfs'   : {"size": 1234,
-                                     "path" : "/dev/null"},
-                          'mem'   : 1024,
-                          'gpus'  : [1, 2]}]
-        try:
-            for i in range (len(cfg['cfg']['rm_info'])):
-                rm_info = cfg['cfg']['rm_info'][i]
+
+        # 1) without blocked cores; 2) with blocked cores;
+        blocked_cores_list = [[], [0, 1]]
+
+        test_case, _ = self.setUp()
+        for rm_info in test_case['configure']['rm_info']:
+
+            component._rm_info           = rm_info
+            component._rm_lm_info        = rm_info['lm_info']
+            component._rm_node_list      = rm_info['node_list']
+            component._rm_cores_per_node = rm_info['cores_per_node']
+            component._rm_gpus_per_node  = rm_info['gpus_per_node']
+            component._rm_lfs_per_node   = rm_info['lfs_per_node']
+            component._rm_mem_per_node   = rm_info['mem_per_node']
+
+            for blocked_cores in blocked_cores_list:
+
+                if blocked_cores:
+                    # add the index of the last core to the blocked cores
+                    blocked_cores  = blocked_cores[:]
+                    blocked_cores += [rm_info['cores_per_node'] - 1]
+
+                component._cfg = ru.Config(from_dict={
+                    'pid'         : 'pilot.0000',
+                    'rm_info'     : rm_info,
+                    'resource_cfg': {
+                        'blocked_cores': blocked_cores
+                    }
+                })
+
                 component._configure()
-                self.assertEqual(component.nodes[0]['cores'],
-                                 [rpc.FREE] * rm_info['cores_per_node'])
-                self.assertEqual(component.nodes[0]['gpus'],
-                                 [rpc.FREE] * rm_info['gpus_per_node'])
-        except:
-            with pytest.raises(AssertionError):
-                component._configure()
-                raise
+
+                try:
+
+                    self.assertEqual(
+                        component.nodes[0]['cores'],
+                        [rpc.FREE] * rm_info['cores_per_node'])
+                    self.assertEqual(
+                        component.nodes[0]['gpus'],
+                        [rpc.FREE] * rm_info['gpus_per_node'])
+
+                except AssertionError:
+
+                    blocked_core_idx = blocked_cores[-1]
+                    self.assertEqual(
+                        component.nodes[0]['cores'][blocked_core_idx],
+                        rpc.DOWN)
+
+                    self.assertEqual(
+                        component._rm_cores_per_node,
+                        rm_info['cores_per_node'] - len(blocked_cores))
 
 
     # --------------------------------------------------------------------------
