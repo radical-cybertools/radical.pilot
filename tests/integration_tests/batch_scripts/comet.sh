@@ -1,6 +1,5 @@
 #!/bin/bash
 #SBATCH -J rp_integration_test  # Job name
-#SBATCH --begin=now+1week
 #SBATCH -o rp_integration_test.%j.out   # Name of stdout output file(%j expands to jobId)
 #SBATCH -e rp_integration_test.%j.err   # Name of stderr output file(%j expands to jobId)
 #SBATCH -p compute
@@ -28,6 +27,7 @@ pytest -vvv $TEST > output.log 2>&1
 if test "$?" = 1
 then
     python radical.pilot/tests/utils/integration_test_issue.py 'SDSC Comet' output.log
+    sbatch --begin='now+4weeks' comet.sh 
+else
+    sbatch --begin='now+1week' comet.sh 
 fi
-
-sbatch comet.sh

@@ -55,7 +55,12 @@ jobs:
         pip install flake8-per-file-ignores
     - name: Lint with flake8
       run: |
-        ru-runcheck.sh flake8 diff
+        LOG=`git log -n 1 | grep Merge`
+        NEW=`echo $LOG | cut -d ' ' -f2`
+        OLD=`echo $LOG | cut -d ' ' -f3`
+        DIFF=`git diff  --name-only --diff-filter=db $NEW..$OLD`
+        DIFF=$(echo $DIFF | grep -o -e '\b[^ ]*.py\b' | sed "s|^|$PWD/|")
+        test -z "$DIFF" && echo 'nothing to flake8' || flake8 $DIFF
 
   pylint:
     runs-on: ubuntu-latest
