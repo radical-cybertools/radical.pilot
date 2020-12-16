@@ -240,9 +240,10 @@
         "task_launch_method"          : "IBRUN",
         "mpi_launch_method"           : "IBRUN",
       # "blocked_cores"               : [64, 65, 66, 67],
-        "pre_bootstrap_0"             :["module load TACC",
-                                        "module load intel/18.0.0",
-                                        "module load python3/3.7.0"
+      # "blocked_gpus"                : [0],
+        "pre_bootstrap_0"             : ["module load TACC",
+                                         "module load intel/18.0.0",
+                                         "module load python3/3.7.0"
                                         ],
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
