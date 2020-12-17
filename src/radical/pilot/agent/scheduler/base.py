@@ -608,14 +608,14 @@ class AgentSchedulingComponent(rpu.Component):
                 r_wait, a = self._schedule_waitpool()
                 active += int(a)
               # self._log.debug('=== schedule units w: %s %s', r_wait, a)
-               
+
             # always try to schedule newly incoming tasks
             # running out of resources for incoming could still mean we have
             # smaller slots for waiting tasks, so ignore `r` for now.
             r_inc, a = self._schedule_incoming()
             active += int(a)
           # self._log.debug('=== schedule units i: %s %s', r_inc, a)
-           
+
             # if we had resources, but could not schedule any incoming not any
             # waiting, then we effectively ran out of *useful* resources
             if resources and (r_wait is False and r_inc is False):
@@ -630,12 +630,12 @@ class AgentSchedulingComponent(rpu.Component):
                 resources = True
             active += int(a)
           # self._log.debug('=== schedule units c: %s %s', r, a)
-           
+
             if not active:
                 time.sleep(0.1)  # FIXME: configurable
 
           # self._log.debug('=== schedule units x: %s %s', resources, active)
-           
+
 
     # --------------------------------------------------------------------------
     #
