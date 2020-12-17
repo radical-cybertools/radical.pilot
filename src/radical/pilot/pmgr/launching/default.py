@@ -724,40 +724,22 @@ class Default(PMGRLaunchingComponent):
         if not job_name:
             job_name = pid
 
-<<<<<<< HEAD
         try:
-            # read agent config file
-            fname = '%s/agent_%s.json' % (self._conf_dir, rc_agent_config)
+            if isinstance(agent_config, dict):
+                agent_cfg = ru.Config(cfg=agent_config)
 
-            self._log.info("Read agent config file: %s",  fname)
-            agent_cfg = ru.Config(path=fname)
-
-            # allow for user level overload
-            user_cfg_file = '%s/.radical/pilot/config/%s' \
-                          % (os.environ['HOME'], os.path.basename(fname))
-
-            if os.path.exists(user_cfg_file):
-                self._log.info("merging user config: %s" % user_cfg_file)
-                user_cfg = ru.read_json(user_cfg_file)
-                ru.dict_merge (agent_cfg, user_cfg, policy='overwrite')
+            elif isinstance(agent_config, str):
+                agent_cfg = ru.Config('radical.pilot',
+                                      category='agent',
+                                      name=agent_config)
+            else:
+                # we can't handle this type
+                raise TypeError('agent config must be string or dict')
 
         except Exception as e:
-            self._log.exception("Error reading agent config file: %s" % e)
+            self._log.exception('Error using agent config')
             raise
-=======
-        if isinstance(agent_config, dict):
-            # use dict as is
-            agent_cfg = agent_config
 
-        elif isinstance(agent_config, str):
-            agent_cfg = ru.Config('radical.pilot',
-                                  category='agent',
-                                  name=agent_config)
-
-        else:
-            # we can't handle this type
-            raise TypeError('agent config must be string (config name) or dict')
->>>>>>> 289388d723d19cb33033dd7f3a643f84d080124e
 
         # expand variables in virtenv string
         virtenv = virtenv % {'pilot_sandbox'   : pilot_sandbox,
