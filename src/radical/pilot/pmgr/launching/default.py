@@ -655,7 +655,7 @@ class Default(PMGRLaunchingComponent):
         # we need the session sandbox url, but that is (at least in principle)
         # dependent on the schema to use for pilot startup.  So we confirm here
         # that the bulk is consistent wrt. to the schema.  Also include
-        # `staging_input` files and place them in the `staging_area`.
+        # `staging_input` files and place them in the `pilot_sandbox`.
         #
         # FIXME: if it is not, it needs to be splitted into schema-specific
         # sub-bulks
@@ -691,7 +691,7 @@ class Default(PMGRLaunchingComponent):
 
             for fname in ru.as_list(pilot['description'].get('input_staging')):
                 ft_list.append({'src': fname,
-                                'tgt': '%s/staging_area/%s'
+                                'tgt': '%s/%s'
                                      % (pilot['uid'], os.path.basename(fname)),
                                 'rem': False})
 
