@@ -1,4 +1,6 @@
 
+import os
+
 import radical.utils as ru
 
 from .constants import DEFAULT_ACTION, DEFAULT_FLAGS, DEFAULT_PRIORITY
@@ -32,20 +34,19 @@ def expand_description(descr):
     if descr.get('input_staging')  is None: descr['input_staging']  = list()
     if descr.get('output_staging') is None: descr['output_staging'] = list()
 
-    descr['input_staging' ] = expand_sd(descr['input_staging' ], 'task')
-    descr['output_staging'] = expand_sd(descr['output_staging'], 'client')
+    descr['input_staging' ] = expand_sds(descr['input_staging' ], 'task')
+    descr['output_staging'] = expand_sds(descr['output_staging'], 'client')
 
     return descr
 
 
 # ------------------------------------------------------------------------------
 #
-def expand_sd(sds, sandbox):
+def expand_sds(sds, sandbox):
     '''
     Take an abbreviated or compressed staging directive, expand it, and expand
     sandboxes
     '''
-
 
     if not sds:
         return []
@@ -66,14 +67,13 @@ def expand_sd(sds, sandbox):
             else           : src, tgt = sd, os.path.basename(ru.Url(sd).path)
 
             # FIXME: ns = session ID
-            expanded = {'source':   src.strip(),
-                        'target':   tgt.strip(),
-                        'action':   DEFAULT_ACTION,
-                        'flags':    DEFAULT_FLAGS,
-                        'priority': DEFAULT_PRIORITY,
-                        'uid':      ru.generate_id('sd.%(item_counter)06d',
-                                                    ru.ID_CUSTOM, ns='foo')
-                       }
+            expanded = {
+                    'source':   src.strip(),
+                    'target':   tgt.strip(),
+                    'action':   DEFAULT_ACTION,
+                    'flags':    DEFAULT_FLAGS,
+                    'priority': DEFAULT_PRIORITY,
+            }
 
         elif isinstance(sd, dict):
 
@@ -85,39 +85,41 @@ def expand_sd(sds, sandbox):
                     raise ValueError('"%s" is invalid on staging directive' % k)
 
             src = sd.get('source')
-            tgt = sd.get('target',   os.path.basename(ru.Url(source).path))
+            tgt = sd.get('target', os.path.basename(ru.Url(src).path))
 
             assert(src)
 
             if not src:
                 raise Exception("Staging directive dict has no source member!")
 
-            # FIXME: ns = session ID
-            expanded = {'source':   src,
-                        'target':   tgt,
-                        'action':   sd.get('action',   DEFAULT_ACTION),
-                        'flags':    sd.get('flags',    DEFAULT_FLAGS),
-                        'priority': sd.get('priority', DEFAULT_PRIORITY),
-                        'uid':      ru.generate_id('sd.%(item_counter)06d',
-                                                    ru.ID_CUSTOM, ns='foo')}
+            # FIXME: ID ns = session ID
+            expanded = {
+                    'source':   src,
+                    'target':   tgt,
+                    'action':   sd.get('action',   DEFAULT_ACTION),
+                    'flags':    sd.get('flags',    DEFAULT_FLAGS),
+                    'priority': sd.get('priority', DEFAULT_PRIORITY)
+           }
 
         else:
             src = sd['source']
-            tgt = sd.get('target', os.path.basename(ru.Url(source).path))
+            tgt = sd.get('target', os.path.basename(ru.Url(src).path))
 
             assert(src)
 
             if not tgt:
                 tgt = 'sandbox://%s/%s' % (sandbox, src.split('/')[-1])
 
-            sd_dict = {'source':   src,
-                       'target':   tgt,
-                       'action':   sd.get('action',   DEFAULT_ACTION),
-                       'flags':    sd.get('flags',    DEFAULT_FLAGS),
-                       'priority': sd.get('priority', DEFAULT_PRIORITY)}
+            expanded = {
+                    'source':   src,
+                    'target':   tgt,
+                    'action':   sd.get('action',   DEFAULT_ACTION),
+                    'flags':    sd.get('flags',    DEFAULT_FLAGS),
+                    'priority': sd.get('priority', DEFAULT_PRIORITY)
+            }
 
-        sd_dict['uid'] = ru.generate_id('sd'),
-        ret.append(sd_dict)
+        expanded['uid'] = ru.generate_id('sd'),
+        ret.append(expanded)
 
         # FIXME: expand sandboxes
         # FIXME: move to session
@@ -127,7 +129,7 @@ def expand_sd(sds, sandbox):
 
 # ------------------------------------------------------------------------------
 #
-def complete_url(path, contexts, log=None):
+def complete_url(path, contexts):
     '''
     Some paths in data staging directives are to be interpreted relative to
     certain locations, namely relative to
@@ -164,21 +166,18 @@ def complete_url(path, contexts, log=None):
     # We assume that the user knows what she is doing when using absolute paths,
     # and make no attempts to verify those.
     if str(path)[0] == '/':
-        if log: log.error('abs path')
-        return ru.Url('file:///' + path), None
+        return ru.Url('file://localhost/' + path)
 
     # we always want a schema, otherwise interpret as path relative to `pwd`
     if '://' not in path:
         # no schema: path relative to `pwd`
         for context in contexts:
-            if 'pwd' in context:
-                if log: log.error('pwd path')
-                return ru.Url(context['pwd'] + '/' + path), None
+            if 'pwd' not in context:
+                return ru.Url(context['pwd'] + '/' + path)
 
     # only expand sandbox schemas
     if not path.startswith('sandbox://'):
-        if log: log.error('norm path')
-        return ru.Url(path), None
+        return ru.Url(path)
 
     _, _, host, rest = path.split('/', 3)
     assert(host)
@@ -190,13 +189,10 @@ def complete_url(path, contexts, log=None):
     # need to do sandbox expansion
     for context in contexts:
         if host in context:
-            if log: log.error('comp path')
-            return ru.Url(context[host] + '/' + rest), None
+            return ru.Url(context[host] + '/' + rest)
 
     # cannot expand: this likely refers to an unknown UID
-    if log: log.error('oops path: %s', host)
-    return [None, host]
-
+    raise ValueError('cannot expand %s', path)
 
 
 # ------------------------------------------------------------------------------

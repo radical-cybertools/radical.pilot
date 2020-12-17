@@ -13,7 +13,7 @@ from .  import utils     as rpu
 from .  import states    as rps
 from .  import constants as rpc
 
-from .staging_directives import expand_sd
+from .staging_directives import expand_sds
 
 
 # bulk callbacks are implemented, but are currently not used nor exposed.
@@ -422,7 +422,7 @@ class PilotManager(rpu.Component):
         '''
 
         # add uid, ensure its a list, general cleanup
-        sds  = expand_sd(directives, 'pilot')
+        sds  = expand_sds(directives, 'pilot')
         uids = [sd['uid'] for sd in sds]
 
         # prepare to wait for completion
@@ -458,7 +458,7 @@ class PilotManager(rpu.Component):
         '''
 
         # add uid, ensure its a list, general cleanup
-        sds  = expand_sd(directives, 'pilot')
+        sds  = expand_sds(directives, 'pilot')
         uids = [sd['uid'] for sd in sds]
 
         # prepare to wait for completion

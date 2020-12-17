@@ -21,7 +21,7 @@ from ...  import constants     as rpc
 
 from .base import PMGRLaunchingComponent
 
-from ...staging_directives import complete_url, expand_staging_directives
+from ...staging_directives import complete_url, expand_sds
 
 
 # ------------------------------------------------------------------------------
@@ -161,12 +161,12 @@ class Default(PMGRLaunchingComponent):
         pid = pilot['uid']
 
         # NOTE: no unit sandboxes defined!
-        src_context = {'pwd'     : pilot['client_sandbox'],
-                       'pilot'   : pilot['pilot_sandbox'],
-                       'resource': pilot['resource_sandbox']}
-        tgt_context = {'pwd'     : pilot['pilot_sandbox'],
-                       'pilot'   : pilot['pilot_sandbox'],
-                       'resource': pilot['resource_sandbox']}
+        loc_ctx = {'pwd'     : pilot['client_sandbox'],
+                   'pilot'   : pilot['pilot_sandbox'],
+                   'resource': pilot['resource_sandbox']}
+        rem_ctx = {'pwd'     : pilot['pilot_sandbox'],
+                   'pilot'   : pilot['pilot_sandbox'],
+                   'resource': pilot['resource_sandbox']}
 
         # Iterate over all directives
         for sd in sds:
@@ -183,8 +183,8 @@ class Default(PMGRLaunchingComponent):
 
             self._prof.prof('staging_in_start', uid=pid, msg=did)
 
-            src = complete_url(src, [src_context], self._log)
-            tgt = complete_url(tgt, [tgt_context], self._log)
+            src = complete_url(src, loc_ctx)
+            tgt = complete_url(tgt, rem_ctx)
 
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 self._prof.prof('staging_in_fail', uid=pid, msg=did)
@@ -236,12 +236,12 @@ class Default(PMGRLaunchingComponent):
         pid = pilot['uid']
 
         # NOTE: no unit sandboxes defined!
-        src_context = {'pwd'     : pilot['pilot_sandbox'],
-                       'pilot'   : pilot['pilot_sandbox'],
-                       'resource': pilot['resource_sandbox']}
-        tgt_context = {'pwd'     : pilot['client_sandbox'],
-                       'pilot'   : pilot['pilot_sandbox'],
-                       'resource': pilot['resource_sandbox']}
+        loc_ctx = {'pwd'     : pilot['client_sandbox'],
+                   'pilot'   : pilot['pilot_sandbox'],
+                   'resource': pilot['resource_sandbox']}
+        rem_ctx = {'pwd'     : pilot['pilot_sandbox'],
+                   'pilot'   : pilot['pilot_sandbox'],
+                   'resource': pilot['resource_sandbox']}
 
         # Iterate over all directives
         for sd in sds:
@@ -261,8 +261,8 @@ class Default(PMGRLaunchingComponent):
                 if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                     raise ValueError("invalid pilot action '%s'" % action)
 
-                src = complete_url(src, [src_context], self._log)
-                tgt = complete_url(tgt, [tgt_context], self._log)
+                src = complete_url(src, rem_ctx)
+                tgt = complete_url(tgt, loc_ctx)
 
                 self._log.info('transfer %s to %s', src, tgt)
 
@@ -657,7 +657,7 @@ class Default(PMGRLaunchingComponent):
         # we need the session sandbox url, but that is (at least in principle)
         # dependent on the schema to use for pilot startup.  So we confirm here
         # that the bulk is consistent wrt. to the schema.  Also include
-        # `staging_input` files and place them in the pilots' `staging_area`s.
+        # `staging_input` files and place them in the `pilot_sandbox`.
         #
         # FIXME: may need to split into schema-specific sub-bulks
         #
@@ -683,14 +683,14 @@ class Default(PMGRLaunchingComponent):
             os.makedirs('%s/%s' % (tmp_dir, pid))
 
             info = self._prepare_pilot(resource, rcfg, pilot, expand)
-            ft_list += info['fts']
+            ft_list += info['sds']
             jd_list.append(info['jd'])
             self._prof.prof('staging_in_start', uid=pid)
 
             for fname in ru.as_list(pilot['description'].get('input_staging')):
                 base = os.path.basename(fname)
                 ft_list.append({'src': fname,
-                                'tgt': '%s/staging_area/%s' % (pid, base),
+                                'tgt': '%s/%s' % (pid, base),
                                 'rem': False})
 
             output_staging = pilot['description'].get('output_staging')
@@ -1231,17 +1231,6 @@ class Default(PMGRLaunchingComponent):
                                        'tgt': '%s/%s' % (session_sandbox, base),
                                        'rem': False})
 
-                # Copy the bootstrap shell script.
-                bootstrapper_path = os.path.abspath("%s/agent/%s"
-                                  % (self._root_dir, BOOTSTRAPPER_0))
-                self._log.debug("use bootstrapper %s", bootstrapper_path)
-
-                ret['fts'].append({'src': bootstrapper_path,
-                                   'tgt': '%s/%s' % (session_sandbox,
-                                                     BOOTSTRAPPER_0),
-                                   'rem': False
-                })
-
                 # Some machines cannot run pip due to outdated CA certs.
                 # For those, we also stage an updated certificate bundle
                 # TODO: use booleans all the way?
@@ -1258,10 +1247,10 @@ class Default(PMGRLaunchingComponent):
                 self._sandboxes[resource] = True
 
         # always stage the bootstrapper for each pilot, but *not* in the tarball
-        bootstrapper_path = os.path.abspath("%s/agent/bootstrap_0.sh"
-                                           % self._root_dir)
-        bootstrap_tgt = '%s/bootstrap_0.sh' % (pilot_sandbox, pid)
-        ret['sds'].append({'source': bootstrapper_path,
+        bootstrap_src = os.path.abspath("%s/agent/bootstrap_0.sh"
+                                            % self._root_dir)
+        bootstrap_tgt = '%s/bootstrap_0.sh' % pilot_sandbox
+        ret['sds'].append({'source': bootstrap_src,
                            'target': bootstrap_tgt,
                            'action': rpc.TRANSFER})
 
@@ -1349,6 +1338,8 @@ class Default(PMGRLaunchingComponent):
         '''
         Run some input staging directives.
         '''
+        self._log.debug('=== src 1: %s', sds[0]['source'])
+        self._log.debug('=== tgt 1: %s', sds[0]['target'])
 
         resource_sandbox = self._session._get_resource_sandbox(pilot)
         session_sandbox  = self._session._get_session_sandbox (pilot)
@@ -1371,9 +1362,16 @@ class Default(PMGRLaunchingComponent):
         for sd in sds:
             sd['prof_id'] = pilot['uid']
 
+        self._log.debug('=== src 2: %s', sds[0]['source'])
+        self._log.debug('=== tgt 2: %s', sds[0]['target'])
+
         for sd in sds:
-            sd['source'] = str(complete_url(sd['source'], loc_ctx, self._log))
-            sd['target'] = str(complete_url(sd['target'], rem_ctx, self._log))
+            sd['source'] = str(complete_url(sd['source'], loc_ctx))
+            sd['target'] = str(complete_url(sd['target'], rem_ctx))
+
+
+        self._log.debug('=== src 3: %s', sds[0]['source'])
+        self._log.debug('=== tgt 3: %s', sds[0]['target'])
 
         self._stage(sds)
 
@@ -1407,8 +1405,8 @@ class Default(PMGRLaunchingComponent):
             sd['prof_id'] = pilot['uid']
 
         for sd in sds:
-            sd['source'] = str(complete_url(sd['source'], self._rem_ctx, self._log))
-            sd['target'] = str(complete_url(sd['target'], self._loc_ctx, self._log))
+            sd['source'] = str(complete_url(sd['source'], self._rem_ctx))
+            sd['target'] = str(complete_url(sd['target'], self._loc_ctx))
 
         self._stage(sds)
 
@@ -1418,7 +1416,7 @@ class Default(PMGRLaunchingComponent):
     def _stage(self, sds):
 
         # add uid, ensure its a list, general cleanup
-        sds  = expand_staging_directives(sds)
+        sds  = expand_sds(sds, 'pilot')
         uids = [sd['uid'] for sd in sds]
 
         # prepare to wait for completion
