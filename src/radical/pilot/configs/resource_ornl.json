@@ -119,7 +119,6 @@
                                          "module load   zeromq/4.2.5",
                                          "module load   python/3.7.0",
                                          "export RADICAL_BASE=$(pwd -P)",
-                                         "export RADICAL_BASE_DIR=$(pwd -P)",
                                          "module list"
                                         ],
         "pre_bootstrap_1"             : [

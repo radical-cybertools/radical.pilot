@@ -182,7 +182,7 @@ class Continuous(AgentSchedulingComponent):
         '''
 
         # reflect the request in the nodelist state (set to `FREE`)
-        self._log.debug('=== unschedule 11: %s : %s', unit['uid'], unit['slots'])
+      # self._log.debug('=== unschedule 11: %s : %s', unit['uid'], unit['slots'])
         self._change_slot_states(unit['slots'], rpc.FREE)
 
 
@@ -391,11 +391,11 @@ class Continuous(AgentSchedulingComponent):
         for node in self._iterate_nodes():
 
             node_uid  = node['uid']
-            node_name = node['name']
-
-            self._log.debug('next %s : %s', node_uid, node_name)
-            self._log.debug('req1: %s = %s + %s', req_slots, rem_slots,
-                                                  len(alc_slots))
+          # node_name = node['name']
+          #
+          # self._log.debug('next %s : %s', node_uid, node_name)
+          # self._log.debug('req1: %s = %s + %s', req_slots, rem_slots,
+          #                                       len(alc_slots))
 
             # Check if a unit is tagged to use this node.  This means we check
             #   - if a tag exists
@@ -428,7 +428,7 @@ class Continuous(AgentSchedulingComponent):
             # now we know how many slots we still need at this point - but
             # we only search up to node-size on this node.  Duh!
             find_slots = min(rem_slots, slots_per_node)
-            self._log.debug('find: %s', find_slots)
+          # self._log.debug('find: %s', find_slots)
 
             # under the constraints so derived, check what we find on this node
             new_slots = self._find_resources(node           = node,
@@ -458,9 +458,9 @@ class Continuous(AgentSchedulingComponent):
             rem_slots -= len(new_slots)
             alc_slots.extend(new_slots)
 
-            self._log.debug('new slots: %s', pprint.pformat(new_slots))
-            self._log.debug('req2: %s = %s + %s <> %s', req_slots, rem_slots,
-                                                  len(new_slots), len(alc_slots))
+          # self._log.debug('new slots: %s', pprint.pformat(new_slots))
+          # self._log.debug('req2: %s = %s + %s <> %s', req_slots, rem_slots,
+          #                                       len(new_slots), len(alc_slots))
 
             # we are young only once.  kinda...
             is_first = False
