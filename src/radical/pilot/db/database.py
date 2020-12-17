@@ -4,7 +4,6 @@ __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import copy
 import time
 import pymongo
 
@@ -73,7 +72,7 @@ class DBSession(object):
             self._c.insert({'type'      : 'session',
                             '_id'       : sid,
                             'uid'       : sid,
-                            'cfg'       : copy.deepcopy(cfg),
+                            'cfg'       : cfg.as_dict(),
                             'created'   : self._created,
                             'connected' : self._connected})
             self._can_remove = True
@@ -186,7 +185,7 @@ class DBSession(object):
         pmgr_doc['type'] = 'pmgr'
 
         # FIXME: evaluate retval
-        self._c.insert(pmgr_doc)
+        self._c.insert(ru.demunch(pmgr_doc))
 
 
 
@@ -210,13 +209,11 @@ class DBSession(object):
             doc['type']    = 'pilot'
             doc['control'] = 'pmgr'
             doc['states']  = [doc['state']]
-            doc['cmd']     = list()
-            bulk.insert(doc)
+            doc['cmds']    = list()
+            bulk.insert(ru.demunch(doc))
 
         try:
-            res = bulk.execute()
-            self._log.debug('bulk pilot insert result: %s', res)
-            # FIXME: evaluate res
+            bulk.execute()
 
         except pymongo.errors.OperationFailure as e:
             self._log.exception('pymongo error: %s' % e.details)
@@ -244,15 +241,17 @@ class DBSession(object):
             cmd_spec = {'cmd' : cmd,
                         'arg' : arg}
 
+            self._log.debug('insert cmd: %s %s %s', pids, cmd, arg)
+
             # FIXME: evaluate retval
             if pids:
                 self._c.update({'type'  : 'pilot',
                                 'uid'   : {'$in' : pids}},
-                               {'$push' : {'cmd' : cmd_spec}},
+                               {'$push' : {'cmds': cmd_spec}},
                                multi=True)
             else:
                 self._c.update({'type'  : 'pilot'},
-                               {'$push' : {'cmd' : cmd_spec}},
+                               {'$push' : {'cmds': cmd_spec}},
                                multi=True)
 
         except pymongo.errors.OperationFailure as e:
@@ -352,7 +351,7 @@ class DBSession(object):
         umgr_doc['type'] = 'umgr'
 
         # FIXME: evaluate retval
-        self._c.insert(umgr_doc)
+        self._c.insert(ru.demunch(umgr_doc))
 
 
     # --------------------------------------------------------------------------
@@ -393,7 +392,7 @@ class DBSession(object):
                 doc['control'] = 'umgr'
                 doc['states']  = [doc['state']]
                 doc['cmd']     = list()
-                bulk.insert(doc)
+                bulk.insert(ru.demunch(doc))
 
             try:
                 res = bulk.execute()

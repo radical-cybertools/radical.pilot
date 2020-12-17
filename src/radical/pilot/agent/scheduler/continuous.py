@@ -2,8 +2,6 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
-import pprint
-
 import math as m
 
 from ...   import constants as rpc
@@ -301,7 +299,7 @@ class Continuous(AgentSchedulingComponent):
         on a single node.
         '''
 
-        self._log.debug('find_resources %s', unit['uid'])
+      # self._log.debug('find_resources %s', unit['uid'])
 
         cud = unit['description']
         mpi = bool('mpi' in cud['cpu_process_type'].lower())
@@ -317,8 +315,8 @@ class Continuous(AgentSchedulingComponent):
         if not cores_per_slot:
             cores_per_slot = 1
 
-        self._log.debug('req : %s %s %s %s %s', req_slots, cores_per_slot,
-                        gpus_per_slot, lfs_per_slot, mem_per_slot)
+      # self._log.debug('req : %s %s %s %s %s', req_slots, cores_per_slot,
+      #                 gpus_per_slot, lfs_per_slot, mem_per_slot)
 
         # First and last nodes can be a partial allocation - all other nodes
         # can only be partial when `scattered` is set.
@@ -335,10 +333,10 @@ class Continuous(AgentSchedulingComponent):
         mem_per_node   = self._rm_mem_per_node
 
         # we always fail when too many threads are requested
-        assert(cores_per_slot <= cores_per_node), 'too many threads per proc'
-        assert(gpus_per_slot  <= gpus_per_node),  'too many gpus    per proc'
-        assert(lfs_per_slot   <= lfs_per_node),   'too much lfs     per proc'
-        assert(mem_per_slot   <= mem_per_node),   'too much mem     per proc'
+        assert(cores_per_slot <= cores_per_node), 'too many threads per proc %s' % cores_per_slot
+        assert(gpus_per_slot  <= gpus_per_node),  'too many gpus    per proc %s' % gpus_per_slot
+        assert(lfs_per_slot   <= lfs_per_node),   'too much lfs     per proc %s' % lfs_per_slot
+        assert(mem_per_slot   <= mem_per_node),   'too much mem     per proc %s' % mem_per_slot
 
         # check what resource type limits teh number of slots per node
         slots_per_node = int(m.floor(cores_per_node / cores_per_slot))
@@ -464,7 +462,6 @@ class Continuous(AgentSchedulingComponent):
 
         # allocation worked!  If the unit was tagged, store the node IDs for
         # this tag, so that later units can reuse that information
-        tag = unit['description'].get('tag')
         if tag:
             self._tag_history[tag] = [node['uid'] for node in slots['nodes']]
 

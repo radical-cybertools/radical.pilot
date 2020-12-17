@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -17,6 +18,7 @@ LM_NAME_CCMRUN        = 'CCMRUN'
 LM_NAME_FORK          = 'FORK'
 LM_NAME_IBRUN         = 'IBRUN'
 LM_NAME_MPIEXEC       = 'MPIEXEC'
+LM_NAME_MPIEXEC_MPT   = 'MPIEXEC_MPT'
 LM_NAME_MPIRUN        = 'MPIRUN'
 LM_NAME_MPIRUN_MPT    = 'MPIRUN_MPT'
 LM_NAME_MPIRUN_CCMRUN = 'MPIRUN_CCMRUN'
@@ -24,6 +26,7 @@ LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
 LM_NAME_JSRUN         = 'JSRUN'
 LM_NAME_PRTE          = 'PRTE'
+LM_NAME_PRTE2         = 'PRTE2'
 LM_NAME_FLUX          = 'FLUX'
 LM_NAME_ORTE          = 'ORTE'
 LM_NAME_ORTE_LIB      = 'ORTE_LIB'
@@ -117,6 +120,7 @@ class LaunchMethod(object):
         from .mpirun         import MPIRun
         from .jsrun          import JSRUN
         from .prte           import PRTE
+        from .prte2          import PRTE2
         from .flux           import Flux
         from .rsh            import RSH
         from .ssh            import SSH
@@ -149,6 +153,7 @@ class LaunchMethod(object):
                 LM_NAME_FORK          : Fork,
                 LM_NAME_IBRUN         : IBRun,
                 LM_NAME_MPIEXEC       : MPIExec,
+                LM_NAME_MPIEXEC_MPT   : MPIExec,
                 LM_NAME_MPIRUN        : MPIRun,
                 LM_NAME_MPIRUN_CCMRUN : MPIRun,
                 LM_NAME_MPIRUN_RSH    : MPIRun,
@@ -156,6 +161,7 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_DPLACE : MPIRun,
                 LM_NAME_JSRUN         : JSRUN,
                 LM_NAME_PRTE          : PRTE,
+                LM_NAME_PRTE2         : PRTE2,
                 LM_NAME_FLUX          : Flux,
                 LM_NAME_RSH           : RSH,
                 LM_NAME_SSH           : SSH,
@@ -199,6 +205,7 @@ class LaunchMethod(object):
 
         from .fork           import Fork
         from .prte           import PRTE
+        from .prte2          import PRTE2
         from .flux           import Flux
         from .jsrun          import JSRUN
         from .yarn           import Yarn
@@ -210,6 +217,7 @@ class LaunchMethod(object):
         impl = {
             LM_NAME_FORK          : Fork,
             LM_NAME_PRTE          : PRTE,
+            LM_NAME_PRTE2         : PRTE2,
             LM_NAME_FLUX          : Flux,
             LM_NAME_JSRUN         : JSRUN,
             LM_NAME_YARN          : Yarn,
@@ -242,6 +250,7 @@ class LaunchMethod(object):
             raise TypeError("LaunchMethod shutdown hook only available to base class!")
 
         from .prte           import PRTE
+        from .prte2          import PRTE2
         from .flux           import Flux
         from .yarn           import Yarn
         from .spark          import Spark
@@ -251,6 +260,7 @@ class LaunchMethod(object):
 
         impl = {
             LM_NAME_PRTE          : PRTE,
+            LM_NAME_PRTE2         : PRTE2,
             LM_NAME_FLUX          : Flux,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
@@ -270,6 +280,13 @@ class LaunchMethod(object):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
+
+        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_cmd(self):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
@@ -398,6 +415,12 @@ class LaunchMethod(object):
 
         if not ret:
             for line in out.splitlines():
+                if 'intel(r) mpi library for linux' in line.lower():
+                    # Intel MPI is hydra based
+                    version = line.split(',')[1].strip()
+                    flavor  = self.MPI_FLAVOR_HYDRA
+                    break
+
                 if 'hydra build details:' in line.lower():
                     version = line.split(':', 1)[1].strip()
                     flavor  = self.MPI_FLAVOR_HYDRA
@@ -408,20 +431,21 @@ class LaunchMethod(object):
                     flavor  = self.MPI_FLAVOR_HYDRA
                     break
 
-                if 'version:' in line.lower():
-                    version = line.split(':', 1)[1].strip()
-                    flavor  = self.MPI_FLAVOR_OMPI
-                    break
-
                 if '(open mpi)' in line.lower():
                     version = line.split(')', 1)[1].strip()
                     flavor  = self.MPI_FLAVOR_OMPI
                     break
 
+                if 'version:' in line.lower():
+                    version = line.split(':', 1)[1].strip()
+                    flavor  = self.MPI_FLAVOR_OMPI
+                    break
+
+        self._log.debug('mpi details [%s]: %s', exe, out)
+        self._log.debug('mpi version: %s [%s]', version, flavor)
+
         if not flavor:
             raise RuntimeError('cannot identify MPI flavor [%s]' % exe)
-
-        self._log.debug('mpi version: %s [%s]', version, flavor)
 
         return version, flavor
 

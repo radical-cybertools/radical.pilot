@@ -497,13 +497,15 @@ class Component(object):
         #        should really be derived from rp module inspection via an
         #        `ru.PluginManager`.
         #
-        from radical.pilot import worker    as rpw
-        from radical.pilot import pmgr      as rppm
-        from radical.pilot import umgr      as rpum
-        from radical.pilot import agent     as rpa
+        from radical.pilot import worker       as rpw
+        from radical.pilot import pmgr         as rppm
+        from radical.pilot import umgr         as rpum
+        from radical.pilot import agent        as rpa
+        from radical.pilot import task_overlay as rpt
       # from radical.pilot import constants as rpc
 
         comp = {
+                rpc.WORKER                         : rpt.Worker,
                 rpc.UPDATE_WORKER                  : rpw.Update,
                 rpc.STAGER_WORKER                  : rpw.Stager,
 
@@ -763,7 +765,7 @@ class Component(object):
 
         states = ru.as_list(states)
         if not states:
-            states = None
+            states = [None]  # worker handles stateless entities
 
         for state in states:
 
@@ -775,8 +777,8 @@ class Component(object):
                         % (self.uid, state, self._outputs[state], output))
 
             if not output:
-
                 # this indicates a final state
+                self._log.debug('%s register output to None %s', self.uid, state)
                 self._outputs[state] = None
 
             else:
@@ -821,7 +823,7 @@ class Component(object):
 
         states = ru.as_list(states)
         if not states:
-            states = None
+            states = [None]  # worker handles stateless entities
 
         for state in states:
 
@@ -845,11 +847,18 @@ class Component(object):
         '''
 
         # NOTE: we do not check if things are actually in the given state
+        things = ru.as_list(things)
+        if not things:
+            # nothing to do
+            return
 
         if state not in self._outputs:
             raise ValueError('state %s has no output registered' % state)
 
-        self._outputs[state].put(things)
+        if self._outputs[state]:
+            # the bridge will sort things into bulks, wit bulk size dependig on
+            # bridge configuration
+            self._outputs[state].put(things)
 
 
     # --------------------------------------------------------------------------
@@ -1214,8 +1223,6 @@ class Component(object):
                 if _state not in self._outputs:
                     # unknown target state -- error
                     for thing in _things:
-                        import pprint
-                        self._log.debug('%s', pprint.pformat(self._outputs))
                         self._log.debug("lost  %s [%s]", thing['uid'], _state)
                         self._prof.prof('lost', uid=thing['uid'], state=_state,
                                         ts=ts)

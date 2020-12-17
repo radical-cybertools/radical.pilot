@@ -1,14 +1,20 @@
-# pylint: disable=protected-access, unused-argument
+# pylint: disable=protected-access, no-value-for-parameter, unused-argument
+
 import glob
-import radical.utils as ru
-from radical.pilot.agent.staging_input.default import Default
+
 from unittest import TestCase, mock
 
+import radical.utils as ru
 
+from radical.pilot.agent.staging_input.default import Default
+
+
+# ------------------------------------------------------------------------------
+#
 class TestDefault(TestCase):
 
-    # ------------------------------------------------------------------------------
-    # 
+    # --------------------------------------------------------------------------
+    #
     def setUp(self):
         ret = list()
         for fin in glob.glob('tests/test_agent_stagein/test_cases/unit.*.json'):
@@ -21,7 +27,7 @@ class TestDefault(TestCase):
         return ret
 
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def tearDown(self):
 
@@ -37,7 +43,7 @@ class TestDefault(TestCase):
         global_things = []
         global_state = []
 
-        # ------------------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         #
         def _advance_side_effect(things, state, publish, push):
             nonlocal global_things
@@ -45,7 +51,7 @@ class TestDefault(TestCase):
             global_things.append(things)
             global_state.append(state)
 
-        # ------------------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         #
         def _handle_unit_side_effect(unit, actionables):
             _advance_side_effect(unit, actionables, False, False)
@@ -53,7 +59,8 @@ class TestDefault(TestCase):
 
         tests = self.setUp()
         component = Default(cfg=None, session=None)
-        component._handle_unit = mock.MagicMock(side_effect=_handle_unit_side_effect)
+        component._handle_unit = mock.MagicMock(
+                                       side_effect=_handle_unit_side_effect)
         component.advance = mock.MagicMock(side_effect=_advance_side_effect)
         component._log = ru.Logger('dummy')
 
@@ -63,3 +70,9 @@ class TestDefault(TestCase):
             component._work([test[0]])
             self.assertEqual(global_things, test[1][0])
             self.assertEqual(global_state, test[1][1])
+
+
+# ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

@@ -19,16 +19,39 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg, session=None):
+
+        self._session = session
 
         if isinstance(cfg, str): cfg = ru.Config(cfg=ru.read_json(cfg))
         else                   : cfg = ru.Config(cfg=cfg)
+
+
+        # generate a MPI rank dependent UID for each worker process
+        # FIXME: this should be delegated to ru.generate_id
+
+        # FIXME: why do we need to import `os` again after MPI Spawn?
+        import os
+
+        # FIXME: rank determination should be moved to RU
+        rank = None
+
+        if rank is None: rank = os.environ.get('PMIX_RANK')
+        if rank is None: rank = os.environ.get('PMI_RANK')
+        if rank is None: rank = os.environ.get('OMPI_COMM_WORLD_RANK')
+
+        if rank is not None:
+            cfg['uid'] = '%s.%03d' % (cfg['uid'], int(rank))
 
         self._n_cores = cfg.cores
         self._n_gpus  = cfg.gpus
 
         self._info    = ru.Config(cfg=cfg.get('info', {}))
-        self._session = Session(cfg=cfg, uid=cfg.sid, _primary=False)
+
+
+        if not self._session:
+            self._session = Session(cfg=cfg, uid=cfg.sid, _primary=False)
+
 
         rpu.Component.__init__(self, cfg, self._session)
 
@@ -78,7 +101,7 @@ class Worker(rpu.Component):
 
         # connect to master
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
-        self.register_publisher(rpc.CONTROL_PUBSUB)
+      # self.register_publisher(rpc.CONTROL_PUBSUB)
 
         # run worker initialization *before* starting to work on requests.
         # the worker provides three builtin methods:
@@ -107,6 +130,16 @@ class Worker(rpu.Component):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
                                           'arg': {'uid' : self._uid,
                                                   'info': self._info}})
+
+
+    # --------------------------------------------------------------------------
+    #
+    # This class-method creates the appropriate sub-class for the Stager
+    #
+    @classmethod
+    def create(cls, cfg, session):
+
+        return Worker(cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -182,6 +215,34 @@ class Worker(rpu.Component):
             ret = 1
 
         return out, err, ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    # FIXME: an MPI call mode should be added.  That could work along these
+    #        lines of:
+    #
+    # --------------------------------------------------------------------------
+    #  def _mpi(self, data):
+    #
+    #      try:
+    #          cmd = rp.agent.launch_method.construct_command(data,
+    #                  executable=self.exe, args=data['func'])
+    #          out = rp.sh_callout(cmd)
+    #          err = None
+    #          ret = 0
+    #
+    #      except Exception as e:
+    #          self._log.exception('_mpi failed: %s' % (data))
+    #          out = None
+    #          err = 'mpi failed: %s' % e
+    #          ret = 1
+    #
+    #      return out, err, ret
+    # --------------------------------------------------------------------------
+    #
+    # For that to work we would need to be able to create a LM here, but ideally
+    # not replicate the work done in the agent executor.
 
 
     # --------------------------------------------------------------------------
@@ -328,62 +389,69 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _request_cb(self, task):
+    def _request_cb(self, tasks):
         '''
-        grep call type from task, check if such a method is registered, and
-        invoke it.
+        grep call type from tasks, check if methods are registered, and
+        invoke them.
         '''
 
-        self._prof.prof('reg_start', uid=self._uid, msg=task['uid'])
-        task['worker'] = self._uid
+        for task in ru.as_list(tasks):
 
-        try:
-            # ok, we have work to do.  Check the requirements to see  how many
-            # cpus and gpus we need to mark as busy
-            while not self._alloc_task(task):
-                # no resource - wait for new resources
+            self._prof.prof('reg_start', uid=self._uid, msg=task['uid'])
+            task['worker'] = self._uid
+
+            try:
+                # ok, we have work to do.  Check the requirements to see how
+                # many cpus and gpus we need to mark as busy
+                while not self._alloc_task(task):
+                    # no resource - wait for new resources
+                    #
+                    # NOTE: this will block smaller tasks from being executed
+                    #       right now.  alloc_task is not a proper scheduler,
+                    #       after all.
+                    while not self._res_evt.wait(timeout=1.0):
+
+                        # break on termination
+                        if self._term.is_set():
+                            return False
+
+                    self._res_evt.clear()
+
+                # we got an allocation for this task, and can run it, so apply
+                # to the process pool.  The callback (`self._result_cb`) will
+                # pick the task up on completion and free resources.
                 #
-                # NOTE: this will block smaller tasks from being executed right
-                #       now.  alloc_task is not a proper scheduler, after all
-                while not self._res_evt.wait(timeout=1.0):
+                # NOTE: we don't use mp.Pool - see __init__ for details
 
-                    # break on termination
-                    if self._term.is_set():
-                        return False
+              # ret = self._pool.apply_async(func=self._dispatch, args=[task],
+              #                              callback=self._result_cb,
+              #                              error_callback=self._error_cb)
+                proc = mp.Process(target=self._dispatch, args=[task],
+                                  daemon=True)
 
-                self._res_evt.clear()
+                with self._plock:
 
-            # we got an allocation for this task, and can run it, so apply to
-            # the process pool.  The callback (`self._result_cb`) will pick the
-            # task up on completion and free resources.
-            # NOTE: we don't use mp.Pool - see __init__ for details
-          # ret = self._pool.apply_async(func=self._dispatch, args=[task],
-          #                              callback=self._result_cb,
-          #                              error_callback=self._error_cb)
-            proc = mp.Process(target=self._dispatch, args=[task], daemon=True)
+                    # we need to include `proc.start()` in the lock, as
+                    # otherwise we may end up getting the `self._result_cb`
+                    # before the pid could be registered in `self._pool`.
+                    proc.start()
+                    self._pool[proc.pid] = proc
+                    self._log.debug('applied: %s: %s: %s',
+                                    task['uid'], proc.pid, self._pool.keys())
 
-            with self._plock:
-                # we need to include `proc.start()` in the lock, as otherwise we
-                # may end up getting the `self._result_cb` before the pid could
-                # be registered in `self._pool`.
-                proc.start()
-                self._pool[proc.pid] = proc
-                self._log.debug('applied: %s: %s: %s', task['uid'], proc.pid,
-                                                       self._pool.keys())
+            except Exception as e:
 
-        except Exception as e:
+                self._log.exception('request failed')
 
-            self._log.exception('request failed')
+                # free resources again for failed task
+                self._dealloc_task(task)
 
-            # free resources again for failed task
-            self._dealloc_task(task)
+                res = {'req': task['uid'],
+                       'out': None,
+                       'err': 'req_cb error: %s' % e,
+                       'ret': 1}
 
-            res = {'req': task['uid'],
-                   'out': None,
-                   'err': 'req_cb error: %s' % e,
-                   'ret': 1}
-
-            self._res_put.put(res)
+                self._res_put.put(res)
 
 
     # --------------------------------------------------------------------------
@@ -407,12 +475,13 @@ class Worker(rpu.Component):
         # ----------------------------------------------------------------------
 
 
+        ret = None
         try:
           # self._log.debug('dispatch: %s: %d', task['uid'], task['pid'])
             mode = task['mode']
             assert(mode in self._modes), 'no such call mode %s' % mode
 
-            tout = self._cfg.workload.timeout
+            tout = task['timeout']
             self._log.debug('dispatch with tout %s', tout)
 
             tlock  = mt.Lock()
@@ -447,6 +516,7 @@ class Worker(rpu.Component):
             # if we kill the process too quickly, the result put above
             # will not make it out, thus make sure the queue is empty
             # first.
+            ret = 1
             self._result_queue.close()
             self._result_queue.join_thread()
             sys.exit(ret)

@@ -86,10 +86,14 @@ class Agent_0(rpu.Worker):
         # ready to rumble!
         rpu.Worker.__init__(self, self._cfg, session)
 
-        # run our own slow-paced heartbeat monitor to watch pgr heartbeats
+        # run our own slow-paced heartbeat monitor to watch pmgr heartbeats
+        # FIXME: we need to get pmgr freq
+        freq = 10
+        tint = freq / 3
+        tout = freq * 3
         self._hb = ru.Heartbeat(uid=self._pid,
-                                timeout=10.0,  # FIXME:  configurable
-                                interval=1.0,  # FIXME:  configurable
+                                timeout=tout,
+                                interval=tint,
                                 beat_cb=self._hb_check,  # no own heartbeat(pmgr pulls)
                                 term_cb=self._hb_term_cb,
                                 log=self._log)
@@ -109,10 +113,10 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _hb_term_cb(self):
+    def _hb_term_cb(self, msg=None):
 
         self._cmgr.close()
-        self._log.warn('hb termination')
+        self._log.warn('hb termination: %s', msg)
 
         return None
 
@@ -300,11 +304,12 @@ class Agent_0(rpu.Worker):
 
             assert(sa != 'agent.0'), 'expect subagent, not agent.0'
 
-            # use our own config sans agents/components as a basis for
+            # use our own config sans agents/components/bridges as a basis for
             # the sub-agent config.
             tmp_cfg = copy.deepcopy(self._cfg)
             tmp_cfg['agents']     = dict()
             tmp_cfg['components'] = dict()
+            tmp_cfg['bridges']    = dict()
 
             # merge sub_agent layout into the config
             ru.dict_merge(tmp_cfg, self._cfg['agents'][sa], ru.OVERWRITE)
@@ -418,9 +423,6 @@ class Agent_0(rpu.Worker):
                 if hop : cmdline = hop
                 else   : cmdline = ls_name
 
-            # spawn the sub-agent
-            self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
-
             # ------------------------------------------------------------------
             class _SA(mp.Process):
 
@@ -430,15 +432,22 @@ class Agent_0(rpu.Worker):
                     self._log  = log
                     self._proc = None
                     super(_SA, self).__init__(name=self._name)
+
                     self.start()
+
+
+                def run(self):
 
                     sys.stdout = open('%s.out' % self._name, 'w')
                     sys.stderr = open('%s.err' % self._name, 'w')
                     out        = open('%s.out' % self._name, 'w')
                     err        = open('%s.err' % self._name, 'w')
                     self._proc = sp.Popen(args=self._cmd, stdout=out, stderr=err)
+                    self._log.debug('sub-agent %s spawned [%s]', self._name,
+                            self._proc)
 
-                def run(self):
+                    assert(self._proc)
+
                     # FIXME: lifetime, use daemon agent launcher
                     while True:
                         time.sleep(0.1)
@@ -447,6 +456,10 @@ class Agent_0(rpu.Worker):
                         else:
                             return False  # proc is gone - terminate
             # ------------------------------------------------------------------
+
+            # spawn the sub-agent
+            self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
+            _SA(sa, cmdline, log=self._log)
 
             # FIXME: register heartbeats?
 
@@ -472,23 +485,33 @@ class Agent_0(rpu.Worker):
         #        should then be communicated over the command pubsub
         # FIXME: commands go to pmgr, umgr, session docs
         # FIXME: check if pull/wipe are atomic
+        # FIXME: long runnign commands can time out on hb
         retdoc = self._dbs._c.find_and_modify(
-                    query ={'uid'  : self._pid},
-                    update={'$set' : {'cmd': []}},  # Wipe content of array
-                    fields=['cmd'])
+                    query ={'uid' : self._pid},
+                    fields=['cmds'],                    # get  new commands
+                    update={'$set': {'cmds': list()}})  # wipe old commands
 
         if not retdoc:
             return True
 
-        for spec in retdoc.get('cmd', []):
+        for spec in retdoc.get('cmds', []):
 
             cmd = spec['cmd']
             arg = spec['arg']
 
-            self._prof.prof('cmd', msg="%s : %s" % (cmd, arg), uid=self._pid)
+            self._log.debug('pilot command: %s: %s', cmd, arg)
+            self._prof.prof('cmd', msg="%s : %s" %  (cmd, arg), uid=self._pid)
 
             if cmd == 'heartbeat' and arg['pmgr'] == self._pmgr:
                 self._hb.beat(uid=self._pmgr)
+
+            elif cmd == 'prep_env':
+                env_spec = arg
+
+                for env_id in env_spec:
+                    # ensure we have a hb period
+                    self._hb.beat(uid=self._pmgr)
+                    self._prepare_env(env_id, env_spec[env_id])
 
             elif cmd == 'cancel_pilot':
                 self._log.info('cancel pilot cmd')
@@ -580,6 +603,24 @@ class Agent_0(rpu.Worker):
         self.advance(unit_list, publish=False, push=True)
 
         return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _prepare_env(self, eid, env_spec):
+
+        etype = env_spec['type']
+        evers = env_spec['version']
+        emods = env_spec['setup']
+
+        assert(etype == 'virtualenv')
+        assert(evers)
+
+        rp_cse = 'radical-pilot-create-static-ve'
+        out, err, ret = ru.sh_callout('%s -p ./%s -v %s -m "%s"'
+                                     % (rp_cse, eid, evers, ','.join(emods)))
+
+        assert(not ret), [out, err]
 
 
 # ------------------------------------------------------------------------------

@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -579,6 +580,23 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
+    def prepare_env(self, env_spec):
+        '''
+        request the preparation of a task or worker environment on the target
+        resource.  This call will return immediately, and the request will be
+        enacted asynchronously.  Any task or worker depending on the named
+        environment will be delayed until the env preparation completed, or will
+        fail if the env preparation failed.
+
+        Format: see `ComputePilotDescription`
+        '''
+
+        # send the prep_env request to the pilot
+        self._pmgr._pilot_prepare_env(self.uid, env_spec)
+
+
+    # --------------------------------------------------------------------------
+    #
     def stage_in(self, sds):
         '''
         Stages the content of the staging directive into the pilot's
@@ -608,9 +626,9 @@ class ComputePilot(object):
         sds = ru.as_list(sds)
 
         if not sds:
-             sds = [{'source': 'pilot:///staging_output.tgz',
-                     'target': 'client:///staging_output.tgz',
-                     'action': rpc.TRANSFER}]
+            sds = [{'source': 'pilot:///staging_output.tgz',
+                    'target': 'client:///staging_output.tgz',
+                    'action': rpc.TRANSFER}]
 
         for sd in sds:
             sd['prof_id'] = self.uid

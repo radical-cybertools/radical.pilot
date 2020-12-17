@@ -650,7 +650,8 @@ virtenv_setup()
         ve_create=TRUE
         ve_update=FALSE
 
-    elif test "$virtenv_mode" = "use"
+    elif test "$virtenv_mode" = "use" \
+         -o   "$virtenv_mode" = "local"
     then
         if ! test -d "$virtenv/"
         then
@@ -744,7 +745,8 @@ virtenv_setup()
     #       a SANDBOX install target.  SANDBOX installation will only work with
     #       'python setup.py install' (pip cannot handle it), so we have to use
     #       the sdist, and the RP_INSTALL_SOURCES has to point to directories.
-    if test "$virtenv_mode" = "use"
+    if test "$virtenv_mode" = "use" \
+       -o   "$virtenv_mode" = "local"
     then
         if test "$RP_INSTALL_TARGET" = "VIRTENV"
         then
@@ -1268,7 +1270,6 @@ rp_install()
   # fi
 
     pip_flags="$pip_flags --src '$PILOT_SANDBOX/rp_install/src'"
-    pip_flags="$pip_flags --build '$PILOT_SANDBOX/rp_install/build'"
     pip_flags="$pip_flags --prefix '$RP_INSTALL'"
     pip_flags="$pip_flags --no-deps --no-cache-dir --no-build-isolation"
 
@@ -1281,9 +1282,6 @@ rp_install()
         then
             echo "Couldn't install $src! Lets see how far we get ..."
         fi
-
-        # NOTE: why? fuck pip, that's why!
-        rm -rf "$PILOT_SANDBOX/rp_install/build"
 
         # clean out the install source if it is a local dir
         if test -d "$src"
@@ -1543,7 +1541,7 @@ profile_event 'bootstrap_0_start'
 echo "VIRTENV           : $VIRTENV"
 if test "$PYTHON_DIST" = "anaconda" && ! test -d "$VIRTENV/"; then
     case "$VIRTENV_MODE" in
-        recreate|update|use)
+        recreate|update|use|local)
             VIRTENV=$(cd `conda info --envs | awk -v envname="$VIRTENV" \
             '{ if ($1 == envname) print $NF }'`; pwd -P)
             ;;

@@ -1,0 +1,52 @@
+
+{
+    "unit": {
+        "uid":         "unit.000013",
+        "description": {"executable"    : "/bin/sleep",
+                        "arguments"     : ["10"],
+                        "cpu_processes" : 1,
+                        "cpu_threads"   : 1,
+                        "gpu_processes" : 2
+                       },
+        "unit_sandbox_path": "/tmp"
+    },
+
+    "setup" : {
+        "lm" : {
+            "slots": {
+                "cores_per_node": 16,
+                "gpus_per_node" : 1,
+                "lm_info"       : null,
+                "lfs_per_node"  : 0,
+                "nodes"         : [{"name"    : "node1",
+                                    "uid"     : "node1",
+                                    "core_map": [[0]],
+                                    "gpu_map" : [[0], [1]],
+                                    "lfs"     : {"size": 0,
+                                                 "path": null}
+                }]
+            }
+        }
+    },
+
+    "results": {
+        "lm": {
+            "fork"  : ["/bin/sleep \"10\" ", null],
+          # "orte"  : "RuntimeError",
+            "aprun" : ["aprun -n 1 -N 1 -L node1 -d 1 -cc 0 /bin/sleep \"10\"  ", null],
+            "mpirun": ["mpirun  -np 1  -host node1  /bin/sleep \"10\"", null],
+            "ibrun" : ["ibrun -n 1 -o 0 /bin/sleep \"10\" ", null],
+            "ssh"   : ["/bin/sleep \"10\" ","ssh node1 LD_LIBRARY_PATH=/usr/local/lib/ PATH=test_path 1"],
+            "spark" : "RuntimeError",
+            "yarn"  : "RuntimeError",
+            "jsrun"   : ["jsrun --erf_input rs_layout_cu_000013   /bin/sleep \"10\" ", null]
+        },
+        "resource_file": {
+            "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0}; gpu: {0,1}}\n"]
+        },
+        "resource_filename": {
+            "jsrun": "rs_layout_cu_000013"
+        }
+    }
+}
+

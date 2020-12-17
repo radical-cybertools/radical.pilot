@@ -236,14 +236,13 @@ class Shell(AgentExecutingComponent):
             #        right here...
 
         try:
-            if cu['description']['mpi']:
-                launcher = self._mpi_launcher
-            else:
-                launcher = self._task_launcher
+            cpt = cu['description']['cpu_process_type']
+
+            if cpt  == 'MPI': launcher = self._mpi_launcher
+            else            : launcher = self._task_launcher
 
             if not launcher:
-                raise RuntimeError("no launcher (mpi=%s)"
-                                  % cu['description']['mpi'])
+                raise RuntimeError("no launcher (process type = %s)" % cpt)
 
             self._log.debug("Launching unit with %s (%s).",
                             launcher.name, launcher.launch_command)
@@ -344,9 +343,9 @@ prof(){
       # if  descr['stdin'] : io  += "<%s "  % descr['stdin']
       # else               : io  += "<%s "  % '/dev/null'
         if  descr['stdout']: io  += "1>%s " % descr['stdout']
-        else               : io  += "1>%s " %       'STDOUT'
+        else               : io  += "1>%s " % '%s.out' % cu['uid']
         if  descr['stderr']: io  += "2>%s " % descr['stderr']
-        else               : io  += "2>%s " %       'STDERR'
+        else               : io  += "2>%s " % '%s.err' % cu['uid']
 
         cmd, hop_cmd  = launcher.construct_command(cu,
                                         '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"')

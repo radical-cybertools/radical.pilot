@@ -5,7 +5,7 @@
         "queue"    : null,
         "schema"   : null,
         "cores"    : 1,
-        "gpus"     : 2
+        "gpus"     : 0
     },
 
     "local.localhost_prte" : {
@@ -18,11 +18,11 @@
     "local.localhost_funcs" : {
         "project"  : null,
         "queue"    : null,
-        "schema"   : "ssh",
+        "schema"   : "local",
         "cores"    : 64
     },
 
-    "local.devel" : {
+    "local.local" : {
         "project"  : null,
         "queue"    : null,
         "schema"   : null,

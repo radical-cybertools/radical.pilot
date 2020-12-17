@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -258,8 +259,7 @@ class PilotManager(rpu.Component):
             return False
 
         # send heartbeat
-        self._session._dbs.pilot_command('pilot_heartbeat', {'pmgr': self._uid})
-
+        self._pilot_send_hb()
         return True
 
 
@@ -400,6 +400,23 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _pilot_send_hb(self, pid=None):
+
+        self._session._dbs.pilot_command('heartbeat', {'pmgr': self._uid}, pid)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _pilot_prepare_env(self, pid, env_spec):
+
+        if not env_spec:
+            return
+
+        self._session._dbs.pilot_command('prep_env', env_spec, [pid])
+
+
+    # --------------------------------------------------------------------------
+    #
     def _pilot_staging_input(self, sds):
         '''
         Run some staging directives for a pilot.
@@ -453,9 +470,6 @@ class PilotManager(rpu.Component):
                 sd['state'] = rps.NEW
                 self._active_sds[sd['uid']] = sd
 
-            sd_states = [sd['state'] for sd
-                                     in  self._active_sds.values()
-                                     if  sd['uid'] in uids]
         # push them out
         self._stager_queue.put(sds)
 
@@ -485,15 +499,10 @@ class PilotManager(rpu.Component):
 
         if cmd == 'staging_result':
 
-            sds = arg['sds']
-            states = {sd['uid']: sd['state'] for sd in self._active_sds.values()}
-
             with self._sds_lock:
                 for sd in arg['sds']:
                     if sd['uid'] in self._active_sds:
                         self._active_sds[sd['uid']]['state'] = sd['state']
-
-            states = {sd['uid']: sd['state'] for sd in self._active_sds.values()}
 
         return True
 
@@ -602,12 +611,22 @@ class PilotManager(rpu.Component):
         # insert pilots into the database, as a bulk.
         self._session._dbs.insert_pilots(pilot_docs)
 
-        # Only after the insert can we hand the pilots over to the next
+        # immediately send first heartbeat and any other commands which are
+        # included in the pilot description
+        for pilot_doc in pilot_docs:
+            pid = pilot_doc['uid']
+            pd  = pilot_doc['description']
+
+            self._pilot_send_hb(pid)
+            self._pilot_prepare_env(pid, pd.get('prepare_env'))
+
+        # Only after the insert/update can we hand the pilots over to the next
         # components (ie. advance state).
         for pd in pilot_docs:
             pd['state'] = rps.PMGR_LAUNCHING_PENDING
             self._update_pilot(pd, advance=False)
         self.advance(pilot_docs, publish=True, push=True)
+
 
         self._rep.ok('>>ok\n')
 

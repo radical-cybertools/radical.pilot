@@ -135,12 +135,26 @@ class Popen(AgentExecutingComponent) :
     def _handle_unit(self, cu):
 
         try:
+            descr = cu['description']
+
+            # ensure that the named env exists
+            env = descr.get('named_env')
+            if env:
+                if not os.path.isdir('%s/%s' % (self._pwd, env)):
+                    raise ValueError('invalid named env %s for task %s' 
+                                    % (env, cu['uid']))
+                pre = ru.as_list(descr.get('pre_exec'))
+                pre.insert(0, '. %s/%s/bin/activate' % (self._pwd, env))
+                pre.insert(0, '. %s/deactivate'      % (self._pwd))
+                descr['pre_exec'] = pre
+
+
             # prep stdout/err so that we can append w/o checking for None
             cu['stdout'] = ''
             cu['stderr'] = ''
 
-            cpt = cu['description']['cpu_process_type']
-          # gpt = cu['description']['gpu_process_type']  # FIXME: use
+            cpt = descr['cpu_process_type']
+          # gpt = descr['gpu_process_type']  # FIXME: use
 
             # FIXME: this switch is insufficient for mixed units (MPI/OpenMP)
             if cpt == 'MPI': launcher = self._mpi_launcher
@@ -261,7 +275,7 @@ prof(){
             launch_script.write('prof cu_start\n')
             launch_script.write('\n# Change to unit sandbox\ncd %s\n' % sandbox)
 
-            # Before the Big Bang there was nothing
+            # FIXME: cu_pre_exec should be LM specific
             if self._cfg.get('cu_pre_exec'):
                 for val in self._cfg['cu_pre_exec']:
                     launch_script.write("%s\n"  % val)
@@ -303,14 +317,14 @@ prof(){
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
 
         # prepare stdout/stderr
-        stdout_file = descr.get('stdout') or 'STDOUT'
-        stderr_file = descr.get('stderr') or 'STDERR'
+        stdout_file = descr.get('stdout') or '%s.out' % cu['uid']
+        stderr_file = descr.get('stderr') or '%s.err' % cu['uid']
 
         cu['stdout_file'] = os.path.join(sandbox, stdout_file)
         cu['stderr_file'] = os.path.join(sandbox, stderr_file)
 
-        _stdout_file_h = open(cu['stdout_file'], "w")
-        _stderr_file_h = open(cu['stderr_file'], "w")
+        _stdout_file_h = open(cu['stdout_file'], 'a')
+        _stderr_file_h = open(cu['stderr_file'], 'a')
 
         self._log.info("Launching unit %s via %s in %s", cu['uid'], cmdline, sandbox)
 

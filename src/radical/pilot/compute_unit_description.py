@@ -12,6 +12,7 @@ NAME                   = 'name'
 EXECUTABLE             = 'executable'
 ARGUMENTS              = 'arguments'
 ENVIRONMENT            = 'environment'
+NAMED_ENV              = 'named_env'
 SANDBOX                = 'sandbox'
 
 CORES                  = 'cores'  # deprecated
@@ -39,6 +40,8 @@ STDOUT                 = 'stdout'
 STDERR                 = 'stderr'
 RESTARTABLE            = 'restartable'
 TAGS                   = 'tags'
+TAG                    = 'tag'  # temporary: will be merged with "tags"
+                                # (for agent.scheduler.continuous.Continuous)
 METADATA               = 'metadata'
 
 # process / thread types (for both, CPU and GPU processes/threads)
@@ -148,6 +151,15 @@ class ComputeUnitDescription(ru.Description):
        (`dict`).
 
        default: `{}`
+
+
+    .. data:: named_env
+
+       A named environment as prepared by the pilot.  The task will fail if that
+       environment does not exist.
+       (`str`).
+
+       default: `None`
 
 
     .. data:: sandbox
@@ -331,6 +343,7 @@ class ComputeUnitDescription(ru.Description):
                SANDBOX         : str         ,
                ARGUMENTS       : [str]       ,
                ENVIRONMENT     : {str: str}  ,
+               NAMED_ENV       : str         ,
                PRE_EXEC        : [str]       ,
                POST_EXEC       : [str]       ,
                STDOUT          : str         ,
@@ -351,6 +364,7 @@ class ComputeUnitDescription(ru.Description):
 
                RESTARTABLE     : bool        ,
                TAGS            : {None: None},
+               TAG             : None        ,
                METADATA        : None        ,
                CLEANUP         : bool        ,
                PILOT           : str         ,
@@ -363,6 +377,7 @@ class ComputeUnitDescription(ru.Description):
                SANDBOX         : ''          ,
                ARGUMENTS       : list()      ,
                ENVIRONMENT     : dict()      ,
+               NAMED_ENV       : ''          ,
                PRE_EXEC        : list()      ,
                POST_EXEC       : list()      ,
                STDOUT          : ''          ,
@@ -383,6 +398,7 @@ class ComputeUnitDescription(ru.Description):
 
                RESTARTABLE     : False       ,
                TAGS            : dict()      ,
+               TAG             : None        ,
                METADATA        : None        ,
                CLEANUP         : False       ,
                PILOT           : ''          ,

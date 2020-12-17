@@ -23,7 +23,7 @@ if __name__ == '__main__':
     ru.write_json(docs, "%s.json" % sid)
 
     try:
-        mongo.disconnect()
+        mongo.close()
     except:
         pass
 

@@ -113,8 +113,8 @@ class JSRUN(LaunchMethod):
                 rs_str += ' host: %s;'  % str(node['uid'])
                 rs_str += ' cpu: {%s}'  % cores
                 if gpu_maps:
-                    gpus  = ','.join(str(gpu) for gpu in gpu_maps.pop(0))
-                    rs_str += '; gpu: {%s}' % gpus
+                    gpus = [str(gpu_map[0]) for gpu_map in gpu_maps]
+                    rs_str += '; gpu: {%s}' % ','.join(gpus)
                 rs_str += '}\n'
                 rank   += 1
 
