@@ -856,14 +856,14 @@ virtenv_activate()
     python_dist="$2"
 
     if test "$python_dist" = "anaconda"; then
-        if test -e "`which conda`"; then
+        if ! test -z "$(which conda)"; then
             eval "$(conda shell.posix hook)"
             conda activate "$virtenv"
-        else
-            if test -e "$virtenv/bin/activate"; then
+
+        elif test -e "$virtenv/bin/activate"; then
                 . "$virtenv/bin/activate"
-            fi
         fi
+
         if test -z "$CONDA_PREFIX"; then
             echo "ERROR: activating of (conda) virtenv failed - abort"
             exit 1
