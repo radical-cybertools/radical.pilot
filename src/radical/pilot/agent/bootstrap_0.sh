@@ -856,7 +856,7 @@ virtenv_activate()
     python_dist="$2"
 
     if test "$python_dist" = "anaconda"; then
-        if ! test -z "$(which conda)"; then
+        if ! test -z $(which conda); then
             eval "$(conda shell.posix hook)"
             conda activate "$virtenv"
 
@@ -1768,7 +1768,7 @@ export LD_LIBRARY_PATH="$PB1_LDLB"
 $PREBOOTSTRAP2_EXPANDED
 
 # activate virtenv
-if test "$PYTHON_DIST" = "anaconda" && test -e "`which conda`"
+if test "$PYTHON_DIST" = "anaconda" && ! test -z $(which conda)
 then
     eval "\$(conda shell.posix hook)"
     conda activate $VIRTENV
