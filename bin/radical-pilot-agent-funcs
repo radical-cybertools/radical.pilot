@@ -274,14 +274,14 @@ class Executor(object):
             self._prof.prof('task_get', comp=wid, uid=tid)
           # self._log.debug('get %s: %s', tid, cmd)
 
-            def check_obj(exe):
+            def check_obj(obj):
                 '''
                 Check the object type if pickled or not
                 to distinguish between exec and eval
                 '''
                 try:
-                    x = pickle.loads(codecs.decode(exe.encode(),"base64"))
-                    if isinstance(x,dict) is True:
+                    obj = pickle.loads(codecs.decode(exe.encode(),"base64"))
+                    if isinstance(obj, dict) is True:
                        return True
 
                 except:
@@ -303,19 +303,14 @@ class Executor(object):
                         self._log.debug("Setting the function for execution failed!")
                         raise
 
-                    @contextlib.contextmanager
-                    def stdoutIO(stdout=None):
-                        old = sys.stdout
-                        if stdout is None:
-                           stdout = StringIO()
-                        sys.stdout = stdout
-                        yield stdout
-                        sys.stdout = old
-
-                    with stdoutIO() as s:
-                         exec(function_code)
-
-                    task['stdout'] = s.getvalue()
+                    old_stdout = sys.stdout
+                    new_stdout = None
+                    try:
+                        sys.stdout = new_stdout = StringIO()
+                        exec(function_code)
+                    finally:
+                        sys.stdout = old_stdout
+                        task['stdout'] = new_stdout.getvalue()
 
                 else:
                     task['stdout'] = eval(cmd)
