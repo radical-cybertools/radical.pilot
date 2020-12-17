@@ -551,7 +551,7 @@ class Agent_0(rpu.Worker):
 
         # FIXME: implement a timeout, and/or a registry of rpc clients
 
-        self._log.debug('=== rpc check')
+        self._log.debug('rpc check')
 
         retdoc = self._dbs._c.find_and_modify(
                     query ={'uid' : self._pid},
@@ -567,7 +567,7 @@ class Agent_0(rpu.Worker):
             # document has no rpc request
             return True
 
-        self._log.debug('=== rpc req: %s', rpc_req)
+        self._log.debug('rpc req: %s', rpc_req)
 
         # RPCs are synchronous right now - we send the RPC on the command
         # channel, hope that some component picks it up and replies, and then

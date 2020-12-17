@@ -215,13 +215,6 @@ class Master(rpu.Component):
         task['description']['arguments'] += [fname]
 
         self._log.debug('submit %s', uid)
-        import pprint
-        self._log.debug('submit %s', uid)
-        self._log.debug('=== descr: %s', pprint.pformat(task['description']))
-
-        import pprint
-        self._log.debug('==== submit: %s', pprint.pformat(task))
-        pprint.pprint(task)
 
         # insert the task
         self.advance(task, publish=False, push=True)
@@ -407,10 +400,10 @@ class Master(rpu.Component):
 
         self._term.set()
         for uid in self._workers:
-            self._log.debug('=== term %s', uid)
+            self._log.debug('term %s', uid)
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_terminate',
                                               'arg': {'uid': uid}})
-        self._log.debug('=== term done')
+        self._log.debug('term done')
 
         self._term.set()
 

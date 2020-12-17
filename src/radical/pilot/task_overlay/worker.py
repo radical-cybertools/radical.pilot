@@ -623,7 +623,7 @@ class Worker(rpu.Component):
     #
     def _control_cb(self, topic, msg):
 
-        self._log.debug('=== got msg: %s: %s', topic, msg)
+        self._log.debug('got msg: %s: %s', topic, msg)
         if msg['cmd'] == 'terminate':
                 self._log.debug('got terminate msg: %s: %s', topic, msg)
                 self._term.set()
