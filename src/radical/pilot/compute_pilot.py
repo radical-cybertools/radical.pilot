@@ -473,7 +473,7 @@ class ComputePilot(object):
     #
     def unregister_callback(self, cb, metric=rpc.PILOT_STATE):
 
-        if metric and metric not in rpc.UMGR_METRICS :
+        if metric and metric not in rpc.PMGR_METRICS :
             raise ValueError ("invalid pmgr metric '%s'" % metric)
 
         if   not metric                  : metrics = rpc.PMGR_METRICS
