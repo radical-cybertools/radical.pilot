@@ -1,7 +1,7 @@
 # pylint: disable=protected-access
 
-__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2013-2014, http://radical.rutgers.edu'
+__license__   = 'MIT'
 
 
 import time
@@ -19,7 +19,7 @@ class DBSession(object):
     # --------------------------------------------------------------------------
     #
     def __init__(self, sid, dburl, cfg, log, connect=True):
-        """
+        '''
         Creates a new session
 
         A session is a MongoDB collection which contains documents of
@@ -30,7 +30,7 @@ class DBSession(object):
         pilots  : document describing a rp.Pilot
         umgr    : document describing a rp.UnitManager
         units   : document describing a rp.Unit
-        """
+        '''
 
         self._dburl      = dburl
         self._log        = log
@@ -94,18 +94,18 @@ class DBSession(object):
     #
     @property
     def dburl(self):
-        """
+        '''
         Returns the session db url.
-        """
+        '''
         return self._dburl
 
 
     # --------------------------------------------------------------------------
     #
     def get_db(self):
-        """
+        '''
         Returns the session db.
-        """
+        '''
         return self._db
 
 
@@ -113,9 +113,9 @@ class DBSession(object):
     #
     @property
     def created(self):
-        """
+        '''
         Returns the creation time
-        """
+        '''
         return self._created
 
 
@@ -123,9 +123,9 @@ class DBSession(object):
     #
     @property
     def connected(self):
-        """
+        '''
         Returns the connection time
-        """
+        '''
         return self._connected
 
 
@@ -133,9 +133,9 @@ class DBSession(object):
     #
     @property
     def closed(self):
-        """
+        '''
         Returns the close time
-        """
+        '''
         return self._closed
 
 
@@ -150,9 +150,9 @@ class DBSession(object):
     # --------------------------------------------------------------------------
     #
     def close(self, delete=True):
-        """
+        '''
         close the session
-        """
+        '''
         if self.closed:
             return None
           # raise RuntimeError('No active session.')
@@ -174,9 +174,9 @@ class DBSession(object):
     # --------------------------------------------------------------------------
     #
     def insert_pmgr(self, pmgr_doc):
-        """
+        '''
         Adds a pilot managers doc
-        """
+        '''
         if self.closed:
             return None
           # raise Exception('No active session.')
@@ -192,9 +192,9 @@ class DBSession(object):
     # --------------------------------------------------------------------------
     #
     def insert_pilots(self, pilot_docs):
-        """
+        '''
         Adds new pilot documents to the database.
-        """
+        '''
 
         # FIXME: explicit bulk vs. insert(multi=True)
 
@@ -223,9 +223,9 @@ class DBSession(object):
     # --------------------------------------------------------------------------
     #
     def pilot_command(self, cmd, arg=None, pids=None):
-        """
+        '''
         send a command and arg to a set of pilots
-        """
+        '''
 
         if self.closed:
             return None
@@ -261,10 +261,69 @@ class DBSession(object):
 
     # --------------------------------------------------------------------------
     #
+    def pilot_rpc(self, pid, rpc, args=None):
+        '''
+        Send am RPC command and arguments to a pilot and wait for the response.
+        This is a synchronous operation at this point, and it is not thread safe
+        to have multiple concurrent RPC calls.
+        '''
+
+        if self.closed:
+            raise Exception('session is closed')
+
+        if not self._c:
+            raise Exception('session is disconnected ')
+
+        try:
+            rpc_id  = ru.generate_id('rpc')
+            rpc_req = {'uid' : rpc_id,
+                       'rpc' : rpc,
+                       'arg' : args}
+
+            # send the request to the pilot - this replaces any former request
+            # not yet picked up by the pilot.
+            self._c.update({'type'  : 'pilot',
+                            'uid'   : pid},
+                           {'$set'  : {'rpc_req': rpc_req}})
+
+            # wait for reply to arrive
+            while True:
+                time.sleep(0.1)  # FIXME: tuneable
+
+                # pick up any response and purge it from the DB
+                retdoc = self._c.find_and_modify(
+                            query ={'uid' : pid},
+                            fields=['rpc_res'],
+                            update={'$set': {'rpc_res': None}})
+
+                if not retdoc:
+                    # no response found
+                    continue
+
+                rpc_res = retdoc.get('rpc_res')
+                if not rpc_res:
+                    # response was empty
+                    continue
+
+                if rpc_res['err']:
+                    # NOTE: we could raise a pickled exception - but how useful
+                    #       would a pilot exception stack be on the client side?
+                    raise RuntimeError('rpc failed: %s' % rpc_res['err'])
+
+                return rpc_res['ret']
+
+
+        except pymongo.errors.OperationFailure as e:
+            self._log.exception('pymongo error: %s' % e.details)
+            raise RuntimeError ('pymongo error: %s' % e.details) from e
+
+
+    # --------------------------------------------------------------------------
+    #
     def get_pilots(self, pmgr_uid=None, pilot_ids=None):
-        """
+        '''
         Get a pilot
-        """
+        '''
         if self.closed:
             raise Exception('No active session.')
 
@@ -299,14 +358,14 @@ class DBSession(object):
     # --------------------------------------------------------------------------
     #
     def get_units(self, umgr_uid, unit_ids=None):
-        """
+        '''
         Get yerself a bunch of compute units.
 
         return dict {uid:unit}
-        """
+        '''
         if self.closed:
             return None
-          # raise Exception("No active session.")
+          # raise Exception('No active session.')
 
         # we only pull units which are not yet owned by the umgr
 
@@ -340,9 +399,9 @@ class DBSession(object):
     # --------------------------------------------------------------------------
     #
     def insert_umgr(self, umgr_doc):
-        """
+        '''
         Adds a unit managers document
-        """
+        '''
         if self.closed:
             return None
           # raise Exception('No active session.')
@@ -357,9 +416,9 @@ class DBSession(object):
     # --------------------------------------------------------------------------
     #
     def insert_units(self, unit_docs):
-        """
+        '''
         Adds new unit documents to the database.
-        """
+        '''
 
         # FIXME: explicit bulk vs. insert(multi=True)
 
@@ -406,7 +465,7 @@ class DBSession(object):
     # --------------------------------------------------------------------------
     #
     def tailed_find(self, collection, pattern, fields, cb, cb_data=None):
-        """
+        '''
         open a collection in capped mode, and create a tailing find-cursor with
         the given pattern on it.  For all returned documents, invoke the given
         callback as:
@@ -421,14 +480,14 @@ class DBSession(object):
 
         This method is blocking, and will never return.  It is adviseable to
         call it in a thread.
-        """
+        '''
         raise NotImplementedError('duh!')
 
 
     # --------------------------------------------------------------------------
     #
     def tailed_control(self, collection, control, pattern, cb, cb_data=None):
-        """
+        '''
         open a collection in capped mode, and create a tailing find-cursor on
         it, where the find searches for the pattern:
 
@@ -447,7 +506,7 @@ class DBSession(object):
 
         This method is blocking, and will never return.  It is adviseable to
         call it in a thread.
-        """
+        '''
         raise NotImplementedError('duh!')
 
 
