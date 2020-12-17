@@ -76,7 +76,7 @@ class TestBase(unittest.TestCase):
         cu['description'] = tests['unit']['description']
         cu['unit_sandbox_path'] = tests['unit']['unit_sandbox_path']
         cu['gtod'] = tests['unit']['gtod']
-        
+
         component = Shell()
         component._log                   = ru.Logger('dummy')
         component._cfg = {'sid': 'test_sid', 'pid': 'test_pid', 'aid': 'test_aid'}
@@ -91,9 +91,8 @@ class TestBase(unittest.TestCase):
         launcher = mock.MagicMock()
         launcher.construct_command = mock.MagicMock(return_value=('some_exe', None))
 
-
         script = component._cu_to_cmd(cu, launcher)
         self.assertEqual(script, tests['results']['script'])
-        
+
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter
