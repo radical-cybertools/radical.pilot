@@ -106,8 +106,8 @@ def expand_staging_directives(sds):
             elif isinstance(flags, str):
                 raise ValueError('use RP constants for staging flags!')
 
-            # FIXME: ns = session ID
-            expanded = {'source':   source,
+            expanded = {'uid':      ru.generate_id('sd'),
+                        'source':   source,
                         'target':   target,
                         'action':   action,
                         'flags':    flags,
@@ -202,10 +202,6 @@ def complete_url(path, context, log=None):
 
         log.debug('   expand with %s', context[schema])
         ret = ru.Url(context[schema])
-
-        if schema in ['resource', 'pilot']:
-            # use a dedicated staging area dir
-            ret.path += '/staging_area'
 
         ret.path += '/%s' % ppath
         purl      = ret

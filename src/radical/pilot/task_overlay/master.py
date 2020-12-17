@@ -30,6 +30,8 @@ class Master(rpu.Component):
         self._requests = dict()      # bookkeeping of submitted requests
         self._lock     = mt.Lock()   # lock the request dist on updates
         self._term     = mt.Event()  # set for termination
+        self._term     = mt.Event()  # termination signal
+        self._thread   = None        # run loop
 
         cfg.sid        = os.environ['RP_SESSION_ID']
         cfg.base       = os.environ['RP_PILOT_SANDBOX']
@@ -284,7 +286,36 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def run(self):
+    def start(self):
+
+        self._thread = mt.Thread(target=self._run)
+        self._thread.daemon = True
+        self._thread.start()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def stop(self, timeout=None):
+
+        self._term.set()
+        if self._thread:
+            self._thread.join()
+
+        rpu.Component.stop(self, timeout=timeout)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def alive(self):
+
+        if not self._thread or self._term.is_set():
+            return False
+        return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _run(self):
 
         # get work from the overloading implementation
         self.create_work_items()
@@ -298,13 +329,13 @@ class Master(rpu.Component):
 
             completed = [s for s in states if s in ['DONE', 'FAILED']]
 
-          # self._log.debug('%d =?= %d', len(completed), len(states))
-            if len(completed) == len(states):
-                break
+            self._log.debug('%d =?= %d', len(completed), len(states))
+          # if len(completed) == len(states):
+          #     break
 
             # FIXME: this should be replaced by an async state check.  Maybe
             #        subscrive to state updates on the update pubsub?
-            time.sleep(5.0)
+            time.sleep(1.0)
 
 
     # --------------------------------------------------------------------------
@@ -336,7 +367,7 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def result_cb(self, request):
+    def result_cb(self, requests):
         '''
         this method can be overloaded by the deriving class
         '''
@@ -374,6 +405,7 @@ class Master(rpu.Component):
         terminate all workers
         '''
 
+        self._term.set()
         for uid in self._workers:
             self._log.debug('=== term %s', uid)
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_terminate',

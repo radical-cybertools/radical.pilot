@@ -241,8 +241,7 @@ echo "$($RP_GTOD),$1,unit_script,MainThread,$RP_UNIT_ID,AGENT_EXECUTING,$2" >> $
             env_string += 'export RP_TMP="%s"\n'           % self._cu_tmp
             env_string += 'export RP_UNIT_SANDBOX="%s"\n'  % sandbox
             env_string += 'export RP_PILOT_SANDBOX="%s"\n' % self._pwd
-            env_string += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
-                                                           % self._pwd
+            env_string += 'export RP_PILOT_STAGING="%s"\n' % self._pwd
             if self._prof.enabled:
                 env_string += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sandbox, cu['uid'])
 

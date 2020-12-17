@@ -86,6 +86,8 @@ class Agent_0(rpu.Worker):
         # ready to rumble!
         rpu.Worker.__init__(self, self._cfg, session)
 
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._check_control)
+
         # run our own slow-paced heartbeat monitor to watch pmgr heartbeats
         # FIXME: we need to get pmgr freq
         freq = 10
@@ -472,6 +474,7 @@ class Agent_0(rpu.Worker):
     def _agent_command_cb(self):
 
         if not self._check_commands(): return False
+        if not self._check_rpc     (): return False
         if not self._check_state   (): return False
 
         return True
@@ -536,11 +539,132 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
+    def _check_rpc(self):
+        '''
+        check if the DB has any RPC request for this pilot.  If so, then forward
+        that request as `rpc_req` command on the CONTROL channel, and listen for
+        an `rpc_res` command on the same channel, for the same rpc id.  Once
+        that response is received (from whatever component handled that
+        command), send the response back to the databse for the callee to pick
+        up.
+        '''
+
+        # FIXME: implement a timeout, and/or a registry of rpc clients
+
+        self._log.debug('=== rpc check')
+
+        retdoc = self._dbs._c.find_and_modify(
+                    query ={'uid' : self._pid},
+                    fields=['rpc_req'],
+                    update={'$set': {'rpc_req': None}})
+
+        if not retdoc:
+            # no rpc request found
+            return True
+
+        rpc_req = retdoc.get('rpc_req')
+        if rpc_req is None:
+            # document has no rpc request
+            return True
+
+        self._log.debug('=== rpc req: %s', rpc_req)
+
+        # RPCs are synchronous right now - we send the RPC on the command
+        # channel, hope that some component picks it up and replies, and then
+        # return that reply.  The reply is received via a temporary callback
+        # defined here, which will receive all CONTROL messages until the right
+        # rpc response comes along.
+        def rpc_cb(topic, msg):
+
+            rpc_id  = rpc_req['uid']
+
+            cmd     = msg['cmd']
+            rpc_res = msg['arg']
+
+            if cmd != 'rpc_res':
+                # not an rpc responese
+                return True
+
+            if rpc_res['uid'] != rpc_id:
+                # not the right rpc response
+                return True
+
+            # send the response to the DB
+            self._dbs._c.update({'type'  : 'pilot',
+                                 'uid'   : self._pid},
+                                {'$set'  : {'rpc_res': rpc_res}})
+
+            # work is done - unregister this temporary cb (rpc_cb)
+            return False
+
+
+        self.register_subscriber(rpc.CONTROL_PUBSUB, rpc_cb)
+
+        # ready to receive and proxy rpc response -- forward rpc request on
+        # control channel
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'rpc_req',
+                                          'arg' : rpc_req})
+
+        return True  # keeb cb registered (self._check_rpc)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _check_control(self, _, msg):
+        '''
+        Check for commands on the control pubsub, mainly waiting for RPC
+        requests to handle.  We handle two types of RPC requests: `hello` for
+        testing, and `prep_env` for environment preparation requests.
+        '''
+
+        cmd     = msg['cmd']
+        rpc_req = msg['arg']
+
+        rpc_res = {'uid': rpc_req['uid']}
+
+        if cmd != 'rpc_req':
+            # not an rpc request
+            return True
+
+        req = rpc_req['rpc']
+        if req not in ['hello', 'prep_env']:
+            # we don't handle that request
+            return True
+
+        try:
+            if req == 'hello'   :
+                ret = 'hello %s' % ' '.join(rpc_req['arg'])
+
+            elif req == 'prep_env':
+                env_id   = rpc_req['arg']['env_id']
+                env_spec = rpc_req['arg']['env_spec']
+                ret = self._prepare_env(env_id, env_spec)
+
+        except Exception as e:
+            # request failed for some reason - indicate error
+            rpc_res['err'] = str(e)
+            rpc_res['ret'] = None
+
+        else:
+            # request succeeded - respond with return value
+            rpc_res['err'] = None
+            rpc_res['ret'] = ret
+
+        # publish the response (success or failure)
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
+                                          'arg': rpc_res})
+        return True
+
+
+    # --------------------------------------------------------------------------
+    #
     def _check_state(self):
 
         # Make sure that we haven't exceeded the runtime - otherwise terminate.
         if self._cfg.runtime:
+
             if time.time() >= self._starttime +  (int(self._cfg.runtime) * 60):
+
                 self._log.info('runtime limit (%ss).', self._cfg.runtime * 60)
                 self._final_cause = 'timeout'
                 self.stop()
