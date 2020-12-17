@@ -1,4 +1,6 @@
 
+# pylint: disable=eval-used
+
 import os
 import sys
 import time
@@ -32,7 +34,7 @@ class Worker(rpu.Component):
         # FIXME: this should be delegated to ru.generate_id
 
         # FIXME: why do we need to import `os` again after MPI Spawn?
-        import os
+        import os                                                         # noqa
 
         # FIXME: rank determination should be moved to RU
         rank = None
@@ -59,9 +61,8 @@ class Worker(rpu.Component):
         self._term    = mp.Event()          # set to terminate
         self._res_evt = mp.Event()          # set on free resources
 
-        self._mlock   = ru.Lock(self._uid)  # lock `_modes` and `_mdata`
+        self._mlock   = ru.Lock(self._uid)  # lock `_modes`
         self._modes   = dict()              # call modes (call, exec, eval, ...)
-        self._mdata   = dict()              # call mode meta data
 
         # We need to make sure to run only up to `gpn` tasks using a gpu
         # within that pool, so need a separate counter for that.
@@ -102,7 +103,7 @@ class Worker(rpu.Component):
 
         # connect to master
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
-      # self.register_publisher(rpc.CONTROL_PUBSUB)
+        self.register_publisher(rpc.CONTROL_PUBSUB)
 
         # run worker initialization *before* starting to work on requests.
         # the worker provides three builtin methods:
@@ -167,20 +168,6 @@ class Worker(rpu.Component):
         assert(name not in self._modes)
 
         self._modes[name] = executor
-        self._mdata[name] = dict()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def register_call(self, name, method):
-
-        # ensure the call mode is usable
-        mode = 'call'
-
-        assert(mode     in self._modes)
-        assert(name not in self._mdata[mode])
-
-        self._mdata[mode][name] = method
 
 
     # --------------------------------------------------------------------------
@@ -287,13 +274,15 @@ class Worker(rpu.Component):
         try:
             import subprocess as sp
 
-            exe  = data['exe'],
-            args = data.get('args', []),
-            env  = data.get('env',  {}),
+            exe  = data['exe']
+            args = data.get('args', list())
+            env  = data.get('env',  dict())
 
-            proc = sp.Popen(executable=exe, args=args,       env=env,
+            args = '%s %s' % (exe, ' '.join(args))
+
+            proc = sp.Popen(args=args,      env=env,
                             stdin=None,     stdout=sp.PIPE, stderr=sp.PIPE,
-                            close_fds=True, shell=False)
+                            close_fds=True, shell=True)
             out, err = proc.communicate()
             ret      = proc.returncode
 
@@ -315,7 +304,7 @@ class Worker(rpu.Component):
         '''
 
         try:
-            out, err, ret = ru.sh_callout(data['cmd'])
+            out, err, ret = ru.sh_callout(data['cmd'], shell=True)
 
         except Exception as e:
             self._log.exception('_shell failed: %s' % (data))
