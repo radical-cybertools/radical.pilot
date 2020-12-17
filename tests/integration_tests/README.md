@@ -7,7 +7,7 @@ The script defines the following to execute the test:
 - A `TEST` environment variable that contains the path to the test files to be executed. All test paths should be included and be space-separated.
     Example:
     ```
-    TEST="radical.pilot/tests/test_resources/test_rm/test_slurm.py"
+    TEST="radical.pilot/tests/integration_tests/test_resources/test_rm/test_slurm.py"
     ```
 
 - Moves to the assigned folder for testing, which is the same as submitting the script, removes any prior copy of RP's repo, the previous virtual environment variable, and clones the `devel` branch only.

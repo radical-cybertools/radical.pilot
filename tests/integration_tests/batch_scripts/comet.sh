@@ -9,7 +9,7 @@
 # The next line is required if the user has more than one project
 #SBATCH -A  # Allocation name to charge job against
 
-TEST="radical.pilot/tests/test_resources/test_rm/test_slurm.py"
+TEST="radical.pilot/tests/integration_tests/test_rm/test_slurm.py"
 
 cdw
 cd integration_tests
@@ -26,7 +26,7 @@ pytest -vvv $TEST > output.log 2>&1
 
 if test "$?" = 1
 then
-    tests/bin/integration_test_issue.py -r 'SDSC Comet' -l output.log
+    tests/bin/radical-pilot-test-issue -r 'SDSC Comet' -l output.log
     sbatch --begin='now+4weeks' comet.sh 
 else
     sbatch --begin='now+1week' comet.sh 
