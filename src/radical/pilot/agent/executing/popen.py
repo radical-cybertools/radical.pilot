@@ -141,7 +141,7 @@ class Popen(AgentExecutingComponent) :
             env = descr.get('named_env')
             if env:
                 if not os.path.isdir('%s/%s' % (self._pwd, env)):
-                    raise ValueError('invalid named env %s for task %s' 
+                    raise ValueError('invalid named env %s for task %s'
                                     % (env, cu['uid']))
                 pre = ru.as_list(descr.get('pre_exec'))
                 pre.insert(0, '. %s/%s/bin/activate' % (self._pwd, env))
@@ -228,8 +228,6 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_TMP="%s"\n'           % self._cu_tmp
             env_string += 'export RP_PILOT_SANDBOX="%s"\n' % self._pwd
             env_string += 'export RP_PILOT_STAGING="%s"\n' % self._pwd
-          # env_string += 'export RP_PILOT_STAGING="%s/staging_area"\n' \
-          #                                                % self._pwd
 
             if self._prof.enabled:
                 env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, cu['uid'])
