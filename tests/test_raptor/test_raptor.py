@@ -32,14 +32,12 @@ class TestWorker(TestCase):
                 'gpus' : 1}
 
         self.assertEqual(worker._resources['cores'], [0, 0, 0, 0, 0, 0, 0, 0])
+
         worker._alloc_task(task)
         self.assertEqual(worker._resources['cores'], [1, 0, 0, 0, 0, 0, 0, 0])
+
         worker._dealloc_task(task)
         self.assertEqual(worker._resources['cores'], [0, 0, 0, 0, 0, 0, 0, 0])
-
-
-
-
 
 
 # ------------------------------------------------------------------------------
