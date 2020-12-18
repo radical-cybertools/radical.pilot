@@ -5,7 +5,6 @@ import time
 from   unittest import mock
 from   unittest import TestCase
 
-import radical.utils as ru
 import radical.pilot as rp
 
 
@@ -41,8 +40,6 @@ class TestPilot(TestCase):
 
         descr = rp.ComputePilotDescription({'resource': 'foo'})
         self.assertEqual(rp.ComputePilot(pmgr, descr).uid, 'pilot.0001')
-
-
 
 
 # ------------------------------------------------------------------------------

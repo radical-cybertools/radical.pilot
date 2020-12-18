@@ -5,7 +5,6 @@ import time
 from   unittest import mock
 from   unittest import TestCase
 
-import radical.utils as ru
 import radical.pilot as rp
 
 
@@ -41,8 +40,6 @@ class TestTask(TestCase):
 
         descr = rp.ComputeUnitDescription({'executable': 'true'})
         self.assertEqual(rp.ComputeUnit(umgr, descr).uid, 'unit.000001')
-
-
 
 
 # ------------------------------------------------------------------------------
