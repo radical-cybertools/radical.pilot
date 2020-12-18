@@ -465,6 +465,19 @@ class Default(PMGRLaunchingComponent):
         tar_tgt  = '%s/%s'     % (tmp_dir, tar_name)
         tar_url  = rs.Url('file://localhost/%s' % tar_tgt)
 
+        # we need the session sandbox url, but that is (at least in principle)
+        # dependent on the schema to use for pilot startup.  So we confirm here
+        # that the bulk is consistent wrt. to the schema.  Also include
+        # `staging_input` files and place them in the `pilot_sandbox`.
+        #
+        # FIXME: if it is not, it needs to be splitted into schema-specific
+        # sub-bulks
+        #
+        schema = pd.get('access_schema')
+        for pilot in pilots[1:]:
+            assert(schema == pilot['description'].get('access_schema')), \
+                    'inconsistent scheme on launch / staging'
+
         # get and expand sandboxes (this bulk uses the same schema toward the
         # same target resource, so all session sandboxes are the same)
         # FIXME: expansion actually may differ per pilot (queue names, project
@@ -498,7 +511,7 @@ class Default(PMGRLaunchingComponent):
             for fname in ru.as_list(pilot['description'].get('input_staging')):
                 base = os.path.basename(fname)
                 ft_list.append({'src': fname,
-                                'tgt': '%s/staging_area/%s' % (pid, base),
+                                'tgt': '%s/%s' % (pid, base),
                                 'rem': False})
 
             output_staging = pilot['description'].get('output_staging')
