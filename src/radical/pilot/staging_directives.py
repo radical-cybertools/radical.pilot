@@ -100,7 +100,7 @@ def expand_staging_directives(sds):
                 for flag in flags:
                     if isinstance(flags, str):
                         raise ValueError('"%s" is no valid RP constant' % flag)
-                    int_flags =! flag
+                    int_flags |= flag
                 flags = int_flags
 
             elif isinstance(flags, str):
