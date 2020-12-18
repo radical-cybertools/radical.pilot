@@ -33,7 +33,7 @@ class Worker(rpu.Component):
         # FIXME: this should be delegated to ru.generate_id
 
         # FIXME: why do we need to import `os` again after MPI Spawn?
-        # pylint: disable=rimported
+        # pylint: disable=reimported
         import os
 
         # FIXME: rank determination should be moved to RU
@@ -633,7 +633,7 @@ class Worker(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def test(self, idx, seconds):
-        # pylint: disable=rimported
+        # pylint: disable=reimported
         import time
         print('start idx %6d: %.1f' % (idx, time.time()))
         time.sleep(seconds)
