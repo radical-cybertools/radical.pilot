@@ -112,7 +112,7 @@ class PRTE(LaunchMethod):
 
         # go through every dvm instance
         for dvm_id in range(dvm_count):
-            node_list = rm.node_list[ dvm_id      * nodes_per_dvm:
+            node_list = rm.node_list[dvm_id       * nodes_per_dvm:
                                      (dvm_id + 1) * nodes_per_dvm]
             # keep node names in `dvm_hosts_list`
             dvm_hosts_list.append([node[0] for node in node_list])
