@@ -456,15 +456,12 @@ class Default(PMGRLaunchingComponent):
                 if orig != expanded:
                     self._log.debug('RCFG:\n%s\n%s', orig, expanded)
 
-        # encode first pilot ID into the tarball name
-        pid1 = pilots[0]['uid']
-
         # we create a fake session_sandbox with all pilot_sandboxes in /tmp, and
         # then tar it up.  Once we untar that tarball on the target machine, we
         # should have all sandboxes and all files required to bootstrap the
         # pilots
         tmp_dir  = os.path.abspath(tempfile.mkdtemp(prefix='rp_agent_tmp'))
-        tar_name = '%s.%s.tgz' % (sid, pid1)
+        tar_name = '%s.%s.tgz' % (sid, self._uid)
         tar_tgt  = '%s/%s'     % (tmp_dir, tar_name)
         tar_url  = rs.Url('file://localhost/%s' % tar_tgt)
 
@@ -664,7 +661,7 @@ class Default(PMGRLaunchingComponent):
         agent_launch_method     = rcfg.get('agent_launch_method')
         agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
         agent_spawner           = rcfg.get('agent_spawner',       DEFAULT_AGENT_SPAWNER)
-        rc_agent_config         = rcfg.get('agent_config',        DEFAULT_AGENT_CONFIG)
+        agent_config            = rcfg.get('agent_config',        DEFAULT_AGENT_CONFIG)
         agent_scheduler         = rcfg.get('agent_scheduler')
         tunnel_bind_device      = rcfg.get('tunnel_bind_device')
         default_queue           = rcfg.get('default_queue')
