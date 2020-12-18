@@ -746,7 +746,7 @@ class Default(PMGRLaunchingComponent):
                 # we can't handle this type
                 raise TypeError('agent config must be string or dict')
 
-        except Exception as e:
+        except Exception:
             self._log.exception('Error using agent config')
             raise
 
