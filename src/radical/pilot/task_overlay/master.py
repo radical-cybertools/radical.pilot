@@ -231,12 +231,10 @@ class Master(rpu.Component):
         if count:
             self._log.debug('wait for %d workers', count)
             while True:
-                stats = {
-                        'NEW'    : 0,
-                        'ACTIVE' : 0,
-                        'DONE'   : 0,
-                        'FAILED' : 0,
-                        }
+                stats = {'NEW'    : 0,
+                         'ACTIVE' : 0,
+                         'DONE'   : 0,
+                         'FAILED' : 0}
 
                 with self._lock:
                     for w in self._workers.values():

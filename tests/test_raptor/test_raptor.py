@@ -32,6 +32,7 @@ class TestWorker(TestCase):
         task_2 = {'cores': 2, 'gpus' : 1}
         task_3 = {'cores': 3, 'gpus' : 1}
 
+
         self.assertEqual(worker._resources['cores'], [0, 0, 0, 0, 0, 0, 0, 0])
 
         worker._alloc_task(task_1)
