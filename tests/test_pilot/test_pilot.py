@@ -13,7 +13,7 @@ import radical.pilot as rp
 class TestPilot(TestCase):
 
     @mock.patch.object(rp.PilotManager, '__init__', return_value=None)
-    def test_pilot_uid(self, mocked_pmgr):
+    def test_pilot_uid(self):
 
         pmgr = rp.PilotManager(session=None)
         pmgr._uids    = list()
