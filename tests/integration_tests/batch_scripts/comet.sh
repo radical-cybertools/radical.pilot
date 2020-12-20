@@ -1,15 +1,16 @@
 #!/bin/bash
-#SBATCH -J rp_integration_test  # Job name
-#SBATCH -o rp_integration_test.%j.out   # Name of stdout output file(%j expands to jobId)
-#SBATCH -e rp_integration_test.%j.err   # Name of stderr output file(%j expands to jobId)
-#SBATCH -p compute
-#SBATCH -N 1                # Total number of nodes requested (16 cores/node)
-#SBATCH -n 1                # Total number of mpi tasks requested
-#SBATCH -t 00:30:00         # Run time (hh:mm:ss) - 1.5 hours
-# The next line is required if the user has more than one project
-#SBATCH -A  # Allocation name to charge job against
 
-TEST="radical.pilot/tests/test_resources/test_rm/test_slurm.py"
+#SBATCH -J rp_integration_test          # job name
+#SBATCH -o rp_integration_test.%j.out   # stdout file (%j expands to jobId)
+#SBATCH -e rp_integration_test.%j.err   # stderr file (%j expands to jobId)
+#SBATCH -p compute
+#SBATCH -N 1                # total number of nodes requested (16 cores/node)
+#SBATCH -n 1                # total number of mpi tasks requested
+#SBATCH -t 00:30:00         # run time (hh:mm:ss) - 1.5 hours
+#SBATCH -A                  # allocation name to charge job against
+
+TEST_SLURM='radical.pilot/tests/test_resources/test_rm/test_slurm.py'
+TEST_ISSUE='radical.pilot/tests/utils/integration_test_issue.py'
 
 cdw
 cd integration_tests
@@ -22,12 +23,15 @@ conda create -p testing python=3.7 pytest PyGithub -y
 
 source activate testing
 pip install ./radical.pilot --upgrade
-pytest -vvv $TEST > output.log 2>&1
+pytest -vvv $TEST_SLURM > output.log 2>&1
 
 if test "$?" = 1
 then
-    python radical.pilot/tests/utils/integration_test_issue.py 'SDSC Comet' output.log
-    sbatch --begin='now+4weeks' comet.sh 
+    python $TEST_ISSUE 'SDSC Comet' output.log
+    sbatch --begin='now+4weeks' comet.sh
 else
-    sbatch --begin='now+1week' comet.sh 
+    sbatch --begin='now+1week' comet.sh
 fi
+
+rm -f output.log
+
