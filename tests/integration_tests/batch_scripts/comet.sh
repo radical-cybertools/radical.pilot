@@ -9,8 +9,8 @@
 #SBATCH -t 00:30:00         # run time (hh:mm:ss) - 1.5 hours
 #SBATCH -A                  # allocation name to charge job against
 
-TEST_SLURM='tests/integration_tests/test_rm/test_slurm.py'
-TEST_ISSUE='tests/bin/radical-pilot-test-issue'
+TEST_SLURM='radical.pilot/tests/integration_tests/test_rm/test_slurm.py'
+TEST_ISSUE='radical.pilot/tests/bin/radical-pilot-test-issue'
 
 cdw
 cd integration_tests
@@ -27,7 +27,7 @@ pytest -vvv $TEST_SLURM > output.log 2>&1
 
 if test "$?" = 1
 then
-    python $TEST_ISSUE -r 'SDSC Comet' -l output.log
+    $TEST_ISSUE -r 'SDSC Comet' -l output.log
     sbatch --begin='now+4weeks' comet.sh
 else
     sbatch --begin='now+1week' comet.sh
