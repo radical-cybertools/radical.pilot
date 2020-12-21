@@ -13,7 +13,7 @@ import radical.pilot as rp
 class TestPilot(TestCase):
 
     @mock.patch.object(rp.PilotManager, '__init__', return_value=None)
-    def test_pilot_uid(self):
+    def test_pilot_uid(self, mocked_init):
 
         pmgr = rp.PilotManager(session=None)
         pmgr._uids    = list()
@@ -22,6 +22,13 @@ class TestPilot(TestCase):
         pmgr._prof    = mock.Mock()
         pmgr._session = mock.Mock()
         pmgr._session.uid = str(time.time())  # restart uid counter
+        sandbox_url = mock.Mock()
+        sandbox_url.path = './'
+        pmgr._session._get_jsurl = mock.Mock(return_value=('ssh', sandbox_url))
+        pmgr._session._get_resource_sandbox = mock.Mock(return_value=sandbox_url)
+        pmgr._session._get_session_sandbox = mock.Mock(return_value=sandbox_url)
+        pmgr._session._get_pilot_sandbox = mock.Mock(return_value=sandbox_url)
+        pmgr._session._get_client_sandbox = mock.Mock(return_value=sandbox_url)
 
         descr = rp.ComputePilotDescription({'resource': 'foo', 'uid': 'foo'})
         self.assertEqual(rp.ComputePilot(pmgr, descr).uid, 'foo')

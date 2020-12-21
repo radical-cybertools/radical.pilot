@@ -13,9 +13,10 @@ import radical.pilot as rp
 class TestTask(TestCase):
 
     @mock.patch.object(rp.UnitManager, '__init__', return_value=None)
-    def test_task_uid(self):
+    def test_task_uid(self, mocked_init):
 
         umgr = rp.UnitManager(session=None)
+        umgr.advance = mock.Mock(return_value=True)
         umgr._uids    = list()
         umgr._uid     = 'umgr.0000'
         umgr._log     = mock.Mock()
