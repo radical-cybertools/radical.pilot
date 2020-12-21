@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+# pylint: disable=unused-argument, no-value-for-parameter
 import time
 
 from   unittest import mock
