@@ -8,6 +8,7 @@
 #SBATCH -t 00:30:00         # Run time (hh:mm:ss) - 1.5 hours
 # The next line is required if the user has more than one project
 #SBATCH -A  # Allocation name to charge job against
+#SBATCH -C EGRESS
 
 TEST="radical.pilot/tests/integration_tests/test_rm/test_slurm.py"
 
@@ -20,7 +21,11 @@ module load anaconda/3.7.0
 
 conda create -p testing python=3.7 pytest PyGithub -y
 
-source activate testing
+source activate $PWD/testing
+tmpLOC=`which python`
+tmpLOC=(${tmpLOC///bin/ })
+PYTHONPATH=`find $tmpLOC/lib -name "site-packages"`/
+
 pip install ./radical.pilot --upgrade
 pytest -vvv $TEST > output.log 2>&1
 
