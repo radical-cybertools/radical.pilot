@@ -31,7 +31,7 @@ pytest -vvv $TEST > output.log 2>&1
 
 if test "$?" = 1
 then
-    tests/bin/radical-pilot-test-issue -r 'SDSC Comet' -l output.log
+    radical.pilot/tests/bin/radical-pilot-test-issue -r 'SDSC Comet' -l output.log
     sbatch --begin='now+4weeks' comet.sh 
 else
     sbatch --begin='now+1week' comet.sh 
