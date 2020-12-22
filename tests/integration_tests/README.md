@@ -12,15 +12,13 @@ The script defines the following to execute the test:
 
 - Moves to the assigned folder for testing, which is the same as submitting the script, removes any prior copy of RP's repo, the previous virtual environment variable, and clones the `devel` branch only.
 
-- Loads the necessary modules, creates and activates a virtual environment. Those lines should be updated for every resource. After the virtual environment's activation, the script installs RP and runs the tests
+- Loads the necessary modules, creates and activates a virtual environment. Those lines should be updated for every resource. After the virtual environment's activation, the script installs RP and runs the tests.vIf one or more or those tests fail, the script runs a utility python file that creates an RP repository issue. This python file takes as arguments the name of the resource and the log filename. Update the resource name accordingly.
 
-If the tests fail, the script runs a utility python file that creates an RP repository issue. This python file takes as arguments the name of the resource and the log filename. Update the resource name accordingly.
-
-- Finally, it submits another job to the queue.
+- Finally, the script submits another job to the queue.
 
 ## Setup
 
-The tests require that a Github token is set up and included in the `.bashrc` of the account that runs the tests.
+Tests require that a Github token is set up and included in the `.bashrc` of the account that runs the tests.
 
 Example:
 ```
