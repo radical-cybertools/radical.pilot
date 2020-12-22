@@ -20,7 +20,7 @@ from radical.pilot.agent.resource_manager.pbspro import PBSPro
 def test_configure(mocked_init, mocked_raise_on, mocked_parse_pbspro_vnodes):
 
     # Test 1 no config file
-    os.environ['PBS_NODEFILE'] = 'tests/test_cases/rm/nodelist.pbs'
+    os.environ['PBS_NODEFILE'] = 'tests/unit_tests/test_cases/rm/nodelist.pbs'
     os.environ['SAGA_PPN']     = '0'
     os.environ['NODE_COUNT']   = '2'
     os.environ['NUM_PPN']      = '4'
@@ -39,7 +39,7 @@ def test_configure(mocked_init, mocked_raise_on, mocked_parse_pbspro_vnodes):
     assert component.lfs_per_node   == {'path': None, 'size': 0}
 
     # Test 2 no config file
-    os.environ['PBS_NODEFILE'] = 'tests/test_cases/rm/nodelist.pbs'
+    os.environ['PBS_NODEFILE'] = 'tests/unit_tests/test_cases/rm/nodelist.pbs'
     os.environ['SAGA_PPN']     = '0'
     os.environ['NODE_COUNT']   = '2'
     os.environ['NUM_PPN']      = '4'
@@ -90,7 +90,7 @@ def test_configure_error(mocked_init, mocked_raise_on,
         component._configure()
 
     # Test 2 check Number of Processors per Node
-    os.environ['PBS_NODEFILE'] = 'tests/test_cases/rm/nodelist.pbs'
+    os.environ['PBS_NODEFILE'] = 'tests/unit_tests/test_cases/rm/nodelist.pbs'
 
     if 'NUM_PPN'  in os.environ: del os.environ['NUM_PPN']
     if 'SAGA_PPN' in os.environ: del os.environ['SAGA_PPN']
@@ -105,7 +105,7 @@ def test_configure_error(mocked_init, mocked_raise_on,
     # Test 3 check Number of Nodes allocated
     if 'NODE_COUNT' in os.environ: del os.environ['NODE_COUNT']
 
-    os.environ['PBS_NODEFILE'] = 'tests/test_cases/rm/nodelist.pbs'
+    os.environ['PBS_NODEFILE'] = 'tests/unit_tests/test_cases/rm/nodelist.pbs'
     os.environ['SAGA_PPN']     = '0'
     os.environ['NUM_PPN']      = '4'
     os.environ['NUM_PES']      = '1'
@@ -118,7 +118,7 @@ def test_configure_error(mocked_init, mocked_raise_on,
     # Test 4 check Number of Parallel Environments
     if 'NUM_PES' in os.environ: del os.environ['NUM_PES']
 
-    os.environ['PBS_NODEFILE'] = 'tests/test_cases/rm/nodelist.pbs'
+    os.environ['PBS_NODEFILE'] = 'tests/unit_tests/test_cases/rm/nodelist.pbs'
     os.environ['NUM_PPN']      = '4'
     os.environ['SAGA_PPN']     = '0'
     os.environ['NODE_COUNT']   = '2'
