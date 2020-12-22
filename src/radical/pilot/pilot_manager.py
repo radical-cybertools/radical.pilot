@@ -87,6 +87,7 @@ class PilotManager(rpu.Component):
 
         assert(session.primary), 'pmgr needs primary session'
 
+        self._uids        = list()   # known UIDs
         self._pilots      = dict()
         self._pilots_lock = ru.RLock('pmgr.pilots_lock')
         self._callbacks   = dict()
@@ -903,6 +904,18 @@ class PilotManager(rpu.Component):
                         raise ValueError("unknown callback '%s'" % cb_name)
 
                     del(self._callbacks[metric][cb_name])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def check_uid(self, uid):
+
+        # ensure that uid is not yet known
+        if uid in self._uids:
+            return False
+        else:
+            self._uids.append(uid)
+            return True
 
 
 # ------------------------------------------------------------------------------
