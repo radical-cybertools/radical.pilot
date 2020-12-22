@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import os
-import sys
+import argparse
 
 from github import Github
 from datetime import date
@@ -28,7 +28,7 @@ repo = g.get_repo("radical-cybertools/radical.pilot")
 with open(args.log) as fin:
 
     title = "Integration Tests failed on %s : %s" % (args.resource, date.today())
-    body  = '```python\n' + f.read() + '\n```'
+    body  = '```python\n' + fin.read() + '\n```'
 
     repo.create_issue(title=title,
                       body=body,
