@@ -88,6 +88,7 @@ class TaskManager(rpu.Component):
 
         self._pilots      = dict()
         self._pilots_lock = ru.RLock('tmgr.pilots_lock')
+        self._uids        = list()   # known task UIDs
         self._tasks       = dict()
         self._tasks_lock  = ru.RLock('tmgr.tasks_lock')
         self._callbacks   = dict()
@@ -1189,6 +1190,18 @@ class TaskManager(rpu.Component):
                         raise ValueError("cb %s not registered" % cb_name)
 
                     del(self._callbacks[uid][metric][cb_name])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def check_uid(self, uid):
+
+        # ensure that uid is not yet known
+        if uid in self._uids:
+            return False
+        else:
+            self._uids.append(uid)
+            return True
 
 
 # ------------------------------------------------------------------------------

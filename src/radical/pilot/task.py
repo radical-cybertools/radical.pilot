@@ -66,9 +66,7 @@ class Task(object):
 
         # initialize state
         self._session          = self._umgr.session
-        self._uid              = ru.generate_id('task.%(item_counter)06d',
-                                                ru.ID_CUSTOM,
-                                                ns=self._session.uid)
+        self._uid              = self._descr.get('uid')
         self._state            = rps.NEW
         self._log              = tmgr._log
         self._exit_code        = None
@@ -80,6 +78,14 @@ class Task(object):
         self._task_sandbox     = None
         self._client_sandbox   = None
         self._callbacks        = dict()
+
+        # ensure uid is unique
+        if self._uid:
+            if not self._umgr.check_uid(self._uid):
+                raise ValueError('uid %s is not unique' % self._uid)
+        else:
+            self._uid = ru.generate_id('task.%(item_counter)06d', ru.ID_CUSTOM,
+                                       ns=self._session.uid)
 
         for m in rpc.UMGR_METRICS:
             self._callbacks[m] = dict()
@@ -108,7 +114,7 @@ class Task(object):
     #
     def __str__(self):
 
-        return [self.uid, self.pilot, self.state]
+        return str([self.uid, self.pilot, self.state])
 
 
     # --------------------------------------------------------------------------

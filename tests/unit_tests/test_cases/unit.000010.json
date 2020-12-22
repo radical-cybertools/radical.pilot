@@ -1,0 +1,21 @@
+
+{
+    "unit": {
+        "uid":         "unit.000010",
+        "description": {"executable"    : "/bin/sleep",
+                        "arguments"     : null,
+                        "cpu_processes" : 1,
+                        "cpu_threads"   : 4,
+                        "environment"   : {"test_env": "test_val"}
+                       },
+        "unit_sandbox_path": "/tmp"
+    },
+
+    "setup" : {},
+
+    "results": {
+        "lm": {
+            "srun" : ["/bin/srun --exclusive --cpu-bind=none --nodes 1 --ntasks 1 --cpus-per-task 4 --export=ALL,test_env=\"test_val\" /bin/sleep", null]
+        }
+    }
+}

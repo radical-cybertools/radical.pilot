@@ -1,0 +1,26 @@
+
+{
+    "unit": {
+        "uid":         "unit.000012",
+        "description": {"executable"    : "/bin/sleep",
+                        "cpu_processes" : 4
+                       },
+        "unit_sandbox_path": "/tmp"
+    },
+
+    "setup" : {
+        "lm" : {
+            "slots": {
+                "nodes": [{"name"    : "node1",
+                           "uid"     : "node1",
+                           "core_map": [[]]}]
+            }
+        }
+    },
+
+    "results": {
+        "lm": {
+            "ibrun" : "AssertionError"
+        }
+    }
+}
