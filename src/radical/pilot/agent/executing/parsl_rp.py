@@ -100,8 +100,12 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         task = self.future_tasks[unit.name]
         if state == rp.DONE:
             task.set_result(unit.stdout)
+            print('\t+ %s: %-10s: %10s: %s'
+                  % (unit.uid, unit.state, unit.pilot, unit.stdout))
         elif state == rp.FAILED:
             task.set_result(unit.stderr)
+            print('\t- %s: %-10s: %10s: %s'
+                  % (unit.uid, unit.state, unit.pilot, unit.stderr))
 
 
     def start(self):
@@ -133,35 +137,39 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
             temp        = ' '.join(shlex.quote(arg) for arg in (shlex.split(source_code,
                                                                             comments=True, posix=True)))
             task_exe    = re.findall(r"'(.*?).format", temp,re.DOTALL)[0]
-            cu          = {"source_code": task_exe,
-                           "name"       : func.__name__,
-                           "args"       : args,
-                           "kwargs"     : kwargs}
-            #self.report.header(inspect.getsource(func))
-            #self.report.header('Bash task name %s ' %(cu['name'])) 
-            #self.report.header('Bash task exe %s ' %(task_exe))           
-            #self.report.header('Bash task args  %s ' %(cu['args']))
-            #self.report.header('Bash task kwargs  %s ' %(cu['kwargs']))
+
+            if 'exe' in kwargs:
+                code = "{0} {1}".format(kwargs['exe'], task_exe)
+            else:
+                code = task_exe
+
+            cu = {"source_code": code,
+                  "name"       : func.__name__,
+                   "args"       : args,
+                   "kwargs"     : kwargs,
+                   "pre_exec"   : None if 'pre_exec' not in kwargs else kwargs['pre_exec'],
+                   "ptype"      : None if 'ptype' not in kwargs else kwargs['ptype'],
+                   "nproc"      : 1 if 'nproc' not in kwargs else kwargs['nproc'],
+                   "nthrd"      : 1 if 'nthrd' not in kwargs else kwargs['nthrd']}
+
 
         elif task_type.startswith('@python_app'):
 
-            source_code   = inspect.getsource(func).split('\n')[1:]
-            task_exe      = "\n".join(source_code)
             task_pre_exec = []
-            for i in range (len(source_code)):
-                if 'import' in source_code[i]:
-                    task_pre_exec.append(source_code[i].strip())
+            task_args     = []
 
-            cu = {"source_code": task_exe,
+            for arg in args:
+                task_args.append(arg)
+            task_kwargs = list(kwargs.values())
+
+            cu = {"source_code": source_code,
                   "name"       : func.__name__,
-                  "args"       : args,
+                  "args"       : task_args+task_kwargs,
                   "pre_exec"   : task_pre_exec,
-                  "kwargs"     : kwargs}
-            #report.header('python task %s ' %(inspect.getsource(func)))
-            #report.header('python task pre_exec %s ' %(cu['pre_exec']))
-            #report.header('python task name %s ' %(cu['name']))
-            #report.header('Python task exe %s ' %(task_exe))
-            #report.header('python task kwargs  %s ' %(cu['args']))
+                  "kwargs"     : kwargs,
+                  "ptype"      : rp.FUNC,
+                  "nproc"      : 1 if 'nproc' not in kwargs else kwargs['nproc'],
+                  "nthrd"      : 1 if 'nthrd' not in kwargs else kwargs['nthrd']}
 
         else:
             pass
@@ -191,14 +199,12 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
 
             task                  = rp.ComputeUnitDescription()
             task.name             = task_id
-            task.executable       = tu['source_code'] if 'exe' not in tu['kwargs'] else "{0} {1}".format(tu['kwargs']['exe'],
-                                                                                                         tu['source_code'])
-                                                     
+            task.pre_exec         = tu['pre_exec']
+            task.executable       = tu['source_code']
             task.arguments        = tu['args']
-            task.pre_exec         = tu['tasks_pre_exec']
-            task.cpu_processes    = 1    if 'nproc' not in tu['kwargs'] else tu['kwargs']['nproc']
-            task.cpu_process_type = None if 'ptype' not in tu['kwargs'] else tu['kwargs']['ptype']
-            task.cpu_threads      = 1    if 'nthrd' not in tu['kwargs'] else tu['kwargs']['nthrd']
+            task.cpu_processes    = tu['nproc']
+            task.cpu_threads      = tu['nthrd']
+            task.cpu_process_type = tu['ptype']
             self.report.progress()
             self.umgr.submit_units(task)
 
