@@ -62,9 +62,7 @@ class ComputePilot(object):
         self._pmgr       = pmgr
         self._session    = self._pmgr.session
         self._prof       = self._session._prof
-        self._uid        = ru.generate_id('pilot.%(item_counter)04d',
-                                           ru.ID_CUSTOM,
-                                           ns=self._session.uid)
+        self._uid        = self._descr.get('uid')
         self._state      = rps.NEW
         self._log        = pmgr._log
         self._pilot_dict = dict()
@@ -74,6 +72,14 @@ class ComputePilot(object):
 
         # pilot failures can trigger app termination
         self._exit_on_error = self._descr.get('exit_on_error')
+
+        # ensure uid is unique
+        if self._uid:
+            if not self._pmgr.check_uid(self._uid):
+                raise ValueError('uid %s is not unique' % self._uid)
+        else:
+            self._uid = ru.generate_id('pilot.%(item_counter)04d', ru.ID_CUSTOM,
+                                       ns=self._session.uid)
 
         for m in rpc.PMGR_METRICS:
             self._callbacks[m] = dict()
@@ -467,7 +473,7 @@ class ComputePilot(object):
     #
     def unregister_callback(self, cb, metric=rpc.PILOT_STATE):
 
-        if metric and metric not in rpc.UMGR_METRICS :
+        if metric and metric not in rpc.PMGR_METRICS :
             raise ValueError ("invalid pmgr metric '%s'" % metric)
 
         if   not metric                  : metrics = rpc.PMGR_METRICS

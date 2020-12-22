@@ -17,7 +17,7 @@ class TestDefault(TestCase):
     #
     def setUp(self):
         ret = list()
-        for fin in glob.glob('tests/test_agent_stagein/test_cases/unit.*.json'):
+        for fin in glob.glob('tests/unit_tests/test_agent_stagein/test_cases/unit.*.json'):
             tc     = ru.read_json(fin)
             unit   = tc['unit'   ]
             result = tc['results']
