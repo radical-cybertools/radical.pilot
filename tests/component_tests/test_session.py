@@ -12,7 +12,7 @@ from unittest import TestCase, mock
 import radical.pilot as rp
 import radical.utils as ru
 
-TEST_CASES_PATH = 'tests/test_components/test_cases'
+TEST_CASES_PATH = 'tests/component_tests/test_cases'
 
 
 # ------------------------------------------------------------------------------

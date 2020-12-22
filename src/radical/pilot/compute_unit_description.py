@@ -8,6 +8,7 @@ import radical.utils as ru
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
+UID                    = 'uid'
 NAME                   = 'name'
 EXECUTABLE             = 'executable'
 ARGUMENTS              = 'arguments'
@@ -64,6 +65,22 @@ class ComputeUnitDescription(ru.Description):
 
     .. note:: A ComputeUnitDescription **MUST** define at least an
               `executable` or `kernel` -- all other elements are optional.
+
+
+    .. data:: uid
+
+       A unique ID for the compute unit (`string`).  This attribute is optional,
+       a unique ID will be assigned by RP if the field is not set.
+
+       default: `None`
+
+
+    .. data:: name
+
+       A descriptive name for the compute unit (`string`).  This attribute can
+       be used to map individual units back to application level workloads.
+
+       default: `None`
 
 
     .. data:: executable
@@ -127,14 +144,6 @@ class ComputeUnitDescription(ru.Description):
        amount of data (MB) required on the local file system of the node
 
        default: 0
-
-
-    .. data:: name
-
-       A descriptive name for the compute unit (`string`).  This attribute can
-       be used to map individual units back to application level workloads.
-
-       default: `None`
 
 
     .. data:: arguments
@@ -337,9 +346,10 @@ class ComputeUnitDescription(ru.Description):
     """
 
     _schema = {
+               UID             : str         ,
+               NAME            : str         ,
                EXECUTABLE      : str         ,
                KERNEL          : str         ,
-               NAME            : str         ,
                SANDBOX         : str         ,
                ARGUMENTS       : [str]       ,
                ENVIRONMENT     : {str: str}  ,
@@ -371,9 +381,10 @@ class ComputeUnitDescription(ru.Description):
     }
 
     _defaults = {
+               UID             : ''          ,
+               NAME            : ''          ,
                EXECUTABLE      : ''          ,
                KERNEL          : ''          ,
-               NAME            : ''          ,
                SANDBOX         : ''          ,
                ARGUMENTS       : list()      ,
                ENVIRONMENT     : dict()      ,
