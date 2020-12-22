@@ -11,7 +11,7 @@ import radical.utils as ru
 def setUp(test_type, test_name):
 
     ret = list()
-    for fin in glob.glob('tests/test_cases/unit.*.json'):
+    for fin in glob.glob('tests/unit_tests/test_cases/unit.*.json'):
 
         tc                = ru.read_json(fin)
         unit              = tc['unit'   ]
