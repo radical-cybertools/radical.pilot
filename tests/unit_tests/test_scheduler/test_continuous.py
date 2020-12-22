@@ -6,6 +6,7 @@ __license__ = "MIT"
 
 import glob
 import pytest
+import os
 
 from unittest import TestCase
 from unittest import mock
@@ -25,13 +26,13 @@ class TestContinuous(TestCase):
     def setUp(self):
 
         ret = list()
-        pat = 'tests/test_scheduler/test_unit/test_cases_continuous/unit*.json'
+        pat = os.path.dirname(__file__) + '/test_cases_continuous/unit*.json'
 
         for fin in glob.glob(pat):
             test_cases = ru.read_json(fin)
             ret.append(test_cases)
 
-        cfg_fname = 'tests/test_scheduler/test_unit/test_cases_continuous/test_continuous.json'
+        cfg_fname = os.path.dirname(__file__) + '/test_cases_continuous/test_continuous.json'
         cfg_tests = ru.read_json(cfg_fname)
 
         return cfg_tests, ret
