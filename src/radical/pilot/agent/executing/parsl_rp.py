@@ -145,12 +145,12 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
 
             cu = {"source_code": code,
                   "name"       : func.__name__,
-                   "args"       : args,
-                   "kwargs"     : kwargs,
-                   "pre_exec"   : None if 'pre_exec' not in kwargs else kwargs['pre_exec'],
-                   "ptype"      : None if 'ptype' not in kwargs else kwargs['ptype'],
-                   "nproc"      : 1 if 'nproc' not in kwargs else kwargs['nproc'],
-                   "nthrd"      : 1 if 'nthrd' not in kwargs else kwargs['nthrd']}
+                   "args"      : args,
+                   "kwargs"    : kwargs,
+                   "pre_exec"  : None if 'pre_exec' not in kwargs else kwargs['pre_exec'],
+                   "ptype"     : None if 'ptype' not in kwargs else kwargs['ptype'],
+                   "nproc"     : 1 if 'nproc' not in kwargs else kwargs['nproc'],
+                   "nthrd"     : 1 if 'nthrd' not in kwargs else kwargs['nthrd']}
 
 
         elif task_type.startswith('@python_app'):
@@ -162,7 +162,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
                 task_args.append(arg)
             task_kwargs = list(kwargs.values())
 
-            cu = {"source_code": source_code,
+            cu = {"source_code": func,
                   "name"       : func.__name__,
                   "args"       : task_args+task_kwargs,
                   "pre_exec"   : task_pre_exec,
