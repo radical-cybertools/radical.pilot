@@ -3,7 +3,10 @@
 import os
 import sys
 import time
-
+import pickle
+import codecs
+import contextlib
+from io import StringIO
 import multiprocessing as mp
 import threading       as mt
 
@@ -27,7 +30,6 @@ if ve and ve not in ['', 'None', None]:
 
     activate = "%s/bin/activate_this.py" % ve
 
-  # execfile(activate, dict(__file__=activate))
     exec(open(activate).read(), dict(__file__=activate))
 
 
@@ -72,14 +74,17 @@ class Executor(object):
 
         self._prof.prof('init_start', uid=self._uid)
 
-        addr_req = self._cfg.get('req_get')
-        addr_res = self._cfg.get('res_put')
+        addr_req  = self._cfg.get('req_get')
+        addr_res  = self._cfg.get('res_put')
+        addr_ctrl = self._cfg.get('ctrl')
 
         self._log.debug('req get addr: %s', addr_req)
         self._log.debug('res put addr: %s', addr_res)
+        self._log.debug('ctrl    addr: %s', addr_ctrl)
 
         assert(addr_req)
         assert(addr_res)
+        assert(addr_ctrl)
 
         # connect to
         #
@@ -87,9 +92,9 @@ class Executor(object):
         #   - the queue were we send completed tasks
         #   - the command queue (for termination)
         #
-        self._zmq_req = ru.zmq.Getter(channel='funcs_req_queue', url=addr_req)
-        self._zmq_res = ru.zmq.Putter(channel='funcs_res_queue', url=addr_res)
-      # self._zmq_ctl = ru.zmq.Getter(channel='CTL', url=addr['CTL_GET'])
+        self._zmq_req  = ru.zmq.Getter(channel='funcs_req_queue', url=addr_req)
+        self._zmq_res  = ru.zmq.Putter(channel='funcs_res_queue', url=addr_res)
+        self._zmq_ctrl = ru.zmq.Getter(channel='control_pubsub',  url=addr_ctrl)
 
         # use mp.Queue instances to proxy tasks to the worker processes
         self._mpq_work    = mp.Queue()
@@ -118,7 +123,6 @@ class Executor(object):
         for i in range(self._nw):
             wid  = '%s.%03d' % (self._uid, i)
             proc = mp.Process(target=self._work, args=[self._uid, wid])
-            proc.daemon = True
             proc.start()
             self._workers.append(proc)
 
@@ -133,29 +137,32 @@ class Executor(object):
         listen on the command channel for things to do (like, terminate).
         '''
 
-        while True:
+        try:
+            while True:
 
-          # msgs = self._zmq_ctl.get_nowait(100)
-            msgs = None
-            time.sleep(1)
+                msgs = self._zmq_ctrl.get_nowait(100)
+                time.sleep(1)
 
-            if not msgs:
-                continue
+                if not msgs:
+                    continue
 
-            for msg in msgs:
+                for msg in msgs:
 
-                self._prof.prof('cmd', uid=self._uid, msg=msg['cmd'])
+                    self._prof.prof('cmd', uid=self._uid, msg=msg['cmd'])
 
-                if msg['cmd'] == 'term':
+                    if msg['cmd'] == 'term':
 
-                    # kill worker processes
-                    for worker in self._workers:
-                        worker.terminate()
+                        sys.exit(0)
 
-                    sys.exit(0)
+                    else:
+                        self._log.error('unknown command %s', msg)
 
-                else:
-                    self._log.error('unknown command %s', msg)
+        finally:
+
+            # kill worker processes
+            for worker in self._workers:
+                worker.terminate()
+                worker.join()
 
 
     # --------------------------------------------------------------------------
@@ -203,6 +210,38 @@ class Executor(object):
             if task:
                 self._zmq_res.put(task)
 
+    # --------------------------------------------------------------------------
+    #
+    def decompose(self, function_info):
+        '''
+        Decompose the function dictionary keys/values and assigned
+        them to different variables.
+        '''
+        code        = function_info["_cud_code"]
+        name        = function_info["_cud_name"]
+        args        = function_info["_cud_args"]
+        kwargs      = function_info["_cud_kwargs"]
+        return (name, code, args, kwargs)
+
+    # --------------------------------------------------------------------------
+    #
+    def prepare_func(self, func, args):
+
+        u_ns = locals()
+        u_ns.update({'__builtins__': __builtins__})
+        function_info = {}
+
+        function_info = pickle.loads(codecs.decode(func.encode(), "base64"))
+
+        fn_name, fn, fn_args, fn_kwargs = self.decompose(function_info)
+        u_ns.update({'__cud_args'  : fn_args,
+                     '__cud_kwargs': fn_kwargs,
+                     '__cud_output': None})
+        source = fn.split('\n')
+        fn_call = "__cud_output = %s(%s)" % (fn_name, ','.join(args))
+        source.append(fn_call)
+        code = "\n".join(source)
+        return code
 
     # --------------------------------------------------------------------------
     #
@@ -235,6 +274,19 @@ class Executor(object):
             self._prof.prof('task_get', comp=wid, uid=tid)
           # self._log.debug('get %s: %s', tid, cmd)
 
+            def check_obj(obj):
+                '''
+                Check the object type if pickled or not
+                to distinguish between exec and eval
+                '''
+                try:
+                    obj = pickle.loads(codecs.decode(exe.encode(),"base64"))
+                    if isinstance(obj, dict) is True:
+                       return True
+
+                except:
+                       return False
+
             try:
                 for pre in pres:
                     if pre.split()[0] == 'import':
@@ -243,10 +295,28 @@ class Executor(object):
                                 globals()[mod] = ru.import_module(mod)
                                 locals() [mod] = globals()[mod]
 
-                task['stdout'] = eval(cmd)
+                if check_obj(exe) is True:
+
+                    try:
+                        function_code = self.prepare_func(exe, args)
+                    except Exception:
+                        self._log.debug("Setting the function for execution failed!")
+                        raise
+
+                    old_stdout = sys.stdout
+                    new_stdout = None
+                    try:
+                        sys.stdout = new_stdout = StringIO()
+                        exec(function_code)
+                    finally:
+                        sys.stdout = old_stdout
+                        task['stdout'] = new_stdout.getvalue()
+
+                else:
+                    task['stdout'] = eval(cmd)
+
                 task['stderr'] = None
                 task['state']  = 'DONE'
-
             except Exception as e:
                 task['stdout'] = None
                 task['stderr'] = str(e)

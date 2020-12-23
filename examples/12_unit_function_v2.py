@@ -21,6 +21,18 @@ dh = ru.DebugHelper()
 
 # ------------------------------------------------------------------------------
 #
+def mathma(a,b):
+    import math
+    eq = []
+    for i in range(2):
+        if a > b:
+            eq.append(math.exp(a*b))
+        else:
+            eq.append(math.exp(a+b))
+    print(eq)
+
+# ------------------------------------------------------------------------------
+#
 if __name__ == '__main__':
 
     # we use a reporter class for nicer output
@@ -85,9 +97,9 @@ if __name__ == '__main__':
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
-            cud.pre_exec         = ['import math']
-            cud.executable       = 'math.exp'
-            cud.arguments        = [i]
+            cud.pre_exec         = []
+            cud.executable       = mathma # Function reference
+            cud.arguments        = [5, 7]  # Function arguments
             cud.gpu_processes    = 0
             cud.cpu_processes    = 1
             cud.cpu_threads      = 1
