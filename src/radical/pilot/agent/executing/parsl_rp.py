@@ -155,7 +155,6 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
 
         elif task_type.startswith('@python_app'):
 
-            task_pre_exec = []
             task_args     = []
 
             for arg in args:
@@ -165,8 +164,8 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
             cu = {"source_code": func,
                   "name"       : func.__name__,
                   "args"       : task_args+task_kwargs,
-                  "pre_exec"   : task_pre_exec,
                   "kwargs"     : kwargs,
+                  "pre_exec"   : None if 'pre_exec' not in kwargs else kwargs['pre_exec'],
                   "ptype"      : rp.FUNC,
                   "nproc"      : 1 if 'nproc' not in kwargs else kwargs['nproc'],
                   "nthrd"      : 1 if 'nthrd' not in kwargs else kwargs['nthrd']}
@@ -177,7 +176,8 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         return cu
 
     def submit(self, func, *args, **kwargs):
-        """Submits task/tasks to RADICAL unit_manager.
+        """
+        Submits task/tasks to RADICAL unit_manager.
 
         Args:
             - func (callable) : Callable function

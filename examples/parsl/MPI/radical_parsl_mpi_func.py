@@ -27,7 +27,7 @@ usage_tracking=True)
 parsl.load(config)
 
 @python_app
-def hello_mpi(pre_exec,nproc,nthrd):
+def hello_mpi(pre_exec, nproc, nthrd):
     from mpi4py import MPI
     import sys
 
@@ -41,7 +41,7 @@ def hello_mpi(pre_exec,nproc,nthrd):
 
 results = []
 out_file = "/home/aymen/hello_mpi_{0}".format(0)
-results.append(hello_mpi(pre_exec = [],nproc=3,nthrd=1))
+results.append(hello_mpi(pre_exec = [], nproc=3, nthrd=1))
 
 # wait for all apps to complete
 [r.result() for r in results]
