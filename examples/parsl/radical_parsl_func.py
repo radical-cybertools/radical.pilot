@@ -11,7 +11,7 @@ parsl.set_stream_logger()
 config = Config(
          executors=[RADICALExecutor(
                         label = 'RADICALExecutor',
-                        resource = 'local.localhost_funcs', #'local.localhost_funcs',
+                        resource = 'local.localhost_funcs',
                         login_method = 'local',
                         project = '',
                         partition = '',
@@ -25,13 +25,16 @@ usage_tracking=True)
 parsl.load(config)
 
 @python_app
-def report_time(ptype='rp.FUNC',outputs=[],stdout= '/home/aymen/report_time.out',stderr='/home/aymen/report_time.err'):
-    import time
-    return time.time()
+def mathma(a, nproc):  #python function has no ptype
+    import math
+    for i in range(10):
+        x = math.exp(a*i)
+        print (x)
 
-results = []
-out_file = "/home/aymen/report_time_{0}".format(0)
-results.append(report_time(outputs=[out_file]))
+results  = []
+out_file = "/home/aymen/mathma_{0}".format(0)
+results.append(mathma(10, nproc=1))
+
 
 # wait for all apps to complete
 [r.result() for r in results]
