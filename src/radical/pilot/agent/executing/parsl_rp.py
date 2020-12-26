@@ -155,8 +155,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
 
         elif task_type.startswith('@python_app'):
 
-            task_args     = []
-
+            task_args = []
             for arg in args:
                 task_args.append(arg)
             task_kwargs = list(kwargs.values())

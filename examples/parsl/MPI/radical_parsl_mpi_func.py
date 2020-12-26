@@ -12,7 +12,7 @@ parsl.set_stream_logger()
 config = Config(
          executors=[RADICALExecutor(
                         label = 'RADICALExecutor',
-                        resource = 'local.localhost', #'local.localhost_funcs',
+                        resource = 'local.localhost_funcs',
                         login_method = 'local',
                         project = '',
                         partition = '',
