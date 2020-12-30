@@ -19,20 +19,14 @@ from concurrent.futures import Future
 from multiprocessing import Process, Queue
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from ipyparallel.serialize import unpack_apply_message  # pack_apply_message
-from ipyparallel.serialize import pack_apply_message   # unpack_apply_message
-from ipyparallel.serialize import deserialize_object  # deserialize_object
-
 from parsl.app.errors import RemoteExceptionWrapper
 from parsl.executors.errors import *
-from parsl.executors.base import ParslExecutor
-
 from parsl.utils import RepresentationMixin
-from parsl.providers import LocalProvider
+from parsl.executors.status_handling import  NoStatusHandlingExecutor
 
 
 
-class RADICALExecutor(ParslExecutor, RepresentationMixin):
+class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
     """Executor designed for cluster-scale
 
     The RADICALExecutor system has the following components:
@@ -79,7 +73,6 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
         self.login_method = login_method
         self.partition = partition
         self.walltime = walltime
-        self.tasks = list()
         self.future_tasks = {}
         self.managed = managed
         self.max_tasks = max_tasks
@@ -145,7 +138,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
 
             cu = {"source_code": code,
                   "name"       : func.__name__,
-                   "args"      : args,
+                   "args"      : None,
                    "kwargs"    : kwargs,
                    "pre_exec"  : None if 'pre_exec' not in kwargs else kwargs['pre_exec'],
                    "ptype"     : None if 'ptype' not in kwargs else kwargs['ptype'],
@@ -162,7 +155,7 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
 
             cu = {"source_code": func,
                   "name"       : func.__name__,
-                  "args"       : task_args+task_kwargs,
+                  "args"       : task_args[1:] + task_kwargs, # We ignore the resource dict. form PaRSL
                   "kwargs"     : kwargs,
                   "pre_exec"   : None if 'pre_exec' not in kwargs else kwargs['pre_exec'],
                   "ptype"      : rp.FUNC,
@@ -218,6 +211,11 @@ class RADICALExecutor(ParslExecutor, RepresentationMixin):
             self.report.warn('exit requested\n')
 
         return self.future_tasks[task_id]
+
+
+    def _get_job_ids(self):
+        return True
+
 
     def shutdown(self, hub=True, targets='all', block=False):
         """Shutdown the executor, including all RADICAL-Pilot components."""

@@ -25,14 +25,14 @@ usage_tracking=True)
 parsl.load(config)
 
 @bash_app
-def gen(nproc =1,outputs=[], stdout= '/home/aymen/rand.out',stderr='/home/aymen/rand.err'):
+def gen(nproc =1,outputs=[]):
     return 'echo $(( RANDOM % (10 - 5 + 1 ) + 5 )) > {0}'.format(outputs[0])
 
 results = [] 
 
 for i in range(4):
     out_file = "/home/aymen/rand_{0}".format(i)
-    results.append(gen(outputs=[out_file]))
+    results.append(gen())
 
 
 print ("Job Status: {}".format([r.done() for r in results]))
