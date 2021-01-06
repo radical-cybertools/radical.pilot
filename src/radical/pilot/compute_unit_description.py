@@ -32,8 +32,12 @@ MEM_PER_PROCESS        = 'mem_per_process'
 
 INPUT_STAGING          = 'input_staging'
 OUTPUT_STAGING         = 'output_staging'
+PRE_LAUNCH             = 'pre_launch'
 PRE_EXEC               = 'pre_exec'
+PRE_RANK               = 'pre_rank'
+POST_LAUNCH            = 'post_launch'
 POST_EXEC              = 'post_exec'
+POST_RANK              = 'post_rank'
 KERNEL                 = 'kernel'
 CLEANUP                = 'cleanup'
 PILOT                  = 'pilot'
@@ -211,11 +215,11 @@ class ComputeUnitDescription(ru.Description):
 
     .. data:: pre_exec
 
-       Actions (shell commands) to perform before this task starts (`list` of
-       `strings`).  Note that the set of shell commands given here are expected
-       to load environments, check for work directories and data, etc.  They are
-       not expected to consume any significant amount of CPU time or other
-       resources!  Deviating from that rule will likely result in reduced
+       Actions (shell commands) to perform before this task is launched (`list`
+       of `strings`).  Note that the set of shell commands given here are
+       expected to load environments, check for work directories and data, etc.
+       They are not expected to consume any significant amount of CPU time or
+       other resources!  Deviating from that rule will likely result in reduced
        overall throughput.
 
        No assumption should be made as to where these commands are executed
@@ -232,6 +236,19 @@ class ComputeUnitDescription(ru.Description):
        default: `[]`
 
 
+    .. data:: pre_launch
+
+       Like `pre_exec`, but runs befor launching, potentially on a batch node
+       which is different from the node the task is placed on.
+
+
+    .. data:: pre_rank
+
+       A dictionary which maps a set of `pre_exec` like commands to each rank.
+       The commands are executed on the respective nodes where the ranks are
+       places, and the actual rank startup will be delayed until all `pre_rank`
+       commands have completed.
+
     .. data:: post_exec
 
        Actions (shell commands) to perform after this task finishes (`list` of
@@ -240,6 +257,16 @@ class ComputeUnitDescription(ru.Description):
        actual execution was successful.
 
        default: `[]`
+
+
+    .. data:: post_launch
+
+       ...
+
+
+    .. data:: post_rank
+
+       ...
 
 
     .. data:: kernel
@@ -354,8 +381,12 @@ class ComputeUnitDescription(ru.Description):
                ARGUMENTS       : [str]       ,
                ENVIRONMENT     : {str: str}  ,
                NAMED_ENV       : str         ,
+               PRE_LAUNCH      : [str]       ,
                PRE_EXEC        : [str]       ,
+               PRE_RANK        : [str]       ,
+               POST_LAUNCH     : [str]       ,
                POST_EXEC       : [str]       ,
+               POST_RANK       : [str]       ,
                STDOUT          : str         ,
                STDERR          : str         ,
                INPUT_STAGING   : None        ,
@@ -389,8 +420,12 @@ class ComputeUnitDescription(ru.Description):
                ARGUMENTS       : list()      ,
                ENVIRONMENT     : dict()      ,
                NAMED_ENV       : ''          ,
+               PRE_LAUNCH      : list()      ,
                PRE_EXEC        : list()      ,
+               PRE_RANK        : list()      ,
+               POST_LAUNCH     : list()      ,
                POST_EXEC       : list()      ,
+               POST_RANK       : list()      ,
                STDOUT          : ''          ,
                STDERR          : ''          ,
                INPUT_STAGING   : list()      ,

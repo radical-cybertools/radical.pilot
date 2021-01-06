@@ -98,6 +98,9 @@ class Popen(AgentExecutingComponent) :
         self.gtod   = "%s/gtod" % self._pwd
         self.tmpdir = tempfile.gettempdir()
 
+        # prepare environment setup
+        self._env_orig  = ru.env_read('./env.orig')
+
 
     # --------------------------------------------------------------------------
     #
@@ -133,6 +136,79 @@ class Popen(AgentExecutingComponent) :
     # --------------------------------------------------------------------------
     #
     def _handle_unit(self, cu):
+        # create two shell scripts: a launcher script (task.launch.sh) which
+        # sets the launcher environment, performs pre_launch commands, and then
+        # launches the second script which executes the task.
+        #
+        # The second script (`task.exec.sh`) is instantiated once per task rank.
+        # It first resets the environment created by the launcher, then prepares
+        # the environment for the tasks.  Next it runs the `pre_exec` directives
+        # for all ranks, then the individual `pre_rank` directives are executed,
+        # and then, after all ranks are synchronized, finally the task ranks
+        # begin to run.
+        #
+        # The scripts thus show the following structure:
+        #
+        # Launcher Script (`task.000000.launch.sh`):
+        # ----------------------------------------------------------------------
+        # #!/bin/sh
+        #
+        # # task pre_launch commands
+        # date > data.input
+        #
+        # # launcher environment setup
+        # module load openmpi
+        #
+        # # launch the task script
+        # mpirun -n 4 ./task.000000.exec.sh
+        # ----------------------------------------------------------------------
+        #
+        # Task Script (`task.000000.exec.sh`)
+        # ----------------------------------------------------------------------
+        # #!/bin/sh
+        #
+        # clean launch environment
+        # module unload mpi
+        #
+        # # task environment setup (`pre_exec`)
+        # module load gromacs
+        #
+        # # rank specific setup
+        # touch task.000000.ranks
+        # if test "$MPI_RANK" = 0; then
+        #   export CUDA_VISIBLE_DEVICES=0
+        #   export OENMP_NUM_THREADS=2
+        #   export RANK_0_VAR=foo
+        #   echo 0 >> task.000000.ranks
+        # elif test "$MPI_RANK" = 1; then
+        #   export CUDA_VISIBLE_DEVICES=1
+        #   export OENMP_NUM_THREADS=4
+        #   export RANK_1_VAR=bar
+        #   echo 1 >> task.000000.ranks
+        # fi
+        #
+        # # synchronize ranks
+        # while $(wc -l task.000000.ranks) != $MPI_RANKS; do
+        #   sleep 1
+        # done
+        #
+        # # run the task
+        # mdrun -i ... -o ... -foo ... 1> task.000000.$MPI_RANK.out \
+        #                              2> task.000000.$MPI_RANK.err
+        #
+        # # now do the very same stuff for the `post_rank` and `post_exec`
+        # # directives
+        # ...
+        #
+        # ----------------------------------------------------------------------
+        #
+        # We deviate from the above in two ways:
+        #
+        #   - `pre_exec` directives are not actually executed for each rank,
+        #     but they are executed once, the resulting env is captured and
+        #     applied to all ranks.
+        #   - we create one `task.000000.exec.sh` script per rank (with
+        #     a `.<rank>` suffix), to make the overall flow simpler.
 
         try:
             descr = cu['description']
@@ -141,7 +217,7 @@ class Popen(AgentExecutingComponent) :
             env = descr.get('named_env')
             if env:
                 if not os.path.isdir('%s/%s' % (self._pwd, env)):
-                    raise ValueError('invalid named env %s for task %s' 
+                    raise ValueError('invalid named env %s for task %s'
                                     % (env, cu['uid']))
                 pre = ru.as_list(descr.get('pre_exec'))
                 pre.insert(0, '. %s/%s/bin/activate' % (self._pwd, env))
@@ -203,6 +279,9 @@ class Popen(AgentExecutingComponent) :
         slots_fname        = '%s/%s.sl' % (sandbox, cu['uid'])
 
         self._log.debug("Created launch_script: %s", launch_script_name)
+
+        # prepare the task's execution environment
+        self._prep_env(cu)
 
         # prep stdout/err so that we can append w/o checking for None
         cu['stdout'] = ''
@@ -343,6 +422,44 @@ prof(){
         _pids.append(cu['proc'].pid)
 
         self._watch_queue.put(cu)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _prep_env(self, task):
+        # prepare a `<task_uid>.env` file which captures the task's execution
+        # environment.  That file is to be sourced by all ranks individually
+        # *after* the launch method.
+        #
+        # That prepared environment is based upon `env.orig` as initially
+        # captured by the bootstrapper.  On top of that environment, we apply:
+        #
+        #   - the unit environment       (`task.description.environment`)
+        #   - launch method env settings (such as `CUDA_VISIBLE_DEVICES` etc)
+        #   - the unit pre_exec commands (`task.description.environment`)
+        #
+        # The latter (`pre_exec`) can be rather costly, and for example in the
+        # case of activating virtual envs or conda envs can put significant
+        # strain on shared file systems.  We thus perform the above env setup
+        # once and cache the results, and then apply the env settings to all
+        # future tasks with the same setup (`environment` and `pre_exec`
+        # setting).  That cache is managed by the underlying RU implementation
+        # of `env_prep`.
+        #
+        # The task sandbox exists at this point.
+
+        tid  = task['uid']
+        td   = task['description']
+        sbox = task['unit_sandbox_path']
+        tgt  = '%s/%s.env' % (sbox, tid)
+
+        # we consider the `td['environment']` a part of the `pre_exec`, and
+        # thus prepend the respective `export` statements
+        pre_exec = ['export %s="%s"' % (k, v)
+                    for k,v in td['environment'].items()]
+        pre_exec += td['pre_exec']
+
+        ru.env_prep(source=self._env_orig, pre_exec=pre_exec, target=tgt)
 
 
     # --------------------------------------------------------------------------

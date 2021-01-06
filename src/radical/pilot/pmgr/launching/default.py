@@ -911,8 +911,12 @@ class Default(PMGRLaunchingComponent):
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
         stage_cacerts           = rcfg.get('stage_cacerts', False)
+        cu_pre_launch           = rcfg.get('cu_pre_launch')
         cu_pre_exec             = rcfg.get('cu_pre_exec')
+        cu_pre_rank             = rcfg.get('cu_pre_rank')
+        cu_post_launch          = rcfg.get('cu_post_launch')
         cu_post_exec            = rcfg.get('cu_post_exec')
+        cu_post_rank            = rcfg.get('cu_post_rank')
         export_to_cu            = rcfg.get('export_to_cu')
         mandatory_args          = rcfg.get('mandatory_args', [])
         system_architecture     = rcfg.get('system_architecture', {})
@@ -1180,8 +1184,12 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['lfs_size_per_node']   = lfs_size_per_node
         agent_cfg['cu_tmp']              = cu_tmp
         agent_cfg['export_to_cu']        = export_to_cu
+        agent_cfg['cu_pre_launch']       = cu_pre_launch
         agent_cfg['cu_pre_exec']         = cu_pre_exec
+        agent_cfg['cu_pre_rank']         = cu_pre_rank
+        agent_cfg['cu_post_launch']      = cu_post_launch
         agent_cfg['cu_post_exec']        = cu_post_exec
+        agent_cfg['cu_post_rank']        = cu_post_rank
         agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
         agent_cfg['debug']               = self._log.getEffectiveLevel()
 
