@@ -381,6 +381,11 @@ class Continuous(AgentSchedulingComponent):
         is_last  = False
         tag      = cud.get('tag')
 
+        # `tag` will soon be deprecated - check also for `tags: {colocate:uid}`
+        # as the current way to specify colocation requests
+        if not tag:
+            tag = cud.get('tags', {}).get('colocate')
+
         # what remains to be allocated?  all of it right now.
         alc_slots = list()
         rem_slots = req_slots
