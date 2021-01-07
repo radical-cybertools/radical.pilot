@@ -68,17 +68,17 @@ class MPIRunCCMRun(LaunchMethod):
                 for var in env_list:
                     env_string += '-x "%s" ' % var
 
-        if 'nodes' not in slots:
+        if 'ranks' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'
                               % (self.name, slots))
 
         # Extract all the hosts from the slots
         hostlist = list()
-        for node in slots['nodes']:
-            for cpu_proc in node['core_map']:
-                hostlist.append(node['name'])
-            for gpu_proc in node['gpu_map']:
-                hostlist.append(node['name'])
+        for rank in slots['ranks']:
+            for cpu_proc in rank['core_map']:
+                hostlist.append(rank['node'])
+            for gpu_proc in rank['gpu_map']:
+                hostlist.append(rank['node'])
         hosts_string = ",".join(hostlist)
 
         command = "%s%s -np %d -host %s %s %s" % \

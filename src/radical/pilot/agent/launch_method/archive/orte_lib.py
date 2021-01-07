@@ -258,12 +258,12 @@ class ORTELib(LaunchMethod):
         # Construct the hosts_string, env vars
         hosts_string = ''
         depths       = set()
-        for node in slots['nodes']:
+        for rank in slots['ranks']:
 
             # add all cpu and gpu process slots to the node list.
-            for _        in node['core_map']: hosts_string += '%s,' % node['uid']
-            for _        in node['gpu_map' ]: hosts_string += '%s,' % node['uid']
-            for cpu_slot in node['core_map']: depths.add(len(cpu_slot))
+            for _ in rank['core_map']: hosts_string += '%s,' % rank['node_id']
+            for _ in rank['gpu_map' ]: hosts_string += '%s,' % rank['node_id']
+            for m in rank['core_map']: depths.add(len(m))
 
         assert(len(depths) == 1), depths
         # depth = list(depths)[0]

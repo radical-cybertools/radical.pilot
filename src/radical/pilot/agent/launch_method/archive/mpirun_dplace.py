@@ -75,19 +75,19 @@ class MPIRunDPlace(LaunchMethod):
                     env_string += '-x "%s" ' % var
 
 
-        if 'nodes' not in slots:
+        if 'ranks' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'
                               % (self.name, slots))
 
         host_list = list()
         core_list = list()
-        for node in slots['nodes']:
+        for rank in slots['ranks']:
             tmp_list = list()
-            for cpu_proc in node['core_map']:
-                host_list.append(node['name'])
+            for cpu_proc in rank['core_map']:
+                host_list.append(rank['node'])
                 tmp_list.append(cpu_proc[0])
-            for gpu_proc in node['gpu_map']:
-                host_list.append(node['name'])
+            for gpu_proc in rank['gpu_map']:
+                host_list.append(rank['node'])
                 tmp_list.append(gpu_proc[0])
 
             if core_list:

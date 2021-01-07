@@ -286,7 +286,7 @@ class PRTE2(LaunchMethod):
         # # flags += ' --pmca rmaps_base_verbose 5'
         flags += ' --mca ptl_base_max_msg_size %d' % _base_max_msg_size
 
-        if 'nodes' not in slots:
+        if 'ranks' not in slots:
             # this task is unscheduled - we leave it to PRRTE/PMI-X
             # to correctly place the task
             pass
@@ -297,7 +297,7 @@ class PRTE2(LaunchMethod):
             # enact the scheduler's host placement.  For now, we leave socket,
             # core and thread placement to the prted, and just add all process
             # slots to the host list
-            hosts = ','.join([node['name'] for node in slots['nodes']])
+            hosts = ','.join([rank['node'] for rank in slots['ranks']])
             flags += ' --host %s' % hosts
 
         # additional (debug) arguments to prun

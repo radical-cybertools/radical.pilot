@@ -55,16 +55,16 @@ class IBRun(LaunchMethod):
         #   NOTE: in case of performance issue please consider this parameter
         #   at the first place
 
-        assert (slots.get('nodes') is not None), 'unit.slots.nodes is not set'
+        assert (slots.get('ranks') is not None), 'unit.slots.nodes is not set'
 
         ibrun_offset = 0
         offsets      = list()
         node_id      = 0
 
         for node in self._node_list:
-            for slot_node in slots['nodes']:
-                if slot_node['uid'] == node[0]:
-                    for core_map in slot_node['core_map']:
+            for rank in slots['ranks']:
+                if rank['node_id'] == node[0]:
+                    for core_map in rank['core_map']:
                         assert core_map, 'core_map is not set'
                         # core_map contains core ids for each thread,
                         # but threads are ignored for offsets

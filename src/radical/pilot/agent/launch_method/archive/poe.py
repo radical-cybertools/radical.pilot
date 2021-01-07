@@ -44,16 +44,17 @@ class POE(LaunchMethod):
         if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
         else          : task_command = task_exec
 
-        if 'nodes' not in slots:
+        if 'ranks' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'
                     % (self.name, slots))
 
         # Count slots per host in provided slots description.
         # Create string with format: "host_1 N  host_2 M  ..."
         hosts_string = ''
-        for node in slots['nodes']:
+        for rank in slots['ranks']:
                                      # nodename, n cores      + n gpus
-            hosts_string += '%s %d ' % (node['name'], len(node['core_map']) + len(node['gpu_map']))
+            hosts_string += '%s %d ' % (rank['node'],
+                            len(rank['core_map']) + len(rank['gpu_map']))
 
         # Override the LSB_MCPU_HOSTS env variable as this is set by
         # default to the size of the whole pilot.

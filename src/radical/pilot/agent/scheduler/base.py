@@ -47,7 +47,7 @@ SCHEDULER_NAME_TORUS              = "TORUS"
 # The base class provides the following functionality to the implementations:
 #
 #   - obtain configuration settings from config files and environments
-#   - create aself._nodes list to represent available resources;
+#   - create self.nodes list to represent available resources;
 #   - general control and data flow:
 #
 #       # main loop
@@ -132,9 +132,9 @@ SCHEDULER_NAME_TORUS              = "TORUS"
 #       'cpu_threads'     : 2,
 #       'gpu_processes    : 2,
 #       'slots' :
-#       {                 # [[node,   node_uid,   [cpu idx],        [gpu idx]]]
-#         'nodes'         : [[node_1, node_uid_1, [[0, 2], [4, 6]], [[0]    ]],
-#                            [node_2, node_uid_2, [[1, 3], [5, 7]], [[0]    ]]],
+#       {                 # [[node,   node_id,   [cpu map],        [gpu map]]]
+#         'ranks'         : [[node_1, node_id_1, [[0, 2], [4, 6]], [[0]    ]],
+#                            [node_2, node_id_2, [[1, 3], [5, 7]], [[0]    ]]],
 #         'cores_per_node': 8,
 #         'gpus_per_node' : 1,
 #         'lm_info'       : { ... }
@@ -380,8 +380,8 @@ class AgentSchedulingComponent(rpu.Component):
         '''
         # This method needs to change if the DS changes.
 
-        # for node_name, node_uid, cores, gpus in slots['nodes']:
-        for slot_node in slots['nodes']:
+        # for node_name, node_uid, cores, gpus in slots['ranks']:
+        for rank in slots['ranks']:
 
             # Find the entry in the the slots list
 
@@ -395,7 +395,7 @@ class AgentSchedulingComponent(rpu.Component):
             node = None
             node_found = False
             for node in self.nodes:
-                if node['uid'] == slot_node['uid']:
+                if node['uid'] == rank['node_id']:
                     node_found = True
                     break
 
@@ -403,27 +403,27 @@ class AgentSchedulingComponent(rpu.Component):
                 raise RuntimeError('inconsistent node information')
 
             # iterate over cores/gpus in the slot, and update state
-            cores = slot_node['core_map']
+            cores = rank['core_map']
             for cslot in cores:
                 for core in cslot:
                     node['cores'][core] = new_state
 
-            gpus = slot_node['gpu_map']
+            gpus = rank['gpu_map']
             for gslot in gpus:
                 for gpu in gslot:
                     node['gpus'][gpu] = new_state
 
-            if slot_node['lfs']['path']:
+            if rank['lfs']['path']:
                 if new_state == rpc.BUSY:
-                    node['lfs']['size'] -= slot_node['lfs']['size']
+                    node['lfs']['size'] -= rank['lfs']['size']
                 else:
-                    node['lfs']['size'] += slot_node['lfs']['size']
+                    node['lfs']['size'] += rank['lfs']['size']
 
-            if slot_node['mem']:
+            if rank['mem']:
                 if new_state == rpc.BUSY:
-                    node['mem'] -= slot_node['mem']
+                    node['mem'] -= rank['mem']
                 else:
-                    node['mem'] += slot_node['mem']
+                    node['mem'] += rank['mem']
 
 
 
@@ -887,9 +887,9 @@ class AgentSchedulingComponent(rpu.Component):
         cvd_id_mode = lm_info.get('cvd_id_mode', 'physical')
 
         gpu_maps = list()
-        for node in unit['slots']['nodes']:
-            if node['gpu_map'] not in gpu_maps:
-                gpu_maps.append(node['gpu_map'])
+        for rank in unit['slots']['ranks']:
+            if rank['gpu_map'] not in gpu_maps:
+                gpu_maps.append(rank['gpu_map'])
 
         if not gpu_maps or not gpu_maps[0]:
             # no gpu maps, nothing to do

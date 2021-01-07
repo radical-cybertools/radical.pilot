@@ -239,8 +239,8 @@ class ContinuousSummit(AgentSchedulingComponent):
         '''
         # This method needs to change if the DS changes.
         # Current slot DS:
-        # slots = {'nodes': [{'name'    : node_name,
-        #                     'uid'     : node_uid,
+        # slots = {'ranks': [{'node'    : node_name,
+        #                     'node_id' : node_uid,
         #                     'core_map': core_map,
         #                     'gpu_map' : gpu_map,
         #                     'lfs'     : {'size': lfs,
@@ -261,8 +261,8 @@ class ContinuousSummit(AgentSchedulingComponent):
         #                   'lfs'     : 128}],
 
 
-        # for node_name, node_uid, cores, gpus in slots['nodes']:
-        for node in slots['nodes']:
+        # for node_name, node_uid, cores, gpus in slots['ranks']:
+        for rank in slots['ranks']:
 
             # Find the entry in the the slots list
 
@@ -274,14 +274,15 @@ class ContinuousSummit(AgentSchedulingComponent):
             #       of the node to the location on the list?
 
             for entry in self.nodes:
-                if entry['uid'] == node['uid']:
+                if entry['node_id'] == rank['node_id']:
                     break
 
-            assert(entry), 'missing node %s' % node['uid']
+            assert(entry), 'missing node %s' % rank['node_id']
 
-            # STRONG ASSUMPTION!!!
+            # ASSUMPTION:
+            #
             # We assume that the core and gpu ids are continuous on a socket
-            # indexed with core_id=0 on socket_id=0 and gpu_id= on socket_id=0.
+            # indexed with core_id=0 and gpu_id=0 on socket_id=0.
             # For example, with the following node config for Summit:
             # sockets_per_node=2, cores_per_socket=21, gpus_per_socket=3
             # Our assumption leads to the following id relations:
@@ -302,13 +303,13 @@ class ContinuousSummit(AgentSchedulingComponent):
             # ]
 
             # iterate over resources in the slot, and update state
-            for cslot in node['core_map']:
+            for cslot in rank['core_map']:
                 for core in cslot:
                     socket  = core / self._rm_cores_per_socket
                     core_id = core % self._rm_cores_per_socket
                     entry['sockets'][socket]['cores'][core_id] = new_state
 
-            for gslot in node['gpu_map']:
+            for gslot in rank['gpu_map']:
                 for gpu in gslot:
                     socket = gpu / self._rm_gpus_per_socket
                     gpu_id = gpu % self._rm_gpus_per_socket
@@ -316,9 +317,9 @@ class ContinuousSummit(AgentSchedulingComponent):
 
             if entry['lfs']['path']:
                 if new_state == rpc.BUSY:
-                    entry['lfs']['size'] -= node['lfs']['size']
+                    entry['lfs']['size'] -= rank['lfs']['size']
                 else:
-                    entry['lfs']['size'] += node['lfs']['size']
+                    entry['lfs']['size'] += rank['lfs']['size']
 
 
     # --------------------------------------------------------------------------
@@ -373,7 +374,7 @@ class ContinuousSummit(AgentSchedulingComponent):
             return False
 
 
-        node_uids = [node['uid'] for node in unit['slots']['nodes']]
+        node_uids = [rank['node_id'] for rank in unit['slots']['ranks']]
         self._tag_history[uid] = node_uids
 
         # got an allocation, we can go off and launch the process
@@ -401,7 +402,6 @@ class ContinuousSummit(AgentSchedulingComponent):
         on the same node).
         '''
 
-        uid = unit['uid']
         cud = unit['description']
 
         # single_node allocation is enforced for non-message passing tasks
@@ -461,7 +461,6 @@ class ContinuousSummit(AgentSchedulingComponent):
         # list of core and gpu ids available in this node.
         cores = list()
         gpus  = list()
-        lfs   = 0
 
         # first count the number of free cores, gpus, and local file storage.
         # This is way quicker than actually finding the core IDs.
@@ -717,7 +716,7 @@ class ContinuousSummit(AgentSchedulingComponent):
             # If the unit has a valid tag, find the node that matches the
             # tag from tag_history dict
             if tag and tag in self._tag_history:
-                if node['uid'] not in self._tag_history[tag]:
+                if node['name'] not in self._tag_history[tag]:
                     continue
 
             # attempt to find the required number of cores and gpus on this
@@ -755,8 +754,8 @@ class ContinuousSummit(AgentSchedulingComponent):
         cud['environment']['NODE_LFS_PATH'] = self._rm_lfs_per_node['path']
 
         # all the information for placing the unit is acquired - return them
-        slots = {'nodes': [{'name'    : node_name,
-                            'uid'     : node_uid,
+        slots = {'ranks': [{'node'    : node_name,
+                            'node_id' : node_uid,
                             'core_map': core_map,
                             'gpu_map' : gpu_map,
                             'lfs'     : {'size': lfs,
@@ -855,7 +854,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         alloced_gpus  = 0
         alloced_lfs   = 0
 
-        slots = {'nodes': list(),
+        slots = {'ranks'         : list(),
                  'cores_per_node': cores_per_node,
                  'gpus_per_node' : gpus_per_node,
                  'lfs_per_node'  : lfs_per_node,
@@ -918,12 +917,12 @@ class ContinuousSummit(AgentSchedulingComponent):
                 # this was not a match. If we are in  'scattered' mode, we just
                 # ignore this node.  Otherwise we have to restart the search.
                 if not self._scattered:
-                    is_first      = True
-                    is_last       = False
-                    alloced_cores = 0
-                    alloced_gpus  = 0
-                    alloced_lfs   = 0
-                    slots['nodes'] = list()
+                    is_first       = True
+                    is_last        = False
+                    alloced_cores  = 0
+                    alloced_gpus   = 0
+                    alloced_lfs    = 0
+                    slots['ranks'] = list()
 
                 # try next node
                 continue
@@ -941,8 +940,8 @@ class ContinuousSummit(AgentSchedulingComponent):
             if 'NODE_LFS_PATH' not in cud['environment']:
                 cud['environment']['NODE_LFS_PATH'] = lfs_path
 
-            slots['nodes'].append({'name'    : node_name,
-                                   'uid'     : node_uid,
+            slots['ranks'].append({'node'    : node_name,
+                                   'node_id' : node_uid,
                                    'core_map': core_map,
                                    'gpu_map' : gpu_map,
                                    'lfs'     : {'size': lfs,

@@ -34,6 +34,11 @@ def test_construct_command(mocked_init, mocked_configure):
 
         else:
             command, hop = component.construct_command(unit, None)
+            print('c', command)
+            print('c', result[0])
+            print('h', hop)
+            print('h', result[1])
+
             assert([command, hop] == result), unit['uid']
 
 

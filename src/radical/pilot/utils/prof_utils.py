@@ -971,19 +971,19 @@ def get_consumed_resources(session, udurations=None):
                 continue
 
             try:
-                snodes = unit.cfg['slots']['nodes']
+                ranks  = unit.cfg['slots']['ranks']
                 ut     = unit.timestamps
                 u_min  = ut(event=unit_durations['consume']['exec_queue'][0]) [0]
                 u_max  = ut(event=unit_durations['consume']['unschedule'][1])[-1]
             except:
                 continue
 
-            for snode in snodes:
+            for rank in ranks:
 
-                node  = [snode['name'], snode['uid']]
+                node  = [rank['node'], rank['node_id']]
                 r0, _ = get_node_index(nodes, node, cpn, gpn)
 
-                for core_map in snode['core_map']:
+                for core_map in rank['core_map']:
                     for core in core_map:
                         idx = r0 + core
                         t_min = resources[idx][0]
@@ -992,7 +992,7 @@ def get_consumed_resources(session, udurations=None):
                         if t_max is None or t_max < u_max: t_max = u_max
                         resources[idx] = [t_min, t_max]
 
-                for gpu_map in snode['gpu_map']:
+                for gpu_map in rank['gpu_map']:
                     for gpu in gpu_map:
                         idx = r0 + cpn + gpu
                         t_min = resources[idx][0]
@@ -1167,18 +1167,18 @@ def _get_unit_consumption(session, unit, udurations=None):
     if 'slots' not in unit.cfg:
         return dict()
 
-    snodes    = unit.cfg['slots']['nodes']
+    ranks     = unit.cfg['slots']['ranks']
     resources = list()
-    for snode in snodes:
+    for rank in ranks:
 
-        node  = [snode['name'], snode['uid']]
+        node  = [rank['name'], rank['uid']]
         r0, _ = get_node_index(nodes, node, cpn, gpn)
 
-        for core_map in snode['core_map']:
+        for core_map in rank['core_map']:
             for core in core_map:
                 resources.append(r0 + core)
 
-        for gpu_map in snode['gpu_map']:
+        for gpu_map in rank['gpu_map']:
             for gpu in gpu_map:
                 resources.append(r0 + cpn + gpu)
 

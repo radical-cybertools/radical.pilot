@@ -100,6 +100,7 @@ class Popen(AgentExecutingComponent) :
 
         # prepare environment setup
         self._env_orig  = ru.env_read('./env.orig')
+        self._env_lm    = {k:v for k,v in os.environ.items()}
 
 
     # --------------------------------------------------------------------------
@@ -210,7 +211,23 @@ class Popen(AgentExecutingComponent) :
         #   - we create one `task.000000.exec.sh` script per rank (with
         #     a `.<rank>` suffix), to make the overall flow simpler.
 
+      # tid  = cu['uid']
+      # sbox = cu['unit_sandbox_path']
+
         try:
+
+          # with open('%s/%s.launch.sh' % (sbox, tid), 'w') as fout:
+          #
+          #     fout.write(self._get_pre_launch(cu))
+          #     fout.write(self._get_launch_cmd(cu))
+          #
+          # with open('%s/%s.task.sh' % (sbox, tid), 'w') as fout:
+          #
+          #     n_ranks = len(cu['slots']['ranks'])
+          #
+          #     fout.write(self._get_pre_launch(cu))
+          #     fout.write(self._get_launch_cmd(cu))
+
             descr = cu['description']
 
             # ensure that the named env exists
@@ -280,15 +297,12 @@ class Popen(AgentExecutingComponent) :
 
         self._log.debug("Created launch_script: %s", launch_script_name)
 
-        # prepare the task's execution environment
-        self._prep_env(cu)
-
         # prep stdout/err so that we can append w/o checking for None
         cu['stdout'] = ''
         cu['stderr'] = ''
 
-        with open(slots_fname, "w") as launch_script:
-            launch_script.write('\n%s\n\n' % pprint.pformat(cu['slots']))
+        with open(slots_fname, "w") as fout:
+            fout.write('\n%s\n\n' % pprint.pformat(cu['slots']))
 
         with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/sh\n\n')

@@ -99,24 +99,25 @@ class JSRUN(LaunchMethod):
 
         # if `cpu_index_using: physical` is set to run at Lassen@LLNL,
         #  then it returns an error "error in ptssup_mkcltsock_afunix()"
-        if slots['nodes'][0]['name'].lower().startswith('lassen'):
+        if slots['ranks'][0]['node'].lower().startswith('lassen'):
             rs_str = ''
         else:
             rs_str = 'cpu_index_using: physical\n'
-        rank = 0
-        for node in slots['nodes']:
 
-            gpu_maps = list(node['gpu_map'])
-            for map_set in node['core_map']:
+        rank_id = 0
+        for rank in slots['ranks']:
+
+            gpu_maps = list(rank['gpu_map'])
+            for map_set in rank['core_map']:
                 cores = ','.join(str(core) for core in map_set)
-                rs_str += 'rank: %d: {'  % rank
-                rs_str += ' host: %s;'  % str(node['uid'])
+                rs_str += 'rank: %d: {' % rank_id
+                rs_str += ' host: %s;'  % str(rank['node_id'])
                 rs_str += ' cpu: {%s}'  % cores
                 if gpu_maps:
                     gpus = [str(gpu_map[0]) for gpu_map in gpu_maps]
                     rs_str += '; gpu: {%s}' % ','.join(gpus)
-                rs_str += '}\n'
-                rank   += 1
+                rs_str  += '}\n'
+                rank_id += 1
 
         rs_name = '%s/%s.rs' % (sandbox, uid)
         with open(rs_name, 'w') as fout:

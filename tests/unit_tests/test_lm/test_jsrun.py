@@ -33,13 +33,18 @@ def test_create_resource_set_file(mocked_init, mocked_configure,
 
     for unit, _, resource_file, _ in test_cases:
 
-        slot   = unit['slots']
+        slots  = unit['slots']
         uid    = unit['uid']
 
-        component._create_resource_set_file(slots=slot, uid=uid, sandbox='.')
+        component._create_resource_set_file(slots=slots, uid=uid, sandbox='.')
+        print()
         print(uid)
         with open('%s.rs' % uid) as rs_layout:
-            assert rs_layout.readlines() ==  resource_file
+            data = rs_layout.readlines()
+            import pprint
+            pprint.pprint(data)
+            pprint.pprint(resource_file)
+            assert data ==  resource_file
 
     tearDown()
 

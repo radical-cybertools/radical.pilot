@@ -290,7 +290,7 @@ class PRTE(LaunchMethod):
         map_flag += ' --pmca ptl_base_max_msg_size %d' % (1024 * 1024 * 1024 * 1)
       # map_flag += ' --pmca rmaps_base_verbose 5'
 
-        if 'nodes' not in slots:
+        if 'ranks' not in slots:
             # this task is unscheduled - we leave it to PRRTE/PMI-X to
             # correctly place the task
             pass
@@ -303,8 +303,8 @@ class PRTE(LaunchMethod):
             # slots to the host list.
             hosts = ''
 
-            for node in slots['nodes']:
-                hosts += '%s,' % node['name']
+            for rank in slots['ranks']:
+                hosts += '%s,' % rank['node']
 
             # remove trailing ','
             map_flag += ' -host %s' % hosts.rstrip(',')

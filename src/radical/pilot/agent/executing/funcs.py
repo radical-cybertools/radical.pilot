@@ -92,10 +92,10 @@ class FUNCS(AgentExecutingComponent) :
                                      'cpu_processes': 1,
                                      'environment'  : [],
                                     },
-                     'slots'      : {'nodes'        : [{'name'  : node[0],
-                                                        'uid'   : node[1],
-                                                        'cores' : [[0]],
-                                                        'gpus'  : []
+                     'slots'      : {'ranks'        : [{'node'   : node[0],
+                                                        'node_id': node[1],
+                                                        'cores'  : [[0]],
+                                                        'gpus'   : []
                                                        }]
                                     },
                      'cfg'        : {'req_get'      : req_cfg['get'],

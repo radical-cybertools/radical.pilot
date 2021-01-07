@@ -25,8 +25,8 @@
                                    "nodename"       : "test"
                                   },
                 "lfs_per_node"  : 0,
-                "nodes"         : [{"name"    : "node1",
-                                    "uid"     : "node1",
+                "ranks"         : [{"node"    : "node1",
+                                    "node_id" : "node1",
                                     "core_map": [[0]],
                                     "gpu_map" : [],
                                     "lfs"     : {"size": 0,

@@ -36,8 +36,6 @@
                                     "uid"     : "1",
                                     "cores"   : [1],
                                     "gpus"    : [1],
-                                    "core_map": [[0]],
-                                    "gpu_map" : [[0]],
                                     "mem"     : 0,
                                     "lfs"     : {"size": 0,
                                                  "path": "/dev/null"}
@@ -45,6 +43,27 @@
             },
             "unit_sandbox": "./"
         }
+    },
+
+    "test" : {
+        "slots": {
+            "cores_per_node": 16,
+            "gpus_per_node" : 0,
+            "task_offsets"  : [0],
+            "lm_info"       : {
+                               "dvm_uri" : "dvm_uri"
+                              },
+            "lfs_per_node"  : 0,
+            "ranks"         : [{"node"    : "a",
+                                "node_id" : "1",
+                                "core_map": [[0]],
+                                "gpu_map" : [[0]],
+                                "mem"     : 0,
+                                "lfs"     : {"size": 0,
+                                             "path": "/dev/null"}
+            }]
+        }
+
     },
 
     "results": {

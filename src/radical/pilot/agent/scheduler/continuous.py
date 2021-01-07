@@ -278,8 +278,8 @@ class Continuous(AgentSchedulingComponent):
             core_map = [cores]
             gpu_map  = [[gpu] for gpu in gpus]
 
-            slots.append({'uid'     : node_uid,
-                          'name'    : node_name,
+            slots.append({'node'    : node_name,
+                          'node_id' : node_uid,
                           'core_map': core_map,
                           'gpu_map' : gpu_map,
                           'lfs'     : {'size': lfs_per_slot,
@@ -471,7 +471,7 @@ class Continuous(AgentSchedulingComponent):
         if  rem_slots > 0:
             return None  # signal failure
 
-        slots = {'nodes'         : alc_slots,
+        slots = {'ranks'         : alc_slots,
                  'cores_per_node': self._rm_cores_per_node,
                  'gpus_per_node' : self._rm_gpus_per_node,
                  'lfs_per_node'  : self._rm_lfs_per_node,
@@ -483,7 +483,8 @@ class Continuous(AgentSchedulingComponent):
         # allocation worked!  If the unit was tagged, store the node IDs for
         # this tag, so that later units can reuse that information
         if tag:
-            self._tag_history[tag] = [node['uid'] for node in slots['nodes']]
+            self._tag_history[tag] = [rank['node_id']
+                                      for rank in slots['ranks']]
 
         # this should be nicely filled out now - return
         return slots

@@ -20,8 +20,8 @@
                                    "dvm_uri" : "dvm_uri"
                                   },
                 "lfs_per_node"  : 0,
-                "nodes"         : [{"name"    : "node1",
-                                    "uid"     : "node1",
+                "ranks"         : [{"node"    : "node1",
+                                    "node_id" : "node1",
                                     "core_map": [[0,1,2,3]],
                                     "gpu_map" : [],
                                     "lfs"     : {"size": 0,

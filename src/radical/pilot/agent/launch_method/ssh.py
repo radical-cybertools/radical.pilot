@@ -67,14 +67,14 @@ class SSH(LaunchMethod):
         if not launch_script_hop :
             raise ValueError ("LMSSH.construct_command needs launch_script_hop!")
 
-        if 'nodes' not in slots:
+        if 'ranks' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'
                               % (self.name, slots))
 
-        if len(slots['nodes']) > 1:
+        if len(slots['ranks']) > 1:
             raise RuntimeError('ssh cannot run multinode units')
 
-        host = slots['nodes'][0]['name']
+        host = slots['ranks'][0]['node']
 
         # Pass configured and available environment variables.
         # This is a crude version of env transplanting where we prep the

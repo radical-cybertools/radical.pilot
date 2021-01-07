@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 
 # pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
@@ -32,7 +33,8 @@ class TestContinuous(TestCase):
             test_cases = ru.read_json(fin)
             ret.append(test_cases)
 
-        cfg_fname = os.path.dirname(__file__) + '/test_cases_continuous/test_continuous.json'
+        cfg_fname = os.path.dirname(__file__) \
+                  + '/test_cases_continuous/test_continuous.json'
         cfg_tests = ru.read_json(cfg_fname)
 
         return cfg_tests, ret
@@ -151,8 +153,8 @@ class TestContinuous(TestCase):
     @mock.patch.object(Continuous, '__init__', return_value=None)
     @mock.patch.object(Continuous, '_configure', return_value=None)
     @mock.patch.object(Continuous, '_find_resources',
-                       return_value=[{'name'    : 'a',
-                                      'uid'     : 1,
+                       return_value=[{'node'    : 'a',
+                                      'node_id' : '1',
                                       'core_map': [[0]],
                                       'gpu_map' : [[0]],
                                       'lfs'     : {'path': '/dev/null',
@@ -178,16 +180,17 @@ class TestContinuous(TestCase):
         component._log = ru.Logger('dummy')
         component._node_offset = 0
         test_slot =  {'cores_per_node': 32,
-                      'gpus_per_node': 2,
-                      'lfs_per_node': {'path': '/dev/null', 'size': 0},
-                      'lm_info': 'INFO',
-                      'mem_per_node': 1024,
-                      'nodes': [{'core_map': [[0]],
-                                 'gpu_map' : [[0]],
-                                 'lfs': {'path': '/dev/null', 'size': 1234},
-                                 'mem': 128,
-                                 'name': 'a',
-                                 'uid': 1}]}
+                      'gpus_per_node' : 2,
+                      'lfs_per_node'  : {'path' : '/dev/null', 'size' : 0},
+                      'lm_info'       : 'INFO',
+                      'mem_per_node'  : 1024,
+                      'ranks'         : [{'core_map': [[0]],
+                                          'gpu_map' : [[0]],
+                                          'lfs'     : {'path': '/dev/null',
+                                                       'size' : 1234},
+                                          'mem'     : 128,
+                                          'node'    : 'a',
+                                          'node_id' : '1'}]}
         try:
             self.assertEqual(component.schedule_unit(unit), test_slot)
         except:
@@ -205,7 +208,7 @@ class TestContinuous(TestCase):
 
         unit = {
                 'description': cfg[1]['unit']['description'],
-                'slots'      : cfg[1]['setup']['lm']['slots']
+                'slots'      : cfg[1]['test']['slots']
                }
 
         component.nodes = cfg[1]['setup']['lm']['slots']['nodes']
@@ -218,6 +221,15 @@ class TestContinuous(TestCase):
         except:
             with pytest.raises(AssertionError):
                 raise
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__':
+
+    tc = TestContinuous()
+    tc.test_schedule_unit()
+    tc.test_unschedule_unit()
 
 
 # ------------------------------------------------------------------------------

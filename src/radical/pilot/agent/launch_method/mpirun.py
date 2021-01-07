@@ -119,10 +119,10 @@ class MPIRun(LaunchMethod):
         core_list = list()
         save_list = list()
 
-        for node in slots['nodes']:
+        for rank in slots['ranks']:
 
-            for cpu_proc in node['core_map']:
-                host_list.append(node['name'])
+            for cpu_proc in rank['core_map']:
+                host_list.append(rank['node'])
                 core_list.append(cpu_proc[0])
                 # FIXME: inform this proc about the GPU to be used
 

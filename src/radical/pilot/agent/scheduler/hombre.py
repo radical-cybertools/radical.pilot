@@ -144,7 +144,7 @@ class Hombre(AgentSchedulingComponent):
                 del(slot['ncblocks'])
                 del(slot['ngblocks'])
                 self.free.append(slot)
-            return {'nodes'         : list(),
+            return {'ranks'         : list(),
                     'cores_per_node': self.cpn,
                     'gpus_per_node' : self.gpn,
                     'lm_info'       : self._rm_lm_info,
@@ -169,8 +169,8 @@ class Hombre(AgentSchedulingComponent):
             while slot['ncblocks'] < ncblocks:
                 if node['cblocks']:
                     cblock = node['cblocks'].pop(0)
-                    slot['nodes'].append({'name'    : nname,
-                                          'uid'     : nuid,
+                    slot['ranks'].append({'node'    : nname,
+                                          'node_id' : nuid,
                                           'core_map': [cblock],
                                           'gpu_map' : []})
                     slot['ncblocks'] += 1
@@ -184,8 +184,8 @@ class Hombre(AgentSchedulingComponent):
                     # move the process onto core `0` (oversubscribed)
                     # enabled)
                     gblock = node['gblocks'].pop(0)
-                    slot['nodes'].append({'name'    : nname,
-                                          'uid'     : nuid,
+                    slot['ranks'].append({'node'    : nname,
+                                          'node_id' : nuid,
                                           'core_map': [[0]],
                                           'gpu_map' : [gblock]})
                     slot['ngblocks'] += 1
@@ -231,7 +231,7 @@ class Hombre(AgentSchedulingComponent):
       # self._log.debug('find new slot')
         slots = self._find_slots(cud)
         if slots:
-            self._log.debug('allocate slot %s', slots['nodes'])
+            self._log.debug('allocate slot %s', slots['ranks'])
         else:
             self._log.debug('allocate slot %s', slots)
 
@@ -251,7 +251,7 @@ class Hombre(AgentSchedulingComponent):
         '''
 
       # self._log.debug('=> release  [%d]', len(self.free))
-        self._log.debug('release  slot %s', slots['nodes'])
+        self._log.debug('release  slot %s', slots['ranks'])
         with self.lock:
             self.free.append(slots)
       # self._log.debug('<= release  [%d]', len(self.free))

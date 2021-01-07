@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
@@ -120,7 +121,7 @@ class TestBase(unittest.TestCase):
         _pids = []
         cu = dict()
         cu = tests['unit']
-        cu['slots'] = tests['setup']['lm']['slots']
+        cu['slots'] = tests['test']['slots']
         cu['unit_sandbox_path'] = tests['setup']['lm']['unit_sandbox']
 
         launcher  = LaunchMethod()
@@ -140,6 +141,13 @@ class TestBase(unittest.TestCase):
 
         component.spawn(launcher=launcher, cu=cu)
         self.assertEqual(len(_pids), 0)
+
+
+# ------------------------------------------------------------------------------
+if __name__ == '__main__':
+
+    tb = TestBase()
+    tb.test_spawn()
 
 
 # ------------------------------------------------------------------------------

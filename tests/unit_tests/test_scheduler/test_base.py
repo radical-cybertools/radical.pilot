@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 
 # pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
@@ -15,7 +16,6 @@ from radical.pilot.agent.scheduler.base import AgentSchedulingComponent
 # ------------------------------------------------------------------------------
 #
 class TestBase(TestCase):
-
 
     # --------------------------------------------------------------------------
     #
@@ -127,6 +127,13 @@ class TestBase(TestCase):
         core_map, gpu_map = component._get_node_maps(cores, gpus, tpp)
         self.assertEqual(core_map, [[1, 2, 3, 4], [5, 6, 7, 8]])
         self.assertEqual(gpu_map, [[1], [2]])
+
+
+# ------------------------------------------------------------------------------
+if __name__ == '__main__':
+
+    tb = TestBase()
+    tb.test_change_slot_states()
 
 
 # ------------------------------------------------------------------------------
