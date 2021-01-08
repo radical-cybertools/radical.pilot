@@ -37,7 +37,7 @@
         "forward_tunnel_endpoint"     : "traverse.princeton.edu"
     },
 
-    "traverse": {
+    "traverse_mpirun": {
         "description"                 : "",
         "notes"                       : "",
         "schemas"                     : ["local"],
@@ -61,9 +61,9 @@
                                         ],
         "default_remote_workdir"      : "$HOME/",
         "valid_roots"                 : [],
-        "rp_version"                  : "installed",
-        "python_dist"                 : "anaconda",
-        "virtenv"                     : "/home/amerzky/radical.pilot.sandbox/ve.rp",
+        "rp_version"                  : "local",
+        "python_dist"                 : "default",
+        "virtenv"                     : "/scratch/gpfs/$USER/ve.rp",
         "virtenv_mode"                : "use",
         "export_to_cu"                : [],
         "cu_pre_exec"                 : [],
