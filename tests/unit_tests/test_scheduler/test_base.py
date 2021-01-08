@@ -2,6 +2,7 @@
 # pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
 import threading
+import os
 
 from unittest import mock
 from unittest import TestCase
@@ -20,7 +21,7 @@ class TestBase(TestCase):
     #
     def setUp(self):
 
-        fname = 'tests/test_scheduler/test_unit/test_cases/test_base.json'
+        fname = os.path.dirname(__file__) + '/test_cases/test_base.json'
         tc    = ru.read_json(fname)
 
         return tc

@@ -88,13 +88,14 @@ class UnitManager(rpu.Component):
 
         self._pilots      = dict()
         self._pilots_lock = ru.RLock('umgr.pilots_lock')
+        self._uids        = list()   # known UIDs
         self._units       = dict()
         self._units_lock  = ru.RLock('umgr.units_lock')
         self._callbacks   = dict()
         self._cb_lock     = ru.RLock('umgr.cb_lock')
         self._terminate   = mt.Event()
         self._closed      = False
-        self._rec_id      = 0       # used for session recording
+        self._rec_id      = 0        # used for session recording
         self._uid         = ru.generate_id('umgr.%(item_counter)04d',
                                            ru.ID_CUSTOM, ns=session.uid)
 
@@ -1189,6 +1190,18 @@ class UnitManager(rpu.Component):
                         raise ValueError("cb %s not registered" % cb_name)
 
                     del(self._callbacks[uid][metric][cb_name])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def check_uid(self, uid):
+
+        # ensure that uid is not yet known
+        if uid in self._uids:
+            return False
+        else:
+            self._uids.append(uid)
+            return True
 
 
 # ------------------------------------------------------------------------------
