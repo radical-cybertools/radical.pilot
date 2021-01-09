@@ -70,13 +70,12 @@ class Default(UMGRStagingInputComponent):
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._base_command_cb)
 
 
-
     # --------------------------------------------------------------------------
     #
     def finalize(self):
 
-        [fs.close() for fs in list(self._fs_cache.values())]
-        [js.close() for js in list(self._js_cache.values())]
+        for fs in list(self._fs_cache.values()): fs.close()
+        for js in list(self._js_cache.values()): js.close()
 
 
     # --------------------------------------------------------------------------
