@@ -3,8 +3,8 @@ exclude          = .git,__pycache__,docs,build,dist,examples,setup.py,bin
 max-complexity   = 10
 max-line-length  = 80
 per-file-ignores =
-     # imported but unused, star-import
-     __init__.py: F401, F403
+     # imported but unused, star-import, unmatched F*
+     __init__.py: F401, F403, X100
 ignore           =
      # module level import location
      E402,
@@ -37,7 +37,5 @@ ignore           =
      # allow line breaks after binary operators
      W504,
      # allow lambda assignment (used for partial callbacks)
-     E731,
-     # superfluous noqa directive (from per-file-ignore)
-     X100
+     E731
 
