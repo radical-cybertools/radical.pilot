@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -470,9 +471,6 @@ class PilotManager(rpu.Component):
                 sd['state'] = rps.NEW
                 self._active_sds[sd['uid']] = sd
 
-            sd_states = [sd['state'] for sd
-                                     in  self._active_sds.values()
-                                     if  sd['uid'] in uids]
         # push them out
         self._stager_queue.put(sds)
 
@@ -502,15 +500,10 @@ class PilotManager(rpu.Component):
 
         if cmd == 'staging_result':
 
-            sds = arg['sds']
-            states = {sd['uid']: sd['state'] for sd in self._active_sds.values()}
-
             with self._sds_lock:
                 for sd in arg['sds']:
                     if sd['uid'] in self._active_sds:
                         self._active_sds[sd['uid']]['state'] = sd['state']
-
-            states = {sd['uid']: sd['state'] for sd in self._active_sds.values()}
 
         return True
 

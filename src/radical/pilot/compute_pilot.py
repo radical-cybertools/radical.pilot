@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -630,9 +631,9 @@ class ComputePilot(object):
         sds = ru.as_list(sds)
 
         if not sds:
-             sds = [{'source': 'pilot:///staging_output.tgz',
-                     'target': 'client:///staging_output.tgz',
-                     'action': rpc.TRANSFER}]
+            sds = [{'source': 'pilot:///staging_output.tgz',
+                    'target': 'client:///staging_output.tgz',
+                    'action': rpc.TRANSFER}]
 
         for sd in sds:
             sd['prof_id'] = self.uid

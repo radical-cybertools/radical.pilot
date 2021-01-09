@@ -87,38 +87,38 @@ def expand_sds(sds, sandbox):
             src = sd.get('source')
             tgt = sd.get('target', os.path.basename(ru.Url(src).path))
 
+            action   = sd.get('action',   DEFAULT_ACTION)
+            flags    = sd.get('flags',    DEFAULT_FLAGS)
+            priority = sd.get('priority', DEFAULT_PRIORITY)
+
             assert(src)
 
-            if not src:
-                raise Exception("Staging directive dict has no source member!")
+            # RCT flags should always be rendered as OR'ed integers - but old
+            # versions of the RP API rendered them as list of strings.  We
+            # convert to the integer version for backward compatibility - but we
+            # complain loudly if we find actual strings.
+            if isinstance(flags, str):
+                raise ValueError('use RP constants for staging flags!')
+
+            int_flags = 0
+            for flag in ru.as_list(flags):
+                if isinstance(flags, str):
+                    raise ValueError('"%s" is no valid RP constant' % flag)
+                int_flags |= flag
+            flags = int_flags
 
             # FIXME: ID ns = session ID
-            expanded = {
-                    'source':   src,
-                    'target':   tgt,
-                    'action':   sd.get('action',   DEFAULT_ACTION),
-                    'flags':    sd.get('flags',    DEFAULT_FLAGS),
-                    'priority': sd.get('priority', DEFAULT_PRIORITY)
-           }
+            expanded = {'source':   src,
+                        'target':   tgt,
+                        'action':   action,
+                        'flags':    flags,
+                        'priority': priority}
 
         else:
-            src = sd['source']
-            tgt = sd.get('target', os.path.basename(ru.Url(src).path))
+            raise TypeError('cannot handle SD type %s' % type(sd))
 
-            assert(src)
 
-            if not tgt:
-                tgt = 'sandbox://%s/%s' % (sandbox, src.split('/')[-1])
-
-            expanded = {
-                    'source':   src,
-                    'target':   tgt,
-                    'action':   sd.get('action',   DEFAULT_ACTION),
-                    'flags':    sd.get('flags',    DEFAULT_FLAGS),
-                    'priority': sd.get('priority', DEFAULT_PRIORITY)
-            }
-
-        expanded['uid'] = ru.generate_id('sd'),
+        expanded['uid'] = ru.generate_id('sd')
         ret.append(expanded)
 
         # FIXME: expand sandboxes
