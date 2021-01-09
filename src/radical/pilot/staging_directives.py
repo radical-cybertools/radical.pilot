@@ -45,12 +45,11 @@ def expand_staging_directives(sds):
     Take an abbreviated or compressed staging directive and expand it.
     """
 
+
     if not sds:
         return []
 
-    if not isinstance(sds, list):
-        sds = [sds]
-
+    sds = ru.as_list(sds)
     ret = list()
     for sd in sds:
 
@@ -65,17 +64,20 @@ def expand_staging_directives(sds):
             elif '<'  in sd: tgt, src = sd.split('<' , 2)
             else           : src, tgt = sd, os.path.basename(ru.Url(sd).path)
 
-            expanded = {'uid':      ru.generate_id('sd'),
-                        'source':   src.strip(),
+            # FIXME: ns = session ID
+            expanded = {'source':   src.strip(),
                         'target':   tgt.strip(),
                         'action':   DEFAULT_ACTION,
                         'flags':    DEFAULT_FLAGS,
-                        'priority': DEFAULT_PRIORITY}
+                        'priority': DEFAULT_PRIORITY,
+                        'uid':      ru.generate_id('sd.%(item_counter)06d',
+                                                    ru.ID_CUSTOM, ns='foo')}
 
         elif isinstance(sd, dict):
 
             # sanity check on dict syntax
-            valid_keys = ['source', 'target', 'action', 'flags', 'priority']
+            valid_keys = ['source', 'target', 'action', 'flags', 'priority',
+                          'uid', 'prof_id']
             for k in sd:
                 if k not in valid_keys:
                     raise ValueError('"%s" is invalid on staging directive' % k)
@@ -88,6 +90,21 @@ def expand_staging_directives(sds):
 
             if not source:
                 raise Exception("Staging directive dict has no source member!")
+
+            # RCT flags should always be rendered as OR'ed integers - but old
+            # versions of the RP API rendered them as list of strings.  We
+            # convert to the integer version for backward compatibility - but we
+            # complain loudly if we find actual strings.
+            if isinstance(flags, list):
+                int_flags = 0
+                for flag in flags:
+                    if isinstance(flags, str):
+                        raise ValueError('"%s" is no valid RP constant' % flag)
+                    int_flags |= flag
+                flags = int_flags
+
+            elif isinstance(flags, str):
+                raise ValueError('use RP constants for staging flags!')
 
             expanded = {'uid':      ru.generate_id('sd'),
                         'source':   source,
