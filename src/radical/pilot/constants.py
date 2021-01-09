@@ -8,6 +8,10 @@ WORKER                         = 'worker'
 
 UPDATE_WORKER                  = 'update'
 
+STAGER_WORKER                  = 'stager'
+STAGER_REQUEST_QUEUE           = 'stager_request_queue'
+STAGER_RESPONSE_PUBSUB         = 'stager_response_pubsub'
+
 PMGR_LAUNCHING_QUEUE           = 'pmgr_launching_queue'
 PMGR_LAUNCHING_COMPONENT       = 'pmgr_launching'
 
