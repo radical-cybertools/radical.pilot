@@ -100,7 +100,7 @@ def expand_staging_directives(sds):
                 for flag in flags:
                     if isinstance(flags, str):
                         raise ValueError('"%s" is no valid RP constant' % flag)
-                    int_flags != flag
+                    int_flags |= flag
                 flags = int_flags
 
             elif isinstance(flags, str):
@@ -111,9 +111,7 @@ def expand_staging_directives(sds):
                         'target':   target,
                         'action':   action,
                         'flags':    flags,
-                        'priority': priority,
-                        'uid':      ru.generate_id('sd.%(item_counter)06d',
-                                                    ru.ID_CUSTOM, ns='foo')}
+                        'priority': priority}
 
         else:
             raise Exception("Unknown directive: %s (%s)" % (sd, type(sd)))

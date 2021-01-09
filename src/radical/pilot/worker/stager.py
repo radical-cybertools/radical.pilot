@@ -40,7 +40,7 @@ class Stager(rpu.Worker):
         self._dburl = self._cfg['dburl']
 
         self.register_input(rps.NEW, rpc.STAGER_REQUEST_QUEUE, self.work)
-        self.register_publisher(     rpc.STAGER_RESPONSE_PUBSUB)
+        self.register_publisher(rpc.STAGER_RESPONSE_PUBSUB)
 
 
     # --------------------------------------------------------------------------
@@ -97,10 +97,10 @@ class Stager(rpu.Worker):
 
             assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
 
-            self._prof.prof('staging_in_start', uid=prof_id, msg=uid)
+            self._prof.prof('staging_start', uid=prof_id, msg=uid)
 
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
-                self._prof.prof('staging_in_fail', uid=prof_id, msg=uid)
+                self._prof.prof('staging_fail', uid=prof_id, msg=uid)
                 raise ValueError("invalid action '%s' on stager" % action)
 
             self._log.info('transfer %s', src)
@@ -126,7 +126,7 @@ class Stager(rpu.Worker):
 
             sd['state'] = rps.DONE
 
-            self._prof.prof('staging_in_stop', uid=prof_id, msg=uid)
+            self._prof.prof('staging_stop', uid=prof_id, msg=uid)
 
 
 # ------------------------------------------------------------------------------

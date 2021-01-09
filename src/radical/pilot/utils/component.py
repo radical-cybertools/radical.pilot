@@ -766,6 +766,8 @@ class Component(object):
         '''
 
         states = ru.as_list(states)
+        if not states:
+            states = [None]  # worker handles stateless entities
 
         for state in states:
 
@@ -777,7 +779,6 @@ class Component(object):
                         % (self.uid, state, self._outputs[state], output))
 
             if not output:
-
                 # this indicates a final state
                 self._log.debug('%s register output to None %s', self.uid, state)
                 self._outputs[state] = None
@@ -823,6 +824,8 @@ class Component(object):
         '''
 
         states = ru.as_list(states)
+        if not states:
+            states = [None]  # worker handles stateless entities
 
         for state in states:
 
