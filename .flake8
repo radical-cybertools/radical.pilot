@@ -1,9 +1,12 @@
 [flake8]
-exclude         = .git,__pycache__,docs,build,dist,examples,setup.py,bin
-max-complexity  = 10
-max-line-length = 80
-ignore          =
-   # module level import location
+exclude          = .git,__pycache__,docs,build,dist,examples,setup.py,bin
+max-complexity   = 10
+max-line-length  = 80
+per-file-ignores =
+     # imported but unused, star-import, unmatched F*
+     __init__.py: F401, F403, X100
+ignore           =
+     # module level import location
      E402,
      # space before/after operator
      E221, E222,E251,
