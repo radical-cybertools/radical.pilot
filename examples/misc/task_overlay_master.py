@@ -142,7 +142,7 @@ if __name__ == '__main__':
     # a work queue.
   # master.wait(count=nworkers)
 
-    master.run()
+    master.start()
 
     # simply terminate
     # FIXME: clean up workers

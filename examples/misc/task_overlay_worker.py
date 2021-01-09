@@ -22,8 +22,6 @@ class MyWorker(rpt.Worker):
 
         rp.task_overlay.Worker.__init__(self, cfg)
 
-        self.register_call('hello', self.hello)
-
 
     # --------------------------------------------------------------------------
     #

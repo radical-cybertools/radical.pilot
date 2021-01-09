@@ -601,8 +601,8 @@ class ComputePilot(object):
             sd['prof_id'] = self.uid
 
         for sd in sds:
-            sd['source'] = str(complete_url(sd['source'], self._loc_ctx, self._log))
-            sd['target'] = str(complete_url(sd['target'], self._rem_ctx, self._log))
+            sd['source'] = str(complete_url(sd['source'], self._loc_ctx))
+            sd['target'] = str(complete_url(sd['target'], self._rem_ctx))
 
         # ask the pmgr to send the staging reuests to the stager
         self._pmgr._pilot_staging_input(sds)
@@ -639,8 +639,8 @@ class ComputePilot(object):
             sd['prof_id'] = self.uid
 
         for sd in sds:
-            sd['source'] = str(complete_url(sd['source'], self._rem_ctx, self._log))
-            sd['target'] = str(complete_url(sd['target'], self._loc_ctx, self._log))
+            sd['source'] = str(complete_url(sd['source'], self._rem_ctx))
+            sd['target'] = str(complete_url(sd['target'], self._loc_ctx))
 
         # ask the pmgr to send the staging reuests to the stager
         self._pmgr._pilot_staging_output(sds)

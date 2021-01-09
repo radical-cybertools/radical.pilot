@@ -635,7 +635,8 @@ class Agent_0(rpu.Worker):
             elif req == 'prep_env':
                 env_id   = rpc_req['arg']['env_id']
                 env_spec = rpc_req['arg']['env_spec']
-                ret = self._prepare_env(env_id, env_spec)
+                self._prepare_env(env_id, env_spec)
+                ret = env_id
 
         except Exception as e:
             # request failed for some reason - indicate error
@@ -742,7 +743,6 @@ class Agent_0(rpu.Worker):
         rp_cse = 'radical-pilot-create-static-ve'
         out, err, ret = ru.sh_callout('%s -p ./%s -v %s -m "%s"'
                                      % (rp_cse, eid, evers, ','.join(emods)))
-
         assert(not ret), [out, err]
 
 

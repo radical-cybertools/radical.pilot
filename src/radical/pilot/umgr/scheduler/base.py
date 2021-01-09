@@ -376,13 +376,12 @@ class UMGRSchedulingComponent(rpu.Component):
                 self._log.error(pprint.pformat(src_ctx))
                 self._log.error(pprint.pformat(tgt_ctx))
 
-                src, host = rsd.complete_url(sd['source'],
-                                             [src_ctx, self._sboxes], self._log)
+                # FIXME: the sandbox context needs to be passed differently
+                src, host = rsd.complete_url(sd['source'], src_ctx, self._sboxes)
                 if not src:
                     self._log.error('=== src missing %s', host)
 
-                tgt, host = rsd.complete_url(sd['target'],
-                                             [tgt_ctx, self._sboxes], self._log)
+                tgt, host = rsd.complete_url(sd['target'], tgt_ctx, self._sboxes)
                 if not tgt:
                     self._log.error('=== tgt missing %s', host)
 

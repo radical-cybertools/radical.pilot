@@ -196,6 +196,7 @@ def start_pilot(cr=None):
     cfg = session.get_resource_config('local.localhost')
 
     # create a new config based on the local one, and add it back
+    # FIXME: deprecated code
     new_cfg = rp.ResourceConfig('ec2.vm', cfg)
     new_cfg.schemas = ['ssh']
     new_cfg['ssh']['job_manager_endpoint'] = cr.access

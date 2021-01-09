@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
-    session = rp.Session(name=session_name,
+    session = rp.Session(session_name,
                          dburl=os.environ.get('RADICAL_PILOT_DBURL'))
     print("session id: %s" % session.uid)
 

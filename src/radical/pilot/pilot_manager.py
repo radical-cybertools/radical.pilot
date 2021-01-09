@@ -424,7 +424,7 @@ class PilotManager(rpu.Component):
         '''
 
         # add uid, ensure its a list, general cleanup
-        sds  = expand_sds(directives, 'pilot')
+        sds  = expand_sds(sds, 'pilot')
         uids = [sd['uid'] for sd in sds]
 
         # prepare to wait for completion
@@ -460,7 +460,7 @@ class PilotManager(rpu.Component):
         '''
 
         # add uid, ensure its a list, general cleanup
-        sds  = expand_sds(directives, 'pilot')
+        sds  = expand_sds(sds, 'pilot')
         uids = [sd['uid'] for sd in sds]
 
         # prepare to wait for completion
