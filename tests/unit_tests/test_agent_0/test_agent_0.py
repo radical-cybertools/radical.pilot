@@ -29,7 +29,8 @@ class TestComponent(TestCase):
 
         agent_cmp = Agent_0(None, None)
         agent_cmp.publish = mock.MagicMock(side_effect=_publish_side_effect)
-        agent_cmp._prepare_env = mock.MagicMock(side_effect=_prepare_env_side_effect)
+        agent_cmp._prepare_env = mock.MagicMock(
+                                           side_effect=_prepare_env_side_effect)
 
         msg = {'cmd': 'test',
                'arg': {'uid': 'rpc.0000',
@@ -51,12 +52,18 @@ class TestComponent(TestCase):
                        'rpc': 'hello'}
               }
         self.assertTrue(agent_cmp._check_control(None, msg))
-        self.assertEqual(global_control[0], ('control_pubsub',
+        self.assertIn(global_control[0], [('control_pubsub',
                                            {'cmd': 'rpc_res',
                                             'arg': {'uid': 'rpc.0000',
-                                                    'err': "'arg'",
+                                                    'err': "KeyError('arg')",
                                                     'ret': None}
-                                           }))
+                                           }),
+                                           ('control_pubsub',
+                                           {'cmd': 'rpc_res',
+                                            'arg': {'uid': 'rpc.0000',
+                                                    'err': "KeyError('arg',)",
+                                                    'ret': None}
+                                           })])
 
         msg = {'cmd': 'rpc_req',
                'arg': {'uid': 'rpc.0000',
@@ -70,10 +77,12 @@ class TestComponent(TestCase):
                                                       'err': None,
                                                       'ret': 'hello World'}
                                              }))
+
         msg = {'cmd': 'rpc_req',
                'arg': {'uid': 'rpc.0000',
                        'rpc': 'prep_env',
-                       'arg': {'env_id': 'radical', 'env_spec': 'spec'}
+                       'arg': {'env_id'  : 'radical',
+                               'env_spec': 'spec'}
                       }
               }
         self.assertTrue(agent_cmp._check_control(None, msg))
@@ -83,3 +92,6 @@ class TestComponent(TestCase):
                                                       'err': None,
                                                       'ret': ('radical', 'spec')}
                                              }))
+
+                                             # ------------------------------------------------------------------------------
+
