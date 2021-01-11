@@ -35,7 +35,8 @@ _pids = list()
 
 def _kill():
     for pid in _pids:
-        os.killpg(pid, signal.SIGTERM)
+        try   : os.killpg(pid, signal.SIGTERM)
+        except: pass
 
 
 atexit.register(_kill)
@@ -141,7 +142,7 @@ class Popen(AgentExecutingComponent) :
             env = descr.get('named_env')
             if env:
                 if not os.path.isdir('%s/%s' % (self._pwd, env)):
-                    raise ValueError('invalid named env %s for task %s' 
+                    raise ValueError('invalid named env %s for task %s'
                                     % (env, cu['uid']))
                 pre = ru.as_list(descr.get('pre_exec'))
                 pre.insert(0, '. %s/%s/bin/activate' % (self._pwd, env))
