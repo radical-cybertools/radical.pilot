@@ -211,22 +211,35 @@ class Popen(AgentExecutingComponent) :
         #   - we create one `task.000000.exec.sh` script per rank (with
         #     a `.<rank>` suffix), to make the overall flow simpler.
 
-      # tid  = cu['uid']
-      # sbox = cu['unit_sandbox_path']
+        tid  = cu['uid']
+        sbox = cu['unit_sandbox_path']
 
         try:
 
-          # with open('%s/%s.launch.sh' % (sbox, tid), 'w') as fout:
-          #
-          #     fout.write(self._get_pre_launch(cu))
-          #     fout.write(self._get_launch_cmd(cu))
-          #
-          # with open('%s/%s.task.sh' % (sbox, tid), 'w') as fout:
-          #
-          #     n_ranks = len(cu['slots']['ranks'])
-          #
-          #     fout.write(self._get_pre_launch(cu))
-          #     fout.write(self._get_launch_cmd(cu))
+            with open('%s/%s.launch.sh' % (sbox, tid), 'w') as fout:
+
+                fout.write(self._get_pre_launch(cu))
+                fout.write(self._get_launch_cmd(cu))
+                fout.write(self._get_post_launch(cu))
+
+            ranks   = cu['slots']['ranks']
+            n_ranks = len(ranks)
+            for rank_id, rank in enumerate(ranks):
+
+                with open('%s/%s.task.%d.sh' % (sbox, tid, rank_id), 'w') \
+                     as fout:
+
+                    fout.write(self._get_pre_rank(rank_id, rank))
+                    fout.write(self._get_rank_sync(rank_id, n_ranks))
+                    fout.write(self._get_rank_exec(rank_id, rank, task_cmd))
+                    fout.write(self._get_rank_sync(rank_id, n_ranks))
+                    fout.write(self._get_post_rank(rank_id, rank))
+
+            with open('%s/%s.task.sh' % (sbox, tid), 'w') as fout:
+
+                fout.write(self._get_pre_exec(cu))
+                fout.write(self._get_rank_switch(n_ranks))
+                fout.write(self._get_post_exec(cu))
 
             descr = cu['description']
 
@@ -596,6 +609,40 @@ prof(){
 
         return action
 
+    # launcher
+    def _get_pre_launch(cu, lm):
+        ret = '''
+        #!/bin/sh
+        export RP_VE_ROOT=...
+        export RP_PILOT_SBOX
+
+        . $RP_VE_ROOT/bin/radical-utils-env.sh
+        env_activate $RP_PILOT_SBOX/env/%s
+        ''' % 'lm.env_tgt'
+        return ret
+
+    def _get_launch_cmd(cu):
+        pass
+    def _get_post_launch(cu):
+        pass
+
+    # pre-exec
+    def _get_pre_exec(cu):
+        pass
+    def _get_rank_switch(n_ranks):
+        pass
+    def _get_post_exec(cu):
+        pass
+
+    # rank
+    def _get_pre_rank(rank_id, rank):
+        pass
+    def _get_rank_sync(rank_id, n_ranks):
+        pass
+    def _get_rank_exec(rank_id, rank, task_cmd):
+        pass
+    def _get_post_rank(rank_id, rank):
+        pass
 
 # ------------------------------------------------------------------------------
 
