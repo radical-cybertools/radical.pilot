@@ -35,7 +35,8 @@ _pids = list()
 
 def _kill():
     for pid in _pids:
-        os.killpg(pid, signal.SIGTERM)
+        try   : os.killpg(pid, signal.SIGTERM)
+        except: pass
 
 
 atexit.register(_kill)
