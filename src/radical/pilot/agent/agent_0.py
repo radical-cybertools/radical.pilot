@@ -627,19 +627,21 @@ class Agent_0(rpu.Worker):
             # we don't handle that request
             return True
 
-        rpc_res = {'uid': req['uid']}
+        rpc_res = {'uid': arg['uid']}
         try:
+            print(arg)
             if req == 'hello'   :
                 ret = 'hello %s' % ' '.join(arg['arg'])
 
             elif req == 'prep_env':
                 env_id   = arg['arg']['env_id']
                 env_spec = arg['arg']['env_spec']
-                ret = self._prepare_env(env_id, env_spec)
+                self._prepare_env(env_id, env_spec)
+                ret = (env_id, env_spec)
 
         except Exception as e:
             # request failed for some reason - indicate error
-            rpc_res['err'] = str(e)
+            rpc_res['err'] = repr(e)
             rpc_res['ret'] = None
 
         else:
