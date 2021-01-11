@@ -601,7 +601,7 @@ class Agent_0(rpu.Worker):
         # ready to receive and proxy rpc response -- forward rpc request on
         # control channel
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'rpc_req',
-                                          'arg' : rpc_req})
+                                          'arg' :  rpc_req})
 
         return True  # keeb cb registered (self._check_rpc)
 
@@ -615,27 +615,26 @@ class Agent_0(rpu.Worker):
         testing, and `prep_env` for environment preparation requests.
         '''
 
-        cmd     = msg['cmd']
-        rpc_req = msg['arg']
-
-        rpc_res = {'uid': rpc_req['uid']}
+        cmd = msg['cmd']
+        arg = msg['arg']
 
         if cmd != 'rpc_req':
             # not an rpc request
             return True
 
-        req = rpc_req['rpc']
+        req = arg['rpc']
         if req not in ['hello', 'prep_env']:
             # we don't handle that request
             return True
 
+        rpc_res = {'uid': req['uid']}
         try:
             if req == 'hello'   :
-                ret = 'hello %s' % ' '.join(rpc_req['arg'])
+                ret = 'hello %s' % ' '.join(arg['arg'])
 
             elif req == 'prep_env':
-                env_id   = rpc_req['arg']['env_id']
-                env_spec = rpc_req['arg']['env_spec']
+                env_id   = arg['arg']['env_id']
+                env_spec = arg['arg']['env_spec']
                 ret = self._prepare_env(env_id, env_spec)
 
         except Exception as e:
@@ -650,7 +649,7 @@ class Agent_0(rpu.Worker):
 
         # publish the response (success or failure)
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
-                                          'arg': rpc_res})
+                                          'arg':  rpc_res})
         return True
 
 
