@@ -52,12 +52,18 @@ class TestComponent(TestCase):
                        'rpc': 'hello'}
               }
         self.assertTrue(agent_cmp._check_control(None, msg))
-        self.assertEqual(global_control[0], ('control_pubsub',
+        self.assertIn(global_control[0], [('control_pubsub',
                                            {'cmd': 'rpc_res',
                                             'arg': {'uid': 'rpc.0000',
                                                     'err': "KeyError('arg')",
                                                     'ret': None}
-                                           }))
+                                           }),
+                                           ('control_pubsub',
+                                           {'cmd': 'rpc_res',
+                                            'arg': {'uid': 'rpc.0000',
+                                                    'err': "KeyError('arg',)",
+                                                    'ret': None}
+                                           })])
 
         msg = {'cmd': 'rpc_req',
                'arg': {'uid': 'rpc.0000',
