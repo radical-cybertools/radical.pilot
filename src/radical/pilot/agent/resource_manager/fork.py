@@ -55,9 +55,16 @@ class Fork(ResourceManager):
         if not self.cores_per_node:
             self.cores_per_node = 1
 
-        self.node_list  = list()
-        requested_nodes = int(math.ceil(float(self.requested_cores) /
-                                        float(self.cores_per_node ) ) )
+        self.node_list = list()
+        cpu_nodes      = int(math.ceil(float(self.requested_cores) /
+                                       float(self.cores_per_node ) ) )
+        if self.gpus_per_node:
+            gpu_nodes       = int(math.ceil(float(self.requested_gpus) /
+                                            float(self.gpus_per_node ) ) )
+            requested_nodes = max(cpu_nodes, gpu_nodes)
+        else:
+            requested_nodes = cpu_nodes
+
         for i in range(requested_nodes):
             # enumerate the node list entries for a unique uis
             self.node_list.append(["localhost", 'localhost_%d' % i])
