@@ -636,7 +636,8 @@ class Agent_0(rpu.Worker):
             elif req == 'prep_env':
                 env_id   = arg['arg']['env_id']
                 env_spec = arg['arg']['env_spec']
-                ret = self._prepare_env(env_id, env_spec)
+                self._prepare_env(env_id, env_spec)
+                ret = (env_id, env_spec)
 
         except Exception as e:
             # request failed for some reason - indicate error
