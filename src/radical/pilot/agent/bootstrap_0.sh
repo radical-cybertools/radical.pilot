@@ -3,7 +3,7 @@
 # Unset functions/aliases of commands that will be used during bootstrap as
 # these custom functions can break assumed/expected behavior
 export PS1='#'
-export LC_NUMERIC="en_US.UTF-8"
+export LC_NUMERIC="C"
 
 unset PROMPT_COMMAND
 unset -f cd ls uname pwd date bc cat echo grep
@@ -202,7 +202,7 @@ create_gtod()
         test -x '/bin/bash' && shell=/bin/bash
 
         echo "#!$SHELL"                                > ./gtod
-        echo "export LC_NUMERIC=en_US.UTF-8"          >> ./gtod
+        echo "export LC_NUMERIC=C"                    >> ./gtod
         echo "if test -z \"\$EPOCHREALTIME\""         >> ./gtod
         echo "then"                                   >> ./gtod
         echo "  awk 'BEGIN {srand(); print srand()}'" >> ./gtod
