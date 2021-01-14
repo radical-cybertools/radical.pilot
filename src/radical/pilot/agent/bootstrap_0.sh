@@ -216,7 +216,7 @@ create_gtod()
     # initialize profile
     PROFILE="bootstrap_0.prof"
     now=$(./gtod)
-    echo "#time,name,uid,state,event,msg" > "$PROFILE"
+    echo "#time,event,comp,thread,uid,state,msg" > "$PROFILE"
 
     ip=$(ip addr \
          | grep 'state UP' -A2 \
