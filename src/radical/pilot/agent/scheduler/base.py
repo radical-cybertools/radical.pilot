@@ -748,6 +748,8 @@ class AgentSchedulingComponent(rpu.Component):
             while not self._proc_term.is_set():
                 unit = self._queue_unsched.get(timeout=0.001)
                 to_unschedule.append(unit)
+                if len(to_unschedule) > 128:
+                    break
 
         except queue.Empty:
             # no more unschedule requests
@@ -768,6 +770,8 @@ class AgentSchedulingComponent(rpu.Component):
             # Thus we replace the unscheduled unit on the same cores / GPUs
             # immediately. This assumes that the `tuple_size` is good enough to
             # judge the legality of the resources for the new target unit.
+            #
+            # FIXME
 
           # ts = tuple(unit['tuple_size'])
           # if self._ts_map.get(ts):

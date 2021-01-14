@@ -905,7 +905,7 @@ def get_consumed_resources(session, udurations=None):
     for e in session.get(etype=['pilot', 'unit']):
 
         if   e.etype == 'pilot': data = _get_pilot_consumption(e)
-        elif e.etype == 'unit' : data = _get_unit_consumption(session,  e,
+        elif e.etype == 'unit' : data = _get_unit_consumption(session, e,
                                                               udurations)
 
         for metric in data:
@@ -1232,6 +1232,48 @@ def _get_unit_consumption(session, unit, udurations=None):
               # sys.exit()
 
         ret[metric] = {uid: boxes}
+
+    return ret
+
+
+# ------------------------------------------------------------------------------
+#
+def get_unit_timeline(session, task, metrics=None):
+    '''
+    For each the specific task, return a set of tuples of the form:
+
+        [start, stop, metric]
+
+    which reports during time what metric has been used.
+    '''
+
+    # we need to know what pilot the task ran on.  If we don't find a designated
+    # pilot, no resources were consumed
+    pid = task.cfg['pilot']
+
+    if not pid:
+        # task was never assigned to a pilot
+        return dict()
+
+    pilot = session.get(uid=pid)[0]
+
+    if 'slots' not in task.cfg:
+        # the task was never scheduled
+        return dict()
+
+    # we heuristically switch between PRTE event traces and normal (fork) event
+    # traces
+    if not metrics:
+        if pilot.cfg['task_launch_method'] == 'PRTE':
+            metrics = UNIT_DURATIONS_PRTE
+        else:
+            metrics = UNIT_DURATIONS_DEFAULT
+
+    ret = list()
+    for metric, spec in metrics['consume'].items():
+        print(metric)
+        t0, t1 = get_duration(task, spec)
+        ret.append([t0, t1, metric])
 
     return ret
 
