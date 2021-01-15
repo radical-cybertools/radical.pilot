@@ -518,7 +518,7 @@ class Continuous(AgentSchedulingComponent):
 
         # allocation worked!  If the unit was tagged, store the node IDs for
         # this tag, so that later units can reuse that information
-        if not dvm_hosts_list and tag:
+        if not dvm_hosts_list and tag is not None:
             self._tag_history[tag] = [node['name'] for node in slots['nodes']]
 
         # this should be nicely filled out now - return
