@@ -487,6 +487,11 @@ class Component(object):
             except:
                 self._log.exception('work cb error [ignored]')
 
+        try:
+            self._finalize()
+        except Exception:
+            self._log.exception('worker thread finalialization failed')
+
 
     # --------------------------------------------------------------------------
     #
@@ -659,7 +664,6 @@ class Component(object):
                        ru.get_thread_name(), ru.get_caller_name())
 
         self._term.set()
-        self._finalize()
 
 
     # --------------------------------------------------------------------------

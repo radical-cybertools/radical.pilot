@@ -38,12 +38,14 @@ PILOT_DURATIONS = {
                        {ru.EVENT: 'bootstrap_0_ok'   }],
         'setup_1'   : [{ru.EVENT: 'bootstrap_0_ok'   },
                        {ru.STATE: s.PMGR_ACTIVE      }],
-        'ignore'    : [{ru.STATE: s.PMGR_ACTIVE      },
+        'idle'      : [{ru.STATE: s.PMGR_ACTIVE      },
                        {ru.EVENT: 'cmd'              ,
                         ru.MSG  : 'cancel_pilot'     }],
         'term'      : [{ru.EVENT: 'cmd'              ,
                         ru.MSG  : 'cancel_pilot'     },
                        {ru.EVENT: 'bootstrap_0_stop' }],
+        'agent'     : [{ru.EVENT: 'sub_agent_start'  },
+                       {ru.EVENT: 'sub_agent_stop'   }],
     },
     # FIXME: separate out DVM startup time
     #   'rte'       : [{ru.STATE: s.PMGR_ACTIVE    },
@@ -53,8 +55,6 @@ PILOT_DURATIONS = {
     #
     # resources on agent nodes are consumed for all of the pilot's lifetime
     'agent' : {
-        'total'     : [{ru.EVENT: 'bootstrap_0_start'},
-                       {ru.EVENT: 'bootstrap_0_stop' }]
     }
 }
 
@@ -83,10 +83,10 @@ UNIT_DURATIONS_DEFAULT = {
 
       # # if we have cmd_start / cmd_stop:
       # 'exec_sh'     : [{ru.EVENT: 'cu_start'               },
-      #                  {ru.EVENT: 'cmd_start'              }],
-      # 'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
-      #                  {ru.EVENT: 'cmd_stop'               }],
-      # 'term_sh'     : [{ru.EVENT: 'cmd_stop'               },
+      #                  {ru.EVENT: 'app_start'              }],
+      # 'exec_cmd'    : [{ru.EVENT: 'app_start'              },
+      #                  {ru.EVENT: 'app_stop'               }],
+      # 'term_sh'     : [{ru.EVENT: 'app_stop'               },
       #                  {ru.EVENT: 'cu_stop'                }],
     }
 }
@@ -940,8 +940,8 @@ def get_consumed_resources(session, udurations=None):
             log.debug('    %10.2f  %-20s  %-15s  %-15s  %-15s  %-15s  %s',
                            ts[0],  ts[1], ts[2], ts[3], ts[4], ts[5], ts[6])
 
-        p_min = pt(event=PILOT_DURATIONS['consume']['ignore'][0]) [0]
-        p_max = pt(event=PILOT_DURATIONS['consume']['ignore'][1])[-1]
+        p_min = pt(event=PILOT_DURATIONS['consume']['idle'][0]) [0]
+        p_max = pt(event=PILOT_DURATIONS['consume']['idle'][1])[-1]
       # p_max = pilot.events[-1][ru.TIME]
         log.debug('pmin, pmax: %10.2f / %10.2f', p_min, p_max)
 
@@ -1123,7 +1123,7 @@ def _get_pilot_consumption(pilot):
     # account for all other pilot metrics
     for metric in PILOT_DURATIONS['consume']:
 
-        if metric == 'ignore':
+        if metric == 'idle':
             continue
 
         boxes = list()
@@ -1238,7 +1238,127 @@ def _get_unit_consumption(session, unit, udurations=None):
 
 # ------------------------------------------------------------------------------
 #
-def get_unit_timeline(session, task, metrics=None):
+def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
+
+    if not task_metrics:
+        if pilot.cfg['task_launch_method'] == 'PRTE':
+            task_metrics = UNIT_DURATIONS_PRTE
+        else:
+            task_metrics = UNIT_DURATIONS_DEFAULT
+
+    if not pilot_metrics:
+        pilot_metrics = PILOT_DURATIONS
+
+
+    # we try to find points in time where resource usage moved from purpose A to
+    # purpose B.  For example, consider this metric:
+    #
+    #   'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
+    #                    {ru.STATE: s.AGENT_EXECUTING        }],
+    #   'exec_prep'   : [{ru.STATE: s.AGENT_EXECUTING        },
+    #                    {ru.EVENT: 'exec_start'             }],
+    #   'exec_rp'     : [{ru.EVENT: 'exec_start'             },
+    #                    {ru.EVENT: 'cu_start'               }],
+    #
+    # then we convert this into the following structure:
+    #
+    # [
+    #   # event                          from         to
+    #   [{ru.EVENT: 'schedule_ok'    },  None,        'exec_queue'],
+    #   [{ru.STATE: s.AGENT_EXECUTING}, 'exec_queue', 'exec_prep'],
+    #   [{ru.EVENT: 'exec_start'     }, 'exec_prep',  'exec_rp'],
+    #   [{ru.EVENT: 'cu_start'       }, 'exec_rp',    'None]
+    # ]
+    #
+    # which will use like this:
+    #
+    #   - go through all events for a task
+    #   - if event is in list above
+    #     - reduce resources in `from` metric
+    #     - increase resource in `to` metric
+    #
+    # If `from` or `to` are None, then the resources are taken from / given to
+    # the pilot's idle resources.  We thus rename the 'None' to 'idle'.
+
+    # dig though metric,  find all pairs of matching start/stop events
+    task_transitions = list()
+    for metric,spec in task_metrics['consume'].items():
+
+        m = None
+        for m in task_transitions:
+            if m[0] == spec[0]:
+                break
+            m = None
+        if m:
+            assert(m[2] is None)
+            m[2] = metric
+        else:
+            task_transitions.append([spec[0], None, metric])
+
+
+        for m in task_transitions:
+            if m[0] == spec[1]:
+                break
+            m = None
+        if m:
+            assert(m[1] is None)
+            m[1] = metric
+        else:
+            task_transitions.append([spec[1], metric, None])
+
+    for t in task_transitions:
+        if t[1] is None: t[1] = 'idle'
+        if t[2] is None: t[2] = 'idle'
+
+
+    # do the same for the pilot metrics / transitions, only that now we
+    # translate `None` as `system`, which is where the pilot obtains it's
+    # resources from.  Also note that some transition events can have double
+    # entries, for example, if a event passes some resources to a sub-agent, and
+    # some other resources remain in the pilot.
+    #
+    # Note that we also handle the `agent` metrics to cover resources used by
+    # the agent (and thus not making it into usable).
+    pilot_transitions = list()
+    for metric,spec in pilot_metrics['consume'].items():
+
+        m = None
+        for m in pilot_transitions:
+            if m[0] == spec[0]:
+                break
+            m = None
+        if m:
+            assert(m[2] is None)
+            m[2] = metric
+        else:
+            pilot_transitions.append([spec[0], None, metric])
+
+
+        for m in pilot_transitions:
+            if m[0] == spec[1]:
+                break
+            m = None
+        if m:
+            assert(m[1] is None)
+            m[1] = metric
+        else:
+            pilot_transitions.append([spec[1], metric, None])
+
+    for t in pilot_transitions:
+        # agent resources from from the pilot, pilot resources from the system
+        if t[1] is None:
+            if t[2] == 'agent': t[1] = 'setup_1'
+            else              : t[1] = 'system'
+        if t[2] is None:
+            if t[1] == 'agent': t[2] = 'term'
+            else              : t[2] = 'system'
+
+    return pilot_transitions, task_transitions
+
+
+# ------------------------------------------------------------------------------
+#
+def get_resource_timelines(session, task, transitions):
     '''
     For each the specific task, return a set of tuples of the form:
 
@@ -1249,13 +1369,12 @@ def get_unit_timeline(session, task, metrics=None):
 
     # we need to know what pilot the task ran on.  If we don't find a designated
     # pilot, no resources were consumed
+    tid = task.uid
     pid = task.cfg['pilot']
 
     if not pid:
         # task was never assigned to a pilot
         return dict()
-
-    pilot = session.get(uid=pid)[0]
 
     if 'slots' not in task.cfg:
         # the task was never scheduled
@@ -1263,17 +1382,11 @@ def get_unit_timeline(session, task, metrics=None):
 
     # we heuristically switch between PRTE event traces and normal (fork) event
     # traces
-    if not metrics:
-        if pilot.cfg['task_launch_method'] == 'PRTE':
-            metrics = UNIT_DURATIONS_PRTE
-        else:
-            metrics = UNIT_DURATIONS_DEFAULT
 
     ret = list()
-    for metric, spec in metrics['consume'].items():
-        print(metric)
+    for metric, spec in transitions['consume'].items():
         t0, t1 = get_duration(task, spec)
-        ret.append([t0, t1, metric])
+        ret.append([t0, t1, metric, tid])
 
     return ret
 

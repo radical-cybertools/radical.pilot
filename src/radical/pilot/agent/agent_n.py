@@ -31,8 +31,8 @@ class Agent_n(rpu.Worker):
         self._final_cause = None
 
         # this is the earliest point to sync bootstrap and agent profiles
-        prof = ru.Profiler(ns='radical.pilot', name='agent.x')
-        prof.prof('hostname', uid=cfg.pid, msg=ru.get_hostname())
+        self._prof.prof('hostname', uid=self._uid, msg=ru.get_hostname())
+        self._prof.prof('sub_agent_start', uid=self._pid, msg=self._uid)
 
         # expose heartbeat channel to sub-agents, bridges and components,
         # and start those
@@ -46,6 +46,12 @@ class Agent_n(rpu.Worker):
         # brought up all communication bridges and components.  We are
         # ready to rumble!
         rpu.Worker.__init__(self, self._cfg, session)
+
+
+    # --------------------------------------------------------------------------
+    def finalize(self):
+
+        self._prof.prof('sub_agent_stop', uid=self._pid, msg=self._uid)
 
 
 # ------------------------------------------------------------------------------
