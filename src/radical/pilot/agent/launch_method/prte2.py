@@ -1,10 +1,9 @@
 
 __author__    = 'RADICAL-Cybertools Team'
 __email__     = 'info@radical-cybertools.org'
-__copyright__ = 'Copyright 2020, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2020-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
-import logging
 import os
 import signal
 import time
@@ -15,6 +14,8 @@ import threading     as mt
 import radical.utils as ru
 
 from .base import LaunchMethod
+
+PTL_BASE_MAX_MSG_SIZE = 1024 * 1024 * 1024 * 1
 
 
 # ------------------------------------------------------------------------------
@@ -91,42 +92,25 @@ class PRTE2(LaunchMethod):
             for node in rm.node_list:
                 f.write('%s slots=%d\n' % (node[0], rm.cores_per_node * rm.smt))
 
-        prte += ' --prefix %s'     % os.environ.get('PRRTE_PREFIX', '')
+        prte_prefix = os.environ.get('UMS_OMPIX_PRRTE_DIR') or \
+                      os.environ.get('PRRTE_DIR', '')
+
+        prte += ' --prefix %s'     % prte_prefix
         prte += ' --report-uri %s' % furi
         prte += ' --hostfile %s'   % fhosts
 
-        if profiler.enabled:  # prte profiling
-            # version 1 vs 2
-            # prte += ' --pmca orte_state_base_verbose 1'
-            prte += ' --mca orte_state_base_verbose 1'
-
         # large tasks imply large message sizes and we need to account for that
-        _base_max_msg_size = 1024 * 1024 * 1024 * 1
         # FIXME: we should derive the message size from DVM size - smaller DVMs
         #        will never need large messages, as they can't run large tasks
 
-        # version 1 vs 2
-        # prte += ' --pmca ptl_base_max_msg_size %d' % _base_max_msg_size
-        # # prte += ' --pmca rmaps_base_verbose 5'
-        prte += ' --mca ptl_base_max_msg_size %d' % _base_max_msg_size
+        prte += ' --prtemca ptl_base_max_msg_size %d' % PTL_BASE_MAX_MSG_SIZE
+        prte += ' --prtemca routed_radix 128'
+        prte += ' --prtemca plm_rsh_no_tree_spawn 1'
+        prte += ' --prtemca plm_rsh_num_concurrent %d' % vm_size
 
-        # debug mapper problems for large tasks
-        if log.isEnabledFor(logging.DEBUG):
-            # version 1 vs 2
-            # prte += ' -pmca orte_rmaps_base_verbose 100'
-            prte += ' --mca orte_rmaps_base_verbose 100'
-
-        # 2 temporary tweaks on Summit (not needed for the long run)
-        # (1) avoid 64 node limit (ssh connection limit)
-        # prte += ' --pmca plm_rsh_no_tree_spawn 1'
-        # (2) ensure 1 ssh per dvm
-        # prte += ' --pmca plm_rsh_num_concurrent %d' % vm_size
-
-        # version 2
-        prte += ' --mca plm_rsh_no_tree_spawn 1'
-        prte += ' --mca plm_rsh_num_concurrent %d' % vm_size
-        # FIXME: these 2 options above might not be needed
-        #        (corresponding experiments should be conducted)
+        # to select a set of hardware threads that should be used for
+        # processing the following option should set hwthread IDs:
+        #   --prtemca hwloc_default_cpu_list "0-83,88-171"
 
         # Use (g)stdbuf to disable buffering.  We need this to get the
         # "DVM ready" message to ensure DVM startup completion
@@ -144,9 +128,7 @@ class PRTE2(LaunchMethod):
         # additional (debug) arguments to prte
         verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
         if verbose:
-            cmd += ' '.join(['--debug-devel',
-                             '--mca odls_base_verbose 100',
-                             '--mca rml_base_verbose 100'])
+            cmd += ' '.join(['--prtemca plm_base_verbose 5'])
 
         cmd = cmd.strip()
 
@@ -234,11 +216,12 @@ class PRTE2(LaunchMethod):
         if lm_info.get('dvm_uri'):
             try:
                 log.info('terminating prte')
-                prun = ru.which('prun')
-                if not prun:
-                    raise Exception('prun not found')
-                ru.sh_callout('%s --dvm-uri "%s" --terminate' %
-                              (prun, lm_info['dvm_uri']))
+                pcmd = ru.which('pterm')
+                if not pcmd:
+                    raise Exception('termination command not found')
+                out, err, ret = ru.sh_callout('%s --dvm-uri "%s"' %
+                                              (pcmd, lm_info['dvm_uri']))
+                log.debug('termination status: %s | %s | %s', out, err, ret)
                 profiler.prof(event='dvm_stop', uid=cfg['pid'])
 
             except Exception as e:
@@ -258,7 +241,6 @@ class PRTE2(LaunchMethod):
 
         task_exec = cud['executable']
         task_args = cud.get('arguments') or []
-        task_env  = cud.get('environment') or {}
 
         n_procs   = cud.get('cpu_processes') or 1
         n_threads = cud.get('cpu_threads') or 1
@@ -271,55 +253,30 @@ class PRTE2(LaunchMethod):
 
         dvm_uri = '--dvm-uri "%s"' % slots['lm_info']['dvm_uri']
 
-        # version 1 vs 2
-        # flags  = ' -np %d --cpus-per-proc %d' % (n_procs, n_threads)
-        # flags += ' --bind-to hwthread:overload-allowed --use-hwthread-cpus'
-        # flags += ' --oversubscribe'
-        flags  = ' -np %d --map-by :PE=%d' % (n_procs, n_threads)
+        flags  = ' --np %d' % n_procs
+        flags += ' --map-by hwthread:PE=%d:OVERSUBSCRIBE' % n_threads
         flags += ' --bind-to hwthread:overload-allowed'
-
-        # DVM startup
-        _base_max_msg_size = 1024 * 1024 * 1024 * 1
-
-        # version 1 vs 2
-        # flags += ' --pmca ptl_base_max_msg_size %d' % _base_max_msg_size
-        # # flags += ' --pmca rmaps_base_verbose 5'
-        flags += ' --mca ptl_base_max_msg_size %d' % _base_max_msg_size
+        if self._verbose:
+            flags += ':REPORT'
 
         if 'nodes' not in slots:
             # this task is unscheduled - we leave it to PRRTE/PMI-X
             # to correctly place the task
             pass
-
         else:
             # FIXME: ensure correct binding for procs and threads via slotfile
 
-            # enact the scheduler's host placement.  For now, we leave socket,
-            # core and thread placement to the prted, and just add all process
-            # slots to the host list
-            hosts = ','.join([node['name'] for node in slots['nodes']])
-            flags += ' --host %s' % hosts
+            hosts = [node['name'] for node in slots['nodes']]
+            flags += ' --host %s:%s' % (hosts[0], len(hosts))
 
-        # additional (debug) arguments to prun
-        debug_flags = '--verbose'  # needed to get prte profile events
-        if self._verbose:
-            debug_flags += ' ' + ' '.join(['--report-bindings'])
-                                         # '--debug-devel',
-                                         # '--display-devel-map',
-                                         # '--display-allocation'])
-
-        env_list = self.EXPORT_ENV_VARIABLES + list(task_env.keys())
-        if env_list:
-            envs = ' '.join(['-x "%s"' % k for k in env_list])
-        else:
-            envs = ''
+        flags += ' --prtemca ptl_base_max_msg_size %d' % PTL_BASE_MAX_MSG_SIZE
+        flags += ' --verbose'  # needed to get prte profile events
 
         task_args_str = self._create_arg_string(task_args)
         if task_args_str:
             task_exec += ' %s' % task_args_str
 
-        cmd = '%s %s %s %s %s %s' % (
-            self.launch_command, dvm_uri, flags, debug_flags, envs, task_exec)
+        cmd = '%s %s %s %s' % (self.launch_command, dvm_uri, flags, task_exec)
 
         return cmd, None
 
