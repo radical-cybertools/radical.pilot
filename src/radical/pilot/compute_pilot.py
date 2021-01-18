@@ -254,7 +254,7 @@ class ComputePilot(object):
                'js_url':           str(self._pilot_jsurl),
                'js_hop':           str(self._pilot_jshop),
                'description':      self.description,  # this is a deep copy
-               'resource_details': self.resource_details
+             # 'resource_details': self.resource_details
               }
 
         return ret
