@@ -26,7 +26,7 @@ class Default(AgentStagingOutputComponent):
     tasks.  It gets tasks from the agent_staging_output_queue, in
     AGENT_STAGING_OUTPUT_PENDING state, will advance them to
     AGENT_STAGING_OUTPUT state while performing the staging, and then moves then
-    to the UMGR_STAGING_OUTPUT_PENDING state, which at the moment requires the
+    to the TMGR_STAGING_OUTPUT_PENDING state, which at the moment requires the
     state change to be published to MongoDB (no push into a queue).
 
     Note that this component also collects stdout/stderr of the tasks (which
@@ -50,7 +50,7 @@ class Default(AgentStagingOutputComponent):
                             rpc.AGENT_STAGING_OUTPUT_QUEUE, self.work)
 
         # we don't need an output queue -- tasks are picked up via mongodb
-        self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING, None)  # drop
+        self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING, None)  # drop
 
 
     # --------------------------------------------------------------------------
@@ -77,7 +77,7 @@ class Default(AgentStagingOutputComponent):
             # again.  The next task update should thus push *all* task details,
             # not only state.
             task['$all']    = True
-            task['control'] = 'umgr_pending'
+            task['control'] = 'tmgr_pending'
 
             # we always dig for stdout/stderr
             self._handle_task_stdio(task)
@@ -107,7 +107,7 @@ class Default(AgentStagingOutputComponent):
             else:
                 # this task does not need any staging at this point, and can be
                 # advanced
-                task['state'] = rps.UMGR_STAGING_OUTPUT_PENDING
+                task['state'] = rps.TMGR_STAGING_OUTPUT_PENDING
                 no_staging_tasks.append(task)
 
         if no_staging_tasks:
@@ -322,7 +322,7 @@ class Default(AgentStagingOutputComponent):
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
         # all agent staging is done -- pass on to tmgr output staging
-        self.advance(task, rps.UMGR_STAGING_OUTPUT_PENDING,
+        self.advance(task, rps.TMGR_STAGING_OUTPUT_PENDING,
                            publish=True, push=False)
 
 

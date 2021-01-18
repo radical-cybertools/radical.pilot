@@ -84,7 +84,7 @@ class Session(rs.Session):
         self._primary = _primary
 
         self._pmgrs   = dict()  # map IDs to pmgr instances
-        self._umgrs   = dict()  # map IDs to tmgr instances
+        self._tmgrs   = dict()  # map IDs to tmgr instances
         self._cmgr    = None    # only primary sessions have a cmgr
 
         self._cfg     = ru.Config('radical.pilot.session',  name=name, cfg=cfg)
@@ -263,10 +263,10 @@ class Session(rs.Session):
             # cleanup implies terminate
             terminate = True
 
-        for umgr_uid, tmgr in self._umgrs.items():
-            self._log.debug("session %s closes tmgr   %s", self._uid, umgr_uid)
+        for tmgr_uid, tmgr in self._tmgrs.items():
+            self._log.debug("session %s closes tmgr   %s", self._uid, tmgr_uid)
             tmgr.close()
-            self._log.debug("session %s closed tmgr   %s", self._uid, umgr_uid)
+            self._log.debug("session %s closed tmgr   %s", self._uid, tmgr_uid)
 
         for pmgr_uid, pmgr in self._pmgrs.items():
             self._log.debug("session %s closes pmgr   %s", self._uid, pmgr_uid)
@@ -535,10 +535,10 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _register_umgr(self, tmgr):
+    def _register_tmgr(self, tmgr):
 
-        self._dbs.insert_umgr(tmgr.as_dict())
-        self._umgrs[tmgr.uid] = tmgr
+        self._dbs.insert_tmgr(tmgr.as_dict())
+        self._tmgrs[tmgr.uid] = tmgr
 
 
     # --------------------------------------------------------------------------
@@ -552,18 +552,18 @@ class Session(rs.Session):
             * A list of :class:`radical.pilot.TaskManager` uids (`list` of `strings`).
         '''
 
-        return list(self._umgrs.keys())
+        return list(self._tmgrs.keys())
 
 
     # --------------------------------------------------------------------------
     #
-    def get_task_managers(self, umgr_uids=None):
+    def get_task_managers(self, tmgr_uids=None):
         '''
         returns known TaskManager(s).
 
         **Arguments:**
 
-            * **umgr_uids** [`string`]:
+            * **tmgr_uids** [`string`]:
               unique identifier of the TaskManager we want
 
         **Returns:**
@@ -571,15 +571,15 @@ class Session(rs.Session):
         '''
 
         return_scalar = False
-        if not isinstance(umgr_uids, list):
-            umgr_uids     = [umgr_uids]
+        if not isinstance(tmgr_uids, list):
+            tmgr_uids     = [tmgr_uids]
             return_scalar = True
 
-        if umgr_uids: umgrs = [self._umgrs[uid] for uid in umgr_uids]
-        else        : umgrs =  list(self._umgrs.values())
+        if tmgr_uids: tmgrs = [self._tmgrs[uid] for uid in tmgr_uids]
+        else        : tmgrs =  list(self._tmgrs.values())
 
-        if return_scalar: return umgrs[0]
-        else            : return umgrs
+        if return_scalar: return tmgrs[0]
+        else            : return tmgrs
 
 
     # --------------------------------------------------------------------------

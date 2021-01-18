@@ -407,17 +407,17 @@ PILOT_DURATIONS_DEBUG_RU = {
 # Set of default task durations for RADICAL-Analytics. All the durations
 # are contiguos.
 TASK_DURATIONS_DEBUG_SHORT = {
-    'u_umgr_create'              : [{'STATE': s.NEW                         },
-                                    {'STATE': s.UMGR_SCHEDULING_PENDING     }],
-    'u_umgr_schedule_queue'      : [{'STATE': s.UMGR_SCHEDULING_PENDING     },
-                                    {'STATE': s.UMGR_SCHEDULING             }],
-    'u_umgr_schedule'            : [{'STATE': s.UMGR_SCHEDULING             },
-                                    {'STATE': s.UMGR_STAGING_INPUT_PENDING  }],
+    'u_tmgr_create'              : [{'STATE': s.NEW                         },
+                                    {'STATE': s.TMGR_SCHEDULING_PENDING     }],
+    'u_tmgr_schedule_queue'      : [{'STATE': s.TMGR_SCHEDULING_PENDING     },
+                                    {'STATE': s.TMGR_SCHEDULING             }],
+    'u_tmgr_schedule'            : [{'STATE': s.TMGR_SCHEDULING             },
+                                    {'STATE': s.TMGR_STAGING_INPUT_PENDING  }],
     # push to mongodb
-    'u_umgr_stage_in_queue'      : [{'STATE': s.UMGR_STAGING_INPUT_PENDING  },
-                                    {'STATE': s.UMGR_STAGING_INPUT          }],
+    'u_tmgr_stage_in_queue'      : [{'STATE': s.TMGR_STAGING_INPUT_PENDING  },
+                                    {'STATE': s.TMGR_STAGING_INPUT          }],
     # wait in mongodb
-    'u_umgr_stage_in'            : [{'STATE': s.UMGR_STAGING_INPUT          },
+    'u_tmgr_stage_in'            : [{'STATE': s.TMGR_STAGING_INPUT          },
                                     {'STATE': s.AGENT_STAGING_INPUT_PENDING }],
     # pull from mongodb
     'u_agent_stage_in_queue'     : [{'STATE': s.AGENT_STAGING_INPUT_PENDING },
@@ -456,11 +456,11 @@ TASK_DURATIONS_DEBUG_SHORT = {
     'u_agent_stage_out_queue'    : [{'STATE': s.AGENT_STAGING_OUTPUT_PENDING},
                                     {'STATE': s.AGENT_STAGING_OUTPUT        }],
     'u_agent_stage_out'          : [{'STATE': s.AGENT_STAGING_OUTPUT        },
-                                    {'STATE': s.UMGR_STAGING_OUTPUT_PENDING }],
+                                    {'STATE': s.TMGR_STAGING_OUTPUT_PENDING }],
     # push/pull mongodb
-    'u_agent_push_to_umgr'       : [{'STATE': s.UMGR_STAGING_OUTPUT_PENDING },
-                                    {'STATE': s.UMGR_STAGING_OUTPUT         }],
-    'u_umgr_destroy'             : [{'STATE': s.UMGR_STAGING_OUTPUT         },
+    'u_agent_push_to_tmgr'       : [{'STATE': s.TMGR_STAGING_OUTPUT_PENDING },
+                                    {'STATE': s.TMGR_STAGING_OUTPUT         }],
+    'u_tmgr_destroy'             : [{'STATE': s.TMGR_STAGING_OUTPUT         },
                                     [{'STATE': s.DONE                       },
                                      {'STATE': s.CANCELED                   },
                                      {'STATE': s.FAILED                     }]],
@@ -477,12 +477,12 @@ TASK_DURATIONS_DEBUG = _convert_sdurations(TASK_DURATIONS_DEBUG_SHORT)
 _udd = TASK_DURATIONS_DEBUG
 TASK_DURATIONS_DEBUG_RU = {
     'client' : {
-        'u_umgr_create'              : _udd['u_umgr_create'],
-        'u_umgr_schedule_queue'      : _udd['u_umgr_schedule_queue'],
-        'u_umgr_schedule'            : _udd['u_umgr_schedule'],
-        'u_umgr_stage_in_queue'      : _udd['u_umgr_stage_in_queue'],
-        'u_umgr_stage_in'            : _udd['u_umgr_stage_in'],
-        'u_umgr_destroy'             : _udd['u_umgr_destroy'],
+        'u_tmgr_create'              : _udd['u_tmgr_create'],
+        'u_tmgr_schedule_queue'      : _udd['u_tmgr_schedule_queue'],
+        'u_tmgr_schedule'            : _udd['u_tmgr_schedule'],
+        'u_tmgr_stage_in_queue'      : _udd['u_tmgr_stage_in_queue'],
+        'u_tmgr_stage_in'            : _udd['u_tmgr_stage_in'],
+        'u_tmgr_destroy'             : _udd['u_tmgr_destroy'],
         'u_agent_unschedule'         : _udd['u_agent_unschedule']
     },
     'consume'  : {
@@ -503,7 +503,7 @@ TASK_DURATIONS_DEBUG_RU = {
         'u_agent_stage_out_start'    : _udd['u_agent_stage_out_start'],
         'u_agent_stage_out_queue'    : _udd['u_agent_stage_out_queue'],
         'u_agent_stage_out'          : _udd['u_agent_stage_out'],
-        'u_agent_push_to_umgr'       : _udd['u_agent_push_to_umgr'],
+        'u_agent_push_to_tmgr'       : _udd['u_agent_push_to_tmgr'],
     }
 }
 

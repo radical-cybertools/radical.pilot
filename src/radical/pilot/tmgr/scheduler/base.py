@@ -29,7 +29,7 @@ FAILED  = 'failed'
 
 # ------------------------------------------------------------------------------
 #
-class UMGRSchedulingComponent(rpu.Component):
+class TMGRSchedulingComponent(rpu.Component):
 
     # FIXME: clarify what can be overloaded by Scheduler classes
 
@@ -47,7 +47,7 @@ class UMGRSchedulingComponent(rpu.Component):
     #
     def initialize(self):
 
-        self._umgr = self._cfg.owner
+        self._tmgr = self._cfg.owner
 
         self._early        = dict()      # early-bound tasks, pid-sorted
         self._pilots       = dict()      # dict of known pilots
@@ -60,11 +60,11 @@ class UMGRSchedulingComponent(rpu.Component):
         # configure the scheduler instance
         self._configure()
 
-        self.register_input(rps.UMGR_SCHEDULING_PENDING,
-                            rpc.UMGR_SCHEDULING_QUEUE, self.work)
+        self.register_input(rps.TMGR_SCHEDULING_PENDING,
+                            rpc.TMGR_SCHEDULING_QUEUE, self.work)
 
-        self.register_output(rps.UMGR_STAGING_INPUT_PENDING,
-                             rpc.UMGR_STAGING_INPUT_QUEUE)
+        self.register_output(rps.TMGR_STAGING_INPUT_PENDING,
+                             rpc.TMGR_STAGING_INPUT_QUEUE)
 
         # Some schedulers care about states (of pilots and/or tasks), some
         # don't.  Either way, we here subscribe to state updates.
@@ -86,7 +86,7 @@ class UMGRSchedulingComponent(rpu.Component):
     def create(cls, cfg, session):
 
         # Make sure that we are the base-class!
-        if cls != UMGRSchedulingComponent:
+        if cls != TMGRSchedulingComponent:
             raise TypeError("Scheduler Factory only available to base class!")
 
         name = cfg['scheduler']
@@ -221,7 +221,7 @@ class UMGRSchedulingComponent(rpu.Component):
 
         self._log.info('scheduler command: %s: %s' % (cmd, arg))
 
-        if tmgr and tmgr != self._umgr:
+        if tmgr and tmgr != self._tmgr:
             # this is not the command we are looking for
             return True
 
@@ -264,7 +264,7 @@ class UMGRSchedulingComponent(rpu.Component):
                         for task in early_tasks:
                             self._assign_pilot(task, pilot)
 
-                        self.advance(early_tasks, rps.UMGR_STAGING_INPUT_PENDING,
+                        self.advance(early_tasks, rps.TMGR_STAGING_INPUT_PENDING,
                                      publish=True, push=True)
 
             # let the scheduler know
@@ -372,7 +372,7 @@ class UMGRSchedulingComponent(rpu.Component):
     def work(self, tasks):
         '''
         We get a number of tasks, and filter out those which are already bound
-        to a pilot.  Those will get advanced to UMGR_STAGING_INPUT_PENDING
+        to a pilot.  Those will get advanced to TMGR_STAGING_INPUT_PENDING
         straight away.  All other tasks are passed on to `self._work()`, which
         is the scheduling routine as implemented by the deriving scheduler
         classes.
@@ -431,7 +431,7 @@ class UMGRSchedulingComponent(rpu.Component):
         # for task IDs, and that tasks which use invalid / non-existing IDs in
         # sandbox references will never be eligible for scheduling.
 
-        self.advance(tasks, rps.UMGR_SCHEDULING, publish=True, push=False)
+        self.advance(tasks, rps.TMGR_SCHEDULING, publish=True, push=False)
 
         to_schedule = list()
 
@@ -451,7 +451,7 @@ class UMGRSchedulingComponent(rpu.Component):
                     pilot = self._pilots.get(pid, {}).get('pilot')
                     if pilot:
                         self._assign_pilot(task, pilot)
-                        self.advance(task, rps.UMGR_STAGING_INPUT_PENDING,
+                        self.advance(task, rps.TMGR_STAGING_INPUT_PENDING,
                                      publish=True, push=True)
 
                     else:

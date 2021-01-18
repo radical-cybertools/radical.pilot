@@ -35,18 +35,18 @@ def test_task_state_collapse():
     from radical.pilot.states import _task_state_collapse
     states = ['AGENT_STAGING_OUTPUT',
               'AGENT_EXECUTING_PENDING',
-              'UMGR_SCHEDULING',
-              'UMGR_STAGING_OUTPUT',
-              'UMGR_STAGING_OUTPUT_PENDING',
+              'TMGR_SCHEDULING',
+              'TMGR_STAGING_OUTPUT',
+              'TMGR_STAGING_OUTPUT_PENDING',
               'AGENT_SCHEDULING',
               'AGENT_STAGING_OUTPUT_PENDING',
               'AGENT_SCHEDULING_PENDING']
-    assert(_task_state_collapse(states) == 'UMGR_STAGING_OUTPUT')
+    assert(_task_state_collapse(states) == 'TMGR_STAGING_OUTPUT')
 
     states =  ['DONE',
-               'UMGR_STAGING_INPUT_PENDING',
+               'TMGR_STAGING_INPUT_PENDING',
                'AGENT_SCHEDULING_PENDING',
-               'UMGR_SCHEDULING_PENDING',
+               'TMGR_SCHEDULING_PENDING',
                'AGENT_STAGING_OUTPUT_PENDING',
                'AGENT_EXECUTING',
                'AGENT_STAGING_INPUT',
@@ -55,12 +55,12 @@ def test_task_state_collapse():
 
     states = ['AGENT_STAGING_OUTPUT_PENDING',
               'CANCELED',
-              'UMGR_STAGING_OUTPUT_PENDING',
-              'UMGR_STAGING_INPUT',
+              'TMGR_STAGING_OUTPUT_PENDING',
+              'TMGR_STAGING_INPUT',
               'NEW',
               'AGENT_SCHEDULING',
               'AGENT_STAGING_INPUT',
-              'UMGR_SCHEDULING']
+              'TMGR_SCHEDULING']
     assert(_task_state_collapse(states) == 'CANCELED')
 
 

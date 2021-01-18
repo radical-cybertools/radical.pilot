@@ -16,7 +16,7 @@ from ...   import states    as rps
 from ...   import constants as rpc
 from ...   import utils     as rpu
 
-from .base import UMGRStagingInputComponent
+from .base import TMGRStagingInputComponent
 
 from ...staging_directives import complete_url
 
@@ -33,11 +33,11 @@ TASK_BULK_MKDIR_MECHANISM = 'tar'
 
 # ------------------------------------------------------------------------------
 #
-class Default(UMGRStagingInputComponent):
+class Default(TMGRStagingInputComponent):
     """
     This component performs all tmgr side input staging directives for compute
-    tasks.  It gets tasks from the umgr_staging_input_queue, in
-    UMGR_STAGING_INPUT_PENDING state, will advance them to UMGR_STAGING_INPUT
+    tasks.  It gets tasks from the tmgr_staging_input_queue, in
+    TMGR_STAGING_INPUT_PENDING state, will advance them to TMGR_STAGING_INPUT
     state while performing the staging, and then moves then to the
     AGENT_SCHEDULING_PENDING state, passing control to the agent.
     """
@@ -46,7 +46,7 @@ class Default(UMGRStagingInputComponent):
     #
     def __init__(self, cfg, session):
 
-        UMGRStagingInputComponent.__init__(self, cfg, session)
+        TMGRStagingInputComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -59,8 +59,8 @@ class Default(UMGRStagingInputComponent):
         self._pilots      = dict()
         self._pilots_lock = ru.RLock()
 
-        self.register_input(rps.UMGR_STAGING_INPUT_PENDING,
-                            rpc.UMGR_STAGING_INPUT_QUEUE, self.work)
+        self.register_input(rps.TMGR_STAGING_INPUT_PENDING,
+                            rpc.TMGR_STAGING_INPUT_QUEUE, self.work)
 
         # FIXME: this queue is inaccessible, needs routing via mongodb
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING, None)
@@ -113,7 +113,7 @@ class Default(UMGRStagingInputComponent):
         if not isinstance(tasks, list):
             tasks = [tasks]
 
-        self.advance(tasks, rps.UMGR_STAGING_INPUT, publish=True, push=False)
+        self.advance(tasks, rps.TMGR_STAGING_INPUT, publish=True, push=False)
 
         # we first filter out any tasks which don't need any input staging, and
         # advance them again as a bulk.  We work over the others one by one, and

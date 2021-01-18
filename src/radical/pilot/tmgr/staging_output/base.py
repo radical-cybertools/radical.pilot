@@ -14,7 +14,7 @@ RP_USO_NAME_DEFAULT = "DEFAULT"
 
 # ------------------------------------------------------------------------------
 #
-class UMGRStagingOutputComponent(rpu.Component):
+class TMGRStagingOutputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
@@ -33,10 +33,10 @@ class UMGRStagingOutputComponent(rpu.Component):
     @classmethod
     def create(cls, cfg, session):
 
-        name = cfg.get('umgr_staging_output_component', RP_USO_NAME_DEFAULT)
+        name = cfg.get('tmgr_staging_output_component', RP_USO_NAME_DEFAULT)
 
         # Make sure that we are the base-class!
-        if cls != UMGRStagingOutputComponent:
+        if cls != TMGRStagingOutputComponent:
             raise TypeError("Factory only available to base class!")
 
         from .default import Default
@@ -48,7 +48,7 @@ class UMGRStagingOutputComponent(rpu.Component):
             return impl(cfg, session)
 
         except KeyError as e:
-            raise ValueError("UMGRStagingOutputComponent '%s' unknown" % name) \
+            raise ValueError("TMGRStagingOutputComponent '%s' unknown" % name) \
                 from e
 
 

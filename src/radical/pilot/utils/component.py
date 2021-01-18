@@ -511,9 +511,9 @@ class Component(object):
 
                 rpc.PMGR_LAUNCHING_COMPONENT       : rppm.Launching,
 
-                rpc.UMGR_STAGING_INPUT_COMPONENT   : rpum.Input,
-                rpc.UMGR_SCHEDULING_COMPONENT      : rpum.Scheduler,
-                rpc.UMGR_STAGING_OUTPUT_COMPONENT  : rpum.Output,
+                rpc.TMGR_STAGING_INPUT_COMPONENT   : rpum.Input,
+                rpc.TMGR_SCHEDULING_COMPONENT      : rpum.Scheduler,
+                rpc.TMGR_STAGING_OUTPUT_COMPONENT  : rpum.Output,
 
                 rpc.AGENT_STAGING_INPUT_COMPONENT  : rpa.Input,
                 rpc.AGENT_SCHEDULING_COMPONENT     : rpa.Scheduler,

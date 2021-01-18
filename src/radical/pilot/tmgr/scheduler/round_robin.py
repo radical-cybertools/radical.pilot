@@ -6,18 +6,18 @@ import radical.utils    as ru
 
 from ... import states as rps
 
-from .base import UMGRSchedulingComponent
+from .base import TMGRSchedulingComponent
 
 
 # ------------------------------------------------------------------------------
 #
-class RoundRobin(UMGRSchedulingComponent):
+class RoundRobin(TMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, session):
 
-        UMGRSchedulingComponent.__init__(self, cfg, session)
+        TMGRSchedulingComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -122,7 +122,7 @@ class RoundRobin(UMGRSchedulingComponent):
 
         if failed     : self.advance(failed, rps.FAILED,
                                      publish=True, push=True)
-        if scheduled  : self.advance(scheduled, rps.UMGR_STAGING_INPUT_PENDING,
+        if scheduled  : self.advance(scheduled, rps.TMGR_STAGING_INPUT_PENDING,
                                      publish=True, push=True)
         if unscheduled: self._schedule_tasks(unscheduled)
 
@@ -173,7 +173,7 @@ class RoundRobin(UMGRSchedulingComponent):
             # advance all tasks
             self._log.debug('failed: %d, ok: %d', len(tasks_fail), len(tasks_ok))
             self.advance(tasks_fail, rps.FAILED, publish=True, push=False)
-            self.advance(tasks_ok,   rps.UMGR_STAGING_INPUT_PENDING,
+            self.advance(tasks_ok,   rps.TMGR_STAGING_INPUT_PENDING,
                          publish=True, push=True)
 
 

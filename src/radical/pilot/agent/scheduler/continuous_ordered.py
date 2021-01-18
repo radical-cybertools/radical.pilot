@@ -53,7 +53,7 @@ class ContinuousOrdered(Continuous):
         # which shows that the tasks reached that state, it is marked as 'done'
         # in the respective order of its namespace.
         #
-        self._trigger_state = rps.UMGR_STAGING_OUTPUT_PENDING
+        self._trigger_state = rps.TMGR_STAGING_OUTPUT_PENDING
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
 
         # a namespace entry will look like this:

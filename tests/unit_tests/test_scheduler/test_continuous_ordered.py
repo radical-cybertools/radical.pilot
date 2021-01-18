@@ -25,7 +25,7 @@ def test_configure(mocked_init, mocked_init_continuous, mocked_subscriber):
     cfg = dict()
 
     component = ContinuousOrdered(cfg=None, session=None)
-    component._trigger_state  = rps.UMGR_STAGING_OUTPUT_PENDING
+    component._trigger_state  = rps.TMGR_STAGING_OUTPUT_PENDING
     component._lock           = mt.RLock()
     component._cfg            = cfg
     component._ru_terminating = True

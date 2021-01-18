@@ -62,10 +62,10 @@ class Task(object):
 
         # 'static' members
         self._descr = descr.as_dict()
-        self._umgr  = tmgr
+        self._tmgr  = tmgr
 
         # initialize state
-        self._session          = self._umgr.session
+        self._session          = self._tmgr.session
         self._uid              = self._descr.get('uid')
         self._state            = rps.NEW
         self._log              = tmgr._log
@@ -81,13 +81,13 @@ class Task(object):
 
         # ensure uid is unique
         if self._uid:
-            if not self._umgr.check_uid(self._uid):
+            if not self._tmgr.check_uid(self._uid):
                 raise ValueError('uid %s is not unique' % self._uid)
         else:
             self._uid = ru.generate_id('task.%(item_counter)06d', ru.ID_CUSTOM,
                                        ns=self._session.uid)
 
-        for m in rpc.UMGR_METRICS:
+        for m in rpc.TMGR_METRICS:
             self._callbacks[m] = dict()
 
         # we always invke the default state cb
@@ -100,7 +100,7 @@ class Task(object):
         # sufficient information about pilot sandboxes etc.
         expand_description(self._descr)
 
-        self._umgr.advance(self.as_dict(), rps.NEW, publish=False, push=False)
+        self._tmgr.advance(self.as_dict(), rps.NEW, publish=False, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -214,7 +214,7 @@ class Task(object):
             * A :class:`TaskManager`.
         """
 
-        return self._umgr
+        return self._tmgr
 
 
     # --------------------------------------------------------------------------
@@ -426,7 +426,7 @@ class Task(object):
         if not metric:
             metric = rpc.TASK_STATE
 
-        self._umgr.register_callback(cb, cb_data, metric=metric, uid=self._uid)
+        self._tmgr.register_callback(cb, cb_data, metric=metric, uid=self._uid)
 
 
     # --------------------------------------------------------------------------
@@ -481,7 +481,7 @@ class Task(object):
             if timeout and (timeout <= (time.time() - start_wait)):
                 break
 
-          # if self._umgr._terminate.is_set():
+          # if self._tmgr._terminate.is_set():
           #     break
 
         return self.state
@@ -494,7 +494,7 @@ class Task(object):
         Cancel the task.
         """
 
-        self._umgr.cancel_tasks(self.uid)
+        self._tmgr.cancel_tasks(self.uid)
 
 
 # ------------------------------------------------------------------------------

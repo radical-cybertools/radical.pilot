@@ -113,10 +113,10 @@ def _pilot_state_collapse(states):
 #
 # task states
 #
-UMGR_SCHEDULING_PENDING      = 'UMGR_SCHEDULING_PENDING'
-UMGR_SCHEDULING              = 'UMGR_SCHEDULING'
-UMGR_STAGING_INPUT_PENDING   = 'UMGR_STAGING_INPUT_PENDING'
-UMGR_STAGING_INPUT           = 'UMGR_STAGING_INPUT'
+TMGR_SCHEDULING_PENDING      = 'TMGR_SCHEDULING_PENDING'
+TMGR_SCHEDULING              = 'TMGR_SCHEDULING'
+TMGR_STAGING_INPUT_PENDING   = 'TMGR_STAGING_INPUT_PENDING'
+TMGR_STAGING_INPUT           = 'TMGR_STAGING_INPUT'
 AGENT_STAGING_INPUT_PENDING  = 'AGENT_STAGING_INPUT_PENDING'
 AGENT_STAGING_INPUT          = 'AGENT_STAGING_INPUT'
 AGENT_SCHEDULING_PENDING     = 'AGENT_SCHEDULING_PENDING'
@@ -125,18 +125,18 @@ AGENT_EXECUTING_PENDING      = 'AGENT_EXECUTING_PENDING'
 AGENT_EXECUTING              = 'AGENT_EXECUTING'
 AGENT_STAGING_OUTPUT_PENDING = 'AGENT_STAGING_OUTPUT_PENDING'
 AGENT_STAGING_OUTPUT         = 'AGENT_STAGING_OUTPUT'
-UMGR_STAGING_OUTPUT_PENDING  = 'UMGR_STAGING_OUTPUT_PENDING'
-UMGR_STAGING_OUTPUT          = 'UMGR_STAGING_OUTPUT'
+TMGR_STAGING_OUTPUT_PENDING  = 'TMGR_STAGING_OUTPUT_PENDING'
+TMGR_STAGING_OUTPUT          = 'TMGR_STAGING_OUTPUT'
 
 # assign numeric values to states to support state ordering operations
 # ONLY final state get the same values.
 _task_state_values = {
         None                         : -1,
         NEW                          :  0,
-        UMGR_SCHEDULING_PENDING      :  1,
-        UMGR_SCHEDULING              :  2,
-        UMGR_STAGING_INPUT_PENDING   :  3,
-        UMGR_STAGING_INPUT           :  4,
+        TMGR_SCHEDULING_PENDING      :  1,
+        TMGR_SCHEDULING              :  2,
+        TMGR_STAGING_INPUT_PENDING   :  3,
+        TMGR_STAGING_INPUT           :  4,
         AGENT_STAGING_INPUT_PENDING  :  5,
         AGENT_STAGING_INPUT          :  6,
         AGENT_SCHEDULING_PENDING     :  7,
@@ -145,8 +145,8 @@ _task_state_values = {
         AGENT_EXECUTING              : 10,
         AGENT_STAGING_OUTPUT_PENDING : 11,
         AGENT_STAGING_OUTPUT         : 12,
-        UMGR_STAGING_OUTPUT_PENDING  : 13,
-        UMGR_STAGING_OUTPUT          : 14,
+        TMGR_STAGING_OUTPUT_PENDING  : 13,
+        TMGR_STAGING_OUTPUT          : 14,
         DONE                         : 15,
         FAILED                       : 15,
         CANCELED                     : 15}
@@ -186,17 +186,17 @@ def _task_state_progress(uid, current, target):
     On contradicting final states, DONE and FAILED are preferred over CANCELED,
     but no other transitions are allowed
 
-    task_state_progress(UMGR_SCHEDULING, NEW)
-    --> [UMGR_SCHEDULING, []]
+    task_state_progress(TMGR_SCHEDULING, NEW)
+    --> [TMGR_SCHEDULING, []]
 
     task_state_progress(NEW, NEW)
     --> [NEW, []]
 
-    task_state_progress(NEW, UMGR_SCHEDULING_PENDING)
-    --> [UMGR_SCHEDULING_PENDING, [UMGR_SCHEDULING_PENDING]]
+    task_state_progress(NEW, TMGR_SCHEDULING_PENDING)
+    --> [TMGR_SCHEDULING_PENDING, [TMGR_SCHEDULING_PENDING]]
 
-    task_state_progress(NEW, UMGR_SCHEDULING)
-    --> [UMGR_SCHEDULING, [UMGR_SCHEDULING_PENDING, UMGR_SCHEDULING]]
+    task_state_progress(NEW, TMGR_SCHEDULING)
+    --> [TMGR_SCHEDULING, [TMGR_SCHEDULING_PENDING, TMGR_SCHEDULING]]
 
     task_state_progress(DONE, FAILED)
     --> [DONE, []]
@@ -261,38 +261,48 @@ if 'RP_ENABLE_OLD_DEFINES' in _os.environ:
     ACTIVE                 = PMGR_ACTIVE
 
     # task states
-    UNSCHEDULED            = UMGR_SCHEDULING_PENDING
-    SCHEDULING             = UMGR_SCHEDULING
-    PENDING_INPUT_STAGING  = UMGR_STAGING_INPUT_PENDING
-    STAGING_INPUT          = UMGR_STAGING_INPUT
+    UNSCHEDULED            = TMGR_SCHEDULING_PENDING
+    SCHEDULING             = TMGR_SCHEDULING
+    PENDING_INPUT_STAGING  = TMGR_STAGING_INPUT_PENDING
+    STAGING_INPUT          = TMGR_STAGING_INPUT
     ALLOCATING_PENDING     = AGENT_SCHEDULING_PENDING
     ALLOCATING             = AGENT_SCHEDULING
     PENDING_EXECUTION      = AGENT_EXECUTING_PENDING
     EXECUTING_PENDING      = AGENT_EXECUTING_PENDING
     EXECUTING              = AGENT_EXECUTING
-    PENDING_OUTPUT_STAGING = UMGR_STAGING_OUTPUT_PENDING
-    STAGING_OUTPUT         = UMGR_STAGING_OUTPUT
+    PENDING_OUTPUT_STAGING = TMGR_STAGING_OUTPUT_PENDING
+    STAGING_OUTPUT         = TMGR_STAGING_OUTPUT
 
 _legacy_states = {
     'New'                        : NEW,
-    'AllocatingPending'          : UMGR_SCHEDULING_PENDING,
-    'Allocating'                 : UMGR_SCHEDULING,
-    'PendingInputStaging'        : UMGR_STAGING_INPUT_PENDING,
-    'StagingInput'               : UMGR_STAGING_INPUT,
+    'AllocatingPending'          : TMGR_SCHEDULING_PENDING,
+    'Allocating'                 : TMGR_SCHEDULING,
+    'PendingInputStaging'        : TMGR_STAGING_INPUT_PENDING,
+    'StagingInput'               : TMGR_STAGING_INPUT,
     'AgentStagingInputPending'   : AGENT_STAGING_INPUT_PENDING,
     'AgentStagingInput'          : AGENT_STAGING_INPUT,
     'ExecutingPending'           : AGENT_EXECUTING_PENDING,
     'Executing'                  : AGENT_EXECUTING,
     'AgentStagingOutputPending'  : AGENT_STAGING_OUTPUT_PENDING,
     'AgentStagingOutput'         : AGENT_STAGING_OUTPUT,
-    'PendingOutputStaging'       : UMGR_STAGING_OUTPUT_PENDING,
-    'StagingOutput'              : UMGR_STAGING_OUTPUT,
+    'PendingOutputStaging'       : TMGR_STAGING_OUTPUT_PENDING,
+    'StagingOutput'              : TMGR_STAGING_OUTPUT,
     'Done'                       : DONE,
     'Canceled'                   : CANCELED,
     'CANCELED'                   : CANCELED,
     'Failed'                     : FAILED,
     'FAILED'                     : FAILED
 }
+
+
+# backward compatibility
+
+UMGR_SCHEDULING_PENDING      = TMGR_SCHEDULING_PENDING
+UMGR_SCHEDULING              = TMGR_SCHEDULING
+UMGR_STAGING_INPUT_PENDING   = TMGR_STAGING_INPUT_PENDING
+UMGR_STAGING_INPUT           = TMGR_STAGING_INPUT
+UMGR_STAGING_OUTPUT_PENDING  = TMGR_STAGING_OUTPUT_PENDING
+UMGR_STAGING_OUTPUT          = TMGR_STAGING_OUTPUT
 
 
 # -----------------------------------------------------------------------------

@@ -11,16 +11,16 @@ from ...   import states             as rps
 from ...   import constants          as rpc
 from ...   import staging_directives as rpsd
 
-from .base import UMGRStagingOutputComponent
+from .base import TMGRStagingOutputComponent
 
 
 # ------------------------------------------------------------------------------
 #
-class Default(UMGRStagingOutputComponent):
+class Default(TMGRStagingOutputComponent):
     """
     This component performs all tmgr side output staging directives for compute
-    tasks.  It gets tasks from the umgr_staging_output_queue, in
-    UMGR_STAGING_OUTPUT_PENDING state, will advance them to UMGR_STAGING_OUTPUT
+    tasks.  It gets tasks from the tmgr_staging_output_queue, in
+    TMGR_STAGING_OUTPUT_PENDING state, will advance them to TMGR_STAGING_OUTPUT
     state while performing the staging, and then moves then to the respective
     final state.
     """
@@ -29,7 +29,7 @@ class Default(UMGRStagingOutputComponent):
     #
     def __init__(self, cfg, session):
 
-        UMGRStagingOutputComponent.__init__(self, cfg, session)
+        TMGRStagingOutputComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -39,8 +39,8 @@ class Default(UMGRStagingOutputComponent):
         # we keep a cache of SAGA dir handles
         self._cache = dict()
 
-        self.register_input(rps.UMGR_STAGING_OUTPUT_PENDING,
-                            rpc.UMGR_STAGING_OUTPUT_QUEUE, self.work)
+        self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
+                            rpc.TMGR_STAGING_OUTPUT_QUEUE, self.work)
 
         # we don't need an output queue -- tasks will be final
 
@@ -60,7 +60,7 @@ class Default(UMGRStagingOutputComponent):
         if not isinstance(tasks, list):
             tasks = [tasks]
 
-        self.advance(tasks, rps.UMGR_STAGING_OUTPUT, publish=True, push=False)
+        self.advance(tasks, rps.TMGR_STAGING_OUTPUT, publish=True, push=False)
 
         # we first filter out any tasks which don't need any output staging, and
         # advance them again as a bulk.  We work over the others one by one, and

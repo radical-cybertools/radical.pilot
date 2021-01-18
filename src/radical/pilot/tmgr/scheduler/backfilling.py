@@ -8,7 +8,7 @@ import radical.utils   as ru
 
 from ... import states as rps
 
-from .base import UMGRSchedulingComponent, ADDED
+from .base import TMGRSchedulingComponent, ADDED
 
 
 # the high water mark determines the percentage of task oversubscription for the
@@ -26,13 +26,13 @@ _BF_STOP_VAL  = rps._pilot_state_value(_BF_STOP)
 
 # ------------------------------------------------------------------------------
 #
-class Backfilling(UMGRSchedulingComponent):
+class Backfilling(TMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, session):
 
-        UMGRSchedulingComponent.__init__(self, cfg, session)
+        TMGRSchedulingComponent.__init__(self, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -335,7 +335,7 @@ class Backfilling(UMGRSchedulingComponent):
 
         # advance scheduled tasks
         if scheduled:
-            self.advance(scheduled, rps.UMGR_STAGING_INPUT_PENDING,
+            self.advance(scheduled, rps.TMGR_STAGING_INPUT_PENDING,
                          publish=True, push=True)
 
 

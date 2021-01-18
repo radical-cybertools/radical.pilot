@@ -99,7 +99,7 @@ class TaskManager(rpu.Component):
         self._uid         = ru.generate_id('tmgr.%(item_counter)04d',
                                            ru.ID_CUSTOM, ns=session.uid)
 
-        for m in rpc.UMGR_METRICS:
+        for m in rpc.TMGR_METRICS:
             self._callbacks[m] = dict()
 
         # NOTE: `name` and `cfg` are overloaded, the user cannot point to
@@ -138,15 +138,15 @@ class TaskManager(rpu.Component):
 
         # The output queue is used to forward submitted tasks to the
         # scheduling component.
-        self.register_output(rps.UMGR_SCHEDULING_PENDING,
-                             rpc.UMGR_SCHEDULING_QUEUE)
+        self.register_output(rps.TMGR_SCHEDULING_PENDING,
+                             rpc.TMGR_SCHEDULING_QUEUE)
 
         # the tmgr will also collect tasks from the agent again, for output
         # staging and finalization
-        if self._cfg.bridges.umgr_staging_output_queue:
+        if self._cfg.bridges.tmgr_staging_output_queue:
             self._has_sout = True
-            self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING,
-                                 rpc.UMGR_STAGING_OUTPUT_QUEUE)
+            self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING,
+                                 rpc.TMGR_STAGING_OUTPUT_QUEUE)
         else:
             self._has_sout = False
 
@@ -164,7 +164,7 @@ class TaskManager(rpu.Component):
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_sub_cb)
 
         # let session know we exist
-        self._session._register_umgr(self)
+        self._session._register_tmgr(self)
 
         self._prof.prof('setup_done', uid=self._uid)
         self._rep.ok('>>ok\n')
@@ -216,7 +216,7 @@ class TaskManager(rpu.Component):
         # disable callbacks during shutdown
         with self._cb_lock:
             self._callbacks = dict()
-            for m in rpc.UMGR_METRICS:
+            for m in rpc.TMGR_METRICS:
                 self._callbacks[m] = dict()
 
         self._cmgr.close()
@@ -312,7 +312,7 @@ class TaskManager(rpu.Component):
 
                 # update the tasks to avoid pulling them again next time.
                 # NOTE:  this needs not locking with the task pulling in the
-                #        _task_pull_cb, as that will only pull umgr_pending
+                #        _task_pull_cb, as that will only pull tmgr_pending
                 #        tasks.
                 uids = [task['uid'] for task in tasks]
 
@@ -362,7 +362,7 @@ class TaskManager(rpu.Component):
         # FIXME: we also pull for dead tasks.  That is not efficient...
         # FIXME: this needs to be converted into a tailed cursor in the update
         #        worker
-        tasks = self._session._dbs.get_tasks(umgr_uid=self.uid)
+        tasks = self._session._dbs.get_tasks(tmgr_uid=self.uid)
 
         for task in tasks:
             if not self._update_task(task, publish=True, advance=False):
@@ -387,7 +387,7 @@ class TaskManager(rpu.Component):
         #        find -- so we do it right here.
         task_cursor = self.session._dbs._c.find({'type'    : 'task',
                                                  'tmgr'    : self.uid,
-                                                 'control' : 'umgr_pending'})
+                                                 'control' : 'tmgr_pending'})
 
         if not task_cursor.count():
             # no tasks whatsoever...
@@ -451,7 +451,7 @@ class TaskManager(rpu.Component):
 
         if to_finalize:
             # shortcut, skip the data stager, but fake state transition
-            self.advance(to_finalize, state=rps.UMGR_STAGING_OUTPUT,
+            self.advance(to_finalize, state=rps.TMGR_STAGING_OUTPUT,
                                       publish=True, push=False)
 
             # move to final stata
@@ -847,7 +847,7 @@ class TaskManager(rpu.Component):
 
         # Only after the insert can we hand the tasks over to the next
         # components (ie. advance state).
-        self.advance(task_docs, rps.UMGR_SCHEDULING_PENDING,
+        self.advance(task_docs, rps.TMGR_SCHEDULING_PENDING,
                      publish=True, push=True)
 
         if ret_list: return tasks
@@ -1126,7 +1126,7 @@ class TaskManager(rpu.Component):
         if not metric:
             metric = rpc.TASK_STATE
 
-        if  metric not in rpc.UMGR_METRICS:
+        if  metric not in rpc.TMGR_METRICS:
             raise ValueError ("Metric '%s' not available on the tmgr" % metric)
 
         if not uid:
@@ -1153,7 +1153,7 @@ class TaskManager(rpu.Component):
     #
     def unregister_callback(self, cb=None, metrics=None, uid=None):
 
-        if not metrics: metrics = [rpc.UMGR_METRICS]
+        if not metrics: metrics = [rpc.TMGR_METRICS]
         else          : metrics = ru.as_list(metrics)
 
         if not uid:
@@ -1163,14 +1163,14 @@ class TaskManager(rpu.Component):
             raise ValueError('no such task %s' % uid)
 
         for metric in metrics:
-            if metric not in rpc.UMGR_METRICS :
+            if metric not in rpc.TMGR_METRICS :
                 raise ValueError ("invalid tmgr metric '%s'" % metric)
 
         with self._cb_lock:
 
             for metric in metrics:
 
-                if metric not in rpc.UMGR_METRICS :
+                if metric not in rpc.TMGR_METRICS :
                     raise ValueError("cb metric '%s' unknown" % metric)
 
                 if metric not in self._callbacks:
