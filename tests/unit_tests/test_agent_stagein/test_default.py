@@ -1,5 +1,6 @@
 # pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
+import os
 import glob
 
 from unittest import TestCase, mock
@@ -17,7 +18,8 @@ class TestDefault(TestCase):
     #
     def setUp(self):
         ret = list()
-        for fin in glob.glob('tests/unit_tests/test_agent_stagein/test_cases/task.*.json'):
+        pwd = os.path.dirname(__file__)
+        for fin in glob.glob('%s/test_cases/task.*.json' % pwd):
             tc     = ru.read_json(fin)
             task   = tc['task'   ]
             result = tc['results']

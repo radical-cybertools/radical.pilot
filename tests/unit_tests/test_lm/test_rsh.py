@@ -55,15 +55,15 @@ def test_construct_command(mocked_init,
     component.mpi_flavor     = None
     component.launch_command = 'rsh'
 
-    for unit, result in test_cases:
+    for task, result in test_cases:
         if result == "ValueError":
             with pytest.raises(ValueError):
-                command, hop = component.construct_command(unit, None)
+                command, hop = component.construct_command(task, None)
         elif result == "RuntimeError":
             with pytest.raises(RuntimeError):
-                command, hop = component.construct_command(unit, 1)
+                command, hop = component.construct_command(task, 1)
         else:
-            command, hop = component.construct_command(unit, 1)
+            command, hop = component.construct_command(task, 1)
             assert([command, hop] == result)
 
 

@@ -31,10 +31,10 @@ def test_create_resource_set_file(mocked_init, mocked_configure,
     test_cases = setUp('lm', 'jsrun')
     component  = JSRUN(name=None, cfg=None, session=None)
 
-    for unit, _, resource_file, _ in test_cases:
+    for task, _, resource_file, _ in test_cases:
 
-        slot   = unit['slots']
-        uid    = unit['uid']
+        slot   = task['slots']
+        uid    = task['uid']
 
         component._create_resource_set_file(slots=slot, uid=uid, sandbox='.')
         print(uid)
@@ -58,9 +58,9 @@ def test_construct_command(mocked_init, mocked_configure, mocked_raise_on):
     component.launch_command            = 'jsrun'
     component._log                      = ru.Logger('dummy')
 
-    for unit, result, _ , resource_filename  in test_cases:
+    for task, result, _ , resource_filename  in test_cases:
         component._create_resource_set_file.return_value = resource_filename
-        command, hop = component.construct_command(unit, None)
+        command, hop = component.construct_command(task, None)
         assert([command, hop] == result)
 
 

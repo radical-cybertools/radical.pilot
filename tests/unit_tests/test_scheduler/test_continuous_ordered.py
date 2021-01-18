@@ -31,7 +31,7 @@ def test_configure(mocked_init, mocked_init_continuous, mocked_subscriber):
     component._ru_terminating = True
     component._uid            = None
     component._log            = ru.Logger('dummy')
-    component._units          = dict()
+    component._tasks          = dict()
     component._unordered      = list()
     component._ns             = dict()
     component._ns_init        = {'current' : 0}
@@ -47,18 +47,18 @@ def test_configure(mocked_init, mocked_init_continuous, mocked_subscriber):
 @mock.patch.object(ContinuousOrdered, '__init__', return_value=None)
 @mock.patch.object(ContinuousOrdered, '_try_schedule', return_value=None)
 @mock.patch.object(Continuous, 'advance')
-def test_schedule_units(mocked_init, mocked_try_schedule, mocked_advance):
+def test_schedule_tasks(mocked_init, mocked_try_schedule, mocked_advance):
 
     '''
-    Test 2 check schedule_units
+    Test 2 check schedule_tasks
     '''
     component = ContinuousOrdered(cfg=None, session=None)
     component._ru_terminating = True
     component._lock           = mt.RLock()
     component._log            = ru.Logger('dummy')
     component._unordered      = list()
-    units = [
-            {"uid"        : "unit.000001",
+    tasks = [
+            {"uid"        : "task.000001",
              "description": {"executable"     : "/bin/sleep",
                              "arguments"      : ["10"],
                              "gpu_processes"  : 1,
@@ -69,7 +69,7 @@ def test_schedule_units(mocked_init, mocked_try_schedule, mocked_advance):
                              "lfs_per_process": 2
                             }
             },
-            {"uid"        : "unit.000002",
+            {"uid"        : "task.000002",
              "description": {"executable"     : "/bin/sleep",
                              "arguments"      : ["20"],
                              "gpu_processes"  : 1,
@@ -80,7 +80,7 @@ def test_schedule_units(mocked_init, mocked_try_schedule, mocked_advance):
                              "lfs_per_process": 2
                             },
             }]
-    component._schedule_units(units)
+    component._schedule_tasks(tasks)
 
 
 # ------------------------------------------------------------------------------

@@ -3,6 +3,7 @@
 #
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 
+import os
 import unittest
 
 from unittest import mock
@@ -20,7 +21,7 @@ class TestBase(unittest.TestCase):
     #
     def setUp(self):
 
-        fname = 'tests/test_executing/test_task/test_cases/test_base.json'
+        fname = '%s/test_cases/test_base.json' % os.path.dirname(__file__)
 
         return ru.read_json(fname)
 

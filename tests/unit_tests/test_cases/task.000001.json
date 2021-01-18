@@ -1,12 +1,12 @@
 
 {
-    "unit": {
-        "uid":         "unit.000001",
+    "task": {
+        "uid":         "task.000001",
         "description": {"executable"    : "python",
                         "arguments"     : ["test.py"],
                         "cpu_processes" : 4,
                         "cpu_threads"   : 2},
-        "unit_sandbox_path": "/tmp"
+        "task_sandbox_path": "/tmp"
     },
 
     "setup" : {

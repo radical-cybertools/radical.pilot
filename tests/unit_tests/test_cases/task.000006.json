@@ -1,14 +1,14 @@
 
 {
-    "unit": {
-        "uid":         "unit.000006",
+    "task": {
+        "uid":         "task.000006",
         "description": {"executable"       : "/bin/sleep",
                         "arguments"        : ["10"],
                         "cpu_processes"    : 2,
                         "cpu_threads"      : 2,
                         "cpu_process_type" : "MPI"
                        },
-        "unit_sandbox_path": "/tmp"
+        "task_sandbox_path": "/tmp"
     },
 
     "setup" : {
@@ -29,7 +29,7 @@
                                                  "path": null}
                 }]
             },
-            "unit_sandbox": "./"
+            "task_sandbox": "./"
         }
     },
 

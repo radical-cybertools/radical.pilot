@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 
 # pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
@@ -25,14 +26,15 @@ class TestContinuous(TestCase):
     #
     def setUp(self):
 
-        ret = list()
-        pat = os.path.dirname(__file__) + '/test_cases_continuous/unit*.json'
+        ret  = list()
+        base = os.path.dirname(__file__)
+        pat  = '%s/test_cases_continuous/task*.json' % base
 
         for fin in glob.glob(pat):
             test_cases = ru.read_json(fin)
             ret.append(test_cases)
 
-        cfg_fname = os.path.dirname(__file__) + '/test_cases_continuous/test_continuous.json'
+        cfg_fname = '%s/test_cases_continuous/test_continuous.json' % base
         cfg_tests = ru.read_json(cfg_fname)
 
         return cfg_tests, ret
@@ -158,16 +160,16 @@ class TestContinuous(TestCase):
                                       'lfs'     : {'path': '/dev/null',
                                                    'size': 1234},
                                       'mem'     : 128}])
-    def test_schedule_unit(self,
+    def test_schedule_task(self,
                            mocked_init,
                            mocked_configure,
                            mocked_find_resources):
 
         _, cfg = self.setUp()
         component = Continuous(cfg=None, session=None)
-        unit = dict()
-        unit['uid'] = cfg[1]['unit']['uid']
-        unit['description'] = cfg[1]['unit']['description']
+        task = dict()
+        task['uid'] = cfg[1]['task']['uid']
+        task['description'] = cfg[1]['task']['description']
         component.nodes = cfg[1]['setup']['lm']['slots']['nodes']
 
         component._rm_cores_per_node = 32
@@ -189,7 +191,7 @@ class TestContinuous(TestCase):
                                  'name': 'a',
                                  'uid': 1}]}
         try:
-            self.assertEqual(component.schedule_unit(unit), test_slot)
+            self.assertEqual(component.schedule_task(task), test_slot)
         except:
             with pytest.raises(AssertionError):
                 raise
@@ -198,26 +200,37 @@ class TestContinuous(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Continuous, '__init__', return_value=None)
-    def test_unschedule_unit(self, mocked_init):
+    def test_unschedule_task(self, mocked_init):
 
         component = Continuous(cfg=None, session=None)
         _, cfg   = self.setUp()
 
-        unit = {
-                'description': cfg[1]['unit']['description'],
+        task = {
+                'description': cfg[1]['task']['description'],
                 'slots'      : cfg[1]['setup']['lm']['slots']
                }
 
         component.nodes = cfg[1]['setup']['lm']['slots']['nodes']
         component._log  = ru.Logger('dummy')
 
-        component.unschedule_unit(unit)
+        component.unschedule_task(task)
         try:
             self.assertEqual(component.nodes[0]['cores'], [0])
             self.assertEqual(component.nodes[0]['gpus'], [0])
         except:
             with pytest.raises(AssertionError):
                 raise
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__':
+
+    tc = TestContinuous()
+    tc.test_configure()
+    tc.test_find_resources()
+    tc.test_schedule_task()
+    tc.test_unschedule_task()
 
 
 # ------------------------------------------------------------------------------

@@ -191,23 +191,23 @@ class Shell(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _handle_task(self, t):
+    def _handle_task(self, task):
 
         # check that we don't start any tasks which need cancelling
-        if t['uid'] in self._tasks_to_cancel:
+        if task['uid'] in self._tasks_to_cancel:
 
             with self._cancel_lock:
-                self._tasks_to_cancel.remove(t['uid'])
+                self._tasks_to_cancel.remove(task['uid'])
 
-            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
-            self.advance(t, rps.CANCELED, publish=True, push=False)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+            self.advance(task, rps.CANCELED, publish=True, push=False)
             return True
 
         # otherwise, check if we have any active tasks to cancel
         # FIXME: this should probably go into a separate idle callback
         if self._tasks_to_cancel:
 
-            # NOTE: t cancellation is costly: we keep a potentially long list
+            # NOTE: task cancellation is costly: we keep a potentially long list
             # of cancel candidates, perform one inversion and n lookups on the
             # registry, and lock the registry for that complete time span...
 
@@ -218,7 +218,7 @@ class Shell(AgentExecutingComponent):
                 for task_uid in self._tasks_to_cancel:
                     pid = inv_registry.get(task_uid)
                     if pid:
-                        # we own that t, cancel it!
+                        # we own that task, cancel it!
                         ret, out, _ = self.launcher_shell.run_sync(
                                                              'CANCEL %s\n', pid)
                         if  ret != 0:
@@ -236,7 +236,7 @@ class Shell(AgentExecutingComponent):
             #        right here...
 
         try:
-            cpt = t['description']['cpu_process_type']
+            cpt = task['description']['cpu_process_type']
 
             if cpt  == 'MPI': launcher = self._mpi_launcher
             else            : launcher = self._task_launcher
@@ -247,10 +247,10 @@ class Shell(AgentExecutingComponent):
             self._log.debug("Launching task with %s (%s).",
                             launcher.name, launcher.launch_command)
 
-            assert(t['slots'])
+            assert(task['slots'])
 
             # Start a new subprocess to launch the task
-            self.spawn(launcher=launcher, t=t)
+            self.spawn(launcher=launcher, task=task)
 
         except Exception as e:
             # append the startup error to the tasks stderr.  This is
@@ -258,19 +258,19 @@ class Shell(AgentExecutingComponent):
             # by the task), but it seems the most intuitive way to
             # communicate that error to the application/user.
             self._log.exception("error running Task")
-            t['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
+            task['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            if t.get('slots'):
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
+            if task.get('slots'):
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
-            self.advance(t, rps.FAILED, publish=True, push=False)
+            self.advance(task, rps.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
     #
-    def _task_to_cmd (self, t, launcher):
+    def _task_to_cmd (self, task, launcher):
 
         env   = self._deactivate
         cwd   = ""
@@ -279,20 +279,20 @@ class Shell(AgentExecutingComponent):
         io    = ""
         cmd   = ""
 
-        descr   = t['description']
-        sandbox = t['task_sandbox_path']
+        descr   = task['description']
+        sandbox = task['task_sandbox_path']
 
         env  += "# Task environment\n"
         env  += "export RP_SESSION_ID=%s\n"      % self._cfg['sid']
         env  += "export RP_PILOT_ID=%s\n"        % self._cfg['pid']
         env  += "export RP_AGENT_ID=%s\n"        % self._cfg['aid']
         env  += "export RP_SPAWNER_ID=%s\n"      % self.uid
-        env  += "export RP_TASK_ID=%s\n"         % t['uid']
-        env  += 'export RP_TASK_NAME="%s"\n'     % t['description'].get('name')
-        env  += 'export RP_GTOD="%s"\n'          % t['gtod']
+        env  += "export RP_TASK_ID=%s\n"         % task['uid']
+        env  += 'export RP_TASK_NAME="%s"\n'     % task['description'].get('name')
+        env  += 'export RP_GTOD="%s"\n'          % task['gtod']
         env  += 'export RP_PILOT_STAGING="%s"\n' % self._pwd
         if self._prof.enabled:
-            env += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, t['uid'])
+            env += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, task['uid'])
         env  += '''
 prof(){
     if test -z "$RP_PROF"
@@ -342,11 +342,11 @@ prof(){
       # if  descr['stdin'] : io  += "<%s "  % descr['stdin']
       # else               : io  += "<%s "  % '/dev/null'
         if  descr['stdout']: io  += "1>%s " % descr['stdout']
-        else               : io  += "1>%s " % '%s.out' % t['uid']
+        else               : io  += "1>%s " % '%s.out' % task['uid']
         if  descr['stderr']: io  += "2>%s " % descr['stderr']
-        else               : io  += "2>%s " % '%s.err' % t['uid']
+        else               : io  += "2>%s " % '%s.err' % task['uid']
 
-        cmd, hop_cmd  = launcher.construct_command(t,
+        cmd, hop_cmd  = launcher.construct_command(task,
                                         '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"')
 
         script  = '\n%s\n' % env
@@ -385,24 +385,24 @@ prof(){
 
     # --------------------------------------------------------------------------
     #
-    def spawn(self, launcher, t):
+    def spawn(self, launcher, task):
 
-        sandbox = t['sandbox']
+        sandbox = task['sandbox']
 
         # prep stdout/err so that we can append w/o checking for None
-        t['stdout'] = ''
-        t['stderr'] = ''
+        task['stdout'] = ''
+        task['stderr'] = ''
 
         # we got an allocation: go off and launch the process.  we get
         # a multiline command, so use the wrapper's BULK/LRUN mode.
-        cmd       = self._task_to_cmd (t, launcher)
+        cmd       = self._task_to_cmd (task, launcher)
         run_cmd   = "BULK\nLRUN\n%s\nLRUN_EOT\nBULK_RUN\n" % cmd
 
       # TODO: Remove this commented out block?
       # if  self.rm.target_is_macos :
       #     run_cmd = run_cmd.replace ("\\", "\\\\\\\\") # hello MacOS
 
-        self._prof.prof('exec_start', uid=t['uid'])
+        self._prof.prof('exec_start', uid=task['uid'])
         ret, out, _ = self.launcher_shell.run_sync (run_cmd)
 
         if  ret != 0 :
@@ -421,21 +421,21 @@ prof(){
 
         # FIXME: verify format of returned pid (\d+)!
         pid       = lines[-1].strip ()
-        t['pid'] = pid
+        task['pid'] = pid
 
         # before we return, we need to clean the
         # 'BULK COMPLETED message from lrun
         ret, out = self.launcher_shell.find_prompt ()
         if  ret != 0 :
-            self._prof.prof('exec_fail', uid=t['uid'])
+            self._prof.prof('exec_fail', uid=task['uid'])
             raise RuntimeError ("failed to run task '%s': (%s)(%s)"
                              % (run_cmd, ret, out))
 
-        self._prof.prof('exec_ok', uid=t['uid'])
+        self._prof.prof('exec_ok', uid=task['uid'])
 
         # for convenience, we link the ExecWorker job-cwd to the task sandbox
         try:
-            os.symlink("%s/%s" % (self._spawner_tmp, t['pid']),
+            os.symlink("%s/%s" % (self._spawner_tmp, task['pid']),
                        "%s/%s" % (sandbox, 'SHELL_SPAWNER_TMP'))
         except Exception as e:
             self._log.exception('shell cwd symlink failed: %s' % e)
@@ -444,7 +444,7 @@ prof(){
         # thread for this Task execution.  We need to communicate the PIDs/tasks via
         # a queue again!
         with self._registry_lock :
-            self._registry[pid] = t
+            self._registry[pid] = task
 
 
     # --------------------------------------------------------------------------
@@ -499,11 +499,11 @@ prof(){
                         with self._registry_lock :
 
                             for pid, state, data in cache_copy :
-                                t = self._registry.get (pid, None)
+                                task = self._registry.get (pid, None)
 
-                                if t:
+                                if task:
                                     events_to_handle.append(
-                                                         [t, pid, state, data])
+                                                         [task, pid, state, data])
                                 else:
                                     self._cached_events.append(
                                                              [pid, state, data])
@@ -511,8 +511,8 @@ prof(){
                         # FIXME: measure if using many locks in the loop below
                         # is really better than doing all ops in the locked loop
                         # above
-                        for t, pid, state, data in events_to_handle :
-                            self._handle_event (t, pid, state, data)
+                        for task, pid, state, data in events_to_handle :
+                            self._handle_event (task, pid, state, data)
 
                     # all is well...
                   # self._log.info ("monitoring channel finish idle loop")
@@ -539,13 +539,13 @@ prof(){
                         continue
 
                     self._log.info ("monitoring channel event: %s", line)
-                    t = None
+                    task = None
 
                     with self._registry_lock :
-                        t = self._registry.get (pid, None)
+                        task = self._registry.get (pid, None)
 
-                    if t:
-                        self._handle_event (t, pid, state, data)
+                    if task:
+                        self._handle_event (task, pid, state, data)
                     else:
                         self._cached_events.append ([pid, state, data])
 
@@ -557,11 +557,11 @@ prof(){
 
     # --------------------------------------------------------------------------
     #
-    def _handle_event (self, t, pid, state, data) :
+    def _handle_event (self, task, pid, state, data) :
 
         # got an explicit event to handle
         self._log.info ("monitoring handles event for %s: %s:%s:%s",
-                        t['uid'], pid, state, data)
+                        task['uid'], pid, state, data)
 
         rp_state = {'DONE'     : rps.DONE,
                     'FAILED'   : rps.FAILED,
@@ -573,30 +573,30 @@ prof(){
                              pid, state, data)
             return
 
-        self._prof.prof('exec_stop', uid=t['uid'])
+        self._prof.prof('exec_stop', uid=task['uid'])
 
         # for final states, we can free the slots.
-        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
+        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
-        if data : t['exit_code'] = int(data)
-        else    : t['exit_code'] = None
+        if data : task['exit_code'] = int(data)
+        else    : task['exit_code'] = None
 
         if rp_state in [rps.FAILED, rps.CANCELED] :
             # The task failed - fail after staging output
-            t['target_state'] = rps.FAILED
+            task['target_state'] = rps.FAILED
 
         else:
             # The task finished cleanly, see if we need to deal with
             # output data.  We always move to stageout, even if there are no
             # directives -- at the very least, we'll upload stdout/stderr
-            t['target_state'] = rps.DONE
+            task['target_state'] = rps.DONE
 
-        self.advance(t, rps.AGENT_STAGING_OUTPUT_PENDING,
+        self.advance(task, rps.AGENT_STAGING_OUTPUT_PENDING,
                          publish=True, push=True)
 
-        # we don't need the t in the registry anymore
+        # we don't need the task in the registry anymore
         with self._registry_lock :
-            if pid in self._registry :  # why wouldn't it be in there though?
+            if pid in self._registry :  # why wouldn'task it be in there though?
                 del(self._registry[pid])
 
 

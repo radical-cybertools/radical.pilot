@@ -4,6 +4,7 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
+import os
 import glob
 import pytest
 
@@ -24,14 +25,15 @@ class TestContinuous(TestCase):
     #
     def setUp(self):
 
-        ret = list()
-        pat = 'tests/test_scheduler/test_task/test_cases_continuous/task*.json'
+        ret  = list()
+        base = os.path.dirname(__file__) + '/../../test_scheduler/'
+        pat  = '%s/test_task/test_cases_continuous/task*.json' % base
 
         for fin in glob.glob(pat):
             test_cases = ru.read_json(fin)
             ret.append(test_cases)
 
-        cfg_fname = 'tests/test_scheduler/test_task/test_cases_continuous/test_continuous.json'
+        cfg_fname = '%s/test_task/test_cases_continuous/test_continuous.json' % base
         cfg_tests = ru.read_json(cfg_fname)
 
         return cfg_tests, ret

@@ -126,7 +126,7 @@ class ABDS(AgentExecutingComponent):
     # --------------------------------------------------------------------------
     #
     def _populate_task_environment(self):
-        """Derive the environment for the t's from our own environment."""
+        """Derive the environment for the task's from our own environment."""
 
         # Get the environment of the agent
         new_env = copy.deepcopy(os.environ)
@@ -182,24 +182,24 @@ class ABDS(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _handle_task(self, t):
+    def _handle_task(self, task):
 
         try:
-            if t['description']['mpi']:
+            if task['description']['mpi']:
                 launcher = self._mpi_launcher
             else :
                 launcher = self._task_launcher
 
             if not launcher:
-                raise RuntimeError("no launcher (mpi=%s)" % t['description']['mpi'])
+                raise RuntimeError("no launcher (mpi=%s)" % task['description']['mpi'])
 
             self._log.debug("Launching task with %s (%s).", launcher.name, launcher.launch_command)
 
-            assert(t['slots']) # FIXME: no assert, but check
-            self._prof.prof('exec', msg='task launch', uid=t['uid'])
+            assert(task['slots']) # FIXME: no assert, but check
+            self._prof.prof('exec', msg='task launch', uid=task['uid'])
 
             # Start a new subprocess to launch the task
-            self.spawn(launcher=launcher, t=t)
+            self.spawn(launcher=launcher, task=task)
 
         except Exception as e:
             # append the startup error to the tasks stderr.  This is
@@ -207,51 +207,51 @@ class ABDS(AgentExecutingComponent):
             # by the task), but it seems the most intuitive way to
             # communicate that error to the application/user.
             self._log.exception("error running Task")
-            t['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
+            task['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            if t['slots']:
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
+            if task['slots']:
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
-            self.advance(t, rps.FAILED, publish=True, push=False)
+            self.advance(task, rps.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
     #
-    def spawn(self, launcher, t):
+    def spawn(self, launcher, task):
 
-        self._prof.prof('spawn', msg='task spawn', uid=t['uid'])
+        self._prof.prof('spawn', msg='task spawn', uid=task['uid'])
 
-        sandbox = t['task_sandbox_path']
+        sandbox = task['task_sandbox_path']
 
         # make sure the sandbox exists
         rpu.rec_makedir(sandbox)
 
         # prep stdout/err so that we can append w/o checking for None
-        t['stdout']  = ''
-        t['stderr']  = ''
+        task['stdout']  = ''
+        task['stderr']  = ''
 
-        launch_script_name = '%s/%s.sh' % (sandbox, t['uid'])
+        launch_script_name = '%s/%s.sh' % (sandbox, task['uid'])
 
         with open(launch_script_name, "w") as launch_script:
             launch_script.write('#!/bin/sh\n\n')
 
             # Create string for environment variable setting
             env_string  = ''
-            if t['description']['environment']:
-                for key,val in t['description']['environment'].items():
+            if task['description']['environment']:
+                for key,val in task['description']['environment'].items():
                     env_string += 'export %s="%s"\n' % (key, val)
             env_string += 'export RP_SESSION_ID="%s"\n'    % self._cfg['sid']
             env_string += 'export RP_PILOT_ID="%s"\n'      % self._cfg['pid']
             env_string += 'export RP_AGENT_ID="%s"\n'      % self._cfg['aid']
             env_string += 'export RP_SPAWNER_ID="%s"\n'    % self.uid
-            env_string += 'export RP_TASK_ID="%s"\n'       % t['uid']
-            env_string += 'export RP_TASK_NAME="%s"\n'     % t['description'].get('name')
+            env_string += 'export RP_TASK_ID="%s"\n'       % task['uid']
+            env_string += 'export RP_TASK_NAME="%s"\n'     % task['description'].get('name')
             env_string += 'export RP_GTOD="%s"\n'          % self.gtod
             env_string += 'export RP_PILOT_STAGING="%s"\n' % self._pwd
             if self._prof.enabled:
-                env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, t['uid'])
+                env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, task['uid'])
 
             # also add any env vars requested for export by the resource config
             for k,v in self._env_task_export.items():
@@ -270,8 +270,8 @@ prof(){
 '''
 
             # also add any env vars requested in the task description
-            if t['description']['environment']:
-                for key,val in t['description']['environment'].items():
+            if task['description']['environment']:
+                for key,val in task['description']['environment'].items():
                     env_string += 'export %s=%s\n' % (key, val)
 
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
@@ -280,13 +280,13 @@ prof(){
             launch_script.write('\n# Change to task sandbox\ncd %s\n' % sandbox)
 
             # Before the Big Bang there was nothing
-            if t['description']['pre_exec']:
+            if task['description']['pre_exec']:
                 pre_exec_string = ''
-                if isinstance(t['description']['pre_exec'], list):
-                    for elem in t['description']['pre_exec']:
+                if isinstance(task['description']['pre_exec'], list):
+                    for elem in task['description']['pre_exec']:
                         pre_exec_string += "%s\n" % elem
                 else:
-                    pre_exec_string += "%s\n" % t['description']['pre_exec']
+                    pre_exec_string += "%s\n" % task['description']['pre_exec']
                 # Note: extra spaces below are for visual alignment
                 launch_script.write("\n# Pre-exec commands\n")
                 launch_script.write('prof task_pre_start\n')
@@ -301,7 +301,7 @@ prof(){
             # The actual command line, constructed per launch-method
             try:
                 self._log.debug("Launch Script Name %s",launch_script_name)
-                launch_command, hop_cmd = launcher.construct_command(t, launch_script_name)
+                launch_command, hop_cmd = launcher.construct_command(task, launch_script_name)
                 self._log.debug("Launch Command %s from %s", launch_command, launcher.name)
 
                 if hop_cmd : cmdline = hop_cmd
@@ -320,13 +320,13 @@ prof(){
             launch_script.write('prof task_exec_stop\n')
 
             # After the universe dies the infrared death, there will be nothing
-            if t['description']['post_exec']:
+            if task['description']['post_exec']:
                 post_exec_string = ''
-                if isinstance(t['description']['post_exec'], list):
-                    for elem in t['description']['post_exec']:
+                if isinstance(task['description']['post_exec'], list):
+                    for elem in task['description']['post_exec']:
                         post_exec_string += "%s\n" % elem
                 else:
-                    post_exec_string += "%s\n" % t['description']['post_exec']
+                    post_exec_string += "%s\n" % task['description']['post_exec']
                 launch_script.write("\n# Post-exec commands\n")
                 launch_script.write('prof task_post_start\n')
                 launch_script.write('%s\n' % post_exec_string)
@@ -342,40 +342,40 @@ prof(){
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
         os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
-        self._prof.prof('control', msg='launch script constructed', uid=t['uid'])
+        self._prof.prof('control', msg='launch script constructed', uid=task['uid'])
 
         # prepare stdout/stderr
-        stdout_file = t['description'].get('stdout') or '%s.out' % t['uid']
-        stderr_file = t['description'].get('stderr') or '%s.err' % t['uid']
+        stdout_file = task['description'].get('stdout') or '%s.out' % task['uid']
+        stderr_file = task['description'].get('stderr') or '%s.err' % task['uid']
 
-        t['stdout_file'] = os.path.join(sandbox, stdout_file)
-        t['stderr_file'] = os.path.join(sandbox, stderr_file)
+        task['stdout_file'] = os.path.join(sandbox, stdout_file)
+        task['stderr_file'] = os.path.join(sandbox, stderr_file)
 
-        _stdout_file_h = open(t['stdout_file'], "w+")
-        _stderr_file_h = open(t['stderr_file'], "w+")
-        self._prof.prof('control', msg='stdout and stderr files created', uid=t['uid'])
+        _stdout_file_h = open(task['stdout_file'], "w+")
+        _stderr_file_h = open(task['stderr_file'], "w+")
+        self._prof.prof('control', msg='stdout and stderr files created', uid=task['uid'])
 
-        self._log.info("Launching task %s via %s in %s", t['uid'], cmdline, sandbox)
+        self._log.info("Launching task %s via %s in %s", task['uid'], cmdline, sandbox)
 
-        self._prof.prof('spawn', msg='spawning passed to popen', uid=t['uid'])
+        self._prof.prof('spawn', msg='spawning passed to popen', uid=task['uid'])
 
-        t['proc'] = subprocess.Popen(args               = cmdline,
-                                      bufsize            = 0,
-                                      executable         = None,
-                                      stdin              = None,
-                                      stdout             = _stdout_file_h,
-                                      stderr             = _stderr_file_h,
-                                      preexec_fn         = None,
-                                      close_fds          = True,
-                                      shell              = True,
-                                      cwd                = sandbox,
-                                      env                = self._task_environment,
-                                      universal_newlines = False,
-                                      startupinfo        = None,
-                                      creationflags      = 0)
+        task['proc'] = subprocess.Popen(args               = cmdline,
+                                        bufsize            = 0,
+                                        executable         = None,
+                                        stdin              = None,
+                                        stdout             = _stdout_file_h,
+                                        stderr             = _stderr_file_h,
+                                        preexec_fn         = None,
+                                        close_fds          = True,
+                                        shell              = True,
+                                        cwd                = sandbox,
+                                        env                = self._task_environment,
+                                        universal_newlines = False,
+                                        startupinfo        = None,
+                                        creationflags      = 0)
 
-        self._prof.prof('spawn', msg='spawning passed to popen', uid=t['uid'])
-        self._watch_queue.put(t)
+        self._prof.prof('spawn', msg='spawning passed to popen', uid=task['uid'])
+        self._watch_queue.put(task)
 
 
     # --------------------------------------------------------------------------
@@ -383,7 +383,6 @@ prof(){
     def _watch(self):
 
         try:
-            tid = self.uid.replace('Component', 'Watcher')
             self._prof.prof('run', uid=self._pid)
 
             while not self._terminate.is_set():
@@ -408,10 +407,11 @@ prof(){
                     pass
 
                 # add all tasks we found to the watchlist
-                for t in tasks :
+                for task in tasks :
 
-                    self._prof.prof('passed', msg="ExecWatcher picked up task", uid=t['uid'])
-                    self._tasks_to_watch.append (t)
+                    self._prof.prof('passed', msg="ExecWatcher picked up task",
+                                              uid=task['uid'])
+                    self._tasks_to_watch.append (task)
 
                 # check on the known tasks.
                 action = self._check_running()
@@ -435,16 +435,16 @@ prof(){
 
         action = 0
 
-        for t in self._tasks_to_watch:
+        for task in self._tasks_to_watch:
 
-            sandbox = '%s/%s' % (self._pwd, t['uid'])
+            sandbox = '%s/%s' % (self._pwd, task['uid'])
 
-            #-------------------------------------------------------------------
+            # ------------------------------------------------------------------
             # This code snippet reads the YARN application report file and if
-            # the application is RUNNING it update the state of the Task with the
-            # right time stamp. In any other case it works as it was.
+            # the application is RUNNING it update the state of the Task with
+            # the right time stamp. In any other case it works as it was.
             logfile = '%s/%s' % (sandbox, '/YarnApplicationReport.log')
-            if t['state']==rps.AGENT_EXECUTING_PENDING \
+            if task['state'] == rps.AGENT_EXECUTING_PENDING \
                     and os.path.isfile(logfile):
 
                 yarnreport = open(logfile,'r')
@@ -457,80 +457,82 @@ prof(){
                         line = report_line.split(',')
                         ts   = (int(line[3].split('=')[1])/1000)
                         action += 1
-                        proc = t['proc']
+                        proc = task['proc']
                         self._log.debug('Proc Print {0}'.format(proc))
-                        del(t['proc'])  # proc is not json serializable
-                        self.advance(t, rps.AGENT_EXECUTING, publish=True,
+                        del(task['proc'])  # proc is not json serializable
+                        self.advance(task, rps.AGENT_EXECUTING, publish=True,
                                      push=False,ts=ts)
-                        t['proc']    = proc
+                        task['proc'] = proc
 
-                        # FIXME: Ioannis, what is this supposed to do?
-                        # I wanted to update the state of the t but keep it in the watching
-                        # queue. I am not sure it is needed anymore.
-                        index = self._tasks_to_watch.index(t)
-                        self._tasks_to_watch[index]=t
+                        # FIXME: Ioannis, what is this supposed to do?  I wanted
+                        # to update the state of the task but keep it in the
+                        # watching queue. I am not sure it is needed anymore.
+                        index = self._tasks_to_watch.index(task)
+                        self._tasks_to_watch[index] = task
 
             else :
                 # poll subprocess object
-                exit_code = t['proc'].poll()
-                now       = time.time()
+                exit_code = task['proc'].poll()
 
                 if exit_code is None:
                     # Process is still running
 
-                    if t['uid'] in self._tasks_to_cancel:
+                    if task['uid'] in self._tasks_to_cancel:
 
                         # FIXME: there is a race condition between the state poll
                         # above and the kill command below.  We probably should pull
                         # state after kill again?
 
-                        # We got a request to cancel this t
+                        # We got a request to cancel this task
                         action += 1
-                        t['proc'].kill()
-                        t['proc'].wait() # make sure proc is collected
+                        task['proc'].kill()
+                        task['proc'].wait() # make sure proc is collected
 
                         with self._cancel_lock:
-                            self._tasks_to_cancel.remove(t['uid'])
+                            self._tasks_to_cancel.remove(task['uid'])
 
-                        self._prof.prof('final', msg="execution canceled", uid=t['uid'])
+                        self._prof.prof('final', msg="execution canceled",
+                                uid=task['uid'])
 
-                        self._tasks_to_watch.remove(t)
+                        self._tasks_to_watch.remove(task)
 
-                        del(t['proc'])  # proc is not json serializable
-                        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
-                        self.advance(t, rps.CANCELED, publish=True, push=False)
+                        del(task['proc'])  # proc is not json serializable
+                        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+                        self.advance(task, rps.CANCELED, publish=True, push=False)
 
                 else:
-                    self._prof.prof('exec', msg='execution complete', uid=t['uid'])
+                    self._prof.prof('exec', msg='execution complete', uid=task['uid'])
 
 
                     # make sure proc is collected
-                    t['proc'].wait()
+                    task['proc'].wait()
 
                     # we have a valid return code -- task is final
                     action += 1
-                    self._log.info("Task %s has return code %s.", t['uid'], exit_code)
+                    self._log.info("Task %s has return code %s.", task['uid'], exit_code)
 
-                    t['exit_code'] = exit_code
+                    task['exit_code'] = exit_code
 
                     # Free the Slots, Flee the Flots, Ree the Frots!
-                    self._tasks_to_watch.remove(t)
-                    del(t['proc'])  # proc is not json serializable
-                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
+                    self._tasks_to_watch.remove(task)
+                    del(task['proc'])  # proc is not json serializable
+                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
                     if exit_code != 0:
                         # The task failed - fail after staging output
-                        self._prof.prof('final', msg="execution failed", uid=t['uid'])
-                        t['target_state'] = rps.FAILED
+                        self._prof.prof('final', msg="execution failed",
+                                uid=task['uid'])
+                        task['target_state'] = rps.FAILED
 
                     else:
                         # The task finished cleanly, see if we need to deal with
                         # output data.  We always move to stageout, even if there are no
                         # directives -- at the very least, we'll upload stdout/stderr
-                        self._prof.prof('final', msg="execution succeeded", uid=t['uid'])
-                        t['target_state'] = rps.DONE
+                        self._prof.prof('final', msg="execution succeeded",
+                                uid=task['uid'])
+                        task['target_state'] = rps.DONE
 
-                    self.advance(t, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
+                    self.advance(task, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
 
         return action
 

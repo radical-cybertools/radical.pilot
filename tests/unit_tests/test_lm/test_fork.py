@@ -33,8 +33,8 @@ def test_construct_command(mocked_init,
     component      = Fork(name=None, cfg=None, session=None)
     component._log = ru.Logger('dummy')
 
-    for unit, result in test_cases:
-        command, hop = component.construct_command(unit, None)
+    for task, result in test_cases:
+        command, hop = component.construct_command(task, None)
         assert([command, hop] == result)
 
 

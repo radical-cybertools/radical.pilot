@@ -1,7 +1,7 @@
 
 {
-    "unit": {
-        "uid":         "unit.000003",
+    "task": {
+        "uid":         "task.000003",
         "description": {"environment": {},
                         "executable"       : "/bin/sleep",
                         "arguments"        : ["10"],
@@ -14,7 +14,7 @@
                         "mem_per_process"  : 128,
                         "lfs_per_process"  : 0
                        },
-        "unit_sandbox_path": "/tmp"
+        "task_sandbox_path": "/tmp"
     },
 
     "setup" : {
@@ -38,7 +38,7 @@
                                                  "path": "/dev/null"}
                 }]
             },
-            "unit_sandbox": "./"
+            "task_sandbox": "./"
         }
     },
 

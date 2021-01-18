@@ -123,9 +123,9 @@ def test_construct_command(mocked_init,
     component.launch_command = 'mpirun'
     component.mpi_flavor     = None
 
-    for unit, result in test_cases:
-        command, hop = component.construct_command(unit, None)
-        assert([command, hop] == result), unit['uid']
+    for task, result in test_cases:
+        command, hop = component.construct_command(task, None)
+        assert([command, hop] == result), task['uid']
 
 
 # ------------------------------------------------------------------------------

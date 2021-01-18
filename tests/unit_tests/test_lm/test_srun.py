@@ -54,11 +54,11 @@ def test_construct_command(mocked_init, mocked_configure):
     component.launch_command = '/bin/srun'
 
     test_cases = setUp('lm', 'srun')
-    for unit, result in test_cases:
+    for task, result in test_cases:
 
         if result != "RuntimeError":
-            command, hop = component.construct_command(unit, None)
-            assert([command, hop] == result), unit['uid']
+            command, hop = component.construct_command(task, None)
+            assert([command, hop] == result), task['uid']
 
 
 # ------------------------------------------------------------------------------

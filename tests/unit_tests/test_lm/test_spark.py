@@ -42,12 +42,12 @@ def test_construct_command(mocked_init,
     component.launch_command = ''
     component.name           = 'Spark'
 
-    for unit, result in test_cases:
+    for task, result in test_cases:
         if result == "RuntimeError":
             with pytest.raises(RuntimeError):
-                command, hop = component.construct_command(unit, None)
+                command, hop = component.construct_command(task, None)
         else:
-            command, hop = component.construct_command(unit, None)
+            command, hop = component.construct_command(task, None)
             assert([command, hop] == result)
 
 

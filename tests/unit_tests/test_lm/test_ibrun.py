@@ -40,16 +40,16 @@ def test_construct_command(mocked_init, mocked_configure, mocked_raise_on):
     component.launch_command = 'ibrun'
 
     test_cases = setUp('lm', 'ibrun')
-    for unit, result in test_cases:
+    for task, result in test_cases:
         if result == 'RuntimeError':
             with pytest.raises(RuntimeError):
-                command, hop = component.construct_command(unit, None)
+                command, hop = component.construct_command(task, None)
         elif result == 'AssertionError':
             with pytest.raises(AssertionError):
-                command, hop = component.construct_command(unit, None)
+                command, hop = component.construct_command(task, None)
         else:
-            command, hop = component.construct_command(unit, None)
-            assert([command, hop] == result), unit['uid']
+            command, hop = component.construct_command(task, None)
+            assert([command, hop] == result), task['uid']
 
 
 # ------------------------------------------------------------------------------

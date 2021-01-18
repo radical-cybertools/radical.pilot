@@ -29,7 +29,7 @@ class TestBase(unittest.TestCase):
     #
     @mock.patch.object(Shell, '__init__', return_value=None)
     @mock.patch.object(Shell, 'initialize', return_value=None)
-    def test_handle_unit(self, mocked_init, mocked_initialize):
+    def test_handle_task(self, mocked_init, mocked_initialize):
 
         global_launcher = []
         global_tasks    = []
@@ -42,8 +42,8 @@ class TestBase(unittest.TestCase):
 
         tests = self.setUp()
         task  = dict()
-        task['uid']         = tests['unit']['uid']
-        task['description'] = tests['unit']['description']
+        task['uid']         = tests['task']['uid']
+        task['description'] = tests['task']['description']
         task['stderr']      = '/test_cases/'
 
         component = Shell()
@@ -61,7 +61,7 @@ class TestBase(unittest.TestCase):
         component.spawn = mock.MagicMock(side_effect=spawn_side_effect
                 (launcher=component._mpi_launcher, task=task))
 
-        component._handle_unit(task)
+        component._handle_task(task)
         self.assertEqual(task, global_tasks[0])
 
     # --------------------------------------------------------------------------
@@ -73,10 +73,10 @@ class TestBase(unittest.TestCase):
         tests        = self.setUp()
         task         = dict()
 
-        task['uid']               = tests['unit']['uid']
-        task['description']       = tests['unit']['description']
-        task['unit_sandbox_path'] = tests['unit']['unit_sandbox_path']
-        task['gtod']              = tests['unit']['gtod']
+        task['uid']               = tests['task']['uid']
+        task['description']       = tests['task']['description']
+        task['task_sandbox_path'] = tests['task']['task_sandbox_path']
+        task['gtod']              = tests['task']['gtod']
 
         component = Shell()
         component._log = ru.Logger('dummy')

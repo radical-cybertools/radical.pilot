@@ -31,7 +31,7 @@ class TestTask(TestCase):
             rp.ComputeUnit(tmgr, descr)
 
         descr = rp.ComputeUnitDescription({'executable': 'true'})
-        self.assertEqual(rp.ComputeUnit(tmgr, descr).uid, 'unit.000000')
+        self.assertEqual(rp.ComputeUnit(tmgr, descr).uid, 'task.000000')
 
         descr = rp.ComputeUnitDescription({'executable': 'true', 'uid': 'bar'})
         self.assertEqual(rp.ComputeUnit(tmgr, descr).uid, 'bar')
@@ -40,7 +40,7 @@ class TestTask(TestCase):
             rp.ComputeUnit(tmgr, descr)
 
         descr = rp.ComputeUnitDescription({'executable': 'true'})
-        self.assertEqual(rp.ComputeUnit(tmgr, descr).uid, 'unit.000001')
+        self.assertEqual(rp.ComputeUnit(tmgr, descr).uid, 'task.000001')
 
 
 # ------------------------------------------------------------------------------

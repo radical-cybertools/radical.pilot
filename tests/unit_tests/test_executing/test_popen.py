@@ -33,7 +33,7 @@ class TestBase(unittest.TestCase):
     #
     @mock.patch.object(Popen, '__init__', return_value=None)
     @mock.patch.object(Popen, 'initialize', return_value=None)
-    def test_handle_unit(self, mocked_init, mocked_initialize):
+    def test_handle_task(self, mocked_init, mocked_initialize):
 
         global_launcher = []
         global_tasks = []
@@ -47,8 +47,8 @@ class TestBase(unittest.TestCase):
         tests = self.setUp()
         task  = dict()
 
-        task['uid']         = tests['unit']['uid']
-        task['description'] = tests['unit']['description']
+        task['uid']         = tests['task']['uid']
+        task['description'] = tests['task']['description']
 
         component = Popen()
         component._mpi_launcher          = mock.Mock()
@@ -62,7 +62,7 @@ class TestBase(unittest.TestCase):
                                (launcher=component._mpi_launcher, task=task))
 
         component._log = ru.Logger('dummy')
-        component._handle_unit(task)
+        component._handle_task(task)
         self.assertEqual(task, global_tasks[0])
 
 
@@ -90,7 +90,7 @@ class TestBase(unittest.TestCase):
 
         tests = self.setUp()
         task = dict()
-        task = tests['unit']
+        task = tests['task']
         task['target_state'] = None
         task['proc']         = mock.Mock()
         task['proc'].poll    = mock.Mock(return_value=1)
@@ -119,9 +119,9 @@ class TestBase(unittest.TestCase):
         tests = self.setUp()
         _pids = []
         task = dict()
-        task = tests['unit']
+        task = tests['task']
         task['slots'] = tests['setup']['lm']['slots']
-        task['unit_sandbox_path'] = tests['setup']['lm']['unit_sandbox']
+        task['task_sandbox_path'] = tests['setup']['lm']['task_sandbox']
 
         launcher  = LaunchMethod()
         component = Popen()

@@ -1,14 +1,14 @@
 
 {
-    "unit": {
-        "uid":         "unit.000013",
+    "task": {
+        "uid":         "task.000013",
         "description": {"executable"    : "/bin/sleep",
                         "arguments"     : ["10"],
                         "cpu_processes" : 1,
                         "cpu_threads"   : 1,
                         "gpu_processes" : 2
                        },
-        "unit_sandbox_path": "/tmp"
+        "task_sandbox_path": "/tmp"
     },
 
     "setup" : {

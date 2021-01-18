@@ -126,7 +126,7 @@ class ORTE(AgentExecutingComponent):
     # --------------------------------------------------------------------------
     #
     def _populate_task_environment(self):
-        """Derive the environment for the t's from our own environment."""
+        """Derive the environment for the task's from our own environment."""
 
         # Get the environment of the agent
         new_env = copy.deepcopy(os.environ)
@@ -182,15 +182,15 @@ class ORTE(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _handle_task(self, t):
+    def _handle_task(self, task):
 
         # prep stdout/err so that we can append w/o checking for None
-        t['stdout'] = ''
-        t['stderr'] = ''
+        task['stdout'] = ''
+        task['stderr'] = ''
 
         if not self._orte_initialized:
             self._log.debug("ORTE not yet initialized!")
-            ret = self.init_orte(t)
+            ret = self.init_orte(task)
             if ret != 0:
                 self._log.debug("ORTE initialisation failed!")
             else:
@@ -205,9 +205,9 @@ class ORTE(AgentExecutingComponent):
             self._log.debug("Launching task with %s (%s).",
                             launcher.name, launcher.launch_command)
 
-            assert(t['slots']), 'task unscheduled'
+            assert(task['slots']), 'task unscheduled'
             # Start a new subprocess to launch the task
-            self.spawn(launcher=launcher, t=t)
+            self.spawn(launcher=launcher, task=task)
 
         except Exception as e:
             # append the startup error to the tasks stderr.  This is
@@ -215,14 +215,14 @@ class ORTE(AgentExecutingComponent):
             # by the task), but it seems the most intuitive way to
             # communicate that error to the application/user.
             self._log.exception("error running Task: %s", str(e))
-            t['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
+            task['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
                             % (str(e), traceback.format_exc())
 
             # Free the Slots, Flee the Flots, Ree the Frots!
-            if t['slots']:
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
+            if task['slots']:
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
-            self.advance(t, rps.FAILED, publish=True, push=False)
+            self.advance(task, rps.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -230,8 +230,8 @@ class ORTE(AgentExecutingComponent):
     def task_spawned_cb(self, task, status):
 
         with self.task_map_lock:
-            t = self.task_map[task]
-        uid = t['uid']
+            task = self.task_map[task]
+        uid = task['uid']
 
         if status:
             with self.task_map_lock:
@@ -240,16 +240,16 @@ class ORTE(AgentExecutingComponent):
             # task launch failed
             self._prof.prof('exec_fail', uid=uid)
             self._log.error("task %s startup failed: %s", uid, status)
-            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
-            t['target_state'] = rps.FAILED
-            self.advance(t, rps.AGENT_STAGING_OUTPUT_PENDING,
+            task['target_state'] = rps.FAILED
+            self.advance(task, rps.AGENT_STAGING_OUTPUT_PENDING,
                          publish=True, push=True)
 
         else:
-            t['started'] = time.time()
+            task['started'] = time.time()
             self._log.debug("task %s startup ok", uid)
-            self.advance(t, rps.AGENT_EXECUTING, publish=True, push=False)
+            self.advance(task, rps.AGENT_EXECUTING, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -259,38 +259,38 @@ class ORTE(AgentExecutingComponent):
         timestamp = time.time()
 
         with self.task_map_lock:
-            t = self.task_map[task]
+            task = self.task_map[task]
             del self.task_map[task]
 
-        self._prof.prof('exec_stop', uid=t['uid'])
-        self._log.info("task %s finished [%s]", t['uid'], exit_code)
+        self._prof.prof('exec_stop', uid=task['uid'])
+        self._log.info("task %s finished [%s]", task['uid'], exit_code)
 
-        t['exit_code'] = exit_code
-        t['finished']  = timestamp
+        task['exit_code'] = exit_code
+        task['finished']  = timestamp
 
-        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
+        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
         if exit_code != 0:
             # task failed - fail after staging output
-            t['target_state'] = rps.FAILED
+            task['target_state'] = rps.FAILED
 
         else:
             # task finished cleanly.  We always move to stageout, even if there
             # are no staging directives -- at the very least, we'll upload
             # stdout/stderr
-            t['target_state'] = rps.DONE
+            task['target_state'] = rps.DONE
 
-        self.advance(t, rps.AGENT_STAGING_OUTPUT_PENDING,
+        self.advance(task, rps.AGENT_STAGING_OUTPUT_PENDING,
                      publish=True, push=True)
 
 
     # --------------------------------------------------------------------------
     #
-    def init_orte(self, t):
+    def init_orte(self, task):
 
         # FIXME: it feels as a hack to get the DVM URI from the Task
 
-        slots = t['slots']
+        slots = task['slots']
 
         if 'lm_info' not in slots:
             raise RuntimeError('No lm_info to init via %s: %s'
@@ -325,12 +325,12 @@ class ORTE(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def spawn(self, launcher, t):
+    def spawn(self, launcher, task):
 
-        sandbox = t['task_sandbox_path']
+        sandbox = task['task_sandbox_path']
 
         if False:
-            task_tmpdir = '%s/%s' % (self.tmpdir, t['uid'])
+            task_tmpdir = '%s/%s' % (self.tmpdir, task['uid'])
         else:
             task_tmpdir = sandbox
 
@@ -338,41 +338,41 @@ class ORTE(AgentExecutingComponent):
 
         # TODO: pre_exec
         # # Before the Big Bang there was nothing
-        # if t['description']['pre_exec']:
+        # if task['description']['pre_exec']:
         #     fail = ' (echo "pre_exec failed"; false) || exit'
         #     pre  = ''
-        #     for elem in t['description']['pre_exec']:
+        #     for elem in task['description']['pre_exec']:
         #         pre += "%s || %s\n" % (elem, fail)
         #     # Note: extra spaces below are for visual alignment
         #     launch_script.write("# Pre-exec commands\n")
         #     if self._prof.enabled:
         #         launch_script.write("echo task_pre_start `%s` >> %s/%s.prof\n"\
-        #                           % (t['gtod'], sandbox, t['uid']))
+        #                           % (task['gtod'], sandbox, task['uid']))
         #     launch_script.write(pre)
         #     if self._prof.enabled:
         #         launch_script.write("echo task_pre_stop `%s` >> %s/%s.prof\n" \
-        #                           % (t['gtod'], sandbox, t['uid']))
+        #                           % (task['gtod'], sandbox, task['uid']))
 
         # TODO: post_exec
         # # After the universe dies the infrared death, there will be nothing
-        # if t['description']['post_exec']:
+        # if task['description']['post_exec']:
         #     fail = ' (echo "post_exec failed"; false) || exit'
         #     post = ''
-        #     for elem in t['description']['post_exec']:
+        #     for elem in task['description']['post_exec']:
         #         post += "%s || %s\n" % (elem, fail)
         #     launch_script.write("# Post-exec commands\n")
         #     if self._prof.enabled:
         #         launch_script.write("echo task_post_start `%s` >> %s/%s.prof\n"
-        #                           % (t['gtod'], sandbox, t['uid']))
+        #                           % (task['gtod'], sandbox, task['uid']))
         #     launch_script.write('%s\n' % post)
         #     if self._prof.enabled:
         #         launch_script.write("echo task_post_stop  `%s` >> %s/%s.prof\n"
-        #                           % (t['gtod'], sandbox, t['uid']))
+        #                           % (task['gtod'], sandbox, task['uid']))
 
 
         # The actual command line, constructed per launch-method
         try:
-            orte_command, task_command = launcher.construct_command(t, None)
+            orte_command, task_command = launcher.construct_command(task, None)
         except Exception as e:
             msg = "Error in spawner (%s)" % e
             self._log.exception(msg)
@@ -395,8 +395,8 @@ class ORTE(AgentExecutingComponent):
             "RP_PILOT_ID=%s"      % self._cfg['pid'],
             "RP_AGENT_ID=%s"      % self._cfg['aid'],
             "RP_SPAWNER_ID=%s"    % self.uid,
-            "RP_TASK_ID=%s"       % t['uid'],
-            "RP_TASK_NAME=%s"     % t['description'].get('name'),
+            "RP_TASK_ID=%s"       % task['uid'],
+            "RP_TASK_NAME=%s"     % task['description'].get('name'),
             "RP_PILOT_STAGING=%s" % self._pwd
         ]
         for env in rp_envs:
@@ -410,8 +410,8 @@ class ORTE(AgentExecutingComponent):
                 arg_list.append(ffi.new("char[]", "%s=%s" % (key, val)))
 
         # Set environment variables specified for this Task
-        if t['description']['environment']:
-            for key,val in t['description']['environment'].items():
+        if task['description']['environment']:
+            for key,val in task['description']['environment'].items():
                 arg_list.append(ffi.new("char[]", "-x"))
                 arg_list.append(ffi.new("char[]", "%s=%s" % (key, val)))
 
@@ -427,48 +427,48 @@ class ORTE(AgentExecutingComponent):
         arg_list.append(ffi.new("char[]", "-c"))
         if self._prof.enabled:
             task_command = "echo script task_start `%s` >> %s/%s.prof; " \
-                         % (self.gtod, sandbox, t['uid']) \
+                         % (self.gtod, sandbox, task['uid']) \
                          + "echo script task_exec_start `%s` >> %s/%s.prof; " \
-                         % (self.gtod, sandbox, t['uid']) \
+                         % (self.gtod, sandbox, task['uid']) \
                          + task_command \
                          + "; echo script task_exec_stop `%s` >> %s/%s.prof" \
-                         % (self.gtod, sandbox, t['uid'])
+                         % (self.gtod, sandbox, task['uid'])
         arg_list.append(ffi.new("char[]", str("%s; exit $RETVAL"
                                             % str(task_command))))
 
-        self._log.debug("Launching task %s via %s %s", t['uid'],
+        self._log.debug("Launching task %s via %s %s", task['uid'],
                         orte_command, task_command)
 
         # NULL termination, required by ORTE
         arg_list.append(ffi.NULL)
         argv = ffi.new("char *[]", arg_list)
 
-        # stdout/stderr filenames can't be set with orte
+        # stdout/stderr filenames can'task be set with orte
         # TODO: assert here or earlier?
-        # assert t['description'].get('stdout') == None
-        # assert t['description'].get('stderr') == None
+        # assert task['description'].get('stdout') == None
+        # assert task['description'].get('stderr') == None
 
         # prepare stdout/stderr
         # TODO: when mpi==True && cores>1 there will be multiple files that need
         #       to be concatenated.
-        t['stdout_file'] = os.path.join(sandbox, 'rank.0/stdout')
-        t['stderr_file'] = os.path.join(sandbox, 'rank.0/stderr')
+        task['stdout_file'] = os.path.join(sandbox, 'rank.0/stdout')
+        task['stderr_file'] = os.path.join(sandbox, 'rank.0/stderr')
 
         # Submit to the DVM!
         index = ffi.new("int *")
         with self.task_map_lock:
 
-            self._prof.prof('exec_start', uid=t['uid'])
+            self._prof.prof('exec_start', uid=task['uid'])
             rc = orte_lib.orte_submit_job(argv, index, orte_lib.launch_cb,
                                           self._myhandle, orte_lib.finish_cb,
                                           self._myhandle)
             if rc:
                 raise Exception("submit job failed with error: %d" % rc)
 
-            self.task_map[index[0]] = t      # map ORTE index to Task
-            self._prof.prof('exec_ok', uid=t['uid'])
+            self.task_map[index[0]] = task      # map ORTE index to Task
+            self._prof.prof('exec_ok', uid=task['uid'])
 
-        self._log.debug("Task %d submitted!", t['uid'])
+        self._log.debug("Task %d submitted!", task['uid'])
 
 
 # ------------------------------------------------------------------------------

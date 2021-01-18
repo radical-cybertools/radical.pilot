@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+
+print('foo')
+
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import os
@@ -27,6 +31,9 @@ def test_configure(mocked_init, mocked_raise_on, mocked_expand_hostlist):
     component._log = ru.Logger('dummy')
     component._cfg = {}
     component.lm_info = {'cores_per_node': None}
+    import sys
+    sys.stderr.write('%s' % os.environ.get('SLURM_NODELIST'))
+    sys.stderr.flush()
     component._configure()
 
     assert component.node_list == [['nodes1','nodes1'],['nodes2','nodes2']]
@@ -140,6 +147,14 @@ def test_configure_error(mocked_init, mocked_raise_on, mocked_expand_hostlist):
 
     with pytest.raises(RuntimeError):
         component._configure()
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__':
+
+    test_configure()
+    test_configure_error()
 
 
 # ------------------------------------------------------------------------------

@@ -1,11 +1,11 @@
 
 {
-    "unit": {
-        "uid":         "unit.000002",
+    "task": {
+        "uid":         "task.000002",
         "description": {"executable" : "spark-submit",
                         "arguments"  : ["test.py"],
                         "cpu_processes" : 1},
-        "unit_sandbox_path": "/tmp"
+        "task_sandbox_path": "/tmp"
     },
 
     "setup" : {

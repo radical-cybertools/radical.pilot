@@ -74,17 +74,17 @@ class TestBase(TestCase):
 
         tests = self.setUp()['try_allocation']
         for input_data, result in zip(tests['setup'], tests['results']):
-            component.schedule_unit = mock.Mock(
+            component.schedule_task = mock.Mock(
                 return_value=input_data['scheduled_unit_slots'])
 
-            unit = input_data['unit']
-            component._try_allocation(unit=unit)
+            task = input_data['task']
+            component._try_allocation(task=task)
 
-            # test unit's slots
-            self.assertEqual(unit['slots'], result['slots'])
+            # test task's slots
+            self.assertEqual(task['slots'], result['slots'])
 
             # test environment variable(s)
-            self.assertEqual(unit['description']['environment'],
+            self.assertEqual(task['description']['environment'],
                              result['description']['environment'])
 
 
@@ -95,19 +95,19 @@ class TestBase(TestCase):
 
         tests     = self.setUp()
         setups    = tests['handle_cuda']['setup']
-        units     = tests['handle_cuda']['unit']
+        tasks     = tests['handle_cuda']['task']
         results   = tests['handle_cuda']['results']
         component = AgentSchedulingComponent()
         component._log = ru.Logger('dummy')
 
-        for setup, unit, result in zip(setups, units, results):
+        for setup, task, result in zip(setups, tasks, results):
             component._cfg = setup
             if result == 'ValueError':
                 with self.assertRaises(ValueError):
-                    component._handle_cuda(unit)
+                    component._handle_cuda(task)
             else:
-                component._handle_cuda(unit)
-                unit_env = unit['description']['environment']
+                component._handle_cuda(task)
+                unit_env = task['description']['environment']
                 if result == 'KeyError':
                     with self.assertRaises(KeyError):
                         self.assertIsNone(unit_env['CUDA_VISIBLE_DEVICES'])
