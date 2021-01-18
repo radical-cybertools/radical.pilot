@@ -57,10 +57,10 @@ class FUNCS(AgentExecutingComponent) :
         self._req_queue = ru.zmq.Putter('funcs_req_queue', req_cfg['put'])
         self._res_queue = ru.zmq.Getter('funcs_res_queue', res_cfg['get'])
 
-        self._cancel_lock    = ru.RLock()
-        self._cus_to_cancel  = list()
-        self._cus_to_watch   = list()
-        self._watch_queue    = queue.Queue ()
+        self._cancel_lock     = ru.RLock()
+        self._tasks_to_cancel = list()
+        self._tasks_to_watch  = list()
+        self._watch_queue     = queue.Queue ()
 
         self._pid = self._cfg['pid']
 
@@ -118,7 +118,7 @@ class FUNCS(AgentExecutingComponent) :
 
             self._log.info("cancel_tasks command (%s)" % arg)
             with self._cancel_lock:
-                self._cus_to_cancel.extend(arg['uids'])
+                self._tasks_to_cancel.extend(arg['uids'])
 
         return True
 

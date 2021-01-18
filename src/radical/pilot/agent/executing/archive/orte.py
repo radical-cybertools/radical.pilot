@@ -82,9 +82,9 @@ class ORTE(AgentExecutingComponent):
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
-        self._cancel_lock    = ru.RLock()
-        self._cus_to_cancel  = list()
-        self._watch_queue    = queue.Queue ()
+        self._cancel_lock     = ru.RLock()
+        self._tasks_to_cancel = list()
+        self._watch_queue     = queue.Queue ()
 
         self._pid = self._cfg['pid']
 
@@ -118,7 +118,7 @@ class ORTE(AgentExecutingComponent):
 
             self._log.info("cancel_tasks command (%s)" % arg)
             with self._cancel_lock:
-                self._cus_to_cancel.extend(arg['uids'])
+                self._tasks_to_cancel.extend(arg['uids'])
 
         return True
 

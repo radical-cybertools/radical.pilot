@@ -72,10 +72,10 @@ class Popen(AgentExecutingComponent) :
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
-        self._cancel_lock    = ru.RLock()
-        self._cus_to_cancel  = list()
-        self._cus_to_watch   = list()
-        self._watch_queue    = queue.Queue ()
+        self._cancel_lock     = ru.RLock()
+        self._tasks_to_cancel = list()
+        self._tasks_to_watch  = list()
+        self._watch_queue     = queue.Queue ()
 
         self._pid = self._cfg['pid']
 
@@ -113,7 +113,7 @@ class Popen(AgentExecutingComponent) :
 
             self._log.info("cancel_tasks command (%s)" % arg)
             with self._cancel_lock:
-                self._cus_to_cancel.extend(arg['uids'])
+                self._tasks_to_cancel.extend(arg['uids'])
 
         return True
 
@@ -370,7 +370,7 @@ prof(){
 
                 # add all tasks we found to the watchlist
                 for t in tasks :
-                    self._cus_to_watch.append (t)
+                    self._tasks_to_watch.append (t)
 
                 # check on the known tasks.
                 action = self._check_running()
@@ -391,7 +391,7 @@ prof(){
     def _check_running(self):
 
         action = 0
-        for t in self._cus_to_watch:
+        for t in self._tasks_to_watch:
 
             # poll subprocess object
             exit_code = t['proc'].poll()
@@ -400,7 +400,7 @@ prof(){
             if exit_code is None:
                 # Process is still running
 
-                if t['uid'] in self._cus_to_cancel:
+                if t['uid'] in self._tasks_to_cancel:
 
                     # FIXME: there is a race condition between the state poll
                     # above and the kill command below.  We probably should pull
@@ -421,7 +421,7 @@ prof(){
                     t['proc'].wait()  # make sure proc is collected
 
                     with self._cancel_lock:
-                        self._cus_to_cancel.remove(uid)
+                        self._tasks_to_cancel.remove(uid)
 
                     self._prof.prof('exec_cancel_stop', uid=uid)
 
@@ -431,7 +431,7 @@ prof(){
                     self.advance(t, rps.CANCELED, publish=True, push=False)
 
                     # we don't need to watch canceled tasks
-                    self._cus_to_watch.remove(t)
+                    self._tasks_to_watch.remove(t)
 
             else:
 
@@ -447,7 +447,7 @@ prof(){
                 t['exit_code'] = exit_code
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
-                self._cus_to_watch.remove(t)
+                self._tasks_to_watch.remove(t)
                 del(t['proc'])  # proc is not json serializable
                 self._prof.prof('unschedule_start', uid=t['uid'])
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
