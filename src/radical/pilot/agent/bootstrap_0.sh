@@ -3,6 +3,8 @@
 # Unset functions/aliases of commands that will be used during bootstrap as
 # these custom functions can break assumed/expected behavior
 export PS1='#'
+export LC_NUMERIC="C"
+
 unset PROMPT_COMMAND
 unset -f cd ls uname pwd date bc cat echo grep
 
@@ -215,9 +217,7 @@ profile_event()
 
     event=$1
     msg=$2
-
     epoch=$(gtod)
-    now=$(awk "BEGIN{print($epoch - $TIME_ZERO)}")
 
     if ! test -f "$PROFILE"
     then
@@ -233,8 +233,8 @@ profile_event()
     # STATE  = 5  # state of entity involved                    optional
     # MSG    = 6  # message describing the event                optional
     # ENTITY = 7  # type of entity involved                     optional
-    printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
-        "$now" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "PMGR_ACTIVE_PENDING" "$msg" \
+    printf "%.4f,%s,%s,%s,%s,%s,%s\n" "$epoch" "$event" "bootstrap_0" \
+        "MainThread" "$PILOT_ID" "PMGR_ACTIVE_PENDING" "$msg" \
         | tee -a "$PROFILE"
 }
 
@@ -1511,8 +1511,6 @@ PB1_LDLB="$LD_LIBRARY_PATH"
 #        We should split the parsing and the execution of those.
 #        "bootstrap start" is here so that $PILOT_ID is known.
 # Create header for profile log
-TIME_ZERO=$(gtod)
-export TIME_ZERO
 profile_event 'bootstrap_0_start'
 
 # NOTE: if the virtenv path contains a symbolic link element, then distutil will
@@ -1850,7 +1848,7 @@ fi
 create_deactivate
 
 # start the master agent instance (zero)
-profile_event 'sync_rel' 'agent.0'
+profile_event 'bootstrap_0_ok'
 if test -z "$CCM"; then
     ./bootstrap_2.sh 'agent.0'    \
                    1> agent.0.bootstrap_2.out \

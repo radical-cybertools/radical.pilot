@@ -56,7 +56,6 @@ class Agent_0(rpu.Worker):
 
         # this is the earliest point to sync bootstrap and agent profiles
         prof = ru.Profiler(ns='radical.pilot', name='agent.0')
-        prof.prof('sync_rel', uid=cfg.pid, msg='agent.0')
         prof.prof('hostname', uid=cfg.pid, msg=ru.get_hostname())
 
         # connect to MongoDB for state push/pull
