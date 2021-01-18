@@ -102,16 +102,16 @@ class ShellFS(AgentExecutingComponent):
 
         # if we need to transplant any original env into the Task, we dig the
         # respective keys from the dump made by bootstrap_0.sh
-        self._env_cu_export = dict()
-        if self._cfg.get('export_to_cu'):
+        self._env_task_export = dict()
+        if self._cfg.get('export_to_task'):
             with open('env.orig', 'r') as f:
                 for line in f.readlines():
                     if '=' in line:
                         k,v = line.split('=', 1)
                         key = k.strip()
                         val = v.strip()
-                        if key in self._cfg['export_to_cu']:
-                            self._env_cu_export[key] = val
+                        if key in self._cfg['export_to_task']:
+                            self._env_task_export[key] = val
 
         # the registry keeps track of tasks to watch
         self._registry      = dict()
@@ -263,7 +263,7 @@ class ShellFS(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _cu_to_cmd (self, t, launcher) :
+    def _task_to_cmd (self, t, launcher) :
 
         env   = self._deactivate
         cwd   = ""
@@ -294,7 +294,7 @@ prof(){
 '''
 
         # also add any env vars requested for export by the resource config
-        for k,v in self._env_cu_export.items():
+        for k,v in self._env_task_export.items():
             env += "export %s=%s\n" % (k,v)
 
         # also add any env vars requested in hte task description
@@ -311,20 +311,20 @@ prof(){
         if  descr['pre_exec'] :
             fail  = ' (echo "pre_exec failed"; false) || exit'
             pre  += "\n# Task pre-exec\n"
-            pre  += 'prof cu_pre_start\n'
+            pre  += 'prof task_pre_start\n'
             for elem in descr['pre_exec']:
                 pre += "%s || %s\n" % (elem, fail)
             pre  += "\n"
-            pre  += 'prof cu_pre_stop\n'
+            pre  += 'prof task_pre_stop\n'
             pre  += "\n"
 
         if  descr['post_exec'] :
             fail  = ' (echo "post_exec failed"; false) || exit'
             post += "\n# Task post-exec\n"
-            post += 'prof cu_post_start\n'
+            post += 'prof task_post_start\n'
             for elem in descr['post_exec']:
                 post += "%s || %s\n" % (elem, fail)
-            post += 'prof cu_post_stop\n'
+            post += 'prof task_post_stop\n'
             post += "\n"
 
         stdout_file = descr.get('stdout') or '%s.out' % t['uid']
@@ -339,7 +339,7 @@ prof(){
         cmd, hop_cmd  = launcher.construct_command(t, '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"')
 
         script  = '\n%s\n' % env
-        script += 'prof cu_start\n'
+        script += 'prof task_start\n'
 
         if hop_cmd :
             # the script will itself contain a remote callout which calls again
@@ -359,10 +359,10 @@ prof(){
         script += "%s"        %  cwd
         script += "%s"        %  pre
         script += "\n# Task execution\n"
-        script += 'prof cu_exec_start\n'
+        script += 'prof task_exec_start\n'
         script += "%s %s\n\n" % (cmd, io)
         script += "RETVAL=$?\n"
-        script += 'prof cu_exec_stop\n'
+        script += 'prof task_exec_stop\n'
         script += "%s"        %  post
         script += "# notify the agent\n"
         script += "echo \"FINAL %s $RETVAL\" > %s\n" % (t['uid'],
@@ -393,7 +393,7 @@ prof(){
 
         # we got an allocation: go off and launch the process.  we get
         # a multiline command, so use the wrapper's BULK/LRUN mode.
-        cmd = self._cu_to_cmd (t, launcher)
+        cmd = self._task_to_cmd (t, launcher)
         with open("%s/%s.sh" % (sandbox, uid), 'w+') as fout:
             fout.write(cmd)
 

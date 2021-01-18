@@ -68,7 +68,7 @@ class Flux(AgentSchedulingComponent):
         for task in tasks:
 
           # # FIXME: transfer from executor
-          # self._cu_environment = self._populate_cu_environment()
+          # self._task_environment = self._populate_task_environment()
 
             jd  = json.dumps(ru.read_json('/home/merzky/projects/flux/spec.json'))
             jid = flux_job.submit(self._flux, jd)
@@ -84,7 +84,7 @@ class Flux(AgentSchedulingComponent):
 
   # # --------------------------------------------------------------------------
   # #
-  # def _populate_cu_environment(self):
+  # def _populate_task_environment(self):
   #
   #     import tempfile
   #
@@ -93,21 +93,21 @@ class Flux(AgentSchedulingComponent):
   #
   #     # if we need to transplant any original env into the Task, we dig the
   #     # respective keys from the dump made by bootstrap_0.sh
-  #     self._env_cu_export = dict()
-  #     if self._cfg.get('export_to_cu'):
+  #     self._env_task_export = dict()
+  #     if self._cfg.get('export_to_task'):
   #         with open('env.orig', 'r') as f:
   #             for line in f.readlines():
   #                 if '=' in line:
   #                     k,v = line.split('=', 1)
   #                     key = k.strip()
   #                     val = v.strip()
-  #                     if key in self._cfg['export_to_cu']:
-  #                         self._env_cu_export[key] = val
+  #                     if key in self._cfg['export_to_task']:
+  #                         self._env_task_export[key] = val
   #
   #
   # # --------------------------------------------------------------------------
   # #
-  # def _populate_cu_environment(self):
+  # def _populate_task_environment(self):
   #     """Derive the environment for the t's from our own environment."""
   #
   #     # Get the environment of the agent

@@ -131,7 +131,7 @@ class JSRUN(LaunchMethod):
 
         uid          = t['uid']
         slots        = t['slots']
-        td          = t['description']
+        td           = t['description']
         task_exec    = td['executable']
         task_args    = td.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)

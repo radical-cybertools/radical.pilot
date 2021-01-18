@@ -31,13 +31,13 @@ class TestBase(unittest.TestCase):
     def test_handle_task(self, mocked_init, mocked_initialize):
 
         global_launcher = []
-        global_cu = []
+        global_tasks = []
 
         def spawn_side_effect(launcher, t):
             nonlocal global_launcher
-            nonlocal global_cu
+            nonlocal global_tasks
             global_launcher.append(launcher)
-            global_cu.append(t)
+            global_tasks.append(t)
 
         tests = self.setUp()
         t = dict()
@@ -46,7 +46,7 @@ class TestBase(unittest.TestCase):
         t['stderr']      = 'tests/test_executing/test_task/test_cases/'
 
         component = Shell()
-        component._cus_to_cancel         = []
+        component._tasks_to_cancel       = []
         component._prof                  = mock.Mock()
         component.publish                = mock.Mock()
         component._mpi_launcher          = mock.Mock()
@@ -61,7 +61,7 @@ class TestBase(unittest.TestCase):
                 (launcher=component._mpi_launcher, t=t))
 
         component._handle_task(t)
-        self.assertEqual(t, global_cu[0])
+        self.assertEqual(t, global_tasks[0])
 
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

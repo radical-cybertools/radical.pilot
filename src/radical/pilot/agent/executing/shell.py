@@ -101,16 +101,16 @@ class Shell(AgentExecutingComponent):
 
         # if we need to transplant any original env into the Task, we dig the
         # respective keys from the dump made by bootstrap_0.sh
-        self._env_cu_export = dict()
-        if self._cfg.get('export_to_cu'):
+        self._env_task_export = dict()
+        if self._cfg.get('export_to_task'):
             with open('env.orig', 'r') as f:
                 for line in f.readlines():
                     if '=' in line:
                         k,v = line.split('=', 1)
                         key = k.strip()
                         val = v.strip()
-                        if key in self._cfg['export_to_cu']:
-                            self._env_cu_export[key] = val
+                        if key in self._cfg['export_to_task']:
+                            self._env_task_export[key] = val
 
         # the registry keeps track of tasks to watch, indexed by their shell
         # spawner process ID.  As the registry is shared between the spawner and
@@ -118,7 +118,7 @@ class Shell(AgentExecutingComponent):
         self._registry      = dict()
         self._registry_lock = ru.RLock()
 
-        self._cus_to_cancel  = list()
+        self._tasks_to_cancel  = list()
         self._cancel_lock    = ru.RLock()
 
         self._cached_events = list()  # keep monitoring events for pid's which
@@ -170,7 +170,7 @@ class Shell(AgentExecutingComponent):
 
             self._log.info("cancel_tasks command (%s)" % arg)
             with self._cancel_lock:
-                self._cus_to_cancel.append(arg['uids'])
+                self._tasks_to_cancel.append(arg['uids'])
 
         return True
 
@@ -194,10 +194,10 @@ class Shell(AgentExecutingComponent):
     def _handle_task(self, t):
 
         # check that we don't start any tasks which need cancelling
-        if t['uid'] in self._cus_to_cancel:
+        if t['uid'] in self._tasks_to_cancel:
 
             with self._cancel_lock:
-                self._cus_to_cancel.remove(t['uid'])
+                self._tasks_to_cancel.remove(t['uid'])
 
             self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
             self.advance(t, rps.CANCELED, publish=True, push=False)
@@ -205,7 +205,7 @@ class Shell(AgentExecutingComponent):
 
         # otherwise, check if we have any active tasks to cancel
         # FIXME: this should probably go into a separate idle callback
-        if self._cus_to_cancel:
+        if self._tasks_to_cancel:
 
             # NOTE: t cancellation is costly: we keep a potentially long list
             # of cancel candidates, perform one inversion and n lookups on the
@@ -215,20 +215,20 @@ class Shell(AgentExecutingComponent):
                 # inverse registry for quick lookups:
                 inv_registry = {v: k for k, v in list(self._registry.items())}
 
-                for cu_uid in self._cus_to_cancel:
-                    pid = inv_registry.get(cu_uid)
+                for task_uid in self._tasks_to_cancel:
+                    pid = inv_registry.get(task_uid)
                     if pid:
                         # we own that t, cancel it!
                         ret, out, _ = self.launcher_shell.run_sync(
                                                              'CANCEL %s\n', pid)
                         if  ret != 0:
                             self._log.error("task cancel failed '%s': (%s)(%s)",
-                                            cu_uid, ret, out)
+                                            task_uid, ret, out)
                         # successful or not, we only try once
                         del(self._registry[pid])
 
                         with self._cancel_lock:
-                            self._cus_to_cancel.remove(cu_uid)
+                            self._tasks_to_cancel.remove(task_uid)
 
             # The state advance will be managed by the watcher, which will pick
             # up the cancel notification.
@@ -270,7 +270,7 @@ class Shell(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _cu_to_cmd (self, t, launcher):
+    def _task_to_cmd (self, t, launcher):
 
         env   = self._deactivate
         cwd   = ""
@@ -306,7 +306,7 @@ prof(){
 '''
 
         # also add any env vars requested for export by the resource config
-        for k,v in self._env_cu_export.items():
+        for k,v in self._env_task_export.items():
             env += "export %s=%s\n" % (k,v)
 
         # also add any env vars requested in hte task description
@@ -323,20 +323,20 @@ prof(){
         if  descr['pre_exec']:
             fail  = ' (echo "pre_exec failed"; false) || exit'
             pre  += "\n# Task pre-exec\n"
-            pre  += 'prof cu_pre_start\n'
+            pre  += 'prof task_pre_start\n'
             for elem in descr['pre_exec']:
                 pre += "%s || %s\n" % (elem, fail)
             pre  += "\n"
-            pre  += 'prof cu_pre_stop\n'
+            pre  += 'prof task_pre_stop\n'
             pre  += "\n"
 
         if  descr['post_exec']:
             fail  = ' (echo "post_exec failed"; false) || exit'
             post += "\n# Task post-exec\n"
-            post += 'prof cu_post_start\n'
+            post += 'prof task_post_start\n'
             for elem in descr['post_exec']:
                 post += "%s || %s\n" % (elem, fail)
-            post += 'prof cu_post_stop\n'
+            post += 'prof task_post_stop\n'
             post += "\n"
 
       # if  descr['stdin'] : io  += "<%s "  % descr['stdin']
@@ -350,7 +350,7 @@ prof(){
                                         '/usr/bin/env RP_SPAWNER_HOP=TRUE "$0"')
 
         script  = '\n%s\n' % env
-        script += 'prof cu_start\n'
+        script += 'prof task_start\n'
 
         if hop_cmd :
             # the script will itself contain a remote callout which calls again
@@ -370,10 +370,10 @@ prof(){
         script += "%s"        %  cwd
         script += "%s"        %  pre
         script += "\n# Task execution\n"
-        script += 'prof cu_exec_start\n'
+        script += 'prof task_exec_start\n'
         script += "%s %s\n\n" % (cmd, io)
         script += "RETVAL=$?\n"
-        script += 'prof cu_exec_stop\n'
+        script += 'prof task_exec_stop\n'
         script += "%s"        %  post
         script += "exit $RETVAL\n"
         script += "# ------------------------------------------------------\n\n"
@@ -395,7 +395,7 @@ prof(){
 
         # we got an allocation: go off and launch the process.  we get
         # a multiline command, so use the wrapper's BULK/LRUN mode.
-        cmd       = self._cu_to_cmd (t, launcher)
+        cmd       = self._task_to_cmd (t, launcher)
         run_cmd   = "BULK\nLRUN\n%s\nLRUN_EOT\nBULK_RUN\n" % cmd
 
       # TODO: Remove this commented out block?
@@ -441,7 +441,7 @@ prof(){
             self._log.exception('shell cwd symlink failed: %s' % e)
 
         # FIXME: this is too late, there is already a race with the monitoring
-        # thread for this Task execution.  We need to communicate the PIDs/CUs via
+        # thread for this Task execution.  We need to communicate the PIDs/tasks via
         # a queue again!
         with self._registry_lock :
             self._registry[pid] = t

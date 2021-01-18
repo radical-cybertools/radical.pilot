@@ -153,7 +153,7 @@ class FUNCS(AgentExecutingComponent) :
             fout.write('export RP_SPAWNER_ID="%s"\n' % self.uid)
             fout.write('export RP_FUNCS_ID="%s"\n'   % funcs['uid'])
             fout.write('export RP_GTOD="%s"\n'       % self.gtod)
-            fout.write('export RP_TMP="%s"\n'        % self._cu_tmp)
+            fout.write('export RP_TMP="%s"\n'        % self._task_tmp)
 
             # also add any env vars requested in the task description
             if descr.get('environment', []):

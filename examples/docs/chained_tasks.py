@@ -25,12 +25,12 @@ For every task A_n a task B_n is started consecutively.
 #
 if __name__ == "__main__":
 
-    RESOURCE_LABEL  = None
-    PILOT_CORES     = None
-    NUMBER_CHAINS   = None
-    CU_A_EXECUTABLE = None
-    CU_B_EXECUTABLE = None
-    QUEUE           = None
+    RESOURCE_LABEL    = None
+    PILOT_CORES       = None
+    NUMBER_CHAINS     = None
+    TASK_A_EXECUTABLE = None
+    TASK_B_EXECUTABLE = None
+    QUEUE             = None
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -88,59 +88,59 @@ if __name__ == "__main__":
         print("Registering  Pilot with Task Manager ...")
         tmgr.add_pilots(pilot)
 
-        # submit A cus to pilot job
-        cudesc_list_A = []
+        # submit A tasks to pilot job
+        taskdesc_list_A = []
         for i in range(NUMBER_CHAINS):
 
             # -------- BEGIN USER DEFINED Task A_n DESCRIPTION --------- #
-            cudesc = rp.TaskDescription()
-            cudesc.environment = {"CU_LIST": "A", "CU_NO": "%02d" % i}
-            cudesc.executable  = CU_A_EXECUTABLE
-            cudesc.arguments   = ['"$CU_LIST Task with id $CU_NO"']
-            cudesc.cores       = 1
+            taskdesc = rp.TaskDescription()
+            taskdesc.environment = {"TASK_LIST": "A", "TASK_NO": "%02d" % i}
+            taskdesc.executable  = TASK_A_EXECUTABLE
+            taskdesc.arguments   = ['"$TASK_LIST Task with id $TASK_NO"']
+            taskdesc.cores       = 1
             # -------- END USER DEFINED Task A_n DESCRIPTION --------- #
 
-            cudesc_list_A.append(cudesc)
+            taskdesc_list_A.append(taskdesc)
 
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
         print("Submit 'A' Tasks to Task Manager ...")
-        cu_list_A = tmgr.submit_tasks(cudesc_list_A)
+        task_list_A = tmgr.submit_tasks(taskdesc_list_A)
 
-        # Chaining cus i.e submit a task, when task from A is
+        # Chaining tasks i.e submit a task, when task from A is
         # successfully executed.  A B Task reads the content of the output file of
         # an A Task and writes it into its own output file.
-        cu_list_B = []
+        task_list_B = []
 
-        # We create a copy of cu_list_A so that we can remove elements from it,
+        # We create a copy of task_list_A so that we can remove elements from it,
         # and still reference to the original index.
-        cu_list_A_copy = cu_list_A[:]
-        while cu_list_A:
-            for cu_a in cu_list_A:
-                idx = cu_list_A_copy.index(cu_a)
+        task_list_A_copy = task_list_A[:]
+        while task_list_A:
+            for task_a in task_list_A:
+                idx = task_list_A_copy.index(task_a)
 
-                cu_a.wait ()
+                task_a.wait ()
                 print("'A' Task '%s' done. Submitting 'B' Task ..." % idx)
 
                 # -------- BEGIN USER DEFINED Task B_n DESCRIPTION --------- #
-                cudesc = rp.TaskDescription()
-                cudesc.environment = {'CU_LIST': 'B', 'CU_NO': "%02d" % idx}
-                cudesc.executable  = CU_B_EXECUTABLE
-                cudesc.arguments   = ['"$CU_LIST Task with id $CU_NO"']
-                cudesc.cores       = 1
+                taskdesc = rp.TaskDescription()
+                taskdesc.environment = {'TASK_LIST': 'B', 'TASK_NO': "%02d" % idx}
+                taskdesc.executable  = TASK_B_EXECUTABLE
+                taskdesc.arguments   = ['"$TASK_LIST Task with id $TASK_NO"']
+                taskdesc.cores       = 1
                 # -------- END USER DEFINED Task B_n DESCRIPTION --------- #
 
                 # Submit Task to Pilot Job
-                cu_b = tmgr.submit_tasks(cudesc)
-                cu_list_B.append(cu_b)
-                cu_list_A.remove(cu_a)
+                task_b = tmgr.submit_tasks(taskdesc)
+                task_list_B.append(task_b)
+                task_list_A.remove(task_a)
 
         print("Waiting for 'B' Tasks to complete ...")
-        for cu_b in cu_list_B :
-            cu_b.wait ()
-            print("'B' Task '%s' finished with output:" % (cu_b.uid))
-            print(cu_b.stdout)
+        for task_b in task_list_B :
+            task_b.wait ()
+            print("'B' Task '%s' finished with output:" % (task_b.uid))
+            print(task_b.stdout)
 
         print("All Tasks completed successfully!")
 

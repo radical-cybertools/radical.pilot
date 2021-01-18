@@ -146,31 +146,31 @@ if __name__ == "__main__":
         print("Registering  Pilots with Task Manager ...")
         tmgr.add_pilots(pilots)
 
-        NUMBER_JOBS  = 64  # the total number of cus to run
+        NUMBER_JOBS  = 64  # the total number of tasks to run
 
-        # submit CUs to pilot job
-        cudesc_list = []
+        # submit tasks to pilot job
+        taskdesc_list = []
         for i in range(NUMBER_JOBS):
 
             # -------- BEGIN USER DEFINED Task DESCRIPTION --------- #
-            cudesc = rp.TaskDescription()
-            cudesc.environment = {'CU_NO': i}
-            cudesc.executable  = "/bin/echo"
-            cudesc.arguments   = ['I am Task number $CU_NO from $HOSTNAME']
-            cudesc.cores       = 1
+            taskdesc = rp.TaskDescription()
+            taskdesc.environment = {'task_NO': i}
+            taskdesc.executable  = "/bin/echo"
+            taskdesc.arguments   = ['I am Task number $task_NO from $HOSTNAME']
+            taskdesc.cores       = 1
             # -------- END USER DEFINED Task DESCRIPTION --------- #
 
-            cudesc_list.append(cudesc)
+            taskdesc_list.append(taskdesc)
 
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
         print("Submit Tasks to Task Manager ...")
-        cu_set = tmgr.submit_tasks (cudesc_list)
+        task_set = tmgr.submit_tasks (taskdesc_list)
 
-        print("Waiting for CUs to complete ...")
+        print("Waiting for tasks to complete ...")
         tmgr.wait_tasks()
-        print("All CUs completed successfully!")
+        print("All tasks completed successfully!")
 
 
     except Exception as e:

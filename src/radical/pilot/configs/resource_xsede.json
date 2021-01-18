@@ -36,10 +36,10 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_cu"                : ["LMOD_CMD",
+        "export_to_task"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : []
+        "task_pre_exec"               : []
     },
 
     "stampede2_mpirun": {
@@ -78,10 +78,10 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_cu"                : ["LMOD_CMD",
+        "export_to_task"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : ["module restore"]
+        "task_pre_exec"               : ["module restore"]
     },
 
     "stampede2_ibrun": {
@@ -123,10 +123,10 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_cu"                : ["LMOD_CMD",
+        "export_to_task"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : []
+        "task_pre_exec"               : []
     },
 
     "stampede2_srun": {
@@ -165,10 +165,10 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_cu"                : ["LMOD_CMD",
+        "export_to_task"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : []
+        "task_pre_exec"               : []
     },
 
     "comet_ssh": {
@@ -203,7 +203,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "cu_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
+        "task_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
     },
 
     "comet_ssh_funcs": {
@@ -237,7 +237,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "cu_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
+        "task_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
     },
 
     "comet_spark": {
@@ -317,7 +317,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "cu_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
+        "task_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
     },
 
     "bridges_mpiexec": {
@@ -360,8 +360,8 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda",
-        "export_to_cu"                : [],
-        "cu_pre_exec"                 : [],
+        "export_to_task"                : [],
+        "task_pre_exec"               : [],
         "system_architecture"         : {"gpu": "p100"},
         "gpus_per_node"               : 2
     },
@@ -406,8 +406,8 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda",
-        "export_to_cu"                : [],
-        "cu_pre_exec"                 : [],
+        "export_to_task"                : [],
+        "task_pre_exec"               : [],
         "gpus_per_node"               : 2,
         "system_architecture"         : {"gpu": "p100"}
     }

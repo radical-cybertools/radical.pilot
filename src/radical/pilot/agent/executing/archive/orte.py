@@ -99,7 +99,7 @@ class ORTE(AgentExecutingComponent):
         self._task_launcher = rp.agent.LaunchMethod.create(name="ORTE_LIB",
                                            cfg=self._cfg, session=self._session)
         self._orte_initialized = False
-        self._cu_environment   = self._populate_cu_environment()
+        self._task_environment   = self._populate_task_environment()
 
         self.gtod   = "%s/gtod" % self._pwd
         self.tmpdir = tempfile.gettempdir()
@@ -125,7 +125,7 @@ class ORTE(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _populate_cu_environment(self):
+    def _populate_task_environment(self):
         """Derive the environment for the t's from our own environment."""
 
         # Get the environment of the agent
@@ -330,11 +330,11 @@ class ORTE(AgentExecutingComponent):
         sandbox = t['task_sandbox_path']
 
         if False:
-            cu_tmpdir = '%s/%s' % (self.tmpdir, t['uid'])
+            task_tmpdir = '%s/%s' % (self.tmpdir, t['uid'])
         else:
-            cu_tmpdir = sandbox
+            task_tmpdir = sandbox
 
-        rec_makedir(cu_tmpdir)
+        rec_makedir(task_tmpdir)
 
         # TODO: pre_exec
         # # Before the Big Bang there was nothing
@@ -346,11 +346,11 @@ class ORTE(AgentExecutingComponent):
         #     # Note: extra spaces below are for visual alignment
         #     launch_script.write("# Pre-exec commands\n")
         #     if self._prof.enabled:
-        #         launch_script.write("echo cu_pre_start `%s` >> %s/%s.prof\n"\
+        #         launch_script.write("echo task_pre_start `%s` >> %s/%s.prof\n"\
         #                           % (t['gtod'], sandbox, t['uid']))
         #     launch_script.write(pre)
         #     if self._prof.enabled:
-        #         launch_script.write("echo cu_pre_stop `%s` >> %s/%s.prof\n" \
+        #         launch_script.write("echo task_pre_stop `%s` >> %s/%s.prof\n" \
         #                           % (t['gtod'], sandbox, t['uid']))
 
         # TODO: post_exec
@@ -362,11 +362,11 @@ class ORTE(AgentExecutingComponent):
         #         post += "%s || %s\n" % (elem, fail)
         #     launch_script.write("# Post-exec commands\n")
         #     if self._prof.enabled:
-        #         launch_script.write("echo cu_post_start `%s` >> %s/%s.prof\n"
+        #         launch_script.write("echo task_post_start `%s` >> %s/%s.prof\n"
         #                           % (t['gtod'], sandbox, t['uid']))
         #     launch_script.write('%s\n' % post)
         #     if self._prof.enabled:
-        #         launch_script.write("echo cu_post_stop  `%s` >> %s/%s.prof\n"
+        #         launch_script.write("echo task_post_stop  `%s` >> %s/%s.prof\n"
         #                           % (t['gtod'], sandbox, t['uid']))
 
 
@@ -404,8 +404,8 @@ class ORTE(AgentExecutingComponent):
             arg_list.append(ffi.new("char[]", str(env)))
 
         # Set pre-populated environment variables
-        if self._cu_environment:
-            for key,val in self._cu_environment.items():
+        if self._task_environment:
+            for key,val in self._task_environment.items():
                 arg_list.append(ffi.new("char[]", "-x"))
                 arg_list.append(ffi.new("char[]", "%s=%s" % (key, val)))
 
@@ -426,12 +426,12 @@ class ORTE(AgentExecutingComponent):
         arg_list.append(ffi.new("char[]", "sh"))
         arg_list.append(ffi.new("char[]", "-c"))
         if self._prof.enabled:
-            task_command = "echo script cu_start `%s` >> %s/%s.prof; " \
+            task_command = "echo script task_start `%s` >> %s/%s.prof; " \
                          % (self.gtod, sandbox, t['uid']) \
-                         + "echo script cu_exec_start `%s` >> %s/%s.prof; " \
+                         + "echo script task_exec_start `%s` >> %s/%s.prof; " \
                          % (self.gtod, sandbox, t['uid']) \
                          + task_command \
-                         + "; echo script cu_exec_stop `%s` >> %s/%s.prof" \
+                         + "; echo script task_exec_stop `%s` >> %s/%s.prof" \
                          % (self.gtod, sandbox, t['uid'])
         arg_list.append(ffi.new("char[]", str("%s; exit $RETVAL"
                                             % str(task_command))))

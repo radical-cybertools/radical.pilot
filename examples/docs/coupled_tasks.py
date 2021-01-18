@@ -27,9 +27,9 @@ if __name__ == "__main__":
     RESOURCE_LABEL = None
     PILOT_CORES    = None
     NUMBER_COUPLES = None
-    CU_A_CORES     = None
-    CU_B_CORES     = None
-    CU_C_CORES     = None
+    TASK_A_CORES   = None
+    TASK_B_CORES   = None
+    TASK_C_CORES   = None
     QUEUE          = None
 
     # Create a new session. No need to try/except this: if session creation
@@ -80,78 +80,78 @@ if __name__ == "__main__":
         print("Registering  Pilot with Task Manager ...")
         tmgr.add_pilots(pilot)
 
-        # submit A cus to pilot job
-        cudesc_list_A = []
+        # submit A tasks to pilot job
+        taskdesc_list_A = []
         for idx in range(NUMBER_COUPLES):
 
             # -------- BEGIN USER DEFINED Task 1 DESCRIPTION --------- #
-            cudesc = rp.TaskDescription()
-            cudesc.environment = {"CU_LIST": "A", "CU_NO": "%02d" % idx}
-            cudesc.executable  = "/bin/echo"
-            cudesc.arguments   = ['"$CU_LIST Task with id $CU_NO"']
-            cudesc.cores       = CU_A_CORES
+            taskdesc = rp.TaskDescription()
+            taskdesc.environment = {"TASK_LIST": "A", "TASK_NO": "%02d" % idx}
+            taskdesc.executable  = "/bin/echo"
+            taskdesc.arguments   = ['"$TASK_LIST Task with id $TASK_NO"']
+            taskdesc.cores       = TASK_A_CORES
             # -------- END USER DEFINED Task 1 DESCRIPTION --------- #
 
-            cudesc_list_A.append(cudesc)
+            taskdesc_list_A.append(taskdesc)
 
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
         print("Submit Tasks 'A' to Task Manager ...")
-        cu_set_A = tmgr.submit_tasks(cudesc_list_A)
+        task_set_A = tmgr.submit_tasks(taskdesc_list_A)
 
-        # submit B cus to pilot job
-        cudesc_list_B = []
+        # submit B tasks to pilot job
+        taskdesc_list_B = []
         for idx in range(NUMBER_COUPLES):
 
             # -------- BEGIN USER DEFINED Task 2 DESCRIPTION --------- #
-            cudesc = rp.TaskDescription()
-            cudesc.environment = {"CU_LIST": "B", "CU_NO": "%02d" % idx}
-            cudesc.executable  = "/bin/echo"
-            cudesc.arguments   = ['"$CU_LIST Task with id $CU_NO"']
-            cudesc.cores       = CU_B_CORES
+            taskdesc = rp.TaskDescription()
+            taskdesc.environment = {"TASK_LIST": "B", "TASK_NO": "%02d" % idx}
+            taskdesc.executable  = "/bin/echo"
+            taskdesc.arguments   = ['"$TASK_LIST Task with id $TASK_NO"']
+            taskdesc.cores       = TASK_B_CORES
             # -------- END USER DEFINED Task 2 DESCRIPTION --------- #
 
-            cudesc_list_B.append(cudesc)
+            taskdesc_list_B.append(taskdesc)
 
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
         print("Submit Tasks 'B' to Task Manager ...")
-        cu_set_B = tmgr.submit_tasks(cudesc_list_B)
+        task_set_B = tmgr.submit_tasks(taskdesc_list_B)
 
 
         # ---------------------------------------------------------------------
-        print("Waiting for 'A' and 'B' CUs to complete...")
+        print("Waiting for 'A' and 'B' tasks to complete...")
         tmgr.wait_tasks()
         print("Executing 'C' tasks now...")
         # ---------------------------------------------------------------------
 
         # submit 'C' tasks to pilot job. each 'C' task takes the output of
         # an 'A' and a 'B' task and puts them together.
-        cudesc_list_C = []
+        taskdesc_list_C = []
         for idx in range(NUMBER_COUPLES):
 
             # -------- BEGIN USER DEFINED Task 3 DESCRIPTION --------- #
-            cudesc = rp.TaskDescription()
-            cudesc.environment = {"CU_SET": "C", "CU_NO": "%02d" % idx}
-            cudesc.executable  = "/bin/echo"
-            cudesc.arguments   = ['"$CU_SET Task with id $CU_NO"']
-            cudesc.cores       = CU_C_CORES
+            taskdesc = rp.TaskDescription()
+            taskdesc.environment = {"TASK_SET": "C", "TASK_NO": "%02d" % idx}
+            taskdesc.executable  = "/bin/echo"
+            taskdesc.arguments   = ['"$TASK_SET Task with id $TASK_NO"']
+            taskdesc.cores       = TASK_C_CORES
             # -------- END USER DEFINED Task 3 DESCRIPTION --------- #
 
-            cudesc_list_C.append(cudesc)
+            taskdesc_list_C.append(taskdesc)
 
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
         print("Submit Tasks 'C' to Task Manager ...")
-        cu_set_C = tmgr.submit_tasks(cudesc_list_C)
+        task_set_C = tmgr.submit_tasks(taskdesc_list_C)
 
         # ---------------------------------------------------------------------
-        print("Waiting for 'C' CUs to complete...")
+        print("Waiting for 'C' tasks to complete...")
         tmgr.wait_tasks()
-        print("All CUs completed successfully!")
+        print("All tasks completed successfully!")
 
 
     except Exception as e:

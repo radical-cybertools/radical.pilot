@@ -125,34 +125,34 @@ if __name__ == "__main__":
         print("Registering  Pilot with Task Manager ...")
         tmgr.add_pilots(pilot)
 
-        NUMBER_JOBS  = 10  # the total number of cus to run
+        NUMBER_JOBS  = 10  # the total number of tasks to run
 
-        # submit CUs to pilot job
-        cudesc_list = []
+        # submit tasks to pilot job
+        taskdesc_list = []
         for i in range(NUMBER_JOBS):
 
             # -------- BEGIN USER DEFINED Task DESCRIPTION --------- #
-            cudesc = rp.TaskDescription()
-            cudesc.executable    = "python"
-            cudesc.arguments     = ["helloworld_mpi.py"]
-            cudesc.input_staging = ["../helloworld_mpi.py"]
-            cudesc.cores         = 8
-            cudesc.mpi           = True
+            taskdesc = rp.TaskDescription()
+            taskdesc.executable    = "python"
+            taskdesc.arguments     = ["helloworld_mpi.py"]
+            taskdesc.input_staging = ["../helloworld_mpi.py"]
+            taskdesc.cores         = 8
+            taskdesc.mpi           = True
             # -------- END USER DEFINED Task DESCRIPTION --------- #
 
-            cudesc_list.append(cudesc)
+            taskdesc_list.append(taskdesc)
 
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
         print("Submit Tasks to Task Manager ...")
-        cu_set = tmgr.submit_tasks (cudesc_list)
+        task_set = tmgr.submit_tasks (taskdesc_list)
 
-        print("Waiting for CUs to complete ...")
+        print("Waiting for tasks to complete ...")
         tmgr.wait_tasks()
-        print("All CUs completed successfully!")
+        print("All tasks completed successfully!")
 
-        for task in cu_set:
+        for task in task_set:
             print('* Task %s - state: %s, exit code: %s, started: %s, '
                   'finished: %s, stdout: %s' % (task.uid, task.state,
                   task.exit_code, task.start_time, task.stop_time, task.stdout))

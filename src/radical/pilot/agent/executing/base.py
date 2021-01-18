@@ -44,7 +44,7 @@ class AgentExecutingComponent(rpu.Component):
         rpu.Component.__init__(self, cfg, session)
 
         # if so configured, let the Task know what to use as tmp dir
-        self._cu_tmp = cfg.get('cu_tmp', os.environ.get('TMP', '/tmp'))
+        self._task_tmp = cfg.get('task_tmp', os.environ.get('TMP', '/tmp'))
 
 
     # --------------------------------------------------------------------------

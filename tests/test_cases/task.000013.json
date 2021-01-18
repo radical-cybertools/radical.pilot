@@ -39,13 +39,13 @@
             "ssh"   : ["/bin/sleep \"10\" ","ssh node1 LD_LIBRARY_PATH=/usr/local/lib/ PATH=test_path 1"],
             "spark" : "RuntimeError",
             "yarn"  : "RuntimeError",
-            "jsrun"   : ["jsrun --erf_input rs_layout_cu_000013   /bin/sleep \"10\" ", null]
+            "jsrun"   : ["jsrun --erf_input rs_layout_task_000013   /bin/sleep \"10\" ", null]
         },
         "resource_file": {
             "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0}; gpu: {0,1}}\n"]
         },
         "resource_filename": {
-            "jsrun": "rs_layout_cu_000013"
+            "jsrun": "rs_layout_task_000013"
         }
     }
 }

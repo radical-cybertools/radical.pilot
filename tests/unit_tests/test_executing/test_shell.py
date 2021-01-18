@@ -32,22 +32,22 @@ class TestBase(unittest.TestCase):
     def test_handle_unit(self, mocked_init, mocked_initialize):
 
         global_launcher = []
-        global_cu = []
+        global_tasks    = []
 
-        def spawn_side_effect(launcher, cu):
+        def spawn_side_effect(launcher, task):
             nonlocal global_launcher
-            nonlocal global_cu
+            nonlocal global_tasks
             global_launcher.append(launcher)
-            global_cu.append(cu)
+            global_tasks.append(task)
 
         tests = self.setUp()
-        cu = dict()
-        cu['uid']         = tests['unit']['uid']
-        cu['description'] = tests['unit']['description']
-        cu['stderr']      = '/test_cases/'
+        task  = dict()
+        task['uid']         = tests['unit']['uid']
+        task['description'] = tests['unit']['description']
+        task['stderr']      = '/test_cases/'
 
         component = Shell()
-        component._cus_to_cancel         = []
+        component._tasks_to_cancel       = []
         component._prof                  = mock.Mock()
         component.publish                = mock.Mock()
         component._mpi_launcher          = mock.Mock()
@@ -59,31 +59,32 @@ class TestBase(unittest.TestCase):
         component._log                   = ru.Logger('dummy')
 
         component.spawn = mock.MagicMock(side_effect=spawn_side_effect
-                (launcher=component._mpi_launcher, cu=cu))
+                (launcher=component._mpi_launcher, task=task))
 
-        component._handle_unit(cu)
-        self.assertEqual(cu, global_cu[0])
+        component._handle_unit(task)
+        self.assertEqual(task, global_tasks[0])
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Shell, '__init__', return_value=None)
     @mock.patch.object(Shell, 'initialize', return_value=None)
-    def test_cu_to_cmd(self, mocked_init, mocked_initialize):
+    def test_task_to_cmd(self, mocked_init, mocked_initialize):
         self.maxDiff = None
-        tests = self.setUp()
-        cu = dict()
-        cu['uid']         = tests['unit']['uid']
-        cu['description'] = tests['unit']['description']
-        cu['unit_sandbox_path'] = tests['unit']['unit_sandbox_path']
-        cu['gtod'] = tests['unit']['gtod']
+        tests        = self.setUp()
+        task         = dict()
+
+        task['uid']               = tests['unit']['uid']
+        task['description']       = tests['unit']['description']
+        task['unit_sandbox_path'] = tests['unit']['unit_sandbox_path']
+        task['gtod']              = tests['unit']['gtod']
 
         component = Shell()
-        component._log                   = ru.Logger('dummy')
+        component._log = ru.Logger('dummy')
         component._cfg = {'sid': 'test_sid', 'pid': 'test_pid', 'aid': 'test_aid'}
         component._uid = 'exec.0000'
         component._pwd = './'
         component._deactivate = ''
-        component._env_cu_export = {}
+        component._env_task_export = {}
 
         component._prof = mock.MagicMock()
         component._prof.enabled = True
@@ -91,7 +92,7 @@ class TestBase(unittest.TestCase):
         launcher = mock.MagicMock()
         launcher.construct_command = mock.MagicMock(return_value=('some_exe', None))
 
-        script = component._cu_to_cmd(cu, launcher)
+        script = component._task_to_cmd(task, launcher)
         self.assertEqual(script, tests['results']['script'])
 
 # ------------------------------------------------------------------------------

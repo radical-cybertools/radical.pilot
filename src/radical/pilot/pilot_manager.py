@@ -58,9 +58,9 @@ class PilotManager(rpu.Component):
 
         # Combine the two pilots, the workload and a scheduler via
         # a TaskManager.
-        um = rp.TaskManager(session=session, scheduler=rp.SCHEDULER_ROUND_ROBIN)
-        um.add_pilot(p1)
-        um.submit_tasks(tasks)
+        tm = rp.TaskManager(session=session, scheduler=rp.SCHEDULER_ROUND_ROBIN)
+        tm.add_pilot(p1)
+        tm.submit_tasks(tasks)
 
 
     The pilot manager can issue notification on pilot state changes.  Whenever

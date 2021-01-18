@@ -53,10 +53,10 @@ class ABDS(AgentExecutingComponent):
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
-        self._cancel_lock    = ru.RLock()
-        self._cus_to_cancel  = list()
-        self._cus_to_watch   = list()
-        self._watch_queue    = queue.Queue()
+        self._cancel_lock     = ru.RLock()
+        self._tasks_to_cancel = list()
+        self._tasks_to_watch  = list()
+        self._watch_queue     = queue.Queue()
 
         self._pid = self._cfg['pid']
 
@@ -78,23 +78,23 @@ class ABDS(AgentExecutingComponent):
                 cfg     = self._cfg,
                 session = self._session)
 
-        self._cu_environment = self._populate_cu_environment()
+        self._task_environment = self._populate_task_environment()
 
         self.gtod   = "%s/gtod" % self._pwd
         self.tmpdir = tempfile.gettempdir()
 
         # if we need to transplant any original env into the Task, we dig the
         # respective keys from the dump made by bootstrap_0.sh
-        self._env_cu_export = dict()
-        if self._cfg.get('export_to_cu'):
+        self._env_task_export = dict()
+        if self._cfg.get('export_to_task'):
             with open('env.orig', 'r') as f:
                 for line in f.readlines():
                     if '=' in line:
                         k,v = line.split('=', 1)
                         key = k.strip()
                         val = v.strip()
-                        if key in self._cfg['export_to_cu']:
-                            self._env_cu_export[key] = val
+                        if key in self._cfg['export_to_task']:
+                            self._env_task_export[key] = val
 
 
     # --------------------------------------------------------------------------
@@ -118,14 +118,14 @@ class ABDS(AgentExecutingComponent):
 
             self._log.info("cancel_tasks command (%s)" % arg)
             with self._cancel_lock:
-                self._cus_to_cancel.extend(arg['uids'])
+                self._tasks_to_cancel.extend(arg['uids'])
 
         return True
 
 
     # --------------------------------------------------------------------------
     #
-    def _populate_cu_environment(self):
+    def _populate_task_environment(self):
         """Derive the environment for the t's from our own environment."""
 
         # Get the environment of the agent
@@ -254,7 +254,7 @@ class ABDS(AgentExecutingComponent):
                 env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, t['uid'])
 
             # also add any env vars requested for export by the resource config
-            for k,v in self._env_cu_export.items():
+            for k,v in self._env_task_export.items():
                 env_string += "export %s=%s\n" % (k,v)
 
             env_string += '''
@@ -276,7 +276,7 @@ prof(){
 
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
 
-            launch_script.write('prof cu_start\n')
+            launch_script.write('prof task_start\n')
             launch_script.write('\n# Change to task sandbox\ncd %s\n' % sandbox)
 
             # Before the Big Bang there was nothing
@@ -289,9 +289,9 @@ prof(){
                     pre_exec_string += "%s\n" % t['description']['pre_exec']
                 # Note: extra spaces below are for visual alignment
                 launch_script.write("\n# Pre-exec commands\n")
-                launch_script.write('prof cu_pre_start\n')
+                launch_script.write('prof task_pre_start\n')
                 launch_script.write(pre_exec_string)
-                launch_script.write('prof cu_pre_stop\n')
+                launch_script.write('prof task_pre_stop\n')
 
             # YARN pre execution folder permission change
             launch_script.write('\n## Changing Working Directory permissions for YARN\n')
@@ -313,11 +313,11 @@ prof(){
                 raise RuntimeError(msg)
 
             launch_script.write("\n# The command to run\n")
-            launch_script.write('prof cu_exec_start\n')
+            launch_script.write('prof task_exec_start\n')
             launch_script.write("%s\n" % launch_command)
             launch_script.write("RETVAL=$?\n")
             launch_script.write("\ncat Ystdout\n")
-            launch_script.write('prof cu_exec_stop\n')
+            launch_script.write('prof task_exec_stop\n')
 
             # After the universe dies the infrared death, there will be nothing
             if t['description']['post_exec']:
@@ -328,9 +328,9 @@ prof(){
                 else:
                     post_exec_string += "%s\n" % t['description']['post_exec']
                 launch_script.write("\n# Post-exec commands\n")
-                launch_script.write('prof cu_post_start\n')
+                launch_script.write('prof task_post_start\n')
                 launch_script.write('%s\n' % post_exec_string)
-                launch_script.write('prof cu_post_stop\n')
+                launch_script.write('prof task_post_stop\n')
 
             # YARN pre execution folder permission change
             launch_script.write('\n## Changing Working Directory permissions for YARN\n')
@@ -369,7 +369,7 @@ prof(){
                                       close_fds          = True,
                                       shell              = True,
                                       cwd                = sandbox,
-                                      env                = self._cu_environment,
+                                      env                = self._task_environment,
                                       universal_newlines = False,
                                       startupinfo        = None,
                                       creationflags      = 0)
@@ -383,40 +383,40 @@ prof(){
     def _watch(self):
 
         try:
-            cuid = self.uid.replace('Component', 'Watcher')
+            tid = self.uid.replace('Component', 'Watcher')
             self._prof.prof('run', uid=self._pid)
 
             while not self._terminate.is_set():
 
-                cus = list()
+                tasks = list()
 
                 try:
 
                     # we don't want to only wait for one Task -- then we would
                     # pull Task state too frequently.  OTOH, we also don't want to
-                    # learn about CUs until all slots are filled, because then
-                    # we may not be able to catch finishing CUs in time -- so
+                    # learn about tasks until all slots are filled, because then
+                    # we may not be able to catch finishing tasks in time -- so
                     # there is a fine balance here.  Balance means 100 (FIXME).
                   # self._prof.prof('pull')
                     MAX_QUEUE_BULKSIZE = 100
-                    while len(cus) < MAX_QUEUE_BULKSIZE :
-                        cus.append (self._watch_queue.get_nowait())
+                    while len(tasks) < MAX_QUEUE_BULKSIZE :
+                        tasks.append (self._watch_queue.get_nowait())
 
                 except queue.Empty:
 
-                    # nothing found -- no problem, see if any CUs finished
+                    # nothing found -- no problem, see if any tasks finished
                     pass
 
-                # add all cus we found to the watchlist
-                for t in cus :
+                # add all tasks we found to the watchlist
+                for t in tasks :
 
                     self._prof.prof('passed', msg="ExecWatcher picked up task", uid=t['uid'])
-                    self._cus_to_watch.append (t)
+                    self._tasks_to_watch.append (t)
 
-                # check on the known cus.
+                # check on the known tasks.
                 action = self._check_running()
 
-                if not action and not cus :
+                if not action and not tasks :
                     # nothing happened at all!  Zzz for a bit.
                     time.sleep(self._cfg['db_poll_sleeptime'])
 
@@ -435,7 +435,7 @@ prof(){
 
         action = 0
 
-        for t in self._cus_to_watch:
+        for t in self._tasks_to_watch:
 
             sandbox = '%s/%s' % (self._pwd, t['uid'])
 
@@ -467,8 +467,8 @@ prof(){
                         # FIXME: Ioannis, what is this supposed to do?
                         # I wanted to update the state of the t but keep it in the watching
                         # queue. I am not sure it is needed anymore.
-                        index = self._cus_to_watch.index(t)
-                        self._cus_to_watch[index]=t
+                        index = self._tasks_to_watch.index(t)
+                        self._tasks_to_watch[index]=t
 
             else :
                 # poll subprocess object
@@ -478,7 +478,7 @@ prof(){
                 if exit_code is None:
                     # Process is still running
 
-                    if t['uid'] in self._cus_to_cancel:
+                    if t['uid'] in self._tasks_to_cancel:
 
                         # FIXME: there is a race condition between the state poll
                         # above and the kill command below.  We probably should pull
@@ -490,11 +490,11 @@ prof(){
                         t['proc'].wait() # make sure proc is collected
 
                         with self._cancel_lock:
-                            self._cus_to_cancel.remove(t['uid'])
+                            self._tasks_to_cancel.remove(t['uid'])
 
                         self._prof.prof('final', msg="execution canceled", uid=t['uid'])
 
-                        self._cus_to_watch.remove(t)
+                        self._tasks_to_watch.remove(t)
 
                         del(t['proc'])  # proc is not json serializable
                         self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
@@ -514,7 +514,7 @@ prof(){
                     t['exit_code'] = exit_code
 
                     # Free the Slots, Flee the Flots, Ree the Frots!
-                    self._cus_to_watch.remove(t)
+                    self._tasks_to_watch.remove(t)
                     del(t['proc'])  # proc is not json serializable
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
 

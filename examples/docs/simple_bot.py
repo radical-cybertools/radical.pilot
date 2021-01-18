@@ -26,7 +26,7 @@ if __name__ == "__main__":
     RESOURCE_LABEL = 'local.localhost'
     PILOT_CORES    =  2
     BAG_SIZE       = 10  # The number of tasks
-    CU_CORES       =  1  # The cores each Task will take.
+    TASK_CORES     =  1  # The cores each Task will take.
     QUEUE          = None
     # we use a reporter class for nicer output
     report = ru.Reporter(name='radical.pilot')
@@ -77,30 +77,30 @@ if __name__ == "__main__":
         report.info('Create %d Task Description(s)\n\t' % BAG_SIZE)
 
         # create Task descriptions
-        cudesc_list = []
+        taskdesc_list = []
         for i in range(BAG_SIZE):
 
             # -------- BEGIN USER DEFINED Task DESCRIPTION --------- #
-            cudesc = rp.TaskDescription()
-            cudesc.executable  = "/bin/echo"
-            cudesc.arguments   = ['I am Task number $CU_NO']
-            cudesc.environment = {'CU_NO': i}
-            cudesc.cores       = 1
+            taskdesc = rp.TaskDescription()
+            taskdesc.executable  = "/bin/echo"
+            taskdesc.arguments   = ['I am Task number $TASK_NO']
+            taskdesc.environment = {'TASK_NO': i}
+            taskdesc.cores       = 1
             # -------- END USER DEFINED Task DESCRIPTION --------- #
 
-            cudesc_list.append(cudesc)
+            taskdesc_list.append(taskdesc)
             report.progress()
         report.ok('>>>ok\n')
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
         report.header("Submit Tasks to Task Manager ...")
-        cu_set = tmgr.submit_tasks (cudesc_list)
+        task_set = tmgr.submit_tasks (taskdesc_list)
 
-        report.header("Waiting for CUs to complete ...")
+        report.header("Waiting for tasks to complete ...")
         tmgr.wait_tasks()
 
-        for task in cu_set:
+        for task in task_set:
             print("* Task %s, state %s, exit code: %s, stdout: %s"
                 % (task.uid, task.state, task.exit_code, task.stdout.strip()))
 

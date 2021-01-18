@@ -35,13 +35,13 @@ class TestBase(unittest.TestCase):
     def test_handle_task(self, mocked_init, mocked_initialize):
 
         global_launcher = []
-        global_cu = []
+        global_tasks    = []
 
         def spawn_side_effect(launcher, t):
             nonlocal global_launcher
-            nonlocal global_cu
+            nonlocal global_tasks
             global_launcher.append(launcher)
-            global_cu.append(t)
+            global_tasks.append(t)
 
         tests = self.setUp()
         t    = dict()
@@ -62,7 +62,7 @@ class TestBase(unittest.TestCase):
 
         component._log = ru.Logger('dummy')
         component._handle_task(t)
-        self.assertEqual(t, global_cu[0])
+        self.assertEqual(t, global_tasks[0])
 
 
     # --------------------------------------------------------------------------
@@ -71,18 +71,18 @@ class TestBase(unittest.TestCase):
     @mock.patch.object(Popen, 'initialize', return_value=None)
     def test_check_running(self, mocked_init, mocked_initialize):
 
-        global_cu      = []
+        global_tasks   = []
         global_state   = None
         global_publish = None
         global_push    = None
 
         def _advance_side_effect(t, state, publish, push):
-            nonlocal global_cu
+            nonlocal global_tasks
             nonlocal global_state
             nonlocal global_publish
             nonlocal global_push
 
-            global_cu.append(t)
+            global_tasks.append(t)
             global_state   = 'FAILED'
             global_publish = True
             global_push    = True
@@ -96,9 +96,9 @@ class TestBase(unittest.TestCase):
         t['proc'].wait    = mock.Mock(return_value=1)
 
         component = Popen()
-        component._cus_to_watch = list()
-        component._cus_to_cancel = list()
-        component._cus_to_watch.append(t)
+        component._tasks_to_watch = list()
+        component._tasks_to_cancel = list()
+        component._tasks_to_watch.append(t)
         component.advance = mock.MagicMock(side_effect=_advance_side_effect)
         component._prof = mock.Mock()
         component.publish = mock.Mock()
@@ -133,7 +133,7 @@ class TestBase(unittest.TestCase):
         component.gtod         = mock.Mock()
         component._pwd         = mock.Mock()
         component._prof        = mock.Mock()
-        component._cu_tmp      = mock.Mock()
+        component._task_tmp    = mock.Mock()
         component._watch_queue = mock.Mock()
         component._log         = ru.Logger('dummy')
 

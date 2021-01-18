@@ -274,8 +274,8 @@ def get_stats (docs, events, slothist) :
 
     pilot_stats['pilots'] = dict()
 
-    for cu in docs['task'] :
-        tasks[str(cu['_id'])] = cu
+    for task in docs['task'] :
+        tasks[str(task['_id'])] = task
 
     for doc in docs['pilot'] :
 
@@ -300,8 +300,8 @@ def get_stats (docs, events, slothist) :
             state = s
             start = ts
 
-        for cu in doc['task_ids'] :
-            uid                    = str(cu)
+        for task in doc['task_ids'] :
+            uid                    = str(task)
             n_tasks               += 1
             pilot_info['n_tasks'] += 1
 
@@ -906,7 +906,7 @@ def handle_session (db, mode, dbname, session, cachedir, pname) :
     cnames.append ("%s.pm" % session)
     cnames.append ("%s.p"  % session)
     cnames.append ("%s.um" % session)
-    cnames.append ("%s.cu" % session)
+    cnames.append ("%s.t"  % session)
 
     for name in cnames :
 

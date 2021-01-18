@@ -66,7 +66,7 @@ session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0056
 1. pdesc.resource is updated as "local.localhost"
 2. pdesc.project is removed
 3. wait(state=rp.ACTIVE) is updated as (state=rp.PMGR_ACTIVE)
-4. cu.executable='SLEEP' is updated as '/bin/sleep'
+4. task.executable='SLEEP' is updated as '/bin/sleep'
 However, call_back error is reported in pmgr log file. Further update is needed.
 session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0053
 

@@ -226,7 +226,7 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_TASK_ID="%s"\n'       % t['uid']
             env_string += 'export RP_TASK_NAME="%s"\n'     % t['description'].get('name')
             env_string += 'export RP_GTOD="%s"\n'          % self.gtod
-            env_string += 'export RP_TMP="%s"\n'           % self._cu_tmp
+            env_string += 'export RP_TMP="%s"\n'           % self._task_tmp
             env_string += 'export RP_PILOT_SANDBOX="%s"\n' % self._pwd
             env_string += 'export RP_PILOT_STAGING="%s"\n' % self._pwd
             if self._prof.enabled:
@@ -272,12 +272,12 @@ prof(){
                     env_string += 'export "%s=%s"\n' % (key, val)
 
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
-            launch_script.write('prof cu_start\n')
+            launch_script.write('prof task_start\n')
             launch_script.write('\n# Change to task sandbox\ncd %s\n' % sandbox)
 
-            # FIXME: cu_pre_exec should be LM specific
-            if self._cfg.get('cu_pre_exec'):
-                for val in self._cfg['cu_pre_exec']:
+            # FIXME: task_pre_exec should be LM specific
+            if self._cfg.get('task_pre_exec'):
+                for val in self._cfg['task_pre_exec']:
                     launch_script.write("%s\n"  % val)
 
             if descr['pre_exec']:
@@ -287,15 +287,15 @@ prof(){
                     pre += "%s || %s\n" % (elem, fail)
                 # Note: extra spaces below are for visual alignment
                 launch_script.write("\n# Pre-exec commands\n")
-                launch_script.write('prof cu_pre_start\n')
+                launch_script.write('prof task_pre_start\n')
                 launch_script.write(pre)
-                launch_script.write('prof cu_pre_stop\n')
+                launch_script.write('prof task_pre_stop\n')
 
             launch_script.write("\n# The command to run\n")
-            launch_script.write('prof cu_exec_start\n')
+            launch_script.write('prof task_exec_start\n')
             launch_script.write('%s\n' % launch_command)
             launch_script.write('RETVAL=$?\n')
-            launch_script.write('prof cu_exec_stop\n')
+            launch_script.write('prof task_exec_stop\n')
 
             # After the universe dies the infrared death, there will be nothing
             if descr['post_exec']:
@@ -304,12 +304,12 @@ prof(){
                 for elem in descr['post_exec']:
                     post += "%s || %s\n" % (elem, fail)
                 launch_script.write("\n# Post-exec commands\n")
-                launch_script.write('prof cu_post_start\n')
+                launch_script.write('prof task_post_start\n')
                 launch_script.write('%s\n' % post)
-                launch_script.write('prof cu_post_stop "$ret=RETVAL"\n')
+                launch_script.write('prof task_post_stop "$ret=RETVAL"\n')
 
             launch_script.write("\n# Exit the script with the return code from the command\n")
-            launch_script.write("prof cu_stop\n")
+            launch_script.write("prof task_stop\n")
             launch_script.write("exit $RETVAL\n")
 
         # done writing to launch script, get it ready for execution.
@@ -353,29 +353,29 @@ prof(){
         try:
             while not self._terminate.is_set():
 
-                cus = list()
+                tasks = list()
                 try:
                     # we don't want to only wait for one Task -- then we would
                     # pull Task state too frequently.  OTOH, we also don't want to
-                    # learn about CUs until all slots are filled, because then
-                    # we may not be able to catch finishing CUs in time -- so
+                    # learn about tasks until all slots are filled, because then
+                    # we may not be able to catch finishing tasks in time -- so
                     # there is a fine balance here.  Balance means 100 (FIXME).
                     MAX_QUEUE_BULKSIZE = 100
-                    while len(cus) < MAX_QUEUE_BULKSIZE :
-                        cus.append (self._watch_queue.get_nowait())
+                    while len(tasks) < MAX_QUEUE_BULKSIZE :
+                        tasks.append (self._watch_queue.get_nowait())
 
                 except queue.Empty:
-                    # nothing found -- no problem, see if any CUs finished
+                    # nothing found -- no problem, see if any tasks finished
                     pass
 
-                # add all cus we found to the watchlist
-                for t in cus :
+                # add all tasks we found to the watchlist
+                for t in tasks :
                     self._cus_to_watch.append (t)
 
-                # check on the known cus.
+                # check on the known tasks.
                 action = self._check_running()
 
-                if not action and not cus :
+                if not action and not tasks :
                     # nothing happened at all!  Zzz for a bit.
                     # FIXME: make configurable
                     time.sleep(0.1)
@@ -430,7 +430,7 @@ prof(){
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
                     self.advance(t, rps.CANCELED, publish=True, push=False)
 
-                    # we don't need to watch canceled CUs
+                    # we don't need to watch canceled tasks
                     self._cus_to_watch.remove(t)
 
             else:
