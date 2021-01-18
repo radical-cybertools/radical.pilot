@@ -4,7 +4,7 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
-1.5.9 Release                                                         2021-01-18
+1.5.10 Release                                                        2021-01-18
 --------------------------------------------------------------------------------
 
   - gpu related fixes (summit)
