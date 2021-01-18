@@ -1270,42 +1270,52 @@ def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
     #   [{ru.EVENT: 'cu_start'       }, 'exec_rp',    'None]
     # ]
     #
-    # which will use like this:
+    # which we will use like this:
     #
     #   - go through all events for a task
-    #   - if event is in list above
+    #   - if event is in the list above
     #     - reduce resources in `from` metric
     #     - increase resource in `to` metric
     #
     # If `from` or `to` are None, then the resources are taken from / given to
     # the pilot's idle resources.  We thus rename the 'None' to 'idle'.
 
-    # dig though metric,  find all pairs of matching start/stop events
+    # dig though metric, find all pairs of matching start/stop events
     task_transitions = list()
     for metric,spec in task_metrics['consume'].items():
 
+        # find the metric's transition spec
         m = None
         for m in task_transitions:
             if m[0] == spec[0]:
                 break
             m = None
-        if m:
+
+        # if we don't find that spec registered, register it as start event
+        if not m:
+            task_transitions.append([spec[0], None, metric])
+        else:
+            # if we know the transition, just register the stop event
             assert(m[2] is None)
             m[2] = metric
-        else:
-            task_transitions.append([spec[0], None, metric])
 
 
+
+        # the inverse of the above where we check stop events, register, and
+        # insert start events (in case transitions are not causally ordered)
+        m = None
         for m in task_transitions:
             if m[0] == spec[1]:
                 break
             m = None
-        if m:
+        if not m:
+            task_transitions.append([spec[1], metric, None])
+        else:
             assert(m[1] is None)
             m[1] = metric
-        else:
-            task_transitions.append([spec[1], metric, None])
 
+    # task transitions which, after the above search, miss start or stop events
+    # will add / remove resources from the pilot's idle pool.
     for t in task_transitions:
         if t[1] is None: t[1] = 'idle'
         if t[2] is None: t[2] = 'idle'
@@ -1322,30 +1332,32 @@ def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
     pilot_transitions = list()
     for metric,spec in pilot_metrics['consume'].items():
 
+        # same as above, but for pilot transition events
         m = None
         for m in pilot_transitions:
             if m[0] == spec[0]:
                 break
             m = None
-        if m:
+        if not m:
+            pilot_transitions.append([spec[0], None, metric])
+        else:
             assert(m[2] is None)
             m[2] = metric
-        else:
-            pilot_transitions.append([spec[0], None, metric])
 
-
+        m = None
         for m in pilot_transitions:
             if m[0] == spec[1]:
                 break
             m = None
-        if m:
+        if not m:
+            pilot_transitions.append([spec[1], metric, None])
+        else:
             assert(m[1] is None)
             m[1] = metric
-        else:
-            pilot_transitions.append([spec[1], metric, None])
 
     for t in pilot_transitions:
-        # agent resources from from the pilot, pilot resources from the system
+        # agent resources are taked from the pilot
+        # pilot resources are taken from the system
         if t[1] is None:
             if t[2] == 'agent': t[1] = 'setup_1'
             else              : t[1] = 'system'
@@ -1360,11 +1372,11 @@ def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
 #
 def get_resource_timelines(session, task, transitions):
     '''
-    For each the specific task, return a set of tuples of the form:
+    For each specific task, return a set of tuples of the form:
 
         [start, stop, metric]
 
-    which reports during time what metric has been used.
+    which reports what metric has been used during what time span.
     '''
 
     # we need to know what pilot the task ran on.  If we don't find a designated
@@ -1379,9 +1391,6 @@ def get_resource_timelines(session, task, transitions):
     if 'slots' not in task.cfg:
         # the task was never scheduled
         return dict()
-
-    # we heuristically switch between PRTE event traces and normal (fork) event
-    # traces
 
     ret = list()
     for metric, spec in transitions['consume'].items():
