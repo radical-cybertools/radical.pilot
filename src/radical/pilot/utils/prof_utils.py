@@ -83,10 +83,10 @@ UNIT_DURATIONS_DEFAULT = {
 
       # # if we have cmd_start / cmd_stop:
       # 'exec_sh'     : [{ru.EVENT: 'cu_start'               },
-      #                  {ru.EVENT: 'app_start'              }],
-      # 'exec_cmd'    : [{ru.EVENT: 'app_start'              },
-      #                  {ru.EVENT: 'app_stop'               }],
-      # 'term_sh'     : [{ru.EVENT: 'app_stop'               },
+      #                  {ru.EVENT: 'cmd_start'              }],
+      # 'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
+      #                  {ru.EVENT: 'cmd_stop'               }],
+      # 'term_sh'     : [{ru.EVENT: 'cmd_stop'               },
       #                  {ru.EVENT: 'cu_stop'                }],
     }
 }
@@ -106,10 +106,10 @@ UNIT_DURATIONS_APP = {
         'exec_sh'     : [{ru.EVENT: 'cu_start'               },
                          {ru.EVENT: 'cu_exec_start'          }],
         'init_app'    : [{ru.EVENT: 'cu_exec_start'          },
-                         {ru.EVENT: 'app_start'              }],
-        'exec_cmd'    : [{ru.EVENT: 'app_start'              },
-                         {ru.EVENT: 'app_stop'               }],
-        'term_app'    : [{ru.EVENT: 'app_stop'               },
+                         {ru.EVENT: 'cmd_start'              }],
+        'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
+                         {ru.EVENT: 'cmd_stop'               }],
+        'term_app'    : [{ru.EVENT: 'cmd_stop'               },
                          {ru.EVENT: 'cu_exec_stop'           }],
         'term_sh'     : [{ru.EVENT: 'cu_exec_stop'           },
                          {ru.EVENT: 'cu_stop'                }],
@@ -150,7 +150,7 @@ UNIT_DURATIONS_PRTE = {
         'unschedule'  : [{ru.EVENT: 'exec_stop'              },
                          {ru.EVENT: 'unschedule_stop'        }],
 
-      # # if we have app_start / app_stop:
+      # # if we have cmd_start / cmd_stop:
       # 'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
       #                  {ru.EVENT: 'cmd_start'              }],
       # 'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
@@ -179,10 +179,10 @@ UNIT_DURATIONS_PRTE_APP  = {
         'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
                          {ru.EVENT: 'prte_sending_launch_msg'}],
         'init_app'    : [{ru.EVENT: 'prte_sending_launch_msg'},
-                         {ru.EVENT: 'app_start'              }],
-        'exec_cmd'    : [{ru.EVENT: 'app_start'              },
-                         {ru.EVENT: 'app_stop'               }],
-        'term_app'    : [{ru.EVENT: 'app_stop'               },
+                         {ru.EVENT: 'cmd_start'              }],
+        'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
+                         {ru.EVENT: 'cmd_stop'               }],
+        'term_app'    : [{ru.EVENT: 'cmd_stop'               },
                          {ru.EVENT: 'prte_iof_complete'      }],
         'prte_phase_3': [{ru.EVENT: 'prte_iof_complete'      },
                          {ru.EVENT: 'prte_notify_completed'  }],

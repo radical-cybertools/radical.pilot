@@ -745,6 +745,19 @@ class AgentSchedulingComponent(rpu.Component):
 
         to_unschedule = list()
         try:
+
+            # Timeout and bulk limit below are somewhat arbitrary, but the
+            # behaviour is benign.  The goal is to avoid corner cases: for the
+            # sleep, avoid no sleep (busy idle) and also significant latencies.
+            # Anything smaller than 0.01 is under our noise level and works ok
+            # for the latency, and anything larger than 0 is sufficient to avoid
+            # busy idle.
+            #
+            # For the unschedule bulk, the corner case to avoid is waiting for
+            # too long to fill a bulk so that latencies add a up and negate the
+            # bulk optimization. For the 0.001 sleep, 128 as bulk size results
+            # in a max added latency of about 0.1 second, which is one order of
+            # magnitude above our noise level again and thus acceptable (tm).
             while not self._proc_term.is_set():
                 unit = self._queue_unsched.get(timeout=0.001)
                 to_unschedule.append(unit)
