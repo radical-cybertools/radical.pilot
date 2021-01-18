@@ -35,8 +35,8 @@ PILOT_DURATIONS = {
     # or the pilot is starving for workload.
     'consume' : {
         'boot'      : [{ru.EVENT: 'bootstrap_0_start'},
-                       {ru.EVENT: 'sync_rel'         }],
-        'setup_1'   : [{ru.EVENT: 'sync_rel'         },
+                       {ru.EVENT: 'bootstrap_0_ok'   }],
+        'setup_1'   : [{ru.EVENT: 'bootstrap_0_ok'   },
                        {ru.STATE: s.PMGR_ACTIVE      }],
         'ignore'    : [{ru.STATE: s.PMGR_ACTIVE      },
                        {ru.EVENT: 'cmd'              ,
