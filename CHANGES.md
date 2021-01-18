@@ -4,9 +4,21 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
-1.5.8 Release                                                         2020-12-09
+1.5.9 Release                                                         2021-01-18
 --------------------------------------------------------------------------------
 
+  - gpu related fixes (summit)
+  - avoid a race condition during termination
+  - fix bootstrapper timestamps
+  - fixed traverse config
+  - fix nod counting for FORK rm
+  - fix staging context
+  - move staging ops into separate worker
+  - use C locale in bootstrapper
+
+
+1.5.8 Release                                                         2020-12-09
+--------------------------------------------------------------------------------
 
   - improve test coverage
   - add env isolation prototype and documentation
