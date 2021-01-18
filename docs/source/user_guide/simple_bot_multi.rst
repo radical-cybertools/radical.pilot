@@ -20,7 +20,7 @@ many jobs using the same executable (but perhaps with different input files).
 Rather than submit each job individually to the queuing systems and then wait for
 every job to become active and complete, you submit multiple container jobs (called Pilots)
 that reserve the number of cores needed to run all of your jobs across multiple platforms.
-When this pilots become active, your tasks (which are named 'Tasks' or 'CUs') are pulled by
+When these pilots become active, your tasks, which are named 'Tasks', are pulled by
 RADICAL-Pilot from the MongoDB server and executed.
 
 
@@ -159,4 +159,3 @@ The Complete Example
 .. warning:: Make sure to adjust ... before you attempt to run it.
 
 .. literalinclude:: ../../../examples/docs/simple_bot_mult_res.py
-
