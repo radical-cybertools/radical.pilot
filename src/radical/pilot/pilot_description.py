@@ -39,20 +39,20 @@ PREPARE_ENV       = 'prepare_env'
 
 # ------------------------------------------------------------------------------
 #
-class ComputePilotDescription(ru.Description):
+class PilotDescription(ru.Description):
     """
-    A ComputePilotDescription object describes the requirements and properties
+    A PilotDescription object describes the requirements and properties
     of a :class:`radical.pilot.Pilot` and is passed as a parameter to
     :meth:`radical.pilot.PilotManager.submit_pilots` to instantiate and run
     a new pilot.
 
-    .. note:: A ComputePilotDescription **MUST** define at least
+    .. note:: A PilotDescription **MUST** define at least
               :data:`resource`, :data:`cores` and :data:`runtime`.
 
     **Example**::
 
           pm = radical.pilot.PilotManager(session=s)
-          pd = radical.pilot.ComputePilotDescription()
+          pd = radical.pilot.PilotDescription()
           pd.resource = "local.localhost"
           pd.cores    = 16
           pd.runtime  = 5 # minutes
@@ -72,7 +72,7 @@ class ComputePilotDescription(ru.Description):
        [Type: `string`] [**`mandatory`**] The key of a
        :ref:`chapter_machconf` entry.
        If the key exists, the machine-specifc configuration is loaded from the
-       configuration once the ComputePilotDescription is passed to
+       configuration once the PilotDescription is passed to
        :meth:`radical.pilot.PilotManager.submit_pilots`. If the key doesn't exist,
        a :class:`radical.pilot.pilotException` is thrown.
 
@@ -86,15 +86,15 @@ class ComputePilotDescription(ru.Description):
     .. data:: runtime
 
        [Type: `int`] [**mandatory**] The maximum run time (wall-clock time) in
-       **minutes** of the ComputePilot.
+       **minutes** of the Pilot.
 
     .. data:: sandbox
 
        [Type: `string`] [optional] The working ("sandbox") directory  of the
-       ComputePilot agent. This parameter is optional. If not set, it defaults
+       Pilot agent. This parameter is optional. If not set, it defaults
        to `radical.pilot.sandox` in your home or login directory.
 
-       .. warning:: If you define a ComputePilot on an HPC cluster and you want
+       .. warning:: If you define a Pilot on an HPC cluster and you want
                  to set `sandbox` manually, make sure that it points to a
                  directory on a shared filesystem that can be reached from all
                  compute nodes.
@@ -240,7 +240,7 @@ class ComputePilotDescription(ru.Description):
     #
     def __init__(self, from_dict=None):
 
-        ru.Description.__init__(self, from_dict=ComputePilotDescription._defaults)
+        ru.Description.__init__(self, from_dict=PilotDescription._defaults)
 
         if from_dict:
             self.update(from_dict)
