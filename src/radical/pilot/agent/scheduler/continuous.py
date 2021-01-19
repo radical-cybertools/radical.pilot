@@ -386,7 +386,7 @@ class Continuous(AgentSchedulingComponent):
         # use tag as a DVM ID, so task will be allocated to nodes that are
         # handled by a corresponding DVM (only applied with `dvm_hosts_list`)
         # FIXME: new coming attribute `tags` would consider `dvm_id`
-        if dvm_hosts_list and tag is not None and tag not in self._tag_history:
+        if dvm_hosts_list and tag is not None:
             try:
                 tag = int(tag)
             except (TypeError, ValueError):
@@ -394,7 +394,8 @@ class Continuous(AgentSchedulingComponent):
             else:
                 if len(dvm_hosts_list) <= tag:
                     raise ValueError('dvm_id (%s) out of range' % tag)
-                self._tag_history[tag] = dvm_hosts_list[tag]
+                if tag not in self._tag_history:
+                    self._tag_history[tag] = dvm_hosts_list[tag]
         unit_dvm_id = None
         # - PRRTE related - end -
 
@@ -405,8 +406,11 @@ class Continuous(AgentSchedulingComponent):
         # start the search
         for node in self._iterate_nodes():
 
-          # node_uid  = node['uid']
-            node_name = node['name']
+            if dvm_hosts_list:
+                # node name is used in case of DVM only
+                node_label = node['name']
+            else:
+                node_label = node['uid']
 
           # self._log.debug('next %s : %s', node_uid, node_name)
           # self._log.debug('req1: %s = %s + %s', req_slots, rem_slots,
@@ -420,7 +424,7 @@ class Continuous(AgentSchedulingComponent):
             # used for this node - else continue to the next node.
             node_dvm_id = None  # get dvm_id for the node (if applicable)
             if tag is not None and tag in self._tag_history:
-                if node_name not in self._tag_history[tag]:
+                if node_label not in self._tag_history[tag]:
                     continue
             # - PRRTE related - start -
             elif dvm_hosts_list:
@@ -429,7 +433,7 @@ class Continuous(AgentSchedulingComponent):
                 #        more nodes than the amount available per DVM
                 _skip_node = True
                 for dvm_id, dvm_hosts in enumerate(dvm_hosts_list):
-                    if node_name in dvm_hosts:
+                    if node_label in dvm_hosts:
                         if unit_dvm_id is None or unit_dvm_id == dvm_id:
                             node_dvm_id = dvm_id  # save to use later
                             _skip_node = False
@@ -519,7 +523,7 @@ class Continuous(AgentSchedulingComponent):
         # allocation worked!  If the unit was tagged, store the node IDs for
         # this tag, so that later units can reuse that information
         if not dvm_hosts_list and tag is not None:
-            self._tag_history[tag] = [node['name'] for node in slots['nodes']]
+            self._tag_history[tag] = [node['uid'] for node in slots['nodes']]
 
         # this should be nicely filled out now - return
         return slots

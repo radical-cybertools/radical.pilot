@@ -223,6 +223,8 @@ class PRTE(LaunchMethod):
                    'dvm_hosts'   : dvm_hosts_list,
                    'version_info': prte_info,
                    'cvd_id_mode' : 'physical'}
+
+        # extra time to allow the DVM(s) to stabilize
         time.sleep(10)
 
         # we need to inform the actual LaunchMethod instance about the prte URI.
