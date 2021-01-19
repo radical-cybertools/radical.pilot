@@ -84,15 +84,15 @@ if __name__ == '__main__':
 
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.ComputeUnitDescription()
-            cud.pre_exec         = ['import math']
-            cud.executable       = 'math.exp'
-            cud.arguments        = [i]
-            cud.gpu_processes    = 0
-            cud.cpu_processes    = 1
-            cud.cpu_threads      = 1
-            cud.cpu_process_type = rp.FUNC
-            cuds.append(cud)
+            td = rp.TaskDescription()
+            td.pre_exec         = ['import math']
+            td.executable       = 'math.exp'
+            td.arguments        = [i]
+            td.gpu_processes    = 0
+            td.cpu_processes    = 1
+            td.cpu_threads      = 1
+            td.cpu_process_type = rp.FUNC
+            tds.append(td)
             report.progress()
 
         report.progress_done()
@@ -107,8 +107,8 @@ if __name__ == '__main__':
         report.header('gather results')
         tmgr.wait_tasks()
 
-        for unit in (units[-10:]):
-            if unit.state == rp.DONE:
+        for task in (tasks[-10:]):
+            if task.state == rp.DONE:
                 print('\t+ %s: %-10s: %10s: %s'
                      % (task.uid, task.state, task.pilot, task.stdout))
             else:
