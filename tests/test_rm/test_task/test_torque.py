@@ -10,7 +10,7 @@ import radical.utils as ru
 
 from radical.pilot.agent.resource_manager.torque import Torque
 
-base = os.path.dirname(__file__) + '/../'
+base = os.path.dirname(__file__) + '/../../'
 
 
 # ------------------------------------------------------------------------------
@@ -21,7 +21,7 @@ base = os.path.dirname(__file__) + '/../'
 def test_configure(mocked_init, mocked_raise_on, mocked_expand_hoslist):
 
     # Test 1 no config file
-    os.environ['PBS_NODEFILE']  = '%s/test_cases/rm/nodelist.torque' % base
+    os.environ['PBS_NODEFILE']  = '%s/unit_tests/test_cases/rm/nodelist.torque' % base
     os.environ['PBS_NCPUS']     = '2'
     os.environ['PBS_NUM_PPN']   = '4'
     os.environ['PBS_NUM_NODES'] = '2'
@@ -38,7 +38,7 @@ def test_configure(mocked_init, mocked_raise_on, mocked_expand_hoslist):
     assert component.lfs_per_node   == {'path': None, 'size': 0}
 
     # Test 2 config file
-    os.environ['PBS_NODEFILE']  = '%s/test_cases/rm/nodelist.torque' % base
+    os.environ['PBS_NODEFILE']  = '%s/unit_tests/test_cases/rm/nodelist.torque' % base
     os.environ['PBS_NCPUS']     = '2'
     os.environ['PBS_NUM_PPN']   = '4'
     os.environ['PBS_NUM_NODES'] = '2'
@@ -84,7 +84,7 @@ def test_configure_error(mocked_init, mocked_raise_on, mocked_expand_hoslist):
         component._configure()
 
     # Test 2 no config file check Number of CPUS
-    os.environ['PBS_NODEFILE'] = '%s/test_cases/rm/nodelist.torque' % base
+    os.environ['PBS_NODEFILE'] = '%s/unit_tests/test_cases/rm/nodelist.torque' % base
     if 'PBS_NCPUS' in os.environ:
         del os.environ['PBS_NCPUS']
 
@@ -102,7 +102,7 @@ def test_configure_error(mocked_init, mocked_raise_on, mocked_expand_hoslist):
         warnings.warn("PBS_NCPUS not set!", RuntimeWarning)
 
     # Test 3 no config file check Number of Processes per Node
-    os.environ['PBS_NODEFILE'] = '%s/test_cases/rm/nodelist.torque' % base
+    os.environ['PBS_NODEFILE'] = '%s/unit_tests/test_cases/rm/nodelist.torque' % base
     os.environ['PBS_NCPUS']    = '2'
 
     if 'PBS_NUM_PPN' in os.environ:
@@ -122,7 +122,7 @@ def test_configure_error(mocked_init, mocked_raise_on, mocked_expand_hoslist):
         warnings.warn("PBS_PPN not set!", RuntimeWarning)
 
     # Test 4 no config file check Number of Nodes
-    os.environ['PBS_NODEFILE'] = '%s/test_cases/rm/nodelist.torque' % base
+    os.environ['PBS_NODEFILE'] = '%s/unit_tests/test_cases/rm/nodelist.torque' % base
     os.environ['PBS_NCPUS']    = '2'
     os.environ['PBS_NUM_PPN']  = '4'
 
