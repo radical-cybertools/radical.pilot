@@ -1370,7 +1370,7 @@ def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
 
 # ------------------------------------------------------------------------------
 #
-def get_resource_timelines(session, task, transitions):
+def get_resource_timelines(task, transitions):
     '''
     For each specific task, return a set of tuples of the form:
 
