@@ -23,7 +23,7 @@ import radical.pilot as rp
 
 # ------------------------------------------------------------------------------
 #
-class MyMaster(rp.task_overlay.Master):
+class MyMaster(rp.raptor.Master):
     '''
     This class provides the communication setup for the task overlay: it will
     set up the request / response communication queues and provide the endpoint
@@ -36,7 +36,7 @@ class MyMaster(rp.task_overlay.Master):
 
         # initialize the task overlay base class.  That base class will ensure
         # proper communication channels to the pilot agent.
-        rp.task_overlay.Master.__init__(self, cfg=cfg)
+        rp.raptor.Master.__init__(self, cfg=cfg)
 
 
     # --------------------------------------------------------------------------
@@ -142,7 +142,7 @@ if __name__ == '__main__':
     # a work queue.
   # master.wait(count=nworkers)
 
-    master.run()
+    master.start()
 
     # simply terminate
     # FIXME: clean up workers

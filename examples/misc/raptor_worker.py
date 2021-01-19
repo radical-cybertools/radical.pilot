@@ -4,12 +4,11 @@ import sys
 import time
 
 import radical.pilot as rp
-import radical.pilot.task_overlay as rpt
 
 
 # ------------------------------------------------------------------------------
 #
-class MyWorker(rpt.Worker):
+class MyWorker(rp.raptor.Worker):
     '''
     This class provides the required functionality to execute work requests.
     In this simple example, the worker only implements a single call: `hello`.
@@ -20,7 +19,7 @@ class MyWorker(rpt.Worker):
     #
     def __init__(self, cfg):
 
-        rp.task_overlay.Worker.__init__(self, cfg)
+        rp.raptor.Worker.__init__(self, cfg)
 
         self.register_call('hello', self.hello)
 

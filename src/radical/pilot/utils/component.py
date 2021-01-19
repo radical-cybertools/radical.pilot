@@ -502,11 +502,11 @@ class Component(object):
         #        should really be derived from rp module inspection via an
         #        `ru.PluginManager`.
         #
-        from radical.pilot import worker       as rpw
-        from radical.pilot import pmgr         as rppm
-        from radical.pilot import umgr         as rpum
-        from radical.pilot import agent        as rpa
-        from radical.pilot import task_overlay as rpt
+        from radical.pilot import worker as rpw
+        from radical.pilot import pmgr   as rppm
+        from radical.pilot import umgr   as rpum
+        from radical.pilot import agent  as rpa
+        from radical.pilot import raptor as rpt
       # from radical.pilot import constants as rpc
 
         comp = {
