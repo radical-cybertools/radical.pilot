@@ -114,8 +114,8 @@ class PRTE(LaunchMethod):
         for dvm_id in range(dvm_count):
             node_list = rm.node_list[dvm_id       * nodes_per_dvm:
                                      (dvm_id + 1) * nodes_per_dvm]
-            # keep node names in `dvm_hosts_list`
-            dvm_hosts_list.append([node[0] for node in node_list])
+            # keep node uids in `dvm_hosts_list`
+            dvm_hosts_list.append([node[1] for node in node_list])
 
             vm_size   = len(node_list)
             furi      = '%s/prrte.%s.uri'   % (os.getcwd(), dvm_id)
@@ -336,9 +336,9 @@ class PRTE(LaunchMethod):
             #    map_flag += ' -host %s:%s' % (hosts[0], n_procs)
 
             # scheduler makes sure that all hosts are from the same DVM
-            _host_0 = list(set(hosts))[0]
+            _host_uid = slots['nodes'][0]['uid']
             for _dvm_id, _dvm_hosts in enumerate(slots['lm_info']['dvm_hosts']):
-                if _host_0 in _dvm_hosts:
+                if _host_uid in _dvm_hosts:
                     dvm_id = _dvm_id
                     break
 

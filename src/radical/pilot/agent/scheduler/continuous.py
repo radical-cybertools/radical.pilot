@@ -406,11 +406,8 @@ class Continuous(AgentSchedulingComponent):
         # start the search
         for node in self._iterate_nodes():
 
-            if dvm_hosts_list:
-                # node name is used in case of DVM only
-                node_label = node['name']
-            else:
-                node_label = node['uid']
+            node_uid  = node['uid']
+          # node_name = node['name']
 
           # self._log.debug('next %s : %s', node_uid, node_name)
           # self._log.debug('req1: %s = %s + %s', req_slots, rem_slots,
@@ -424,7 +421,7 @@ class Continuous(AgentSchedulingComponent):
             # used for this node - else continue to the next node.
             node_dvm_id = None  # get dvm_id for the node (if applicable)
             if tag is not None and tag in self._tag_history:
-                if node_label not in self._tag_history[tag]:
+                if node_uid not in self._tag_history[tag]:
                     continue
             # - PRRTE related - start -
             elif dvm_hosts_list:
@@ -433,7 +430,7 @@ class Continuous(AgentSchedulingComponent):
                 #        more nodes than the amount available per DVM
                 _skip_node = True
                 for dvm_id, dvm_hosts in enumerate(dvm_hosts_list):
-                    if node_label in dvm_hosts:
+                    if node_uid in dvm_hosts:
                         if unit_dvm_id is None or unit_dvm_id == dvm_id:
                             node_dvm_id = dvm_id  # save to use later
                             _skip_node = False
