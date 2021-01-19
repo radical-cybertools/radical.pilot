@@ -1,6 +1,6 @@
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2016-2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import logging
 import math
@@ -35,6 +35,13 @@ class PRTE(LaunchMethod):
         self.env_removables.extend(['OMPI_', 'OPAL_', 'PMIX_'])
 
         self._verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_cmd(self):
+
+        return "echo $PMIX_RANK"
 
 
     # --------------------------------------------------------------------------
