@@ -69,7 +69,7 @@ class TaskDescription(ru.Description):
 
     .. data:: uid
 
-       A unique ID for the compute unit (`string`).  This attribute is optional,
+       A unique ID for the task (`string`).  This attribute is optional,
        a unique ID will be assigned by RP if the field is not set.
 
        default: `None`
@@ -77,8 +77,8 @@ class TaskDescription(ru.Description):
 
     .. data:: name
 
-       A descriptive name for the compute unit (`string`).  This attribute can
-       be used to map individual units back to application level workloads.
+       A descriptive name for the task (`string`).  This attribute can
+       be used to map individual tasks back to application level workloads.
 
        default: `None`
 

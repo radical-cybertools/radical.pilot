@@ -112,7 +112,7 @@ class Pilot(object):
         self._client_sandbox   = self._session._get_client_sandbox()
 
         # contexts for staging url expansion
-        # NOTE: no unit sandboxes defined!
+        # NOTE: no task sandboxes defined!
         self._rem_ctx = {'pwd'     : self._pilot_sandbox,
                          'client'  : self._client_sandbox,
                          'pilot'   : self._pilot_sandbox,

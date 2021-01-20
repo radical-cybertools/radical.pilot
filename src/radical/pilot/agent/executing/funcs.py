@@ -196,9 +196,9 @@ class FUNCS(AgentExecutingComponent) :
 
         self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        for unit in units:
-            assert(unit['description']['cpu_process_type'] == 'FUNC')
-            self._req_queue.put(unit)
+        for task in tasks:
+            assert(task['description']['cpu_process_type'] == 'FUNC')
+            self._req_queue.put(task)
 
 
     # --------------------------------------------------------------------------
@@ -207,8 +207,8 @@ class FUNCS(AgentExecutingComponent) :
 
         while not self._terminate.is_set():
 
-            # pull units from "funcs_out_queue"
-            units = self._res_queue.get_nowait(1000)
+            # pull tasks from "funcs_out_queue"
+            tasks = self._res_queue.get_nowait(1000)
 
             if tasks:
 
