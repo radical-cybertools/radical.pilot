@@ -580,10 +580,20 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def run(self):
+    def start(self):
+
+        # note that this overwrites `Component.start()` - this worker component
+        # is not using the registered input channels, but listens to it's own
+        # set of channels in `_request_cb`.
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def join(self):
 
         while not self._term.is_set():
-            time.sleep(1)
+            time.sleep(1.0)
 
 
 # ------------------------------------------------------------------------------

@@ -143,7 +143,6 @@ class Master(rpu.Component):
             self._log.debug('register %s', uid)
 
             with self._lock:
-                self._workers[uid] = dict()
                 self._workers[uid]['info']  = info
                 self._workers[uid]['state'] = 'ACTIVE'
                 self._log.debug('info: %s', info)
@@ -217,6 +216,10 @@ class Master(rpu.Component):
         # insert the task
         self.advance(task, publish=False, push=True)
 
+        with self._lock:
+            self._workers[uid] = dict()
+            self._workers[uid]['state'] = 'NEW'
+
 
     # --------------------------------------------------------------------------
     #
@@ -225,6 +228,9 @@ class Master(rpu.Component):
         wait for `n` workers, *or* for workers with given UID, *or* for all
         workers to become available, then return.
         '''
+
+        if not count and not uids:
+            uids = list(self._workers.keys())
 
         if count:
             self._log.debug('wait for %d workers', count)
@@ -298,10 +304,22 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def join(self):
+
+        if self._thread:
+            self._thread.join()
+
+
+    # --------------------------------------------------------------------------
+    #
     def _run(self):
 
         # get work from the overloading implementation
-        self.create_work_items()
+        try:
+            self.create_work_items()
+        except Exception as e:
+            self._log.exception('failed to create work')
+            self._term.set()
 
         # wait for the submitted requests to complete
         while not self._term.is_set():
@@ -313,8 +331,8 @@ class Master(rpu.Component):
             completed = [s for s in states if s in ['DONE', 'FAILED']]
 
             self._log.debug('%d =?= %d', len(completed), len(states))
-          # if len(completed) == len(states):
-          #     break
+            if len(completed) == len(states):
+                break
 
             # FIXME: this should be replaced by an async state check.  Maybe
             #        subscrive to state updates on the update pubsub?

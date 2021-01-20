@@ -55,10 +55,9 @@ class MyMaster(rp.raptor.Master):
         while idx < total:
 
             uid  = 'request.%06d' % idx
-            item = {'uid'  :   uid,
-                    'mode' :  'call',
-                    'cores':  1,
-                  # 'gpus' :  1,
+            item = {'uid'  : uid,
+                    'mode' : 'call',
+                    'cores': 1,
                     'data' : {'method': 'hello',
                               'kwargs': {'count': idx,
                                          'uid'  : uid}}}
@@ -108,18 +107,6 @@ if __name__ == '__main__':
 
     # add data staging to worker: link input_dir, impress_dir, and oe_license
     descr['arguments']     = [os.path.basename(worker)]
-  # descr['input_staging'] = [
-  #                            {'source': '%s/%s' % (pwd, worker),
-  #                             'target': worker,
-  #                             'action': rp.COPY,
-  #                             'flags' : rp.DEFAULT_FLAGS,
-  #                             'uid'   : 'sd.0'},
-  #                            {'source': '%s/%s' % (pwd, cfg_fname),
-  #                             'target': cfg_fname,
-  #                             'action': rp.COPY,
-  #                             'flags' : rp.DEFAULT_FLAGS,
-  #                             'uid'   : 'sd.1'},
-  #                           ]
 
     # one node is used by master.  Alternatively (and probably better), we could
     # reduce one of the worker sizes by one core.  But it somewhat depends on
@@ -134,8 +121,7 @@ if __name__ == '__main__':
     # those workers and execute them.  Insert one smaller worker (see above)
     # NOTE: this assumes a certain worker size / layout
     print('workers: %d' % n_workers)
-    master.submit(descr=descr, count=n_workers, cores=cpn,     gpus=gpn)
-  # master.submit(descr=descr, count=1,         cores=cpn - 1, gpus=gpn)
+    master.submit(descr=descr, count=n_workers, cores=cpn, gpus=gpn)
 
     # wait until `m` of those workers are up
     # This is optional, work requests can be submitted before and will wait in
@@ -143,6 +129,7 @@ if __name__ == '__main__':
   # master.wait(count=nworkers)
 
     master.start()
+    master.join()
 
     # simply terminate
     # FIXME: clean up workers

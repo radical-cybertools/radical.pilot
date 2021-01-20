@@ -21,8 +21,6 @@ class MyWorker(rp.raptor.Worker):
 
         rp.raptor.Worker.__init__(self, cfg)
 
-        self.register_call('hello', self.hello)
-
 
     # --------------------------------------------------------------------------
     #
@@ -31,16 +29,16 @@ class MyWorker(rp.raptor.Worker):
         important work
         '''
 
-        self._prof.prof('dock_start', uid=uid)
+        self._prof.prof('app_start', uid=uid)
 
         out = 'hello %5d @ %.2f [%s]' % (count, time.time(), self._uid)
-      # time.sleep(0.1)
+        time.sleep(2)
 
-        self._prof.prof('dock_io_start', uid=uid)
+        self._prof.prof('app_io_start', uid=uid)
         self._log.debug(out)
-        self._prof.prof('dock_io_stop', uid=uid)
+        self._prof.prof('app_io_stop', uid=uid)
 
-        self._prof.prof('dock_stop', uid=uid)
+        self._prof.prof('app_stop', uid=uid)
         return out
 
 
@@ -51,7 +49,8 @@ if __name__ == '__main__':
     # the `info` dict is passed to the worker as config file.
     # Create the worker class and run it's work loop.
     worker = MyWorker(sys.argv[1])
-    worker.run()
+    worker.start()
+    worker.join()
 
 
 # ------------------------------------------------------------------------------
