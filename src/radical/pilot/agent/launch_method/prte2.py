@@ -1,9 +1,8 @@
 
-__author__    = 'RADICAL-Cybertools Team'
-__email__     = 'info@radical-cybertools.org'
 __copyright__ = 'Copyright 2020-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
+import math
 import os
 import signal
 import time
@@ -15,7 +14,7 @@ import radical.utils as ru
 
 from .base import LaunchMethod
 
-PTL_BASE_MAX_MSG_SIZE = 1024 * 1024 * 1024 * 1
+PTL_MAX_MSG_SIZE = 1024 * 1024 * 1024 * 1
 
 
 # ------------------------------------------------------------------------------
@@ -42,26 +41,60 @@ class PRTE2(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
+    def get_rank_cmd(self):
+
+        return "echo $PMIX_RANK"
+
+    # --------------------------------------------------------------------------
+    #
     def _configure(self):
 
         if ru.which('prun'):
             self.launch_command = 'prun'
         else:
-            raise Exception('prun not found')
+            raise Exception('prun command not found')
+
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod
+    def _watch_dvm(dvm_process, dvm_id, log):
+
+        log.info('prte-%s watcher started', dvm_id)
+
+        retval = dvm_process.poll()
+        while retval is None:
+            line = dvm_process.stdout.readline().strip()
+            if line:
+                log.debug('prte-%s output: %s', dvm_id, line)
+            else:
+                time.sleep(1.)
+
+        if retval != 0:
+            # send a kill signal to the main thread.
+            # We know that Python and threading are likely not to play well
+            # with signals - but this is an exceptional case, and not part
+            # of the standard termination sequence.  If the signal is
+            # swallowed, the next `prun` call will trigger
+            # termination anyway.
+            os.kill(os.getpid(), signal.SIGKILL)
+            raise RuntimeError('PRTE DVM died (dvm_id=%s)' % dvm_id)
+
+        log.info('prte-%s watcher stopped (%d)', dvm_id, dvm_process.returncode)
 
     # --------------------------------------------------------------------------
     #
     @classmethod
     def rm_config_hook(cls, name, cfg, rm, log, profiler):
 
-        prte = ru.which('prte')
-        if not prte:
-            raise Exception('prte not found')
+        prte_cmd = ru.which('prte')
+        if not prte_cmd:
+            raise Exception('prte command not found')
 
         # get OpenRTE/PRTE version
-        prte_info = {}
         out, _, _ = ru.sh_callout('prte_info | grep "RTE"', shell=True)
+        prte_info = {}
         for line in out.split('\n'):
+
             line = line.strip()
 
             if not prte_info.get('name'):
@@ -83,121 +116,124 @@ class PRTE2(LaunchMethod):
         else:
             log.info('version of OpenRTE/PRTE not determined')
 
-        # write hosts file
-        furi    = '%s/prrte.uri'   % os.getcwd()
-        fhosts  = '%s/prrte.hosts' % os.getcwd()
-        vm_size = len(rm.node_list)
+        # get `dvm_count` from resource config
+        # FIXME: another option is to introduce `nodes_per_dvm` in config
+        #        dvm_count = math.ceil(len(rm.node_list) / nodes_per_dvm)
+        dvm_count      = cfg['resource_cfg'].get('dvm_count') or 1
+        nodes_per_dvm  = math.ceil(len(rm.node_list) / dvm_count)
 
-        with open(fhosts, 'w') as f:
-            for node in rm.node_list:
-                f.write('%s slots=%d\n' % (node[0], rm.cores_per_node * rm.smt))
+        dvm_uri_list   = []
+        dvm_hosts_list = []
 
-        prte_prefix = os.environ.get('UMS_OMPIX_PRRTE_DIR') or \
-                      os.environ.get('PRRTE_DIR', '')
+        # go through every dvm instance
+        for dvm_id in range(dvm_count):
 
-        prte += ' --prefix %s'     % prte_prefix
-        prte += ' --report-uri %s' % furi
-        prte += ' --hostfile %s'   % fhosts
+            node_list = rm.node_list[dvm_id * nodes_per_dvm:
+                                     (dvm_id + 1) * nodes_per_dvm]
+            # keep node uids per dvm (`dvm_hosts_list = [[...], [...]]`)
+            dvm_hosts_list.append([node[1] for node in node_list])
 
-        # large tasks imply large message sizes and we need to account for that
-        # FIXME: we should derive the message size from DVM size - smaller DVMs
-        #        will never need large messages, as they can't run large tasks
+            furi    = '%s/prrte.%s.uri'   % (os.getcwd(), dvm_id)
+            fhosts  = '%s/prrte.%s.hosts' % (os.getcwd(), dvm_id)
+            vm_size = len(node_list)
 
-        prte += ' --prtemca ptl_base_max_msg_size %d' % PTL_BASE_MAX_MSG_SIZE
-        prte += ' --prtemca routed_radix 128'
-        prte += ' --prtemca plm_rsh_no_tree_spawn 1'
-        prte += ' --prtemca plm_rsh_num_concurrent %d' % vm_size
+            # write hosts file
+            with open(fhosts, 'w') as fout:
+                num_slots = rm.cores_per_node * rm.smt
+                for node in node_list:
+                    fout.write('%s slots=%d\n' % (node[0], num_slots))
 
-        # to select a set of hardware threads that should be used for
-        # processing the following option should set hwthread IDs:
-        #   --prtemca hwloc_default_cpu_list "0-83,88-171"
+            prte_prefix = os.environ.get('UMS_OMPIX_PRRTE_DIR') or \
+                          os.environ.get('PRRTE_DIR', '')
 
-        # Use (g)stdbuf to disable buffering.  We need this to get the
-        # "DVM ready" message to ensure DVM startup completion
-        #
-        # The command seems to be generally available on Cray's,
-        # if not, we can code some home-cooked pty stuff (TODO)
-        stdbuf_cmd = ru.which(['stdbuf', 'gstdbuf'])
-        if not stdbuf_cmd:
-            raise Exception('(g)stdbuf not found')
-        stdbuf_arg = '-oL'
+            prte  = '%s'               % prte_cmd
+            prte += ' --prefix %s'     % prte_prefix
+            prte += ' --report-uri %s' % furi
+            prte += ' --hostfile %s'   % fhosts
 
-        # base command = (g)stdbuf <args> + prte + prte_args + debug_args
-        cmd = '%s %s %s ' % (stdbuf_cmd, stdbuf_arg, prte)
+            # large tasks imply large message sizes, we need to account for that
+            # FIXME: need to derive the message size from DVM size - smaller
+            #        DVMs will never need large messages, as they can't run
+            #        large tasks
+            prte += ' --prtemca ptl_base_max_msg_size %d'  % PTL_MAX_MSG_SIZE
+            prte += ' --prtemca routed_radix %d'           % vm_size
+            # 2 tweaks on Summit, which should not be needed in the long run:
+            # - ensure 1 ssh per dvm
+            prte += ' --prtemca plm_rsh_num_concurrent %d' % vm_size
+            # - avoid 64 node limit (ssh connection limit)
+            prte += ' --prtemca plm_rsh_no_tree_spawn 1'
 
-        # additional (debug) arguments to prte
-        verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
-        if verbose:
-            cmd += ' '.join(['--prtemca plm_base_verbose 5'])
+            # to select a set of hardware threads that should be used for
+            # processing the following option should set hwthread IDs:
+            #   --prtemca hwloc_default_cpu_list "0-83,88-171"
 
-        cmd = cmd.strip()
+            # Use (g)stdbuf to disable buffering.  We need this to get the
+            # "DVM ready" message to ensure DVM startup completion
+            #
+            # The command seems to be generally available on Cray's,
+            # if not, we can code some home-cooked pty stuff (TODO)
+            stdbuf_cmd = ru.which(['stdbuf', 'gstdbuf'])
+            if not stdbuf_cmd:
+                raise Exception('(g)stdbuf command not found')
+            stdbuf_arg = '-oL'
 
-        log.info('start prte on %d nodes [%s]', vm_size, cmd)
-        profiler.prof(event='dvm_start', uid=cfg['pid'])
+            # base command = (g)stdbuf <args> + prte <args>
+            cmd = '%s %s %s ' % (stdbuf_cmd, stdbuf_arg, prte)
 
-        dvm_process = mp.Popen(cmd.split(), stdout=mp.PIPE, stderr=mp.STDOUT)
+            # additional (debug) arguments to prte
+            verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
+            if verbose:
+                cmd += ' '.join(['--prtemca plm_base_verbose 5'])
 
-        # ----------------------------------------------------------------------
-        def _watch_dvm():
+            cmd = cmd.strip()
 
-            log.info('starting prte watcher')
+            log.info('start prte-%s on %d nodes [%s]', dvm_id, vm_size, cmd)
+            profiler.prof(event='dvm_start',
+                          uid=cfg['pid'],
+                          msg='dvm_id=%s' % dvm_id)
 
-            retval = dvm_process.poll()
-            while retval is None:
-                line = dvm_process.stdout.readline().strip()
-                if line:
-                    log.debug('prte output: %s', line)
-                else:
-                    time.sleep(1.0)
+            dvm_uri     = None
+            dvm_process = mp.Popen(cmd.split(),
+                                   stdout=mp.PIPE,
+                                   stderr=mp.STDOUT)
+            dvm_watcher = mt.Thread(target=cls._watch_dvm,
+                                    args=[dvm_process, dvm_id, log])
+            dvm_watcher.daemon = True
+            dvm_watcher.start()
 
-            if retval != 0:
-                # send a kill signal to the main thread.
-                # We know that Python and threading are likely not to play well
-                # with signals - but this is an exceptional case, and not part
-                # of the standard termination sequence.  If the signal is
-                # swallowed, the next `prun` call will trigger
-                # termination anyway.
-                os.kill(os.getpid(), signal.SIGKILL)
-                raise RuntimeError('PRTE DVM died')
+            for _ in range(100):
+                time.sleep(.5)
 
-            log.info('prte stopped (%d)', dvm_process.returncode)
-        # ----------------------------------------------------------------------
+                try:
+                    with open(furi, 'r') as fin:
+                        for line in fin.readlines():
+                            if '://' in line:
+                                dvm_uri = line.strip()
+                                break
+                except Exception as e:
+                    log.debug('DVM check: uri file missing: %s...', str(e)[:24])
+                    time.sleep(.5)
 
-        dvm_watcher = mt.Thread(target=_watch_dvm)
-        dvm_watcher.daemon = True
-        dvm_watcher.start()
+                if dvm_uri:
+                    break
 
-        dvm_uri = None
-        for _ in range(100):
+            if not dvm_uri:
+                raise Exception('DVM URI not found')
 
-            time.sleep(0.5)
-            try:
-                with open(furi, 'r') as fin:
-                    for line in fin.readlines():
-                        if '://' in line:
-                            dvm_uri = line.strip()
-                            break
+            log.info('prte-%s startup successful: [%s]', dvm_id, dvm_uri)
+            profiler.prof(event='dvm_ok',
+                          uid=cfg['pid'],
+                          msg='dvm_id=%s' % dvm_id)
 
-            except Exception as e:
-                log.debug('DVM check - uri file missing: %s...', str(e)[:24])
-                time.sleep(0.5)
+            dvm_uri_list.append(dvm_uri)
 
-            if dvm_uri:
-                break
-
-        if not dvm_uri:
-            raise Exception('DVMURI not found')
-
-        log.info('prte startup successful: [%s]', dvm_uri)
-
-        # in some cases, the DVM seems to need some additional time to settle.
-        # FIXME: this should not be needed
-        time.sleep(10)
-        profiler.prof(event='dvm_ok', uid=cfg['pid'])
-
-        lm_info = {'dvm_uri'     : dvm_uri,
+        lm_info = {'dvm_uri'     : dvm_uri_list,
+                   'dvm_hosts'   : dvm_hosts_list,
                    'version_info': prte_info,
                    'cvd_id_mode' : 'physical'}
+
+        # extra time to allow the DVM(s) to stabilize
+        time.sleep(10)
 
         # we need to inform the actual LaunchMethod instance about the prte URI.
         # So we pass it back to the ResourceManager which will keep it in an
@@ -213,28 +249,32 @@ class PRTE2(LaunchMethod):
         This hook is symmetric to the hook `rm_config_hook`, it is called
         during shutdown sequence, for the sake of freeing allocated resources.
         """
-        if lm_info.get('dvm_uri'):
+        cmd = ru.which('pterm')
+        if not cmd:
+            raise Exception('termination command not found')
+
+        for dvm_id, dvm_uri in enumerate(lm_info.get('dvm_uri', [])):
             try:
-                log.info('terminating prte')
-                pcmd = ru.which('pterm')
-                if not pcmd:
-                    raise Exception('termination command not found')
-                out, err, ret = ru.sh_callout('%s --dvm-uri "%s"' %
-                                              (pcmd, lm_info['dvm_uri']))
-                log.debug('termination status: %s | %s | %s', out, err, ret)
-                profiler.prof(event='dvm_stop', uid=cfg['pid'])
+                log.info('terminating prte-%s (%s)', dvm_id, dvm_uri)
+                _, err, _ = ru.sh_callout('%s --dvm-uri "%s"' % (cmd, dvm_uri))
+                log.debug('termination status: %s', err.strip('\n') or 'None')
+                profiler.prof(event='dvm_stop',
+                              uid=cfg['pid'],
+                              msg='dvm_id=%s' % dvm_id)
 
             except Exception as e:
                 # use the same event name as for runtime failures - those are
                 # not distinguishable at the moment from termination failures
-                profiler.prof(event='dvm_fail', uid=cfg['pid'], msg=e)
-                log.exception('prte termination failed')
+                log.debug('prte-%s termination failed (%s)', dvm_id, dvm_uri)
+                profiler.prof(event='dvm_fail',
+                              uid=cfg['pid'],
+                              msg='dvm_id=%s | error: %s' % (dvm_id, e))
 
     # --------------------------------------------------------------------------
     #
     def construct_command(self, cu, launch_script_hop):
 
-        time.sleep(0.1)
+        time.sleep(.1)
 
         slots     = cu['slots']
         cud       = cu['description']
@@ -243,7 +283,9 @@ class PRTE2(LaunchMethod):
         task_args = cud.get('arguments') or []
 
         n_procs   = cud.get('cpu_processes') or 1
-        n_threads = cud.get('cpu_threads') or 1
+        n_threads = cud.get('cpu_threads')   or 1
+
+        self._log.debug('prep %s', cu['uid'])
 
         if not slots.get('lm_info'):
             raise RuntimeError('lm_info not set (%s): %s' % (self.name, slots))
@@ -251,14 +293,13 @@ class PRTE2(LaunchMethod):
         if not slots['lm_info'].get('dvm_uri'):
             raise RuntimeError('dvm_uri not set (%s): %s' % (self.name, slots))
 
-        dvm_uri = '--dvm-uri "%s"' % slots['lm_info']['dvm_uri']
-
-        flags  = ' --np %d' % n_procs
+        flags  = ' --np %d'                               % n_procs
         flags += ' --map-by hwthread:PE=%d:OVERSUBSCRIBE' % n_threads
         flags += ' --bind-to hwthread:overload-allowed'
         if self._verbose:
             flags += ':REPORT'
 
+        dvm_id = 0  # default DVM
         if 'nodes' not in slots:
             # this task is unscheduled - we leave it to PRRTE/PMI-X
             # to correctly place the task
@@ -269,12 +310,21 @@ class PRTE2(LaunchMethod):
             hosts = [node['name'] for node in slots['nodes']]
             flags += ' --host %s:%s' % (hosts[0], len(hosts))
 
-        flags += ' --prtemca ptl_base_max_msg_size %d' % PTL_BASE_MAX_MSG_SIZE
+            # scheduler makes sure that all hosts are from the same DVM
+            _host_uid = slots['nodes'][0]['uid']
+            for _dvm_id, _dvm_hosts in enumerate(slots['lm_info']['dvm_hosts']):
+                if _host_uid in _dvm_hosts:
+                    dvm_id = _dvm_id
+                    break
+
+        flags += ' --prtemca ptl_base_max_msg_size %d' % PTL_MAX_MSG_SIZE
         flags += ' --verbose'  # needed to get prte profile events
 
         task_args_str = self._create_arg_string(task_args)
         if task_args_str:
             task_exec += ' %s' % task_args_str
+
+        dvm_uri = '--dvm-uri "%s"' % slots['lm_info']['dvm_uri'][dvm_id]
 
         cmd = '%s %s %s %s' % (self.launch_command, dvm_uri, flags, task_exec)
 
