@@ -17,7 +17,11 @@ cd $SLURM_SUBMIT_DIR
 rm -rf radical.pilot testing *.log
 git clone --branch devel https://github.com/radical-cybertools/radical.pilot.git
 
-module load python3conda/3.8.5
+module reset
+module load gcc
+module load mpi/gcc_openmpi
+module load slurm
+module load anaconda3
 
 conda create -p testing python=3.7 pytest PyGithub -y -c conda-forge
 

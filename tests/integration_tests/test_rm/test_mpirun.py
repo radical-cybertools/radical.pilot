@@ -6,7 +6,7 @@ import radical.utils as ru
 
 from unittest import mock, TestCase
 
-from radical.pilot.agent.launch_method.ssh import SSH
+from radical.pilot.agent.launch_method.mpirun import MPIRun
 
 
 # ------------------------------------------------------------------------------
@@ -26,16 +26,17 @@ class TestTask(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    @mock.patch.object(SSH, '__init__',   return_value=None)
+    @mock.patch.object(MPIRun, '__init__',   return_value=None)
     def test_configure(self, mocked_init):
         cfg = self.setUp()
-        component = SSH(name=None, cfg=None, session=None)
+        component = MPIRun(name=None, cfg=None, session=None)
         component._log = ru.Logger('dummy')
         component._cfg = {}
         component.env_removables = []
         component._configure()
-        command = cfg['ssh_path'] + ' -o StrictHostKeyChecking=no -o ControlMaster=auto'
-        self.assertEqual(component.launch_command, command)
+        self.assertEqual(component.launch_command, cfg['mpirun_path'])
+        self.assertEqual(component.mpi_flavor, cfg['mpi_flavor'])
+        self.assertEqual(component.mpi_version, cfg['mpi_version'])
     # --------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
