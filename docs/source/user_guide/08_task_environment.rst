@@ -21,7 +21,7 @@ description:
     cud.environment = {'TEST' : 'jabberwocky'}
 
 
-This makes the environment variable `TEST` available during Task execution.
+This makes the environment variable `TEST` available during task execution.
 Some other variables, such as the `RP_TASK_ID` above, are set by RP internally
 and are here used for demonstration.
 
