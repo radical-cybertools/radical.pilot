@@ -17,8 +17,7 @@ resources.
           RADICAL-Pilot and configured access to the resources on which to
           execute the code examples (see chapter :ref:`chapter_installation`).
 
-.. note:: We colloquially refer to RADICAL-Pilot as `RP`, ``Pilot`` as
-          `pilot`, and ``Task`` as `task`.
+.. note:: We colloquially refer to RADICAL-Pilot as `RP`.
 
 Download the basic code example :download:`00_getting_started.py
 <../../../examples/00_getting_started.py>`.  The text below explains the most
