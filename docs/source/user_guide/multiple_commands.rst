@@ -5,14 +5,14 @@ Executing Multiple Commands in a Single Task
 ***************************************************
 
 There are scenarios in which you might want to execute more than one command in
-a  Task. For example, you might have to create and change into a
+a task. For example, you might have to create and change into a
 directory or load a module or a specific version of a software package before
 you call your *main* executable.
 
 In RADICAL-Pilot this can be easily achieved by using ``/bin/bash`` as the 
 executable in the :class:`radical.pilot.TaskDescription` and either pass
 a shell script directly as a string argument or transfer a shell script file
-as part of the Task. The former works well for a small set of simple 
+as part of the task. The former works well for a small set of simple 
 commands, while the second works best for more complex scripts. 
 
 Using ``/bin/bash`` as Executable
