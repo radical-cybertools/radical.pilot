@@ -33,7 +33,7 @@ and change the code below accordging to the instructions in the comments.
 
 You will need to make the necessary changes to ``coupled_tasks.py`` as you did
 in the previous example.  The important difference between this file and the
-previous file is that there are three separate "USER DEFINED Task DESCRIPTION"
+previous file is that there are three separate "USER DEFINED TASK DESCRIPTION"
 sections - numbered 1-3. Again, these two sections will not require any
 modifications for the purposes of this tutorial. We will not review every
 variable again, but instead, review the relationship between the 3 task
