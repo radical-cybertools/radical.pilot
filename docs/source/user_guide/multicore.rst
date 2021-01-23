@@ -10,7 +10,7 @@ Multithreaded Applications
 MPI Applications
 ----------------
 
-To define an MPI Task, all you need to do is to set the ``cores`` and the 
+To define an MPI task, all you need to do is to set the ``cores`` and the 
 ``mpi`` arguments in the TaskDescription.
 
 .. code-block:: python
