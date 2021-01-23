@@ -37,7 +37,7 @@ if __name__ == '__main__':
     # fails, there is not much we can do anyways...
     session = rp.Session()
 
-    # all other pilot code is now tried/excepted.  If an exception is caught, we
+    # all other pilot code is now tried/excepted. If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
     # the whole RP stack down via a 'session.close()' call in the 'finally'
     # clause...
@@ -50,7 +50,7 @@ if __name__ == '__main__':
 
         report.header('submit pilots')
 
-        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
+        # Add a PilotManager. PilotManagers manage one or more pilots.
         pmgr = rp.PilotManager(session=session)
 
         # Define an [n]-core local pilot that runs for [x] minutes
@@ -72,11 +72,11 @@ if __name__ == '__main__':
 
         report.header('submit tasks')
 
-        # Register the Pilot in a TaskManager object.
+        # Register the pilot in a TaskManager object.
         tmgr = rp.TaskManager(session=session)
         tmgr.add_pilots(pilot)
 
-        # Create a workload of Tasks.
+        # Create a workload of tasks.
         # Each task runs '/bin/date'.
         n = 128  # number of tasks to run
         report.info('create %d task description(s)\n\t' % n)
@@ -84,7 +84,7 @@ if __name__ == '__main__':
         tds = list()
         for i in range(0, n):
 
-            # create a new Task description, and fill it.
+            # create a new task description, and fill it.
             # Here we don't use dict initialization.
             td = rp.TaskDescription()
             td.executable = '/bin/date'
@@ -93,9 +93,9 @@ if __name__ == '__main__':
 
         report.ok('>>ok\n')
 
-        # Submit the previously created Task descriptions to the
+        # Submit the previously created task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning Tasks to the Pilots.
+        # assigning tasks to the pilots.
         tasks = tmgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
