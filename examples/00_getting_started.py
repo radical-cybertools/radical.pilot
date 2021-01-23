@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
         report.header('submit pilots')
 
-        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
+        # Add a PilotManager. PilotManagers manage one or more pilots.
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
@@ -67,17 +67,17 @@ if __name__ == '__main__':
         n = 1024  # number of tasks to run
         report.header('submit %d tasks' % n)
 
-        # Register the Pilot in a TaskManager object.
+        # Register the pilot in a TaskManager object.
         tmgr.add_pilots(pilot)
 
-        # Create a workload of Tasks.
+        # Create a workload of tasks.
         # Each task runs '/bin/date'.
 
         report.progress_tgt(n, label='create')
         tds = list()
         for i in range(0, n):
 
-            # create a new Task description, and fill it.
+            # create a new task description, and fill it.
             # Here we don't use dict initialization.
             td = rp.TaskDescription()
             td.executable    = '/bin/date'
@@ -87,9 +87,9 @@ if __name__ == '__main__':
 
         report.progress_done()
 
-        # Submit the previously created Task descriptions to the
+        # Submit the previously created task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning Tasks to the Pilots.
+        # assigning tasks to the pilots.
         tmgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
