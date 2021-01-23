@@ -2,7 +2,7 @@
 .. _chapter_user_guide_11:
 
 **********************************
-Using containerized tasks
+Using Containerized Tasks
 **********************************
 
 The present document aims to be a walkthrough of how to create MPI applications 
