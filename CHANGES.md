@@ -4,6 +4,12 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
+1.5.11 Release                                                        2021-01-19
+--------------------------------------------------------------------------------
+
+  - cleanup pypi tarball
+
+
 1.5.10 Release                                                        2021-01-18
 --------------------------------------------------------------------------------
 
