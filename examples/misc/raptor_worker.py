@@ -2,6 +2,7 @@
 
 import sys
 import time
+import random
 
 import radical.pilot as rp
 
@@ -32,13 +33,13 @@ class MyWorker(rp.raptor.Worker):
         self._prof.prof('app_start', uid=uid)
 
         out = 'hello %5d @ %.2f [%s]' % (count, time.time(), self._uid)
-        time.sleep(2)
+        time.sleep(random.randint(1, 5))
 
-        self._prof.prof('app_io_start', uid=uid)
         self._log.debug(out)
-        self._prof.prof('app_io_stop', uid=uid)
 
         self._prof.prof('app_stop', uid=uid)
+      # self._prof.flush()
+
         return out
 
 

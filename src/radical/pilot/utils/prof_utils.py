@@ -693,6 +693,7 @@ def get_session_description(sid, src=None, dburl=None):
         tree[uid] = {'uid'        : uid,
                      'etype'      : 'pilot',
                      'cfg'        : pilot['cfg'],
+                     'resources'  : pilot['resources'],
                      'description': pilot['description'],
                      'has'        : ['unit'],
                      'children'   : list()
@@ -705,9 +706,13 @@ def get_session_description(sid, src=None, dburl=None):
         umgr = unit['umgr']
         tree[pid ]['children'].append(uid)
         tree[umgr]['children'].append(uid)
+        if 'resources' not in unit:
+            import pprint
+            pprint.pprint(unit)
         tree[uid] = {'uid'         : uid,
                      'etype'       : 'unit',
                      'cfg'         : unit,
+                     'resources'   : unit['resources'],
                      'description' : unit['description'],
                      'has'         : list(),
                      'children'    : list()

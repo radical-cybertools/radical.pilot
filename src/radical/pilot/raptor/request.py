@@ -10,18 +10,20 @@ class Request(object):
 
     # poor man's future
     # TODO: use proper future implementation
+    # FIXME: use ru.Description base class
 
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, req):
 
-        self._work   = req
-        self._state  = 'NEW'
-        self._result = None
+        self._req     = req
+        self._state   = 'NEW'
+        self._result  = None
 
-        if 'uid' in req: self._uid = req['uid']
-        else           : self._uid = ru.generate_id('request')
+        self._uid = self._req['uid']
+        if not self._uid:
+            self._uid = ru.generate_id('request')
 
 
     # --------------------------------------------------------------------------
@@ -38,7 +40,7 @@ class Request(object):
 
     @property
     def work(self):
-        return self._work
+        return self._req
 
 
     @property
@@ -53,11 +55,12 @@ class Request(object):
         produce the request message to be sent over the wire to the workers
         '''
 
-        return {'uid'   : self._uid,
-                'state' : self._state,
-                'mode'  : self._work['mode'],
-                'data'  : self._work['data'],
-                'result': self._result}
+        return {'uid'    : self._uid,
+                'state'  : self._state,
+                'timeout': self._req['timeout'],
+                'mode'   : self._req['mode'],
+                'data'   : self._req['data'],
+                'result' : self._result}
 
 
     # --------------------------------------------------------------------------

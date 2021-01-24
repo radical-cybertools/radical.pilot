@@ -55,12 +55,13 @@ class MyMaster(rp.raptor.Master):
         while idx < total:
 
             uid  = 'request.%06d' % idx
-            item = {'uid'  : uid,
-                    'mode' : 'call',
-                    'cores': 1,
-                    'data' : {'method': 'hello',
-                              'kwargs': {'count': idx,
-                                         'uid'  : uid}}}
+            item = {'uid'    : uid,
+                    'mode'   : 'call',
+                    'cores'  : 1,
+                    'timeout': self._cfg.workload.timeout,
+                    'data'   : {'method': 'hello',
+                                'kwargs': {'count': idx,
+                                           'uid'  : uid}}}
             self.request(item)
             idx += world_size
 
@@ -76,12 +77,6 @@ class MyMaster(rp.raptor.Master):
         for r in requests:
             sys.stdout.write('result_cb %s: %s [%s]\n' % (r.uid, r.state, r.result))
             sys.stdout.flush()
-
-          # count = r.work['data']['kwargs']['count']
-          # if count < 10:
-          #     new_requests.append({'mode': 'call',
-          #                          'data': {'method': 'hello',
-          #                                   'kwargs': {'count': count + 100}}})
 
         return new_requests
 
@@ -102,7 +97,7 @@ if __name__ == '__main__':
     cpn        = cfg.cpn
     gpn        = cfg.gpn
     descr      = cfg.worker_descr
-    worker     = os.path.basename(cfg.worker)
+    worker     = os.path.basename(cfg.worker.replace('py', 'sh'))
     pwd        = os.getcwd()
 
     # add data staging to worker: link input_dir, impress_dir, and oe_license
@@ -130,6 +125,7 @@ if __name__ == '__main__':
 
     master.start()
     master.join()
+    master.stop()
 
     # simply terminate
     # FIXME: clean up workers

@@ -24,15 +24,18 @@ class Agent_n(rpu.Worker):
         self._pid     = cfg.pid
         self._pmgr    = cfg.pmgr
         self._pwd     = cfg.pilot_sandbox
+
+        # log / profile via session until component manager is initialized
         self._session = session
         self._log     = session._log
+        self._prof    = session._prof
 
         self._starttime   = time.time()
         self._final_cause = None
 
         # this is the earliest point to sync bootstrap and agent profiles
-        self._prof.prof('hostname', uid=self._uid, msg=ru.get_hostname())
-        self._prof.prof('sub_agent_start', uid=self._pid, msg=self._uid)
+        self._prof.prof('hostname', uid=self._pid, msg=ru.get_hostname())
+        self._prof.prof('sub_agent_start', uid=self._pid)
 
         # expose heartbeat channel to sub-agents, bridges and components,
         # and start those

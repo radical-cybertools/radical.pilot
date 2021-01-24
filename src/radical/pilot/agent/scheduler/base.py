@@ -664,8 +664,17 @@ class AgentSchedulingComponent(rpu.Component):
                                                 log=self._log)
 
         self._waitpool = {task['uid']:task for task in unscheduled}
+
+        # update task resources
+        for task in scheduled:
+            td = task['description']
+            task['$set']      = ['resources']
+            task['resources'] = {'cpu': td['cpu_processes'] *
+                                        td.get('cpu_threads', 1),
+                                 'gpu': td['gpu_processes']}
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
                                                              push=True)
+
         # method counts as `active` if anything was scheduled
         active = bool(scheduled)
 
@@ -716,6 +725,11 @@ class AgentSchedulingComponent(rpu.Component):
 
                 # task got scheduled - advance state, notify world about the
                 # state change, and push it out toward the next component.
+                td = unit['description']
+                unit['$set']      = ['resources']
+                unit['resources'] = {'cpu': td['cpu_processes'] *
+                                            td.get('cpu_threads', 1),
+                                     'gpu': td['gpu_processes']}
                 self.advance(unit, rps.AGENT_EXECUTING_PENDING,
                              publish=True, push=True)
 
