@@ -1,0 +1,95 @@
+
+# this is the default agent config which is used if no other config is
+# specified for an agent.  It contains the minimal set of settings required for
+# a functional pilot agent, without any component redundency.
+
+{
+    # max number of updates to put into a db bulk
+    "bulk_collection_size" :  1024,
+
+    # max time period to collect db notifications into bulks (seconds)
+    "bulk_collection_time" : 1.0,
+
+    # time to sleep between database polls (seconds)
+    "db_poll_sleeptime"    : 2.0,
+
+    # agent.0 must always have target 'local' at this point
+    # mode 'shared'   : local node is also used for CUs
+    # mode 'reserved' : local node is reserved for the agent
+    # FIXME: mode is unused
+    "target" : "local",
+    "mode"   : "shared",
+
+    "bulk_time"    : 1.0,
+    "bulk_size"    : 1024,
+
+    "heartbeat"    : {
+        "interval" :  1.0,
+        "timeout"  : 60.0
+    },
+
+    # Bridges usually run in the main agent
+    #
+    # Bridges can be configured to stall for a certain batch of messages,
+    # releasing them then as bulks of a certain size.  Default for both
+    # stall_hwm and batch_size is 1 (no stalling, no bulking).
+    #
+    "bridges" : {
+        "agent_staging_input_queue"  : { "kind"      : "queue",
+                                         "log_level" : "error",
+                                         "stall_hwm" : 0,
+                                         "bulk_size" : 0},
+        "agent_scheduling_queue"     : { "kind"      : "queue",
+                                         "log_level" : "error",
+                                         "stall_hwm" : 0,
+                                         "bulk_size" : 0},
+        "agent_executing_queue"      : { "kind"      : "queue",
+                                         "log_level" : "error",
+                                         "stall_hwm" : 0,
+                                         "bulk_size" : 0},
+        "agent_staging_output_queue" : { "kind"      : "queue",
+                                         "log_level" : "error",
+                                         "stall_hwm" : 0,
+                                         "bulk_size" : 0},
+
+        "funcs_req_queue"            : { "kind"      : "queue",
+                                         "log_level" : "error",
+                                         "stall_hwm" : 0,
+                                         "bulk_size" : 1},
+        "funcs_res_queue"            : { "kind"      : "queue",
+                                         "log_level" : "error",
+                                         "stall_hwm" : 0,
+                                         "bulk_size" : 1},
+
+        "agent_unschedule_pubsub"    : { "kind"      : "pubsub",
+                                         "log_level" : "error"},
+        "agent_schedule_pubsub"      : { "kind"      : "pubsub",
+                                         "log_level" : "error"},
+
+        "control_pubsub"             : { "kind"      : "pubsub",
+                                         "log_level" : "error"},
+        "state_pubsub"               : { "kind"      : "pubsub",
+                                         "log_level" : "error"}
+      # "log_pubsub"                 : { "kind"      : "pubsub",
+      #                                  "log_level" : "error"}
+    },
+
+    "components" : {
+        # the update worker must live in agent.0, since only that agent is
+        # sure to have connectivity toward the DB.
+        "update"               : {"count" : 1},
+        "agent_staging_input"  : {"count" : 1},
+        "agent_scheduling"     : {"count" : 1},
+      # "agent_executing"      : {"count" : 1},
+        "agent_staging_output" : {"count" : 1}
+    },
+
+    "agents": {
+        "agent.1": {
+            "target": "node",
+            "components": {
+                "agent_executing" : {"count" : 1}
+            }
+        }
+    }
+}
