@@ -177,11 +177,12 @@ class TestContinuous(TestCase):
         component._rm_lfs_per_node   = {"size": 0, "path": "/dev/null"}
         component._rm_mem_per_node   = 1024
         component._rm_lm_info = 'INFO'
+        component._log = ru.Logger('dummy')
         component._node_offset = 0
         test_slot =  {'cores_per_node': 32,
                       'gpus_per_node': 2,
                       'lfs_per_node': {'path': '/dev/null', 'size': 0},
-                      'lm_info': 'INFO',
+                      'lm_info': {},
                       'mem_per_node': 1024,
                       'nodes': [{'core_map': [[0]],
                                  'gpu_map' : [[0]],
