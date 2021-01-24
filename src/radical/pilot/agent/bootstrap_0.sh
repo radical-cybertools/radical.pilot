@@ -867,11 +867,11 @@ virtenv_activate()
             conda activate "$virtenv"
 
         elif test -e "$virtenv/bin/activate"; then
-                . "$virtenv/bin/activate"
+            . "$virtenv/bin/activate"
         fi
 
         if test -z "$CONDA_PREFIX"; then
-            echo "ERROR: activating of (conda) virtenv failed - abort"
+            echo "Loading of conda env failed!"
             exit 1
         fi
     else

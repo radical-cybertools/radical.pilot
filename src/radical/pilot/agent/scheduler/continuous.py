@@ -383,6 +383,24 @@ class Continuous(AgentSchedulingComponent):
         is_last  = False
         tag      = cud.get('tag')
 
+        # - PRRTE related - start -
+        dvm_hosts_list = self._rm_lm_info.get('dvm_hosts') or []
+        # use tag as a DVM ID, so task will be allocated to nodes that are
+        # handled by a corresponding DVM (only applied with `dvm_hosts_list`)
+        # FIXME: new coming attribute `tags` would consider `dvm_id`
+        if dvm_hosts_list and tag is not None:
+            try:
+                tag = int(tag)
+            except (TypeError, ValueError):
+                tag = None
+            else:
+                if len(dvm_hosts_list) <= tag:
+                    raise ValueError('dvm_id (%s) out of range' % tag)
+                if tag not in self._tag_history:
+                    self._tag_history[tag] = dvm_hosts_list[tag]
+        unit_dvm_id = None
+        # - PRRTE related - end -
+
         # what remains to be allocated?  all of it right now.
         alc_slots = list()
         rem_slots = req_slots
@@ -402,11 +420,26 @@ class Continuous(AgentSchedulingComponent):
             #   - if the tag has been used before
             #   - if the previous use included this node
             # If a tag exists, continue to consider this node if the tag was
-            # used for this node - else continune to the next node.
-            if tag:
-                if tag in self._tag_history:
-                    if node_uid not in self._tag_history[tag]:
-                        continue
+            # used for this node - else continue to the next node.
+            node_dvm_id = None  # get dvm_id for the node (if applicable)
+            if tag is not None and tag in self._tag_history:
+                if node_uid not in self._tag_history[tag]:
+                    continue
+            # - PRRTE related - start -
+            elif dvm_hosts_list:
+                # check that nodes assigned to the unit have the same dvm_id
+                # FIXME: handle the case when unit (MPI task) would require
+                #        more nodes than the amount available per DVM
+                _skip_node = True
+                for dvm_id, dvm_hosts in enumerate(dvm_hosts_list):
+                    if node_uid in dvm_hosts:
+                        if unit_dvm_id is None or unit_dvm_id == dvm_id:
+                            node_dvm_id = dvm_id  # save to use later
+                            _skip_node = False
+                        break
+                if _skip_node:
+                    continue
+            # - PRRTE related - end -
 
             # if only a small set of cores/gpus remains unallocated (ie. less
             # than node size), we are in fact looking for the last node.  Note
@@ -453,6 +486,11 @@ class Continuous(AgentSchedulingComponent):
                 # try next node
                 continue
 
+            # - PRRTE related - start -
+            if node_dvm_id is not None and unit_dvm_id is None:
+                unit_dvm_id = node_dvm_id  # save dvm_id for unit
+            # - PRRTE related - end -
+
             # this node got a match, store away the found slots and continue
             # search for remaining ones
             rem_slots -= len(new_slots)
@@ -481,10 +519,9 @@ class Continuous(AgentSchedulingComponent):
                  'lm_info'       : self._rm_lm_info,
                 }
 
-
         # allocation worked!  If the unit was tagged, store the node IDs for
         # this tag, so that later units can reuse that information
-        if tag:
+        if not dvm_hosts_list and tag is not None:
             self._tag_history[tag] = [node['uid'] for node in slots['nodes']]
 
         # this should be nicely filled out now - return
