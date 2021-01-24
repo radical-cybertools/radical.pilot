@@ -120,7 +120,8 @@
         "valid_roots"                 : ["$SCRATCH", "$WORK"],
         "python_dist"                 : "default",
         "virtenv_mode"                : "create",
-        "rp_version"                  : "local"
+        "rp_version"                  : "local",
+        "dvm_count"                   : 1
     },
 
     "longhorn": {
