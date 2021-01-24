@@ -176,21 +176,21 @@ class TestContinuous(TestCase):
         component._rm_gpus_per_node  = 2
         component._rm_lfs_per_node   = {"size": 0, "path": "/dev/null"}
         component._rm_mem_per_node   = 1024
-        component._rm_lm_info = 'INFO'
+        component._rm_lm_info = {}
         component._log = ru.Logger('dummy')
         component._node_offset = 0
         test_slot =  {'cores_per_node': 32,
-                      'gpus_per_node' : 2,
-                      'lfs_per_node'  : {'path' : '/dev/null', 'size' : 0},
-                      'lm_info'       : 'INFO',
-                      'mem_per_node'  : 1024,
-                      'ranks'         : [{'core_map': [[0]],
-                                          'gpu_map' : [[0]],
-                                          'lfs'     : {'path': '/dev/null',
-                                                       'size' : 1234},
-                                          'mem'     : 128,
-                                          'node'    : 'a',
-                                          'node_id' : '1'}]}
+                      'gpus_per_node': 2,
+                      'lfs_per_node' : {'path': '/dev/null', 'size': 0},
+                      'lm_info'      : 'INFO',
+                      'mem_per_node' : 1024,
+                      'ranks'        : [{'core_map': [[0]],
+                                         'gpu_map' : [[0]],
+                                         'lfs'     : {'path' : '/dev/null',
+                                                      'size' : 1234},
+                                         'mem'     : 128,
+                                         'node'    : 'a',
+                                         'node_id' : 1}]}
         try:
             self.assertEqual(component.schedule_unit(unit), test_slot)
         except:
