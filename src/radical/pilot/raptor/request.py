@@ -10,18 +10,20 @@ class Request(object):
 
     # poor man's future
     # TODO: use proper future implementation
+    # FIXME: use ru.Description base class
 
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, req):
 
-        self._work   = req
-        self._state  = 'NEW'
-        self._result = None
+        self._req     = req
+        self._state   = 'NEW'
+        self._result  = None
 
-        if 'uid' in req: self._uid = req['uid']
-        else           : self._uid = ru.generate_id('request')
+        self._uid = self._req['uid']
+        if not self._uid:
+            self._uid = ru.generate_id('request')
 
 
     # --------------------------------------------------------------------------
@@ -38,7 +40,7 @@ class Request(object):
 
     @property
     def work(self):
-        return self._work
+        return self._req
 
 
     @property
@@ -54,13 +56,14 @@ class Request(object):
         '''
 
         # FIXME: we should not need to reconstruict the dict
-        return {'uid'   : self._uid,
-                'state' : self._state,
-                'cores' : self._work.get('cores', 1),
-                'gpus'  : self._work.get('gpus',  0),
-                'mode'  : self._work['mode'],
-                'data'  : self._work['data'],
-                'result': self._result}
+        return {'uid'      : self._uid,
+                'state'    : self._state,
+                'resources': {'cpus': self._req.get('cores', 1),
+                              'gpus': self._req.get('gpus',  0)},
+                'timeout'  : self._req['timeout'],
+                'mode'     : self._req['mode'],
+                'data'     : self._req['data'],
+                'result'   : self._result}
 
 
     # --------------------------------------------------------------------------

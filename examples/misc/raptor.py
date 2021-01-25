@@ -31,27 +31,41 @@ if __name__ == '__main__':
     master    = '%s/%s' % (cfg_dir, cfg.master)
     worker    = '%s/%s' % (cfg_dir, cfg.worker)
 
+    master_sh = master.replace('py', 'sh')
+    worker_sh = worker.replace('py', 'sh')
+
     session   = rp.Session()
     try:
         pd = rp.ComputePilotDescription(cfg.pilot_descr)
-        pd.cores   = nodes * cpn
-        pd.gpus    = nodes * gpn
+        pd.cores   = nodes * cpn + cpn
+        pd.gpus    = nodes * gpn + gpn
         pd.runtime = cfg.runtime
 
         tds = list()
 
         for i in range(n_masters):
-            td = rp.ComputeUnitDescription(cfg.master_descr)
-            td.executable     = "python3"
+            td                = rp.ComputeUnitDescription(cfg.master_descr)
+            td.uid            = ru.generate_id('master.%(item_counter)06d',
+                                        ru.ID_CUSTOM,
+                                        ns=session.uid)
+            td.executable     = "/bin/sh"
             td.cpu_threads    = cpn
             td.gpu_processes  = gpn
-            td.arguments      = [os.path.basename(master), cfg_file, i]
+            td.arguments      = [os.path.basename(master_sh), cfg_file, i]
             td.input_staging  = [{'source': master,
                                   'target': os.path.basename(master),
                                   'action': rp.TRANSFER,
                                   'flags' : rp.DEFAULT_FLAGS},
                                  {'source': worker,
                                   'target': os.path.basename(worker),
+                                  'action': rp.TRANSFER,
+                                  'flags' : rp.DEFAULT_FLAGS},
+                                 {'source': master_sh,
+                                  'target': os.path.basename(master_sh),
+                                  'action': rp.TRANSFER,
+                                  'flags' : rp.DEFAULT_FLAGS},
+                                 {'source': worker_sh,
+                                  'target': os.path.basename(worker_sh),
                                   'action': rp.TRANSFER,
                                   'flags' : rp.DEFAULT_FLAGS},
                                  {'source': cfg_file,
@@ -70,18 +84,6 @@ if __name__ == '__main__':
         umgr.wait_units()
 
         print('overlay done')
-
-        # submit another task to ensure resources were freed
-        td = rp.ComputeUnitDescription(cfg.master_descr)
-        td.executable       = "%s/../hello_rp.sh" % os.getcwd()
-        td.cpu_processes    = nodes
-        td.cpu_process_type = rp.MPI
-        td.cpu_threads      = cpn
-        td.gpu_processes    = gpn
-
-        task = umgr.submit_units(td)
-        umgr.wait_units()
-        print('test done')
 
     finally:
         session.close(download=True)

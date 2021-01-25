@@ -407,7 +407,8 @@ class Default(PMGRLaunchingComponent):
 
                     self._start_pilot_bulk(resource, schema, pilots)
 
-                    self.advance(pilots, rps.PMGR_ACTIVE_PENDING, push=False, publish=True)
+                    self.advance(pilots, rps.PMGR_ACTIVE_PENDING,
+                                         push=False, publish=True)
 
                 except Exception:
                     self._log.exception('bulk launch failed')
@@ -1088,6 +1089,12 @@ class Default(PMGRLaunchingComponent):
         jd.candidate_hosts       = candidate_hosts
         jd.environment           = dict()
         jd.system_architecture   = system_architecture
+
+        # register used resources in DB (enacted on next advance)
+        pilot['resources'] = {'cpu': number_cores,
+                              'gpu': number_gpus}
+        pilot['$set']      = ['resources']
+
 
         # we set any saga_jd_supplement keys which are not already set above
         for key, val in saga_jd_supplement.items():
