@@ -3,18 +3,18 @@
 [![Build Status](https://travis-ci.com/radical-cybertools/radical.pilot.svg?branch=devel)](https://travis-ci.com/radical-cybertools/radical.pilot)
 [![codecov](https://codecov.io/gh/radical-cybertools/radical.pilot/branch/devel/graph/badge.svg)](https://codecov.io/gh/radical-cybertools/radical.pilot)
 
-RADICAL-Pilot (RP) is a Pilot system written in Python and specialized 
-in executing applications composed of many computational tasks on high 
-performance computing (HPC) platforms. As a Pilot system, RP separates resource 
-acquisition from using those resources to execute application tasks. Resources 
-are acquired by submitting a job to the batch system of an HPC machine. Once 
-the job is scheduled on the requested resources, RP can directly schedule and 
-launch application tasks on those resources. Thus, tasks are not scheduled via 
+RADICAL-Pilot (RP) is a Pilot system written in Python and specialized
+in executing applications composed of many computational tasks on high
+performance computing (HPC) platforms. As a Pilot system, RP separates resource
+acquisition from using those resources to execute application tasks. Resources
+are acquired by submitting a job to the batch system of an HPC machine. Once
+the job is scheduled on the requested resources, RP can directly schedule and
+launch application tasks on those resources. Thus, tasks are not scheduled via
 the batch system of the HPC platform, but directly on the acquired resources.
 
 ## Documentation
 
-Full system description and usage examples are available at: 
+Full system description and usage examples are available at:
 https://radicalpilot.readthedocs.io/en/stable/
 
 Additional information is provided in the
@@ -24,10 +24,10 @@ GitHub repository.
 ## Code
 
 Generally, the `master` branch reflects the RP release published on
-[PyPI](https://pypi.org/project/radical.pilot/), and is considered stable: 
-it should work 'out of the box' for the supported backends. For a list of 
+[PyPI](https://pypi.org/project/radical.pilot/), and is considered stable:
+it should work 'out of the box' for the supported backends. For a list of
 supported backends, please refer to the documentation.
 
-The `devel` branch (and any branch other than master) may not correspond to the 
-published documentation and, specifically, may have dependencies which need to 
+The `devel` branch (and any branch other than master) may not correspond to the
+published documentation and, specifically, may have dependencies which need to
 be resolved manually.

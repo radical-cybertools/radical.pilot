@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -64,9 +65,7 @@ class ComputePilot(object):
         self._pmgr       = pmgr
         self._session    = self._pmgr.session
         self._prof       = self._session._prof
-        self._uid        = ru.generate_id('pilot.%(item_counter)04d',
-                                           ru.ID_CUSTOM,
-                                           ns=self._session.uid)
+        self._uid        = self._descr.get('uid')
         self._state      = rps.NEW
         self._log        = pmgr._log
         self._pilot_dict = dict()
@@ -76,6 +75,14 @@ class ComputePilot(object):
 
         # pilot failures can trigger app termination
         self._exit_on_error = self._descr.get('exit_on_error')
+
+        # ensure uid is unique
+        if self._uid:
+            if not self._pmgr.check_uid(self._uid):
+                raise ValueError('uid %s is not unique' % self._uid)
+        else:
+            self._uid = ru.generate_id('pilot.%(item_counter)04d', ru.ID_CUSTOM,
+                                       ns=self._session.uid)
 
         for m in rpc.PMGR_METRICS:
             self._callbacks[m] = dict()
@@ -247,7 +254,7 @@ class ComputePilot(object):
                'js_url':           str(self._pilot_jsurl),
                'js_hop':           str(self._pilot_jshop),
                'description':      self.description,  # this is a deep copy
-               'resource_details': self.resource_details
+             # 'resource_details': self.resource_details
               }
 
         return ret
@@ -482,7 +489,7 @@ class ComputePilot(object):
     #
     def unregister_callback(self, cb, metric=rpc.PILOT_STATE):
 
-        if metric and metric not in rpc.UMGR_METRICS :
+        if metric and metric not in rpc.PMGR_METRICS :
             raise ValueError ("invalid pmgr metric '%s'" % metric)
 
         if   not metric                  : metrics = rpc.PMGR_METRICS
@@ -617,6 +624,19 @@ class ComputePilot(object):
 
     # --------------------------------------------------------------------------
     #
+    def rpc(self, rpc, args):
+        '''
+        Send a pilot command, wait for the response, and return the result.
+        This is basically an RPC into the pilot.
+        '''
+
+        reply = self._session._dbs.pilot_rpc(self.uid, rpc, args)
+
+        return reply
+
+
+    # --------------------------------------------------------------------------
+    #
     def stage_out(self, sds=None):
         '''
         fetch files (default:`staging_output.tgz`) from the pilot sandbox
@@ -625,9 +645,9 @@ class ComputePilot(object):
         sds = ru.as_list(sds)
 
         if not sds:
-             sds = [{'source': 'client:///staging_output.tgz',
-                     'target': 'pilot:///staging_output.tgz',
-                     'action': rp.TRANSFER}]
+            sds = [{'source': 'pilot:///staging_output.tgz',
+                    'target': 'client:///staging_output.tgz',
+                    'action': rpc.TRANSFER}]
 
         for sd in sds:
             sd['prof_id'] = self.uid

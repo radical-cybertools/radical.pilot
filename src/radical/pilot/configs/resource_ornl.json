@@ -119,7 +119,6 @@
                                          "module load   zeromq/4.2.5",
                                          "module load   python/3.7.0",
                                          "export RADICAL_BASE=$(pwd -P)",
-                                         "export RADICAL_BASE_DIR=$(pwd -P)",
                                          "module list"
                                         ],
         "pre_bootstrap_1"             : [
@@ -264,6 +263,7 @@
         "gpus_per_node"               : 6,
         "sockets_per_node"            : 2,
         "system_architecture"         : {"smt": 4,
-                                         "options": ["gpumps"]}
+                                         "options": ["gpumps"]},
+        "dvm_count"                   : 1
     }
 }

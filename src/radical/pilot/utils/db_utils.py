@@ -101,6 +101,10 @@ def get_session_docs(db, sid, cache=None, cachedir=None):
 
         for unit in json_data['unit']:
 
+            if 'pilot' not in unit:
+                import pprint
+                pprint.pprint(unit)
+
             if  unit['pilot'] == pilot['uid']:
                 pilot['unit_ids'].append (unit['uid'])
 

@@ -3,6 +3,8 @@
 # Unset functions/aliases of commands that will be used during bootstrap as
 # these custom functions can break assumed/expected behavior
 export PS1='#'
+export LC_NUMERIC="C"
+
 unset PROMPT_COMMAND
 unset -f cd ls uname pwd date bc cat echo grep
 
@@ -199,20 +201,32 @@ create_gtod()
         shell=/bin/sh
         test -x '/bin/bash' && shell=/bin/bash
 
-        echo "#!$SHELL"                                >  ./gtod
-        echo "unset LC_NUMERIC"                        >> ./gtod
-        echo "if test -z \"\$EPOCHREALTIME\""          >> ./gtod
-        echo "then"                                    >> ./gtod
-        echo "  awk 'BEGIN {srand(); print srand()}'"  >> ./gtod
-        echo "else"                                    >> ./gtod
-        echo "  echo \${EPOCHREALTIME:0:20}"           >> ./gtod
-        echo "fi"                                      >> ./gtod
+        echo "#!$SHELL"                                > ./gtod
+        echo "export LC_NUMERIC=C"                    >> ./gtod
+        echo "if test -z \"\$EPOCHREALTIME\""         >> ./gtod
+        echo "then"                                   >> ./gtod
+        echo "  awk 'BEGIN {srand(); print srand()}'" >> ./gtod
+        echo "else"                                   >> ./gtod
+        echo "  echo \${EPOCHREALTIME:0:20}"          >> ./gtod
+        echo "fi"                                     >> ./gtod
     fi
 
     chmod 0755 ./gtod
 
-    TIME_ZERO=`./gtod`
-    export TIME_ZERO
+    # initialize profile
+    PROFILE="bootstrap_0.prof"
+    now=$(./gtod)
+    echo "#time,event,comp,thread,uid,state,msg" > "$PROFILE"
+
+    ip=$(ip addr \
+         | grep 'state UP' -A2 \
+         | grep 'inet' \
+         | awk '{print $2}' \
+         | cut -f1 -d'/')
+    printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
+        "$now" "sync_abs" "bootstrap_0" "MainThread" "$PILOT_ID" \
+        "PMGR_ACTIVE_PENDING" "$(hostname):$ip:$now:$now:$now" \
+        | tee -a "$PROFILE"
 }
 
 
@@ -229,15 +243,7 @@ profile_event()
 
     event=$1
     msg=$2
-
-    epoch=`./gtod`
-    now=$(awk "BEGIN{print($epoch - $TIME_ZERO)}")
-
-    if ! test -f "$PROFILE"
-    then
-        # initialize profile
-        echo "#time,name,uid,state,event,msg" > "$PROFILE"
-    fi
+    now=$(./gtod)
 
     # TIME   = 0  # time of event (float, seconds since epoch)  mandatory
     # EVENT  = 1  # event ID (string)                           mandatory
@@ -856,16 +862,16 @@ virtenv_activate()
     python_dist="$2"
 
     if test "$python_dist" = "anaconda"; then
-        if test -e "`which conda`"; then
+        if ! test -z $(which conda); then
             eval "$(conda shell.posix hook)"
             conda activate "$virtenv"
-        else
-            if test -e "$virtenv/bin/activate"; then
-                . "$virtenv/bin/activate"
-            fi
+
+        elif test -e "$virtenv/bin/activate"; then
+            . "$virtenv/bin/activate"
         fi
+
         if test -z "$CONDA_PREFIX"; then
-            echo "ERROR: activating of (conda) virtenv failed - abort"
+            echo "Loading of conda env failed!"
             exit 1
         fi
     else
@@ -1277,7 +1283,6 @@ rp_install()
   # fi
 
     pip_flags="$pip_flags --src '$PILOT_SANDBOX/rp_install/src'"
-    pip_flags="$pip_flags --build '$PILOT_SANDBOX/rp_install/build'"
     pip_flags="$pip_flags --prefix '$RP_INSTALL'"
     pip_flags="$pip_flags --no-deps --no-cache-dir --no-build-isolation"
 
@@ -1290,9 +1295,6 @@ rp_install()
         then
             echo "Couldn't install $src! Lets see how far we get ..."
         fi
-
-        # NOTE: why? fuck pip, that's why!
-        rm -rf "$PILOT_SANDBOX/rp_install/build"
 
         # clean out the install source if it is a local dir
         if test -d "$src"
@@ -1476,7 +1478,7 @@ while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:z:" OPTION; do
         w)  pre_bootstrap_2 "$OPTARG"         ;;
         x)  CLEANUP="$OPTARG"                 ;;
         y)  RUNTIME="$OPTARG"                 ;;
-        z)  TARBALL="$OPTARG"                   ;;
+        z)  TARBALL="$OPTARG"                 ;;
         *)  echo "Unknown option: '$OPTION'='$OPTARG'"
             return 1;;
     esac
@@ -1700,6 +1702,9 @@ PILOT_SCRIPT=`which radical-pilot-agent`
 # Verify it
 verify_install
 
+# we should have a better `gtod` now
+test -z $(which radical-gtod) || cp $(which radical-gtod ./gtod)
+
 AGENT_CMD="$PYTHON $PILOT_SCRIPT"
 
 verify_rp_install
@@ -1772,7 +1777,7 @@ export LD_LIBRARY_PATH="$PB1_LDLB"
 $PREBOOTSTRAP2_EXPANDED
 
 # activate virtenv
-if test "$PYTHON_DIST" = "anaconda" && test -e "`which conda`"
+if test "$PYTHON_DIST" = "anaconda" && ! test -z $(which conda)
 then
     eval "\$(conda shell.posix hook)"
     conda activate $VIRTENV
@@ -1881,7 +1886,7 @@ fi
 create_deactivate
 
 # start the master agent instance (zero)
-profile_event 'sync_rel' 'agent.0'
+profile_event 'bootstrap_0_ok'
 if test -z "$CCM"; then
     ./bootstrap_2.sh 'agent.0'    \
                    1> agent.0.bootstrap_2.out \

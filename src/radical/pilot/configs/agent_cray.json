@@ -15,7 +15,6 @@
         "timeout"  : 60.0
     },
 
-    "staging_area"         : "staging_area",
     "staging_schema"       : "staging",
     "max_io_loglength"     : 1024,
 

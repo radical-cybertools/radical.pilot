@@ -12,7 +12,7 @@ case "$args" in
     diff)
         old=$( git log -n 1 | grep Merge | cut -f 2 -d ' ')
         new=$( git log -n 1 | grep Merge | cut -f 3 -d ' ')
-        args=$(git diff --name-only --diff-filter=b $old...$new | grep -e '\.py$')
+        args=$(git diff --name-only --diff-filter=b $old..$new | grep -e '\.py$')
         ;;
 
     *)

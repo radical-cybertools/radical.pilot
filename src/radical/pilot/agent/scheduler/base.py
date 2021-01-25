@@ -608,14 +608,14 @@ class AgentSchedulingComponent(rpu.Component):
                 r_wait, a = self._schedule_waitpool()
                 active += int(a)
               # self._log.debug('=== schedule units w: %s %s', r_wait, a)
-               
+
             # always try to schedule newly incoming tasks
             # running out of resources for incoming could still mean we have
             # smaller slots for waiting tasks, so ignore `r` for now.
             r_inc, a = self._schedule_incoming()
             active += int(a)
           # self._log.debug('=== schedule units i: %s %s', r_inc, a)
-           
+
             # if we had resources, but could not schedule any incoming not any
             # waiting, then we effectively ran out of *useful* resources
             if resources and (r_wait is False and r_inc is False):
@@ -630,12 +630,12 @@ class AgentSchedulingComponent(rpu.Component):
                 resources = True
             active += int(a)
           # self._log.debug('=== schedule units c: %s %s', r, a)
-           
+
             if not active:
                 time.sleep(0.1)  # FIXME: configurable
 
           # self._log.debug('=== schedule units x: %s %s', resources, active)
-           
+
 
     # --------------------------------------------------------------------------
     #
@@ -654,7 +654,7 @@ class AgentSchedulingComponent(rpu.Component):
             # no new resources, no active
             return None, False
 
-        self.slot_status("before schedule waitpool")
+      # self.slot_status("before schedule waitpool")
 
         # sort by inverse tuple size to place larger tasks first and backfill
         # with smaller tasks.  We only look at cores right now - this needs
@@ -674,15 +674,24 @@ class AgentSchedulingComponent(rpu.Component):
                                                 log=self._log)
 
         self._waitpool = {task['uid']:task for task in unscheduled}
+
+        # update task resources
+        for task in scheduled:
+            td = task['description']
+            task['$set']      = ['resources']
+            task['resources'] = {'cpu': td['cpu_processes'] *
+                                        td.get('cpu_threads', 1),
+                                 'gpu': td['gpu_processes']}
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
                                                              push=True)
+
         # method counts as `active` if anything was scheduled
         active = bool(scheduled)
 
         # if we sccheduled some tasks but not all, we ran out of resources
         resources = not (bool(unscheduled) and bool(unscheduled))
 
-        self.slot_status("after  schedule waitpool")
+      # self.slot_status("after  schedule waitpool")
         return resources, active
 
 
@@ -712,7 +721,7 @@ class AgentSchedulingComponent(rpu.Component):
             # no resource change, no activity
             return None, False
 
-        self.slot_status("before schedule incoming [%d]" % len(units))
+      # self.slot_status("before schedule incoming [%d]" % len(units))
 
         # handle largest units first
         # FIXME: this needs lazy-bisect
@@ -726,6 +735,11 @@ class AgentSchedulingComponent(rpu.Component):
 
                 # task got scheduled - advance state, notify world about the
                 # state change, and push it out toward the next component.
+                td = unit['description']
+                unit['$set']      = ['resources']
+                unit['resources'] = {'cpu': td['cpu_processes'] *
+                                            td.get('cpu_threads', 1),
+                                     'gpu': td['gpu_processes']}
                 self.advance(unit, rps.AGENT_EXECUTING_PENDING,
                              publish=True, push=True)
 
@@ -745,7 +759,7 @@ class AgentSchedulingComponent(rpu.Component):
         # tuple_size map
         self._ts_valid = False
 
-        self.slot_status("after  schedule incoming")
+      # self.slot_status("after  schedule incoming")
         return resources, active
 
 
@@ -755,10 +769,25 @@ class AgentSchedulingComponent(rpu.Component):
 
         to_unschedule = list()
         try:
+
+            # Timeout and bulk limit below are somewhat arbitrary, but the
+            # behaviour is benign.  The goal is to avoid corner cases: for the
+            # sleep, avoid no sleep (busy idle) and also significant latencies.
+            # Anything smaller than 0.01 is under our noise level and works ok
+            # for the latency, and anything larger than 0 is sufficient to avoid
+            # busy idle.
+            #
+            # For the unschedule bulk, the corner case to avoid is waiting for
+            # too long to fill a bulk so that latencies add a up and negate the
+            # bulk optimization. For the 0.001 sleep, 128 as bulk size results
+            # in a max added latency of about 0.1 second, which is one order of
+            # magnitude above our noise level again and thus acceptable (tm).
             while not self._proc_term.is_set():
                 unit = self._queue_unsched.get(timeout=0.001)
-                self._log.debug('=== unschedule 10: %s : %s', unit['uid'], unit['slots'])
+              # self._log.debug('=== unschedule 10: %s : %s', unit['uid'], unit['slots'])
                 to_unschedule.append(unit)
+                if len(to_unschedule) > 128:
+                    break
 
         except queue.Empty:
             # no more unschedule requests
@@ -779,6 +808,8 @@ class AgentSchedulingComponent(rpu.Component):
             # Thus we replace the unscheduled unit on the same cores / GPUs
             # immediately. This assumes that the `tuple_size` is good enough to
             # judge the legality of the resources for the new target unit.
+            #
+            # FIXME
 
           # ts = tuple(unit['tuple_size'])
           # if self._ts_map.get(ts):

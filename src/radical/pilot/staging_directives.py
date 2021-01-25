@@ -100,20 +100,18 @@ def expand_staging_directives(sds):
                 for flag in flags:
                     if isinstance(flags, str):
                         raise ValueError('"%s" is no valid RP constant' % flag)
-                    int_flags != flag
+                    int_flags |= flag
                 flags = int_flags
 
             elif isinstance(flags, str):
                 raise ValueError('use RP constants for staging flags!')
 
-            # FIXME: ns = session ID
-            expanded = {'source':   source,
+            expanded = {'uid':      ru.generate_id('sd'),
+                        'source':   source,
                         'target':   target,
                         'action':   action,
                         'flags':    flags,
-                        'priority': priority,
-                        'uid':      ru.generate_id('sd.%(item_counter)06d',
-                                                    ru.ID_CUSTOM, ns='foo')}
+                        'priority': priority}
 
         else:
             raise Exception("Unknown directive: %s (%s)" % (sd, type(sd)))
@@ -202,10 +200,6 @@ def complete_url(path, context, log=None):
 
         log.debug('   expand with %s', context[schema])
         ret = ru.Url(context[schema])
-
-        if schema in ['resource', 'pilot']:
-            # use a dedicated staging area dir
-            ret.path += '/staging_area'
 
         ret.path += '/%s' % ppath
         purl      = ret

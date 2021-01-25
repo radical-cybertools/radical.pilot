@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -87,6 +88,7 @@ class PilotManager(rpu.Component):
 
         assert(session.primary), 'pmgr needs primary session'
 
+        self._uids        = list()   # known UIDs
         self._pilots      = dict()
         self._pilots_lock = ru.RLock('pmgr.pilots_lock')
         self._callbacks   = dict()
@@ -469,9 +471,6 @@ class PilotManager(rpu.Component):
                 sd['state'] = rps.NEW
                 self._active_sds[sd['uid']] = sd
 
-            sd_states = [sd['state'] for sd
-                                     in  self._active_sds.values()
-                                     if  sd['uid'] in uids]
         # push them out
         self._stager_queue.put(sds)
 
@@ -501,15 +500,10 @@ class PilotManager(rpu.Component):
 
         if cmd == 'staging_result':
 
-            sds = arg['sds']
-            states = {sd['uid']: sd['state'] for sd in self._active_sds.values()}
-
             with self._sds_lock:
                 for sd in arg['sds']:
                     if sd['uid'] in self._active_sds:
                         self._active_sds[sd['uid']]['state'] = sd['state']
-
-            states = {sd['uid']: sd['state'] for sd in self._active_sds.values()}
 
         return True
 
@@ -903,6 +897,18 @@ class PilotManager(rpu.Component):
                         raise ValueError("unknown callback '%s'" % cb_name)
 
                     del(self._callbacks[metric][cb_name])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def check_uid(self, uid):
+
+        # ensure that uid is not yet known
+        if uid in self._uids:
+            return False
+        else:
+            self._uids.append(uid)
+            return True
 
 
 # ------------------------------------------------------------------------------
