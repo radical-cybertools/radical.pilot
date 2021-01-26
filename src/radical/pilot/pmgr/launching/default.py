@@ -1028,12 +1028,6 @@ class Default(PMGRLaunchingComponent):
                     'rem': False
                 })
 
-            for sdist in sdist_paths:
-                base = os.path.basename(sdist)
-                ret['fts'].append({'src': sdist,
-                                   'tgt': '%s/%s' % (session_sandbox, base),
-                                   'rem': False
-                })
 
             # Copy the bootstrap shell script.
             bootstrapper_path = os.path.abspath("%s/agent/bootstrap_0.sh"
@@ -1062,9 +1056,8 @@ class Default(PMGRLaunchingComponent):
         # FIXME: this results in many staging ops for many pilots
         bootstrapper_path = os.path.abspath("%s/agent/bootstrap_0.sh"
                                            % self._root_dir)
-        bootstrap_tgt = '%s/bootstrap_0.sh' % (pilot_sandbox)
         ret['sds'].append({'source': bootstrapper_path,
-                           'target': bootstrap_tgt,
+                           'target': 'pilot://bootstrap_0.sh',
                            'action': rpc.TRANSFER})
 
         # ----------------------------------------------------------------------
@@ -1074,7 +1067,7 @@ class Default(PMGRLaunchingComponent):
 
         jd.name                  = job_name
         jd.executable            = "/bin/bash"
-        jd.arguments             = ['-l %s %s' % (bootstrap_tgt, bootstrap_args)]
+        jd.arguments             = ['-l bootstrap_0.sh %s' % bootstrap_args]
         jd.working_directory     = pilot_sandbox
         jd.project               = project
         jd.output                = "bootstrap_0.out"
