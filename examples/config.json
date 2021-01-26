@@ -80,10 +80,10 @@
     },
 
     "tacc.frontera" : {
-        "project"  : "FTA-Jha",
-        "queue"    : "development",
-        "schema"   : "local",
-        "cores"    : 64
+        "project"  : "MCB20024",
+        "queue"    : "normal",
+        "schema"   : "ssh",
+        "cores"    : 56
     },
 
     "tacc.longhorn" : {

@@ -86,7 +86,7 @@ class Srun(LaunchMethod):
         else:
             # the scheduler did place tasks - we can't honor the core and gpu
             # mapping (see above), but we at least honor the nodelist.
-            nodelist = [node['name'] for node in slots['nodes']]
+            nodelist = list(set([node['name'] for node in slots['nodes']]))
             nodefile = '%s/%s.nodes' % (sbox, uid)
             with open(nodefile, 'w') as fout:
                 fout.write(','.join(nodelist))
@@ -107,8 +107,7 @@ class Srun(LaunchMethod):
         # use `--exclusive` to ensure all tasks get individual resources.
         # do not use core binding: it triggers warnings on some installations
         # FIXME: warnings are triggered anyway :-(
-        mapping = '--exclusive --cpu-bind=none ' \
-                + '--nodes %d '        % n_nodes \
+        mapping = '--nodes %d '        % n_nodes \
                 + '--ntasks %d '       % n_tasks \
                 + '--cpus-per-task %d' % n_task_threads
 
