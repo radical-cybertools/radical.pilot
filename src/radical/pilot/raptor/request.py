@@ -9,7 +9,7 @@ import radical.utils as ru
 class Request(object):
 
     # poor man's future
-    # TODO: use proper future implementation
+    # TODO : use proper future implementation
     # FIXME: use ru.Description base class
 
 
@@ -58,8 +58,8 @@ class Request(object):
         # FIXME: we should not need to reconstruict the dict
         return {'uid'      : self._uid,
                 'state'    : self._state,
-                'resources': {'cpus': self._req.get('cores', 1),
-                              'gpus': self._req.get('gpus',  0)},
+                'cpus'     : self._req.get('cores', 1),
+                'gpus'     : self._req.get('gpus',  0),
                 'timeout'  : self._req['timeout'],
                 'mode'     : self._req['mode'],
                 'data'     : self._req['data'],

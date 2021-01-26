@@ -62,6 +62,7 @@ class MyMaster(rp.raptor.Master):
             item = {'uid'    : uid,
                     'mode'   : 'call',
                     'cores'  : 1,
+                    'gpus'   : 0,
                     'timeout': self._cfg.workload.timeout,
                     'data'   : {'method': 'hello',
                                 'kwargs': {'count': idx,
