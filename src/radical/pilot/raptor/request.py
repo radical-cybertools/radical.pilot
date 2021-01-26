@@ -9,7 +9,7 @@ import radical.utils as ru
 class Request(object):
 
     # poor man's future
-    # TODO: use proper future implementation
+    # TODO : use proper future implementation
     # FIXME: use ru.Description base class
 
 
@@ -55,12 +55,15 @@ class Request(object):
         produce the request message to be sent over the wire to the workers
         '''
 
-        return {'uid'    : self._uid,
-                'state'  : self._state,
-                'timeout': self._req['timeout'],
-                'mode'   : self._req['mode'],
-                'data'   : self._req['data'],
-                'result' : self._result}
+        # FIXME: we should not need to reconstruict the dict
+        return {'uid'      : self._uid,
+                'state'    : self._state,
+                'cpus'     : self._req.get('cores', 1),
+                'gpus'     : self._req.get('gpus',  0),
+                'timeout'  : self._req.get('timeout'),
+                'mode'     : self._req['mode'],
+                'data'     : self._req['data'],
+                'result'   : self._result}
 
 
     # --------------------------------------------------------------------------
