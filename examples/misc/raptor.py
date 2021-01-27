@@ -83,8 +83,6 @@ if __name__ == '__main__':
         umgr.add_pilots(pilot)
         umgr.wait_units()
 
-        print('overlay done')
-
     finally:
         session.close(download=True)
 
