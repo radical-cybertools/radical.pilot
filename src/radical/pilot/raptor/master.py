@@ -29,6 +29,8 @@ class Master(rpu.Component):
     #
     def __init__(self, cfg=None, backend='zmq'):
 
+        out('=== init')
+
         self._backend = backend  # FIXME: use
 
         self._lock     = ru.Lock('master')
@@ -46,6 +48,11 @@ class Master(rpu.Component):
 
         rpu.Component.__init__(self, cfg, self._session)
 
+        out('=== master 1')
+        self._log.debug('=== master 1')
+        self._log = ru.Logger('radical.pilot', level='DEBUG')
+        self._log.debug('=== master 1')
+
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
                              rpc.AGENT_STAGING_INPUT_QUEUE)
 
@@ -54,6 +61,7 @@ class Master(rpu.Component):
 
         self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
+        out('=== master 2')
 
         # set up RU ZMQ Queues for request distribution and result collection
         req_cfg = ru.Config(cfg={'channel'    : '%s.to_req' % self._uid,
@@ -70,11 +78,13 @@ class Master(rpu.Component):
                                  'stall_hwm'  : 0,
                                  'bulk_size'  : 64})
 
+        out('=== master 3')
         self._req_queue = ru.zmq.Queue(req_cfg)
         self._res_queue = ru.zmq.Queue(res_cfg)
 
         self._req_queue.start()
         self._res_queue.start()
+        out('=== master 4')
 
         self._req_addr_put = str(self._req_queue.addr_put)
         self._req_addr_get = str(self._req_queue.addr_get)
@@ -91,6 +101,7 @@ class Master(rpu.Component):
                                       self._res_addr_get,
                                       cb=self._result_cb)
 
+        self._log.debug('=== master 5')
         # for the workers it is the opposite: they will get requests from the
         # request queue, and will send responses to the response queue.
         self._info = {'req_addr_get': self._req_addr_get,
@@ -100,6 +111,7 @@ class Master(rpu.Component):
         # make sure the channels are up before allowing to submit requests
         time.sleep(1)
 
+        out('=== master 5')
         # connect to the local agent
         self._log.debug('startup complete')
 

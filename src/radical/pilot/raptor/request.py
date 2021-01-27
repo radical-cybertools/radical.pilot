@@ -60,7 +60,7 @@ class Request(object):
                 'state'    : self._state,
                 'resources': {'cpus': self._req.get('cores', 1),
                               'gpus': self._req.get('gpus',  0)},
-                'timeout'  : self._req['timeout'],
+                'timeout'  : self._req.get('timeout'),
                 'mode'     : self._req['mode'],
                 'data'     : self._req['data'],
                 'result'   : self._result}

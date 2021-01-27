@@ -16,6 +16,14 @@ from .. import Session
 from .. import utils     as rpu
 from .. import constants as rpc
 
+def out(msg):
+    sys.stdout.write('=== %s\n' % msg)
+    sys.stdout.flush()
+
+
+out('load')
+out(__file__)
+
 
 # ------------------------------------------------------------------------------
 #
@@ -527,14 +535,23 @@ class Worker(rpu.Component):
         task['pid'] = os.getpid()
 
         # ----------------------------------------------------------------------
-        def _tout_thread(tout, done):
+        def t_tout(tout, e_tout, e_done):
+            self._log.debug('=== tout 1')
             start = time.time()
-            while not done.is_set():
-                time.sleep(0.1)
+            while not e_done.is_set():
+                time.sleep(1)
                 now = time.time()
-                if now >= start + tout:
+                self._log.debug('=== tout ?: %.1f >= %.1f + %.1f - %.1f', now, start, tout, start + tout)
+                if now >= (start + tout):
                     # task is not done after timeout - kill it!
+                    out('==== tout 2')
+                    self._log.debug('=== tout 3: %.1f >= %.1f + %.1f ================', now, start, tout)
+                    e_tout.set()
+                    self._result_queue.put([task, '', 'timeout', 1])
+                    ru.cancel_main_thread()
                     os.kill(os.getpid(), signal.SIGTERM)
+                    break
+            self._log.debug('=== tout 5')
         # ----------------------------------------------------------------------
 
         ret = None
@@ -550,22 +567,27 @@ class Worker(rpu.Component):
             # FIXME: assume logical device numbering for now
             os.environ['CUDA_VISIBLE_DEVICES'] = os.environ['RP_TASK_GPUS']
 
-
             tout = task.get('timeout')
             self._log.debug('dispatch with tout %s', tout)
+            print('=== dispatch with tout %s', tout)
+
+            e_done = mt.Event()
+            e_tout = mt.Event()
 
             if tout:
-                done    = mt.Event()
-                watcher = mt.Thread(target=_tout_thread, args=[tout, done])
+                self._log.debug('start tout thread')
+                watcher = mt.Thread(target=t_tout, args=[tout, e_tout, e_done])
                 watcher.daemon = True
                 watcher.start()
+                self._log.debug('started tout thread')
 
             out, err, ret = self._modes[mode](task.get('data'))
 
-            if tout:
-                done.set()
+            e_done.set()
 
-            self._result_queue.put([task, str(out), str(err), int(ret)])
+            if not e_tout.is_set():
+                self._result_queue.put([task, str(out), str(err), int(ret)])
+
 
         except Exception as e:
 
@@ -580,6 +602,7 @@ class Worker(rpu.Component):
             # if we kill the process too quickly, the result put above
             # will not make it out, thus make sure the queue is empty
             # first.
+            e_done.set()
             self._result_queue.close()
             self._result_queue.join_thread()
             sys.exit(int(ret))

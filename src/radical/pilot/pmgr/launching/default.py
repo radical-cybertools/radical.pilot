@@ -993,9 +993,18 @@ class Default(PMGRLaunchingComponent):
         self._log.debug("Write agent cfg to '%s'.", cfg_tmp_file)
         ru.write_json(agent_cfg, cfg_tmp_file)
 
-        ret['fts'].append({'src': cfg_tmp_file,
-                           'tgt': '%s/%s' % (pilot_sandbox, agent_cfg_name),
+        # always stage agent cfg for each pilot, not in the tarball
+        ret['sds'].append({'src': cfg_tmp_file,
+                           'tgt': 'pilot:///%s' % agent_cfg_name,
                            'rem': True})  # purge the tmp file after packing
+
+        # always stage the bootstrapper for each pilot, not in the tarball
+        # FIXME: this results in many staging ops for many pilots
+        bootstrapper_path = os.path.abspath("%s/agent/bootstrap_0.sh"
+                                           % self._root_dir)
+        ret['sds'].append({'source': bootstrapper_path,
+                           'target': 'pilot://bootstrap_0.sh',
+                           'action': rpc.TRANSFER})
 
         # ----------------------------------------------------------------------
         # we also touch the log and profile tarballs in the target pilot sandbox
@@ -1051,14 +1060,6 @@ class Default(PMGRLaunchingComponent):
                                    'rem': False})
 
             self._sandboxes[resource] = True
-
-        # always stage the bootstrapper for each pilot, but *not* in the tarball
-        # FIXME: this results in many staging ops for many pilots
-        bootstrapper_path = os.path.abspath("%s/agent/bootstrap_0.sh"
-                                           % self._root_dir)
-        ret['sds'].append({'source': bootstrapper_path,
-                           'target': 'pilot://bootstrap_0.sh',
-                           'action': rpc.TRANSFER})
 
         # ----------------------------------------------------------------------
         # Create SAGA Job description and submit the pilot job
@@ -1171,10 +1172,12 @@ class Default(PMGRLaunchingComponent):
 
         for sd in sds:
             sd['prof_id'] = pilot['uid']
-
-        for sd in sds:
+            self._log.debug('=== src 1: %s', sd['source'])
+            self._log.debug('=== tgt 1: %s', sd['target'])
             sd['source'] = str(complete_url(sd['source'], loc_ctx, self._log))
             sd['target'] = str(complete_url(sd['target'], rem_ctx, self._log))
+            self._log.debug('=== src 2: %s', sd['source'])
+            self._log.debug('=== tgt 2: %s', sd['target'])
 
         self._stage(sds)
 
