@@ -707,8 +707,9 @@ def get_session_description(sid, src=None, dburl=None):
         tree[pid ]['children'].append(uid)
         tree[umgr]['children'].append(uid)
         if 'resources' not in unit:
-            import pprint
-            pprint.pprint(unit)
+            td = unit['description']
+            unit['resources'] = {'cpu': td['cpu_processes'] * td['cpu_threads'],
+                                 'gpu': td['gpu_processes']}
         tree[uid] = {'uid'         : uid,
                      'etype'       : 'unit',
                      'cfg'         : unit,
