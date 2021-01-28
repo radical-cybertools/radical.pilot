@@ -4,6 +4,7 @@ __license__   = "MIT"
 
 
 import os
+import sys
 import time
 import threading as mt
 
@@ -20,6 +21,18 @@ from . import task_description as rpcud
 _USE_BULK_CB = False
 if os.environ.get('RADICAL_PILOT_BULK_CB', '').lower() in ['true', 'yes', '1']:
     _USE_BULK_CB = True
+
+
+# ------------------------------------------------------------------------------
+#
+# make sure deprecation warning is shown only once per type
+#
+_seen = list()
+
+def _warn(old_type, new_type):
+    if old_type not in _seen:
+        _seen.append(old_type)
+        sys.stderr.write('%s is deprecated - use %s\n' % (old_type, new_type))
 
 
 # ------------------------------------------------------------------------------
@@ -776,6 +789,16 @@ class TaskManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def list_units(self, uids=None):
+        '''
+        deprecated - use `list_tasks()`
+        '''
+        _warn(self.list_units, self.list_tasks)
+        return self.list_tasks(uids=uids)
+
+
+    # --------------------------------------------------------------------------
+    #
     def list_tasks(self):
         """
         Returns the UIDs of the :class:`radical.pilot.Task` managed by
@@ -787,6 +810,16 @@ class TaskManager(rpu.Component):
 
         with self._pilots_lock:
             return list(self._tasks.keys())
+
+
+    # --------------------------------------------------------------------------
+    #
+    def submit_units(self, descriptions):
+        '''
+        deprecated - use `submit_tasks()`
+        '''
+        _warn(self.submit_units, self.submit_tasks)
+        return self.submit_tasks(descriptions=descriptions)
 
 
     # --------------------------------------------------------------------------
@@ -856,6 +889,16 @@ class TaskManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def get_units(self, uids=None):
+        '''
+        deprecated - use `get_tasks()`
+        '''
+        _warn(self.get_units, self.get_tasks)
+        return self.get_tasks(uids=uids)
+
+
+    # --------------------------------------------------------------------------
+    #
     def get_tasks(self, uids=None):
         """Returns one or more tasks identified by their IDs.
 
@@ -886,6 +929,16 @@ class TaskManager(rpu.Component):
 
         if ret_list: return ret
         else       : return ret[0]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def wait_units(self, uids=None, state=None, timeout=None):
+        '''
+        deprecated - use `wait_tasks()`
+        '''
+        _warn(self.wait_units, self.wait_tasks)
+        return self.wait_tasks(uids=uids, state=state, timeout=timeout)
 
 
     # --------------------------------------------------------------------------
@@ -1013,6 +1066,16 @@ class TaskManager(rpu.Component):
         # done waiting
         if ret_list: return states
         else       : return states[0]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def cancel_units(self, uids=None):
+        '''
+        deprecated - use `cancel_tasks()`
+        '''
+        _warn(self.cancel_units, self.cancel_tasks)
+        return self.cancel_tasks(uids=uids)
 
 
     # --------------------------------------------------------------------------
