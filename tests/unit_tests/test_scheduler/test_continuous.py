@@ -1,7 +1,7 @@
 
 # pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
-__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2013-2021, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 import glob
@@ -158,10 +158,12 @@ class TestContinuous(TestCase):
                                       'lfs'     : {'path': '/dev/null',
                                                    'size': 1234},
                                       'mem'     : 128}])
+    @mock.patch('radical.utils.Logger')
     def test_schedule_unit(self,
                            mocked_init,
                            mocked_configure,
-                           mocked_find_resources):
+                           mocked_find_resources,
+                           mocked_Logger):
 
         _, cfg = self.setUp()
         component = Continuous(cfg=None, session=None)
@@ -169,14 +171,15 @@ class TestContinuous(TestCase):
         unit['uid'] = cfg[1]['unit']['uid']
         unit['description'] = cfg[1]['unit']['description']
         component.nodes = cfg[1]['setup']['lm']['slots']['nodes']
-
+        component._tag_history = dict()
         component._rm_cores_per_node = 32
         component._rm_gpus_per_node  = 2
         component._rm_lfs_per_node   = {"size": 0, "path": "/dev/null"}
         component._rm_mem_per_node   = 1024
-        component._rm_lm_info = {}
-        component._log = ru.Logger('dummy')
-        component._node_offset = 0
+        component._rm_lm_info        = dict()
+        component._log               = ru.Logger('dummy')
+        component._dvm_host_list     = None
+        component._node_offset       = 0
         test_slot =  {'cores_per_node': 32,
                       'gpus_per_node': 2,
                       'lfs_per_node': {'path': '/dev/null', 'size': 0},
@@ -188,12 +191,11 @@ class TestContinuous(TestCase):
                                  'mem': 128,
                                  'name': 'a',
                                  'uid': 1}]}
-        try:
-            self.assertEqual(component.schedule_unit(unit), test_slot)
-        except:
-            with pytest.raises(AssertionError):
-                raise
 
+
+        self.assertEqual(component.schedule_unit(unit), test_slot)
+        self.assertEqual(component._tag_history, {})
+      # self.assertEqual(component._tag_history, {'unit.000001': [1]})
 
     # --------------------------------------------------------------------------
     #
