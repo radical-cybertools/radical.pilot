@@ -1,0 +1,16 @@
+
+{
+    "comet": {
+      "cpus_on_node": 24,
+      "gpus_on_node": 0,
+      "ssh_path": "/bin/ssh"
+    },
+    "bridges": {
+      "cpus_on_node": 28,
+      "gpus_on_node": 0,
+      "ssh_path": "/bin/ssh",
+      "mpirun_path": "mpirun",
+      "mpi_flavor": "OMPI",
+      "mpi_version": "2.1.2"
+    }
+}
