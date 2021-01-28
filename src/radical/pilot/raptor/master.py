@@ -29,8 +29,6 @@ class Master(rpu.Component):
     #
     def __init__(self, cfg=None, backend='zmq'):
 
-        out('=== init')
-
         self._backend = backend  # FIXME: use
 
         self._lock     = ru.Lock('master')
@@ -48,11 +46,6 @@ class Master(rpu.Component):
 
         rpu.Component.__init__(self, cfg, self._session)
 
-        out('=== master 1')
-        self._log.debug('=== master 1')
-        self._log = ru.Logger('radical.pilot', level='DEBUG')
-        self._log.debug('=== master 1')
-
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
                              rpc.AGENT_STAGING_INPUT_QUEUE)
 
@@ -61,7 +54,6 @@ class Master(rpu.Component):
 
         self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
-        out('=== master 2')
 
         # set up RU ZMQ Queues for request distribution and result collection
         req_cfg = ru.Config(cfg={'channel'    : '%s.to_req' % self._uid,
@@ -78,13 +70,11 @@ class Master(rpu.Component):
                                  'stall_hwm'  : 0,
                                  'bulk_size'  : 64})
 
-        out('=== master 3')
         self._req_queue = ru.zmq.Queue(req_cfg)
         self._res_queue = ru.zmq.Queue(res_cfg)
 
         self._req_queue.start()
         self._res_queue.start()
-        out('=== master 4')
 
         self._req_addr_put = str(self._req_queue.addr_put)
         self._req_addr_get = str(self._req_queue.addr_get)
@@ -101,7 +91,6 @@ class Master(rpu.Component):
                                       self._res_addr_get,
                                       cb=self._result_cb)
 
-        self._log.debug('=== master 5')
         # for the workers it is the opposite: they will get requests from the
         # request queue, and will send responses to the response queue.
         self._info = {'req_addr_get': self._req_addr_get,
@@ -111,7 +100,6 @@ class Master(rpu.Component):
         # make sure the channels are up before allowing to submit requests
         time.sleep(1)
 
-        out('=== master 5')
         # connect to the local agent
         self._log.debug('startup complete')
 
@@ -158,11 +146,7 @@ class Master(rpu.Component):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        self._log.debug('=== ctrl %s', cmd)
-
         if cmd == 'worker_register':
-
-            self._log.debug('=== ctrl register %s', arg)
 
             uid  = arg['uid']
             info = arg['info']
@@ -171,11 +155,9 @@ class Master(rpu.Component):
 
             if uid not in self._workers:
                 # ignore this uid
-                self._log.debug('=== ignore worker %s', uid)
                 return
 
             with self._lock:
-                self._log.debug('=== get worker entry %s', uid)
                 self._workers[uid]['info']  = info
                 self._workers[uid]['state'] = 'ACTIVE'
                 self._log.debug('info: %s', info)
@@ -284,7 +266,6 @@ class Master(rpu.Component):
         self.advance(task, publish=True, push=True)
 
         with self._lock:
-            self._log.debug('=== add worker entry %s', uid)
             self._workers[uid] = dict()
             self._workers[uid]['state'] = 'NEW'
 
@@ -394,7 +375,7 @@ class Master(rpu.Component):
         # get work from the overloading implementation
         try:
             self.create_work_items()
-        except Exception as e:
+        except Exception:
             self._log.exception('failed to create work')
             self._term.set()
 
@@ -414,8 +395,6 @@ class Master(rpu.Component):
             # FIXME: this should be replaced by an async state check.  Maybe
             #        subscrive to state updates on the update pubsub?
             time.sleep(1.0)
-
-        self._log.debug('=== master term')
 
 
     # --------------------------------------------------------------------------
@@ -439,8 +418,6 @@ class Master(rpu.Component):
                 objs.append(request)
 
         # push the request message (as dictionary) onto the request queue
-        self._log.debug('=== put %d: [%s]', len(dicts),
-                         [r['uid'] for r in dicts])
         self._req_put.put(dicts)
 
         # return the request to the master script for inspection etc.
@@ -502,10 +479,7 @@ class Master(rpu.Component):
             states = [self._workers[uid]['state'] for uid in uids]
             if set(states) == {'DONE'}:
                 break
-            self._log.debug('=== states: %s', states)
             time.sleep(1)
-
-        self._log.debug('=== all workers terminated')
 
 
 # ------------------------------------------------------------------------------

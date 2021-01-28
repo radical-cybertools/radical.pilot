@@ -16,14 +16,6 @@ from .. import Session
 from .. import utils     as rpu
 from .. import constants as rpc
 
-def out(msg):
-    sys.stdout.write('=== %s\n' % msg)
-    sys.stdout.flush()
-
-
-out('load')
-out(__file__)
-
 
 # ------------------------------------------------------------------------------
 #
@@ -125,18 +117,13 @@ class Worker(rpu.Component):
         self.register_mode('exec',  self._exec)
         self.register_mode('shell', self._shell)
 
-        self._log.debug('==== 1')
-
         self.pre_exec()
-
-        self._log.debug('==== 2')
 
         # connect to the request / response ZMQ queues
         self._res_put = ru.zmq.Putter('to_res', self._info.res_addr_put)
         self._req_get = ru.zmq.Getter('to_req', self._info.req_addr_get,
                                                 cb=self._request_cb)
 
-        self._log.debug('==== 3')
         # the worker can return custom information which will be made available
         # to the master.  This can be used to communicate, for example, worker
         # specific communication endpoints.
@@ -147,13 +134,10 @@ class Worker(rpu.Component):
         # `info` is a placeholder for any additional meta data communicated to
         # the worker.  Only first rank publishes.
         rank = int(self._cfg['rank'])
-        self._log.debug('==== 4 %s [%s]', rank, type(rank))
         if rank == 0:
-            self._log.debug('=== register_worker')
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
                                               'arg': {'uid' : self._cfg['wid'],
                                                       'info': self._info}})
-            self._log.debug('=== registered worker')
 
 
     # --------------------------------------------------------------------------
@@ -442,10 +426,8 @@ class Worker(rpu.Component):
         invoke them.
         '''
 
-        self._log.debug('=== req_loop %s', len(ru.as_list(tasks)))
         for task in ru.as_list(tasks):
 
-            self._log.debug('=== req_recv %s', task['uid'])
             task['worker'] = self._uid
 
             self.task_pre_exec(task)
@@ -455,7 +437,6 @@ class Worker(rpu.Component):
                 # many cpus and gpus we need to mark as busy
                 while not self._alloc_task(task):
 
-                    self._log.debug('=== req_alloc %s', task['uid'])
                     # no resource - wait for new resources
                     #
                     # NOTE: this will block smaller tasks from being executed
@@ -474,7 +455,6 @@ class Worker(rpu.Component):
                     self._res_evt.clear()
 
 
-                self._log.debug('=== req_alloced %s', task['uid'])
                 self._prof.prof('req_start', uid=task['uid'], msg=self._uid)
 
                 # we got an allocation for this task, and can run it, so apply
@@ -499,8 +479,6 @@ class Worker(rpu.Component):
                 self._log.debug('applied: %s: %s: %s',
                                 task['uid'], proc.pid, self._pool.keys())
 
-                self._log.debug('=== req_started %s: %s', task['uid'], proc.pid)
-
 
             except Exception as e:
 
@@ -516,12 +494,6 @@ class Worker(rpu.Component):
 
                 self._res_put.put(res)
 
-        self._log.debug('=== req_looped')
-
-
-    def _after_fork():
-        with open('/tmp/after_fork', 'a+') as fout:
-            fout.write('after fork %s %s\n' % (os.getpid(), mt.current_thread().name))
 
     # --------------------------------------------------------------------------
     #
@@ -536,22 +508,17 @@ class Worker(rpu.Component):
 
         # ----------------------------------------------------------------------
         def t_tout(tout, e_tout, e_done):
-            self._log.debug('=== tout 1')
             start = time.time()
             while not e_done.is_set():
                 time.sleep(1)
                 now = time.time()
-                self._log.debug('=== tout ?: %.1f >= %.1f + %.1f - %.1f', now, start, tout, start + tout)
                 if now >= (start + tout):
                     # task is not done after timeout - kill it!
-                    out('==== tout 2')
-                    self._log.debug('=== tout 3: %.1f >= %.1f + %.1f ================', now, start, tout)
                     e_tout.set()
                     self._result_queue.put([task, '', 'timeout', 1])
                     ru.cancel_main_thread()
                     os.kill(os.getpid(), signal.SIGTERM)
                     break
-            self._log.debug('=== tout 5')
         # ----------------------------------------------------------------------
 
         ret = None
@@ -569,7 +536,6 @@ class Worker(rpu.Component):
 
             tout = task.get('timeout')
             self._log.debug('dispatch with tout %s', tout)
-            print('=== dispatch with tout %s', tout)
 
             e_done = mt.Event()
             e_tout = mt.Event()
@@ -627,7 +593,6 @@ class Worker(rpu.Component):
             raise
 
         finally:
-            self._log.debug('=== send unregister')
             if self._cfg['rank'] == 0:
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_unregister',
                                                   'arg': {'uid' : self._cfg['wid']}})
@@ -680,8 +645,8 @@ class Worker(rpu.Component):
     def _control_cb(self, topic, msg):
 
         if msg['cmd'] == 'terminate':
-                self._log.debug('got terminate msg: %s: %s', topic, msg)
-                self._term.set()
+            self._log.debug('got terminate msg: %s: %s', topic, msg)
+            self._term.set()
 
         elif msg['cmd'] == 'worker_terminate':
             if msg['arg']['uid'] == self._cfg['wid']:
