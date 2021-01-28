@@ -12,7 +12,8 @@
                         "gpu_process_type" : "null",
                         "gpu_thread_type"  : "null",
                         "mem_per_process"  : 128,
-                        "lfs_per_process"  : 0
+                        "lfs_per_process"  : 0,
+                        "tag"              : "unit.000001"
                        },
         "task_sandbox_path": "/tmp"
     },
@@ -54,3 +55,4 @@
         }
     }
 }
+
