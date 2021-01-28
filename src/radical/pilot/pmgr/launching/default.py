@@ -985,7 +985,7 @@ class Default(PMGRLaunchingComponent):
         # ----------------------------------------------------------------------
         # Write agent config dict to a json file in pilot sandbox.
 
-        agent_cfg_name = '%s.cfg' % pid
+        agent_cfg_name = 'agent.0.cfg'
         cfg_tmp_handle, cfg_tmp_file = tempfile.mkstemp(prefix='rp.agent_cfg.')
         os.close(cfg_tmp_handle)  # file exists now
 
@@ -994,16 +994,18 @@ class Default(PMGRLaunchingComponent):
         ru.write_json(agent_cfg, cfg_tmp_file)
 
         # always stage agent cfg for each pilot, not in the tarball
-        ret['sds'].append({'src': cfg_tmp_file,
-                           'tgt': 'session:///%s' % agent_cfg_name,
-                           'rem': True})  # purge the tmp file after packing
+        # FIXME: purge the tmp file after staging
+        self._log.debug('=== cfg %s -> %s', agent_cfg['pid'], pilot_sandbox)
+        ret['sds'].append({'source': cfg_tmp_file,
+                           'target': '%s/%s' % (pilot['pilot_sandbox'], agent_cfg_name),
+                           'action': rpc.TRANSFER})
 
         # always stage the bootstrapper for each pilot, not in the tarball
         # FIXME: this results in many staging ops for many pilots
         bootstrapper_path = os.path.abspath("%s/agent/bootstrap_0.sh"
                                            % self._root_dir)
         ret['sds'].append({'source': bootstrapper_path,
-                           'target': 'session://bootstrap_0.sh',
+                           'target': '%s/bootstrap_0.sh' % pilot['pilot_sandbox'],
                            'action': rpc.TRANSFER})
 
         # ----------------------------------------------------------------------
@@ -1037,15 +1039,6 @@ class Default(PMGRLaunchingComponent):
                     'rem': False
                 })
 
-
-            # Copy the bootstrap shell script.
-            bootstrapper_path = os.path.abspath("%s/agent/bootstrap_0.sh"
-                              % self._root_dir)
-            ret['fts'].append({'src': bootstrapper_path,
-                               'tgt': session_sandbox,
-                               'rem': False
-            })
-
             # Some machines cannot run pip due to outdated CA certs.
             # For those, we also stage an updated certificate bundle
             # TODO: use booleans all the way?
@@ -1068,7 +1061,7 @@ class Default(PMGRLaunchingComponent):
 
         jd.name                  = job_name
         jd.executable            = "/bin/bash"
-        jd.arguments             = ['-l %s/bootstrap_0.sh %s' % (session_sandbox, bootstrap_args)]
+        jd.arguments             = ['-l ./bootstrap_0.sh %s' % bootstrap_args]
         jd.working_directory     = pilot_sandbox
         jd.project               = project
         jd.output                = "bootstrap_0.out"
