@@ -1886,6 +1886,7 @@ fi
 create_deactivate
 
 # start the master agent instance (zero)
+ln -s ../$PILOT_ID.cfg ./agent.0.cfg
 profile_event 'bootstrap_0_ok'
 if test -z "$CCM"; then
     ./bootstrap_2.sh 'agent.0'    \

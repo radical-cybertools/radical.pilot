@@ -985,7 +985,7 @@ class Default(PMGRLaunchingComponent):
         # ----------------------------------------------------------------------
         # Write agent config dict to a json file in pilot sandbox.
 
-        agent_cfg_name = 'agent.0.cfg'
+        agent_cfg_name = '%s.cfg' % pid
         cfg_tmp_handle, cfg_tmp_file = tempfile.mkstemp(prefix='rp.agent_cfg.')
         os.close(cfg_tmp_handle)  # file exists now
 
@@ -995,7 +995,7 @@ class Default(PMGRLaunchingComponent):
 
         # always stage agent cfg for each pilot, not in the tarball
         ret['sds'].append({'src': cfg_tmp_file,
-                           'tgt': 'pilot:///%s' % agent_cfg_name,
+                           'tgt': 'session:///%s' % agent_cfg_name,
                            'rem': True})  # purge the tmp file after packing
 
         # always stage the bootstrapper for each pilot, not in the tarball
@@ -1003,7 +1003,7 @@ class Default(PMGRLaunchingComponent):
         bootstrapper_path = os.path.abspath("%s/agent/bootstrap_0.sh"
                                            % self._root_dir)
         ret['sds'].append({'source': bootstrapper_path,
-                           'target': 'pilot://bootstrap_0.sh',
+                           'target': 'session://bootstrap_0.sh',
                            'action': rpc.TRANSFER})
 
         # ----------------------------------------------------------------------
@@ -1068,7 +1068,7 @@ class Default(PMGRLaunchingComponent):
 
         jd.name                  = job_name
         jd.executable            = "/bin/bash"
-        jd.arguments             = ['-l bootstrap_0.sh %s' % bootstrap_args]
+        jd.arguments             = ['-l %s/bootstrap_0.sh %s' % (session_sandbox, bootstrap_args)]
         jd.working_directory     = pilot_sandbox
         jd.project               = project
         jd.output                = "bootstrap_0.out"
