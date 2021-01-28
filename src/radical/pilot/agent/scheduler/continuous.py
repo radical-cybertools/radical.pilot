@@ -101,7 +101,7 @@ class Continuous(AgentSchedulingComponent):
             self._log.info('blocked cores: %s' % blocked_cores)
             self._log.info('blocked gpus : %s' % blocked_gpus)
 
-        self.nodes = []
+        self.nodes = list()
         for node, node_uid in self._rm_node_list:
 
             node_entry = {'name'   : node,
@@ -154,6 +154,10 @@ class Continuous(AgentSchedulingComponent):
         if blocked_cores or blocked_gpus:
             self._rm_cores_per_node -= len(blocked_cores)
             self._rm_gpus_per_node  -= len(blocked_gpus)
+
+        self._dvm_host_list = list()
+        if isinstance(self._rm_lm_info, dict):
+            self._dvm_host_list = self._rm_lm_info.get('dvm_hosts') or []
 
 
     # --------------------------------------------------------------------------
@@ -381,21 +385,25 @@ class Continuous(AgentSchedulingComponent):
         is_last  = False
         tag      = cud.get('tag')
 
+        # `tag` will soon be deprecated - check also for `tags: {colocate:uid}`
+        # as the current way to specify colocation requests
+        if not tag:
+            tag = cud.get('tags', {}).get('colocate')
+
         # - PRRTE related - start -
-        dvm_hosts_list = self._rm_lm_info.get('dvm_hosts') or []
         # use tag as a DVM ID, so task will be allocated to nodes that are
-        # handled by a corresponding DVM (only applied with `dvm_hosts_list`)
+        # handled by a corresponding DVM (only applied with `dvm_host_list`)
         # FIXME: new coming attribute `tags` would consider `dvm_id`
-        if dvm_hosts_list and tag is not None:
+        if self._dvm_host_list and tag is not None:
             try:
                 tag = int(tag)
             except (TypeError, ValueError):
                 tag = None
             else:
-                if len(dvm_hosts_list) <= tag:
+                if len(self._dvm_host_list) <= tag:
                     raise ValueError('dvm_id (%s) out of range' % tag)
                 if tag not in self._tag_history:
-                    self._tag_history[tag] = dvm_hosts_list[tag]
+                    self._tag_history[tag] = self._dvm_host_list[tag]
         unit_dvm_id = None
         # - PRRTE related - end -
 
@@ -424,12 +432,12 @@ class Continuous(AgentSchedulingComponent):
                 if node_uid not in self._tag_history[tag]:
                     continue
             # - PRRTE related - start -
-            elif dvm_hosts_list:
+            elif self._dvm_host_list:
                 # check that nodes assigned to the unit have the same dvm_id
                 # FIXME: handle the case when unit (MPI task) would require
                 #        more nodes than the amount available per DVM
                 _skip_node = True
-                for dvm_id, dvm_hosts in enumerate(dvm_hosts_list):
+                for dvm_id, dvm_hosts in enumerate(self._dvm_host_list):
                     if node_uid in dvm_hosts:
                         if unit_dvm_id is None or unit_dvm_id == dvm_id:
                             node_dvm_id = dvm_id  # save to use later
@@ -519,7 +527,7 @@ class Continuous(AgentSchedulingComponent):
 
         # allocation worked!  If the unit was tagged, store the node IDs for
         # this tag, so that later units can reuse that information
-        if not dvm_hosts_list and tag is not None:
+        if not self._dvm_host_list and tag is not None:
             self._tag_history[tag] = [node['uid'] for node in slots['nodes']]
 
         # this should be nicely filled out now - return
