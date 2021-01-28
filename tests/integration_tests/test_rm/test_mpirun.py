@@ -1,19 +1,20 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
-
 import os
 import socket
 
-from unittest import mock, TestCase
-
 import radical.utils as ru
 
-from radical.pilot.agent.resource_manager.slurm import Slurm
+from unittest import mock, TestCase
+
+from radical.pilot.agent.launch_method.mpirun import MPIRun
 
 
 # ------------------------------------------------------------------------------
 #
 class TestTask(TestCase):
 
+    # --------------------------------------------------------------------------
+    #
     def setUp(self) -> dict:
         path = os.path.dirname(__file__) + '../test_config/resources.json'
         resources = ru.read_json(path)
@@ -23,23 +24,19 @@ class TestTask(TestCase):
             if host in hostname:
                 return resources[host]
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    @mock.patch.object(Slurm, '__init__',   return_value=None)
+    @mock.patch.object(MPIRun, '__init__',   return_value=None)
     def test_configure(self, mocked_init):
-
         cfg = self.setUp()
-        component = Slurm(cfg=None, session=None)
+        component = MPIRun(name=None, cfg=None, session=None)
         component._log = ru.Logger('dummy')
         component._cfg = {}
-        component.lm_info = {'cores_per_node': None}
+        component.env_removables = []
         component._configure()
-        node = os.environ['SLURM_NODELIST']
-
-        self.assertEqual(component.node_list, [[node, node]])
-        self.assertEqual(component.cores_per_node, cfg['cores_per_node'])
-        self.assertEqual(component.gpus_per_node, ['gpus_per_node'])
-        self.assertEqual(component.lfs_per_node, {'path': None, 'size': 0})
+        self.assertEqual(component.launch_command, cfg['mpirun_path'])
+        self.assertEqual(component.mpi_flavor, cfg['mpi_flavor'])
+        self.assertEqual(component.mpi_version, cfg['mpi_version'])
     # --------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
