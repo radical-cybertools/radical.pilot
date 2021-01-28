@@ -6,12 +6,11 @@
 #SBATCH -p compute                      # partition to use
 #SBATCH -N 1                            # total number of nodes (16 cores/node)
 #SBATCH -n 1                            # total number of mpi tasks requested
-#SBATCH -t 00:30:00                     # run time (hh:mm:ss) - 0.5 hours
+#SBATCH -t 01:00:00                     # run time (hh:mm:ss) - 0.5 hours
 #SBATCH -A                              # allocation to charge job against
 
 # ------------------------------------------------------------------------------
 # Test files
-
 TEST_SLURM='radical.pilot/tests/integration_tests/test_rm/test_slurm.py'
 TEST_ISSUE='radical.pilot/tests/bin/radical-pilot-test-issue'
 
@@ -36,8 +35,13 @@ pytest -vvv $TEST_SLURM > output.log 2>&1
 
 if test "$?" = 1
 then
+    echo 'A test failed'
     $TEST_ISSUE -r 'SDSC Comet' -l output.log
     sbatch --begin='now+4weeks' comet.sh
 else
+    echo 'Everything went fine'
     sbatch --begin='now+1week' comet.sh
 fi
+
+# ------------------------------------------------------------------------------
+
