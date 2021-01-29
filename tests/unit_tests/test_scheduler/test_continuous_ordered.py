@@ -122,5 +122,15 @@ class TestContinuousOrdered(TestCase):
 
         component._state_cb(topic, msg)
 
+
+if __name__ == '__main__':
+
+    tc = TestContinuousOrdered()
+    tc.test_configure()
+    tc.test_state_cb()
+    tc.test_try_schedule()
+    tc.test_schedule_tasks()
+
+
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

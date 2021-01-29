@@ -129,5 +129,14 @@ class TestBase(TestCase):
         self.assertEqual(gpu_map, [[1], [2]])
 
 
+if __name__ == '__main__':
+
+    tc = TestBase()
+    tc.test_get_node_maps()
+    tc.test_handle_cuda()
+    tc.test_try_allocation()
+    tc.test_change_slot_states()
+
+
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

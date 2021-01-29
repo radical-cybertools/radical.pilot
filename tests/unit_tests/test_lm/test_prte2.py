@@ -37,5 +37,11 @@ class TestPRTE2(TestCase):
                 self.assertEqual([command, hop], result, msg=task['uid'])
 
 
-    # ------------------------------------------------------------------------------
-    # pylint: enable=protected-access, unused-argument, no-value-for-parameter
+if __name__ == '__main__':
+
+    tc = TestPRTE2()
+    tc.test_construct_command()
+
+
+# ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

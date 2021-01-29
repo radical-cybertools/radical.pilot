@@ -72,5 +72,12 @@ class TestSSH(TestCase):
                 self.assertEqual([command, hop], result)
 
 
+if __name__ == '__main__':
+
+    tc = TestSSH()
+    tc.test_configure()
+    tc.test_construct_command()
+    tc.test_configure_fail()
+
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

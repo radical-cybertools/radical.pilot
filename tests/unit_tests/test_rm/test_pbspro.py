@@ -171,5 +171,14 @@ class TestPBSPro(TestCase):
             component._parse_pbspro_vnodes()
 
 
-    # ------------------------------------------------------------------------------
-    # pylint: enable=protected-access, unused-argument, no-value-for-parameter
+if __name__ == '__main__':
+
+    tc = TestPBSPro()
+    tc.test_configure()
+    tc.test_configure_error()
+    tc.test_parse_pbspro_vnodes_error()
+    tc.test_parse_pbspro_vnodes()
+
+
+# ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

@@ -104,5 +104,12 @@ class TestMPIExec(TestCase):
             self.assertEqual(task['description']['environment'].get('MPI_SHEPHERD'), 'true')
 
 
+if __name__ == '__main__':
+
+    tc = TestMPIExec()
+    tc.test_configure()
+    tc.test_construct_command()
+
+
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

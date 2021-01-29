@@ -44,5 +44,12 @@ class TestCCMRun(TestCase):
             self.assertEqual([command, hop], result)
 
 
-    # ------------------------------------------------------------------------------
-    # pylint: enable=protected-access, unused-argument, no-value-for-parameter
+if __name__ == '__main__':
+
+    tc = TestCCMRun()
+    tc.test_configure()
+    tc.test_construct_command()
+
+
+# ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

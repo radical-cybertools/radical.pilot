@@ -71,3 +71,10 @@ class TestDurations(TestCase):
                                    ru.STATE: 'arbitrary'},
                                   {ru.EVENT: 'arbitrary',
                                    ru.STATE: 'arbitrary'}]})
+
+
+if __name__ == '__main__':
+
+    tc = TestDurations()
+    tc.test_convert_sdurations()
+    tc.test_expand_sduration()

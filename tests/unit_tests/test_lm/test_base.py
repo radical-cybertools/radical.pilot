@@ -65,5 +65,12 @@ class TestBase(TestCase):
         self.assertEqual(flavor,'HYDRA')
 
 
+if __name__ == '__main__':
+
+    tc = TestBase()
+    tc.test_configure()
+    tc.test_get_mpi_info()
+
+
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

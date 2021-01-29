@@ -85,5 +85,11 @@ class TestLSF_SUMMIT(TestCase):
             component._configure()
 
 
+if __name__ == '__main__':
+
+    tc = TestLSF_SUMMIT()
+    tc.test_configure()
+    tc.test_configure_error()
+
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

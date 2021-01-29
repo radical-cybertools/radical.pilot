@@ -35,5 +35,11 @@ class TestCobalt(TestCase):
         self.assertEqual(component.lfs_per_node, {'path': None, 'size': 0})
 
 
+if __name__ == '__main__':
+
+    tc = TestCobalt()
+    tc.test_configure()
+
+
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

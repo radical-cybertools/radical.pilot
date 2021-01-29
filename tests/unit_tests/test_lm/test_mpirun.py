@@ -129,5 +129,13 @@ class TestMPIRun(TestCase):
             command, hop = component.construct_command(task, None)
             self.assertEqual([command, hop], result, task['uid'])
 
+
+if __name__ == '__main__':
+
+    tc = TestMPIRun()
+    tc.test_construct_command()
+    tc.test_configure()
+
+
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

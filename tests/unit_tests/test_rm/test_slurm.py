@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-
-print('foo')
-
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import os
@@ -14,7 +11,6 @@ from radical.pilot.agent.resource_manager.slurm import Slurm
 
 
 class TestSlurm(TestCase):
-
 
     # ------------------------------------------------------------------------------
     #
@@ -151,5 +147,12 @@ class TestSlurm(TestCase):
             component._configure()
 
 
-    # ------------------------------------------------------------------------------
-    # pylint: enable=protected-access, unused-argument, no-value-for-parameter
+if __name__ == '__main__':
+
+    tc = TestSlurm()
+    tc.test_configure()
+    tc.test_configure_error()
+
+
+# ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

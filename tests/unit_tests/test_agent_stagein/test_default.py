@@ -74,7 +74,11 @@ class TestDefault(TestCase):
             self.assertEqual(global_state, test[1][1])
 
 
-# ------------------------------------------------------------------------------
+if __name__ == '__main__':
+
+    tc = TestDefault()
+    tc.test_work()
+
 
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

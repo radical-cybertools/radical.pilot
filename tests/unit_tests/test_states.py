@@ -69,4 +69,10 @@ class TestStates(TestCase):
         self.assertEqual(_task_state_collapse(states), 'CANCELED')
 
 
-    # ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
+if __name__ == '__main__':
+
+    tc = TestStates()
+    tc.test_task_state_collapse()
+    tc.test_pilot_state_collapse()

@@ -68,5 +68,12 @@ class TestRSH(TestCase):
                 self.assertEqual([command, hop], result)
 
 
+if __name__ == '__main__':
+
+    tc = TestRSH()
+    tc.test_configure()
+    tc.test_configure_fail()
+    tc.test_construct_command()
+
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

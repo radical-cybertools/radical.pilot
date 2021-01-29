@@ -222,5 +222,15 @@ class TestContinuous(TestCase):
             with pytest.raises(AssertionError):
                 raise
 
+
+if __name__ == '__main__':
+
+    tc = TestContinuous()
+    tc.test_configure()
+    tc.test_unschedule_task()
+    tc.test_find_resources()
+    tc.test_schedule_task()
+
+
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

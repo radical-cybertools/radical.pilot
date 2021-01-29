@@ -94,5 +94,12 @@ class TestBase(TestCase):
         script = component._task_to_cmd(task, launcher)
         self.assertEqual(script, tests['results']['script'])
 
+
+if __name__ == '__main__':
+
+    tc = TestBase()
+    tc.test_handle_task()
+    tc.test_task_to_cmd()
+
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

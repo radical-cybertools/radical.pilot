@@ -49,5 +49,12 @@ class TestSpark(TestCase):
                 self.assertEqual([command, hop], result)
 
 
+if __name__ == '__main__':
+
+    tc = TestSpark()
+    tc.test_configure()
+    tc.test_configure()
+
+
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

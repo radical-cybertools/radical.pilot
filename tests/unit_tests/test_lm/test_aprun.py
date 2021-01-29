@@ -1,4 +1,3 @@
-
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 from unittest import mock, TestCase
@@ -42,5 +41,12 @@ class TestAPRun(TestCase):
             self.assertEqual([command, hop], result)
 
 
-    # ------------------------------------------------------------------------------
-    # pylint: enable=protected-access, unused-argument, no-value-for-parameter
+if __name__ == '__main__':
+
+    tc = TestAPRun()
+    tc.test_configure()
+    tc.test_construct_command()
+
+
+# ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

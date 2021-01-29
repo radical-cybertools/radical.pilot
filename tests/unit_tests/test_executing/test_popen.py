@@ -142,5 +142,12 @@ class TestBase(unittest.TestCase):
         self.assertEqual(len(_pids), 0)
 
 
+if __name__ == '__main__':
+
+    tc = TestBase()
+    tc.test_spawn()
+    tc.test_check_running()
+    tc.test_handle_task()
+
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

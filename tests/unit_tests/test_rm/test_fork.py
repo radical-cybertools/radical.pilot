@@ -61,5 +61,12 @@ class TestFork(TestCase):
         # number of nodes is calculated based on number of requested GPUs
         self.assertEqual(len(component.node_list), 4)
 
+
+if __name__ == '__main__':
+
+    tc = TestFork()
+    tc.test_configure()
+
+
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

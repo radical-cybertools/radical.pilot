@@ -142,5 +142,13 @@ class TestTorque(TestCase):
             component._configure()
             warnings.warn("PBS_NUM_NODES not set!", RuntimeWarning)
 
-    # ------------------------------------------------------------------------------
-    # pylint: enable=protected-access, unused-argument, no-value-for-parameter
+
+if __name__ == '__main__':
+
+    tc = TestTorque()
+    tc.test_configure()
+    tc.test_configure_error()
+
+
+# ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

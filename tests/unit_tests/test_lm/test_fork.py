@@ -39,5 +39,12 @@ class TestFork(TestCase):
             self.assertEqual([command, hop], result)
 
 
-    # ------------------------------------------------------------------------------
-    # pylint: enable=protected-access, unused-argument, no-value-for-parameter
+if __name__ == '__main__':
+
+    tc = TestFork()
+    tc.test_construct_command()
+    tc.test_configure()
+
+
+# ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

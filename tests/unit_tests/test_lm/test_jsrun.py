@@ -66,5 +66,11 @@ class TestJSRun(TestCase):
             self.assertEqual([command, hop] == result)
 
 
-    # ------------------------------------------------------------------------------
-    # pylint: enable=protected-access, unused-argument, no-value-for-parameter
+if __name__ == '__main__':
+
+    tc = TestJSRun()
+    tc.test_construct_command()
+
+
+# ------------------------------------------------------------------------------
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

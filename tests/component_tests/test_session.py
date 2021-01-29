@@ -17,7 +17,7 @@ TEST_CASES_PATH = '%s/test_cases' % os.path.dirname(__file__)
 
 # ------------------------------------------------------------------------------
 #
-class SessionTestClass(TestCase):
+class TestSession(TestCase):
 
     # --------------------------------------------------------------------------
     #
@@ -106,3 +106,11 @@ class SessionTestClass(TestCase):
                 resource='local.localhost', schema='wrong_schema')
 
 # ------------------------------------------------------------------------------
+
+
+if __name__ == '__main__':
+
+    tc = TestSession()
+    tc.test_list_resources()
+    tc.test_get_resource_config()
+    tc.test_add_resource_config()
