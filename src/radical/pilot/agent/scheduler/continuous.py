@@ -388,7 +388,7 @@ class Continuous(AgentSchedulingComponent):
         # `tag` will soon be deprecated - check also for `tags: {colocate:uid}`
         # as the current way to specify colocation requests
         if not tag:
-            tag = cud.get('tags', {}).get('colocate')
+            tag = td.get('tags', {}).get('colocate')
 
         # - PRRTE related - start -
         # use tag as a DVM ID, so task will be allocated to nodes that are
