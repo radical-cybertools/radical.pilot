@@ -32,22 +32,43 @@ class Fork(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def get_launcher_env(self):
 
-        # NOTE: ignore thread and process counts, and expect application to do
-        #       the needful
+        return list()
 
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_args    = cud.get('arguments') or []
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launch_command(self, task, exec_script):
+
+        return exec_script
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_cmd(self):
+
+        return 'export RP_RANK=0'
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_exec(self, task, rank_id, rank):
+
+        ret = ''
+        gpus = [g[0] for g in rank['gpus']]
+        if gpus:
+            ret += '    export CUDA_VISIBLE_DEVICES=%s\n' % ','.join(gpus)
+
+        td           = task['description']
+        task_exec    = td['executable']
+        task_args    = td.get('arguments')
         task_argstr  = self._create_arg_string(task_args)
+        command      = "%s %s" % (task_exec, task_argstr)
 
-        if task_argstr:
-            command = "%s %s" % (task_exec, task_argstr)
-        else:
-            command = task_exec
+        ret += '    %s\n' % command.rstrip()
 
-        return command, None
+        return ret
 
 
 # ------------------------------------------------------------------------------

@@ -52,7 +52,7 @@ class MPIRun(LaunchMethod):
             self._mpt = True
 
         # don't use the full pathname as the user might load a different
-        # compiler / MPI library suite from his CU pre_exec that requires
+        # compiler / MPI library suite from his task pre_exec that requires
         # the launcher from that version -- see #572.
         # FIXME: then why are we doing this LM setup in the first place??
         if self.launch_command:
@@ -76,43 +76,31 @@ class MPIRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def get_launcher_env(self):
 
-        slots        = cu['slots']
-        uid          = cu['uid']
-        cud          = cu['description']
-        sandbox      = cu['unit_sandbox_path']
-        task_exec    = cud['executable']
-        task_threads = cud.get('cpu_threads', 1)
-        task_env     = cud.get('environment') or dict()
-        task_args    = cud.get('arguments')   or list()
-        task_argstr  = self._create_arg_string(task_args)
+        return ['echo module load mpirun']
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launch_command(self, task, exec_script):
+
+        slots        = task['slots']
+        uid          = task['uid']
+        td           = task['description']
+        sandbox      = task['unit_sandbox_path']
+        task_threads = td.get('cpu_threads', 1)
 
         if '_dplace' in self.name and task_threads > 1:
             # dplace pinning would disallow threads to map to other cores
             raise ValueError('dplace can not place threads [%d]' % task_threads)
 
-        # Construct the executable and arguments
-        if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
-        else          : task_command = task_exec
-
-        env_string = ''
-        env_list   = self.EXPORT_ENV_VARIABLES + list(task_env.keys())
-        if env_list:
-
-            if self.mpi_flavor == self.MPI_FLAVOR_HYDRA:
-                env_string = '-envlist "%s"' % ','.join(env_list)
-
-            elif self.mpi_flavor == self.MPI_FLAVOR_OMPI:
-                for var in env_list:
-                    env_string += '-x "%s" ' % var
-
         # Cheyenne is the only machine that requires mpirun_mpt.  We then
         # have to set MPI_SHEPHERD=true
         if self._mpt:
-            if not cu['description'].get('environment'):
-                cu['description']['environment'] = dict()
-            cu['description']['environment']['MPI_SHEPHERD'] = 'true'
+            if not task['description'].get('environment'):
+                task['description']['environment'] = dict()
+            task['description']['environment']['MPI_SHEPHERD'] = 'true'
 
         # Extract all the hosts from the slots
         host_list = list()
@@ -136,7 +124,7 @@ class MPIRun(LaunchMethod):
             self._dplace += ','.join(core_list)
 
 
-        # If we have a CU with many cores, we will create a hostfile and pass
+        # If we have a task with many cores, we will create a hostfile and pass
         # that as an argument instead of the individual hosts
         hosts_string     = ''
         mpt_hosts_string = ''
@@ -159,12 +147,36 @@ class MPIRun(LaunchMethod):
         if self._mpt: np = 1
         else        : np = len(host_list)
 
-        command = ("%s %s %s -np %d %s %s %s %s" %
+        command = ("%s %s %s -np %d %s %s %s" %
                    (self._ccmrun, self.launch_command, mpt_hosts_string,
-                    np, self._dplace, hosts_string, env_string,
-                    task_command)).strip()
+                    np, self._dplace, hosts_string, exec_script))
 
-        return command, None
+        return command
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_cmd(self):
+
+        # FIXME: we know the MPI flavor, so make this less guesswork
+
+        ret  = 'test -z "$MPI_RANK"  || export RP_RANK=$MPI_RANK\n'
+        ret += 'test -z "$PMIX_RANK" || export RP_RANK=$PMIX_RANK\n'
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_exec(self, task, rank_id, rank):
+
+        td           = task['description']
+        task_exec    = td['executable']
+        task_args    = td.get('arguments')
+        task_argstr  = self._create_arg_string(task_args)
+        command      = "%s %s" % (task_exec, task_argstr)
+
+        return command.rstrip()
 
 
 # ------------------------------------------------------------------------------

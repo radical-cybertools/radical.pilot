@@ -286,6 +286,20 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
+    def get_launcher_env(self):
+
+        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launch_command(self):
+
+        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
     def get_rank_cmd(self):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
@@ -293,7 +307,7 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def get_rank_exec(self, task, rank_id, rank):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
@@ -363,6 +377,9 @@ class LaunchMethod(object):
     # --------------------------------------------------------------------------
     #
     def _create_arg_string(self, args):
+
+        if not args:
+            return ''
 
         # unit Arguments (if any)
         arg_string = ''
