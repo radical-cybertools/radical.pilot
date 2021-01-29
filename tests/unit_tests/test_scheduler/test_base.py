@@ -75,7 +75,7 @@ class TestBase(TestCase):
         tests = self.setUp()['try_allocation']
         for input_data, result in zip(tests['setup'], tests['results']):
             component.schedule_task = mock.Mock(
-                return_value=input_data['scheduled_unit_slots'])
+                return_value=input_data['scheduled_task_slots'])
 
             task = input_data['task']
             component._try_allocation(task=task)
@@ -107,12 +107,12 @@ class TestBase(TestCase):
                     component._handle_cuda(task)
             else:
                 component._handle_cuda(task)
-                unit_env = task['description']['environment']
+                task_env = task['description']['environment']
                 if result == 'KeyError':
                     with self.assertRaises(KeyError):
-                        self.assertIsNone(unit_env['CUDA_VISIBLE_DEVICES'])
+                        self.assertIsNone(task_env['CUDA_VISIBLE_DEVICES'])
                 else:
-                    self.assertEqual(unit_env['CUDA_VISIBLE_DEVICES'], result)
+                    self.assertEqual(task_env['CUDA_VISIBLE_DEVICES'], result)
 
 
     # --------------------------------------------------------------------------

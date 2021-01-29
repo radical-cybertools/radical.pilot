@@ -92,7 +92,7 @@
                 "task": {"uid": "task.000000",
                          "description": {"executable": "/bin/sleep",
                                          "environment": {}}},
-                "scheduled_unit_slots": {"cores_per_node": 16,
+                "scheduled_task_slots": {"cores_per_node": 16,
                                          "lfs_per_node": {"size": 0,
                                                           "path": "/dev/null"},
                                          "nodes": [
@@ -112,7 +112,7 @@
                 "task": {"uid": "task.000001",
                          "description": {"executable": "/bin/sleep",
                                          "environment": {}}},
-                "scheduled_unit_slots": {"cores_per_node": 16,
+                "scheduled_task_slots": {"cores_per_node": 16,
                                          "lfs_per_node": {"size": 0,
                                                           "path": null},
                                          "nodes": [
