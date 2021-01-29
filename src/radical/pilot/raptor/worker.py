@@ -521,7 +521,7 @@ class Worker(rpu.Component):
                     break
         # ----------------------------------------------------------------------
 
-        ret = None
+        ret = 1  # in case we fall through before ret can be set by the task
         try:
             mode = task['mode']
             assert(mode in self._modes), 'no such call mode %s' % mode
