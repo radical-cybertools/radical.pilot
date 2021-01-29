@@ -21,7 +21,8 @@
                 "task_offsets"  : [0],
                 "lm_info"       : {
                                    # for LM PRTE
-                                   "dvm_uri" : "dvm_uri"
+                                   "dvm_uri" : "dvm_uri",
+                                   "dvm_hosts": [["node1"]]
                                   },
                 "lfs_per_node"  : 0,
                 "nodes"         : [{"name"    : "node1",
