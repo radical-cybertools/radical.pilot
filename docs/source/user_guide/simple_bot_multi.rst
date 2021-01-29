@@ -9,19 +9,20 @@ This example assumes that you are familiar with submitting at least one RADICAL-
 to a remote resource and moves forward explaining how to submit multiple pilots
 to multiple resources.
 
-The simplest usage of a pilot-job system is to submit multiple identical tasks
-(a 'Bag of Tasks') collectively, i.e. as one big job! Such usage arises for
-example to perform either a parameter sweep job or a set of ensemble simulation.
+The simplest usage of a pilot system is to collectively submit multiple identical 
+tasks, i.e., a 'Bag of Tasks' (BoT). For example, BoT are used to perform 
+either a parameter sweep or a set of ensemble simulations.
 
-We will create an example which submits N jobs using RADICAL-Pilot to M different
-resources. The jobs are all identical, except that they each record their number and
-where they run in their output. This type of run is very useful if you are running
-many jobs using the same executable (but perhaps with different input files).
-Rather than submit each job individually to the queuing systems and then wait for
-every job to become active and complete, you submit multiple container jobs (called Pilots)
-that reserve the number of cores needed to run all of your jobs across multiple platforms.
-When these pilots become active, your tasks, which are named 'Tasks', are pulled by
-RADICAL-Pilot from the MongoDB server and executed.
+We will create an example which submits N tasks using RADICAL-Pilot to M HPC
+resources. The tasks are all identical, except that each outputs its ID and
+where it run. BoT are useful if you are running multiple tasks using the same
+executable (but perhaps with different input files). Rather than individually
+queuing each task as a job to the batch systems of an HPC resource, and then
+wait for every job to become active and complete, you submit multiple container
+jobs (called pilots) that reserve the resources (e.g., CPU cores and/or GPUs)
+needed to run all your tasks across one or more HPC platforms. When these pilots
+become active, RADICAL-Pilot pulls your tasks from the MongoDB server and
+executes them on the acquired HPC resources.
 
 
 Launching Multiple Pilots
@@ -55,7 +56,8 @@ You can describe multiple :class:`radical.pilot.Pilot` save them to a list and s
 
 Scheduling Tasks Across Multiple Pilots
 -----------------------------------------------------
-In order to be able to schedule Tasks to multiple Pilots, you first need
+
+In order to be able to schedule tasks to multiple pilots, you first need
 to select one of the schedulers that support multi-pilot submission when you define
 the  :class:`radical.pilot.TaskManager`. In our example we use the Round-Robin
 scheduler.

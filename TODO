@@ -8,7 +8,7 @@
   + log file name uniquenenss
   + state history (update ordering)
     + multiple updater instances will compete for state updates and push them
-      out of order, thus screwing with the Task states which end up in the DB.\
+      out of order, thus screwing with the task states which end up in the DB.\
     + limit to one update instance
   + pilot updates via updater (different pubsub channel)
   + make sure finalize is called on terminate (via atexit?)
@@ -28,7 +28,7 @@
   - advance() implicitly publishes task state, but the publisher needs to be
     declared explicitly.
   + rename 'worker' to 'sub-agent' to avoid confusion?
-  - executor should write Task script in one go, not incrementally
+  - executor should write the task script in one go, not incrementally
   - component: collapse declare_input and declare_worker
   + cu['_id'] -> cu['uid'] etc
 

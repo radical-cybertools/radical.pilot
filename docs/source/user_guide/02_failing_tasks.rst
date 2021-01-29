@@ -51,6 +51,6 @@ What's Next?
 ------------
 
 The next user guide section (:ref:`chapter_user_guide_03`) will return to the
-basic example (ie. no failing tasks are expected), but will now submit those
+basic example (i.e., no failing tasks are expected), but will now submit those
 tasks to more than one concurrent pilots.
 

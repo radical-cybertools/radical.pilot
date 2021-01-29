@@ -2,7 +2,7 @@
 .. _chapter_user_guide_11:
 
 **********************************
-Using containerized tasks
+Using Containerized Tasks
 **********************************
 
 The present document aims to be a walkthrough of how to create MPI applications 
@@ -103,7 +103,7 @@ container and run it on Bridges directly.
           file, you can check the following link: `Build a container <https://sylabs.io/guides/3.5/user-guide/build_a_container.html>`_
 
 Step-by-step through RADICAL-Pilot
--------------------
+----------------------------------
 
 Below is the RP python script to run our container on Bridges:
 
@@ -152,7 +152,7 @@ Below is the RP python script to run our container on Bridges:
 
             report.header('submit pilots')
 
-            # Add a Pilot Manager. Pilot managers manage one or more Pilots.
+            # Add a PilotManager. PilotManagers manage one or more pilots.
             pmgr = rp.PilotManager(session=session)
 
             # Define an [n]-core local pilot that runs for [x] minutes
@@ -179,12 +179,11 @@ Below is the RP python script to run our container on Bridges:
 
             report.header('submit tasks')
 
-            # Register the Pilot in a TaskManager object.
+            # Register the pilot in a TaskManager object.
             tmgr = rp.TaskManager(session=session)
             tmgr.add_pilots(pilot)
 
-            # Create a workload of Tasks.
-
+            # Create a workload of tasks.
             n = tasks   # number of tasks to run
             t_num = 1  # number of threads   (OpenMP)
             p_num = n*56  # number of processes (MPI)
@@ -193,7 +192,7 @@ Below is the RP python script to run our container on Bridges:
             cuds = list()
             for i in range(0, n):
 
-                # create a new Task description, and fill it.
+                # create a new task description, and fill it.
                 # Here we don't use dict initialization.
                 cud = rp.TaskDescription()
                 #---------- Executable_Bridges ----------
@@ -217,9 +216,9 @@ Below is the RP python script to run our container on Bridges:
                 report.progress()
             report.ok('>>ok\n')
 
-            # Submit the previously created Task descriptions to the
+            # Submit the previously created task descriptions to the
             # PilotManager. This will trigger the selected scheduler to start
-            # assigning Tasks to the Pilots.
+            # assigning tasks to the pilots.
             tmgr.submit_tasks(cuds)
 
             # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).

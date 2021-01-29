@@ -14,7 +14,7 @@ This document describes what messages are sent in what format over what channel.
 The context in which queues are used is always well defined: for each    queue
 type, only one specific source and sink exist in the code, with very few
 exceptions.  There is thus no need to send meta data along with the messages,
-and we only send 'things', ie. pilots or tasks, which are represented by plain
+and we only send 'things', i.e., pilots or tasks, which are represented by plain
 python dicts.  All 'things' are guaranteed to have the following fields:
 
     'uid':    string, unique ID
