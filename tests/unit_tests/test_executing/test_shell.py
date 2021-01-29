@@ -3,10 +3,9 @@
 #
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 
-import unittest
 import os
 
-from unittest import mock
+from unittest import mock, TestCase
 
 import radical.utils as ru
 
@@ -15,7 +14,7 @@ from radical.pilot.agent.executing.shell import Shell
 
 # ------------------------------------------------------------------------------
 #
-class TestBase(unittest.TestCase):
+class TestBase(TestCase):
 
     # ------------------------------------------------------------------------------
     #
@@ -69,7 +68,7 @@ class TestBase(unittest.TestCase):
     @mock.patch.object(Shell, '__init__', return_value=None)
     @mock.patch.object(Shell, 'initialize', return_value=None)
     def test_task_to_cmd(self, mocked_init, mocked_initialize):
-        self.maxDiff = None
+
         tests        = self.setUp()
         task         = dict()
 

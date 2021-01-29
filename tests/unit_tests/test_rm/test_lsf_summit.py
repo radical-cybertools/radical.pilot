@@ -1,7 +1,6 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import os
-import pytest
 
 from unittest import mock, TestCase
 

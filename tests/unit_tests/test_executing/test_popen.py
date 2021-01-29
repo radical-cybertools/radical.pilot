@@ -36,7 +36,7 @@ class TestBase(unittest.TestCase):
     def test_handle_task(self, mocked_init, mocked_initialize):
 
         global_launcher = []
-        global_tasks = []
+        global_tasks    = []
 
         def spawn_side_effect(launcher, task):
             nonlocal global_launcher

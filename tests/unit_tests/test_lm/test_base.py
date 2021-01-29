@@ -1,8 +1,6 @@
 
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-import pytest
-
 from unittest import TestCase
 from unittest import mock
 
@@ -18,7 +16,7 @@ class TestBase(TestCase):
 
         session = mock.Mock()
         session._log = mock.Mock()
-        with pytest.raises(NotImplementedError):
+        with self.assertRaises(NotImplementedError):
             LaunchMethod(name='test', cfg={}, session=session)
 
 

@@ -16,7 +16,8 @@
                 "gpus_per_node" : 1,
                 "lm_info"       : {
                                    # for LM PRTE
-                                   "dvm_uri"        : "dvm_uri",
+                                   "dvm_uri"        : ["dvm_uri"],
+                                   "dvm_hosts"      : [["node1"]],
                                    "spark_home"     : "/",
                                    "master_ip"      : "test_ip",
                                    "lm_detail"      : "spark://test_ip:7077",

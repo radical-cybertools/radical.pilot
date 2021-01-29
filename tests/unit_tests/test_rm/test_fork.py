@@ -6,6 +6,7 @@ import radical.utils as ru
 
 from radical.pilot.agent.resource_manager.fork import Fork
 
+
 class TestFork(TestCase):
     # ------------------------------------------------------------------------------
     # Test 1 config file

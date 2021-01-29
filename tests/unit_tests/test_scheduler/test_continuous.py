@@ -193,14 +193,8 @@ class TestContinuous(TestCase):
                                  'mem': 128,
                                  'name': 'a',
                                  'uid': 1}]}
-        try:
-            self.assertEqual(component.schedule_task(task), test_slot)
-        except:
-            with pytest.raises(AssertionError):
-                raise
 
-
-        self.assertEqual(component.schedule_unit(unit), test_slot)
+        self.assertEqual(component.schedule_task(task), test_slot)
         self.assertEqual(component._tag_history, {})
       # self.assertEqual(component._tag_history, {'unit.000001': [1]})
 
