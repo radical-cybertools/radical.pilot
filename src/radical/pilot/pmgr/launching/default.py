@@ -940,9 +940,6 @@ class Default(PMGRLaunchingComponent):
         if tunnel_bind_device:        bootstrap_args += " -t '%s'" % tunnel_bind_device
         if cleanup:                   bootstrap_args += " -x '%s'" % cleanup
 
-        if 'RADICAL_BASE' not in str(pre_bootstrap_0):
-            pre_bootstrap_0.append('export RADICAL_BASE="%s"'     % resource_sandbox)
-
         for arg in pre_bootstrap_0:
             bootstrap_args += " -e '%s'" % arg
         for arg in pre_bootstrap_1:
