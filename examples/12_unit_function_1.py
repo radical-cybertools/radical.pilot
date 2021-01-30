@@ -32,7 +32,7 @@ pythontask = task.PythonTask.pythontask
 def mathma(a,b):
     import math
     t = math.exp(a * b)
-    return(t)
+    print(t)
 
 
 # ------------------------------------------------------------------------------
