@@ -33,17 +33,20 @@ from functools import partial
 
 def AA(func:Callable, x= random.random()):
     eq = func(x)
-    print (eq*4)
+    print (eq * 4)
+
 
 def AB(z):
     import random
-    return random.random()*z
+    return random.random() * z
+
 
 def AC(y):
     import time
     return time.time()
 
-part = partial(AA, AB) # or part = partial(AA, AC)
+
+part = partial(AA, AB)  # or part = partial(AA, AC)
 
 # ------------------------------------------------------------------------------
 #

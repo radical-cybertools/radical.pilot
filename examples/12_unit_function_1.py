@@ -27,11 +27,13 @@ dh = ru.DebugHelper()
 # Case 1
 pythontask = task.PythonTask.pythontask
 
+
 @pythontask
 def mathma(a,b):
     import math
-    t = math.exp(a*b)
+    t = math.exp(a * b)
     return(t)
+
 
 # ------------------------------------------------------------------------------
 #
