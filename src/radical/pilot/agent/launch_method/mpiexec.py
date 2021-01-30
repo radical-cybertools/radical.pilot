@@ -63,7 +63,6 @@ class MPIExec(LaunchMethod):
         slots        = cu['slots']
         cud          = cu['description']
         task_exec    = cud['executable']
-        task_env     = cud.get('environment') or dict()
         task_args    = cud.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
@@ -77,19 +76,7 @@ class MPIExec(LaunchMethod):
             if not cud.get('environment'):
                 cud['environment'] = dict()
             cud['environment']['MPI_SHEPHERD'] = 'true'
-            task_env = cud['environment']
 
-        env_string = ''
-        env_list   = self.EXPORT_ENV_VARIABLES + list(task_env.keys())
-        if env_list:
-
-            if self.mpi_flavor == self.MPI_FLAVOR_HYDRA:
-                env_string = '-envlist "%s"' % ','.join(env_list)
-
-            elif self.mpi_flavor == self.MPI_FLAVOR_OMPI:
-                for var in env_list:
-                    env_string += '-x "%s" ' % var
-                env_string = env_string.strip()
 
         if 'ranks' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'
@@ -130,8 +117,8 @@ class MPIExec(LaunchMethod):
         omplace = ''
         if self._omplace:
             omplace = 'omplace'
-        command_stub = "%s %%s %s %s %s" % (self.launch_command,
-                                            env_string, omplace, task_command)
+        command_stub = "%s %%s %s %s" % (self.launch_command,
+                                         omplace, task_command)
 
         # cluster hosts by number of slots
         host_string = ''

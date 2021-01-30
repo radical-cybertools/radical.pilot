@@ -62,16 +62,8 @@ class RSH(LaunchMethod):
 
         host = slots['ranks'][0]['node']
 
-        # Pass configured and available environment variables to the remote shell
-        export_vars  = ' '.join(['%s=%s' % (var, os.environ[var])
-                                 for var in self.EXPORT_ENV_VARIABLES
-                                  if var in os.environ])
-        export_vars += ' '.join(['%s=%s' % (var, task_env[var])
-                                 for var in task_env])
-
         # Command line to execute launch script via rsh on host
-        rsh_hop_cmd = "%s %s %s %s" % (self.launch_command, host,
-                                       export_vars, launch_script_hop)
+        rsh_hop_cmd = "%s %s %s" % (self.launch_command, host, launch_script_hop)
 
         return task_command, rsh_hop_cmd
 

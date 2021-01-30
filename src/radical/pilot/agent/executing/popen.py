@@ -13,14 +13,12 @@ import queue
 import atexit
 import pprint
 import signal
-import tempfile
 import threading as mt
 import traceback
 import subprocess
 
 import radical.utils as ru
 
-from ...  import agent     as rpa
 from ...  import utils     as rpu
 from ...  import states    as rps
 from ...  import constants as rpc
@@ -65,16 +63,7 @@ class Popen(AgentExecutingComponent) :
     #
     def initialize(self):
 
-        self._pwd = os.getcwd()
-
-        self.register_input(rps.AGENT_EXECUTING_PENDING,
-                            rpc.AGENT_EXECUTING_QUEUE, self.work)
-
-        self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
-                             rpc.AGENT_STAGING_OUTPUT_QUEUE)
-
-        self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
+        AgentExecutingComponent.initialize(self)
 
         self._cancel_lock    = ru.RLock()
         self._cus_to_cancel  = list()
@@ -88,25 +77,6 @@ class Popen(AgentExecutingComponent) :
       # self._watcher.daemon = True
         self._watcher.start()
 
-        # The AgentExecutingComponent needs the LaunchMethod to construct
-        # commands.
-        self._task_launcher = rpa.LaunchMethod.create(
-                name    = self._cfg.get('task_launch_method'),
-                cfg     = self._cfg,
-                session = self._session)
-
-        self._mpi_launcher = rpa.LaunchMethod.create(
-                name    = self._cfg.get('mpi_launch_method'),
-                cfg     = self._cfg,
-                session = self._session)
-
-        self.gtod   = "%s/gtod" % self._pwd
-        self.prof   = "%s/prof" % self._pwd
-        self.tmpdir = tempfile.gettempdir()
-
-        # prepare environment setup
-        self._env_orig  = ru.env_read('./env.orig')
-        self._env_lm    = {k:v for k,v in os.environ.items()}
 
 
     # --------------------------------------------------------------------------
@@ -242,7 +212,7 @@ class Popen(AgentExecutingComponent) :
         cpt   = td['cpu_process_type']
 
         self._prof.prof('exec_mkdir', uid=tid)
-        rpu.rec_makedir(sbox)
+        ru.rec_makedir(sbox)
         self._prof.prof('exec_mkdir_done', uid=tid)
 
         if cpt == 'MPI': launcher = self._mpi_launcher
@@ -299,7 +269,7 @@ class Popen(AgentExecutingComponent) :
 
             fout.write(self._separator)
             fout.write('# task environment\n')
-            fout.write(self._get_task_env(task))
+            fout.write(self._get_task_env(task, launcher))
 
             fout.write(self._separator)
             fout.write('# pre-exec commands\n')
@@ -639,11 +609,11 @@ class Popen(AgentExecutingComponent) :
     # --------------------------------------------------------------------------
     # exec
     #
-    def _get_task_env(self, task):
+    def _get_task_env(self, task, launcher):
 
-        td   = task['description']
         tid  = task['uid']
-        name = task.get('name') or tid
+        td   = task['description']
+        name = task['name'] or tid
         sbox = task['unit_sandbox_path']
 
         ret  = ''
@@ -654,7 +624,7 @@ class Popen(AgentExecutingComponent) :
         ret += 'export RP_UNIT_ID="%s"\n'       % tid
         ret += 'export RP_UNIT_NAME="%s"\n'     % name
         ret += 'export RP_PILOT_SANDBOX="%s"\n' % self._pwd
-        ret += 'export RP_TMP="%s"\n'           % self._cu_tmp
+        ret += 'export RP_TMP="%s"\n'           % self._tmp
         ret += 'export RP_GTOD="%s"\n'          % self.gtod
         ret += 'export RP_PROF="%s"\n'          % self.prof
 
@@ -667,11 +637,17 @@ class Popen(AgentExecutingComponent) :
             ret += 'export RP_APP_TUNNEL="%s"\n' \
                     % os.environ['RP_APP_TUNNEL']
 
+        # named_env's are prepared by the launcher
+        if td['named_env']:
+            ret += '\n# named environment\b'
+            ret += '. %s\n' % launcher.get_task_env(td['named_env'])
+
         # also add any env vars requested in the unit description
         if td['environment']:
-            ret += '\n'
+            ret += '\n# task env settings\b'
             for key,val in td['environment'].items():
                 ret += 'export %s="%s"\n' % (key, val)
+
 
         return ret
 
@@ -681,10 +657,6 @@ class Popen(AgentExecutingComponent) :
     def _get_pre_exec(self, task):
 
         ret  = ''
-        env  = task['description']['named_env']
-        if env:
-            # FIXME: echo
-            ret += 'echo . prepped_env %s\n' % env
 
         cmds = task['description']['pre_exec']
         for cmd in cmds:

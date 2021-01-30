@@ -18,17 +18,8 @@ echo "safe environment of bootstrap_0"
 
 # store the sorted env for logging, but also so that we can dig original env
 # settings for task environments, if needed
-env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' > env.orig
-
-
-# create a `deactivate` script
-old_path=$(  grep 'export PATH='       env.orig | cut -f 2- -d '=')
-old_pypath=$(grep 'export PYTHONPATH=' env.orig | cut -f 2- -d '=')
-old_pyhome=$(grep 'export PYTHONHOME=' env.orig | cut -f 2- -d '=')
-
-echo "export PATH='$old_path'"          > deactivate
-echo "export PYTHONPATH='$old_pypath'" >> deactivate
-echo "export PYTHONHOME='$old_pyhome'" >> deactivate
+# NOTE: this assumes that no multi-line values are set in the environment
+env | sort > orig.env
 
 
 # interleave stdout and stderr, to get a coherent set of log messages
@@ -146,40 +137,6 @@ export PYTHONNOUSERSITE=True
 # during installation.  To speed this up (specifically on cluster compute
 # nodes), we try to convince PIP to run parallel `make`
 export MAKEFLAGS="-j"
-
-
-# ------------------------------------------------------------------------------
-#
-# check what env variables changed from the original env, and create a
-# `deactivate` script which resets the original values.
-#
-create_deactivate()
-{
-    # capture the current environment
-    env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' \
-        > env.bs_0
-
-    # find all variables which changed
-    changed=$(diff -w env.orig env.bs_0 | grep '='        \
-                                        | cut -f 3 -d ' ' \
-                                        | cut -f 1 -d '=' \
-                                        | sort -u)
-
-    # capture the original values in `deactivate`.  If no original value exists,
-    # unset the variable
-    for var in $changed
-    do
-        orig=$(grep -e "^export $var=" env.orig)
-        if test -z "$orig"
-        then
-            # var did not exist
-            echo "unset  $var" >> deactivate
-        else
-            # var existed, value may or may not be empty
-            echo "$orig" >> deactivate
-        fi
-    done
-}
 
 
 # ------------------------------------------------------------------------------
@@ -1877,10 +1834,6 @@ fi
 # chmod 0755 packer.sh
 # ./packer.sh 2>&1 >> bootstrap_0.out &
 # PACKER_ID=$!
-
-# all env settings are done, bootstrap stages are created - as last action
-# capture the resulting env differences in a deactivate script
-create_deactivate
 
 # start the master agent instance (zero)
 profile_event 'bootstrap_0_ok'

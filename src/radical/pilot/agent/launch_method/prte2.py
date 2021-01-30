@@ -308,12 +308,6 @@ class PRTE2(LaunchMethod):
                                          # '--display-devel-map',
                                          # '--display-allocation'])
 
-        env_list = self.EXPORT_ENV_VARIABLES + list(task_env.keys())
-        if env_list:
-            envs = ' '.join(['-x "%s"' % k for k in env_list])
-        else:
-            envs = ''
-
         task_args_str = self._create_arg_string(task_args)
         if task_args_str:
             task_exec += ' %s' % task_args_str

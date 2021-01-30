@@ -226,7 +226,7 @@ class ABDS(AgentExecutingComponent):
         sandbox = cu['unit_sandbox_path']
 
         # make sure the sandbox exists
-        rpu.rec_makedir(sandbox)
+        ru.rec_makedir(sandbox)
 
         # prep stdout/err so that we can append w/o checking for None
         cu['stdout']  = ''

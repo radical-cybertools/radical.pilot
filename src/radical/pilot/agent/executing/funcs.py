@@ -134,7 +134,7 @@ class FUNCS(AgentExecutingComponent) :
         cfgname = '%s/%s.cfg' % (sandbox,   funcs['uid'])
         descr   = funcs['description']
 
-        rpu.rec_makedir(sandbox)
+        ru.rec_makedir(sandbox)
         ru.write_json(funcs.get('cfg'), cfgname)
 
         launch_cmd, hop_cmd = launcher.construct_command(funcs, fname)

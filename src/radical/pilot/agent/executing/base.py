@@ -3,10 +3,15 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
+import queue
 
+import threading     as mt
 import radical.utils as ru
 
-from ... import utils as rpu
+from ... import states    as rps
+from ... import agent     as rpa
+from ... import constants as rpc
+from ... import utils     as rpu
 
 
 # ------------------------------------------------------------------------------
@@ -44,7 +49,7 @@ class AgentExecutingComponent(rpu.Component):
         rpu.Component.__init__(self, cfg, session)
 
         # if so configured, let the CU know what to use as tmp dir
-        self._cu_tmp = cfg.get('cu_tmp', os.environ.get('TMP', '/tmp'))
+        self._tmp = cfg.get('cu_tmp', os.environ.get('TMP', '/tmp'))
 
 
     # --------------------------------------------------------------------------
@@ -86,6 +91,38 @@ class AgentExecutingComponent(rpu.Component):
         except KeyError as e:
             raise RuntimeError("AgentExecutingComponent '%s' unknown" % name) \
                 from e
+
+
+    # --------------------------------------------------------------------------
+    #
+    def initialize(self):
+
+        self._pwd = os.getcwd()
+
+        self.register_input(rps.AGENT_EXECUTING_PENDING,
+                            rpc.AGENT_EXECUTING_QUEUE, self.work)
+
+        self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
+                             rpc.AGENT_STAGING_OUTPUT_QUEUE)
+
+        self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
+
+        # The AgentExecutingComponent needs LaunchMethods to construct
+        # commands.
+        # # FIXME: load launchers from config
+        self._task_launcher = rpa.LaunchMethod.create(
+                name    = self._cfg.get('task_launch_method'),
+                cfg     = self._cfg,
+                session = self._session)
+
+        self._mpi_launcher = rpa.LaunchMethod.create(
+                name    = self._cfg.get('mpi_launch_method'),
+                cfg     = self._cfg,
+                session = self._session)
+
+        self.gtod   = "%s/gtod" % self._pwd
+        self.prof   = "%s/prof" % self._pwd
 
 
 # ------------------------------------------------------------------------------

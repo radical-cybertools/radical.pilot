@@ -278,7 +278,7 @@ class Default(AgentStagingOutputComponent):
                 tgtdir = os.path.dirname(tgt.path)
                 if tgtdir != unit_sandbox.path:
                     self._log.debug("mkdir %s", tgtdir)
-                    rpu.rec_makedir(tgtdir)
+                    ru.rec_makedir(tgtdir)
 
             if   action == rpc.COPY:
                 try:

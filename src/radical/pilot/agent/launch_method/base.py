@@ -53,30 +53,6 @@ PWD = os.getcwd()
 #
 class LaunchMethod(object):
 
-    # List of environment variables that designated Launch Methods should export
-    # FIXME: we should find out what env vars are changed or added by
-    #        cud.pre_exec, and then should also export those.  That would make
-    #        our launch script ore complicated though...
-    EXPORT_ENV_VARIABLES = [
-        'LD_LIBRARY_PATH',
-        'PATH',
-        'PYTHONPATH',
-        'OMP_NUM_THREADS',
-        'CUDA_VISIBLE_DEVICES',
-        'RP_AGENT_ID',
-        'RP_GTOD',
-        'RP_PILOT_ID',
-        'RP_PILOT_STAGING',
-        'RP_PROF',
-        'RP_SESSION_ID',
-        'RP_SPAWNER_ID',
-        'RP_TMP',
-        'RP_UNIT_ID',
-        'RP_UNIT_NAME',
-        'RP_PILOT_SANDBOX',
-        'RADICAL_BASE'
-    ]
-
     MPI_FLAVOR_OMPI    = 'OMPI'
     MPI_FLAVOR_HYDRA   = 'HYDRA'
     MPI_FLAVOR_UNKNOWN = 'unknown'
@@ -87,6 +63,7 @@ class LaunchMethod(object):
 
         self.name     = name
         self._cfg     = cfg
+        self._pwd     = os.getcwd()
         self._session = session
         self._log     = self._session._log    # pylint: disable=protected-access
         self._log.debug('create LaunchMethod: %s', type(self))

@@ -312,10 +312,6 @@ class PRTE(LaunchMethod):
         else          : task_command = task_exec
 
         env_string = ''
-        env_list   = self.EXPORT_ENV_VARIABLES + list(task_env.keys())
-        if env_list:
-            for var in env_list:
-                env_string += '-x "%s" ' % var
 
         map_flag  = ' -np %d --cpus-per-proc %d' % (n_procs, n_threads)
         map_flag += ' --bind-to hwthread:overload-allowed --use-hwthread-cpus'

@@ -29,46 +29,79 @@ class MPIRun(LaunchMethod):
     #
     def _configure(self):
 
+        self._lm_configs = self._cfg.resource_cfg.launch_methods
+        self._lm_config  = self._lm_configs.get(self.name, {})
+        self._pre_exec   = self._lm_config.get('pre_exec', [])
+
+        print('pre: ', self._pre_exec)
+
+        # set up LM environment: first recreate the agent's original env, then
+        # apply the launch method's pre_exec commands.  Store the resulting env
+        # in `env/lm_<name>.env`
+        self._env_orig = ru.env_eval('env/orig.env')
+        self._env_sh   = '%s/env/%s.env' % (self._pwd, self.name)
+        self._env      = ru.env_prep(self._env_orig,
+                                     pre_exec=self._pre_exec,
+                                     script_path=self._env_sh)
+
+        # find the path to the launch method executable, so that we can derive
+        # launcher version and flavor
+
         if '_rsh' in self.name.lower():
+            # mpirun_rsh : Gordon (SDSC)
+            # mpirun     : general case
             self._rsh = True
-            self.launch_command = ru.which(['mpirun_rsh',  # Gordon (SDSC)
-                                            'mpirun'       # general case
-                                           ])
+            cmd = 'which mpirun_rsh || ' \
+                  'which mpirun'
+            out, err, ret = ru.sh_callout(cmd, shell=True, env=self._env)
+            assert(not ret), err
+            self.launch_command = out.strip()
+
 
         elif '_mpt' in self.name.lower():
+            # mpirun_mpt: Cheyenne (NCAR)
+            # mpirun    : general case
             self._mpt = True
-            self.launch_command = ru.which(['mpirun_mpt',  # Cheyenne (NCAR)
-                                            'mpirun'       # general case
-                                           ])
+            cmd = 'which mpirun_mpt || ' \
+                  'which mpirun'
+            out, err, ret = ru.sh_callout(cmd, shell=True, env=self._env)
+            assert(not ret), err
+            self.launch_command = out.strip()
+
         else:
-            self.launch_command = ru.which(['mpirun-mpich-mp',    # Mac OSX
-                                            'mpirun-openmpi-mp',  # Mac OSX
-                                            'mpirun',             # general case
-                                           ])
+            # mpirun-mpich-mp  : Mac OSX mpich
+            # mpirun-openmpi-mp: Mac OSX openmpi
+            # mpirun           : general case
+            cmd = 'which mpirun_mpich_mp   || ' \
+                  'which mpirun-openmpi-mp || ' \
+                  'which mpirun'
+            out, err, ret = ru.sh_callout(cmd, shell=True, env=self._env)
+            assert(not ret), err
+            self.launch_command = out.strip()
+
 
         # cheyenne is special: it needs MPT behavior (no -host) even for the
         # default mpirun (not mpirun_mpt).
         if 'cheyenne' in self._cfg.resource.lower():
             self._mpt = True
 
-        # don't use the full pathname as the user might load a different
-        # compiler / MPI library suite from his task pre_exec that requires
-        # the launcher from that version -- see #572.
-        # FIXME: then why are we doing this LM setup in the first place??
+        # which will return the first match in path - dispense of the path part
         if self.launch_command:
             self.launch_command = os.path.basename(self.launch_command)
 
-
         # do we need ccmrun or dplace?
         if '_ccmrun' in self.name:
-            ccmrun = ru.which('ccmrun')
+            out, err, ret = ru.sh_callout('which ccmrun', shell=True, env=self._env)
+            assert(not ret), err
+            ccmrun = out.strip()
             if not ccmrun:
                 raise RuntimeError("ccmrun not found!")
-            self._launch_command = '%s %s' % (ccmrun, self._launch_command)
-
+            self.launch_command = '%s %s' % (ccmrun, self.launch_command)
 
         if '_dplace' in self.name:
-            self._dplace = ru.which('dplace')
+            out, err, ret = ru.sh_callout('which dplace', shell=True, env=self._env)
+            assert(not ret), err
+            self._dplace = out.strip()
             if not self._dplace:
                 raise RuntimeError("dplace not found!")
 
@@ -80,7 +113,31 @@ class MPIRun(LaunchMethod):
     #
     def get_launcher_env(self):
 
-        return ['echo module load mpirun']
+        return ['. %s' % self._env_sh]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_task_env(self, spec):
+
+        name = spec['name']
+        cmds = spec['cmds']
+
+        # we assume that the launcher env is still active in the task execution
+        # script.  We thus remove the launcher env from the task env before
+        # applying the task env's pre_exec commands
+        tgt = '%s/env/%s.env' % (self._pwd, name)
+        self._log.debug('=== tgt : %s', tgt)
+
+        if not os.path.isfile(tgt):
+
+            # the env does not yet exists - create
+            ru.env_prep(self._env_orig,
+                        unset=self._env,
+                        pre_exec=cmds,
+                        script_path=tgt)
+
+        return tgt
 
 
     # --------------------------------------------------------------------------

@@ -44,23 +44,6 @@ def get_rusage():
          % (rtime, utime, stime, rss)
 
 
-# ------------------------------------------------------------------------------
-#
-def rec_makedir(target):
-
-    # recursive makedir which ignores errors if dir already exists
-
-    try:
-        os.makedirs(target)
-
-    except OSError as e:
-        # ignore failure on existing directory
-        if e.errno == errno.EEXIST and os.path.isdir(os.path.dirname(target)):
-            pass
-        else:
-            raise
-
-
 # ----------------------------------------------------------------------------------
 #
 def create_tar(tgt, dnames):

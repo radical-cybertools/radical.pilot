@@ -58,6 +58,13 @@ class Agent_0(rpu.Worker):
         prof = ru.Profiler(ns='radical.pilot', name='agent.0')
         prof.prof('hostname', uid=cfg.pid, msg=ru.get_hostname())
 
+        # store the original environment in `env/orig.env`.  Ensure that current
+        # env settings are removed, to always negate the `pre_bootstrap_*`
+        # directives
+        ru.rec_makedir('./env/')
+        orig = ru.env_read('./orig.env')
+        ru.env_prep(orig, unset=os.environ, script_path='./env/orig.env')
+
         # connect to MongoDB for state push/pull
         self._connect_db()
 
@@ -626,7 +633,6 @@ class Agent_0(rpu.Worker):
 
         rpc_res = {'uid': arg['uid']}
         try:
-            print(arg)
             if req == 'hello'   :
                 ret = 'hello %s' % ' '.join(arg['arg'])
 
