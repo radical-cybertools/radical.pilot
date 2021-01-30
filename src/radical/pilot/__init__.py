@@ -36,6 +36,8 @@ from . import worker
 from . import umgr
 from . import pmgr
 from . import agent
+from . import task
+from . import serialize
 
 from .agent import Agent_0
 from .agent import Agent_n

@@ -432,16 +432,15 @@ class ComputeUnitDescription(ru.Description):
     #
     def _verify(self):
 
-        if callable(self.get('executable')):
+        if isinstance(self.get('executable'), dict):
 
            exe = self.get('executable')
-           block = inspect.getsource(exe)
+           from radical.pilot.serialize import serializer as serialize
+           ser_exe = serialize.FuncSerializer.serialize_file(exe['func'])
 
-           cu_exe_dict   = {'_cud_name':exe.__name__,
-                            '_cud_code':block,
-                            '_cud_args':'',
-                            '_cud_kwargs':''}
-
+           cu_exe_dict   = {'_cud_code'  :ser_exe,
+                            '_cud_args'  :exe['args'],
+                            '_cud_kwargs':exe['kwargs']}
 
            func_obj = codecs.encode(pickle.dumps(cu_exe_dict), "base64").decode()
            self['executable'] = func_obj

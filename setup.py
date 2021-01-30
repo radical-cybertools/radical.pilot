@@ -250,7 +250,8 @@ setup_args = {
                             'python-hostlist',
                             'netifaces',
                             'setproctitle',
-                            'ntplib'
+                            'ntplib',
+                            'dill'
                            ],
     'extras_require'     : {'autopilot' : ['github3.py']},
     'tests_require'      : ['pytest',
