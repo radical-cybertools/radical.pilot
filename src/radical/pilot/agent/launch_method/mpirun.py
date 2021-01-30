@@ -61,9 +61,11 @@ class MPIRun(LaunchMethod):
 
         # do we need ccmrun or dplace?
         if '_ccmrun' in self.name:
-            self._ccmrun = ru.which('ccmrun')
-            if not self._ccmrun:
+            ccmrun = ru.which('ccmrun')
+            if not ccmrun:
                 raise RuntimeError("ccmrun not found!")
+            self._launch_command = '%s %s' % (ccmrun, self._launch_command)
+
 
         if '_dplace' in self.name:
             self._dplace = ru.which('dplace')
@@ -147,9 +149,9 @@ class MPIRun(LaunchMethod):
         if self._mpt: np = 1
         else        : np = len(host_list)
 
-        command = ("%s %s %s -np %d %s %s %s" %
-                   (self._ccmrun, self.launch_command, mpt_hosts_string,
-                    np, self._dplace, hosts_string, exec_script))
+        command = ("%s %s -np %d %s %s %s" %
+                   (self.launch_command, mpt_hosts_string, np, self._dplace,
+                                         hosts_string, exec_script))
 
         return command
 

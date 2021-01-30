@@ -180,10 +180,10 @@ class Popen(AgentExecutingComponent) :
         # ----------------------------------------------------------------------
         # #!/bin/sh
         #
-        # # task pre_launch commands
+        # # `pre_launch` commands
         # date > data.input
         #
-        # # launcher environment setup
+        # # launcher specific environment setup
         # module load openmpi
         #
         # # launch the task script
@@ -200,7 +200,7 @@ class Popen(AgentExecutingComponent) :
         # # task environment setup (`pre_exec`)
         # module load gromacs
         #
-        # # rank specific setup
+        # # rank specific setup (`pre_rank`)
         # touch task.000000.ranks
         # if test "$MPI_RANK" = 0; then
         #   export CUDA_VISIBLE_DEVICES=0
@@ -231,13 +231,10 @@ class Popen(AgentExecutingComponent) :
         #
         # ----------------------------------------------------------------------
         #
-        # We deviate from the above in two ways:
-        #
-        #   - `pre_exec` directives are not actually executed for each rank,
-        #     but they are executed once, the resulting env is captured and
-        #     applied to all ranks.
-        #   - we create one `task.000000.exec.sh` script per rank (with
-        #     a `.<rank>` suffix), to make the overall flow simpler.
+        # NOTE: MongoDB only accepts string keys, and thus the rank IDs in
+        #       pre_rank and post_rank dictionaries are rendered as strings.
+        #       This should be changed to more intuitive integers once MongoDB
+        #       is phased out.
 
         tid   = task['uid']
         sbox  = task['unit_sandbox_path']
@@ -297,16 +294,16 @@ class Popen(AgentExecutingComponent) :
 
             fout.write(self._header)
             fout.write(self._separator)
+            fout.write('# rank ID\n')
+            fout.write(self._get_rank_ids(n_ranks, launcher))
+
+            fout.write(self._separator)
             fout.write('# task environment\n')
             fout.write(self._get_task_env(task))
 
             fout.write(self._separator)
             fout.write('# pre-exec commands\n')
             fout.write(self._get_pre_exec(task))
-
-            fout.write(self._separator)
-            fout.write('# rank ID\n')
-            fout.write(self._get_rank_ids(n_ranks, launcher))
 
             # pre_rank list is applied to rank 0, dict to the ranks listed
             pre_rank = td['pre_rank']
@@ -319,7 +316,7 @@ class Popen(AgentExecutingComponent) :
                 for rank_id, cmds in pre_rank.items():
                     rank_id = int(rank_id)
                     fout.write('    %d)\n' % rank_id)
-                    fout.write('%s' % self._get_pre_rank(rank_id, cmds))
+                    fout.write(self._get_pre_rank(rank_id, cmds))
                     fout.write('        ;;\n')
                 fout.write('esac\n\n')
 
@@ -332,8 +329,7 @@ class Popen(AgentExecutingComponent) :
             fout.write('case "$RP_RANK" in\n')
             for rank_id, rank in enumerate(ranks):
                 fout.write('    %d)\n' % rank_id)
-                fout.write('        %s\n'
-                          % self._get_rank_exec(task, rank_id, rank, launcher))
+                fout.write(self._get_rank_exec(task, rank_id, rank, launcher))
                 fout.write('        ;;\n')
             fout.write('esac\n')
             fout.write("RP_RET=$?\n")
@@ -353,7 +349,7 @@ class Popen(AgentExecutingComponent) :
                 for rank_id, cmds in post_rank.items():
                     rank_id = int(rank_id)
                     fout.write('    %d)\n' % rank_id)
-                    fout.write('%s' % self._get_post_rank(rank_id, rank, cmds))
+                    fout.write(self._get_post_rank(rank_id, rank, cmds))
                     fout.write('        ;;\n')
                 fout.write('esac\n\n')
 
@@ -434,9 +430,10 @@ class Popen(AgentExecutingComponent) :
     # --------------------------------------------------------------------------
     #
     def _prep_env(self, task):
+
         # prepare a `<task_uid>.env` file which captures the task's execution
         # environment.  That file is to be sourced by all ranks individually
-        # *after* the launch method.
+        # *after* the launch method placed them on the compute nodes
         #
         # That prepared environment is based upon `env.orig` as initially
         # captured by the bootstrapper.  On top of that environment, we apply:
@@ -656,10 +653,10 @@ class Popen(AgentExecutingComponent) :
         ret += 'export RP_SPAWNER_ID="%s"\n'    % self.uid
         ret += 'export RP_UNIT_ID="%s"\n'       % tid
         ret += 'export RP_UNIT_NAME="%s"\n'     % name
+        ret += 'export RP_PILOT_SANDBOX="%s"\n' % self._pwd
+        ret += 'export RP_TMP="%s"\n'           % self._cu_tmp
         ret += 'export RP_GTOD="%s"\n'          % self.gtod
         ret += 'export RP_PROF="%s"\n'          % self.prof
-        ret += 'export RP_TMP="%s"\n'           % self._cu_tmp
-        ret += 'export RP_PILOT_SANDBOX="%s"\n' % self._pwd
 
         if self._prof.enabled:
             ret += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sbox, tid)
@@ -670,11 +667,9 @@ class Popen(AgentExecutingComponent) :
             ret += 'export RP_APP_TUNNEL="%s"\n' \
                     % os.environ['RP_APP_TUNNEL']
 
-        # FIXME: this should be set by an LaunchMethod filter or something
-        ret += 'export OMP_NUM_THREADS="%s"\n' % td['cpu_threads']
-
         # also add any env vars requested in the unit description
         if td['environment']:
+            ret += '\n'
             for key,val in td['environment'].items():
                 ret += 'export %s="%s"\n' % (key, val)
 
@@ -732,7 +727,7 @@ class Popen(AgentExecutingComponent) :
         ret = ''
         for cmd in cmds:
             # FIXME: exit on error, but don't stall other ranks on sync
-            ret += '        %-30s\n' % cmd
+            ret += '        %s\n' % cmd
 
         return ret
 
@@ -753,7 +748,25 @@ class Popen(AgentExecutingComponent) :
     #
     def _get_rank_exec(self, task, rank_id, rank, launcher):
 
-        ret = launcher.get_rank_exec(task, rank_id, rank)
+        # FIXME: this assumes that the rank has a `gpu_maps` and `core_maps`
+        #        with exactly one entry, corresponding to the rank process to be
+        #        started.
+
+        ret  = ''
+        gmap = rank['gpu_map'][0]
+        if gmap:
+            gpus = ','.join([str(gpu) for gpu in gmap])
+            ret += '        export CUDA_VISIBLE_DEVICES=%s\n' % gpus
+
+        cmap = rank['core_map'][0]
+        ret += '        export OMP_NUM_THREADS="%d"\n' % len(cmap)
+
+        # FIXME: core pinning goes here
+
+
+        cmds = ru.as_list(launcher.get_rank_exec(task, rank_id, rank))
+        for cmd in cmds:
+            ret += '        %s\n' % cmd
 
         return ret
 

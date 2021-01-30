@@ -3,6 +3,8 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import radical.utils as ru
+
 from .base import LaunchMethod
 
 
@@ -20,15 +22,19 @@ class Fork(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        # "Regular" tasks
+
         self.launch_command = ''
+
 
     # --------------------------------------------------------------------------
     #
     @classmethod
     def rm_config_hook(cls, name, cfg, rm, log, profiler):
-        return {'version_info': {
-            name: {'version': '0.42', 'version_detail': 'There is no spoon'}}}
+
+        return {'name'          : name,
+                'version'       : ru.sh_callout('uname'      )[0],
+                'version_detail': ru.sh_callout('uname -irno')[0]}
+
 
     # --------------------------------------------------------------------------
     #
@@ -55,20 +61,13 @@ class Fork(LaunchMethod):
     #
     def get_rank_exec(self, task, rank_id, rank):
 
-        ret = ''
-        gpus = [g[0] for g in rank['gpus']]
-        if gpus:
-            ret += '    export CUDA_VISIBLE_DEVICES=%s\n' % ','.join(gpus)
+        td          = task['description']
+        task_exec   = td['executable']
+        task_args   = td.get('arguments')
+        task_argstr = self._create_arg_string(task_args)
+        command     = "%s %s" % (task_exec, task_argstr)
 
-        td           = task['description']
-        task_exec    = td['executable']
-        task_args    = td.get('arguments')
-        task_argstr  = self._create_arg_string(task_args)
-        command      = "%s %s" % (task_exec, task_argstr)
-
-        ret += '    %s\n' % command.rstrip()
-
-        return ret
+        return command.rstrip()
 
 
 # ------------------------------------------------------------------------------
