@@ -2,14 +2,11 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import os
-import sys
 import functools
-import radical.pilot as rp
-import radical.utils as ru
+
 
 class PythonTask(object):
-    
+
     TASK = {} 
 
     def __new__(cls, func):
@@ -17,7 +14,7 @@ class PythonTask(object):
         We handle wrapped functions here with no args or kwargs.
         Example:
         import PythonTask
-  
+
         wrapped_func   = partial(func_A, func_AB)      
         cud.EXECUTABLE = PythonTask(wrapped_func)
         """

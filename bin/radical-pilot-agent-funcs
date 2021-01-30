@@ -5,7 +5,6 @@ import sys
 import time
 import pickle
 import codecs
-import contextlib
 from io import StringIO
 import multiprocessing as mp
 import threading       as mt
@@ -213,7 +212,7 @@ class Executor(object):
     # --------------------------------------------------------------------------
     #
     def prepare_func(self, func):
- 
+
         function_info = {}
         function_info = pickle.loads(codecs.decode(func.encode(), "base64"))
 
@@ -222,9 +221,9 @@ class Executor(object):
         kwargs      = function_info["_cud_kwargs"]
 
         from radical.pilot.serialize import serializer as serialize
-        
+
         fn = serialize.FuncSerializer.deserialize(code)
-        
+
         return fn, args, kwargs
 
     # --------------------------------------------------------------------------
@@ -266,10 +265,10 @@ class Executor(object):
                 try:
                     obj = pickle.loads(codecs.decode(exe.encode(),"base64"))
                     if isinstance(obj, dict) is True:
-                       return True
+                        return True
 
                 except:
-                       return False
+                    return False
 
             try:
                 for pre in pres:

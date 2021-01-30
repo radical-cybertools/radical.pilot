@@ -4,7 +4,6 @@ __license__   = "MIT"
 
 import pickle
 import codecs
-import inspect
 import radical.utils as ru
 
 
@@ -434,16 +433,15 @@ class ComputeUnitDescription(ru.Description):
 
         if isinstance(self.get('executable'), dict):
 
-           exe = self.get('executable')
-           from radical.pilot.serialize import serializer as serialize
-           ser_exe = serialize.FuncSerializer.serialize_file(exe['func'])
+            exe = self.get('executable')
+            from radical.pilot.serialize import serializer as serialize
+            ser_exe = serialize.FuncSerializer.serialize_file(exe['func'])
 
-           cu_exe_dict   = {'_cud_code'  :ser_exe,
-                            '_cud_args'  :exe['args'],
-                            '_cud_kwargs':exe['kwargs']}
-
-           func_obj = codecs.encode(pickle.dumps(cu_exe_dict), "base64").decode()
-           self['executable'] = func_obj
+            cu_exe_dict   = {'_cud_code'  :ser_exe,
+                             '_cud_args'  :exe['args'],
+                             '_cud_kwargs':exe['kwargs']}
+            func_obj = codecs.encode(pickle.dumps(cu_exe_dict), "base64").decode()
+            self['executable'] = func_obj
 
         if not self.get('executable') and \
            not self.get('kernel')     :

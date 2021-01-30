@@ -3,9 +3,8 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
-import sys
 import pathlib
-import radical.pilot as rp
+
 import radical.utils as ru
 
 from dill import dump  as DUMPFILE
@@ -19,7 +18,9 @@ FUNC_FILE_PATH = os.path.join(FUNC_DIR, FUNC_FILE_NAME)
 
 log = ru.Logger(name='serializer', level='DEBUG')
 
+
 class FuncSerializer(object):
+
     """
     The serializer should be able to serialize information that we want
     to send over the wire as a CU from the client side to the agent side:
@@ -54,13 +55,13 @@ class FuncSerializer(object):
 
             except Exception:
                 log.error("Failed to serialize function %s to object", (func))
-                
+
         else:
             try:
                 serialized_func = DUMPOBJ(func, recurse=True)
             except Exception:
                 log.error("Failed to serialize function %s", (func))
-                
+
 
         if serialized_func is None:
             raise Exception("Function %s is not serializable", (func))
@@ -72,7 +73,7 @@ class FuncSerializer(object):
         serialize funcion body and their dependcies to file
         """
         try:
-            
+
             if callable(func):
                 try:
                     with open(FUNC_FILE_PATH, 'wb') as f:
@@ -80,14 +81,14 @@ class FuncSerializer(object):
 
                 except Exception:
                     log.error("Failed to serialize function %s to file", (func))
-                    
+
             else:
                 try:
                     with open(FUNC_FILE_PATH, 'wb') as f:
                         DUMPFILE(func, f, recurse=True)
                 except Exception:
                     log.error("Failed to serialize function %s to file", (func))
-                    
+
 
         except Exception:
             raise Exception("Function %s is not serializable with dill to file", (func))
@@ -108,12 +109,12 @@ class FuncSerializer(object):
 
             except Exception:
                 log.error("Failed to deserialize function from file")
-                
+
         else:
             try:
                 result = LOADOBJ(obj)
                 log.debug(result)
-            
+
             except Exception:
                 log.error("Failed to deserialize function from object")
         if result is None:
