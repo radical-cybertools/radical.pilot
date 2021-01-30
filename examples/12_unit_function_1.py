@@ -9,6 +9,8 @@ import sys
 import radical.pilot as rp
 import radical.utils as ru
 
+from radical.pilot.task import task
+
 dh = ru.DebugHelper()
 
 
@@ -21,15 +23,15 @@ dh = ru.DebugHelper()
 
 # ------------------------------------------------------------------------------
 #
+
+# Case 1
+pythontask = task.PythonTask.pythontask
+
+@pythontask
 def mathma(a,b):
     import math
-    eq = []
-    for i in range(2):
-        if a > b:
-            eq.append(math.exp(a*b))
-        else:
-            eq.append(math.exp(a+b))
-    print(eq)
+    t = math.exp(a*b)
+    return(t)
 
 # ------------------------------------------------------------------------------
 #
@@ -88,7 +90,7 @@ if __name__ == '__main__':
         # Create a workload of ComputeUnits.
         # Each compute unit runs '/bin/date'.
 
-        n = 1024 * 2
+        n = 2 * 1024
         report.progress_tgt(n, label='create')
 
         cuds = list()
@@ -98,8 +100,8 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             cud = rp.ComputeUnitDescription()
             cud.pre_exec         = []
-            cud.executable       = mathma # Function reference
-            cud.arguments        = [5, 7]  # Function arguments
+            cud.executable       = mathma(2,7)
+            cud.arguments        = []
             cud.gpu_processes    = 0
             cud.cpu_processes    = 1
             cud.cpu_threads      = 1
