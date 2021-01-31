@@ -38,6 +38,11 @@ class MPIRun(LaunchMethod):
         # set up LM environment: first recreate the agent's original env, then
         # apply the launch method's pre_exec commands.  Store the resulting env
         # in `env/lm_<name>.env`
+        #
+        # FIXME: if the launch methods pre_exec contains, for example,
+        #        a `ulimit` directive, it would only get executed once and
+        #        possibly not on the node where the executor runs.  We need to
+        #        separate env setup from proper pre_exec...
         self._env_orig = ru.env_eval('env/orig.env')
         self._env_sh   = '%s/env/%s.env' % (self._pwd, self.name)
         self._env      = ru.env_prep(self._env_orig,

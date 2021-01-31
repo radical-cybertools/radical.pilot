@@ -25,7 +25,6 @@ from ...staging_directives import complete_url, expand_staging_directives
 
 # ------------------------------------------------------------------------------
 # local constants
-DEFAULT_AGENT_SPAWNER = 'POPEN'
 DEFAULT_RP_VERSION    = 'local'
 DEFAULT_VIRTENV_MODE  = 'update'
 DEFAULT_VIRTENV_DIST  = 'default'
@@ -671,20 +670,16 @@ class Default(PMGRLaunchingComponent):
 
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
-        agent_launch_method     = rcfg.get('agent_launch_method')
         agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
-        agent_spawner           = rcfg.get('agent_spawner',       DEFAULT_AGENT_SPAWNER)
         agent_config            = rcfg.get('agent_config',        DEFAULT_AGENT_CONFIG)
         agent_scheduler         = rcfg.get('agent_scheduler')
         tunnel_bind_device      = rcfg.get('tunnel_bind_device')
         default_queue           = rcfg.get('default_queue')
         forward_tunnel_endpoint = rcfg.get('forward_tunnel_endpoint')
         resource_manager        = rcfg.get('resource_manager')
-        mpi_launch_method       = rcfg.get('mpi_launch_method', '')
         pre_bootstrap_0         = rcfg.get('pre_bootstrap_0', [])
         pre_bootstrap_1         = rcfg.get('pre_bootstrap_1', [])
         python_interpreter      = rcfg.get('python_interpreter')
-        task_launch_method      = rcfg.get('task_launch_method')
         rp_version              = rcfg.get('rp_version')
         virtenv_mode            = rcfg.get('virtenv_mode',        DEFAULT_VIRTENV_MODE)
         virtenv                 = rcfg.get('virtenv',             default_virtenv)
@@ -846,11 +841,8 @@ class Default(PMGRLaunchingComponent):
         # sanity checks
         if not python_dist        : raise RuntimeError("missing python distribution")
         if not virtenv_dist       : raise RuntimeError("missing virtualenv distribution")
-        if not agent_spawner      : raise RuntimeError("missing agent spawner")
         if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
         if not resource_manager   : raise RuntimeError("missing resource manager")
-        if not agent_launch_method: raise RuntimeError("missing agentlaunch method")
-        if not task_launch_method : raise RuntimeError("missing task launch method")
 
         # massage some values
         if not queue:
@@ -945,7 +937,6 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['resource']            = resource
         agent_cfg['cores']               = number_cores
         agent_cfg['gpus']                = number_gpus
-        agent_cfg['spawner']             = agent_spawner
         agent_cfg['scheduler']           = agent_scheduler
         agent_cfg['runtime']             = runtime
         agent_cfg['app_comm']            = app_comm
@@ -958,9 +949,6 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['session_sandbox']     = session_sandbox
         agent_cfg['resource_sandbox']    = resource_sandbox
         agent_cfg['resource_manager']    = resource_manager
-        agent_cfg['agent_launch_method'] = agent_launch_method
-        agent_cfg['task_launch_method']  = task_launch_method
-        agent_cfg['mpi_launch_method']   = mpi_launch_method
         agent_cfg['cores_per_node']      = cores_per_node
         agent_cfg['gpus_per_node']       = gpus_per_node
         agent_cfg['lfs_path_per_node']   = lfs_path_per_node

@@ -104,18 +104,23 @@
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "PRTE",
-        "mpi_launch_method"           : "PRTE",
-        "pre_bootstrap_0"             : [
-            "module use /work/05445/naughton/rp/ums/ompix/gcc/6.3.0/modules",
-          # "module use /work/05445/naughton/rp/ums/ompix/intel/19.0.5/modules",
-            "module unload xalt",
-            "module load gcc/6.3.0",
-            "module load prrte/1.0.0_devtiming",
-          # "module load prrte/master",
-            "export PRRTE_PREFIX=$PRRTE_DIR"
-        ],
+        "launch_methods"              : {
+                                         "order": ["FORK", "SSH", "PRTE"],
+                                         "FORK" : {},
+                                         "SSH"  : {},
+                                         "PRTE" : {
+                                             "pre_exec": [
+                                                 "module use /work/05445/naughton/rp/ums/ompix/gcc/6.3.0/modules",
+                                               # "module use /work/05445/naughton/rp/ums/ompix/intel/19.0.5/modules",
+                                                 "module unload xalt",
+                                                 "module load gcc/6.3.0",
+                                                 "module load prrte/1.0.0_devtiming",
+                                               # "module load prrte/master",
+                                                 "export PRRTE_PREFIX=$PRRTE_DIR"
+                                             ]
+                                         }
+                                        },
+        "pre_bootstrap_0"             : [],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["$SCRATCH", "$WORK"],
         "python_dist"                 : "default",
@@ -144,12 +149,25 @@
         "gpus_per_node"               : 4,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SRUN",
-        "task_launch_method"          : "MPIRUN",
-        "mpi_launch_method"           : "MPIRUN",
-        "pre_bootstrap_0"             : ["module load gcc/7.3.0",
-                                         "module load openmpi/3.1.2",
-                                         "module --expert load xl",
+        "launch_methods"              : {
+                                         "order" : ["FORK", "SRUN", "MPIRUN"],
+                                         "FORK"  : {},
+                                         "SRUN"  : {
+                                             "pre_exec": [
+                                                 "module load gcc/7.3.0",
+                                                 "module load openmpi/3.1.2",
+                                                 "module --expert load xl"
+                                             ]
+                                         },
+                                         "MPIRUN": {
+                                             "pre_exec": [
+                                                 "module load gcc/7.3.0",
+                                                 "module load openmpi/3.1.2",
+                                                 "module --expert load xl"
+                                             ]
+                                         }
+                                        },
+        "pre_bootstrap_0"             : [
                                          "module load python3/3.8.1"
                                         ],
         "default_remote_workdir"      : "$SCRATCH",

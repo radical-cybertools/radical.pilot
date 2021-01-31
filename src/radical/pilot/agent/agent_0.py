@@ -350,9 +350,6 @@ class Agent_0(rpu.Worker):
         # the respective command lines per agent instance, and run via
         # popen.
         #
-        # actually, we only create the agent_lm once we really need it for
-        # non-local sub_agents.
-        agent_lm   = None
         for sa in self._cfg['agents']:
 
             target = self._cfg['agents'][sa]['target']
@@ -363,12 +360,6 @@ class Agent_0(rpu.Worker):
                 cmdline = '/bin/sh -l %s/bootstrap_2.sh %s' % (self._pwd, sa)
 
             elif target == 'node':
-
-                if not agent_lm:
-                    agent_lm = LaunchMethod.create(
-                        name    = self._cfg['agent_launch_method'],
-                        cfg     = self._cfg,
-                        session = self._session)
 
                 node = self._cfg['rm_info']['agent_nodes'][sa]
                 # start agent remotely, use launch method
@@ -381,8 +372,9 @@ class Agent_0(rpu.Worker):
                 #        out for the moment, which will make this unable to
                 #        work with a number of launch methods.  Can the
                 #        offset computation be moved to the ResourceManager?
-                bs_name = "%s/bootstrap_2.sh" % (self._pwd)
-                ls_name = "%s/%s.sh" % (self._pwd, sa)
+                bs_name       = "%s/bootstrap_2.sh" % (self._pwd)
+                launch_script = "%s/%s.sh" % (self._pwd, sa)
+                exec_script   = "%s/%s.sh" % (self._pwd, sa)
                 slots = {
                     'cpu_processes'    : 1,
                     'cpu_threads'      : 1,
@@ -399,7 +391,7 @@ class Agent_0(rpu.Worker):
                     'gpus_per_node'    : self._cfg['rm_info']['gpus_per_node'],
                     'lm_info'          : self._cfg['rm_info']['lm_info'],
                 }
-                agent_cmd = {
+                agent_task = {
                     'uid'              : sa,
                     'slots'            : slots,
                     'unit_sandbox_path': self._pwd,
@@ -411,63 +403,36 @@ class Agent_0(rpu.Worker):
                                           'arguments'        : [bs_name, sa],
                                          }
                 }
-                cmd, hop = agent_lm.construct_command(agent_cmd,
-                        launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "%s"' % ls_name)
+                launcher = self._rm.find_launcher(agent_task)
+                if not launcher:
+                    raise RuntimeError('no launch method found for sub agent')
 
-                with open (ls_name, 'w') as ls:
-                    # note that 'exec' only makes sense if we don't add any
-                    # commands (such as post-processing) after it.
-                    ls.write('#!/bin/sh\n\n')
-                    for k,v in agent_cmd['description'].get('environment', {}).items():
-                        ls.write('export "%s"="%s"\n' % (k, v))
-                    ls.write('\n')
-                    for pe_cmd in agent_cmd['description'].get('pre_exec', []):
-                        ls.write('%s\n' % pe_cmd)
-                    ls.write('\n')
-                    ls.write('exec %s\n\n' % cmd)
-                    st = os.stat(ls_name)
-                    os.chmod(ls_name, st.st_mode | stat.S_IEXEC)
+                with open(launch_script, 'w') as fout:
+                    fout.write(self._get_launch_env(agent_task, launcher))
+                    fout.write('%s\n' % self._get_launch_cmd(agent_task,
+                                                         launcher, exec_script))
+                    fout.write('exit $?\n\n')
 
-                if hop : cmdline = hop
-                else   : cmdline = ls_name
+                with open(exec_script, 'w') as fout:
 
-            # ------------------------------------------------------------------
-            class _SA(mp.Process):
+                    fout.write(self._get_task_env(agent_task, launcher))
+                    fout.write(self._get_pre_exec(agent_task))
+                    fout.write(self._get_rank_exec(agent_task, 0,
+                        slots['ranks'][0], launcher))
+                    fout.write('exit $?\n\n')
 
-                def __init__(self, sa, cmd, log):
-                    self._name = sa
-                    self._cmd  = cmd.split()
-                    self._log  = log
-                    self._proc = None
-                    super(_SA, self).__init__(name=self._name)
-
-                    self.start()
-
-
-                def run(self):
-
-                    sys.stdout = open('%s.out' % self._name, 'w')
-                    sys.stderr = open('%s.err' % self._name, 'w')
-                    out        = open('%s.out' % self._name, 'w')
-                    err        = open('%s.err' % self._name, 'w')
-                    self._proc = sp.Popen(args=self._cmd, stdout=out, stderr=err)
-                    self._log.debug('sub-agent %s spawned [%s]', self._name,
-                            self._proc)
-
-                    assert(self._proc)
-
-                    # FIXME: lifetime, use daemon agent launcher
-                    while True:
-                        time.sleep(0.1)
-                        if self._proc.poll() is None:
-                            return True   # all is well
-                        else:
-                            return False  # proc is gone - terminate
-            # ------------------------------------------------------------------
+                # make sure scripts are executable
+                st = os.stat(launch_script)
+                st = os.stat(exec_script)
+                os.chmod(launch_script, st.st_mode | stat.S_IEXEC)
+                os.chmod(exec_script,   st.st_mode | stat.S_IEXEC)
 
             # spawn the sub-agent
+            cmdline = './%s' % launch_script
             self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
-            _SA(sa, cmdline, log=self._log)
+            ru.sh_callout_bg('./%s' % launch_script,
+                              stdout='%s.out' % sa,
+                              stderr='%s.err' % sa)
 
             # FIXME: register heartbeats?
 
