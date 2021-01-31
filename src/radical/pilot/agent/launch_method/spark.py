@@ -25,7 +25,7 @@ class Spark(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def rm_config_hook(cls, name, cfg, rm, log, profiler=None):
+    def rm_config_hook(cls, name, lmcfg, cfg, rm, log, profiler=None):
 
         import radical.utils as ru
 

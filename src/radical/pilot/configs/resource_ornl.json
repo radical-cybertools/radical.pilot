@@ -100,7 +100,7 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "batch",
-        "resource_manager"            : "LSF_SUMMIT",
+        "resource_manager"            : "LSF",
         "lfs_per_node"                : "/tmp",
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
@@ -156,7 +156,7 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "batch",
-        "resource_manager"            : "LSF_SUMMIT",
+        "resource_manager"            : "LSF",
         "lfs_per_node"                : "/tmp",
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",

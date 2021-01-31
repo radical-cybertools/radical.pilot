@@ -1,6 +1,6 @@
 
-__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2013-2016, http://radical.rutgers.edu'
+__license__   = 'MIT'
 
 import os
 import queue
@@ -16,28 +16,23 @@ from ... import utils     as rpu
 
 # ------------------------------------------------------------------------------
 # 'enum' for RP's spawner types
-EXECUTING_NAME_POPEN   = "POPEN"
-EXECUTING_NAME_SHELL   = "SHELL"
-EXECUTING_NAME_SHELLFS = "SHELLFS"
-EXECUTING_NAME_FLUX    = "FLUX"
-EXECUTING_NAME_SLEEP   = "SLEEP"
-EXECUTING_NAME_FUNCS   = "FUNCS"
-
-# archived
-#
-# EXECUTING_NAME_ABDS    = "ABDS"
-# EXECUTING_NAME_ORTE    = "ORTE"
+EXECUTING_NAME_POPEN   = 'POPEN'
+EXECUTING_NAME_SHELL   = 'SHELL'
+EXECUTING_NAME_SHELLFS = 'SHELLFS'
+EXECUTING_NAME_FLUX    = 'FLUX'
+EXECUTING_NAME_SLEEP   = 'SLEEP'
+EXECUTING_NAME_FUNCS   = 'FUNCS'
 
 
 # ------------------------------------------------------------------------------
 #
 class AgentExecutingComponent(rpu.Component):
-    """
+    '''
     Manage the creation of CU processes, and watch them until they are completed
     (one way or the other).  The spawner thus moves the unit from
     PendingExecution to Executing, and then to a final state (or PendingStageOut
     of course).
-    """
+    '''
 
     # --------------------------------------------------------------------------
     #
@@ -63,7 +58,7 @@ class AgentExecutingComponent(rpu.Component):
 
         # Make sure that we are the base-class!
         if cls != AgentExecutingComponent:
-            raise TypeError("Factory only available to base class!")
+            raise TypeError('Factory only available to base class!')
 
         from .popen    import Popen
         from .shell    import Shell
@@ -71,9 +66,6 @@ class AgentExecutingComponent(rpu.Component):
         from .flux     import Flux
         from .funcs    import FUNCS
         from .sleep    import Sleep
-
-      # from .abds     import ABDS
-      # from .orte     import ORTE
 
         try:
             impl = {
@@ -83,13 +75,11 @@ class AgentExecutingComponent(rpu.Component):
                 EXECUTING_NAME_FLUX   : Flux,
                 EXECUTING_NAME_SLEEP  : Sleep,
                 EXECUTING_NAME_FUNCS  : FUNCS,
-              # EXECUTING_NAME_ABDS   : ABDS,
-              # EXECUTING_NAME_ORTE   : ORTE,
             }[name]
             return impl(cfg, session)
 
         except KeyError as e:
-            raise RuntimeError("AgentExecutingComponent '%s' unknown" % name) \
+            raise RuntimeError('AgentExecutingComponent %s unknown' % name) \
                 from e
 
 
@@ -110,19 +100,44 @@ class AgentExecutingComponent(rpu.Component):
 
         # The AgentExecutingComponent needs LaunchMethods to construct
         # commands.
-        # # FIXME: load launchers from config
-        self._task_launcher = rpa.LaunchMethod.create(
-                name    = self._cfg.get('task_launch_method'),
-                cfg     = self._cfg,
-                session = self._session)
+        self._launchers    = dict()
+        self._launch_order = None
+        lm_cfg = self._cfg.resource_cfg.launch_methods
+        for name, lmcfg in lm_cfg.items():
 
-        self._mpi_launcher = rpa.LaunchMethod.create(
-                name    = self._cfg.get('mpi_launch_method'),
-                cfg     = self._cfg,
-                session = self._session)
+            if name == 'order':
+                self._launch_order = lmcfg
+                continue
 
-        self.gtod   = "%s/gtod" % self._pwd
-        self.prof   = "%s/prof" % self._pwd
+            launcher = rpa.LaunchMethod.create(name, lmcfg, self._cfg,
+                                               self._session)
+
+            if launcher:
+                self._launchers[name] = launcher
+
+        assert(self._launchers)
+
+        import pprint
+        self._log.debug('=== launchers: %s', pprint.pformat(self._launchers))
+
+        if not self._launch_order:
+            self._launch_order = list(self._cfg.resource_cfg.launchers.keys())
+
+        self.gtod = '%s/gtod' % self._pwd
+        self.prof = '%s/prof' % self._pwd
+
+
+    # --------------------------------------------------------------------------
+    #
+    def find_launcher(self, task):
+
+        for name in self._launch_order:
+            launcher = self._launchers[name]
+            self._log.debug('==== launcher %s: %s', name, launcher)
+            if launcher.can_launch(task):
+                return self._launchers[name]
+
+        return None
 
 
 # ------------------------------------------------------------------------------

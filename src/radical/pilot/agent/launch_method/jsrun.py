@@ -29,7 +29,7 @@ class JSRUN(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def rm_config_hook(cls, name, cfg, rm, log, profiler):
+    def rm_config_hook(cls, name, lmcfg, cfg, rm, log, profiler):
 
         if 'session.lassen' in cfg['sid'].lower():
             # correctness of GPU IDs is based on env var CUDA_VISIBLE_DEVICES

@@ -2,8 +2,8 @@
 # FIXME: review pylint directive - https://github.com/PyCQA/pylint/pull/2087
 #        (https://docs.python.org/3/library/subprocess.html#popen-constructor)
 
-__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2013-2016, http://radical.rutgers.edu'
+__license__   = 'MIT'
 
 
 import os
@@ -90,7 +90,7 @@ class Popen(AgentExecutingComponent) :
 
         if cmd == 'cancel_units':
 
-            self._log.info("cancel_units command (%s)" % arg)
+            self._log.info('cancel_units command (%s)' % arg)
             with self._cancel_lock:
                 self._cus_to_cancel.extend(arg['uids'])
 
@@ -113,11 +113,11 @@ class Popen(AgentExecutingComponent) :
                 # not completely correct (as this text is not produced
                 # by the task), but it seems the most intuitive way to
                 # communicate that error to the application/user.
-                self._log.exception("error running task")
+                self._log.exception('error running task')
 
                 if not task.get('stderr'):
                     task['stderr'] = ''
-                task['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
+                task['stderr'] += '\nPilot cannot start task:\n%s\n%s' \
                                 % (str(e), traceback.format_exc())
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
@@ -206,26 +206,21 @@ class Popen(AgentExecutingComponent) :
         #       This should be changed to more intuitive integers once MongoDB
         #       is phased out.
 
-        tid   = task['uid']
-        sbox  = task['unit_sandbox_path']
-        td = task['description']
-        cpt   = td['cpu_process_type']
+        tid  = task['uid']
+        td   = task['description']
+        sbox = task['unit_sandbox_path']
 
-        self._prof.prof('exec_mkdir', uid=tid)
-        ru.rec_makedir(sbox)
-        self._prof.prof('exec_mkdir_done', uid=tid)
-
-        if cpt == 'MPI': launcher = self._mpi_launcher
-        else           : launcher = self._task_launcher
+        launcher = self.find_launcher(task)
 
         if not launcher:
-            raise RuntimeError("no launcher (process type = %s)" % cpt)
+            raise RuntimeError('no launcher foud for task %s' % tid)
 
-        self._log.debug("Launching unit with %s (%s).",
-                        launcher.name, launcher.launch_command)
+        self._log.debug('Launching unit with %s', launcher.name)
 
         launch_script = '%s.launch.sh' % tid
         exec_script   = '%s.exec.sh'   % tid
+
+        ru.rec_makedir(sbox)
 
         with open('%s/%s' % (sbox, launch_script), 'w') as fout:
 
@@ -302,7 +297,7 @@ class Popen(AgentExecutingComponent) :
                 fout.write(self._get_rank_exec(task, rank_id, rank, launcher))
                 fout.write('        ;;\n')
             fout.write('esac\n')
-            fout.write("RP_RET=$?\n")
+            fout.write('RP_RET=$?\n')
 
             # post_rank list is applied to rank 0, dict to the ranks listed
             post_rank = td['post_rank']
@@ -358,7 +353,7 @@ class Popen(AgentExecutingComponent) :
         # make sure the sandbox exists
         slots_fname = '%s/%s.sl' % (sbox, tid)
 
-        with open(slots_fname, "w") as fout:
+        with open(slots_fname, 'w') as fout:
             fout.write('\n%s\n\n' % pprint.pformat(task['slots']))
 
         # launch and exec sript are done, get ready for execution.
@@ -377,7 +372,7 @@ class Popen(AgentExecutingComponent) :
         _stdout_file_h = open(task['stdout_file'], 'a')
         _stderr_file_h = open(task['stderr_file'], 'a')
 
-        self._log.info("Launching unit %s via %s in %s", tid, cmdline, sbox)
+        self._log.info('Launching unit %s via %s in %s', tid, cmdline, sbox)
 
         self._prof.prof('exec_start', uid=tid)
         task['proc'] = subprocess.Popen(args     = cmdline,
@@ -471,7 +466,7 @@ class Popen(AgentExecutingComponent) :
                     time.sleep(0.1)
 
         except Exception as e:
-            self._log.exception("Error in ExecWorker watch loop (%s)" % e)
+            self._log.exception('Error in ExecWorker watch loop (%s)' % e)
             # FIXME: this should signal the ExecWorker for shutdown...
 
 
@@ -532,7 +527,7 @@ class Popen(AgentExecutingComponent) :
 
                 # we have a valid return code -- unit is final
                 action += 1
-                self._log.info("Unit %s has return code %s.", uid, exit_code)
+                self._log.info('Unit %s has return code %s.', uid, exit_code)
 
                 cu['exit_code'] = exit_code
 

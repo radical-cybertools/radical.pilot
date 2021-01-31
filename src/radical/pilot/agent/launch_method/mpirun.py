@@ -15,14 +15,14 @@ class MPIRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, session):
+    def __init__(self, name, lmcfg, cfg, session):
 
         self._mpt    = False
         self._rsh    = False
         self._ccmrun = ''
         self._dplace = ''
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        LaunchMethod.__init__(self, name, lmcfg, cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -107,6 +107,16 @@ class MPIRun(LaunchMethod):
 
         self.mpi_version, self.mpi_flavor = \
                                        self._get_mpi_info(self.launch_command)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def can_launch(self, task):
+
+        if task['description']['cpu_process_type'] == 'MPI':
+            return True
+
+        return False
 
 
     # --------------------------------------------------------------------------
@@ -231,7 +241,7 @@ class MPIRun(LaunchMethod):
 
         td           = task['description']
         task_exec    = td['executable']
-        task_args    = td.get('arguments')
+        task_args    = td['arguments']
         task_argstr  = self._create_arg_string(task_args)
         command      = "%s %s" % (task_exec, task_argstr)
 

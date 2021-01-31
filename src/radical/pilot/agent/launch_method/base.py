@@ -59,9 +59,10 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, session):
+    def __init__(self, name, lmcfg, cfg, session):
 
         self.name     = name
+        self._lmcfg   = lmcfg
         self._cfg     = cfg
         self._pwd     = os.getcwd()
         self._session = session
@@ -79,7 +80,7 @@ class LaunchMethod(object):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, cfg, session):
+    def create(cls, name, lmcfg, cfg, session):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
@@ -105,24 +106,6 @@ class LaunchMethod(object):
         from .spark          import Spark
         from .srun           import Srun
 
-      # # deprecated
-      # from .orte           import ORTE
-      # from .orte_lib       import ORTELib
-      # from .mpirun_ccmrun  import MPIRunCCMRun
-      # from .mpirun_dplace  import MPIRunDPlace
-      # from .mpirun_mpt     import MPIRun_MPT
-      # from .mpirun_rsh     import MPIRunRSH
-      # from .dplace         import DPlace
-      # from .poe            import POE
-      # from .runjob         import Runjob
-      # from .mpirun_ccmrun  import MPIRunCCMRun
-      # from .mpirun_dplace  import MPIRunDPlace
-      # from .mpirun_mpt     import MPIRun_MPT
-      # from .mpirun_rsh     import MPIRunRSH
-      # from .dplace         import DPlace
-      # from .poe            import POE
-      # from .runjob         import Runjob
-
         try:
             impl = {
                 LM_NAME_APRUN         : APRun,
@@ -146,14 +129,8 @@ class LaunchMethod(object):
                 LM_NAME_SPARK         : Spark,
                 LM_NAME_SRUN          : Srun,
 
-              # # deprecated
-              # LM_NAME_ORTE          : ORTE,
-              # LM_NAME_ORTE_LIB      : ORTELib,
-              # LM_NAME_DPLACE        : DPlace,
-              # LM_NAME_POE           : POE,
-              # LM_NAME_RUNJOB        : Runjob,
             }[name]
-            return impl(name, cfg, session)
+            return impl(name, lmcfg, cfg, session)
 
         except KeyError:
             session._log.exception('invalid lm %s' % name)
@@ -167,7 +144,7 @@ class LaunchMethod(object):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def rm_config_hook(cls, name, cfg, rm, log, profiler):
+    def rm_config_hook(cls, name, lmcfg, cfg, rm, log, profiler):
         '''
         This hook will allow the ResourceManager to perform launch methods
         specific configuration steps.  The ResourceManager layer MUST ensure
@@ -210,7 +187,7 @@ class LaunchMethod(object):
             return None
 
         log.info('ResourceManager config hook for LaunchMethod %s: %s' % (name, impl))
-        return impl.rm_config_hook(name, cfg, rm, log, profiler)
+        return impl.rm_config_hook(name, lmcfg, cfg, rm, log, profiler)
 
 
     # --------------------------------------------------------------------------
@@ -257,6 +234,13 @@ class LaunchMethod(object):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
+
+        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def can_launch(self, task):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 

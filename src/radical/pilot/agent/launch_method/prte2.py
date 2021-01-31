@@ -51,7 +51,7 @@ class PRTE2(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def rm_config_hook(cls, name, cfg, rm, log, profiler):
+    def rm_config_hook(cls, name, lmcfg, cfg, rm, log, profiler):
 
         prte = ru.which('prte')
         if not prte:

@@ -14,7 +14,6 @@ RM_NAME_FORK        = 'FORK'
 RM_NAME_CCM         = 'CCM'
 RM_NAME_LOADLEVELER = 'LOADLEVELER'
 RM_NAME_LSF         = 'LSF'
-RM_NAME_LSF_SUMMIT  = 'LSF_SUMMIT'
 RM_NAME_PBSPRO      = 'PBSPRO'
 RM_NAME_SGE         = 'SGE'
 RM_NAME_SLURM       = 'SLURM'
@@ -145,18 +144,14 @@ class ResourceManager(object):
         # on the launch methods.  Those hooks may need to adjust the
         # ResourceManager settings (hello ORTE).  We only call LaunchMethod
         # hooks *once* (thus the set)
-        launch_methods = set()
-        launch_methods.add(self._cfg.get('mpi_launch_method'))
-        launch_methods.add(self._cfg.get('task_launch_method'))
-        launch_methods.add(self._cfg.get('agent_launch_method'))
+        launch_methods = self._cfg.resource_cfg.launch_methods
 
-        launch_methods.discard(None)
-
-        for lm in launch_methods:
+        for lm, lmcfg in launch_methods.items():
             try:
                 ru.dict_merge(
                     self.lm_info,
                     rpa.LaunchMethod.rm_config_hook(name=lm,
+                                                    lmcfg=lmcfg,
                                                     cfg=self._cfg,
                                                     rm=self,
                                                     log=self._log,
@@ -221,7 +216,6 @@ class ResourceManager(object):
         from .fork        import Fork
         from .loadleveler import LoadLeveler
         from .lsf         import LSF
-        from .lsf_summit  import LSF_SUMMIT
         from .pbspro      import PBSPro
         from .sge         import SGE
         from .slurm       import Slurm
@@ -241,7 +235,6 @@ class ResourceManager(object):
                 RM_NAME_CCM         : CCM,
                 RM_NAME_LOADLEVELER : LoadLeveler,
                 RM_NAME_LSF         : LSF,
-                RM_NAME_LSF_SUMMIT  : LSF_SUMMIT,
                 RM_NAME_PBSPRO      : PBSPro,
                 RM_NAME_SGE         : SGE,
                 RM_NAME_SLURM       : Slurm,
