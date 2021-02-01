@@ -58,11 +58,15 @@ help(){
 
     cat <<EOT
 
-    usage: $0 <target> [-h]
+    usage: $0 -p <path> [-v <version>] [-t <type>] [-m <modules>]
 
-    This script creates a virtualenv at the given target location.  That
+    This script creates a virtualenv at the given target path.  That
     virtualenv should be suitable to be used as static VE for a radical.pilot
     target resource, and can be specified in a resource configuration for RP.
+
+    type   :  bw, bwpy, *default*
+    version:  python version to use
+    modules:  comma separated list of modules to install
 
 EOT
     exit $ret
