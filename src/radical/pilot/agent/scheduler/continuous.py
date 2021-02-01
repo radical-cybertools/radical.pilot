@@ -76,6 +76,7 @@ class Continuous(AgentSchedulingComponent):
         AgentSchedulingComponent.__init__(self, cfg, session)
 
         self._tag_history   = dict()
+        self._partitions    = dict()
         self._scattered     = None
         self._node_offset   = 0
 
@@ -155,9 +156,11 @@ class Continuous(AgentSchedulingComponent):
             self._rm_cores_per_node -= len(blocked_cores)
             self._rm_gpus_per_node  -= len(blocked_gpus)
 
-        self._dvm_host_list = list()
         if isinstance(self._rm_lm_info, dict):
-            self._dvm_host_list = self._rm_lm_info.get('dvm_hosts') or []
+            # case of DVM partitioning (PRTE/2 LM)
+            dvm_hosts = self._rm_lm_info.get('dvm_hosts')
+            if dvm_hosts:
+                self._partitions = dict(enumerate(dvm_hosts))
 
 
     # --------------------------------------------------------------------------
@@ -391,20 +394,18 @@ class Continuous(AgentSchedulingComponent):
             tag = cud.get('tags', {}).get('colocate')
 
         # - PRRTE related - start -
-        # use tag as a DVM ID, so task will be allocated to nodes that are
-        # handled by a corresponding DVM (only applied with `dvm_host_list`)
-        # FIXME: new coming attribute `tags` would consider `dvm_id`
-        if self._dvm_host_list and tag is not None:
-            try:
-                tag = int(tag)
-            except (TypeError, ValueError):
-                tag = None
-            else:
-                if len(self._dvm_host_list) <= tag:
-                    raise ValueError('dvm_id (%s) out of range' % tag)
-                if tag not in self._tag_history:
-                    self._tag_history[tag] = self._dvm_host_list[tag]
-        unit_dvm_id = None
+        # use key `partition` from task description attribute `tags` as DVM ID,
+        # so task will be allocated to nodes that are handled by a corresponding
+        # DVM   FIXME: will be generalized
+        partition = cud.get('tags', {}).get('partition')
+        if self._partitions and partition is not None:
+            if partition not in self._partitions:
+                raise ValueError('partition id (%s) out of range' % partition)
+            # partition id becomes a part of a co-locate tag
+            tag = str(partition) + ('' if not tag else '_%s' % tag)
+            if tag not in self._tag_history:
+                self._tag_history[tag] = self._partitions[partition]
+        task_partition_id = None
         # - PRRTE related - end -
 
         # what remains to be allocated?  all of it right now.
@@ -427,20 +428,20 @@ class Continuous(AgentSchedulingComponent):
             #   - if the previous use included this node
             # If a tag exists, continue to consider this node if the tag was
             # used for this node - else continue to the next node.
-            node_dvm_id = None  # get dvm_id for the node (if applicable)
+            node_partition_id = None
             if tag is not None and tag in self._tag_history:
                 if node_uid not in self._tag_history[tag]:
                     continue
             # - PRRTE related - start -
-            elif self._dvm_host_list:
+            elif self._partitions:
                 # check that nodes assigned to the unit have the same dvm_id
                 # FIXME: handle the case when unit (MPI task) would require
                 #        more nodes than the amount available per DVM
                 _skip_node = True
-                for dvm_id, dvm_hosts in enumerate(self._dvm_host_list):
-                    if node_uid in dvm_hosts:
-                        if unit_dvm_id is None or unit_dvm_id == dvm_id:
-                            node_dvm_id = dvm_id  # save to use later
+                for partition_id, partition_nodes in self._partitions.items():
+                    if node_uid in partition_nodes:
+                        if task_partition_id in [None, partition_id]:
+                            node_partition_id = partition_id
                             _skip_node = False
                         break
                 if _skip_node:
@@ -493,8 +494,8 @@ class Continuous(AgentSchedulingComponent):
                 continue
 
             # - PRRTE related - start -
-            if node_dvm_id is not None and unit_dvm_id is None:
-                unit_dvm_id = node_dvm_id  # save dvm_id for unit
+            if node_partition_id is not None and task_partition_id is None:
+                task_partition_id = node_partition_id
             # - PRRTE related - end -
 
             # this node got a match, store away the found slots and continue
@@ -525,9 +526,10 @@ class Continuous(AgentSchedulingComponent):
                  'lm_info'       : self._rm_lm_info,
                 }
 
-        # allocation worked!  If the unit was tagged, store the node IDs for
-        # this tag, so that later units can reuse that information
-        if not self._dvm_host_list and tag is not None:
+        # if tag `colocate` was provided, then corresponding nodes should be
+        # stored in the tag history (if partition nodes were kept under this
+        # key before then it will be overwritten)
+        if tag is not None and tag != str(partition):
             self._tag_history[tag] = [node['uid'] for node in slots['nodes']]
 
         # this should be nicely filled out now - return
