@@ -393,6 +393,9 @@ class Continuous(AgentSchedulingComponent):
         if not tag:
             tag = cud.get('tags', {}).get('colocate')
 
+        if tag:
+            tag = str(tag)
+
         # - PRRTE related - start -
         # use key `partition` from task description attribute `tags` as DVM ID,
         # so task will be allocated to nodes that are handled by a corresponding
