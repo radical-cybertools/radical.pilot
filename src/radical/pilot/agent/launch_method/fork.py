@@ -25,8 +25,8 @@ class Fork(LaunchMethod):
     #
     def initialize(self, rm, lmcfg):
 
-        return {'version'       : ru.sh_callout('uname'      )[0],
-                'version_detail': ru.sh_callout('uname -irno')[0]}
+        return {'version'       : ru.sh_callout('uname'      )[0].strip(),
+                'version_detail': ru.sh_callout('uname -irno')[0].strip()}
 
 
     # --------------------------------------------------------------------------

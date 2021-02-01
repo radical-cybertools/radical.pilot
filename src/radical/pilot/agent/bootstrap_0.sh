@@ -189,6 +189,33 @@ create_gtod()
 
 # ------------------------------------------------------------------------------
 #
+create_prof(){
+
+
+    cat > ./prof <<EOT
+#!/bin/sh
+
+test -z "\$RP_PROF_TGT" && exit
+
+event=\$1
+uid=\$2
+state=\$3
+comp=\$4
+msg=\$5
+
+now=\$($(pwd)/gtod)
+printf "%.7f,%s,%s,%s,%s,%s,%s\n" \
+        "\$now" "\$event" "\$comp" "MainThread" "\$uid" "\$state" "\$msg" \
+        >> "\$RP_PROF_TGT"
+
+EOT
+
+    chmod 0755 ./prof
+}
+
+
+# ------------------------------------------------------------------------------
+#
 profile_event()
 {
     if test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
@@ -1494,14 +1521,9 @@ PB1_LDLB="$LD_LIBRARY_PATH"
 #        We should split the parsing and the execution of those.
 #        "bootstrap start" is here so that $PILOT_ID is known.
 # Create header for profile log
-if ! test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
-then
-    echo 'create gtod'
-    create_gtod
-else
-    echo 'create gtod'
-    create_gtod
-fi
+echo 'create gtod, prof'
+create_gtod
+create_prof
 profile_event 'bootstrap_0_start'
 
 # NOTE: if the virtenv path contains a symbolic link element, then distutil will

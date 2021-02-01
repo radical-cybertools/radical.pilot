@@ -231,6 +231,12 @@ class Popen(AgentExecutingComponent) :
 
             fout.write(self._header)
             fout.write(self._separator)
+            fout.write(self._get_rp_env(task))
+
+            fout.write(self._separator)
+            fout.write(self._get_prof('launch_start', tid))
+
+            fout.write(self._separator)
             fout.write('# change to task sandbox\n')
             fout.write('cd %s\n' % sbox)
 
@@ -240,18 +246,23 @@ class Popen(AgentExecutingComponent) :
 
             fout.write(self._separator)
             fout.write('# pre-launch commands\n')
+            fout.write(self._get_prof('launch_pre', tid))
             fout.write(self._get_pre_launch(task, launcher))
 
             fout.write(self._separator)
             fout.write('# launch commands\n')
+            fout.write(self._get_prof('launch_submit', tid))
             fout.write('%s\n' % self._get_launch_cmd(task, launcher, exec_script))
             fout.write('RP_RET=$?\n')
+            fout.write(self._get_prof('launch_collect', tid))
 
             fout.write(self._separator)
             fout.write('# post-launch commands\n')
+            fout.write(self._get_prof('launch_post', tid))
             fout.write(self._get_post_launch(task, launcher))
 
             fout.write(self._separator)
+            fout.write(self._get_prof('launch_stop', tid))
             fout.write('exit $RP_RET\n')
 
             fout.write(self._separator)
@@ -264,15 +275,20 @@ class Popen(AgentExecutingComponent) :
 
             fout.write(self._header)
             fout.write(self._separator)
+            fout.write(self._get_prof('exec_start', tid))
+
+            fout.write(self._separator)
             fout.write('# rank ID\n')
             fout.write(self._get_rank_ids(n_ranks, launcher))
 
             fout.write(self._separator)
             fout.write('# task environment\n')
+            fout.write(self._get_rp_env(task))
             fout.write(self._get_task_env(task, launcher))
 
             fout.write(self._separator)
             fout.write('# pre-exec commands\n')
+            fout.write(self._get_prof('exec_pre', tid))
             fout.write(self._get_pre_exec(task))
 
             # pre_rank list is applied to rank 0, dict to the ranks listed
@@ -281,6 +297,7 @@ class Popen(AgentExecutingComponent) :
 
             if pre_rank:
                 fout.write(self._separator)
+                fout.write(self._get_prof('rank_pre', tid))
                 fout.write('# pre-rank commands\n')
                 fout.write('case "$RP_RANK" in\n')
                 for rank_id, cmds in pre_rank.items():
@@ -296,12 +313,14 @@ class Popen(AgentExecutingComponent) :
 
             fout.write(self._separator)
             fout.write('# execute ranks\n')
+            fout.write(self._get_prof('rank_start', tid))
             fout.write('case "$RP_RANK" in\n')
             for rank_id, rank in enumerate(ranks):
                 fout.write('    %d)\n' % rank_id)
                 fout.write(self._get_rank_exec(task, rank_id, rank, launcher))
                 fout.write('        ;;\n')
             fout.write('esac\n')
+            fout.write(self._get_prof('rank_stop', tid))
             fout.write('RP_RET=$?\n')
 
             # post_rank list is applied to rank 0, dict to the ranks listed
@@ -310,6 +329,7 @@ class Popen(AgentExecutingComponent) :
 
             if post_rank:
                 fout.write(self._separator)
+                fout.write(self._get_prof('rank_post', tid))
                 fout.write('# sync ranks before post-rank commands\n')
                 fout.write('echo $RP_RANK >> %s.sig\n\n' % 'post_rank')
                 fout.write(self._get_rank_sync('post_rank'))
@@ -324,10 +344,12 @@ class Popen(AgentExecutingComponent) :
                 fout.write('esac\n\n')
 
             fout.write(self._separator)
+            fout.write(self._get_prof('exec_post', tid))
             fout.write('# post exec commands\n')
             fout.write(self._get_post_exec(task))
 
             fout.write(self._separator)
+            fout.write(self._get_prof('exec_stop', tid))
             fout.write('exit $RP_RET\n')
 
             fout.write(self._separator)
@@ -562,6 +584,16 @@ class Popen(AgentExecutingComponent) :
     #
     # launcher
     #
+    def _get_prof(self, event, tid, msg=''):
+
+        return '$RP_PROF %s %s %s %s "%s"\n' \
+             % (event, tid, rps.AGENT_EXECUTING, self.uid, msg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    # launcher
+    #
     def _get_launch_env(self, task, launcher):
 
         ret  = ''
@@ -609,10 +641,9 @@ class Popen(AgentExecutingComponent) :
     # --------------------------------------------------------------------------
     # exec
     #
-    def _get_task_env(self, task, launcher):
+    def _get_rp_env(self, task):
 
         tid  = task['uid']
-        td   = task['description']
         name = task['name'] or tid
         sbox = task['unit_sandbox_path']
 
@@ -637,6 +668,17 @@ class Popen(AgentExecutingComponent) :
             ret += 'export RP_APP_TUNNEL="%s"\n' \
                     % os.environ['RP_APP_TUNNEL']
 
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    # exec
+    #
+    def _get_task_env(self, task, launcher):
+
+        ret = ''
+        td  = task['description']
+
         # named_env's are prepared by the launcher
         if td['named_env']:
             ret += '\n# named environment\n'
@@ -647,7 +689,6 @@ class Popen(AgentExecutingComponent) :
             ret += '\n# task env settings\b'
             for key,val in td['environment'].items():
                 ret += 'export %s="%s"\n' % (key, val)
-
 
         return ret
 
