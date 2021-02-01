@@ -14,27 +14,26 @@ class Fork(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, lmcfg, cfg, session):
+    def __init__(self, name, cfg, log, prof):
 
-        LaunchMethod.__init__(self, name, lmcfg, cfg, session)
+        LaunchMethod.__init__(self, name, cfg, log, prof)
 
-
-    # --------------------------------------------------------------------------
-    #
-    def _configure(self):
-
-        self.launch_command = ''
         self.node_name = ru.get_hostname()
 
 
     # --------------------------------------------------------------------------
     #
-    @classmethod
-    def rm_config_hook(cls, lmcfg, name, cfg, rm, log, profiler):
+    def initialize(self, rm, lmcfg):
 
-        return {'name'          : name,
-                'version'       : ru.sh_callout('uname'      )[0],
+        return {'version'       : ru.sh_callout('uname'      )[0],
                 'version_detail': ru.sh_callout('uname -irno')[0]}
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        pass
 
 
     # --------------------------------------------------------------------------
@@ -45,8 +44,9 @@ class Fork(LaunchMethod):
         if len(task['slots']['ranks']) > 1:
             return False
 
-        node = task['slots']['ranks'][0]['node_name']
-        if node not in ['localhost', self._node_name]:
+        node = task['slots']['ranks'][0]['node']
+        print('====', node, self.node_name)
+        if node not in ['localhost', self.node_name]:
             return False
 
         return True
@@ -61,7 +61,7 @@ class Fork(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def get_launch_command(self, task, exec_script):
+    def get_launch_cmd(self, task, exec_script):
 
         return exec_script
 

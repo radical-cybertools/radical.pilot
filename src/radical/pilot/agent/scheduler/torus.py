@@ -115,7 +115,7 @@ class Torus(AgentSchedulingComponent):
                 'loadl_bg_block'      : self._rm.loadl_bg_block,
                 'sub_block_shape_str' : sub_block_shape_str,
                 'corner_node'         : corner_node,
-                'lm_info'             : self._rm_lm_info}
+                'lm_info'             : self._lm_info}
 
 
     # --------------------------------------------------------------------------

@@ -86,7 +86,6 @@ class Update(rpu.Worker):
             return False
 
         try:
-            self._log.debug('=== bulk exec')
             self._bulk.execute()
 
         except pymongo.errors.OperationFailure as e:
@@ -196,9 +195,6 @@ class Update(rpu.Worker):
                 uid   = thing['uid']
                 ttype = thing['type']
                 state = thing['state']
-
-                self._log.debug('=== state: %s %s', uid, state)
-
 
                 if 'clone' in uid:
                     # we don't push clone states to DB

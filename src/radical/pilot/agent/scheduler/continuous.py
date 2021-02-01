@@ -156,8 +156,8 @@ class Continuous(AgentSchedulingComponent):
             self._rm_gpus_per_node  -= len(blocked_gpus)
 
         self._dvm_host_list = list()
-        if isinstance(self._rm_lm_info, dict):
-            self._dvm_host_list = self._rm_lm_info.get('dvm_hosts') or []
+        if isinstance(self._lm_info, dict):
+            self._dvm_host_list = self._lm_info.get('dvm_hosts') or []
 
 
     # --------------------------------------------------------------------------
@@ -522,7 +522,7 @@ class Continuous(AgentSchedulingComponent):
                  'gpus_per_node' : self._rm_gpus_per_node,
                  'lfs_per_node'  : self._rm_lfs_per_node,
                  'mem_per_node'  : self._rm_mem_per_node,
-                 'lm_info'       : self._rm_lm_info,
+                 'lm_info'       : self._lm_info,
                 }
 
         # allocation worked!  If the unit was tagged, store the node IDs for

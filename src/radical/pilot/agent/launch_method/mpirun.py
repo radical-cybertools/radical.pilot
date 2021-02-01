@@ -15,39 +15,76 @@ class MPIRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, lmcfg, cfg, session):
+    def __init__(self, name, cfg, log, prof):
 
-        self._mpt    = False
-        self._rsh    = False
-        self._ccmrun = ''
-        self._dplace = ''
+        self._mpt      = False
+        self._rsh      = False
+        self._ccmrun   = ''
+        self._dplace   = ''
+        self._info     = None
 
-        LaunchMethod.__init__(self, name, lmcfg, cfg, session)
+        self._env_orig = ru.env_eval('env/orig.env')
+
+        log.debug('===== lm MPIRUN init start')
+
+        LaunchMethod.__init__(self, name, cfg, log, prof)
+
+        self._init_from_info()
+        self._log.debug('===== lm MPIRUN init stop')
 
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def _init_from_info(self):
 
-        self._lm_configs = self._cfg.resource_cfg.launch_methods
-        self._lm_config  = self._lm_configs.get(self.name, {})
-        self._pre_exec   = self._lm_config.get('pre_exec', [])
+        self._log.debug('===== lm MPIRUN init_info start')
 
-        print('pre: ', self._pre_exec)
+        if self._info:
+
+            self._log.debug('===== lm MPIRUN init_info active: %s', self._info)
+
+            self._command     = self._info['command']
+            self._dplace      = self._info['dplace']
+            self._ccmrun      = self._info['ccmrun']
+            self._mpt         = self._info['mpt']
+            self._rsh         = self._info['rsh']
+            self._mpi_version = self._info['mpi_version']
+            self._mpi_flavor  = self._info['mpi_flavor']
+            self._env_sh      = self._info['env_sh']
+
+            self._env         = ru.env_eval(self._env_sh)
+
+            self._log.debug('===== lm MPIRUN init_info stop: %s', self._command)
+
+        else:
+            self._log.debug('===== lm MPIRUN init_info stop: ---')
+
+    # --------------------------------------------------------------------------
+    #
+    def initialize(self, rm, lmcfg):
+
+        self._log.debug('===== lm MPIRUN initialize start')
+
+        if self._info:
+            raise RuntimeError('LM %s already initialized' % self.name)
+
+        command     = None
+        dplace      = ''
+        ccmrun      = ''
+        mpt         = False
+        rsh         = False
+        mpi_version = None
+        mpi_flavor  = None
+        env_sh      = '%s/env/%s.env' % (self._pwd, self.name)
+
+        pre_exec  = lmcfg.get('pre_exec', [])
+        cmds      = lmcfg.get('cmds',     [])
 
         # set up LM environment: first recreate the agent's original env, then
-        # apply the launch method's pre_exec commands.  Store the resulting env
+        # apply the launch method's env_prep commands.  Store the resulting env
         # in `env/lm_<name>.env`
-        #
-        # FIXME: if the launch methods pre_exec contains, for example,
-        #        a `ulimit` directive, it would only get executed once and
-        #        possibly not on the node where the executor runs.  We need to
-        #        separate env setup from proper pre_exec...
-        self._env_orig = ru.env_eval('env/orig.env')
-        self._env_sh   = '%s/env/%s.env' % (self._pwd, self.name)
-        self._env      = ru.env_prep(self._env_orig,
-                                     pre_exec=self._pre_exec,
-                                     script_path=self._env_sh)
+        self._env = ru.env_prep(self._env_orig, pre_exec=pre_exec,
+                                cmds=cmds, script_path=env_sh)
 
         # find the path to the launch method executable, so that we can derive
         # launcher version and flavor
@@ -55,63 +92,85 @@ class MPIRun(LaunchMethod):
         if '_rsh' in self.name.lower():
             # mpirun_rsh : Gordon (SDSC)
             # mpirun     : general case
-            self._rsh = True
+            rsh = True
             cmd = 'which mpirun_rsh || ' \
-                  'which mpirun'
+                   'which mpirun'
             out, err, ret = ru.sh_callout(cmd, shell=True, env=self._env)
             assert(not ret), err
-            self.launch_command = out.strip()
+            command = out.strip()
 
 
         elif '_mpt' in self.name.lower():
             # mpirun_mpt: Cheyenne (NCAR)
             # mpirun    : general case
-            self._mpt = True
+            mpt = True
             cmd = 'which mpirun_mpt || ' \
-                  'which mpirun'
+                   'which mpirun'
             out, err, ret = ru.sh_callout(cmd, shell=True, env=self._env)
             assert(not ret), err
-            self.launch_command = out.strip()
+            command = out.strip()
 
         else:
             # mpirun-mpich-mp  : Mac OSX mpich
             # mpirun-openmpi-mp: Mac OSX openmpi
             # mpirun           : general case
             cmd = 'which mpirun_mpich_mp   || ' \
-                  'which mpirun-openmpi-mp || ' \
-                  'which mpirun'
+                   'which mpirun-openmpi-mp || ' \
+                   'which mpirun'
             out, err, ret = ru.sh_callout(cmd, shell=True, env=self._env)
-            assert(not ret), err
-            self.launch_command = out.strip()
-
+            command = out.strip()
 
         # cheyenne is special: it needs MPT behavior (no -host) even for the
         # default mpirun (not mpirun_mpt).
         if 'cheyenne' in self._cfg.resource.lower():
-            self._mpt = True
+            mpt = True
 
         # which will return the first match in path - dispense of the path part
-        if self.launch_command:
-            self.launch_command = os.path.basename(self.launch_command)
+        if command:
+            command = os.path.basename(command)
 
         # do we need ccmrun or dplace?
         if '_ccmrun' in self.name:
-            out, err, ret = ru.sh_callout('which ccmrun', shell=True, env=self._env)
-            assert(not ret), err
+            out, err, ret = ru.sh_callout('which ccmrun', shell=True,
+                                                          env=self._env)
             ccmrun = out.strip()
             if not ccmrun:
                 raise RuntimeError("ccmrun not found!")
-            self.launch_command = '%s %s' % (ccmrun, self.launch_command)
+            command = '%s %s' % (ccmrun, command)
 
         if '_dplace' in self.name:
-            out, err, ret = ru.sh_callout('which dplace', shell=True, env=self._env)
-            assert(not ret), err
-            self._dplace = out.strip()
-            if not self._dplace:
+            out, err, ret = ru.sh_callout('which dplace', shell=True,
+                                                          env=self._env)
+            dplace = out.strip()
+            if not dplace:
                 raise RuntimeError("dplace not found!")
 
-        self.mpi_version, self.mpi_flavor = \
-                                       self._get_mpi_info(self.launch_command)
+        mpi_version, mpi_flavor = self._get_mpi_info(command)
+
+        # the returned lm_info contains sufficient information to create new,
+        # functional instances of this LM without new initialization
+        self._info = {
+                         'command'    : command,
+                         'dplace'     : dplace,
+                         'ccmrun'     : ccmrun,
+                         'mpt'        : mpt,
+                         'rsh'        : rsh,
+                         'mpi_version': mpi_version,
+                         'mpi_flavor' : mpi_flavor,
+                         'env_sh'     : env_sh
+                     }
+
+        self._init_from_info()
+
+        self._log.debug('===== lm MPIRUN initialize stop: %s', self._info)
+        return self._info
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        pass
 
 
     # --------------------------------------------------------------------------
@@ -157,7 +216,7 @@ class MPIRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def get_launch_command(self, task, exec_script):
+    def get_launch_cmd(self, task, exec_script):
 
         slots        = task['slots']
         uid          = task['uid']
@@ -222,8 +281,8 @@ class MPIRun(LaunchMethod):
         else        : np = len(host_list)
 
         command = ("%s %s -np %d %s %s %s" %
-                   (self.launch_command, mpt_hosts_string, np, self._dplace,
-                                         hosts_string, exec_script))
+                   (self._command, mpt_hosts_string, np, self._dplace,
+                                   hosts_string, exec_script))
 
         return command
 

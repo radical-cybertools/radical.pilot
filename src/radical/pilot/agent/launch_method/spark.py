@@ -159,8 +159,8 @@ class Spark(LaunchMethod):
     #
     def _configure(self):
 
-        self._log.info(self._cfg['rm_info']['lm_info'])
-        self.launch_command = self._cfg['rm_info']['lm_info']['launch_command']
+        self._log.info(self._cfg['lm_info'])
+        self.launch_command = self._cfg['lm_info']['launch_command']
         self._log.info('SPARK was called')
 
     # --------------------------------------------------------------------------

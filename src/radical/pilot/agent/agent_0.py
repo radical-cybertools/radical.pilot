@@ -4,13 +4,10 @@ __license__   = 'MIT'
 
 
 import os
-import sys
 import copy
 import stat
 import time
 import pprint
-import subprocess          as sp
-import multiprocessing     as mp
 
 import radical.utils       as ru
 
@@ -20,7 +17,6 @@ from ..   import constants as rpc
 from ..db import DBSession
 
 from .resource_manager import ResourceManager
-from .launch_method    import LaunchMethod
 
 
 # ------------------------------------------------------------------------------
@@ -158,8 +154,11 @@ class Agent_0(rpu.Worker):
         self._rm = ResourceManager.create(name=self._cfg.resource_manager,
                                            cfg=self._cfg, session=self._session)
 
-        # add the resource manager information to our own config
+        # Add the resource manager information to our own config.  The RM will
+        # also initialize and configure the launch methods, and LM info may are
+        # also added to the config.
         self._cfg['rm_info'] = self._rm.rm_info
+        self._cfg['lm_info'] = self._rm.lm_info
 
 
     # --------------------------------------------------------------------------
@@ -218,8 +217,7 @@ class Agent_0(rpu.Worker):
                  'uid'              : self._pid,
                  'state'            : rps.PMGR_ACTIVE,
                  'resource_details' : {
-                     'lm_info'      : self._rm.lm_info.get('version_info'),
-                     'lm_detail'    : self._rm.lm_info.get('lm_detail'),
+                     'lm_info'      : self._rm.lm_info,
                      'rm_info'      : self._rm.rm_info},
                  '$set'             : ['resource_details']}
         self.advance(pilot, publish=True, push=False)
@@ -345,6 +343,9 @@ class Agent_0(rpu.Worker):
 
         self._log.debug('start_sub_agents')
 
+        # store the current environment as the sub-agents will use the same
+        ru.env_prep(os.environ, script_path='./env/agent.env')
+
         # the configs are written, and the sub-agents can be started.  To know
         # how to do that we create the agent launch method, have it creating
         # the respective command lines per agent instance, and run via
@@ -373,8 +374,8 @@ class Agent_0(rpu.Worker):
                 #        work with a number of launch methods.  Can the
                 #        offset computation be moved to the ResourceManager?
                 bs_name       = "%s/bootstrap_2.sh" % (self._pwd)
-                launch_script = "%s/%s.sh" % (self._pwd, sa)
-                exec_script   = "%s/%s.sh" % (self._pwd, sa)
+                launch_script = "%s/%s.launch.sh"   % (self._pwd, sa)
+                exec_script   = "%s/%s.exec.sh"     % (self._pwd, sa)
                 slots = {
                     'cpu_processes'    : 1,
                     'cpu_threads'      : 1,
@@ -389,7 +390,7 @@ class Agent_0(rpu.Worker):
                                          }],
                     'cores_per_node'   : self._cfg['rm_info']['cores_per_node'],
                     'gpus_per_node'    : self._cfg['rm_info']['gpus_per_node'],
-                    'lm_info'          : self._cfg['rm_info']['lm_info'],
+                    'lm_info'          : self._cfg['lm_info'],
                 }
                 agent_task = {
                     'uid'              : sa,
@@ -403,23 +404,28 @@ class Agent_0(rpu.Worker):
                                           'arguments'        : [bs_name, sa],
                                          }
                 }
+
+                # find a launcher to use
                 launcher = self._rm.find_launcher(agent_task)
                 if not launcher:
                     raise RuntimeError('no launch method found for sub agent')
 
                 with open(launch_script, 'w') as fout:
-                    fout.write(self._get_launch_env(agent_task, launcher))
-                    fout.write('%s\n' % self._get_launch_cmd(agent_task,
-                                                         launcher, exec_script))
+
+                    fout.write('#!/bin/sh\n\n')
+                    cmds = launcher.get_launcher_env()
+                    for cmd in cmds:
+                        fout.write('%s || exit 1\n' % cmd)
+                    fout.write('%s\n' % launcher.get_launch_cmd(agent_task,
+                                                                exec_script))
                     fout.write('exit $?\n\n')
 
                 with open(exec_script, 'w') as fout:
 
-                    fout.write(self._get_task_env(agent_task, launcher))
-                    fout.write(self._get_pre_exec(agent_task))
-                    fout.write(self._get_rank_exec(agent_task, 0,
-                        slots['ranks'][0], launcher))
-                    fout.write('exit $?\n\n')
+                    # FIXME: source agent env
+                    fout.write('#!/bin/sh\n\n')
+                    fout.write('. ./env/agent.env\n')
+                    fout.write('/bin/sh -l ./bootstrap_2.sh %s\n\n' % sa)
 
                 # make sure scripts are executable
                 st = os.stat(launch_script)
@@ -430,9 +436,8 @@ class Agent_0(rpu.Worker):
             # spawn the sub-agent
             cmdline = './%s' % launch_script
             self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
-            ru.sh_callout_bg('./%s' % launch_script,
-                              stdout='%s.out' % sa,
-                              stderr='%s.err' % sa)
+            ru.sh_callout_bg(launch_script, stdout='%s.out' % sa,
+                                            stderr='%s.err' % sa)
 
             # FIXME: register heartbeats?
 

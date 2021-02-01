@@ -310,8 +310,8 @@ class Yarn(LaunchMethod):
 
         # Single Node configuration
         # FIXME : Upload App to another server, which will be always alive
-        self._log.info(self._cfg['rm_info']['lm_info'])
-        self.launch_command = self._cfg['rm_info']['lm_info']['launch_command']
+        self._log.info(self._cfg['lm_info'])
+        self.launch_command = self._cfg['lm_info']['launch_command']
         self._log.info('YARN was called')
 
 

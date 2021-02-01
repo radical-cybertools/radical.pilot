@@ -25,6 +25,7 @@ from ...staging_directives import complete_url, expand_staging_directives
 
 # ------------------------------------------------------------------------------
 # local constants
+DEFAULT_AGENT_SPAWNER = 'POPEN'
 DEFAULT_RP_VERSION    = 'local'
 DEFAULT_VIRTENV_MODE  = 'update'
 DEFAULT_VIRTENV_DIST  = 'default'
@@ -671,6 +672,7 @@ class Default(PMGRLaunchingComponent):
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
         agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
+        agent_spawner           = rcfg.get('agent_spawner',       DEFAULT_AGENT_SPAWNER)
         agent_config            = rcfg.get('agent_config',        DEFAULT_AGENT_CONFIG)
         agent_scheduler         = rcfg.get('agent_scheduler')
         tunnel_bind_device      = rcfg.get('tunnel_bind_device')
@@ -839,10 +841,11 @@ class Default(PMGRLaunchingComponent):
 
         # ----------------------------------------------------------------------
         # sanity checks
-        if not python_dist        : raise RuntimeError("missing python distribution")
-        if not virtenv_dist       : raise RuntimeError("missing virtualenv distribution")
-        if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
-        if not resource_manager   : raise RuntimeError("missing resource manager")
+        if not python_dist     : raise RuntimeError("missing python distribution")
+        if not virtenv_dist    : raise RuntimeError("missing virtualenv distribution")
+        if not agent_spawner   : raise RuntimeError("missing agent spawner")
+        if not agent_scheduler : raise RuntimeError("missing agent scheduler")
+        if not resource_manager: raise RuntimeError("missing resource manager")
 
         # massage some values
         if not queue:
@@ -937,6 +940,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['resource']            = resource
         agent_cfg['cores']               = number_cores
         agent_cfg['gpus']                = number_gpus
+        agent_cfg['spawner']             = agent_spawner
         agent_cfg['scheduler']           = agent_scheduler
         agent_cfg['runtime']             = runtime
         agent_cfg['app_comm']            = app_comm

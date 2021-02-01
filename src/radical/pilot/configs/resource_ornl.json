@@ -114,7 +114,7 @@
                                          "order": ["FORK", "JSRUN"],
                                          "FORK" : {},
                                          "JSRUN": {
-                                             "pre_exec": [
+                                             "env_prep": [
                                                  "module unload xl",
                                                  "module unload xalt",
                                                  "module unload spectrum-mpi"
@@ -136,9 +136,7 @@
                                          "module unload py-setuptools",
                                          "module load   gcc/8.1.1",
                                          "module load   zeromq/4.2.5",
-                                         "module load   python/3.7.0",
-                                         # increase process limit on node
-                                         "ulimit -u 65536"
+                                         "module load   python/3.7.0"
                                         ],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
@@ -172,13 +170,15 @@
                                          "order": ["FORK", "PRTE"],
                                          "FORK" : {},
                                          "PRTE" : {
-                                             "pre_exec": [
+                                             "env_prep": [
                                                  "module unload xl",
                                                  "module unload xalt",
                                                  "module unload spectrum-mpi",
                                                  "module use    /sw/summit/ums/ompix/gcc/8.1.1/modules",
                                                  "module load   prrte/1.0.0_devtiming",
-                                                 "export PRRTE_PREFIX=$PRRTE_DIR",
+                                                 "export PRRTE_PREFIX=$PRRTE_DIR"
+                                             ],
+                                             "cmds": [
                                                  "ulimit -u 65536"
                                              ]
                                          }

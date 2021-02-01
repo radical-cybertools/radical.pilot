@@ -127,8 +127,7 @@ class Flux(AgentExecutingComponent) :
             # thread local initialization
             import flux
 
-            flux_url    = self._cfg['rm_info']['lm_info']\
-                                              ['flux_env']['FLUX_URI']
+            flux_url    = self._cfg['lm_info']['flux_env']['FLUX_URI']
             flux_handle = flux.Flux(url=flux_url)
             flux_handle.event_subscribe('job-state')
 

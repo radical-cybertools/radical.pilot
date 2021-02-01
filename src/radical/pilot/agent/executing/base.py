@@ -3,9 +3,7 @@ __copyright__ = 'Copyright 2013-2016, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
 import os
-import queue
 
-import threading     as mt
 import radical.utils as ru
 
 from ... import states    as rps
@@ -38,10 +36,13 @@ class AgentExecutingComponent(rpu.Component):
     #
     def __init__(self, cfg, session):
 
+        session._log.debug('===== exec init start')
+
         self._uid = ru.generate_id(cfg['owner'] + '.executing.%(counter)s',
                                    ru.ID_CUSTOM)
 
         rpu.Component.__init__(self, cfg, session)
+        session._log.debug('===== exec init stop')
 
         # if so configured, let the CU know what to use as tmp dir
         self._tmp = cfg.get('cu_tmp', os.environ.get('TMP', '/tmp'))
@@ -87,21 +88,15 @@ class AgentExecutingComponent(rpu.Component):
     #
     def initialize(self):
 
+        self._log.debug('===== exec base initialize')
+
         self._pwd = os.getcwd()
-
-        self.register_input(rps.AGENT_EXECUTING_PENDING,
-                            rpc.AGENT_EXECUTING_QUEUE, self.work)
-
-        self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
-                             rpc.AGENT_STAGING_OUTPUT_QUEUE)
-
-        self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
         # The AgentExecutingComponent needs LaunchMethods to construct
         # commands.
         self._launchers    = dict()
         self._launch_order = None
+
         lm_cfg = self._cfg.resource_cfg.launch_methods
         for name, lmcfg in lm_cfg.items():
 
@@ -109,22 +104,36 @@ class AgentExecutingComponent(rpu.Component):
                 self._launch_order = lmcfg
                 continue
 
-            launcher = rpa.LaunchMethod.create(name, lmcfg, self._cfg,
-                                               self._session)
+            try:
+                self._log.debug('===== %s create start', name)
+                lm = rpa.LaunchMethod.create(name, self._cfg,
+                                                   self._log, self._prof)
+                self._launchers[name] = lm
+                self._log.debug('===== %s create stop', name)
+                self._log.debug('===== %s lm info: %s', name, lm._info)
 
-            if launcher:
-                self._launchers[name] = launcher
+            except:
+                self._log.exception('skip LM %s' % name)
+
 
         assert(self._launchers)
-
-        import pprint
-        self._log.debug('=== launchers: %s', pprint.pformat(self._launchers))
 
         if not self._launch_order:
             self._launch_order = list(self._cfg.resource_cfg.launchers.keys())
 
         self.gtod = '%s/gtod' % self._pwd
         self.prof = '%s/prof' % self._pwd
+
+        self._log.debug('===== exec register work start')
+        self.register_input(rps.AGENT_EXECUTING_PENDING,
+                            rpc.AGENT_EXECUTING_QUEUE, self.work)
+        self._log.debug('===== exec register work stop')
+
+        self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
+                             rpc.AGENT_STAGING_OUTPUT_QUEUE)
+
+        self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
 
     # --------------------------------------------------------------------------

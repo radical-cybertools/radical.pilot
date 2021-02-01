@@ -19,7 +19,6 @@ import subprocess
 
 import radical.utils as ru
 
-from ...  import utils     as rpu
 from ...  import states    as rps
 from ...  import constants as rpc
 
@@ -53,16 +52,19 @@ class Popen(AgentExecutingComponent) :
     #
     def __init__(self, cfg, session):
 
+        session._log.debug('===== popen init start')
         self._watcher   = None
         self._terminate = mt.Event()
 
         AgentExecutingComponent.__init__ (self, cfg, session)
+        session._log.debug('===== popen init stop')
 
 
     # --------------------------------------------------------------------------
     #
     def initialize(self):
 
+        self._log.debug('===== popen initialize start')
         AgentExecutingComponent.initialize(self)
 
         self._cancel_lock    = ru.RLock()
@@ -77,6 +79,7 @@ class Popen(AgentExecutingComponent) :
       # self._watcher.daemon = True
         self._watcher.start()
 
+        self._log.debug('===== popen initialize stop')
 
 
     # --------------------------------------------------------------------------
@@ -100,6 +103,8 @@ class Popen(AgentExecutingComponent) :
     # --------------------------------------------------------------------------
     #
     def work(self, tasks):
+
+        self._log.debug('===== popen work start')
 
         self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
@@ -562,7 +567,7 @@ class Popen(AgentExecutingComponent) :
         ret  = ''
         cmds = launcher.get_launcher_env()
         for cmd in cmds:
-            ret += '%-30s || (echo "launcher env failed"; false) || exit 1\n' \
+            ret += '%s || (echo "launcher env failed"; false) || exit 1\n' \
                    % cmd
         return ret
 
@@ -574,7 +579,7 @@ class Popen(AgentExecutingComponent) :
         ret  = ''
         cmds = task['description']['pre_launch']
         for cmd in cmds:
-            ret += '%-30s || (echo "pre_launch failed"; false) || exit 1\n' \
+            ret += '%s || (echo "pre_launch failed"; false) || exit 1\n' \
                    % cmd
 
         return ret
@@ -584,7 +589,7 @@ class Popen(AgentExecutingComponent) :
     #
     def _get_launch_cmd(self, task, launcher, exec_script):
 
-        ret = launcher.get_launch_command(task, exec_script)
+        ret = launcher.get_launch_cmd(task, exec_script)
 
         return ret
 
@@ -596,7 +601,7 @@ class Popen(AgentExecutingComponent) :
         ret  = ''
         cmds = task['description']['post_launch']
         for cmd in cmds:
-            ret += '%-30s || (echo "post_launch failed"; false) || exit 1\n' % cmd
+            ret += '%s || (echo "post_launch failed"; false) || exit 1\n' % cmd
 
         return ret
 
@@ -634,7 +639,7 @@ class Popen(AgentExecutingComponent) :
 
         # named_env's are prepared by the launcher
         if td['named_env']:
-            ret += '\n# named environment\b'
+            ret += '\n# named environment\n'
             ret += '. %s\n' % launcher.get_task_env(td['named_env'])
 
         # also add any env vars requested in the unit description
@@ -655,7 +660,7 @@ class Popen(AgentExecutingComponent) :
 
         cmds = task['description']['pre_exec']
         for cmd in cmds:
-            ret += '%-30s || (echo "pre_exec failed"; false) || exit 1\n' \
+            ret += '%s || (echo "pre_exec failed"; false) || exit 1\n' \
                    % cmd
 
         return ret
@@ -679,7 +684,7 @@ class Popen(AgentExecutingComponent) :
         ret  = ''
         cmds = task['description']['post_exec']
         for cmd in cmds:
-            ret += '%-30s || (echo "post_exec failed"; false) || exit 1\n' \
+            ret += '%s || (echo "post_exec failed"; false) || exit 1\n' \
                    % cmd
 
         return ret
@@ -744,7 +749,7 @@ class Popen(AgentExecutingComponent) :
 
         ret = ''
         for cmd in cmds:
-            ret += '        %-30s || (echo "post_rank failed"; false) || exit 1\n' \
+            ret += '        %s || (echo "post_rank failed"; false) || exit 1\n' \
                    % cmd
 
         return ret

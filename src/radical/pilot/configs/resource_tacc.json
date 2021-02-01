@@ -109,7 +109,7 @@
                                          "FORK" : {},
                                          "SSH"  : {},
                                          "PRTE" : {
-                                             "pre_exec": [
+                                             "env_prep": [
                                                  "module use /work/05445/naughton/rp/ums/ompix/gcc/6.3.0/modules",
                                                # "module use /work/05445/naughton/rp/ums/ompix/intel/19.0.5/modules",
                                                  "module unload xalt",
@@ -153,14 +153,14 @@
                                          "order" : ["FORK", "SRUN", "MPIRUN"],
                                          "FORK"  : {},
                                          "SRUN"  : {
-                                             "pre_exec": [
+                                             "env_prep": [
                                                  "module load gcc/7.3.0",
                                                  "module load openmpi/3.1.2",
                                                  "module --expert load xl"
                                              ]
                                          },
                                          "MPIRUN": {
-                                             "pre_exec": [
+                                             "env_prep": [
                                                  "module load gcc/7.3.0",
                                                  "module load openmpi/3.1.2",
                                                  "module --expert load xl"

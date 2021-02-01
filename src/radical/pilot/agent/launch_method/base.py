@@ -57,22 +57,20 @@ class LaunchMethod(object):
     MPI_FLAVOR_HYDRA   = 'HYDRA'
     MPI_FLAVOR_UNKNOWN = 'unknown'
 
+
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, lmcfg, cfg, session):
+    def __init__(self, name, cfg, log, prof):
 
-        self.name     = name
-        self._lmcfg   = lmcfg
-        self._cfg     = cfg
-        self._pwd     = os.getcwd()
-        self._session = session
-        self._log     = self._session._log    # pylint: disable=protected-access
-        self._log.debug('create LaunchMethod: %s', type(self))
+        log.debug('===== lm base init start')
+        self.name  = name
+        self._cfg  = cfg
+        self._log  = log
+        self._prof = prof
+        self._pwd  = os.getcwd()
 
-        # A per-launch_method list of env vars to remove from the CU env
-        self.env_removables = []
-
-        self._configure()
+        self._info = self._cfg.get('lm_info', {}).get(self.name)
+        log.debug('===== lm base init stop: %s', self._info)
 
 
     # --------------------------------------------------------------------------
@@ -80,8 +78,9 @@ class LaunchMethod(object):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, lmcfg, cfg, session):
+    def create(cls, name, cfg, log, prof):
 
+        log.debug('===== lm create %s start', name)
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
             raise TypeError("LaunchMethod create only available to base class!")
@@ -130,110 +129,27 @@ class LaunchMethod(object):
                 LM_NAME_SRUN          : Srun,
 
             }[name]
-            return impl(name, lmcfg, cfg, session)
+            return impl(name, cfg, log, prof)
 
         except KeyError:
-            session._log.exception('invalid lm %s' % name)
+            log.exception('invalid lm %s' % name)
             return None
 
         except Exception:
-            session._log.exception('unusable lm %s' % name)
+            log.exception('unusable lm %s' % name)
             return None
 
 
     # --------------------------------------------------------------------------
     #
-    @classmethod
-    def rm_config_hook(cls, name, lmcfg, cfg, rm, log, profiler):
-        '''
-        This hook will allow the ResourceManager to perform launch methods
-        specific configuration steps.  The ResourceManager layer MUST ensure
-        that this hook is called exactly once (globally).  This will be a NOOP
-        for LaunchMethods which do not overload this method.  Exceptions fall
-        through to the ResourceManager.
-        '''
+    def initialize(self, rm, lmcfg):
 
-        # Make sure that we are the base-class!
-        if cls != LaunchMethod:
-            raise TypeError("LaunchMethod config hook only available to base class!")
-
-        from .fork           import Fork
-        from .prte           import PRTE
-        from .prte2          import PRTE2
-        from .flux           import Flux
-        from .jsrun          import JSRUN
-        from .yarn           import Yarn
-        from .spark          import Spark
-
-        # # deprecated
-        # from .orte           import ORTE
-
-        impl = {
-            LM_NAME_FORK          : Fork,
-            LM_NAME_PRTE          : PRTE,
-            LM_NAME_PRTE2         : PRTE2,
-            LM_NAME_FLUX          : Flux,
-            LM_NAME_JSRUN         : JSRUN,
-            LM_NAME_YARN          : Yarn,
-            LM_NAME_SPARK         : Spark,
-
-            # # deprecated
-            # LM_NAME_ORTE          : ORTE,
-
-        }.get(name)
-
-        if not impl:
-            log.info('no config hook defined for LaunchMethod %s' % name)
-            return None
-
-        log.info('ResourceManager config hook for LaunchMethod %s: %s' % (name, impl))
-        return impl.rm_config_hook(name, lmcfg, cfg, rm, log, profiler)
+        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
 
     # --------------------------------------------------------------------------
     #
-    @classmethod
-    def rm_shutdown_hook(cls, name, cfg, rm, lm_info, log, profiler):
-        '''
-        This hook is symmetric to the config hook above, and is called during
-        shutdown sequence, for the sake of freeing allocated resources.
-        '''
-
-        # Make sure that we are the base-class!
-        if cls != LaunchMethod:
-            raise TypeError("LaunchMethod shutdown hook only available to base class!")
-
-        from .prte           import PRTE
-        from .prte2          import PRTE2
-        from .flux           import Flux
-        from .yarn           import Yarn
-        from .spark          import Spark
-
-        # # deprecated
-        # from .orte           import ORTE
-
-        impl = {
-            LM_NAME_PRTE          : PRTE,
-            LM_NAME_PRTE2         : PRTE2,
-            LM_NAME_FLUX          : Flux,
-            LM_NAME_YARN          : Yarn,
-            LM_NAME_SPARK         : Spark
-
-            # # deprecated
-            # LM_NAME_ORTE          : ORTE,
-        }.get(name)
-
-        if not impl:
-            log.info('no shutdown hook defined for LaunchMethod %s' % name)
-            return None
-
-        log.info('ResourceManager shutdown hook for LaunchMethod %s: %s' % (name, impl))
-        return impl.rm_shutdown_hook(name, cfg, rm, lm_info, log, profiler)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _configure(self):
+    def finalize(self):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
@@ -254,7 +170,7 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_launch_command(self):
+    def get_launch_cmd(self):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 

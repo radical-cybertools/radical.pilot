@@ -105,7 +105,7 @@
                                          "order": ["FORK", "SRUN"],
                                          "FORK" : {},
                                          "SRUN" : {
-                                             "pre_exec": [
+                                             "env_prep": [
                                                  "module load intel/18.0/64/18.0.3.222",
                                                  "module load intel-mpi/intel/2018.3/64"
                                              ]
@@ -156,7 +156,7 @@
                                          "order": ["FORK", "SRUN"],
                                          "FORK" : {},
                                          "SRUN" : {
-                                             "pre_exec": [
+                                             "env_prep": [
                                                  "module load intel/18.0/64/18.0.3.222",
                                                  "module load intel-mpi/intel/2018.3/64"
                                              ]
