@@ -116,10 +116,6 @@ class Default(PMGRLaunchingComponent):
         except:
             self._log.exception('finalization error')
 
-        self.unregister_timed_cb(self._pilot_watcher_cb)
-        self.unregister_input(rps.PMGR_LAUNCHING_PENDING,
-                              rpc.PMGR_LAUNCHING_QUEUE, self.work)
-
 
     # --------------------------------------------------------------------------
     #
@@ -431,10 +427,6 @@ class Default(PMGRLaunchingComponent):
 
         rcfg = self._session.get_resource_config(resource, schema)
         sid  = self._session.uid
-
-        # we create a deep-copy of the resource cfg, so that this code is fee to
-        # change it as needed
-        rcfg = ru.Config(cfg=rcfg.as_dict())
 
         # ----------------------------------------------------------------------
         # the rcfg can contain keys with string expansion placeholders where
