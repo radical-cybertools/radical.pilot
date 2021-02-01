@@ -58,11 +58,15 @@ help(){
 
     cat <<EOT
 
-    usage: $0 <target> [-h]
+    usage: $0 -p <path> [-v <version>] [-t <type>] [-m <modules>]
 
-    This script creates a virtualenv at the given target location.  That
+    This script creates a virtualenv at the given target path.  That
     virtualenv should be suitable to be used as static VE for a radical.pilot
     target resource, and can be specified in a resource configuration for RP.
+
+    type   :  *default*, bwpy (Blue Waters support)
+    version:  python version to use
+    modules:  comma separated list of modules to install
 
 EOT
     exit $ret
@@ -110,16 +114,16 @@ case $PREFIX in
 esac
 
 
-if test "$TYPE" = "bw"
+if test "$TYPE" = "bwpy"
 then
     # BW wants us to run all things python in its own process group (I assume
     # a cgroup or something), so we spawn that here and continue the script at
     # the same place
-    echo "invoke  BW magic"
+    echo "invoke BW magic"
     module load bwpy
-    exec bwpy-environ -- /bin/sh "$SCRIPT" -p "$PREFIX" -t bwpy
+    exec bwpy-environ -- /bin/sh "$SCRIPT" -p "$PREFIX" -t _bwpy
 
-elif test "$TYPE" = "bwpy"
+elif test "$TYPE" = "_bwpy"
 then
     # this is where we end up after the `exec` call in the branch above
     echo "create  bwpy ve [$PREFIX]"
