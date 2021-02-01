@@ -76,7 +76,6 @@ class Continuous(AgentSchedulingComponent):
         AgentSchedulingComponent.__init__(self, cfg, session)
 
         self._tag_history   = dict()
-        self._partitions    = dict()
         self._scattered     = None
         self._node_offset   = 0
 
@@ -155,12 +154,6 @@ class Continuous(AgentSchedulingComponent):
         if blocked_cores or blocked_gpus:
             self._rm_cores_per_node -= len(blocked_cores)
             self._rm_gpus_per_node  -= len(blocked_gpus)
-
-        if isinstance(self._rm_lm_info, dict):
-            # case of DVM partitioning (PRTE/2 LM)
-            dvm_hosts = self._rm_lm_info.get('dvm_hosts')
-            if dvm_hosts:
-                self._partitions = dict(enumerate(dvm_hosts))
 
 
     # --------------------------------------------------------------------------
@@ -396,20 +389,17 @@ class Continuous(AgentSchedulingComponent):
         if tag is not None:
             tag = str(tag)
 
-        # - PRRTE related - start -
-        # use key `partition` from task description attribute `tags` as DVM ID,
-        # so task will be allocated to nodes that are handled by a corresponding
-        # DVM   FIXME: will be generalized
+        # in case of PRTE/2 LM: key `partition` from task description attribute
+        #                       `tags` represents a DVM ID
         partition = cud.get('tags', {}).get('partition')
-        if self._partitions and partition is not None:
-            if partition not in self._partitions:
+        if self._rm_partitions and partition is not None:
+            if partition not in self._rm_partitions:
                 raise ValueError('partition id (%s) out of range' % partition)
             # partition id becomes a part of a co-locate tag
             tag = str(partition) + ('' if not tag else '_%s' % tag)
             if tag not in self._tag_history:
-                self._tag_history[tag] = self._partitions[partition]
+                self._tag_history[tag] = self._rm_partitions[partition]
         task_partition_id = None
-        # - PRRTE related - end -
 
         # what remains to be allocated?  all of it right now.
         alc_slots = list()
@@ -435,21 +425,19 @@ class Continuous(AgentSchedulingComponent):
             if tag is not None and tag in self._tag_history:
                 if node_uid not in self._tag_history[tag]:
                     continue
-            # - PRRTE related - start -
-            elif self._partitions:
-                # check that nodes assigned to the unit have the same dvm_id
+            elif self._rm_partitions:
+                # nodes assigned to the task should be from the same partition
                 # FIXME: handle the case when unit (MPI task) would require
-                #        more nodes than the amount available per DVM
+                #        more nodes than the amount available per partition
                 _skip_node = True
-                for partition_id, partition_nodes in self._partitions.items():
-                    if node_uid in partition_nodes:
-                        if task_partition_id in [None, partition_id]:
-                            node_partition_id = partition_id
+                for p_id, p_node_uids in self._rm_partitions.items():
+                    if node_uid in p_node_uids:
+                        if task_partition_id in [None, p_id]:
+                            node_partition_id = p_id
                             _skip_node = False
                         break
                 if _skip_node:
                     continue
-            # - PRRTE related - end -
 
             # if only a small set of cores/gpus remains unallocated (ie. less
             # than node size), we are in fact looking for the last node.  Note
@@ -496,10 +484,8 @@ class Continuous(AgentSchedulingComponent):
                 # try next node
                 continue
 
-            # - PRRTE related - start -
             if node_partition_id is not None and task_partition_id is None:
                 task_partition_id = node_partition_id
-            # - PRRTE related - end -
 
             # this node got a match, store away the found slots and continue
             # search for remaining ones

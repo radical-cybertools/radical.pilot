@@ -237,6 +237,7 @@ class AgentSchedulingComponent(rpu.Component):
         self._rm_info           = self._cfg['rm_info']
         self._rm_lm_info        = self._cfg['rm_info']['lm_info']
         self._rm_node_list      = self._cfg['rm_info']['node_list']
+        self._rm_partitions     = self._cfg['rm_info']['partitions']
         self._rm_cores_per_node = self._cfg['rm_info']['cores_per_node']
         self._rm_gpus_per_node  = self._cfg['rm_info']['gpus_per_node']
         self._rm_lfs_per_node   = self._cfg['rm_info']['lfs_per_node']
