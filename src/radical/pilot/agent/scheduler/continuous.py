@@ -390,10 +390,10 @@ class Continuous(AgentSchedulingComponent):
 
         # `tag` will soon be deprecated - check also for `tags: {colocate:uid}`
         # as the current way to specify colocation requests
-        if not tag:
+        if tag is None:
             tag = cud.get('tags', {}).get('colocate')
 
-        if tag:
+        if tag is not None:
             tag = str(tag)
 
         # - PRRTE related - start -
