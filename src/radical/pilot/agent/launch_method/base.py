@@ -133,11 +133,11 @@ class LaunchMethod(object):
 
         except KeyError:
             log.exception('invalid lm %s' % name)
-            return None
+            raise
 
         except Exception:
             log.exception('unusable lm %s' % name)
-            return None
+            raise
 
 
     # --------------------------------------------------------------------------
@@ -196,7 +196,7 @@ class LaunchMethod(object):
                          impaired=False):
 
         # Open appropriately named temporary file
-        # NOTE: we make an assumption about the unit sandbox here
+        # NOTE: we make an assumption about the task sandbox here
         filename = '%s/%s.hosts' % (sandbox, uid)
         with open(filename, 'w') as fout:
 
@@ -258,30 +258,28 @@ class LaunchMethod(object):
         if not args:
             return ''
 
-        # unit Arguments (if any)
         arg_string = ''
-        if args:
-            for arg in args:
-                if not arg:
-                    # ignore empty args
-                    continue
+        for arg in args:
+            if not arg:
+                # ignore empty args
+                continue
 
-                if arg in ['>', '>>', '<', '<<', '|', '||', '&&', '&']:
-                    # Don't quote shell direction arguments, etc.
-                    arg_string += '%s ' % arg
-                    continue
+            if arg in ['>', '>>', '<', '<<', '|', '||', '&&', '&']:
+                # Don't quote shell direction arguments, etc.
+                arg_string += '%s ' % arg
+                continue
 
-                if any([c in arg for c in ['?', '*']]):
-                    # Don't quote arguments with wildcards
-                    arg_string += '%s ' % arg
-                    continue
+            if any([c in arg for c in ['?', '*']]):
+                # Don't quote arguments with wildcards
+                arg_string += '%s ' % arg
+                continue
 
-                arg = arg.replace('"', '\\"')    # Escape all double quotes
-                if arg[0] == arg[-1] == "'" :    # between outer single quotes?
-                    arg_string += '%s ' % arg    # ... pass it as is.
+            arg = arg.replace('"', '\\"')    # Escape all double quotes
+            if arg[0] == arg[-1] == "'" :    # between outer single quotes?
+                arg_string += '%s ' % arg    # ... pass it as is.
 
-                else:
-                    arg_string += '"%s" ' % arg  # else return double quoted
+            else:
+                arg_string += '"%s" ' % arg  # else return double quoted
 
         return arg_string
 

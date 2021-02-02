@@ -213,7 +213,7 @@ def start_pilot(cr=None):
     session.contexts.append(ssh_ctx)
 
     # submit a pilot to it.
-    pd = rp.ComputePilotDescription()
+    pd = rp.PilotDescription()
     pd.resource      = 'ec2.vm'
     pd.runtime       = 10
     pd.cores         = 1
@@ -227,52 +227,52 @@ def start_pilot(cr=None):
 #
 def run_workload(pilot):
 
-    report.header('submit units')
+    report.header('submit tasks')
 
-    # Register the ComputePilot in a UnitManager object.
-    umgr = rp.UnitManager(session=pilot.session)
-    umgr.add_pilots(pilot)
+    # Register the Pilot in a TaskManager object.
+    tmgr = rp.TaskManager(session=pilot.session)
+    tmgr.add_pilots(pilot)
 
-    # Create a workload of ComputeUnits.
-    # Each compute unit runs '/bin/date'.
+    # Create a workload of Tasks.
+    # Each task runs '/bin/date'.
 
-    n = 128   # number of units to run
-    report.info('create %d unit description(s)\n\t' % n)
+    n = 128   # number of tasks to run
+    report.info('create %d task description(s)\n\t' % n)
 
-    cuds = list()
+    tds = list()
     for i in range(0, n):
 
-        # create a new CU description, and fill it.
+        # create a new Task description, and fill it.
         # Here we don't use dict initialization.
-        cud = rp.ComputeUnitDescription()
+        td = rp.TaskDescription()
         # trigger an error now and then
-        if not i % 10: cud.executable = '/bin/data'  # does not exist
-        else         : cud.executable = '/bin/hostname'
+        if not i % 10: td.executable = '/bin/data'  # does not exist
+        else         : td.executable = '/bin/hostname'
 
-        cuds.append(cud)
+        tds.append(td)
         report.progress()
     report.ok('>>ok\n')
 
-    # Submit the previously created ComputeUnit descriptions to the
+    # Submit the previously created Task descriptions to the
     # PilotManager. This will trigger the selected scheduler to start
-    # assigning ComputeUnits to the ComputePilots.
-    units = umgr.submit_units(cuds)
+    # assigning Tasks to the Pilots.
+    tasks = tmgr.submit_tasks(tds)
 
-    # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+    # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
     report.header('gather results')
-    umgr.wait_units()
+    tmgr.wait_tasks()
 
     report.info('\n')
-    for unit in units:
-        if unit.state == rp.FAILED:
+    for task in tasks:
+        if task.state == rp.FAILED:
             report.plain('  * %s: %s, exit: %3s, err: %s'
-                    % (unit.uid, unit.state[:4],
-                       unit.exit_code, unit.stderr.strip()[-35:]))
+                    % (task.uid, task.state[:4],
+                       task.exit_code, task.stderr.strip()[-35:]))
             report.error('>>err\n')
         else:
             report.plain('  * %s: %s, exit: %3s, out: %s'
-                    % (unit.uid, unit.state[:4],
-                        unit.exit_code, unit.stdout.strip()[:35]))
+                    % (task.uid, task.state[:4],
+                        task.exit_code, task.stdout.strip()[:35]))
             report.ok('>>ok\n')
 
 

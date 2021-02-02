@@ -174,15 +174,15 @@
     "try_allocation":{
         "setup": [
             {
-                "unit": {
-                    "uid": "unit.000000",
+                "task": {
+                    "uid": "task.000000",
                     "description": {
                         "executable" : "/bin/sleep",
                         "environment": {
                         }
                     }
                 },
-                "scheduled_unit_slots": {
+                "scheduled_task_slots": {
                     "lm_info"       : "INFO",
                     "cores_per_node": 16,
                     "gpus_per_node" : 6,
@@ -200,14 +200,14 @@
                 }
             },
             {
-                "unit": {
-                    "uid": "unit.000001",
+                "task": {
+                    "uid": "task.000001",
                     "description": {
                         "executable" : "/bin/sleep",
                         "environment": { }
                     }
                 },
-                "scheduled_unit_slots": {
+                "scheduled_task_slots": {
                     "lm_info"       : "INFO",
                     "cores_per_node": 16,
                     "gpus_per_node" : 6,
@@ -227,7 +227,7 @@
         ],
         "results": [
             {
-                "uid": "unit.000000",
+                "uid": "task.000000",
                 "description": {
                     "executable" : "/bin/sleep",
                     "environment": {
@@ -252,7 +252,7 @@
                 }
             },
             {
-                "uid": "unit.000001",
+                "uid": "task.000001",
                 "description": {
                     "executable": "/bin/sleep",
                     "environment": { }
@@ -284,7 +284,7 @@
             { "rm_info":{ "lm_info":{ "cvd_id_mode":"logical"        } } },
             { "rm_info":{ "lm_info":{ "cvd_id_mode":"something_else" } } }
         ],
-        "unit":[
+        "task":[
             {
                 "description":{
                     "environment": { }

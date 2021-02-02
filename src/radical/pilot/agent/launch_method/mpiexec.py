@@ -58,12 +58,14 @@ class MPIExec(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        slots        = cu['slots']
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_args    = cud.get('arguments')   or list()
+        slots        = t['slots']
+        td           = t['description']
+        task_exec    = td['executable']
+        task_env     = td.get('environment') or dict()
+        task_args    = td.get('arguments')   or list()
+        task_args    = td.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
         # Construct the executable and arguments
@@ -73,9 +75,9 @@ class MPIExec(LaunchMethod):
         # Cheyenne is the only machine that requires mpirun_mpt.  We then
         # have to set MPI_SHEPHERD=true
         if self._mpt:
-            if not cud.get('environment'):
-                cud['environment'] = dict()
-            cud['environment']['MPI_SHEPHERD'] = 'true'
+            if not td.get('environment'):
+                td['environment'] = dict()
+            td['environment']['MPI_SHEPHERD'] = 'true'
 
 
         if 'ranks' not in slots:
@@ -92,7 +94,7 @@ class MPIExec(LaunchMethod):
                 host_slots[node_name] = 0
             host_slots[node_name] += len(rank['core_map'])
 
-        # If we have a CU with many cores, and the compression didn't work
+        # If we have a Task with many cores, and the compression didn't work
         # out, we will create a hostfile and pass that as an argument
         # instead of the individual hosts.  The hostfile has this format:
         #
@@ -138,8 +140,8 @@ class MPIExec(LaunchMethod):
         if len(command) > arg_max:
 
             # Create a hostfile from the list of hosts.  We create that in the
-            # unit sandbox
-            hostfile = '%s/mpi_hostfile' % cu['unit_sandbox_path']
+            # task sandbox
+            hostfile = '%s/mpi_hostfile' % t['task_sandbox_path']
             with open(hostfile, 'w') as f:
                 for node,nslots in list(host_slots.items()):
                     f.write('%20s \tslots=%s\n' % (node, nslots))

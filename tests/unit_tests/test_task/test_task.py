@@ -15,32 +15,32 @@ class TestTask(TestCase):
     @mock.patch.object(rp.UnitManager, '__init__', return_value=None)
     def test_task_uid(self, mocked_init):
 
-        umgr = rp.UnitManager(session=None)
-        umgr.advance = mock.Mock(return_value=True)
-        umgr._uids    = list()
-        umgr._uid     = 'umgr.0000'
-        umgr._log     = mock.Mock()
-        umgr._prof    = mock.Mock()
-        umgr._session = mock.Mock()
-        umgr._session.uid = str(time.time())  # restart uid counter
+        tmgr = rp.UnitManager(session=None)
+        tmgr.advance = mock.Mock(return_value=True)
+        tmgr._uids    = list()
+        tmgr._uid     = 'tmgr.0000'
+        tmgr._log     = mock.Mock()
+        tmgr._prof    = mock.Mock()
+        tmgr._session = mock.Mock()
+        tmgr._session.uid = str(time.time())  # restart uid counter
 
         descr = rp.ComputeUnitDescription({'executable': 'true', 'uid': 'foo'})
-        self.assertEqual(rp.ComputeUnit(umgr, descr).uid, 'foo')
+        self.assertEqual(rp.ComputeUnit(tmgr, descr).uid, 'foo')
 
         with self.assertRaises(ValueError):
-            rp.ComputeUnit(umgr, descr)
+            rp.ComputeUnit(tmgr, descr)
 
         descr = rp.ComputeUnitDescription({'executable': 'true'})
-        self.assertEqual(rp.ComputeUnit(umgr, descr).uid, 'unit.000000')
+        self.assertEqual(rp.ComputeUnit(tmgr, descr).uid, 'task.000000')
 
         descr = rp.ComputeUnitDescription({'executable': 'true', 'uid': 'bar'})
-        self.assertEqual(rp.ComputeUnit(umgr, descr).uid, 'bar')
+        self.assertEqual(rp.ComputeUnit(tmgr, descr).uid, 'bar')
 
         with self.assertRaises(ValueError):
-            rp.ComputeUnit(umgr, descr)
+            rp.ComputeUnit(tmgr, descr)
 
         descr = rp.ComputeUnitDescription({'executable': 'true'})
-        self.assertEqual(rp.ComputeUnit(umgr, descr).uid, 'unit.000001')
+        self.assertEqual(rp.ComputeUnit(tmgr, descr).uid, 'task.000001')
 
 
 # ------------------------------------------------------------------------------

@@ -67,10 +67,10 @@ class Popen(AgentExecutingComponent) :
         self._log.debug('===== popen initialize start')
         AgentExecutingComponent.initialize(self)
 
-        self._cancel_lock    = ru.RLock()
-        self._cus_to_cancel  = list()
-        self._cus_to_watch   = list()
-        self._watch_queue    = queue.Queue ()
+        self._cancel_lock     = ru.RLock()
+        self._tasks_to_cancel = list()
+        self._tasks_to_watch  = list()
+        self._watch_queue     = queue.Queue ()
 
         self._pid = self._cfg['pid']
 
@@ -91,11 +91,11 @@ class Popen(AgentExecutingComponent) :
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_units':
+        if cmd == 'cancel_tasks':
 
-            self._log.info('cancel_units command (%s)' % arg)
+            self._log.info('cancel_tasks command (%s)' % arg)
             with self._cancel_lock:
-                self._cus_to_cancel.extend(arg['uids'])
+                self._tasks_to_cancel.extend(arg['uids'])
 
         return True
 
@@ -213,14 +213,14 @@ class Popen(AgentExecutingComponent) :
 
         tid  = task['uid']
         td   = task['description']
-        sbox = task['unit_sandbox_path']
+        sbox = task['task_sandbox_path']
 
         launcher = self.find_launcher(task)
 
         if not launcher:
             raise RuntimeError('no launcher foud for task %s' % tid)
 
-        self._log.debug('Launching unit with %s', launcher.name)
+        self._log.debug('Launching task with %s', launcher.name)
 
         launch_script = '%s.launch.sh' % tid
         exec_script   = '%s.exec.sh'   % tid
@@ -374,7 +374,7 @@ class Popen(AgentExecutingComponent) :
 
         tid  = task['uid']
         td   = task['description']
-        sbox = task['unit_sandbox_path']
+        sbox = task['task_sandbox_path']
 
         # make sure the sandbox exists
         slots_fname = '%s/%s.sl' % (sbox, tid)
@@ -398,7 +398,7 @@ class Popen(AgentExecutingComponent) :
         _stdout_file_h = open(task['stdout_file'], 'a')
         _stderr_file_h = open(task['stderr_file'], 'a')
 
-        self._log.info('Launching unit %s via %s in %s', tid, cmdline, sbox)
+        self._log.info('Launching task %s via %s in %s', tid, cmdline, sbox)
 
         self._prof.prof('exec_start', uid=tid)
         task['proc'] = subprocess.Popen(args     = cmdline,
@@ -410,7 +410,7 @@ class Popen(AgentExecutingComponent) :
                                       close_fds  = True,
                                       shell      = True,
                                       cwd        = sbox)
-        self._prof.prof('exec_ok', uid=tid)
+        self._prof.prof('exec_ok', uid=task['uid'])
 
         # store pid for last-effort termination
         _pids.append(task['proc'].pid)
@@ -425,29 +425,29 @@ class Popen(AgentExecutingComponent) :
         try:
             while not self._terminate.is_set():
 
-                cus = list()
+                tasks = list()
                 try:
-                    # we don't want to only wait for one CU -- then we would
-                    # pull CU state too frequently.  OTOH, we also don't want to
-                    # learn about CUs until all slots are filled, because then
-                    # we may not be able to catch finishing CUs in time -- so
+                    # we don't want to only wait for one Task -- then we would
+                    # pull Task state too frequently.  OTOH, we also don't want to
+                    # learn about tasks until all slots are filled, because then
+                    # we may not be able to catch finishing tasks in time -- so
                     # there is a fine balance here.  Balance means 100 (FIXME).
                     MAX_QUEUE_BULKSIZE = 100
-                    while len(cus) < MAX_QUEUE_BULKSIZE :
-                        cus.append (self._watch_queue.get_nowait())
+                    while len(tasks) < MAX_QUEUE_BULKSIZE :
+                        tasks.append (self._watch_queue.get_nowait())
 
                 except queue.Empty:
-                    # nothing found -- no problem, see if any CUs finished
+                    # nothing found -- no problem, see if any tasks finished
                     pass
 
-                # add all cus we found to the watchlist
-                for cu in cus :
-                    self._cus_to_watch.append (cu)
+                # add all tasks we found to the watchlist
+                for task in tasks :
+                    self._tasks_to_watch.append (task)
 
-                # check on the known cus.
+                # check on the known tasks.
                 action = self._check_running()
 
-                if not action and not cus :
+                if not action and not tasks :
                     # nothing happened at all!  Zzz for a bit.
                     # FIXME: make configurable
                     time.sleep(0.1)
@@ -463,16 +463,16 @@ class Popen(AgentExecutingComponent) :
     def _check_running(self):
 
         action = 0
-        for cu in self._cus_to_watch:
+        for task in self._tasks_to_watch:
 
             # poll subprocess object
-            exit_code = cu['proc'].poll()
-            uid       = cu['uid']
+            exit_code = task['proc'].poll()
+            uid       = task['uid']
 
             if exit_code is None:
                 # Process is still running
 
-                if cu['uid'] in self._cus_to_cancel:
+                if task['uid'] in self._tasks_to_cancel:
 
                     # FIXME: there is a race condition between the state poll
                     # above and the kill command below.  We probably should pull
@@ -480,62 +480,62 @@ class Popen(AgentExecutingComponent) :
 
                     self._prof.prof('exec_cancel_start', uid=uid)
 
-                    # We got a request to cancel this cu - send SIGTERM to the
+                    # We got a request to cancel this task - send SIGTERM to the
                     # process group (which should include the actual launch
                     # method)
-                  # cu['proc'].kill()
+                  # task['proc'].kill()
                     action += 1
                     try:
-                        os.killpg(cu['proc'].pid, signal.SIGTERM)
+                        os.killpg(task['proc'].pid, signal.SIGTERM)
                     except OSError:
-                        # unit is already gone, we ignore this
+                        # task is already gone, we ignore this
                         pass
-                    cu['proc'].wait()  # make sure proc is collected
+                    task['proc'].wait()  # make sure proc is collected
 
                     with self._cancel_lock:
-                        self._cus_to_cancel.remove(uid)
+                        self._tasks_to_cancel.remove(uid)
 
                     self._prof.prof('exec_cancel_stop', uid=uid)
 
-                    del(cu['proc'])  # proc is not json serializable
-                    self._prof.prof('unschedule_start', uid=cu['uid'])
-                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
-                    self.advance(cu, rps.CANCELED, publish=True, push=False)
+                    del(task['proc'])  # proc is not json serializable
+                    self._prof.prof('unschedule_start', uid=task['uid'])
+                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+                    self.advance(task, rps.CANCELED, publish=True, push=False)
 
-                    # we don't need to watch canceled CUs
-                    self._cus_to_watch.remove(cu)
+                    # we don't need to watch canceled tasks
+                    self._tasks_to_watch.remove(task)
 
             else:
 
                 self._prof.prof('exec_stop', uid=uid)
 
                 # make sure proc is collected
-                cu['proc'].wait()
+                task['proc'].wait()
 
-                # we have a valid return code -- unit is final
+                # we have a valid return code -- task is final
                 action += 1
-                self._log.info('Unit %s has return code %s.', uid, exit_code)
+                self._log.info("Task %s has return code %s.", uid, exit_code)
 
-                cu['exit_code'] = exit_code
+                task['exit_code'] = exit_code
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
-                self._cus_to_watch.remove(cu)
-                del(cu['proc'])  # proc is not json serializable
-                self._prof.prof('unschedule_start', uid=cu['uid'])
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, cu)
+                self._tasks_to_watch.remove(task)
+                del(task['proc'])  # proc is not json serializable
+                self._prof.prof('unschedule_start', uid=task['uid'])
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
                 if exit_code != 0:
-                    # The unit failed - fail after staging output
-                    cu['target_state'] = rps.FAILED
+                    # The task failed - fail after staging output
+                    task['target_state'] = rps.FAILED
 
                 else:
-                    # The unit finished cleanly, see if we need to deal with
+                    # The task finished cleanly, see if we need to deal with
                     # output data.  We always move to stageout, even if there are no
                     # directives -- at the very least, we'll upload stdout/stderr
-                    cu['target_state'] = rps.DONE
+                    task['target_state'] = rps.DONE
 
-                self.advance(cu, rps.AGENT_STAGING_OUTPUT_PENDING,
-                                 publish=True,  push=True)
+                self.advance(task, rps.AGENT_STAGING_OUTPUT_PENDING,
+                                   publish=True,  push=True)
 
         return action
 
@@ -604,17 +604,17 @@ class Popen(AgentExecutingComponent) :
 
         tid  = task['uid']
         name = task['name'] or tid
-        sbox = task['unit_sandbox_path']
+        sbox = task['task_sandbox_path']
 
         ret  = ''
         ret += 'export RP_SESSION_ID="%s"\n'    % self._cfg['sid']
         ret += 'export RP_PILOT_ID="%s"\n'      % self._cfg['pid']
         ret += 'export RP_AGENT_ID="%s"\n'      % self._cfg['aid']
         ret += 'export RP_SPAWNER_ID="%s"\n'    % self.uid
-        ret += 'export RP_UNIT_ID="%s"\n'       % tid
-        ret += 'export RP_UNIT_NAME="%s"\n'     % name
+        ret += 'export RP_TASK_ID="%s"\n'       % tid
+        ret += 'export RP_TASK_NAME="%s"\n'     % name
         ret += 'export RP_PILOT_SANDBOX="%s"\n' % self._pwd
-        ret += 'export RP_TMP="%s"\n'           % self._tmp
+      # ret += 'export RP_TMP="%s"\n'           % self._tmp
         ret += 'export RP_GTOD="%s"\n'          % self.gtod
         ret += 'export RP_PROF="%s"\n'          % self.prof
 
@@ -643,7 +643,7 @@ class Popen(AgentExecutingComponent) :
             ret += '\n# named environment\n'
             ret += '. %s\n' % launcher.get_task_env(td['named_env'])
 
-        # also add any env vars requested in the unit description
+        # also add any env vars requested in the task description
         if td['environment']:
             ret += '\n# task env settings\n'
             for key,val in td['environment'].items():

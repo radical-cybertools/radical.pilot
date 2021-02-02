@@ -55,20 +55,20 @@ class Srun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        slots          = cu.get('slots')
-        uid            = cu['uid']
-        cud            = cu['description']
-        sbox           = cu['unit_sandbox_path']
+        slots          = t.get('slots')
+        uid            = t['uid']
+        td            = t['description']
+        sbox           = t['task_sandbox_path']
 
-        task_exec      = cud['executable']
-        task_argstr    = self._create_arg_string(cud.get('arguments') or [])
-        task_env       = cud.get('environment') or dict()
+        task_exec      = td['executable']
+        task_argstr    = self._create_arg_string(td.get('arguments') or [])
+        task_env       = td.get('environment') or dict()
 
-        n_tasks        = cud['cpu_processes']
-        n_task_threads = cud.get('cpu_threads', 1)
-        n_gpus         = cud.get('gpu_processes', 1)
+        n_tasks        = td['cpu_processes']
+        n_task_threads = td.get('cpu_threads', 1)
+        n_gpus         = td.get('gpu_processes', 1)
 
         # construct the task executable and arguments
         if task_argstr: task_cmd = "%s %s" % (task_exec, task_argstr)
