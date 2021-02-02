@@ -82,15 +82,6 @@
         "agent_scheduling"     : {"count" : 1},
         "agent_executing"      : {"count" : 1},
         "agent_staging_output" : {"count" : 1}
-    },
-
-    "agents": {
-        "agent.1": {
-            "target": "node",
-            "components": {
-                "agent_executing" : {"count" : 1}
-            }
-        }
     }
 }
 
