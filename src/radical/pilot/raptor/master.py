@@ -1,5 +1,6 @@
 
 import os
+import sys
 import copy
 import time
 
@@ -13,6 +14,11 @@ from .. import states    as rps
 from .. import constants as rpc
 
 from .request import Request
+
+
+def out(msg):
+    sys.stdout.write('%s\n' % msg)
+    sys.stdout.flush()
 
 
 # ------------------------------------------------------------------------------
@@ -42,8 +48,12 @@ class Master(rpu.Component):
 
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
                              rpc.AGENT_STAGING_INPUT_QUEUE)
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
+        self.register_publisher(rpc.STATE_PUBSUB)
+        self.register_publisher(rpc.CONTROL_PUBSUB)
+
+        self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
         # set up RU ZMQ Queues for request distribution and result collection
         req_cfg = ru.Config(cfg={'channel'    : '%s.to_req' % self._uid,
@@ -114,9 +124,6 @@ class Master(rpu.Component):
         cfg['log_lvl'] = 'debug'
         cfg['kind']    = 'master'
         cfg['base']    = pwd
-        cfg['uid']     = ru.generate_id('master.%(item_counter)06d',
-                                        ru.ID_CUSTOM,
-                                        ns=self._session.uid)
 
         return ru.Config(cfg=cfg)
 
@@ -143,7 +150,6 @@ class Master(rpu.Component):
             self._log.debug('register %s', uid)
 
             with self._lock:
-                self._workers[uid] = dict()
                 self._workers[uid]['info']  = info
                 self._workers[uid]['state'] = 'ACTIVE'
                 self._log.debug('info: %s', info)
@@ -156,6 +162,28 @@ class Master(rpu.Component):
 
             with self._lock:
                 self._workers[uid]['state'] = 'DONE'
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _state_cb(self, topic, msg):
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'update':
+
+            for thing in ru.as_list(arg):
+
+                uid   = thing['uid']
+                state = thing['state']
+
+                if uid in self._workers:
+                    if state == rps.AGENT_STAGING_OUTPUT:
+                        with self._lock:
+                            self._workers[uid]['state'] = 'DONE'
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -199,23 +227,38 @@ class Master(rpu.Component):
         descr_complete = ComputeUnitDescription(descr).as_dict()
 
         # create task dict
+        td = copy.deepcopy(descr_complete)
+        td['arguments'] += [fname]
+
         task = dict()
-        task['description']       = copy.deepcopy(descr_complete)
+        task['description']       = td
         task['state']             = rps.AGENT_STAGING_INPUT_PENDING
         task['type']              = 'unit'
+        task['umgr']              = 'umgr.0000'  # FIXME
+        task['pilot']             = os.environ['RP_PILOT_ID']
         task['uid']               = uid
         task['unit_sandbox_path'] = sbox
         task['unit_sandbox']      = 'file://localhost/' + sbox
         task['pilot_sandbox']     = cfg.base
         task['session_sandbox']   = cfg.base + '/../'
         task['resource_sandbox']  = cfg.base + '/../../'
+        task['resources']         = {'cpu': td['cpu_processes'] *
+                                            td.get('cpu_threads', 1),
+                                     'gpu': td['gpu_processes']}
 
-        task['description']['arguments'] += [fname]
+        # NOTE: the order of insert / state update relies on that order
+        # being maintained through the component's message push, the update
+        # worker's message receive up to the insertion order into the update
+        # worker's DB bulk op.
+        self._log.debug('insert %s', uid)
+        self.publish(rpc.STATE_PUBSUB, {'cmd': 'insert', 'arg': task})
 
         self._log.debug('submit %s', uid)
+        self.advance(task, publish=True, push=True)
 
-        # insert the task
-        self.advance(task, publish=False, push=True)
+        with self._lock:
+            self._workers[uid] = dict()
+            self._workers[uid]['state'] = 'NEW'
 
 
     # --------------------------------------------------------------------------
@@ -225,6 +268,9 @@ class Master(rpu.Component):
         wait for `n` workers, *or* for workers with given UID, *or* for all
         workers to become available, then return.
         '''
+
+        if not count and not uids:
+            uids = list(self._workers.keys())
 
         if count:
             self._log.debug('wait for %d workers', count)
@@ -286,6 +332,9 @@ class Master(rpu.Component):
 
         rpu.Component.stop(self, timeout=timeout)
 
+        # FIXME: this *should* get triggered by the base class
+        self.terminate()
+
 
     # --------------------------------------------------------------------------
     #
@@ -298,10 +347,22 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def join(self):
+
+        if self._thread:
+            self._thread.join()
+
+
+    # --------------------------------------------------------------------------
+    #
     def _run(self):
 
         # get work from the overloading implementation
-        self.create_work_items()
+        try:
+            self.create_work_items()
+        except Exception:
+            self._log.exception('failed to create work')
+            self._term.set()
 
         # wait for the submitted requests to complete
         while not self._term.is_set():
@@ -313,12 +374,14 @@ class Master(rpu.Component):
             completed = [s for s in states if s in ['DONE', 'FAILED']]
 
             self._log.debug('%d =?= %d', len(completed), len(states))
-          # if len(completed) == len(states):
-          #     break
+            if len(completed) == len(states):
+                break
 
             # FIXME: this should be replaced by an async state check.  Maybe
             #        subscrive to state updates on the update pubsub?
             time.sleep(1.0)
+
+        self._log.debug('=== master term')
 
 
     # --------------------------------------------------------------------------
@@ -342,6 +405,8 @@ class Master(rpu.Component):
                 objs.append(request)
 
         # push the request message (as dictionary) onto the request queue
+        self._log.debug('=== put %d: [%s]', len(dicts),
+                         [r['uid'] for r in dicts])
         self._req_put.put(dicts)
 
         # return the request to the master script for inspection etc.
@@ -390,8 +455,20 @@ class Master(rpu.Component):
 
         self._term.set()
         for uid in self._workers:
+            self._log.debug('=== master %s sends term to %s', self._uid, uid)
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_terminate',
                                               'arg': {'uid': uid}})
+
+        # wait for workers to terminate
+        uids = self._workers.keys()
+        while True:
+            states = [self._workers[uid]['state'] for uid in uids]
+            if set(states) == {'DONE'}:
+                break
+            self._log.debug('=== states: %s', states)
+            time.sleep(1)
+
+        self._log.debug('=== all workers terminated')
 
 
 # ------------------------------------------------------------------------------

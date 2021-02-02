@@ -548,8 +548,6 @@ class Agent_0(rpu.Worker):
 
         # FIXME: implement a timeout, and/or a registry of rpc clients
 
-        self._log.debug('=== rpc check')
-
         retdoc = self._dbs._c.find_and_modify(
                     query ={'uid' : self._pid},
                     fields=['rpc_req'],
