@@ -225,7 +225,7 @@ create_gtod()
          | cut -f1 -d'/')
     printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
         "$now" "sync_abs" "bootstrap_0" "MainThread" "$PILOT_ID" \
-        "PMGR_ACTIVE_PENDING" "$(hostname):$ip:$now:$now:$now" \
+        "PMGR_ACTIVE_PENDING" "$(hostname):${ip%$'\n'*}:$now:$now:$now" \
         | tee -a "$PROFILE"
 }
 

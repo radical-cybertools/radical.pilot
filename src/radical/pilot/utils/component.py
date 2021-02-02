@@ -19,7 +19,6 @@ def out(msg):
     sys.stdout.flush()
 
 
-
 # ------------------------------------------------------------------------------
 #
 class ComponentManager(object):

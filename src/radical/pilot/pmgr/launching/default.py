@@ -1025,11 +1025,8 @@ class Default(PMGRLaunchingComponent):
         #
         if resource not in self._sandboxes:
 
-            tgt_path = ru.Url(pilot['session_sandbox']).path
-
             for sdist in sdist_paths:
                 base = os.path.basename(sdist)
-                tgt  = '%s/%s' % (tgt_path, base)
                 ret['fts'].append({
                     'src': sdist,
                     'tgt': '%s/%s' % (session_sandbox, base),
@@ -1162,12 +1159,8 @@ class Default(PMGRLaunchingComponent):
 
         for sd in sds:
             sd['prof_id'] = pilot['uid']
-            self._log.debug('=== src 1: %s', sd['source'])
-            self._log.debug('=== tgt 1: %s', sd['target'])
-            sd['source'] = str(complete_url(sd['source'], loc_ctx, self._log))
-            sd['target'] = str(complete_url(sd['target'], rem_ctx, self._log))
-            self._log.debug('=== src 2: %s', sd['source'])
-            self._log.debug('=== tgt 2: %s', sd['target'])
+            sd['source']  = str(complete_url(sd['source'], loc_ctx, self._log))
+            sd['target']  = str(complete_url(sd['target'], rem_ctx, self._log))
 
         self._stage(sds)
 

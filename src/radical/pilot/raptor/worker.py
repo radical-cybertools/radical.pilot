@@ -1,5 +1,5 @@
 
-# pylint: disable=eval-used
+
 
 import os
 import sys
@@ -33,7 +33,7 @@ class Worker(rpu.Component):
         # generate a MPI rank dependent UID for each worker process
         # FIXME: this should be delegated to ru.generate_id
         # FIXME: why do we need to import `os` again after MPI Spawn?
-        import os                                                         # noqa
+        import os                                   # pylint: disable=reimported
 
         # FIXME: rank determination should be moved to RU
         rank = None
@@ -445,12 +445,11 @@ class Worker(rpu.Component):
                   # while not self._res_evt.wait(timeout=1.0):
                   #     self._log.debug('=== req_alloc_wait %s', task['uid'])
 
-                    if True:
-                        time.sleep(0.01)
+                    time.sleep(0.01)
 
-                        # break on termination
-                        if self._term.is_set():
-                            return False
+                    # break on termination
+                    if self._term.is_set():
+                        return False
 
                     self._res_evt.clear()
 
@@ -645,12 +644,10 @@ class Worker(rpu.Component):
     def _control_cb(self, topic, msg):
 
         if msg['cmd'] == 'terminate':
-            self._log.debug('got terminate msg: %s: %s', topic, msg)
             self._term.set()
 
         elif msg['cmd'] == 'worker_terminate':
             if msg['arg']['uid'] == self._cfg['wid']:
-                self._log.debug('got terminate msg: %s: %s', topic, msg)
                 self._term.set()
 
 
