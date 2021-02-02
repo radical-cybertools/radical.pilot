@@ -46,21 +46,21 @@ and change the code below accordging to the instructions in the comments.
 .. did in the previous example. 
 
 .. The important difference between this file and the previous file is that there
-.. are two separate "USER DEFINED CU DESCRIPTION" sections - numbered 1 and 2.
+.. are two separate "USER DEFINED TASK DESCRIPTION" sections - numbered 1 and 2.
 .. Again, these two sections will not require any modifications for the purposes of
 .. this tutorial. We will not review every variable again, but instead, review the
-.. relationship between the 2 CU descriptions.
+.. relationship between the 2 Task descriptions.
 
-.. Go to line 104, "BEGIN USER DEFINED CU DESCRIPTION." This looks a lot like the
+.. Go to line 104, "BEGIN USER DEFINED TASK DESCRIPTION." This looks a lot like the
 .. description we saw in the previous example. It is also contained in a for loop
 .. from 0 to the NUMBER_JOBS. We are running the same executable, with almost the
 .. same arguments, except that we append an 'A' as an additional TASK_SET variable.
-.. If we look at line 129ff, we see that as soon as a CU in the "A" set reaches the
-.. "Done" state, we start what is defined in "BEGIN USER DEFINED CU B DESCRIPTION"
-.. as a "B" CU. This shows us an important feature of RADICAL-Pilot.  We can call
-.. get_state() on a CU to find out if it is complete or not. The second CU
+.. If we look at line 129ff, we see that as soon as a Task in the "A" set reaches the
+.. "Done" state, we start what is defined in "BEGIN USER DEFINED TASK B DESCRIPTION"
+.. as a "B" Task. This shows us an important feature of RADICAL-Pilot.  We can call
+.. get_state() on a Task to find out if it is complete or not. The second task
 .. description is to run the same executable, /bin/echo, and print instead that it
-.. is a B CU, with its CU number.
+.. is a B Task, with its task number.
 
 
 ----------

@@ -158,7 +158,7 @@ class Default(PMGRLaunchingComponent):
 
         pid = pilot['uid']
 
-        # NOTE: no unit sandboxes defined!
+        # NOTE: no task sandboxes defined!
         loc_ctx = {'pwd'     : pilot['client_sandbox'],
                    'pilot'   : pilot['pilot_sandbox'],
                    'resource': pilot['resource_sandbox']}
@@ -233,7 +233,7 @@ class Default(PMGRLaunchingComponent):
 
         pid = pilot['uid']
 
-        # NOTE: no unit sandboxes defined!
+        # NOTE: no task sandboxes defined!
         loc_ctx = {'pwd'     : pilot['client_sandbox'],
                    'pilot'   : pilot['pilot_sandbox'],
                    'resource': pilot['resource_sandbox']}
@@ -848,13 +848,13 @@ class Default(PMGRLaunchingComponent):
         lfs_size_per_node       = rcfg.get('lfs_size_per_node',  0)
         python_dist             = rcfg.get('python_dist')
         virtenv_dist            = rcfg.get('virtenv_dist',        DEFAULT_VIRTENV_DIST)
-        cu_tmp                  = rcfg.get('cu_tmp')
+        task_tmp                  = rcfg.get('task_tmp')
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
         stage_cacerts           = rcfg.get('stage_cacerts', False)
-        cu_pre_exec             = rcfg.get('cu_pre_exec')
-        cu_post_exec            = rcfg.get('cu_post_exec')
-        export_to_cu            = rcfg.get('export_to_cu')
+        task_pre_exec             = rcfg.get('task_pre_exec')
+        task_post_exec            = rcfg.get('task_post_exec')
+        export_to_task            = rcfg.get('export_to_task')
         mandatory_args          = rcfg.get('mandatory_args', [])
         system_architecture     = rcfg.get('system_architecture', {})
         saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
@@ -1006,7 +1006,7 @@ class Default(PMGRLaunchingComponent):
 
         if  cleanup and isinstance(cleanup, bool):
             #  l : log files
-            #  u : unit work dirs
+            #  u : task work dirs
             #  v : virtualenv
             #  e : everything (== pilot sandbox)
             if shared_filesystem:
@@ -1111,10 +1111,10 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['gpus_per_node']       = gpus_per_node
         agent_cfg['lfs_path_per_node']   = lfs_path_per_node
         agent_cfg['lfs_size_per_node']   = lfs_size_per_node
-        agent_cfg['cu_tmp']              = cu_tmp
-        agent_cfg['export_to_cu']        = export_to_cu
-        agent_cfg['cu_pre_exec']         = cu_pre_exec
-        agent_cfg['cu_post_exec']        = cu_post_exec
+        agent_cfg['task_tmp']            = task_tmp
+        agent_cfg['export_to_task']        = export_to_task
+        agent_cfg['task_pre_exec']       = task_pre_exec
+        agent_cfg['task_post_exec']      = task_post_exec
         agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
         agent_cfg['debug']               = self._log.getEffectiveLevel()
 

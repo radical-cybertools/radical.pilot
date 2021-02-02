@@ -38,7 +38,7 @@ class Noop(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _try_allocation(self, unit):
+    def _try_allocation(self, task):
 
         # signal success
         return True

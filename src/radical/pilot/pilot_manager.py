@@ -28,7 +28,7 @@ if os.environ.get('RADICAL_PILOT_BULK_CB', '').lower() in ['true', 'yes', '1']:
 class PilotManager(rpu.Component):
     '''
 
-    A PilotManager manages :class:`rp.ComputePilot` instances that are
+    A PilotManager manages :class:`rp.Pilot` instances that are
     submitted via the :func:`radical.pilot.PilotManager.submit_pilots` method.
 
     It is possible to attach one or more :ref:`chapter_machconf` to a
@@ -41,26 +41,26 @@ class PilotManager(rpu.Component):
 
         pm = rp.PilotManager(session=s)
 
-        pd = rp.ComputePilotDescription()
+        pd = rp.PilotDescription()
         pd.resource = "futuregrid.alamo"
         pd.cpus = 16
 
         p1 = pm.submit_pilots(pd)  # create first  pilot with 16 cores
         p2 = pm.submit_pilots(pd)  # create second pilot with 16 cores
 
-        # Create a workload of 128 '/bin/sleep' compute units
-        compute_units = []
-        for unit_count in range(0, 128):
-            cu = rp.ComputeUnitDescription()
-            cu.executable = "/bin/sleep"
-            cu.arguments = ['60']
-            compute_units.append(cu)
+        # Create a workload of 128 '/bin/sleep' tasks
+        tasks = []
+        for task_count in range(0, 128):
+            t = rp.TaskDescription()
+            t.executable = "/bin/sleep"
+            t.arguments = ['60']
+            tasks.append(t)
 
         # Combine the two pilots, the workload and a scheduler via
-        # a UnitManager.
-        um = rp.UnitManager(session=session, scheduler=rp.SCHEDULER_ROUND_ROBIN)
-        um.add_pilot(p1)
-        um.submit_units(compute_units)
+        # a TaskManager.
+        tm = rp.TaskManager(session=session, scheduler=rp.SCHEDULER_ROUND_ROBIN)
+        tm.add_pilot(p1)
+        tm.submit_tasks(tasks)
 
 
     The pilot manager can issue notification on pilot state changes.  Whenever
@@ -522,11 +522,11 @@ class PilotManager(rpu.Component):
     #
     def list_pilots(self):
         """
-        Returns the UIDs of the :class:`rp.ComputePilots` managed by
+        Returns the UIDs of the :class:`rp.Pilots` managed by
         this pilot manager.
 
         **Returns:**
-              * A list of :class:`rp.ComputePilot` UIDs [`string`].
+              * A list of :class:`rp.Pilot` UIDs [`string`].
         """
 
         with self._pilots_lock:
@@ -539,19 +539,19 @@ class PilotManager(rpu.Component):
     #
     def submit_pilots(self, descriptions):
         """
-        Submits on or more :class:`rp.ComputePilot` instances to the
+        Submits on or more :class:`rp.Pilot` instances to the
         pilot manager.
 
         **Arguments:**
-            * **descriptions** [:class:`rp.ComputePilotDescription`
-              or list of :class:`rp.ComputePilotDescription`]: The
-              description of the compute pilot instance(s) to create.
+            * **descriptions** [:class:`rp.PilotDescription`
+              or list of :class:`rp.PilotDescription`]: The
+              description of the pilot instance(s) to create.
 
         **Returns:**
-              * A list of :class:`rp.ComputePilot` objects.
+              * A list of :class:`rp.Pilot` objects.
         """
 
-        from .compute_pilot import ComputePilot
+        from .pilot import Pilot
 
         ret_list = True
         if not isinstance(descriptions, list):
@@ -581,7 +581,7 @@ class PilotManager(rpu.Component):
             if not pd.resource:
                 raise ValueError('pilot target resource must be defined')
 
-            pilot = ComputePilot(pmgr=self, descr=pd)
+            pilot = Pilot(pmgr=self, descr=pd)
             pilots.append(pilot)
             pilot_doc = pilot.as_dict()
             pilot_docs.append(pilot_doc)
@@ -638,14 +638,14 @@ class PilotManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def get_pilots(self, uids=None):
-        """Returns one or more compute pilots identified by their IDs.
+        """Returns one or more pilots identified by their IDs.
 
         **Arguments:**
             * **uids** [`string` or `list of strings`]: The IDs of the
-              compute pilot objects to return.
+              pilot objects to return.
 
         **Returns:**
-              * A list of :class:`rp.ComputePilot` objects.
+              * A list of :class:`rp.Pilot` objects.
         """
 
         if not uids:
@@ -674,11 +674,11 @@ class PilotManager(rpu.Component):
     #
     def wait_pilots(self, uids=None, state=None, timeout=None):
         """
-        Returns when one or more :class:`rp.ComputePilots` reach a
+        Returns when one or more :class:`rp.Pilots` reach a
         specific state.
 
         If `pilot_uids` is `None`, `wait_pilots` returns when **all**
-        ComputePilots reach the state defined in `state`.  This may include
+        Pilots reach the state defined in `state`.  This may include
         pilots which have previously terminated or waited upon.
 
         **Example**::
@@ -688,15 +688,15 @@ class PilotManager(rpu.Component):
         **Arguments:**
 
             * **pilot_uids** [`string` or `list of strings`]
-              If pilot_uids is set, only the ComputePilots with the specified
+              If pilot_uids is set, only the Pilots with the specified
               uids are considered. If pilot_uids is `None` (default), all
-              ComputePilots are considered.
+              Pilots are considered.
 
             * **state** [`string`]
-              The state that ComputePilots have to reach in order for the call
+              The state that Pilots have to reach in order for the call
               to return.
 
-              By default `wait_pilots` waits for the ComputePilots to
+              By default `wait_pilots` waits for the Pilots to
               reach a terminal state, which can be one of the following:
 
               * :data:`rp.rps.DONE`
@@ -797,11 +797,11 @@ class PilotManager(rpu.Component):
     #
     def cancel_pilots(self, uids=None, _timeout=None):
         """
-        Cancel one or more :class:`rp.ComputePilots`.
+        Cancel one or more :class:`rp.Pilots`.
 
         **Arguments:**
             * **uids** [`string` or `list of strings`]: The IDs of the
-              compute pilot objects to cancel.
+              pilot objects to cancel.
         """
 
         if not uids:
@@ -837,7 +837,7 @@ class PilotManager(rpu.Component):
         """
         Registers a new callback function with the PilotManager.  Manager-level
         callbacks get called if the specified metric changes.  The default
-        metric `PILOT_STATE` fires the callback if any of the ComputePilots
+        metric `PILOT_STATE` fires the callback if any of the Pilots
         managed by the PilotManager change their state.
 
         All callback functions need to have the same signature::

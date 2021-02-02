@@ -12,12 +12,12 @@ from unittest import TestCase, mock
 import radical.pilot as rp
 import radical.utils as ru
 
-TEST_CASES_PATH = 'tests/component_tests/test_cases'
+TEST_CASES_PATH = '%s/test_cases' % os.path.dirname(__file__)
 
 
 # ------------------------------------------------------------------------------
 #
-class SessionTestClass(TestCase):
+class TestSession(TestCase):
 
     # --------------------------------------------------------------------------
     #
@@ -106,3 +106,11 @@ class SessionTestClass(TestCase):
                 resource='local.localhost', schema='wrong_schema')
 
 # ------------------------------------------------------------------------------
+
+
+if __name__ == '__main__':
+
+    tc = TestSession()
+    tc.test_list_resources()
+    tc.test_get_resource_config()
+    tc.test_add_resource_config()

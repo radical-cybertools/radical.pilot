@@ -28,7 +28,9 @@ def expand_description(descr):
             'target' : 'sandbox://task/staged.dat',
             'action' : rp.TRANSFER}
 
-    This method changes the given description in place.
+    This method changes the given description in place - repeated calls on the
+    same description instance will have no effect.  However, we expect this
+    method to be called only once during task construction.
     '''
 
     if descr.get('input_staging')  is None: descr['input_staging']  = list()
@@ -139,6 +141,9 @@ def complete_url(path, contexts):
         * `sandbox://pilot/`   : the pilot sandbox on the target resource
         * `sandbox://task/`    : the task  sandbox on the target resource
         * `sandbox://<uid>/`   : the task  sandbox for task with given uid
+
+    For the above schemas, we interpret `schema://` the same as `schema:///`,
+    ie. we treat this as a namespace, not as location qualified by a hostname.
 
     The `context` parameter is expected to be a dict which provides a set of
     URLs to be used to expand the path:
