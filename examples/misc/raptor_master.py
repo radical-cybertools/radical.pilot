@@ -23,7 +23,7 @@ import radical.pilot as rp
 
 # ------------------------------------------------------------------------------
 #
-class MyMaster(rp.task_overlay.Master):
+class MyMaster(rp.raptor.Master):
     '''
     This class provides the communication setup for the task overlay: it will
     set up the request / response communication queues and provide the endpoint
@@ -36,7 +36,7 @@ class MyMaster(rp.task_overlay.Master):
 
         # initialize the task overlay base class.  That base class will ensure
         # proper communication channels to the pilot agent.
-        rp.task_overlay.Master.__init__(self, cfg=cfg)
+        rp.raptor.Master.__init__(self, cfg=cfg)
 
 
     # --------------------------------------------------------------------------
@@ -51,17 +51,18 @@ class MyMaster(rp.task_overlay.Master):
         # create an initial list of work items to be distributed to the workers.
         # Work items MUST be serializable dictionaries.
         idx   = rank
-        total = int(eval(self._cfg.workload.total))
+        total = int(eval(self._cfg.workload.total))                       # noqa
         while idx < total:
 
             uid  = 'request.%06d' % idx
-            item = {'uid'  :   uid,
-                    'mode' :  'call',
-                    'cores':  1,
-                  # 'gpus' :  1,
-                    'data' : {'method': 'hello',
-                              'kwargs': {'count': idx,
-                                         'uid'  : uid}}}
+            item = {'uid'    : uid,
+                    'mode'   : 'call',
+                    'cores'  : 1,
+                    'gpus'   : 0,
+                    'timeout': self._cfg.workload.timeout,
+                    'data'   : {'method': 'hello',
+                                'kwargs': {'count': idx,
+                                           'uid'  : uid}}}
             self.request(item)
             idx += world_size
 
@@ -77,12 +78,6 @@ class MyMaster(rp.task_overlay.Master):
         for r in requests:
             sys.stdout.write('result_cb %s: %s [%s]\n' % (r.uid, r.state, r.result))
             sys.stdout.flush()
-
-          # count = r.work['data']['kwargs']['count']
-          # if count < 10:
-          #     new_requests.append({'mode': 'call',
-          #                          'data': {'method': 'hello',
-          #                                   'kwargs': {'count': count + 100}}})
 
         return new_requests
 
@@ -103,23 +98,11 @@ if __name__ == '__main__':
     cpn        = cfg.cpn
     gpn        = cfg.gpn
     descr      = cfg.worker_descr
-    worker     = os.path.basename(cfg.worker)
+    worker     = os.path.basename(cfg.worker.replace('py', 'sh'))
     pwd        = os.getcwd()
 
     # add data staging to worker: link input_dir, impress_dir, and oe_license
     descr['arguments']     = [os.path.basename(worker)]
-  # descr['input_staging'] = [
-  #                            {'source': '%s/%s' % (pwd, worker),
-  #                             'target': worker,
-  #                             'action': rp.COPY,
-  #                             'flags' : rp.DEFAULT_FLAGS,
-  #                             'uid'   : 'sd.0'},
-  #                            {'source': '%s/%s' % (pwd, cfg_fname),
-  #                             'target': cfg_fname,
-  #                             'action': rp.COPY,
-  #                             'flags' : rp.DEFAULT_FLAGS,
-  #                             'uid'   : 'sd.1'},
-  #                           ]
 
     # one node is used by master.  Alternatively (and probably better), we could
     # reduce one of the worker sizes by one core.  But it somewhat depends on
@@ -134,15 +117,16 @@ if __name__ == '__main__':
     # those workers and execute them.  Insert one smaller worker (see above)
     # NOTE: this assumes a certain worker size / layout
     print('workers: %d' % n_workers)
-    master.submit(descr=descr, count=n_workers, cores=cpn,     gpus=gpn)
-  # master.submit(descr=descr, count=1,         cores=cpn - 1, gpus=gpn)
+    master.submit(descr=descr, count=n_workers, cores=cpn, gpus=gpn)
 
     # wait until `m` of those workers are up
     # This is optional, work requests can be submitted before and will wait in
     # a work queue.
   # master.wait(count=nworkers)
 
-    master.run()
+    master.start()
+    master.join()
+    master.stop()
 
     # simply terminate
     # FIXME: clean up workers
