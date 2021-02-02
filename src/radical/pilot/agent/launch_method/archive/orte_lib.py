@@ -26,7 +26,7 @@ class ORTELib(LaunchMethod):
 
         # We remove all ORTE related environment variables from the launcher
         # environment, so that we can use ORTE for both launch of the
-        # (sub-)agent and CU execution.
+        # (sub-)agent and Task execution.
         self.env_removables.extend(["OMPI_", "OPAL_", "PMIX_"])
 
 
@@ -216,20 +216,20 @@ class ORTELib(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        slots        = cu['slots']
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_mpi     = bool('mpi' in cud.get('cpu_process_type', '').lower())
-        task_cores   = cud.get('cpu_processes', 0) + cud.get('gpu_processes', 0)
-        task_env     = cud.get('environment') or dict()
-        task_args    = cud.get('arguments')   or list()
+        slots        = t['slots']
+        td          = t['description']
+        task_exec    = td['executable']
+        task_mpi     = bool('mpi' in td.get('cpu_process_type', '').lower())
+        task_cores   = td.get('cpu_processes', 0) + td.get('gpu_processes', 0)
+        task_env     = td.get('environment') or dict()
+        task_args    = td.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
      #  import pprint
-     #  self._log.debug('prep %s', pprint.pformat(cu))
-        self._log.debug('prep %s', cu['uid'])
+     #  self._log.debug('prep %s', pprint.pformat(t))
+        self._log.debug('prep %s', t['uid'])
 
         if 'lm_info' not in slots:
             raise RuntimeError('No lm_info to launch via %s: %s'

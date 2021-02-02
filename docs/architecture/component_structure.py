@@ -9,7 +9,7 @@
 # doing so, we need to clarify the notion of 'state' though.
 #
 # RP is semantically a system which manages various types of short-lived
-# entities, most prominently of 'pilot' and 'units'.  Those entities follow
+# entities, most prominently of 'pilot' and 'tasks'.  Those entities follow
 # a strict state model during their lifetimes.  For example, a pilot starts its
 # live in a NEW state, waits for bein launched (PMGR_LAUNCHING_PENDING),
 # eventually gets launched (PMGR_LAUNCHING), waits to get active on the target
@@ -24,7 +24,7 @@
 # definition.
 #
 # The exceptions are the following:
-#   - pilot managers and unit managers are responsible for *all* initial and
+#   - pilot managers and task managers are responsible for *all* initial and
 #     final states
 #   - all '*_PENDING' states are owned by communication bridges, and signify
 #     that the respecitive entities are in transition from one component to the
@@ -34,29 +34,29 @@
 #
 #   - the `pmgr.PilotLaunching` component manages pilots in
 #     `PMGR_PILOT_LAUNCHING` state, ie. it launches pilots onto target resources
-#   - the `umgr.StagingInput` component manages units in the
-#     `UMGR_STAGING_INPUT` state, ie. it stages input files for compute units
-#   - the `AGENT_EXECUTING` component manages units in `AGENT_EXECUTING` state,
-#     ie. it executes units.
+#   - the `tmgr.StagingInput` component manages tasks in the
+#     `UMGR_STAGING_INPUT` state, ie. it stages input files for tasks
+#   - the `AGENT_EXECUTING` component manages tasks in `AGENT_EXECUTING` state,
+#     ie. it executes tasks.
 #
 # This makes a RP 'Component' extremely simple, at least conceptually.  It
 # basically reduces to the following semantic load (here rendered as
 # a function):
 #
-#   def agent_executing(unit):
+#   def agent_executing(task):
 #
-#     # make sure we got a unit which is ready for execution
-#     assert(unit.state == rp.AGENT_EXECUTING_PENDING)
+#     # make sure we got a task which is ready for execution
+#     assert(task.state == rp.AGENT_EXECUTING_PENDING)
 #
-#     # advance unit state
-#     unit.state = rp.AGENT_EXECUTING
+#     # advance task state
+#     task.state = rp.AGENT_EXECUTING
 #
 #     # do the deed
-#     os.system(unit.command)
+#     os.system(task.command)
 #
-#     # we are done executing -- push unit to the next component
-#     unit.state = rp.AGENT_STAGING_OUTPUT_PENDING
-#     return unit
+#     # we are done executing -- push task to the next component
+#     task.state = rp.AGENT_STAGING_OUTPUT_PENDING
+#     return task
 #
 #
 # In practice, a RP Component is more complex -- but that is really only owed to
@@ -66,9 +66,9 @@
 #   - base performance:
 #
 #     Some state transitions can take a long time (file transfer being an
-#     obvious example).  To increase throughput of units, we *must* employ some
+#     obvious example).  To increase throughput of tasks, we *must* employ some
 #     form of concurrent execution, so that delays in file staging do not stall,
-#     for example, unit execution.
+#     for example, task execution.
 #
 #     Components thus run in separate processes (python is bad at threading),
 #     they are rendered as classes which inherit multiprocessing.Process.
@@ -77,11 +77,11 @@
 #   - scalability
 #
 #     The resulting pipeline of state transitions will be limited in throughput
-#     by the slowest component: if input staging is limited to 1 unit/sec, we 
-#     can only ever execute at most 1 unit/sec.  To be able to scale beyond
+#     by the slowest component: if input staging is limited to 1 task/sec, we 
+#     can only ever execute at most 1 task/sec.  To be able to scale beyond
 #     that, we allow many component instances of the same time to be
 #     concurrently active.  For example, 2 input staging components with
-#     1 unit/sec each can serve 1 executing component operating at 2 units/sec.
+#     1 task/sec each can serve 1 executing component operating at 2 tasks/sec.
 #
 #     Multiple component processes of the same type can run in parallel, and be
 #     distributed.  
@@ -95,7 +95,7 @@
 #   - non-linear state transitions, component management
 #
 #     Entities can always fail, and enter a final state early.  Some state
-#     transitions can be empty, and be skipped for optimization (e.g. a unit
+#     transitions can be empty, and be skipped for optimization (e.g. a task
 #     having no files to stage).  Those actions can lead to state transitions
 #     out of the expected linear state model.
 #
@@ -158,7 +158,7 @@
 #
 #    Several elements in RP are designed to react on state changes of the RP
 #    entities.  Specifically the RP API is expected to expose state changes in
-#    a timely manner, but other elements, such as the unit scheduler, do also
+#    a timely manner, but other elements, such as the task scheduler, do also
 #    need state change notifications.
 #
 #    As the comonent base class is already managing the entity state

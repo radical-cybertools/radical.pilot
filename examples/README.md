@@ -8,15 +8,15 @@ are all based on the simplest case in `00_getting_started.py`, introducing
 different features:
 
 * `00_getting_started.py`: basic example
-* `01_unit_details.py`: obtain unit details
-* `02_failing_units.py`: handle failing units
+* `01_task_details.py`: obtain task details
+* `02_failing_tasks.py`: handle failing tasks
 * `03_multiple_pilots.py`: use multiple pilots
 * `04_scheduler_selection.py`: use a different scheduler
-* `05_unit_input_data.py`: stage unit input data
-* `06_unit_output_data.py`: stage unit output data
-* `07_shared_unit_data.py`: stage shared unit input data
-* `08_unit_environment.py`: use environment variables for units
-* `09_mpi_units.py`: running MPI units
+* `05_task_input_data.py`: stage task input data
+* `06_task_output_data.py`: stage task output data
+* `07_shared_task_data.py`: stage shared task input data
+* `08_task_environment.py`: use environment variables for tasks
+* `09_mpi_tasks.py`: running MPI tasks
 * `10_pre_and_post_exec.py`: use pre- and post- execution
 
 (script evolution:

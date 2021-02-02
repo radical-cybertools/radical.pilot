@@ -2,7 +2,7 @@
 {
     "stampede2_ssh": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
         "gsissh"                      :
@@ -36,15 +36,15 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_cu"                : ["LMOD_CMD",
+        "export_to_task"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : []
+        "task_pre_exec"               : []
     },
 
     "stampede2_mpirun": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
         "gsissh"                      :
@@ -78,15 +78,15 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_cu"                : ["LMOD_CMD",
+        "export_to_task"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : ["module restore"]
+        "task_pre_exec"               : ["module restore"]
     },
 
     "stampede2_ibrun": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
         "gsissh"                      :
@@ -123,15 +123,15 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_cu"                : ["LMOD_CMD",
+        "export_to_task"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : []
+        "task_pre_exec"               : []
     },
 
     "stampede2_srun": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
         "gsissh"                      :
@@ -165,15 +165,15 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_cu"                : ["LMOD_CMD",
+        "export_to_task"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : []
+        "task_pre_exec"               : []
     },
 
     "comet_ssh": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
@@ -203,12 +203,12 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "cu_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
+        "task_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
     },
 
     "comet_ssh_funcs": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
@@ -237,12 +237,12 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "cu_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
+        "task_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
     },
 
     "comet_spark": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
@@ -281,7 +281,7 @@
 
     "comet_mpirun": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
@@ -317,12 +317,12 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "cu_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
+        "task_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
     },
 
     "bridges_mpiexec": {
         "description"                 : "The XSEDE 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription.",
         "schemas"                     : ["gsissh", "ssh", "go"],
       # "mandatory_args"              : [],
         "gsissh"                      :
@@ -360,15 +360,15 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda",
-        "export_to_cu"                : [],
-        "cu_pre_exec"                 : [],
+        "export_to_task"                : [],
+        "task_pre_exec"               : [],
         "system_architecture"         : {"gpu": "p100"},
         "gpus_per_node"               : 2
     },
 
     "bridges": {
         "description"                 : "The XSEDE 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription.",
         "schemas"                     : ["gsissh", "ssh", "go"],
       # "mandatory_args"              : [],
         "gsissh"                      :
@@ -406,8 +406,8 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda",
-        "export_to_cu"                : [],
-        "cu_pre_exec"                 : [],
+        "export_to_task"                : [],
+        "task_pre_exec"               : [],
         "gpus_per_node"               : 2,
         "system_architecture"         : {"gpu": "p100"}
     }

@@ -33,15 +33,15 @@ class Runjob(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        slots        = cu['slots']
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_cores   = cud.get('cpu_processes', 0) + cud.get('gpu_processes', 0)
+        slots        = t['slots']
+        td          = t['description']
+        task_exec    = td['executable']
+        task_cores   = td.get('cpu_processes', 0) + td.get('gpu_processes', 0)
                                                          # FIXME: handle threads
-        task_env     = cud.get('environment') or dict()
-        task_args    = cud.get('arguments')   or list()
+        task_env     = td.get('environment') or dict()
+        task_args    = td.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
         if  'loadl_bg_block'      not in slots            or \
@@ -87,7 +87,7 @@ class Runjob(LaunchMethod):
             # will be expanded in the shell script.
             task_exec = '`which %s`' % task_exec
             # Note: We can't use the expansion from here,
-            #       as the pre-execs of the CU aren't run yet!!
+            #       as the pre-execs of the Task aren't run yet!!
 
         # And finally add the executable and the arguments
         # usage: runjob <runjob flags> : /bin/hostname -f
