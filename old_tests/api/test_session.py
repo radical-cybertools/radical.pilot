@@ -3,7 +3,7 @@
 
 import os
 import sys
-import unittest
+import tasktest
 
 from pymongo import MongoClient
 
@@ -13,7 +13,7 @@ import radical.pilot as rp
 
 # -----------------------------------------------------------------------------
 #
-class Test_Session(unittest.TestCase):
+class Test_Session(tasktest.TestCase):
     # silence deprecation warnings under py3
 
     def failUnless(self, expr):

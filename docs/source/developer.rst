@@ -81,9 +81,9 @@ PilotManager and PilotManager Worker
 
 Download :download:`PDF version <images/architecture_pilotmanager.pdf>`.
 
-UnitManager and UnitManager Worker
+TaskManager and TaskManager Worker
 ----------------------------------
 
-.. image:: images/architecture_unitmanager.png
+.. image:: images/architecture_taskmanager.png
 
-Download :download:`PDF version <images/architecture_unitmanager.pdf>`.
+Download :download:`PDF version <images/architecture_taskmanager.pdf>`.

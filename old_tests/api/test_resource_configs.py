@@ -1,8 +1,8 @@
-""" (Compute) Unit tests
+""" Task tests
 """
 import os
 import sys
-import unittest
+import tasktest
 
 from pymongo import MongoClient
 
@@ -12,7 +12,7 @@ import radical.pilot as rp
 
 # -----------------------------------------------------------------------------
 #
-class TestResourceConfigs(unittest.TestCase):
+class TestResourceConfigs(tasktest.TestCase):
     # silence deprecation warnings under py3
 
     def failUnless(self, expr):
@@ -54,11 +54,11 @@ class TestResourceConfigs(unittest.TestCase):
         pm = rp.PilotManager(session=session)
         session.add_resource_config(rc)
 
-        pd = rp.ComputePilotDescription()
+        pd = rp.PilotDescription()
         pd.resource = "mylocalhost"
         pd.cores    = 1
         pd.runtime  = 1
-        pd.sandbox = "/tmp/rp.sandbox.unittests"
+        pd.sandbox = "/tmp/rp.sandbox.tasktests"
         pd.cleanup = True
 
         pilot = pm.submit_pilots(pd)

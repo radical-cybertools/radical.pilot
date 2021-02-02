@@ -17,7 +17,7 @@ def test_bw_integration():
     # fails, there is not much we can do anyways...
     session = rp.Session()
 
-    # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+    # Add a Pilot Manager. Pilot managers manage one or more Pilots.
     pmgr = rp.PilotManager(session=session)
 
     # Define an [n]-core local pilot that runs for [x] minutes
@@ -28,75 +28,75 @@ def test_bw_integration():
                'project'       : 'gk4',
                'queue'         : 'high'
               }
-    pdesc = rp.ComputePilotDescription(pd_init)
+    pdesc = rp.PilotDescription(pd_init)
 
     # Launch the pilot.
     pilot = pmgr.submit_pilots(pdesc)
 
-    # Register the ComputePilot in a UnitManager object.
-    umgr = rp.UnitManager(session=session)
-    umgr.add_pilots(pilot)
+    # Register the Pilot in a TaskManager object.
+    tmgr = rp.TaskManager(session=session)
+    tmgr.add_pilots(pilot)
 
     # Run 16 tasks that each require 1 core and 10MB of LFS
     n = 4  
-    cuds = list()
+    tds = list()
     for i in range(0, n):
 
-        # create a new CU description, and fill it.
+        # create a new Task description, and fill it.
         # Here we don't use dict initialization.
-        cud = rp.ComputeUnitDescription()
-        cud.executable       = '/bin/hostname'
-        cud.arguments = ['>', 's1_t%s_hostname.txt' % i]
-        cud.cpu_processes    = 1
-        cud.cpu_threads      = 16
-        # cud.cpu_process_type = None
-        # cud.cpu_process_type = rp.MPI
-        cud.lfs_per_process  = 10   # MB
-        cud.output_staging = {'source': 'unit:///s1_t%s_hostname.txt' % i,
+        td = rp.TaskDescription()
+        td.executable       = '/bin/hostname'
+        td.arguments = ['>', 's1_t%s_hostname.txt' % i]
+        td.cpu_processes    = 1
+        td.cpu_threads      = 16
+        # td.cpu_process_type = None
+        # td.cpu_process_type = rp.MPI
+        td.lfs_per_process  = 10   # MB
+        td.output_staging = {'source': 'task:///s1_t%s_hostname.txt' % i,
                               'target': 'client:///s1_t%s_hostname.txt' % i,
                               'action': rp.TRANSFER}
-        cuds.append(cud)
+        tds.append(td)
 
 
-    # Submit the previously created ComputeUnit descriptions to the
+    # Submit the previously created Task descriptions to the
     # PilotManager. This will trigger the selected scheduler to start
-    # assigning ComputeUnits to the ComputePilots.
-    cus = umgr.submit_units(cuds)
+    # assigning Tasks to the Pilots.
+    cus = tmgr.submit_tasks(tds)
 
-    # Wait for all units to finish
-    umgr.wait_units()
+    # Wait for all tasks to finish
+    tmgr.wait_tasks()
 
     n = 4
     cuds2 = list()
     for i in range(0, n):
 
-        # create a new CU description, and fill it.
+        # create a new Task description, and fill it.
         # Here we don't use dict initialization.
-        cud = rp.ComputeUnitDescription()
-        cud.tag = cus[i].uid
-        cud.executable       = '/bin/hostname'
-        cud.arguments = ['>', 's2_t%s_hostname.txt' % i]
-        cud.cpu_processes    = 1
-        cud.cpu_threads      = 16
-        cud.cpu_process_type = None
-        # cud.cpu_process_type = rp.MPI
-        cud.lfs_per_process  = 10   # MB
-        cud.output_staging = {'source': 'unit:///s2_t%s_hostname.txt' % i,
+        td = rp.TaskDescription()
+        td.tag = cus[i].uid
+        td.executable       = '/bin/hostname'
+        td.arguments = ['>', 's2_t%s_hostname.txt' % i]
+        td.cpu_processes    = 1
+        td.cpu_threads      = 16
+        td.cpu_process_type = None
+        # td.cpu_process_type = rp.MPI
+        td.lfs_per_process  = 10   # MB
+        td.output_staging = {'source': 'task:///s2_t%s_hostname.txt' % i,
                               'target': 'client:///s2_t%s_hostname.txt' % i,
                               'action': rp.TRANSFER}
-        cuds2.append(cud)
+        cuds2.append(td)
 
 
-    # Submit the previously created ComputeUnit descriptions to the
+    # Submit the previously created Task descriptions to the
     # PilotManager. This will trigger the selected scheduler to start
-    # assigning ComputeUnits to the ComputePilots.
-    cus2 = umgr.submit_units(cuds2)
+    # assigning Tasks to the Pilots.
+    cus2 = tmgr.submit_tasks(cuds2)
 
 
-    # Wait for all units to finish
-    umgr.wait_units()
+    # Wait for all tasks to finish
+    tmgr.wait_tasks()
 
-    # Check that all units succeeded
+    # Check that all tasks succeeded
     for i in range(0, n):
         assert open('s1_t%s_hostname.txt'%i,'r').readline().strip() == open('s2_t%s_hostname.txt'%i,'r').readline().strip()
 

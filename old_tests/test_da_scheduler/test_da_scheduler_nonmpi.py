@@ -11,7 +11,7 @@ import copy
 try:
     import mock
 except ImportError:
-    from unittest import mock
+    from tasktest import mock
 
 # ------------------------------------------------------------------------------
 # User Input for test
@@ -56,16 +56,16 @@ def setUp():
 #
 def nompi():
 
-    cud = dict()
-    cud['environment']      = dict()
-    cud['cpu_process_type'] = None
-    cud['gpu_process_type'] = None
-    cud['cpu_processes']    = 1
-    cud['cpu_threads']      = 1
-    cud['gpu_processes']    = 0
-    cud['lfs_per_process']  = 1024
+    td = dict()
+    td['environment']      = dict()
+    td['cpu_process_type'] = None
+    td['gpu_process_type'] = None
+    td['cpu_processes']    = 1
+    td['cpu_threads']      = 1
+    td['gpu_processes']    = 0
+    td['lfs_per_process']  = 1024
 
-    return cud
+    return td
 
 # ------------------------------------------------------------------------------
 # Cleanup any folders and files to leave the system state
@@ -78,12 +78,12 @@ def tearDown():
 
 
 # ------------------------------------------------------------------------------
-# Test umgr input staging of a single file
+# Test tmgr input staging of a single file
 @mock.patch.object(Continuous, '__init__', return_value=None)
 @mock.patch.object(Continuous, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
 @mock.patch('radical.utils.raise_on')
-def test_nonmpi_unit_with_continuous_scheduler(mocked_init,
+def test_nonmpi_task_with_continuous_scheduler(mocked_init,
                                                mocked_method,
                                                mocked_profiler,
                                                mocked_raise_on):
@@ -109,9 +109,9 @@ def test_nonmpi_unit_with_continuous_scheduler(mocked_init,
             'lfs'  :              component._lrms_lfs_per_node
         }))
 
-    # Allocate first CUD -- should land on first node
-    cud  = nompi()
-    slot = component._allocate_slot(cud)
+    # Allocate first TD -- should land on first node
+    td  = nompi()
+    slot = component._allocate_slot(td)
     assert slot == {'lm_info'       : 'INFO',
                     'cores_per_node': 2,
                     'gpus_per_node' : 1,
@@ -123,7 +123,7 @@ def test_nonmpi_unit_with_continuous_scheduler(mocked_init,
                                        'lfs'      : {'size': 1024,'path': 'abc'}
                                        }]}
 
-    # Assert resulting node list values after first CUD
+    # Assert resulting node list values after first TD
     assert component.nodes == [{'uid'  : 1,
                                 'name' : 'a',
                                 'cores': [1, 0],
@@ -151,9 +151,9 @@ def test_nonmpi_unit_with_continuous_scheduler(mocked_init,
                                 'lfs'  : {'size': 5120,'path': 'abc'}}
                                ]
 
-    # Allocate second CUD -- should land on first node
-    cud  = nompi()
-    slot = component._allocate_slot(cud)
+    # Allocate second TD -- should land on first node
+    td  = nompi()
+    slot = component._allocate_slot(td)
     assert slot == {'lm_info'       : 'INFO',
                     'cores_per_node': 2,
                     'gpus_per_node' : 1,
@@ -165,9 +165,9 @@ def test_nonmpi_unit_with_continuous_scheduler(mocked_init,
                                         'lfs'     : {'size': 1024,'path': 'abc'} 
                                         }]}
 
-    # Allocate third CUD -- should land on second node
-    cud  = nompi()
-    slot = component._allocate_slot(cud)
+    # Allocate third TD -- should land on second node
+    td  = nompi()
+    slot = component._allocate_slot(td)
     assert slot == {'lm_info'       : 'INFO',
                     'gpus_per_node' : 1,
                     'cores_per_node': 2,
@@ -179,10 +179,10 @@ def test_nonmpi_unit_with_continuous_scheduler(mocked_init,
                                         'lfs'     : {'size': 1024,'path': 'abc'} 
                                         }]}
 
-    # Allocate four CUD -- should land on third node
-    cud = nompi()
-    cud['lfs_per_process'] = 5120
-    slot = component._allocate_slot(cud)
+    # Allocate four TD -- should land on third node
+    td = nompi()
+    td['lfs_per_process'] = 5120
+    slot = component._allocate_slot(td)
     assert slot == {'lm_info'       : 'INFO',
                     'cores_per_node': 2,
                     'gpus_per_node' : 1,
@@ -194,18 +194,18 @@ def test_nonmpi_unit_with_continuous_scheduler(mocked_init,
                                         'lfs'     : {'size': 5120,'path': 'abc'} 
                                         }]}
 
-    # Fail with ValueError if  lfs required by cud is more than available
+    # Fail with ValueError if  lfs required by td is more than available
     with pytest.raises(ValueError):
 
-        cud = nompi()
-        cud['lfs_per_process'] = 6000
-        slot = component._allocate_slot(cud)
+        td = nompi()
+        td['lfs_per_process'] = 6000
+        slot = component._allocate_slot(td)
 
     # Max out available resources
     # Allocate two CUDs -- should land on fourth and fifth node
-    cud = nompi()
-    cud['lfs_per_process'] = 5120
-    slot = component._allocate_slot(cud)
+    td = nompi()
+    td['lfs_per_process'] = 5120
+    slot = component._allocate_slot(td)
     assert slot == {'lm_info'       : 'INFO',
                     'cores_per_node': 2,
                     'gpus_per_node' : 1,
@@ -217,7 +217,7 @@ def test_nonmpi_unit_with_continuous_scheduler(mocked_init,
                                         'lfs'     : {'size': 5120,'path': 'abc'} 
                                         }]}
 
-    slot = component._allocate_slot(cud)
+    slot = component._allocate_slot(td)
     assert slot == {'lm_info'       : 'INFO',
                     'cores_per_node': 2,
                     'gpus_per_node' : 1,
@@ -229,10 +229,10 @@ def test_nonmpi_unit_with_continuous_scheduler(mocked_init,
                                         'lfs'     : {'size': 5120,'path': 'abc'} 
                                         }]}
 
-    # Allocate CUD with to land on second node
-    cud = nompi()
-    cud['lfs_per_process'] = 4096
-    slot = component._allocate_slot(cud)
+    # Allocate TD with to land on second node
+    td = nompi()
+    td['lfs_per_process'] = 4096
+    slot = component._allocate_slot(td)
     assert slot == {'lm_info'       : 'INFO',
                     'cores_per_node': 2,
                     'gpus_per_node' : 1,
@@ -244,10 +244,10 @@ def test_nonmpi_unit_with_continuous_scheduler(mocked_init,
                                         'lfs'     : {'size': 4096,'path': 'abc'} 
                                         }]}
 
-    # Allocate CUD with no lfs requirement
-    cud = nompi()
-    cud['lfs_per_process'] = 0
-    slot = component._allocate_slot(cud)
+    # Allocate TD with no lfs requirement
+    td = nompi()
+    td['lfs_per_process'] = 0
+    slot = component._allocate_slot(td)
     assert slot == {'lm_info'       : 'INFO',
                     'gpus_per_node' : 1,
                     'cores_per_node': 2,
@@ -288,10 +288,10 @@ def test_nonmpi_unit_with_continuous_scheduler(mocked_init,
                                 'lfs'  : {'size': 0,'path': 'abc'}}
                                ]
 
-    # Allocate CUD which cannot fit on available resources
-    cud = nompi()
-    cud['lfs_per_process'] = 5120
-    slot = component._allocate_slot(cud)
+    # Allocate TD which cannot fit on available resources
+    td = nompi()
+    td['lfs_per_process'] = 5120
+    slot = component._allocate_slot(td)
     assert slot == None
 
     # Deallocate third node
@@ -338,11 +338,11 @@ def test_nonmpi_unit_with_continuous_scheduler(mocked_init,
                                 'lfs'  : {'size': 0, 'path': 'abc'}
                                 }]
 
-    # Allocate CUD to run multi threaded application
-    cud = nompi()
-    cud['cpu_processes'] = 1
-    cud['cpu_threads']   = 2
-    slot = component._allocate_slot(cud)
+    # Allocate TD to run multi threaded application
+    td = nompi()
+    td['cpu_processes'] = 1
+    td['cpu_threads']   = 2
+    slot = component._allocate_slot(td)
     assert slot == {'lm_info'       : 'INFO',
                     'gpus_per_node' : 1,
                     'cores_per_node': 2,
@@ -388,12 +388,12 @@ def test_nonmpi_unit_with_continuous_scheduler(mocked_init,
     # Deallocate slot
     component._release_slot(slot)
 
-    # Allocate CUD to run multi process, non-mpi application
-    cud = nompi()
-    cud['cpu_processes']   = 2
-    cud['cpu_threads']     = 1
-    cud['lfs_per_process'] = 1024
-    slot = component._allocate_slot(cud)
+    # Allocate TD to run multi process, non-mpi application
+    td = nompi()
+    td['cpu_processes']   = 2
+    td['cpu_threads']     = 1
+    td['lfs_per_process'] = 1024
+    slot = component._allocate_slot(td)
 
     assert slot == {'lm_info'       : 'INFO',
                     'gpus_per_node' : 1,

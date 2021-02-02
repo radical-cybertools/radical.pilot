@@ -42,12 +42,12 @@ class SortWorker (threading.Thread):
 
                 else command == COMMAND_SORT :
 
-                    cu = data
-                    cu.state = 'SORTING'
+                    t = data
+                    t.state = 'SORTING'
 
-                    rpu.prof('get', msg="schedule_queue to scheduler (%s)" % cu.state, uid=cu['_id'])
+                    rpu.prof('get', msg="schedule_queue to scheduler (%s)" % t.state, uid=t['_id'])
 
-                    for _cu in rpu.blowup (cu=cu, self._name):
+                    for _cu in rpu.blowup (t=t, self._name):
                         self.sort (_cu)
 
                 else:
@@ -64,56 +64,56 @@ class SortWorker (threading.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def sort (cu):
+    def sort (t):
 
         try :
 
             # set state to the one this component is operating on, and
             # send state update
-            cu.state = COMPONENT_OPERATION
-            for _cu in blowup (cu, 'update_queue'):
-                rpu.prof (uid=cu.uid, 'put', 'SortWorker to update_queue (SORTING)')
+            t.state = COMPONENT_OPERATION
+            for _cu in blowup (t, 'update_queue'):
+                rpu.prof (uid=t.uid, 'put', 'SortWorker to update_queue (SORTING)')
                 self._update_queue.put (_cu)
 
             # do the deed
-            if not cu.counter % 2:
+            if not t.counter % 2:
 
                 # set the state...
-                cu.state = PENDING_EVEN
+                t.state = PENDING_EVEN
                 rpu.prof('get_cmd', msg="schedule_queue to scheduler (%s)" % command)
                 
                 # ... push state update ...
-                for _cu in blowup (cu, 'pending_output_even'):
-                    rpu.prof (uid=cu.uid, 'put', 'SortWorker to update_queue (PENDING_EVEN)')
+                for _cu in blowup (t, 'pending_output_even'):
+                    rpu.prof (uid=t.uid, 'put', 'SortWorker to update_queue (PENDING_EVEN)')
                     self._update_queue.put (_cu)
 
                 # ... and push toward next component.
-                for _cu in blowup (cu, 'output_queue_even'):
-                    rpu.prof (uid=cu.uid, 'put', 'SortWorker to output_queue_even (PENDING_EVEN)')
+                for _cu in blowup (t, 'output_queue_even'):
+                    rpu.prof (uid=t.uid, 'put', 'SortWorker to output_queue_even (PENDING_EVEN)')
                     self._output_queue_even.put (_cu)
 
             else:
 
                 # set the state...
-                cu.state = PENDING_ODD
+                t.state = PENDING_ODD
 
                 # ... push state update ...
-                for _cu in blowup (cu, 'pending_output_odd'):
-                    rpu.prof (uid=cu.uid, 'put', 'SortWorker to update_queue (PENDING_ODD)')
+                for _cu in blowup (t, 'pending_output_odd'):
+                    rpu.prof (uid=t.uid, 'put', 'SortWorker to update_queue (PENDING_ODD)')
                     self._update_queue.put (_cu)
 
                 # ... and push toward next component.
-                for _cu in blowup (cu, 'output_queue_odd'):
-                    rpu.prof (uid=cu.uid, 'put', 'SortWorker to output_queue_odd (PENDING_ODD)')
+                for _cu in blowup (t, 'output_queue_odd'):
+                    rpu.prof (uid=t.uid, 'put', 'SortWorker to output_queue_odd (PENDING_ODD)')
                     self._output_queue_odd.put (_cu)
 
 
         except Exception as e:
 
-            # on failuer, just push a state update -- don't advance the unit
-            cu.state = FAILED
-            for _cu in blowup (cu, 'update_queue'):
-                rpu.prof (uid=cu.uid, 'put', 'SortWorker to update_queue (FAILED)')
+            # on failuer, just push a state update -- don't advance the task
+            t.state = FAILED
+            for _cu in blowup (t, 'update_queue'):
+                rpu.prof (uid=t.uid, 'put', 'SortWorker to update_queue (FAILED)')
                 self._update_queue.put (_cu)
 
 #

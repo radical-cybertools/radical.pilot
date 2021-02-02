@@ -14,14 +14,14 @@ given basic application.
    :maxdepth: 1
 
    00_getting_started.rst
-   01_unit_details.rst
-   02_failing_units.rst
+   01_task_details.rst
+   02_failing_tasks.rst
    03_multiple_pilots.rst
    04_scheduler_selection.rst
-   05_unit_input_data.rst
-   06_unit_output_data.rst
-   07_shared_unit_data.rst
-   08_unit_environment.rst
-   09_mpi_units.rst
+   05_task_input_data.rst
+   06_task_output_data.rst
+   07_shared_task_data.rst
+   08_task_environment.rst
+   09_mpi_tasks.rst
    10_pre_and_post_exec.rst
-   11_containerized_compute_units.rst
+   11_containerized_tasks.rst

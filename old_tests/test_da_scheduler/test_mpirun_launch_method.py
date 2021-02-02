@@ -1,7 +1,7 @@
 import os
 import shutil
 import errno
-import unittest
+import tasktest
 import json
 
 import radical.utils as ru
@@ -11,11 +11,11 @@ from radical.pilot.agent.lm.mpirun import MPIRun
 try:
     import mock
 except ImportError:
-    from unittest import mock
+    from tasktest import mock
 
 session_id = 'rp.session.test.mpirun'
 
-class TestMPIRUNlaunchMethod(unittest.TestCase):
+class TestMPIRUNlaunchMethod(tasktest.TestCase):
 
 
     def setUp(self):
@@ -47,7 +47,7 @@ class TestMPIRUNlaunchMethod(unittest.TestCase):
                                    "stderr": None,
                                    "stdout": None
                                   }
-        self._cu['uid'] = 'unit.000000'
+        self._cu['uid'] = 'task.000000'
         self._cu['slots'] = {'nodes': [{'name': 'node1',
                                         'uid': 1,
                                         'core_map': [[0],[1]],
@@ -90,5 +90,5 @@ class TestMPIRUNlaunchMethod(unittest.TestCase):
 #
 if __name__ == '__main__':
 
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestMPIRUNlaunchMethod)
-    unittest.TextTestRunner(verbosity=2).run(suite)
+    suite = tasktest.TestLoader().loadTestsFromTestCase(TestMPIRUNlaunchMethod)
+    tasktest.TextTestRunner(verbosity=2).run(suite)

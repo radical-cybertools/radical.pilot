@@ -13,7 +13,7 @@ BLACKLIST  = ['PS1', 'LS_COLORS', '_']
 # Identical task `pre_exec_env` settings will result in the same environment
 # settings, so we cache those environments here.  We rely on a hash to ensure
 # `pre_exec_env` identity.  Note that this assumes that settings do not depend
-# on, say, the unit ID or similar, which needs very clear and prominent
+# on, say, the task ID or similar, which needs very clear and prominent
 # documentation.  Caching can be turned off by adding a unique noop string to
 # the `pre_exec_env` list - but we probably also add a config flag if that
 # becomes a common issue.
