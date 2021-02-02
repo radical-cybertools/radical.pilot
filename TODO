@@ -251,3 +251,7 @@ term iv
 
   - Exception in SA startup causes hang (agent_0 does not die)
 
+
+  - `PRTE` switches in scheduler should become `partition` switches, where the
+    partitions are defined by the RM
+

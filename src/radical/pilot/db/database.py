@@ -462,6 +462,7 @@ class DBSession(object):
                 self._log.exception('pymongo error: %s' % e.details)
                 raise RuntimeError ('pymongo error: %s' % e.details) from e
 
+
     # --------------------------------------------------------------------------
     #
     def tailed_find(self, collection, pattern, fields, cb, cb_data=None):

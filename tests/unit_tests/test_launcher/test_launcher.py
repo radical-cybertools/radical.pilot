@@ -97,10 +97,10 @@ class TestLauncher(TestCase):
                                          'candidate_hosts': None,
                                          }
                    }
-        ret = component._prepare_pilot(resource, rcfg, pilot, {})
+        ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')
         self.assertEqual(ret['jd'].name, 'pilot.0000')
         self.assertEqual(ret['jd'].environment['RADICAL_BASE'],
-               str(session._get_resource_sandbox(pilot)))
+                         str(session._get_resource_sandbox(pilot)))
 
         pilot    = {
                         'uid'         : 'pilot.0000',
@@ -116,7 +116,7 @@ class TestLauncher(TestCase):
                                          'candidate_hosts': None,
                                          }
                    }
-        ret = component._prepare_pilot(resource, rcfg, pilot, {})
+        ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')
         self.assertEqual(ret['jd'].name, 'bar')
 
         # test resource config parameter `system_architecture`
@@ -127,10 +127,12 @@ class TestLauncher(TestCase):
         # value for "ornl.summit" is 4
         resource = 'ornl.summit'
         rcfg = configs.ornl.summit
-        ret = component._prepare_pilot(resource, rcfg, pilot, {})
+        ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')
         self.assertEqual(ret['jd'].system_architecture['smt'], 4)
 
 
+# ------------------------------------------------------------------------------
+#
 if __name__ == '__main__':
 
     tc = TestLauncher()
