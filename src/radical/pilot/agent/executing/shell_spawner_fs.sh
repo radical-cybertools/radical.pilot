@@ -16,22 +16,22 @@ export HISTIGNORE
 # It functions as follows:
 #
 #  - the Python shell execution component creates a runnable shell script in the
-#    unit sandbox (`unit.uid/unit.uid.sh`)
-#  - the unit ID is sent to this script via a named pipe
+#    task sandbox (`task.uid/task.uid.sh`)
+#  - the task ID is sent to this script via a named pipe
 #  - the script will listen on the named pipe, for three types of lines
-#      EXEC unit.uid
-#      KILL unit.uid
+#      EXEC task.uid
+#      KILL task.uid
 #      EXIT
 #  - if a new ID is incoming (EXEC), it will run the respective script in the
-#    background.  A pid-to-unit id map is stored on the file system, under
+#    background.  A pid-to-task id map is stored on the file system, under
 #    ($WORK/pids/[pid].uid and $WORK/pids/[uid].pid)
 #  - on a KILL request, kill the respective process (if it was started).
 #    No guarantees are made on the kill - we just send SIGKILL and hope
 #    for the best
-#  - the EXIT request will obviously call for an exit - running units will not
+#  - the EXIT request will obviously call for an exit - running tasks will not
 #    be killed.
 #  - if this script dies or exits, it is the responsibility of the Python layer
-#    to kill all remanining units - their PIDs can be found in the map dir.
+#    to kill all remanining tasks - their PIDs can be found in the map dir.
 
 
 # ------------------------------------------------------------------------------
@@ -134,7 +134,7 @@ setup(){
     test -e "$PIPE_INF" || error "missing output pipe $PIP_OUT"
     test -f "$LOG"      || error "missing logfile $LOG"
 
-    # create location to manage pid to unit.uid maps
+    # create location to manage pid to task.uid maps
     \mkdir -p "$MAP" || error "cannot create mapdir"
 
 }

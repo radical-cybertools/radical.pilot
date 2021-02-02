@@ -8,7 +8,7 @@ import threading         as mt
 
 import radical.utils     as ru
 
-from .. import Session, ComputeUnitDescription
+from .. import Session, TaskDescription
 from .. import utils     as rpu
 from .. import states    as rps
 from .. import constants as rpc
@@ -223,8 +223,8 @@ class Master(rpu.Component):
         ru.rec_makedir(sbox)
         ru.write_json(cfg, fname)
 
-        # grab default settings via CUD construction
-        descr_complete = ComputeUnitDescription(descr).as_dict()
+        # grab default settings via TD construction
+        descr_complete = TaskDescription(descr).as_dict()
 
         # create task dict
         td = copy.deepcopy(descr_complete)
@@ -233,12 +233,12 @@ class Master(rpu.Component):
         task = dict()
         task['description']       = td
         task['state']             = rps.AGENT_STAGING_INPUT_PENDING
-        task['type']              = 'unit'
+        task['type']              = 'task'
         task['umgr']              = 'umgr.0000'  # FIXME
         task['pilot']             = os.environ['RP_PILOT_ID']
         task['uid']               = uid
-        task['unit_sandbox_path'] = sbox
-        task['unit_sandbox']      = 'file://localhost/' + sbox
+        task['task_sandbox_path'] = sbox
+        task['task_sandbox']      = 'file://localhost/' + sbox
         task['pilot_sandbox']     = cfg.base
         task['session_sandbox']   = cfg.base + '/../'
         task['resource_sandbox']  = cfg.base + '/../../'

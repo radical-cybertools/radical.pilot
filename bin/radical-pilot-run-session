@@ -33,14 +33,14 @@ def run_record(rec):
         pmgr    = rp.PilotManager(session=session)
         rep.ok('pilot manager: %s' % pmgr.uid)
 
-        umgr    = rp.UnitManager(session=session)
-        rep.ok('unit manager : %s' % umgr.uid)
+        tmgr    = rp.TaskManager(session=session)
+        rep.ok('task manager : %s' % tmgr.uid)
 
         rep.header('create pilots')
         pds = list()
         for pd_json in glob.glob("%s/pilot.*.json" % rec):
             pd_dict = ru.read_json(pd_json)
-            pd      = rp.ComputePilotDescription()
+            pd      = rp.PilotDescription()
             for key, val in pd_dict.items():
                 pd.set_attribute(key, val)
             pds.append(pd)
@@ -49,34 +49,34 @@ def run_record(rec):
         rep.ok('pilots submitted')
 
         rep.header('using pilots')
-        umgr.add_pilots(pilots)
+        tmgr.add_pilots(pilots)
 
         batch = 0
         while True:
-            ud_json_list = glob.glob("%s/unit.*.batch.%03d.json" % (rec, batch))
+            ud_json_list = glob.glob("%s/task.*.batch.%03d.json" % (rec, batch))
 
             if not ud_json_list:
-                rec.header('no more unit batches found')
+                rec.header('no more task batches found')
                 break
 
-            rep.header('submit units [batch %d]' % batch)
+            rep.header('submit tasks [batch %d]' % batch)
             uds = list()
             for ud_json in ud_json_list:
                 ud_dict = ru.read_json(ud_json)
-                ud      = rp.ComputeUnitDescription()
+                ud      = rp.TaskDescription()
                 for key, val in ud_dict.items():
                     ud.set_attribute(key, val)
                 uds.append(ud)
                 args = ud_dict.get('arguments', [])
                 rep.info('%s  %s [%3d cores]' % (ud.executable, ' '.join(args), ud.cores))
-            units = umgr.submit_units(uds)
-            rep.ok('units submitted  [batch %d]' % batch)
+            tasks = tmgr.submit_tasks(uds)
+            rep.ok('tasks submitted  [batch %d]' % batch)
     
-            rep.info('wait for units [batch %d]' % batch)
-            umgr.wait_units()
-            rep.ok('units all done   [batch %d]' % batch)
+            rep.info('wait for tasks [batch %d]' % batch)
+            tmgr.wait_tasks()
+            rep.ok('tasks all done   [batch %d]' % batch)
     
-            for u in units:
+            for u in tasks:
                 rep.info("%s (@ %s) state %s, exit %s" \
                     % (u.uid, u.execution_locations, u.state, u.exit_code))
 

@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
         report.header('submit pilots')
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session=session)
 
         total_cores = config[resource]['cores']
@@ -64,7 +64,7 @@ if __name__ == '__main__':
         part2_cores = total_cores - part1_cores
 
         if not part1_cores * part2_cores:
-            raise ValueError('insufficient cores for partinioning [%d, %d]' 
+            raise ValueError('insufficient cores for partinioning [%d, %d]'
                              % (part1_cores, part2_cores))
 
         # Define an [n]-core local pilot that runs for [x] minutes
@@ -77,56 +77,56 @@ if __name__ == '__main__':
                    'access_schema': config[resource]['schema'],
 
                    'agent_cores'  : 'automatic',  # auto-add to partition sizes
-                   'partitions'   : [{'config': 'aprun', 'cores' : part1_cores}, 
+                   'partitions'   : [{'config': 'aprun', 'cores' : part1_cores},
                                      {'config': 'orte',  'cores' : part2_cores}]
                   }
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
         print('pilot info: %d cores (%d + %d)'
-               % (pilot.cores, pilot.partitions[0].cores, 
+               % (pilot.cores, pilot.partitions[0].cores,
                   pilot.partitions[1].cores))
 
-        report.header('submit units')
+        report.header('submit tasks')
 
-        # Register the ComputePilot in a UnitManager object.
-        umgr = rp.UnitManager(session=session)
-        umgr.add_pilots(pilot)
+        # Register the Pilot in a TaskManager object.
+        tmgr = rp.TaskManager(session=session)
+        tmgr.add_pilots(pilot)
 
-        # Create a workload of ComputeUnits.
-        # Each compute unit runs '/bin/date'.
+        # Create a workload of Tasks.
+        # Each task runs '/bin/date'.
 
-        n = 256  # number of units to run
-        report.info('create %d unit description(s)\n\t' % n)
+        n = 256  # number of tasks to run
+        report.info('create %d task description(s)\n\t' % n)
 
-        cuds = list()
+        tds = list()
         for i in range(0, n):
 
-            # create a new CU description, and fill it.
+            # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.ComputeUnitDescription()
-            cud.executable = '/bin/date'
-            cuds.append(cud)
+            td = rp.TaskDescription()
+            td.executable = '/bin/date'
+            tds.append(td)
             report.progress()
         report.ok('>>ok\n')
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(cuds)
+        # assigning Tasks to the Pilots.
+        tasks = tmgr.submit_tasks(tds)
 
-        # Wait for all compute units to reach
+        # Wait for all tasks to reach
         # a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
-        umgr.wait_units()
+        tmgr.wait_tasks()
 
         report.info('\n')
-        for unit in units:
+        for task in tasks:
             report.plain('  * %s [%3d - %4s] : %s @ %s\n'
-                    % (unit.uid, unit.exit_code, unit.state[:4],
-                       unit.partition, unit.pilot))
+                    % (task.uid, task.exit_code, task.state[:4],
+                       task.partition, task.pilot))
 
 
         # ----------------------------------------------------------------------
@@ -137,7 +137,7 @@ if __name__ == '__main__':
                                             'config' : 'aprun',
                                             'cores'  : part2_cores}]})
 
-        print('run more units ...')
+        print('run more tasks ...')
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

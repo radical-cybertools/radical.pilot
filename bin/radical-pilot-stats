@@ -41,9 +41,9 @@ _EVENT_ENCODING = {
             rp.CANCELED                :  6,
             rp.FAILED                  :  7
         },
-        'umgr': {
+        'tmgr': {
         },
-        'unit': {
+        'task': {
             rp.NEW                          :  1,
             rp.SCHEDULING                   :  2,
             rp.PENDING_INPUT_STAGING        :  3,
@@ -74,7 +74,7 @@ _EVENT_ENCODING = {
 # PENDING_ACTIVE
 # ACTIVE
 #
-# # ComputeUnit States
+# # Task States
 # NEW
 # PENDING_INPUT_TRANSFER
 # TRANSFERRING_INPUT
@@ -218,12 +218,12 @@ def sort_session (db, session, cachedir) :
     for doc in docs['pilot'] :
         print("  %s" %  doc['_id'])
 
-    print("unit manager")
-    for doc in docs['umgr'] :
+    print("task manager")
+    for doc in docs['tmgr'] :
         print("  %s" %  doc['_id'])
 
-    print("units")
-    for doc in docs['unit'] :
+    print("tasks")
+    for doc in docs['task'] :
         print("  %s" %  doc['_id'])
 
 
@@ -266,16 +266,16 @@ def hist_session (db, session, cachedir) :
 # ------------------------------------------------------------------------------
 def get_stats (docs, events, slothist) :
 
-    n_units               = 0
+    n_tasks               = 0
     n_pilots              = 0
-    unit_state_durations  = dict()
+    task_state_durations  = dict()
     pilot_stats           = dict()
-    units                 = dict()
+    tasks                 = dict()
 
     pilot_stats['pilots'] = dict()
 
-    for cu in docs['unit'] :
-        units[str(cu['_id'])] = cu
+    for task in docs['task'] :
+        tasks[str(task['_id'])] = task
 
     for doc in docs['pilot'] :
 
@@ -285,8 +285,8 @@ def get_stats (docs, events, slothist) :
 
         pilot_info['resource']     = doc['description']['resource']
         pilot_info['cores']        = doc['description']['cores']
-        pilot_info['n_units']      = 0
-        pilot_info['unit_states']  = dict()
+        pilot_info['n_tasks']      = 0
+        pilot_info['task_states']  = dict()
         pilot_info['pilot_states'] = list()
 
         # we assume that states are time-ordered
@@ -300,28 +300,28 @@ def get_stats (docs, events, slothist) :
             state = s
             start = ts
 
-        for cu in doc['unit_ids'] :
-            uid                    = str(cu)
-            n_units               += 1
-            pilot_info['n_units'] += 1
+        for task in doc['task_ids'] :
+            uid                    = str(task)
+            n_tasks               += 1
+            pilot_info['n_tasks'] += 1
 
-            if  not uid in units :
-                print('unknonwn unit %s' % uid)
+            if  not uid in tasks :
+                print('unknonwn task %s' % uid)
                 sys.exit ()
 
-            unit_doc = units[uid]
-            state    = unit_doc['statehistory'][0]['state']
-            start    = unit_doc['statehistory'][0]['timestamp']
+            task_doc = tasks[uid]
+            state    = task_doc['statehistory'][0]['state']
+            start    = task_doc['statehistory'][0]['timestamp']
 
-            for t in unit_doc['statehistory'][1:] :
+            for t in task_doc['statehistory'][1:] :
                 ts = t['timestamp']
                 s  = t['state']
 
-                if not state in pilot_info['unit_states'] :
-                    pilot_info['unit_states'][state]        = dict()
-                    pilot_info['unit_states'][state]['dur'] = list()
+                if not state in pilot_info['task_states'] :
+                    pilot_info['task_states'][state]        = dict()
+                    pilot_info['task_states'][state]['dur'] = list()
 
-                pilot_info['unit_states'][state]['dur'].append (ru.time_diff(start, ts))
+                pilot_info['task_states'][state]['dur'].append (ru.time_diff(start, ts))
                 state = s
                 start = ts
 
@@ -346,13 +346,13 @@ def get_stats (docs, events, slothist) :
         pilot_info['cpu_used']    = pilot_busy
         pilot_info['utilization'] = pilot_busy * 100 / pilot_runtime
 
-        for s in pilot_info['unit_states'] :
+        for s in pilot_info['task_states'] :
             import numpy
-            array = numpy.array (pilot_info['unit_states'][s]['dur'])
-            pilot_info['unit_states'][s]['num' ] = len        (array)
-            pilot_info['unit_states'][s]['mean'] = numpy.mean (array)
-            pilot_info['unit_states'][s]['std' ] = numpy.std  (array)
-            pilot_info['unit_states'][s]['dur' ] = list()
+            array = numpy.array (pilot_info['task_states'][s]['dur'])
+            pilot_info['task_states'][s]['num' ] = len        (array)
+            pilot_info['task_states'][s]['mean'] = numpy.mean (array)
+            pilot_info['task_states'][s]['std' ] = numpy.std  (array)
+            pilot_info['task_states'][s]['dur' ] = list()
 
 
         pilot_stats['pilots'][pid] = pilot_info
@@ -371,32 +371,32 @@ def stat_session (db, session, cachedir) :
 
     stats      = get_stats (docs, events, slothists)
 
-  # session_df, pilot_df, unit_df = rpu.get_session_frames (db, session, cachedir)
+  # session_df, pilot_df, task_df = rpu.get_session_frames (db, session, cachedir)
   #
-  # print unit_df
+  # print task_df
   # sys.exit ()
 
-    t_x_start  = None   # first unit started executing
-    t_y_start  = None   # last  unit started executing
-    t_x_stop   = None   # last unit finished executing
-    unit_cores = dict() # sum of core counts from all units per pilot
+    t_x_start  = None   # first task started executing
+    t_y_start  = None   # last  task started executing
+    t_x_stop   = None   # last task finished executing
+    task_cores = dict() # sum of core counts from all tasks per pilot
 
-    for unit in docs['unit'] :
-        if not t_x_start : t_x_start =     unit['started']
-        else             : t_x_start = min(unit['started'],  t_x_start)
-        if not t_y_start : t_y_start =     unit['started']
-        else             : t_y_start = max(unit['started'],  t_y_start)
-        if not t_x_stop  : t_x_stop  =     unit['finished']
-        else             : t_x_stop  = max(unit['finished'], t_x_stop )
+    for task in docs['task'] :
+        if not t_x_start : t_x_start =     task['started']
+        else             : t_x_start = min(task['started'],  t_x_start)
+        if not t_y_start : t_y_start =     task['started']
+        else             : t_y_start = max(task['started'],  t_y_start)
+        if not t_x_stop  : t_x_stop  =     task['finished']
+        else             : t_x_stop  = max(task['finished'], t_x_stop )
 
-        pid = unit.get ('pilot', 'None')
-        if not pid in unit_cores : unit_cores[pid]  = unit['description'].get ('cores', 1)
-        else                     : unit_cores[pid] += unit['description'].get ('cores', 1)
+        pid = task.get ('pilot', 'None')
+        if not pid in task_cores : task_cores[pid]  = task['description'].get ('cores', 1)
+        else                     : task_cores[pid] += task['description'].get ('cores', 1)
 
     t_0  = docs['session']['created']  # session started (absolute time)
     t_h  = t_x_start - t_0             # session start 'til first execution
-    t_x  = t_x_stop  - t_x_start       # first start 'til last stop  of unit execution
-    t_xy = t_y_start - t_x_start       # first start 'til last start of unit execution
+    t_x  = t_x_stop  - t_x_start       # first start 'til last stop  of task execution
+    t_xy = t_y_start - t_x_start       # first start 'til last start of task execution
 
     session_name = docs['session']['name']
 
@@ -416,20 +416,20 @@ def stat_session (db, session, cachedir) :
 
         print("  pilot [%s] [%s]"       % (pid, pilot['resource']))
         print("      cores       : %6d" % pilot['cores'])
-        print("      units       : %6d" % pilot['n_units'])
-        print("      units*cores : %6s" % unit_cores.get (pid, '-'))
+        print("      tasks       : %6d" % pilot['n_tasks'])
+        print("      tasks*cores : %6s" % task_cores.get (pid, '-'))
 
-        if unit_cores.get (pid, 0) <= pilot['cores'] :
-            urate = pilot['n_units'] / t_xy
-            print("      unit-rate   : %8.1f/sec" % urate)
+        if task_cores.get (pid, 0) <= pilot['cores'] :
+            urate = pilot['n_tasks'] / t_xy
+            print("      task-rate   : %8.1f/sec" % urate)
 
         print("      utilization : %8.1f%%" % pilot['utilization'])
         print("      pilot states:")
         for ps in pilot['pilot_states'] :
             print("        state %-18s : %10.1fs" % (ps['state'], ps['duration']))
-        print("      unit states :")
-        for us  in pilot['unit_states'] :
-            data = pilot['unit_states'][us]
+        print("      task states :")
+        for us  in pilot['task_states'] :
+            data = pilot['task_states'][us]
             print("        state %-18s : %10.1fs  +/- %8.1fs" % (us, data['mean'], data['std']))
 
 
@@ -502,7 +502,7 @@ def plot_session (db, session, cachedir, term) :
     maxslots   = 0
     nodesize   = 0
     slots      = list()
-    nunits     = list()
+    ntasks     = list()
     hosts      = list()
     delete_me  = list()
     maxqueue   = 0
@@ -540,7 +540,7 @@ def plot_session (db, session, cachedir, term) :
         slotnum  = len(pilot['nodes'] * pilot['cores_per_node'])
         maxslots = max(slotnum,maxslots)
         slots.append (slotnum)
-        nunits.append (stats['pilots'][pid]['n_units'])
+        ntasks.append (stats['pilots'][pid]['n_tasks'])
 
         with open ("/tmp/rp.%s.pilot.states.%s.dat" % (session, pid), "w") as dat :
             for event in pilot['statehistory'] :
@@ -564,27 +564,27 @@ def plot_session (db, session, cachedir, term) :
             delete_me.append (dat.name)
 
 
-        with open ("/tmp/rp.%s.unit.states.%s.dat" % (session, pid), "w") as dat :
+        with open ("/tmp/rp.%s.task.states.%s.dat" % (session, pid), "w") as dat :
 
-            for unit_id in pilot['unit_ids'] :
+            for task_id in pilot['task_ids'] :
 
-                for unit in docs['unit'] :
-                    if  unit_id == str(unit['_id']) :
-                        for event in unit['statehistory'] :
-                            etag    = _EVENT_ENCODING['unit'].get (event['state'], 0)
+                for task in docs['task'] :
+                    if  task_id == str(task['_id']) :
+                        for event in task['statehistory'] :
+                            etag    = _EVENT_ENCODING['task'].get (event['state'], 0)
                             seconds = ru.time_diff (start, event['timestamp'])
                             maxtime = max (maxtime, seconds)
                             dat.write (" %10.2f  %-25s\n" % (seconds, etag))
                         dat.write ("\n")
             delete_me.append (dat.name)
 
-        with open ("/tmp/rp.%s.unit.callbacks.%s.dat" % (session, pid), "w") as dat :
-            for unit_id in pilot['unit_ids'] :
-                for unit in docs['unit'] :
-                    if  unit_id == str(unit['_id']) :
-                        if  'callbackhistory' in unit :
-                            for event in unit['callbackhistory'] :
-                                etag    = _EVENT_ENCODING['unit'].get (event['state'], 0)
+        with open ("/tmp/rp.%s.task.callbacks.%s.dat" % (session, pid), "w") as dat :
+            for task_id in pilot['task_ids'] :
+                for task in docs['task'] :
+                    if  task_id == str(task['_id']) :
+                        if  'callbackhistory' in task :
+                            for event in task['callbackhistory'] :
+                                etag    = _EVENT_ENCODING['task'].get (event['state'], 0)
                                 seconds = ru.time_diff (start, event['timestamp'])
                                 maxtime = max (maxtime, seconds)
                                 dat.write (" %10.2f  %-25s\n" % (seconds, etag))
@@ -603,11 +603,11 @@ def plot_session (db, session, cachedir, term) :
 
             for event in events :
                 if  event[0] == 'state' and \
-                    event[1] == 'unit'  and \
+                    event[1] == 'task'  and \
                     event[3] ==  pid    :
                     uid = event[2]
 
-                    if  _EVENT_ENCODING['unit'][event[5]] > _EVENT_ENCODING['unit'][rp.NEW] :
+                    if  _EVENT_ENCODING['task'][event[5]] > _EVENT_ENCODING['task'][rp.NEW] :
                         if  not uid in queued :
                             queued.append (uid)
                             seconds     = ru.time_diff (start, event[4])
@@ -615,7 +615,7 @@ def plot_session (db, session, cachedir, term) :
                             maxqueue    = max (maxqueue, queue_size)
                             dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
 
-                    if  _EVENT_ENCODING['unit'][event[5]] > _EVENT_ENCODING['unit'][rp.EXECUTING] :
+                    if  _EVENT_ENCODING['task'][event[5]] > _EVENT_ENCODING['task'][rp.EXECUTING] :
                         if  not uid in dequeued :
                             dequeued.append (uid)
                             seconds     = ru.time_diff (start, event[4])
@@ -703,9 +703,9 @@ def plot_session (db, session, cachedir, term) :
     for idx,pid in enumerate(pids) :
         cmd +=    "%d "     % (slots[idx])
     cmd +=        "\"'"
-    cmd +=        " -e  'unitnum_list=\""
+    cmd +=        " -e  'tasknum_list=\""
     for idx,pid in enumerate(pids) :
-        cmd +=    "%d "     % (nunits[idx])
+        cmd +=    "%d "     % (ntasks[idx])
     cmd +=        "\"'"
     cmd +=        " -e  nodesize=%d "       % nodesize
     cmd +=        " -e 'session=\"%s\"' "   % session
@@ -714,7 +714,7 @@ def plot_session (db, session, cachedir, term) :
     cmd +=        " -e 'plottitle=\"RADICAL-Pilot\\n============="
     if plotname :
         cmd +=    "\\n[%s]" % plotname
-    cmd +=        "\\nPilot and Unit Event Traces\\nSession %s\"' " % session_name
+    cmd +=        "\\nPilot and Task Event Traces\\nSession %s\"' " % session_name
     cmd +=        " -e  pilot_num=%d "       % len(pids)
     cmd +=        " -e  'pilot_name_list=\""
     for idx,pid in enumerate(pids) :
@@ -788,7 +788,7 @@ def plot_session (db, session, cachedir, term) :
                 if  pid != this_pid :
                     continue
 
-                if  otype == 'unit' :
+                if  otype == 'task' :
 
                     if 'slots' in doc :
                         slots = doc['slots']
@@ -823,12 +823,12 @@ def plot_session (db, session, cachedir, term) :
 
         this_pid = str(pilot['_id'])
 
-        with open ("/tmp/rp.%s.pilot.units.%s.sdat" % (session, pid), "w") as dat :
+        with open ("/tmp/rp.%s.pilot.tasks.%s.sdat" % (session, pid), "w") as dat :
 
             entity_states = dict()
             idxs          = list()
 
-            # index the units by the start of their EXECUTING state
+            # index the tasks by the start of their EXECUTING state
             for e in events :
 
                 etype = e[0]
@@ -842,7 +842,7 @@ def plot_session (db, session, cachedir, term) :
                 if  pid != this_pid :
                     continue
 
-                if  otype == 'unit' :
+                if  otype == 'task' :
                     if  state in [rp.EXECUTING] :
                         idxs.append (uid)
 
@@ -864,7 +864,7 @@ def plot_session (db, session, cachedir, term) :
                     if  pid != this_pid :
                         continue
 
-                    if  otype == 'unit' :
+                    if  otype == 'task' :
 
                         if 'slots' in doc :
                             slots = doc['slots']
@@ -906,7 +906,7 @@ def handle_session (db, mode, dbname, session, cachedir, pname) :
     cnames.append ("%s.pm" % session)
     cnames.append ("%s.p"  % session)
     cnames.append ("%s.um" % session)
-    cnames.append ("%s.cu" % session)
+    cnames.append ("%s.t"  % session)
 
     for name in cnames :
 

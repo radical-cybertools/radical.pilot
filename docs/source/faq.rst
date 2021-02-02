@@ -52,8 +52,8 @@ session entries in a bulk.
 Error "Permission denied (publickey,keyboard-interactive)." in AGENT.STDERR or STDERR
 -------------------------------------------------------------------------------------
 
-The AGENT.STDERR file or the STDERR file in the unit directory shows the
-following error and the pilot or unit never starts running:
+The AGENT.STDERR file or the STDERR file in the task directory shows the
+following error and the pilot or task never starts running:
 
 .. code-block:: bash
 
