@@ -52,7 +52,7 @@ class JSRUN(LaunchMethod):
     #
     def _create_resource_set_file(self, slots, uid, sandbox):
         """
-        This method takes as input a CU slots and creates the necessary
+        This method takes as input a Task slots and creates the necessary
         resource set file. This resource set file is then used by jsrun to
         place and execute tasks on nodes.
 
@@ -76,7 +76,7 @@ class JSRUN(LaunchMethod):
         ----------
         slots : List of dictionaries.
 
-            The slots that the unit will be placed. A slot has the following
+            The slots that the task will be placed. A slot has the following
             format:
 
             {"nodes"         : [{"name"    : "a",
@@ -91,8 +91,8 @@ class JSRUN(LaunchMethod):
              "lm_info"       : "INFO",
             }
 
-        uid     : unit ID (string)
-        sandbox : unit sandbox (string)
+        uid     : task ID (string)
+        sandbox : task sandbox (string)
         mpi     : MPI or not (bool, default: False)
 
         """
@@ -127,15 +127,15 @@ class JSRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        uid          = cu['uid']
-        slots        = cu['slots']
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_args    = cud.get('arguments')   or list()
+        uid          = t['uid']
+        slots        = t['slots']
+        td           = t['description']
+        task_exec    = td['executable']
+        task_args    = td.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
-        task_sandbox = cu['unit_sandbox_path']
+        task_sandbox = t['task_sandbox_path']
 
         assert(slots), 'missing slots for %s' % uid
 
@@ -145,7 +145,7 @@ class JSRUN(LaunchMethod):
         else          : task_command = task_exec
 
         env_string = ''
-      # task_env   = cud.get('environment') or dict()
+      # task_env   = td.get('environment') or dict()
       # env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
       # env_string = ' '.join(['-E "%s"' % var for var in env_list])
       #
@@ -161,8 +161,8 @@ class JSRUN(LaunchMethod):
         # CUDA without MPI, use jsrun --smpiargs="off"
         #
         # We only set this for CUDA tasks
-        if 'cuda' in cud.get('gpu_thread_type', '').lower():
-            if 'mpi' in cud.get('gpu_process_type', '').lower():
+        if 'cuda' in td.get('gpu_thread_type', '').lower():
+            if 'mpi' in td.get('gpu_process_type', '').lower():
                 smpiargs = '--smpiargs="-gpu"'
             else:
                 smpiargs = '--smpiargs="off"'

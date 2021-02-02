@@ -1,7 +1,7 @@
 import os
 import shutil
 import errno
-import unittest
+import tasktest
 import json
 
 import radical.utils as ru
@@ -11,12 +11,12 @@ from radical.pilot.agent.lm.aprun import APRun
 try:
     import mock
 except ImportError:
-    from unittest import mock
+    from tasktest import mock
 
 session_id = 'rp.session.test.aprun'
 
 
-class TestAPRUNlaunchMethod(unittest.TestCase):
+class TestAPRUNlaunchMethod(tasktest.TestCase):
 
     def setUp(self):
 
@@ -47,7 +47,7 @@ class TestAPRUNlaunchMethod(unittest.TestCase):
                                    "stderr": None,
                                    "stdout": None
                                    }
-        self._cu['uid'] = 'unit.000000'
+        self._cu['uid'] = 'task.000000'
         self._cu['slots'] = {'nodes': [{'name': 'node1',
                                         'uid': 'node1',
                                         'core_map': [[0]],
@@ -89,5 +89,5 @@ class TestAPRUNlaunchMethod(unittest.TestCase):
 #
 if __name__ == '__main__':
 
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestAPRUNlaunchMethod)
-    unittest.TextTestRunner(verbosity=3).run(suite)
+    suite = tasktest.TestLoader().loadTestsFromTestCase(TestAPRUNlaunchMethod)
+    tasktest.TextTestRunner(verbosity=3).run(suite)

@@ -1,6 +1,7 @@
 
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
+import os
 import glob
 
 import radical.utils as ru
@@ -11,16 +12,17 @@ import radical.utils as ru
 def setUp(test_type, test_name):
 
     ret = list()
-    for fin in glob.glob('tests/unit_tests/test_cases/unit.*.json'):
+    pwd = os.path.dirname(__file__)
+    for fin in glob.glob('%s/test_cases/task.*.json' % pwd):
 
         tc                = ru.read_json(fin)
-        unit              = tc['unit'   ]
+        task              = tc['task'   ]
         setup             = tc['setup'  ].get(test_type, {})
         results           = tc['results']
         result            = results.get(test_type, {}).get(test_name)
         resource_file     = results.get('resource_file', {}).get(test_name)
         resource_filename = results.get('resource_filename', {}).get(test_name)
-        test              = ru.dict_merge(unit, setup, ru.PRESERVE)
+        test              = ru.dict_merge(task, setup, ru.PRESERVE)
 
         if result:
             if resource_file and resource_filename:

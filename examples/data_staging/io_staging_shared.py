@@ -35,17 +35,17 @@ if __name__ == "__main__":
         os.system('/bin/echo -n "Hello world, " > %s' % SHARED_INPUT_FILE)
         radical_cockpit_occupants = ['Alice', 'Bob', 'Carol', 'Eve']
 
-        # Create per unit input files
+        # Create per task input files
         for idx, occ in enumerate(radical_cockpit_occupants):
             input_file = 'input_file-%d.txt' % (idx + 1)
             os.system('/bin/echo "%s" > %s' % (occ, input_file))
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session=session)
 
         # Define a C-core on $RESOURCE that runs for M minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
-        pdesc = rp.ComputePilotDescription()
+        pdesc = rp.PilotDescription()
         pdesc.resource = "local.localhost"
         pdesc.runtime  = 5  # M minutes
         pdesc.cores    = 2  # C cores
@@ -76,48 +76,48 @@ if __name__ == "__main__":
                      'action': rp.LINK
         }
 
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
-        # a UnitManager object.
-        umgr = rp.UnitManager(session=session)
+        # Combine the Pilot, the Tasks and a scheduler via
+        # a TaskManager object.
+        tmgr = rp.TaskManager(session=session)
 
-        # Add the previously created ComputePilot to the UnitManager.
-        umgr.add_pilots(pilot)
+        # Add the previously created Pilot to the TaskManager.
+        tmgr.add_pilots(pilot)
 
-        compute_unit_descs = []
+        task_descs = []
 
-        for unit_idx in range(len(radical_cockpit_occupants)):
+        for task_idx in range(len(radical_cockpit_occupants)):
 
-            # Configure the per unit input file.
-            input_file = 'input_file-%d.txt' % (unit_idx + 1)
+            # Configure the per task input file.
+            input_file = 'input_file-%d.txt' % (task_idx + 1)
 
-            # Configure the for per unit output file.
-            output_file = 'output_file-%d.txt' % (unit_idx + 1)
+            # Configure the for per task output file.
+            output_file = 'output_file-%d.txt' % (task_idx + 1)
 
             # Actual task description.
             # Concatenate the shared input and the task specific input.
-            cud = rp.ComputeUnitDescription()
-            cud.executable = '/bin/bash'
-            cud.arguments = ['-c', 'cat %s %s > %s' %
+            td = rp.TaskDescription()
+            td.executable = '/bin/bash'
+            td.arguments = ['-c', 'cat %s %s > %s' %
                              (SHARED_INPUT_FILE, input_file, output_file)]
-            cud.cpu_processes = 1
-            cud.input_staging = [sd_shared, input_file]
-            cud.output_staging = output_file
+            td.cpu_processes = 1
+            td.input_staging = [sd_shared, input_file]
+            td.output_staging = output_file
 
-            compute_unit_descs.append(cud)
+            task_descs.append(td)
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(compute_unit_descs)
+        # assigning Tasks to the Pilots.
+        tasks = tmgr.submit_tasks(task_descs)
 
-        # Wait for all compute units to finish.
-        umgr.wait_units()
+        # Wait for all tasks to finish.
+        tmgr.wait_tasks()
 
-        for unit in umgr.get_units():
+        for task in tmgr.get_tasks():
 
-            # Get the stdout and stderr streams of the ComputeUnit.
-            print(" STDOUT: %s" % unit.stdout)
-            print(" STDERR: %s" % unit.stderr)
+            # Get the stdout and stderr streams of the Task.
+            print(" STDOUT: %s" % task.stdout)
+            print(" STDERR: %s" % task.stderr)
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

@@ -10,24 +10,24 @@ Data Staging
 Many, if not all, programs require input data to operate and create output
 data as a result in some form or shape. RADICAL-Pilot has a set of constructs
 that allows the user to specify the required staging of input and output files
-for a Compute Unit.
+for a Task.
 
-The primary constructs are on the level of the Compute Unit (Description)
+The primary constructs are on the level of the Task (Description)
 which are discussed in the next section. For more elaborate use-cases we also
-have constructs on the Compute Pilot level, which are discussed later in this
+have constructs on the Pilot level, which are discussed later in this
 chapter.
 
 .. note:: RADICAL-Pilot uses system calls for local file operations and SAGA for
           remote transfers and URL specification.
 
 
-Compute Unit I/O
+Task I/O
 ================
 
 To instruct RADICAL-Pilot to handle files for you, there are two things to
 take care of. First you need to specify the respective input and output files
-for the Compute Unit in so called `staging directives`. Additionally you need
-to associate these `staging directives` to the the Compute Unit by means of
+for the Task in so called `staging directives`. Additionally you need
+to associate these `staging directives` to the the Task by means of
 the ``input_staging`` and ``output_staging`` members.
 
 What it looks like
@@ -41,7 +41,7 @@ The following code snippet shows this in action:
     OUTPUT_FILE_NAME = "OUTPUT_FILE.TXT"
 
     # This executes: "/usr/bin/sort -o OUTPUT_FILE.TXT INPUT_FILE.TXT"
-    cud = radical.pilot.ComputeUnitDescription()
+    cud = radical.pilot.TaskDescription()
     cud.executable = "/usr/bin/sort"
     cud.arguments = ["-o", OUTPUT_FILE_NAME, INPUT_FILE_NAME]
     cud.input_staging  = INPUT_FILE_NAME
@@ -49,7 +49,7 @@ The following code snippet shows this in action:
 
 Here the `staging directives` ``INPUT_FILE_NAME`` and ``OUTPUT_FILE_NAME``
 are simple strings that both specify a single filename and are associated to
-the Compute Unit Description ``cud`` for input and output respectively.
+the Task Description ``cud`` for input and output respectively.
 
 What this does is that the file `INPUT_FILE.TXT` is transferred from the local
 directory to the directory where the task is executed. After the task has run,
@@ -81,14 +81,14 @@ The semantics of the keys from the dict are as follows:
   for *input*, then the ``source`` refers to the location to get the input
   files from,  e.g. the local working directory on your laptop or a remote
   data repository, and ``target`` refers to the working directory of the
-  ComputeUnit. Alternatively, in case of the `staging directive` being used
+  Task. Alternatively, in case of the `staging directive` being used
   for *output*, then the ``source`` refers to the output files being generated
-  by the ComputeUnit in the working directory and ``target`` refers to the
+  by the Task in the working directory and ``target`` refers to the
   location where you need to store the output data, e.g. back to your laptop
   or some remote data repository.
 
 - ``action`` (default: TRANSFER): The *ultimate* goal is to make data
-  available to the application kernel in the ComputeUnit and to be able to
+  available to the application kernel in the Task and to be able to
   make the results available for further use. Depending on the relative
   location of the working directory of the ``source`` to the ``target``
   location, the action can be ``COPY`` (local resource), ``LINK`` (same file
@@ -128,8 +128,8 @@ Staging Area
 ------------
 
 As the pilot job creates an abstraction for a computational resource, the user
-does not necessarily know where the working directory of the Compute Pilot or
-the Compute Unit is. Even if he knows, the user might not have direct access
+does not necessarily know where the working directory of the Pilot or
+the Task is. Even if he knows, the user might not have direct access
 to it. For this situation we have the staging area, which is a special
 construct so that the user can specify files relative to or in the working
 directory without knowing the exact location. This can be done using the
@@ -142,17 +142,17 @@ following URL format:
 The :ref:`example-pipeline` example demonstrates this in full glory.
 
 
-Compute Pilot I/O
+Pilot I/O
 =================
 
-As mentioned earlier, in addition to the constructs on Compute Unit-level
-RADICAL-Pilot also has constructs on Compute Pilot-level. The main rationale
+As mentioned earlier, in addition to the constructs on Task-level
+RADICAL-Pilot also has constructs on Pilot-level. The main rationale
 for this is that often there is (input) data to be shared between multiple
-Compute Units. Instead of transferring the same files for every Compute Unit,
+Tasks. Instead of transferring the same files for every Task,
 we can transfer the data once to the Pilot, and then make it available to
-every Compute Unit that needs it.
+every Task that needs it.
 
-This works in a similar way as the Compute Unit-IO, where we use also use the
+This works in a similar way as the Task-IO, where we use also use the
 Staging Directive to specify the I/O transaction The difference is that in
 this case, the Staging Directive is not associated to the Description, but
 used in a direct method call ``pilot.stage_in(sd_pilot)``.
@@ -179,7 +179,7 @@ Examples
 
 .. note:: All of the following examples are configured to run on localhost,
           but they can be easily changed to run on a remote resource by
-          modifying the resource specification in the Compute Pilot Description.
+          modifying the resource specification in the Pilot Description.
           Also note the comments in :ref:`staging-area` when changing the
           examples to a remote target.
 
@@ -194,7 +194,7 @@ String-Based Input and Output Transfer
 
 This example demonstrates the simplest form of the data staging capabilities.
 The example demonstrates how a local input file is staged through
-RADICAL-Pilot, processed by the Compute Unit and the resulting output file is
+RADICAL-Pilot, processed by the Task and the resulting output file is
 staged back to the local environment.
 
 .. note:: Download the example:
@@ -227,7 +227,7 @@ Shared Input Files
 
 This example demonstrates the staging of a shared input file by means of the
 stage_in() method of the pilot and consequently making that available to all
-compute units.
+tasks.
 
 .. note:: Download the example:
           ``curl -O https://raw.githubusercontent.com/radical-cybertools/radical.pilot/readthedocs/examples/data_staging/io_staging_shared.py``
