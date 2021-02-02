@@ -15,13 +15,13 @@ STAGER_RESPONSE_PUBSUB         = 'stager_response_pubsub'
 PMGR_LAUNCHING_QUEUE           = 'pmgr_launching_queue'
 PMGR_LAUNCHING_COMPONENT       = 'pmgr_launching'
 
-UMGR_SCHEDULING_QUEUE          = 'umgr_scheduling_queue'
-UMGR_STAGING_INPUT_QUEUE       = 'umgr_staging_input_queue'
-UMGR_STAGING_OUTPUT_QUEUE      = 'umgr_staging_output_queue'
+TMGR_SCHEDULING_QUEUE          = 'tmgr_scheduling_queue'
+TMGR_STAGING_INPUT_QUEUE       = 'tmgr_staging_input_queue'
+TMGR_STAGING_OUTPUT_QUEUE      = 'tmgr_staging_output_queue'
 
-UMGR_SCHEDULING_COMPONENT      = 'umgr_scheduling'
-UMGR_STAGING_INPUT_COMPONENT   = 'umgr_staging_input'
-UMGR_STAGING_OUTPUT_COMPONENT  = 'umgr_staging_output'
+TMGR_SCHEDULING_COMPONENT      = 'tmgr_scheduling'
+TMGR_STAGING_INPUT_COMPONENT   = 'tmgr_staging_input'
+TMGR_STAGING_OUTPUT_COMPONENT  = 'tmgr_staging_output'
 
 AGENT_STAGING_INPUT_QUEUE      = 'agent_staging_input_queue'
 AGENT_SCHEDULING_QUEUE         = 'agent_scheduling_queue'
@@ -33,8 +33,8 @@ AGENT_SCHEDULING_COMPONENT     = 'agent_scheduling'
 AGENT_EXECUTING_COMPONENT      = 'agent_executing'
 AGENT_STAGING_OUTPUT_COMPONENT = 'agent_staging_output'
 
-UMGR_UNSCHEDULE_PUBSUB         = 'umgr_unschedule_pubsub'
-UMGR_RESCHEDULE_PUBSUB         = 'umgr_reschedule_pubsub'
+TMGR_UNSCHEDULE_PUBSUB         = 'tmgr_unschedule_pubsub'
+TMGR_RESCHEDULE_PUBSUB         = 'tmgr_reschedule_pubsub'
 
 AGENT_UNSCHEDULE_PUBSUB        = 'agent_unschedule_pubsub'
 AGENT_SCHEDULE_PUBSUB          = 'agent_schedule_pubsub'
@@ -57,9 +57,9 @@ DOWN = 2
 #
 # definitions of metrics
 #
-UNIT_STATE           = 'UNIT_STATE'
+TASK_STATE           = 'TASK_STATE'
 WAIT_QUEUE_SIZE      = 'WAIT_QUEUE_SIZE'
-UMGR_METRICS         = [UNIT_STATE,
+TMGR_METRICS         = [TASK_STATE,
                         WAIT_QUEUE_SIZE]
 
 PILOT_STATE          = 'PILOT_STATE'
@@ -89,11 +89,11 @@ TARBALL  = 'Tarball'   # remote staging will be executed using a tarball.
 import radical.saga.filesystem as _rsf
 
 CREATE_PARENTS = _rsf.CREATE_PARENTS  # Create parent directories if needed
-NON_FATAL      = 8192                # Don't fail the CU if input is missing
+NON_FATAL      = 8192                # Don't fail the Task if input is missing
 
 
 #
-# CU MPI flags
+# Task MPI flags
 #
 SERIAL         = 'Serial'
 MPI            = 'MPI'
@@ -115,6 +115,19 @@ SCHEDULER_ROUND_ROBIN  = "round_robin"
 SCHEDULER_BACKFILLING  = "backfilling"
 SCHEDULER_DEFAULT      = SCHEDULER_ROUND_ROBIN
 
+# backward compatibility
+UMGR_SCHEDULING_QUEUE         = TMGR_SCHEDULING_QUEUE
+UMGR_STAGING_INPUT_QUEUE      = TMGR_STAGING_INPUT_QUEUE
+UMGR_STAGING_OUTPUT_QUEUE     = TMGR_STAGING_OUTPUT_QUEUE
+
+UMGR_SCHEDULING_COMPONENT     = TMGR_SCHEDULING_COMPONENT
+UMGR_STAGING_INPUT_COMPONENT  = TMGR_STAGING_INPUT_COMPONENT
+UMGR_STAGING_OUTPUT_COMPONENT = TMGR_STAGING_OUTPUT_COMPONENT
+
+UMGR_UNSCHEDULE_PUBSUB        = TMGR_UNSCHEDULE_PUBSUB
+UMGR_RESCHEDULE_PUBSUB        = TMGR_RESCHEDULE_PUBSUB
+
+UMGR_METRICS                  = TMGR_METRICS
 
 # ------------------------------------------------------------------------------
 

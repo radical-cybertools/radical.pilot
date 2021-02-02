@@ -9,13 +9,13 @@ import radical.utils as ru
 from .continuous import Continuous
 
 from ... import states    as rps
-from ... import compute_unit_description as rpcud
+from ... import task_description as rpcud
 
 
 # ------------------------------------------------------------------------------
 #
 # This is a simple extension of the Continuous scheduler which evaluates the
-# `colocate` tag of arriving units, which is expected to have the form
+# `colocate` tag of arriving tasks, which is expected to have the form
 #
 #   colocate : {'ns'   : <string>,
 #               'size' : <int>}
@@ -50,13 +50,13 @@ class ContinuousColo(Continuous):
         # a 'bag' entry will look like this:
         #
         #   {
-        #      'size': 128,    # number of units to expect
-        #      'uids': [...]}, # ids    of units to be scheduled
+        #      'size': 128,    # number of tasks to expect
+        #      'uids': [...]}, # ids    of tasks to be scheduled
         #   }
 
         self._lock      = ru.RLock()   # lock on the bags
-        self._units     = dict()       # unit registry (we use uids otherwise)
-        self._unordered = list()       # IDs of units which are not colocated
+        self._tasks     = dict()       # task registry (we use uids otherwise)
+        self._unordered = list()       # IDs of tasks which are not colocated
         self._bags      = dict()       # nothing has run, yet
 
         self._bag_init  = {'size' : 0,
@@ -65,32 +65,32 @@ class ContinuousColo(Continuous):
 
     # --------------------------------------------------------------------------
     # overload the main method from the base class
-    def _schedule_units(self, units):
+    def _schedule_tasks(self, tasks):
 
-        if not isinstance(units, list):
-            units = [units]
+        if not isinstance(tasks, list):
+            tasks = [tasks]
 
-        self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
+        self.advance(tasks, rps.AGENT_SCHEDULING, publish=True, push=False)
 
         with self._lock:
 
             # cache ID int to avoid repeated parsing
-            for unit in units:
+            for task in tasks:
 
-                uid      = unit['uid']
-                descr    = unit['description']
+                uid      = task['uid']
+                descr    = task['description']
                 colo_tag = descr.get('tags', {}).get('colocate')
 
-                # units w/o order info are handled as usual, and we don't keep
+                # tasks w/o order info are handled as usual, and we don't keep
                 # any infos around
                 if not colo_tag:
                   # self._log.debug('no tags for %s', uid)
-                    self._unordered.append(unit)
+                    self._unordered.append(task)
                     continue
 
                 # this uniit wants to be ordered - keep it in our registry
-                assert(uid not in self._units), 'duplicated unit %s' % uid
-                self._units[uid] = unit
+                assert(uid not in self._tasks), 'duplicated task %s' % uid
+                self._tasks[uid] = task
 
                 bag   = colo_tag['bag']
                 size  = colo_tag['size']
@@ -106,10 +106,10 @@ class ContinuousColo(Continuous):
                     assert(size == self._bags[bag]['size']), \
                            'inconsistent bag size'
 
-                # add unit to order
+                # add task to order
                 self._bags[bag]['uids'].append(uid)
 
-        # try to schedule known units
+        # try to schedule known tasks
         self._try_schedule()
 
         return True
@@ -118,36 +118,36 @@ class ContinuousColo(Continuous):
     # --------------------------------------------------------------------------
     def _try_schedule(self):
         '''
-        Schedule all units in self._unordered.  Then for all name spaces,
-        check if their `current` order has units to schedule.  If not and
-        we see `size` units are `done`, consider the order completed and go
+        Schedule all tasks in self._unordered.  Then for all name spaces,
+        check if their `current` order has tasks to schedule.  If not and
+        we see `size` tasks are `done`, consider the order completed and go
         to the next one.  Break once we find a BoT which is not completely
-        schedulable, either because we did not yet get all its units, or
-        because we run out of resources to place those units.
+        schedulable, either because we did not yet get all its tasks, or
+        because we run out of resources to place those tasks.
         '''
 
         self._log.debug('try schedule')
-        scheduled = list()  # list of scheduled units
+        scheduled = list()  # list of scheduled tasks
 
         # FIXME: this lock is very aggressive, it should not be held over
         #        the scheduling algorithm's activity.
-        # first schedule unordered units (
+        # first schedule unordered tasks (
         with self._lock:
 
             keep = list()
-            for unit in self._unordered:
+            for task in self._unordered:
 
-                # attempt to schedule this unit (use continuous algorithm)
-                if Continuous._try_allocation(self, unit):
+                # attempt to schedule this task (use continuous algorithm)
+                if Continuous._try_allocation(self, task):
 
                     # success - keep it and try the next one
-                    scheduled.append(unit)
+                    scheduled.append(task)
 
                 else:
-                    # failure - keep unit around
-                    keep.append(unit)
+                    # failure - keep task around
+                    keep.append(task)
 
-            # keep only unscheduleed units
+            # keep only unscheduleed tasks
             self._unordered = keep
 
 
@@ -171,11 +171,11 @@ class ContinuousColo(Continuous):
                     if self._try_schedule_bag(bag):
 
                         self._log.debug('try bag %s (placed)', bag)
-                        # scheduling works - push units out and erase all traces
+                        # scheduling works - push tasks out and erase all traces
                         # of the bag (delayed until after iteration)
                         for uid in self._bags[bag]['uids']:
 
-                            scheduled.append(self._units[uid])
+                            scheduled.append(self._tasks[uid])
 
                         to_delete.append(bag)
 
@@ -185,7 +185,7 @@ class ContinuousColo(Continuous):
                 del(self._bags[bag])
 
 
-        # advance all scheduled units and push them out
+        # advance all scheduled tasks and push them out
         if scheduled:
             self.advance(scheduled, rps.AGENT_EXECUTING_PENDING,
                          publish=True, push=True)
@@ -199,15 +199,15 @@ class ContinuousColo(Continuous):
     def _try_schedule_bag(self, bag):
         '''
         This methods assembles the requiremets of all tasks in a bag into
-        a single pseudo-unit.  We ask the cont scheduler to schedule that
-        pseudo-unit for us.  If that works, we disassemble the resulting
-        resource slots and assign them to the bag's units again, and declare
+        a single pseudo-task.  We ask the cont scheduler to schedule that
+        pseudo-task for us.  If that works, we disassemble the resulting
+        resource slots and assign them to the bag's tasks again, and declare
         success.
         '''
 
         self._log.debug('try schedule bag %s ', bag)
 
-        tasks  = [self._units[uid] for uid in self._bags[bag]['uids']]
+        tasks  = [self._tasks[uid] for uid in self._bags[bag]['uids']]
         pseudo = copy.deepcopy(tasks[0])
 
         pseudo['uid'] = 'pseudo.'
@@ -275,7 +275,7 @@ class ContinuousColo(Continuous):
     #
     def schedule_cb(self, topic, msg):
         '''
-        This cb gets triggered after some units got unscheduled, ie. their
+        This cb gets triggered after some tasks got unscheduled, ie. their
         resources have been freed.  We attempt a new round of scheduling at that
         point.
         '''

@@ -23,7 +23,7 @@ from .base import AgentSchedulingComponent
 
 # General idea:
 # The availability will be obtained from the rm_node_list and assigned to
-# the node list of the class. The requirement will be obtained from the cud in
+# the node list of the class. The requirement will be obtained from the td in
 # the alloc_nompi and alloc_mpi methods. Using the availability and
 # requirement, the _find_resources method will return the core and gpu ids.
 #
@@ -43,7 +43,7 @@ from .base import AgentSchedulingComponent
 #                   'lfs'     : 256
 #                },
 #               ]
-# Q: How should the nodes be selected for MPI based units?
+# Q: How should the nodes be selected for MPI based tasks?
 # lfs : in mb
 
 import cProfile
@@ -75,7 +75,7 @@ def dec_all_methods(dec):
 class ContinuousSummit(AgentSchedulingComponent):
     '''
     The Continuous scheduler attempts to place threads and processes of
-    a compute units onto consecutive cores, gpus and nodes in the cluster.
+    a tasks onto consecutive cores, gpus and nodes in the cluster.
     '''
 
     # --------------------------------------------------------------------------
@@ -95,21 +95,21 @@ class ContinuousSummit(AgentSchedulingComponent):
     #
     def initialize(self):
 
-        # register unit input channels
+        # register task input channels
         self.register_input(rps.AGENT_SCHEDULING_PENDING,
-                            rpc.AGENT_SCHEDULING_QUEUE, self._schedule_units)
+                            rpc.AGENT_SCHEDULING_QUEUE, self._schedule_tasks)
 
-        # register unit output channels
+        # register task output channels
         self.register_output(rps.AGENT_EXECUTING_PENDING,
                              rpc.AGENT_EXECUTING_QUEUE)
 
-        # we need unschedule updates to learn about units for which to free the
+        # we need unschedule updates to learn about tasks for which to free the
         # allocated cores.  Those updates MUST be issued after execution, ie.
         # by the AgentExecutionComponent.
         self.register_subscriber(rpc.AGENT_UNSCHEDULE_PUBSUB, self.unschedule_cb)
 
         # we don't want the unschedule above to compete with actual
-        # scheduling attempts, so we move the re-scheduling of units from the
+        # scheduling attempts, so we move the re-scheduling of tasks from the
         # wait pool into a separate thread (ie. register a separate callback).
         # This is triggered by the unscheduled_cb.
         #
@@ -149,7 +149,7 @@ class ContinuousSummit(AgentSchedulingComponent):
                               % self._rm_info['name'])
 
         # create and initialize the wait pool
-        self._wait_pool = list()      # pool of waiting units
+        self._wait_pool = list()      # pool of waiting tasks
         self._wait_lock = ru.RLock()  # look on the above pool
         self._slot_lock = ru.RLock()  # lock slot allocation/deallocation
 
@@ -176,7 +176,7 @@ class ContinuousSummit(AgentSchedulingComponent):
 
         # * scattered:
         #   This is the continuous scheduler, because it attempts to allocate
-        #   a *continuous* set of cores/nodes for a unit.  It does, however,
+        #   a *continuous* set of cores/nodes for a task.  It does, however,
         #   also allow to scatter the allocation over discontinuous nodes if
         #   this option is set.  This implementation is not optimized for the
         #   scattered mode!  The default is 'False'.
@@ -350,30 +350,30 @@ class ContinuousSummit(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _try_allocation(self, unit):
+    def _try_allocation(self, task):
         """
-        attempt to allocate cores/gpus for a specific unit.
+        attempt to allocate cores/gpus for a specific task.
         """
 
-        uid = unit['uid']
+        uid = task['uid']
 
         # needs to be locked as we try to acquire slots here, but slots are
         # freed in a different thread.  But we keep the lock duration short...
         with self._slot_lock:
 
             self._prof.prof('schedule_try', uid=uid)
-            unit['slots'] = self._allocate_slot(unit)
+            task['slots'] = self._allocate_slot(task)
 
 
         # the lock is freed here
-        if not unit['slots']:
+        if not task['slots']:
 
-            # signal the unit remains unhandled (Fales signals that failure)
+            # signal the task remains unhandled (Fales signals that failure)
             self._prof.prof('schedule_fail', uid=uid)
             return False
 
 
-        node_uids = [node['uid'] for node in unit['slots']['nodes']]
+        node_uids = [node['uid'] for node in task['slots']['nodes']]
         self._tag_history[uid] = node_uids
 
         # got an allocation, we can go off and launch the process
@@ -383,9 +383,9 @@ class ContinuousSummit(AgentSchedulingComponent):
             self._log.debug("after  allocate   %s: %s", uid,
                             self.slot_status())
             self._log.debug("%s [%s/%s] : %s", uid,
-                            unit['description']['cpu_processes'],
-                            unit['description']['gpu_processes'],
-                            pprint.pformat(unit['slots']))
+                            task['description']['cpu_processes'],
+                            task['description']['gpu_processes'],
+                            pprint.pformat(task['slots']))
 
         # True signals success
         return True
@@ -393,26 +393,26 @@ class ContinuousSummit(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _allocate_slot(self, unit):
+    def _allocate_slot(self, task):
         '''
         This is the main method of this implementation, and is triggered when
-        a unit needs to be mapped to a set of cores / gpus.  We make
-        a distinction between MPI and non-MPI units (non-MPI processes MUST be
+        a task needs to be mapped to a set of cores / gpus.  We make
+        a distinction between MPI and non-MPI tasks (non-MPI processes MUST be
         on the same node).
         '''
 
-        uid = unit['uid']
-        cud = unit['description']
+        uid = task['uid']
+        td = task['description']
 
         # single_node allocation is enforced for non-message passing tasks
-        if cud['cpu_process_type'] in [rpc.MPI] or \
-           cud['gpu_process_type'] in [rpc.MPI]:
-            slots = self._alloc_mpi(unit)
+        if td['cpu_process_type'] in [rpc.MPI] or \
+           td['gpu_process_type'] in [rpc.MPI]:
+            slots = self._alloc_mpi(task)
         else:
-            slots = self._alloc_nompi(unit)
+            slots = self._alloc_nompi(task)
 
         if slots:
-            # the unit was placed, we need to reflect the allocation in the
+            # the task was placed, we need to reflect the allocation in the
             # nodelist state (BUSY)
             self._change_slot_states(slots, rpc.BUSY)
 
@@ -656,23 +656,23 @@ class ContinuousSummit(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _alloc_nompi(self, unit):
+    def _alloc_nompi(self, task):
         """
         Find a suitable set of cores and gpus *within a single node*.
 
         Input:
-        cud: Compute Unit description. Needs to specify at least one CPU
+        td: Task description. Needs to specify at least one CPU
         process and one thread per CPU process, or one GPU process.
         """
 
-        uid = unit['uid']
-        cud = unit['description']
+        uid = task['uid']
+        td = task['description']
 
         # dig out the allocation request details
-        requested_procs  = cud['cpu_processes']
-        threads_per_proc = cud['cpu_threads']
-        requested_gpus   = cud['gpu_processes']
-        requested_lfs    = cud['lfs_per_process']
+        requested_procs  = td['cpu_processes']
+        threads_per_proc = td['cpu_threads']
+        requested_gpus   = td['gpu_processes']
+        requested_lfs    = td['lfs_per_process']
         lfs_chunk        = requested_lfs if requested_lfs > 0 else 1
 
         # make sure that processes are at least single-threaded
@@ -684,7 +684,7 @@ class ContinuousSummit(AgentSchedulingComponent):
 
         if not self._cross_socket_threads:
             if threads_per_proc > self._rm_cores_per_socket:
-                raise ValueError('cu does not fit on socket')
+                raise ValueError('t does not fit on socket')
 
         cores_per_node = self._rm_cores_per_socket * self._rm_sockets_per_node
         gpus_per_node  = self._rm_gpus_per_socket  * self._rm_sockets_per_node
@@ -695,7 +695,7 @@ class ContinuousSummit(AgentSchedulingComponent):
             requested_gpus  > gpus_per_node  or \
             requested_lfs   > lfs_per_node   :
 
-            txt  = 'Non-mpi unit %s does not fit onto node \n' % uid
+            txt  = 'Non-mpi task %s does not fit onto node \n' % uid
             txt += '   cores: %s >? %s \n' % (requested_cores, cores_per_node)
             txt += '   gpus : %s >? %s \n' % (requested_gpus,  gpus_per_node)
             txt += '   lfs  : %s >? %s'    % (requested_lfs,   lfs_per_node)
@@ -707,14 +707,14 @@ class ContinuousSummit(AgentSchedulingComponent):
         lfs       = None
         node_name = None
         node_uid  = None
-        tag       = cud.get('tag')
+        tag       = td.get('tag')
 
         for node in self.nodes:  # FIXME optimization: iteration start
 
-            # If unit has a tag, check if the tag is in the tag_history dict,
-            # else it is a invalid tag, continue as if the unit does not have
+            # If task has a tag, check if the tag is in the tag_history dict,
+            # else it is a invalid tag, continue as if the task does not have
             # a tag
-            # If the unit has a valid tag, find the node that matches the
+            # If the task has a valid tag, find the node that matches the
             # tag from tag_history dict
             if tag and tag in self._tag_history:
                 if node['uid'] not in self._tag_history[tag]:
@@ -748,13 +748,13 @@ class ContinuousSummit(AgentSchedulingComponent):
         # used to specify process and thread to core mapping.
         core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
 
-        # We need to specify the node lfs path that the unit needs to use.
-        # We set it as an environment variable that gets loaded with cud
+        # We need to specify the node lfs path that the task needs to use.
+        # We set it as an environment variable that gets loaded with td
         # executable.
         # Assumption enforced: The LFS path is the same across all nodes.
-        cud['environment']['NODE_LFS_PATH'] = self._rm_lfs_per_node['path']
+        td['environment']['NODE_LFS_PATH'] = self._rm_lfs_per_node['path']
 
-        # all the information for placing the unit is acquired - return them
+        # all the information for placing the task is acquired - return them
         slots = {'nodes': [{'name'    : node_name,
                             'uid'     : node_uid,
                             'core_map': core_map,
@@ -775,7 +775,7 @@ class ContinuousSummit(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     #
-    def _alloc_mpi(self, unit):
+    def _alloc_mpi(self, task):
         """
         Find an available set of slots, potentially across node boundaries.  By
         default, we only allow for partial allocations on the first and last
@@ -791,14 +791,14 @@ class ContinuousSummit(AgentSchedulingComponent):
         spawn the requested number of threads on the respective node.
         """
 
-        uid = unit['uid']
-        cud = unit['description']
+        uid = task['uid']
+        td = task['description']
 
         # dig out the allocation request details
-        requested_procs  = cud['cpu_processes']
-        threads_per_proc = cud['cpu_threads']
-        requested_gpus   = cud['gpu_processes']
-        requested_lfs_per_process = cud['lfs_per_process']
+        requested_procs  = td['cpu_processes']
+        threads_per_proc = td['cpu_threads']
+        requested_gpus   = td['gpu_processes']
+        requested_lfs_per_process = td['lfs_per_process']
 
         # make sure that processes are at least single-threaded
         if not threads_per_proc:
@@ -862,7 +862,7 @@ class ContinuousSummit(AgentSchedulingComponent):
                  'lm_info'       : self._rm_lm_info,
                 }
 
-        tag = cud.get('tag')
+        tag = td.get('tag')
 
         # start the search
         for node in self.nodes:
@@ -870,10 +870,10 @@ class ContinuousSummit(AgentSchedulingComponent):
             node_uid  = node['uid']
             node_name = node['name']
 
-            # If unit has a tag, check if the tag is in the tag_history dict,
-            # else it is a invalid tag, continue as if the unit does not have
+            # If task has a tag, check if the tag is in the tag_history dict,
+            # else it is a invalid tag, continue as if the task does not have
             # a tag
-            # If the unit has a valid tag, find the node that matches the
+            # If the task has a valid tag, find the node that matches the
             # tag from tag_history dict
             if tag and tag in self._tag_history:
                 if node['uid'] not in self._tag_history[tag]:
@@ -881,7 +881,7 @@ class ContinuousSummit(AgentSchedulingComponent):
 
             # if only a small set of cores/gpus remains unallocated (ie. less
             # than node size), we are in fact looking for the last node.  Note
-            # that this can also be the first node, for small units.
+            # that this can also be the first node, for small tasks.
             if  requested_cores - alloced_cores <= cores_per_node and \
                 requested_gpus  - alloced_gpus  <= gpus_per_node  and \
                 requested_lfs   - alloced_lfs   <= lfs_per_node['size']:
@@ -933,13 +933,13 @@ class ContinuousSummit(AgentSchedulingComponent):
             self._log.debug('found %s cores, %s gpus, %s lfs', cores, gpus, lfs)
             core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
 
-            # We need to specify the node lfs path that the unit needs to use.
-            # We set it as an environment variable that gets loaded with cud
+            # We need to specify the node lfs path that the task needs to use.
+            # We set it as an environment variable that gets loaded with td
             # executable.
             # Assumption enforced: The LFS path is the same across all nodes.
             lfs_path = self._rm_lfs_per_node['path']
-            if 'NODE_LFS_PATH' not in cud['environment']:
-                cud['environment']['NODE_LFS_PATH'] = lfs_path
+            if 'NODE_LFS_PATH' not in td['environment']:
+                td['environment']['NODE_LFS_PATH'] = lfs_path
 
             slots['nodes'].append({'name'    : node_name,
                                    'uid'     : node_uid,

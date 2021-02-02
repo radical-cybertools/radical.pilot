@@ -7,7 +7,7 @@ from constants  import *
 # ------------------------------------------------------------------------------
 #
 class PilotManager (Attributes) :
-    """ 
+    """
     PilotManager class.
 
     Notes:
@@ -17,7 +17,7 @@ class PilotManager (Attributes) :
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, url=None, session=None) : 
+    def __init__ (self, url=None, session=None) :
 
         Attributes.__init__ (self)
 
@@ -26,7 +26,7 @@ class PilotManager (Attributes) :
     #
     def submit_pilot (self, description) :
         """
-        Instantiate and return (Compute or Data)-Pilot object
+        Instantiate and return Pilot object
         """
 
         raise Exception ("%s.submit_pilot() is not implemented" % self.__class__.__name__)
@@ -46,7 +46,7 @@ class PilotManager (Attributes) :
     #
     def get_pilot (self, pids) :
         """
-        Reconnect to and return (Compute or Data)-Pilot object(s)
+        Reconnect to and return Pilot object(s)
         """
 
         raise Exception ("%s.get_pilot() is not implemented" % self.__class__.__name__)

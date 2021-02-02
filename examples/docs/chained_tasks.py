@@ -25,12 +25,12 @@ For every task A_n a task B_n is started consecutively.
 #
 if __name__ == "__main__":
 
-    RESOURCE_LABEL  = None
-    PILOT_CORES     = None
-    NUMBER_CHAINS   = None
-    CU_A_EXECUTABLE = None
-    CU_B_EXECUTABLE = None
-    QUEUE           = None
+    RESOURCE_LABEL    = None
+    PILOT_CORES       = None
+    NUMBER_CHAINS     = None
+    TASK_A_EXECUTABLE = None
+    TASK_B_EXECUTABLE = None
+    QUEUE             = None
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -50,7 +50,7 @@ if __name__ == "__main__":
         #
 
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         print("Initializing Pilot Manager ...")
         pmgr = rp.PilotManager(session=session)
 
@@ -68,81 +68,81 @@ if __name__ == "__main__":
         # https://radicalpilot.readthedocs.io/en/stable/ \
         #        machconf.html#preconfigured-resources
         #
-        pdesc = rp.ComputePilotDescription ()
+        pdesc = rp.PilotDescription ()
         pdesc.resource = RESOURCE_LABEL
         pdesc.runtime  = 30
         pdesc.cores    = PILOT_CORES
         pdesc.cleanup  = True
 
         # submit the pilot.
-        print("Submitting Compute Pilot to Pilot Manager ...")
+        print("Submitting Pilot to Pilot Manager ...")
         pilot = pmgr.submit_pilots(pdesc)
 
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
-        # a UnitManager object.
-        print("Initializing Unit Manager ...")
-        umgr = rp.UnitManager (session=session)
+        # Combine the Pilot, the Tasks and a scheduler via
+        # a TaskManager object.
+        print("Initializing Task Manager ...")
+        tmgr = rp.TaskManager (session=session)
 
 
-        # Add the created ComputePilot to the UnitManager.
-        print("Registering Compute Pilot with Unit Manager ...")
-        umgr.add_pilots(pilot)
+        # Add the created Pilot to the TaskManager.
+        print("Registering  Pilot with Task Manager ...")
+        tmgr.add_pilots(pilot)
 
-        # submit A cus to pilot job
-        cudesc_list_A = []
+        # submit A tasks to pilot job
+        taskdesc_list_A = []
         for i in range(NUMBER_CHAINS):
 
-            # -------- BEGIN USER DEFINED CU A_n DESCRIPTION --------- #
-            cudesc = rp.ComputeUnitDescription()
-            cudesc.environment = {"CU_LIST": "A", "CU_NO": "%02d" % i}
-            cudesc.executable  = CU_A_EXECUTABLE
-            cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
-            cudesc.cores       = 1
-            # -------- END USER DEFINED CU A_n DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED Task A_n DESCRIPTION --------- #
+            taskdesc = rp.TaskDescription()
+            taskdesc.environment = {"TASK_LIST": "A", "TASK_NO": "%02d" % i}
+            taskdesc.executable  = TASK_A_EXECUTABLE
+            taskdesc.arguments   = ['"$TASK_LIST Task with id $TASK_NO"']
+            taskdesc.cores       = 1
+            # -------- END USER DEFINED Task A_n DESCRIPTION --------- #
 
-            cudesc_list_A.append(cudesc)
+            taskdesc_list_A.append(taskdesc)
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        print("Submit 'A' Compute Units to Unit Manager ...")
-        cu_list_A = umgr.submit_units(cudesc_list_A)
+        # assigning Tasks to the Pilots.
+        print("Submit 'A' Tasks to Task Manager ...")
+        task_list_A = tmgr.submit_tasks(taskdesc_list_A)
 
-        # Chaining cus i.e submit a compute unit, when compute unit from A is
-        # successfully executed.  A B CU reads the content of the output file of
-        # an A CU and writes it into its own output file.
-        cu_list_B = []
+        # Chaining tasks i.e submit a task, when task from A is
+        # successfully executed.  A B Task reads the content of the output file of
+        # an A Task and writes it into its own output file.
+        task_list_B = []
 
-        # We create a copy of cu_list_A so that we can remove elements from it,
+        # We create a copy of task_list_A so that we can remove elements from it,
         # and still reference to the original index.
-        cu_list_A_copy = cu_list_A[:]
-        while cu_list_A:
-            for cu_a in cu_list_A:
-                idx = cu_list_A_copy.index(cu_a)
+        task_list_A_copy = task_list_A[:]
+        while task_list_A:
+            for task_a in task_list_A:
+                idx = task_list_A_copy.index(task_a)
 
-                cu_a.wait ()
-                print("'A' Compute Unit '%s' done. Submitting 'B' CU ..." % idx)
+                task_a.wait ()
+                print("'A' Task '%s' done. Submitting 'B' Task ..." % idx)
 
-                # -------- BEGIN USER DEFINED CU B_n DESCRIPTION --------- #
-                cudesc = rp.ComputeUnitDescription()
-                cudesc.environment = {'CU_LIST': 'B', 'CU_NO': "%02d" % idx}
-                cudesc.executable  = CU_B_EXECUTABLE
-                cudesc.arguments   = ['"$CU_LIST CU with id $CU_NO"']
-                cudesc.cores       = 1
-                # -------- END USER DEFINED CU B_n DESCRIPTION --------- #
+                # -------- BEGIN USER DEFINED Task B_n DESCRIPTION --------- #
+                taskdesc = rp.TaskDescription()
+                taskdesc.environment = {'TASK_LIST': 'B', 'TASK_NO': "%02d" % idx}
+                taskdesc.executable  = TASK_B_EXECUTABLE
+                taskdesc.arguments   = ['"$TASK_LIST Task with id $TASK_NO"']
+                taskdesc.cores       = 1
+                # -------- END USER DEFINED Task B_n DESCRIPTION --------- #
 
-                # Submit CU to Pilot Job
-                cu_b = umgr.submit_units(cudesc)
-                cu_list_B.append(cu_b)
-                cu_list_A.remove(cu_a)
+                # Submit Task to Pilot Job
+                task_b = tmgr.submit_tasks(taskdesc)
+                task_list_B.append(task_b)
+                task_list_A.remove(task_a)
 
-        print("Waiting for 'B' Compute Units to complete ...")
-        for cu_b in cu_list_B :
-            cu_b.wait ()
-            print("'B' Compute Unit '%s' finished with output:" % (cu_b.uid))
-            print(cu_b.stdout)
+        print("Waiting for 'B' Tasks to complete ...")
+        for task_b in task_list_B :
+            task_b.wait ()
+            print("'B' Task '%s' finished with output:" % (task_b.uid))
+            print(task_b.stdout)
 
-        print("All Compute Units completed successfully!")
+        print("All Tasks completed successfully!")
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

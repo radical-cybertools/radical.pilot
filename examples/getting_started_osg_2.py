@@ -19,7 +19,7 @@ import radical.utils as ru
 # ------------------------------------------------------------------------------
 
 n_pilots =    100
-n_units  =   1000
+n_tasks  =   1000
 n_done   =      0
 
 
@@ -54,24 +54,24 @@ if __name__ == '__main__':
 
         report.header('submit pilots')
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session=session)
 
-        scheduler = rp.umgr.scheduler.SCHEDULER_BACKFILLING
-      # scheduler = rp.umgr.scheduler.SCHEDULER_ROUND_ROBIN
+        scheduler = rp.tmgr.scheduler.SCHEDULER_BACKFILLING
+      # scheduler = rp.tmgr.scheduler.SCHEDULER_ROUND_ROBIN
       # scheduler = None
 
-        # Register the ComputePilot in a UnitManager object.
-        umgr = rp.UnitManager(session=session, scheduler=scheduler)
-        def unit_cb(unit, state):
+        # Register the Pilot in a TaskManager object.
+        tmgr = rp.TaskManager(session=session, scheduler=scheduler)
+        def task_cb(task, state):
             if state in rp.FINAL:
                 global n_done
                 n_done += 1
                 print('%5s: %4d - %4d - %5.1f - %s' % (state[0:5], n_done,
-                      n_units, time.time() - start, unit.pilot))
+                      n_tasks, time.time() - start, task.pilot))
           # if state in [rp.FAILED]:
           #     session.close()
-        umgr.register_callback(unit_cb)
+        tmgr.register_callback(task_cb)
 
         pdescs = list()
         for resource in resources:
@@ -100,12 +100,12 @@ if __name__ == '__main__':
                            'cleanup'         : False,
                            'candidate_hosts' : ch
                           }
-                pdesc = rp.ComputePilotDescription(pd_init)
+                pdesc = rp.PilotDescription(pd_init)
                 pdescs.append(pdesc)
 
         # Launch the pilot.
         pilots = pmgr.submit_pilots(pdescs)
-        umgr.add_pilots(pilots)
+        tmgr.add_pilots(pilots)
 
         def pilot_cb(pilot, state):
             print('pilot: %s - %s - %5.1f' % (pilot.uid, state,
@@ -119,61 +119,61 @@ if __name__ == '__main__':
       # sys.exit()
 
 
-        # Create a workload of ComputeUnits.
-        # Each compute unit runs '/bin/date'.
-        report.header('submit units')
+        # Create a workload of Tasks.
+        # Each task runs '/bin/date'.
+        report.header('submit tasks')
 
-        report.info('create %d unit description(s)\n\t' % n_units)
+        report.info('create %d task description(s)\n\t' % n_tasks)
 
-        cuds  = list()
+        tds  = list()
         start = time.time()
-        for i in range(n_units):
+        for i in range(n_tasks):
 
-            # create a new CU description, and fill it.
+            # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.ComputeUnitDescription()
+            td = rp.TaskDescription()
             # trigger an error now and then
           # if i % 2:
-            cud.executable = '/bin/echo'
-            cud.arguments  = ['$RP_PILOT_ID']
+            td.executable = '/bin/echo'
+            td.arguments  = ['$RP_PILOT_ID']
 
-            cuds.append(cud)
+            tds.append(td)
             report.progress()
         report.ok('>>ok\n')
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
+        # assigning Tasks to the Pilots.
         start  = time.time()
-        units  = umgr.submit_units(cuds)
+        tasks  = tmgr.submit_tasks(tds)
         stop   = time.time()
         print(' === > %s' % (stop - start))
 
-        # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+        # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
-        umgr.wait_units()
+        tmgr.wait_tasks()
 
         report.info('\n')
-        for unit in units:
+        for task in tasks:
             report.plain('  * %s: %s, %5s'
-                        % (unit.uid, unit.state[:4], unit.pilot))
-            if unit.state in [rp.DONE]:
+                        % (task.uid, task.state[:4], task.pilot))
+            if task.state in [rp.DONE]:
                 report.ok('>>ok\n')
-            elif unit.state in [rp.FAILED]:
+            elif task.state in [rp.FAILED]:
                 report.error('>>err\n')
             else:
                 report.warn('>>nok\n')
 
 
-      #     if unit.state in [rp.FAILED, rp.CANCELED]:
+      #     if task.state in [rp.FAILED, rp.CANCELED]:
       #         report.plain('  * %s: %s, exit: %5s, err: %35s' \
-      #                 % (unit.uid, unit.state[:4],
-      #                    unit.exit_code, unit.stderr.strip()))
+      #                 % (task.uid, task.state[:4],
+      #                    task.exit_code, task.stderr.strip()))
       #         report.error('>>err\n')
       #     else:
       #         report.plain('  * %s: %s, exit: %5s, out: %35s' \
-      #                 % (unit.uid, unit.state[:4],
-      #                     unit.exit_code, unit.stdout.strip()))
+      #                 % (task.uid, task.state[:4],
+      #                     task.exit_code, task.stdout.strip()))
       #         report.ok('>>ok\n')
 
 

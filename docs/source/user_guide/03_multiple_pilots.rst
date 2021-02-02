@@ -6,7 +6,7 @@ Use Multiple Pilots
 *******************
 
 We have seen in the previous examples how an RP pilot acts as a container for
-multiple compute unit executions.  There is in principle no limit on how many of
+multiple task executions.  There is in principle no limit on how many of
 those pilots are used to execute a specific workload, and specifically, pilot
 don't need to run on the same resource!
 
@@ -19,7 +19,7 @@ Instead of creating *one* pilot description, we here create one for any resource
 specified as command line parameter, no matter if those parameters point to the
 same resource targets or not.
 
-The units are distributed over the created set of pilots according to some
+The tasks are distributed over the created set of pilots according to some
 scheduling mechanism -- section :ref:`chapter_user_guide_04` will discuss how an
 application can choose between different scheduling policies.  The default
 policy used here is *Round Robin*.
@@ -38,6 +38,6 @@ What's Next?
 ------------
 
 Using multiple pilots is very powerful -- it becomes more powerful if you allow
-RP to load-balance units between them.  :ref:`chapter_user_guide_04` will show
+RP to load-balance tasks between them.  :ref:`chapter_user_guide_04` will show
 how to do just that.
 

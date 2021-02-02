@@ -39,7 +39,7 @@ def pilot_state_cb(pilots):
     # Note that other error handling semantics are available, depending on your
     # application requirements. For example, upon a pilot failure, the
     # application could spawn a replacement pilot, or reduce the number of
-    # compute units to match the remaining set of pilots.
+    # tasks to match the remaining set of pilots.
 
     for pilot in pilots:
         print("[Callback]: Pilot '%s' state: %s." % (pilot.uid, pilot.state))
@@ -50,29 +50,29 @@ def pilot_state_cb(pilots):
 
 # -----------------------------------------------------------------------------
 #
-def unit_state_cb(units):
-    """ this callback is invoked on all unit state changes """
+def task_state_cb(tasks):
+    """ this callback is invoked on all task state changes """
 
-    # The approach to compute unit state callbacks is the same as the one to
-    # pilot state callbacks. Only difference is that compute unit state
-    # callbacks are invoked by the unit manager on changes of compute unit
+    # The approach to task state callbacks is the same as the one to
+    # pilot state callbacks. Only difference is that task state
+    # callbacks are invoked by the task manager on changes of task
     # states.
     #
-    # The example below does not really create any ComputeUnit object, we only
+    # The example below does not really create any Task object, we only
     # include the callback here for documentation on the approaches to error
     # handling.
     #
     # Note that other error handling semantics are available, depending on your
-    # application requirements. For example, upon units failure, the
-    # application could spawn replacement units, or spawn a pilot on a
-    # different resource which might be better equipped to handle the unit
+    # application requirements. For example, upon tasks failure, the
+    # application could spawn replacement tasks, or spawn a pilot on a
+    # different resource which might be better equipped to handle the task
     # payload.
 
-    for unit in units:
-        print('  unit %s: %s' % (unit.uid, unit.state))
+    for task in tasks:
+        print('  task %s: %s' % (task.uid, task.state))
 
-        if unit.state == rp.FAILED:
-            print('                  : %s' % unit.stderr)
+        if task.state == rp.FAILED:
+            print('                  : %s' % task.stderr)
 
 
 # ------------------------------------------------------------------------------
@@ -93,42 +93,42 @@ if __name__ == "__main__":
     # 'finally' clause...
     try:
 
-        # create the compute unit and pilot managers.
-        umgr = rp.UnitManager(session=session)
+        # create the task and pilot managers.
+        tmgr = rp.TaskManager(session=session)
         pmgr = rp.PilotManager(session=session)
 
         # Register our callbacks with the managers. The callbacks will get
-        # called every time any of the pilots or units change their state,
+        # called every time any of the pilots or tasks change their state,
         # including on FAILED states.
-        umgr.register_callback(unit_state_cb)
+        tmgr.register_callback(task_state_cb)
         pmgr.register_callback(pilot_state_cb)
 
         # Create a local pilot.
-        pd = rp.ComputePilotDescription()
+        pd = rp.PilotDescription()
         pd.resource  = "local.localhost"
         pd.cores     = 64
         pd.runtime   = 60
 
         pilot = pmgr.submit_pilots(pd)
-        umgr.add_pilots(pilot)
+        tmgr.add_pilots(pilot)
 
 
         # we submit n tasks, some of which will fail.
         n    = 1024 * 3
-        cuds = list()
+        tds = list()
         for _ in range(n):
-            cud = rp.ComputeUnitDescription()
+            td = rp.TaskDescription()
             if random.random() < 0.5:
-                cud.executable = '/bin/true'
+                td.executable = '/bin/true'
             else:
-                cud.executable = '/bin/fail'
-            cuds.append(cud)
+                td.executable = '/bin/fail'
+            tds.append(td)
 
-        # submit the units...
-        cus = umgr.submit_units(cuds)
+        # submit the tasks...
+        cus = tmgr.submit_tasks(tds)
 
         # ... and wait for their completion.
-        state = umgr.wait_units(state=rp.FINAL)
+        state = tmgr.wait_tasks(state=rp.FINAL)
 
 
     except Exception as e:

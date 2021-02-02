@@ -1,0 +1,49 @@
+
+# this is the default task manager config which is used if no other config is
+# specified.  It contains the minimal set of settings required for
+# a functional task manager.
+{
+    # default scheduler
+    "scheduler" : "round_robin",
+
+    # max number of updates to put into a db bulk
+    "bulk_collection_size" : 100,
+
+    # max time period to collect db notifications into bulks (seconds)
+    "bulk_collection_time" : 1.0,
+
+    # time to sleep between database polls (seconds)
+    "db_poll_sleeptime" : 1.0,
+
+    "bridges" : {
+        "tmgr_staging_input_queue"  : {"kind"      : "queue",
+                                       "log_level" : "error",
+                                       "stall_hwm" : 0,
+                                       "bulk_size" : 0},
+        "tmgr_scheduling_queue"     : {"kind"      : "queue",
+                                       "log_level" : "error",
+                                       "stall_hwm" : 0,
+                                       "bulk_size" : 0},
+        "tmgr_staging_output_queue" : {"kind"      : "queue",
+                                       "log_level" : "error",
+                                       "stall_hwm" : 0,
+                                       "bulk_size" : 0},
+
+        "tmgr_unschedule_pubsub"    : {"kind"      : "pubsub",
+                                       "log_level" : "error",
+                                       "stall_hwm" : 0,
+                                       "bulk_size" : 0},
+        "tmgr_reschedule_pubsub"    : {"kind"      : "pubsub",
+                                       "log_level" : "error",
+                                       "stall_hwm" : 0,
+                                       "bulk_size" : 0}
+    },
+
+    "components" : {
+        # how many instances of the respective components should be started
+        "tmgr_staging_input"  : { "count" : 1},
+        "tmgr_scheduling"     : { "count" : 1},
+        "tmgr_staging_output" : { "count" : 1}
+    }
+}
+

@@ -24,7 +24,7 @@ def out(msg):
 class ComponentManager(object):
     '''
     RP spans a hierarchy of component instances: the application has a pmgr and
-    umgr, and the umgr has a staging component and a scheduling component, and
+    tmgr, and the tmgr has a staging component and a scheduling component, and
     the pmgr has a launching component, and components also can have bridges,
     etc. etc.  This ComponentManager centralises the code needed to spawn,
     manage and terminate such components - any code which needs to create
@@ -510,7 +510,7 @@ class Component(object):
         #
         from radical.pilot import worker as rpw
         from radical.pilot import pmgr   as rppm
-        from radical.pilot import umgr   as rpum
+        from radical.pilot import tmgr   as rptm
         from radical.pilot import agent  as rpa
         from radical.pilot import raptor as rpt
       # from radical.pilot import constants as rpc
@@ -522,9 +522,9 @@ class Component(object):
 
                 rpc.PMGR_LAUNCHING_COMPONENT       : rppm.Launching,
 
-                rpc.UMGR_STAGING_INPUT_COMPONENT   : rpum.Input,
-                rpc.UMGR_SCHEDULING_COMPONENT      : rpum.Scheduler,
-                rpc.UMGR_STAGING_OUTPUT_COMPONENT  : rpum.Output,
+                rpc.TMGR_STAGING_INPUT_COMPONENT   : rptm.Input,
+                rpc.TMGR_SCHEDULING_COMPONENT      : rptm.Scheduler,
+                rpc.TMGR_STAGING_OUTPUT_COMPONENT  : rptm.Output,
 
                 rpc.AGENT_STAGING_INPUT_COMPONENT  : rpa.Input,
                 rpc.AGENT_SCHEDULING_COMPONENT     : rpa.Scheduler,
@@ -555,14 +555,14 @@ class Component(object):
         # FIXME: We do not check for types of things to cancel - the UIDs are
         #        supposed to be unique.  That abstraction however breaks as we
         #        currently have no abstract 'cancel' command, but instead use
-        #        'cancel_units'.
+        #        'cancel_tasks'.
 
         self._log.debug('command incoming: %s', msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_units':
+        if cmd == 'cancel_tasks':
 
             uids = arg['uids']
 
@@ -1161,7 +1161,7 @@ class Component(object):
 
             uid = thing['uid']
 
-          # if thing['type'] not in ['unit', 'pilot']:
+          # if thing['type'] not in ['task', 'pilot']:
           #     raise TypeError("thing has unknown type (%s)" % uid)
 
             if state:

@@ -34,7 +34,7 @@ class PRTE2(LaunchMethod):
 
         # We remove all PRUN related environment variables from the launcher
         # environment, so that we can use PRUN for both launch of the
-        # (sub-)agent and CU execution.
+        # (sub-)agent and Task execution.
         self.env_removables.extend(['OMPI_', 'OPAL_', 'PMIX_'])
 
         self._verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
@@ -249,19 +249,19 @@ class PRTE2(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
         time.sleep(0.1)
 
-        slots     = cu['slots']
-        cud       = cu['description']
+        slots     = t['slots']
+        td       = t['description']
 
-        task_exec = cud['executable']
-        task_args = cud.get('arguments') or []
-        task_env  = cud.get('environment') or {}
+        task_exec = td['executable']
+        task_args = td.get('arguments') or []
+        task_env  = td.get('environment') or {}
 
-        n_procs   = cud.get('cpu_processes') or 1
-        n_threads = cud.get('cpu_threads') or 1
+        n_procs   = td.get('cpu_processes') or 1
+        n_threads = td.get('cpu_threads') or 1
 
         if not slots.get('lm_info'):
             raise RuntimeError('lm_info not set (%s): %s' % (self.name, slots))
