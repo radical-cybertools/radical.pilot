@@ -664,8 +664,17 @@ class AgentSchedulingComponent(rpu.Component):
                                                 log=self._log)
 
         self._waitpool = {task['uid']:task for task in unscheduled}
+
+        # update task resources
+        for task in scheduled:
+            td = task['description']
+            task['$set']      = ['resources']
+            task['resources'] = {'cpu': td['cpu_processes'] *
+                                        td.get('cpu_threads', 1),
+                                 'gpu': td['gpu_processes']}
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
                                                              push=True)
+
         # method counts as `active` if anything was scheduled
         active = bool(scheduled)
 
@@ -716,6 +725,11 @@ class AgentSchedulingComponent(rpu.Component):
 
                 # task got scheduled - advance state, notify world about the
                 # state change, and push it out toward the next component.
+                td = unit['description']
+                unit['$set']      = ['resources']
+                unit['resources'] = {'cpu': td['cpu_processes'] *
+                                            td.get('cpu_threads', 1),
+                                     'gpu': td['gpu_processes']}
                 self.advance(unit, rps.AGENT_EXECUTING_PENDING,
                              publish=True, push=True)
 
@@ -745,9 +759,24 @@ class AgentSchedulingComponent(rpu.Component):
 
         to_unschedule = list()
         try:
+
+            # Timeout and bulk limit below are somewhat arbitrary, but the
+            # behaviour is benign.  The goal is to avoid corner cases: for the
+            # sleep, avoid no sleep (busy idle) and also significant latencies.
+            # Anything smaller than 0.01 is under our noise level and works ok
+            # for the latency, and anything larger than 0 is sufficient to avoid
+            # busy idle.
+            #
+            # For the unschedule bulk, the corner case to avoid is waiting for
+            # too long to fill a bulk so that latencies add a up and negate the
+            # bulk optimization. For the 0.001 sleep, 128 as bulk size results
+            # in a max added latency of about 0.1 second, which is one order of
+            # magnitude above our noise level again and thus acceptable (tm).
             while not self._proc_term.is_set():
                 unit = self._queue_unsched.get(timeout=0.001)
                 to_unschedule.append(unit)
+                if len(to_unschedule) > 128:
+                    break
 
         except queue.Empty:
             # no more unschedule requests
@@ -768,6 +797,8 @@ class AgentSchedulingComponent(rpu.Component):
             # Thus we replace the unscheduled unit on the same cores / GPUs
             # immediately. This assumes that the `tuple_size` is good enough to
             # judge the legality of the resources for the new target unit.
+            #
+            # FIXME
 
           # ts = tuple(unit['tuple_size'])
           # if self._ts_map.get(ts):
