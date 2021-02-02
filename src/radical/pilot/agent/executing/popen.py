@@ -232,8 +232,7 @@ class Popen(AgentExecutingComponent) :
             fout.write(self._header)
             fout.write(self._separator)
             fout.write(self._get_rp_env(task))
-
-            fout.write(self._separator)
+            fout.write('\n')
             fout.write(self._get_prof('launch_start', tid))
 
             fout.write(self._separator)
@@ -421,45 +420,6 @@ class Popen(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def _prep_env(self, task):
-
-        # prepare a `<task_uid>.env` file which captures the task's execution
-        # environment.  That file is to be sourced by all ranks individually
-        # *after* the launch method placed them on the compute nodes
-        #
-        # That prepared environment is based upon `env.orig` as initially
-        # captured by the bootstrapper.  On top of that environment, we apply:
-        #
-        #   - the unit environment       (`task.description.environment`)
-        #   - launch method env settings (such as `CUDA_VISIBLE_DEVICES` etc)
-        #   - the unit pre_exec commands (`task.description.environment`)
-        #
-        # The latter (`pre_exec`) can be rather costly, and for example in the
-        # case of activating virtual envs or conda envs can put significant
-        # strain on shared file systems.  We thus perform the above env setup
-        # once and cache the results, and then apply the env settings to all
-        # future tasks with the same setup (`environment` and `pre_exec`
-        # setting).  That cache is managed by the underlying RU implementation
-        # of `env_prep`.
-        #
-        # The task sandbox exists at this point.
-
-        tid  = task['uid']
-        td   = task['description']
-        sbox = task['unit_sandbox_path']
-        tgt  = '%s/%s.env' % (sbox, tid)
-
-        # we consider the `td['environment']` a part of the `pre_exec`, and
-        # thus prepend the respective `export` statements
-        pre_exec = ['export %s="%s"' % (k, v)
-                    for k,v in td['environment'].items()]
-        pre_exec += td['pre_exec']
-
-        ru.env_prep(source=self._env_orig, pre_exec=pre_exec, target=tgt)
-
-
-    # --------------------------------------------------------------------------
-    #
     def _watch(self):
 
         try:
@@ -586,8 +546,7 @@ class Popen(AgentExecutingComponent) :
     #
     def _get_prof(self, event, tid, msg=''):
 
-        return '$RP_PROF %s %s %s %s "%s"\n' \
-             % (event, tid, rps.AGENT_EXECUTING, self.uid, msg)
+        return '$RP_PROF %s\n' % event
 
 
     # --------------------------------------------------------------------------
@@ -686,7 +645,7 @@ class Popen(AgentExecutingComponent) :
 
         # also add any env vars requested in the unit description
         if td['environment']:
-            ret += '\n# task env settings\b'
+            ret += '\n# task env settings\n'
             for key,val in td['environment'].items():
                 ret += 'export %s="%s"\n' % (key, val)
 

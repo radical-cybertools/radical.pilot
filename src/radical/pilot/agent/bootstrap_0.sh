@@ -197,16 +197,9 @@ create_prof(){
 
 test -z "\$RP_PROF_TGT" && exit
 
-event=\$1
-uid=\$2
-state=\$3
-comp=\$4
-msg=\$5
-
 now=\$($(pwd)/gtod)
-printf "%.7f,%s,%s,%s,%s,%s,%s\n" \
-        "\$now" "\$event" "\$comp" "MainThread" "\$uid" "\$state" "\$msg" \
-        >> "\$RP_PROF_TGT"
+printf "%.7f,\$1,\$RP_SPAWNER_ID,MainThread,\$RP_UNIT_ID,AGENT_EXECUTING,\n" \
+       "\$now" >> "\$RP_PROF_TGT"
 
 EOT
 
