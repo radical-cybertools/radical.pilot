@@ -194,7 +194,8 @@ class TestContinuous(TestCase):
 
 
         self.assertEqual(component.schedule_unit(unit), test_slot)
-        self.assertEqual(component._tag_history, {'unit.000001': [1]})
+        self.assertEqual(component._tag_history, {})
+      # self.assertEqual(component._tag_history, {'unit.000001': [1]})
 
 
     # --------------------------------------------------------------------------
