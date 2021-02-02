@@ -1,4 +1,6 @@
 
+# pylint: disable=cell-var-from-loop
+
 import os
 import sys
 import time
@@ -101,6 +103,10 @@ def get_session_docs(db, sid, cache=None, cachedir=None):
 
         for unit in json_data['unit']:
 
+            if 'pilot' not in unit:
+                import pprint
+                pprint.pprint(unit)
+
             if  unit['pilot'] == pilot['uid']:
                 pilot['unit_ids'].append (unit['uid'])
 
@@ -184,7 +190,7 @@ def get_session_slothist(db, sid, cache=None, cachedir=None):
         # we use the startup time to sort the slot names, as that gives a nicer
         # representation when plotting.  That sorting should probably move to
         # the plotting tools though... (FIXME)
-        slot_names.sort (key=lambda x: slot_started[x])
+        slot_names.sort(key=lambda x: slot_started[x])
 
         ret[pid] = dict()
         ret[pid]['started']    = pilot_doc['started']
