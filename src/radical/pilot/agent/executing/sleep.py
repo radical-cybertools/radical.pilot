@@ -61,28 +61,28 @@ class Sleep(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
+    def work(self, tasks):
 
-        if not isinstance(units, list):
-            units = [units]
+        if not isinstance(tasks, list):
+            tasks = [tasks]
 
-        self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
+        self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
         now = time.time()
-        for t in units:
+        for t in tasks:
           # assert(t['description']['executable'].endswith('sleep'))
             t['to_finish'] = now + float(t['description']['arguments'][0])
 
-        for t in units:
+        for t in tasks:
             uid = t['uid']
-            self._prof.prof('exec_start',    uid=uid)
-            self._prof.prof('exec_ok',       uid=uid)
-            self._prof.prof('cu_start',      uid=uid)
-            self._prof.prof('cu_exec_start', uid=uid)
-            self._prof.prof('app_start',     uid=uid)
+            self._prof.prof('exec_start',      uid=uid)
+            self._prof.prof('exec_ok',         uid=uid)
+            self._prof.prof('task_start',      uid=uid)
+            self._prof.prof('task_exec_start', uid=uid)
+            self._prof.prof('app_start',       uid=uid)
 
         with self._tasks_lock:
-            self._tasks.extend(units)
+            self._tasks.extend(tasks)
 
 
     # --------------------------------------------------------------------------
@@ -102,8 +102,8 @@ class Sleep(AgentExecutingComponent) :
                 uid = t['uid']
                 t['target_state'] = 'DONE'
                 self._prof.prof('app_stop',         uid=uid)
-                self._prof.prof('cu_exec_stop',     uid=uid)
-                self._prof.prof('cu_stop',          uid=uid)
+                self._prof.prof('task_exec_stop',   uid=uid)
+                self._prof.prof('task_stop',        uid=uid)
                 self._prof.prof('exec_stop',        uid=uid)
                 self._prof.prof('unschedule_start', uid=uid)
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)

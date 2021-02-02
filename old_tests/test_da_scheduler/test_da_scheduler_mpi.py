@@ -11,7 +11,7 @@ import copy
 try:
     import mock
 except ImportError:
-    from unittest import mock
+    from tasktest import mock
 
 # User Input for test
 #-----------------------------------------------------------------------------------------------------------------------
@@ -55,16 +55,16 @@ def setUp():
 
 
 def mpi():
-    cud = dict()
-    cud['environment'] = dict()
-    cud['cpu_process_type'] = 'MPI'
-    cud['gpu_process_type'] = None
-    cud['cpu_processes'] = 1
-    cud['cpu_threads'] = 1
-    cud['gpu_processes'] = 0
-    cud['lfs_per_process'] = 1024
+    td = dict()
+    td['environment'] = dict()
+    td['cpu_process_type'] = 'MPI'
+    td['gpu_process_type'] = None
+    td['cpu_processes'] = 1
+    td['cpu_threads'] = 1
+    td['gpu_processes'] = 0
+    td['lfs_per_process'] = 1024
 
-    return cud
+    return td
 
 # Cleanup any folders and files to leave the system state
 # as prior to the test
@@ -78,13 +78,13 @@ def tearDown():
 #-----------------------------------------------------------------------------------------------------------------------
 
 
-# Test umgr input staging of a single file
+# Test tmgr input staging of a single file
 #-----------------------------------------------------------------------------------------------------------------------
 @mock.patch.object(Continuous, '__init__', return_value=None)
 @mock.patch.object(Continuous, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
 @mock.patch('radical.utils.raise_on')
-def test_mpi_unit_with_continuous_scheduler(
+def test_mpi_task_with_continuous_scheduler(
         mocked_init,
         mocked_method,
         mocked_profiler,
@@ -112,12 +112,12 @@ def test_mpi_unit_with_continuous_scheduler(
             'lfs': component._lrms_lfs_per_node
         }))
 
-    # Allocate first CUD -- should land on first node
-    cud = mpi()
-    cud['cpu_processes'] = 2
-    cud['cpu_threads'] = 1
-    cud['lfs_per_process'] = 1024
-    slot = component._allocate_slot(cud)
+    # Allocate first TD -- should land on first node
+    td = mpi()
+    td['cpu_processes'] = 2
+    td['cpu_threads'] = 1
+    td['lfs_per_process'] = 1024
+    slot = component._allocate_slot(td)
     assert slot == {'cores_per_node': component._lrms_cores_per_node,
                     'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{'lfs': {'size': 2048, 'path': 'abc'},
@@ -128,7 +128,7 @@ def test_mpi_unit_with_continuous_scheduler(
                     'lm_info': 'INFO',
                     'gpus_per_node': component._lrms_gpus_per_node}
 
-    # Assert resulting node list values after first CUD
+    # Assert resulting node list values after first TD
     assert component.nodes == [{'lfs': {'size': 3072, 'path': 'abc'},
                                 'cores': [1, 1, 0, 0],
                                 'name': 'a',
@@ -155,12 +155,12 @@ def test_mpi_unit_with_continuous_scheduler(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    # Allocate second CUD -- should land on first node
-    cud = mpi()
-    cud['cpu_processes'] = 1
-    cud['cpu_threads'] = 2
-    cud['lfs_per_process'] = 1024
-    slot = component._allocate_slot(cud)
+    # Allocate second TD -- should land on first node
+    td = mpi()
+    td['cpu_processes'] = 1
+    td['cpu_threads'] = 2
+    td['lfs_per_process'] = 1024
+    slot = component._allocate_slot(td)
     assert slot == {'cores_per_node': component._lrms_cores_per_node,
                     'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{'lfs': {'size': 1024, 'path': 'abc'},
@@ -171,7 +171,7 @@ def test_mpi_unit_with_continuous_scheduler(
                     'lm_info': 'INFO',
                     'gpus_per_node': component._lrms_gpus_per_node}
 
-    # Assert resulting node list values after second CUD
+    # Assert resulting node list values after second TD
     assert component.nodes == [{'lfs': {'size': 2048, 'path': 'abc'},
                                 'cores': [1, 1, 1, 1],
                                 'name': 'a',
@@ -198,13 +198,13 @@ def test_mpi_unit_with_continuous_scheduler(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    # Allocate third CUD -- should land on second node since no cores are
+    # Allocate third TD -- should land on second node since no cores are
     # available on the first
-    cud = mpi()
-    cud['cpu_processes'] = 1
-    cud['cpu_threads'] = 1
-    cud['lfs_per_process'] = 1024
-    slot = component._allocate_slot(cud)
+    td = mpi()
+    td['cpu_processes'] = 1
+    td['cpu_threads'] = 1
+    td['lfs_per_process'] = 1024
+    slot = component._allocate_slot(td)
     assert slot == {'cores_per_node': component._lrms_cores_per_node,
                     'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{'lfs': {'size': 1024, 'path': 'abc'},
@@ -215,7 +215,7 @@ def test_mpi_unit_with_continuous_scheduler(
                     'lm_info': 'INFO',
                     'gpus_per_node': component._lrms_gpus_per_node}
 
-    # Assert resulting node list values after third CUD
+    # Assert resulting node list values after third TD
     assert component.nodes == [{'lfs': {'size': 2048, 'path': 'abc'},
                                 'cores': [1, 1, 1, 1],
                                 'name': 'a',
@@ -242,12 +242,12 @@ def test_mpi_unit_with_continuous_scheduler(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    # Allocate fourth CUD -- should land on second and third nodes
-    cud = mpi()
-    cud['cpu_processes'] = 2
-    cud['cpu_threads'] = 2
-    cud['lfs_per_process'] = 1024
-    slot = component._allocate_slot(cud)
+    # Allocate fourth TD -- should land on second and third nodes
+    td = mpi()
+    td['cpu_processes'] = 2
+    td['cpu_threads'] = 2
+    td['lfs_per_process'] = 1024
+    slot = component._allocate_slot(td)
     assert slot == {'cores_per_node': component._lrms_cores_per_node,
                     'lfs_per_node': component._lrms_lfs_per_node,
                     'nodes': [{'lfs': {'size': 1024, 'path': 'abc'},
@@ -263,7 +263,7 @@ def test_mpi_unit_with_continuous_scheduler(
                     'lm_info': 'INFO',
                     'gpus_per_node': component._lrms_gpus_per_node}
 
-    # Assert resulting node list values after fourth CUD
+    # Assert resulting node list values after fourth TD
     assert component.nodes == [{'lfs': {'size': 2048, 'path': 'abc'},
                                 'cores': [1, 1, 1, 1],
                                 'name': 'a',

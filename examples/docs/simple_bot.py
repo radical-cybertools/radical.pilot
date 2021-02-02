@@ -25,8 +25,8 @@ if __name__ == "__main__":
 
     RESOURCE_LABEL = 'local.localhost'
     PILOT_CORES    =  2
-    BAG_SIZE       = 10  # The number of units
-    CU_CORES       =  1  # The cores each CU will take.
+    BAG_SIZE       = 10  # The number of tasks
+    TASK_CORES     =  1  # The cores each Task will take.
     QUEUE          = None
     # we use a reporter class for nicer output
     report = ru.Reporter(name='radical.pilot')
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     # the whole RP stack down via a 'session.close()' in the 'finally' clause.
     try:
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session=session)
 
         #
@@ -53,7 +53,7 @@ if __name__ == "__main__":
         # https://radicalpilot.readthedocs.io/en/stable/ \
         #        machconf.html#preconfigured-resources
         #
-        pdesc = rp.ComputePilotDescription ()
+        pdesc = rp.PilotDescription ()
         pdesc.resource = RESOURCE_LABEL  # this is a "label", not a hostname
         pdesc.cores    =  PILOT_CORES
         pdesc.runtime  = 30    # minutes
@@ -61,48 +61,48 @@ if __name__ == "__main__":
         pdesc.queue = QUEUE
 
         # submit the pilot.
-        report.header("Submitting Compute Pilot to Pilot Manager ...")
+        report.header("Submitting  Pilot to Pilot Manager ...")
         pilot = pmgr.submit_pilots(pdesc)
 
-        # create a UnitManager which schedules ComputeUnits over pilots.
-        report.header("Initializing Unit Manager ...")
-        umgr = rp.UnitManager (session=session)
+        # create a TaskManager which schedules Tasks over pilots.
+        report.header("Initializing Task Manager ...")
+        tmgr = rp.TaskManager (session=session)
 
 
-        # Add the created ComputePilot to the UnitManager.
+        # Add the created Pilot to the TaskManager.
         report.ok('>>ok\n')
 
-        umgr.add_pilots(pilot)
+        tmgr.add_pilots(pilot)
 
-        report.info('Create %d Unit Description(s)\n\t' % BAG_SIZE)
+        report.info('Create %d Task Description(s)\n\t' % BAG_SIZE)
 
-        # create CU descriptions
-        cudesc_list = []
+        # create Task descriptions
+        taskdesc_list = []
         for i in range(BAG_SIZE):
 
-            # -------- BEGIN USER DEFINED CU DESCRIPTION --------- #
-            cudesc = rp.ComputeUnitDescription()
-            cudesc.executable  = "/bin/echo"
-            cudesc.arguments   = ['I am CU number $CU_NO']
-            cudesc.environment = {'CU_NO': i}
-            cudesc.cores       = 1
-            # -------- END USER DEFINED CU DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED Task DESCRIPTION --------- #
+            taskdesc = rp.TaskDescription()
+            taskdesc.executable  = "/bin/echo"
+            taskdesc.arguments   = ['I am Task number $TASK_NO']
+            taskdesc.environment = {'TASK_NO': i}
+            taskdesc.cores       = 1
+            # -------- END USER DEFINED Task DESCRIPTION --------- #
 
-            cudesc_list.append(cudesc)
+            taskdesc_list.append(taskdesc)
             report.progress()
         report.ok('>>>ok\n')
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        report.header("Submit Compute Units to Unit Manager ...")
-        cu_set = umgr.submit_units (cudesc_list)
+        # assigning Tasks to the Pilots.
+        report.header("Submit Tasks to Task Manager ...")
+        task_set = tmgr.submit_tasks (taskdesc_list)
 
-        report.header("Waiting for CUs to complete ...")
-        umgr.wait_units()
+        report.header("Waiting for tasks to complete ...")
+        tmgr.wait_tasks()
 
-        for unit in cu_set:
-            print("* CU %s, state %s, exit code: %s, stdout: %s"
-                % (unit.uid, unit.state, unit.exit_code, unit.stdout.strip()))
+        for task in task_set:
+            print("* Task %s, state %s, exit code: %s, stdout: %s"
+                % (task.uid, task.state, task.exit_code, task.stdout.strip()))
 
 
     except Exception as e:

@@ -28,8 +28,8 @@ class DBSession(object):
         session : document describing this rp.Session (singleton)
         pmgr    : document describing a rp.PilotManager
         pilots  : document describing a rp.Pilot
-        umgr    : document describing a rp.UnitManager
-        units   : document describing a rp.Unit
+        tmgr    : document describing a rp.TaskManager
+        tasks   : document describing a rp.Task
         '''
 
         self._dburl      = dburl
@@ -357,67 +357,67 @@ class DBSession(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_units(self, umgr_uid, unit_ids=None):
+    def get_tasks(self, tmgr_uid, task_ids=None):
         '''
-        Get yerself a bunch of compute units.
+        Get yerself a bunch of tasks.
 
-        return dict {uid:unit}
+        return dict {uid:task}
         '''
         if self.closed:
             return None
           # raise Exception('No active session.')
 
-        # we only pull units which are not yet owned by the umgr
+        # we only pull tasks which are not yet owned by the tmgr
 
-        if not unit_ids:
-            cursor = self._c.find({'type'   : 'unit',
-                                   'umgr'   : umgr_uid,
-                                   'control': {'$ne' : 'umgr'},
+        if not task_ids:
+            cursor = self._c.find({'type'   : 'task',
+                                   'tmgr'   : tmgr_uid,
+                                   'control': {'$ne' : 'tmgr'},
                                    })
 
         else:
-            cursor = self._c.find({'type'   : 'unit',
-                                   'umgr'   : umgr_uid,
-                                   'uid'    : {'$in' : unit_ids},
-                                   'control': {'$ne' : 'umgr'  },
+            cursor = self._c.find({'type'   : 'task',
+                                   'tmgr'   : tmgr_uid,
+                                   'uid'    : {'$in' : task_ids},
+                                   'control': {'$ne' : 'tmgr'  },
                                    })
 
-        # make sure we return every unit doc only once
+        # make sure we return every task doc only once
         # https://www.quora.com/ \
         #         How-did-mongodb-return-duplicated-but-different-documents
         ret = {doc['uid'] : doc for doc in cursor}
         docs = list(ret.values())
 
-        # for each doc, we make sure the unit state is according to the state
-        # model, ie. is the largest of any state the unit progressed through
+        # for each doc, we make sure the task state is according to the state
+        # model, ie. is the largest of any state the task progressed through
         for doc in docs:
-            doc['state'] = rps._unit_state_collapse(doc['states'])
+            doc['state'] = rps._task_state_collapse(doc['states'])
 
         return docs
 
 
     # --------------------------------------------------------------------------
     #
-    def insert_umgr(self, umgr_doc):
+    def insert_tmgr(self, tmgr_doc):
         '''
-        Adds a unit managers document
+        Adds a task managers document
         '''
         if self.closed:
             return None
           # raise Exception('No active session.')
 
-        umgr_doc['_id']  = umgr_doc['uid']
-        umgr_doc['type'] = 'umgr'
+        tmgr_doc['_id']  = tmgr_doc['uid']
+        tmgr_doc['type'] = 'tmgr'
 
         # FIXME: evaluate retval
-        self._c.insert(ru.demunch(umgr_doc))
+        self._c.insert(ru.demunch(tmgr_doc))
 
 
     # --------------------------------------------------------------------------
     #
-    def insert_units(self, unit_docs):
+    def insert_tasks(self, task_docs):
         '''
-        Adds new unit documents to the database.
+        Adds new task documents to the database.
         '''
 
         # FIXME: explicit bulk vs. insert(multi=True)
@@ -430,32 +430,32 @@ class DBSession(object):
         # here.  In principle, the update should go to the update worker anyway
         # -- but as long as we use the DB as communication channel, we need to
         # make sure that the insert is executed before handing off control over
-        # the unit to other components, thus the synchronous insert call.
+        # the task to other components, thus the synchronous insert call.
         # (FIXME)
         bcs = 1024  # bulk_collection_size
         cur = 0     # bulk index
 
         while True:
 
-            subset = unit_docs[cur : cur + bcs]
+            subset = task_docs[cur : cur + bcs]
             bulk   = self._c.initialize_ordered_bulk_op()
             cur   += bcs
 
             if not subset:
-                # all units are done
+                # all tasks are done
                 break
 
             for doc in subset:
                 doc['_id']     = doc['uid']
-                doc['type']    = 'unit'
-                doc['control'] = 'umgr'
+                doc['type']    = 'task'
+                doc['control'] = 'tmgr'
                 doc['states']  = [doc['state']]
                 doc['cmd']     = list()
                 bulk.insert(ru.demunch(doc))
 
             try:
                 res = bulk.execute()
-                self._log.debug('bulk unit insert result: %s', res)
+                self._log.debug('bulk task insert result: %s', res)
                 # FIXME: evaluate res
 
             except pymongo.errors.OperationFailure as e:

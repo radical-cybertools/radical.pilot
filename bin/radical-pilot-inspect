@@ -39,12 +39,12 @@ def usage (msg=None, noexit=False) :
 
         help      : show this message
         pid2sid   : find session ID for a pilot id (pid)
-        uid2sid   : find session ID for a unit id  (uid)
+        uid2sid   : find session ID for a task id  (uid)
         resources : list resource information
 
       options :
         -p <pid>  : apply mode to pilot   with given ID
-        -u <pid>  : apply mode to unit    with given ID
+        -u <pid>  : apply mode to task    with given ID
         -s <sid>  : apply mode to session with given ID
         -d <url>  : use given database URL instead of default (%s).
 
@@ -121,16 +121,16 @@ def find_sid_by_uid (dbclient, dbname, uid) :
             sys.stdout.flush (   )
             continue
 
-        for doc in docs['unit'] :
+        for doc in docs['task'] :
             if  str(doc['_id']) == uid :
                 sys.stdout.write ('!')
                 sys.stdout.flush (   )
-                print("\nfound unit %s in session %s" % (uid, sid))
+                print("\nfound task %s in session %s" % (uid, sid))
                 return
         sys.stdout.write ('.')
         sys.stdout.flush (   )
 
-    print("\nunit %s not found in any session")
+    print("\ntask %s not found in any session")
 
 
 # ------------------------------------------------------------------------------

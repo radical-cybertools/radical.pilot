@@ -20,7 +20,7 @@ def pilot_state_cb (pilot, state):
     if not pilot:
         return
 
-    print("[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
+    print("[Callback]: Pilot '%s' state: %s." % (pilot.uid, state))
 
     if state == rp.FAILED:
         sys.exit (1)
@@ -28,25 +28,25 @@ def pilot_state_cb (pilot, state):
 
 # ------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state):
-    """ this callback is invoked on all unit state changes """
+def task_state_cb (task, state):
+    """ this callback is invoked on all task state changes """
 
-    print("[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state))
+    print("[Callback]: task %s on %s: %s." % (task.uid, task.pilot_id, state))
 
-    if not unit:
+    if not task:
         return
 
     if state in [rp.FAILED, rp.DONE, rp.CANCELED]:
 
-        print("* unit %s (%s) state %s (%s) %s - %s, out/err: %s / %s"
-                 % (unit.uid,
-                    unit.execution_locations,
-                    unit.state,
-                    unit.exit_code,
-                    unit.start_time,
-                    unit.stop_time,
-                    unit.stdout,
-                    unit.stderr))
+        print("* task %s (%s) state %s (%s) %s - %s, out/err: %s / %s"
+                 % (task.uid,
+                    task.execution_locations,
+                    task.state,
+                    task.exit_code,
+                    task.start_time,
+                    task.stop_time,
+                    task.stdout,
+                    task.stderr))
 
 
 # ------------------------------------------------------------------------------
@@ -75,13 +75,13 @@ if __name__ == "__main__":
         for occ in radical_cockpit_occupants:
             os.system('/bin/echo "%s" >> %s' % (occ, INPUT_FILE))
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session)
         pmgr.register_callback(pilot_state_cb)
 
         # Define a C-core on stamped that runs for M minutes and
         # uses $HOME/radical.pilot.sandbox as sandbox directory.
-        pdesc = rp.ComputePilotDescription()
+        pdesc = rp.PilotDescription()
         pdesc.resource = "local.localhost"
         pdesc.runtime = 15  # M minutes
         pdesc.cores = 2  # C cores
@@ -89,13 +89,13 @@ if __name__ == "__main__":
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
-        # a UnitManager object.
-        umgr = rp.UnitManager(session=session)
-        umgr.register_callback(unit_state_cb, rp.UNIT_STATE)
+        # Combine the Pilot, the Tasks and a scheduler via
+        # a TaskManager object.
+        tmgr = rp.TaskManager(session=session)
+        tmgr.register_callback(task_state_cb, rp.TASK_STATE)
 
-        # Add the previously created ComputePilot to the UnitManager.
-        umgr.add_pilots(pilot)
+        # Add the previously created Pilot to the TaskManager.
+        tmgr.add_pilots(pilot)
 
         # Configure the staging directive for intermediate data
         sd_inter_out = {
@@ -106,17 +106,17 @@ if __name__ == "__main__":
         }
 
         # Task 1: Sort the input file and output to intermediate file
-        cud1 = rp.ComputeUnitDescription()
+        cud1 = rp.TaskDescription()
         cud1.executable = 'sort'
         cud1.arguments = ['-o', INTERMEDIATE_FILE, INPUT_FILE]
         cud1.input_staging = INPUT_FILE
         cud1.output_staging = sd_inter_out
 
         # Submit the first task for execution.
-        umgr.submit_units(cud1)
+        tmgr.submit_tasks(cud1)
 
-        # Wait for the compute unit to finish.
-        umgr.wait_units()
+        # Wait for the task to finish.
+        tmgr.wait_tasks()
 
         # Configure the staging directive for input intermediate data
         sd_inter_in = {
@@ -127,18 +127,18 @@ if __name__ == "__main__":
         }
 
         # Task 2: Take the first line of the sort intermediate file and write to output
-        cud2 = rp.ComputeUnitDescription()
+        cud2 = rp.TaskDescription()
         cud2.executable = '/bin/bash'
         cud2.arguments = ['-c', 'head -n1 %s > %s' %
                           (INTERMEDIATE_FILE, OUTPUT_FILE)]
         cud2.input_staging = sd_inter_in
         cud2.output_staging = OUTPUT_FILE
 
-        # Submit the second CU for execution.
-        umgr.submit_units(cud2)
+        # Submit the second Task for execution.
+        tmgr.submit_tasks(cud2)
 
-        # Wait for the compute unit to finish.
-        umgr.wait_units()
+        # Wait for the task to finish.
+        tmgr.wait_tasks()
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

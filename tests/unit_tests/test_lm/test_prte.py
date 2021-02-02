@@ -1,9 +1,7 @@
 
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-import pytest
-
-from unittest import mock
+from unittest import mock, TestCase
 
 import radical.utils as ru
 
@@ -11,30 +9,38 @@ from .test_common                           import setUp
 from radical.pilot.agent.launch_method.prte import PRTE
 
 
-# ------------------------------------------------------------------------------
-#
-@mock.patch.object(PRTE, '__init__', return_value=None)
-@mock.patch.object(PRTE, '_configure', return_value='prun')
-def test_construct_command(mocked_init, mocked_configure):
+class TestPRTE(TestCase):
 
-    test_cases = setUp('lm', 'prte')
+    # ------------------------------------------------------------------------------
+    #
+    @mock.patch.object(PRTE, '__init__', return_value=None)
+    @mock.patch.object(PRTE, '_configure', return_value='prun')
+    def test_construct_command(self, mocked_init, mocked_configure):
 
-    component = PRTE(name=None, cfg=None, session=None)
+        test_cases = setUp('lm', 'prte')
 
-    component.name           = 'prte'
-    component._verbose       = None
-    component._log           = ru.Logger('dummy')
-    component.launch_command = 'prun'
+        component = PRTE(name=None, cfg=None, session=None)
 
-    for unit, result in test_cases:
+        component.name           = 'prte'
+        component._verbose       = None
+        component._log           = ru.Logger('dummy')
+        component.launch_command = 'prun'
 
-        if result == "RuntimeError":
-            with pytest.raises(RuntimeError):
-                command, hop = component.construct_command(unit, None)
+        for task, result in test_cases:
 
-        else:
-            command, hop = component.construct_command(unit, None)
-            assert([command, hop] == result), unit['uid']
+            if result == "RuntimeError":
+                with self.assertRaises(RuntimeError):
+                    _, _ = component.construct_command(task, None)
+
+            else:
+                command, hop = component.construct_command(task, None)
+                self.assertEqual([command, hop], result, msg=task['uid'])
+
+
+if __name__ == '__main__':
+
+    tc = TestPRTE()
+    tc.test_construct_command()
 
 
 # ------------------------------------------------------------------------------

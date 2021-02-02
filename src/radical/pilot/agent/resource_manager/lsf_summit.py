@@ -119,7 +119,7 @@ class LSF_SUMMIT(ResourceManager):
 
         # Check if we can do any work
         if not self.node_list:
-            raise RuntimeError('ResourceManager has no nodes left to run units')
+            raise RuntimeError('ResourceManager has no nodes left to run tasks')
 
         # After ResourceManager configuration, we call any existing config hooks on the
         # launch methods.  Those hooks may need to adjust the ResourceManager settings
@@ -157,7 +157,7 @@ class LSF_SUMMIT(ResourceManager):
         #
         # it defines
         #   lm_info:            dict received via the LM's rm_config_hook
-        #   node_list:          list of node names to be used for unit execution
+        #   node_list:          list of node names to be used for task execution
         #   sockets_per_node:   integer number of sockets on a node
         #   cores_per_socket:   integer number of cores per socket
         #   gpus_per_socket:    integer number of gpus per socket

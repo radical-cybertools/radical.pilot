@@ -20,7 +20,7 @@ def log(msg):
 #
 if __name__ == '__main__':
 
-    uid       = os.environ['RP_UNIT_ID']
+    uid       = os.environ['RP_TASK_ID']
     addr_work = os.environ['RP_WORK_QUEUE_IN']
     addr_res  = os.environ['RP_RESULT_QUEUE_OUT']
 
