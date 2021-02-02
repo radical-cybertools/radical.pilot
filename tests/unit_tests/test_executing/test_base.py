@@ -38,3 +38,8 @@ class TestBase(unittest.TestCase):
 
 # ------------------------------------------------------------------------------
 
+if __name__ == '__main__':
+
+    tc = TestBase()
+    tc.test_create()
+

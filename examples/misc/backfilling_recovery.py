@@ -19,28 +19,28 @@ import radical.pilot as rp
 def pilot_state_cb (pilot, state):
     """ this callback is invoked on all pilot state changes """
 
-    print("[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
+    print("[Callback]: Pilot '%s' state: %s." % (pilot.uid, state))
 
 
 # ------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state):
-    """ this callback is invoked on all unit state changes """
+def task_state_cb (task, state):
+    """ this callback is invoked on all task state changes """
 
-    print("[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state))
+    print("[Callback]: Task  '%s' state: %s." % (task.uid, state))
 
 
 # ------------------------------------------------------------------------------
 #
-def wait_queue_size_cb(umgr, wait_queue_size):
+def wait_queue_size_cb(tmgr, wait_queue_size):
     """
-    this callback is called when the size of the unit managers wait_queue
+    this callback is called when the size of the task managers wait_queue
     changes.
     """
-    print("[Callback]: UnitManager  '%s' wait_queue_size changed to %s."
-        % (umgr.uid, wait_queue_size))
+    print("[Callback]: TaskManager  '%s' wait_queue_size changed to %s."
+        % (tmgr.uid, wait_queue_size))
 
-    pilots = umgr.get_pilots ()
+    pilots = tmgr.get_pilots ()
     for pilot in pilots:
         print("pilot %s: %s" % (pilot.uid, pilot.state))
 
@@ -50,7 +50,7 @@ def wait_queue_size_cb(umgr, wait_queue_size):
                                 rp.LAUNCHING     ,
                                 rp.PENDING_ACTIVE]:
                 print("cancel pilot %s" % pilot.uid)
-                umgr.remove_pilot (pilot.uid)
+                tmgr.remove_pilot (pilot.uid)
                 pilot.cancel ()
 
 
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     # clause...
     try:
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager (session=session)
 
         # Register our callback with the PilotManager. This callback will get
@@ -86,12 +86,12 @@ if __name__ == "__main__":
         # Define a 4-core local pilot that runs for 10 minutes and cleans up
         # after itself.
 
-        pdesc1 = rp.ComputePilotDescription()
+        pdesc1 = rp.PilotDescription()
         pdesc1.resource = "local.localhost"
         pdesc1.runtime  = 10  # minutes
         pdesc1.cores    =  2
 
-        pdesc2 = rp.ComputePilotDescription()
+        pdesc2 = rp.PilotDescription()
         pdesc2.resource = "local.localhost"
         pdesc2.runtime  = 10  # minutes
         pdesc2.cores    =  2
@@ -103,61 +103,61 @@ if __name__ == "__main__":
         pmgr.wait_pilots (state=[rp.PMGR_ACTIVE, rp.DONE, rp.FAILED])
 
 
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
-        # a UnitManager object.
-        umgr = rp.UnitManager (session   = session,
+        # Combine the Pilot, the Tasks and a scheduler via
+        # a TaskManager object.
+        tmgr = rp.TaskManager (session   = session,
                                scheduler = rp.SCHEDULER_BACKFILLING)
 
-        # Register our callback with the UnitManager. This callback will get
-        # called every time any of the units managed by the UnitManager
+        # Register our callback with the TaskManager. This callback will get
+        # called every time any of the tasks managed by the TaskManager
         # change their state.
-        umgr.register_callback (unit_state_cb, rp.UNIT_STATE)
+        tmgr.register_callback (task_state_cb, rp.TASK_STATE)
 
-        # Register also a callback which tells us when all units have been
+        # Register also a callback which tells us when all tasks have been
         # assigned to pilots
-        umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
+        tmgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
 
 
-        # Add the previously created ComputePilot to the UnitManager.
-        umgr.add_pilots (pilots)
+        # Add the previously created Pilot to the TaskManager.
+        tmgr.add_pilots (pilots)
 
-        # Create a workload of restartable ComputeUnits (tasks).
-        cuds = []
-        for unit_count in range(0, 32):
-            cud = rp.ComputeUnitDescription()
-            cud.executable    = "/bin/sleep"
-            cud.arguments     = ["10"]
-            cud.restartable   = True
+        # Create a workload of restartable Tasks (tasks).
+        tds = []
+        for task_count in range(0, 32):
+            td = rp.TaskDescription()
+            td.executable    = "/bin/sleep"
+            td.arguments     = ["10"]
+            td.restartable   = True
 
-            cuds.append(cud)
+            tds.append(td)
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(cuds)
+        # assigning Tasks to the Pilots.
+        tasks = tmgr.submit_tasks(tds)
 
-        # the pilots have a total of 4 cores, and run for 10 min.  A CU needs about
-        # 10 seconds, so we can handle about 24 units per minute, and need a total
+        # the pilots have a total of 4 cores, and run for 10 min.  A Task needs about
+        # 10 seconds, so we can handle about 24 tasks per minute, and need a total
         # of about 3 minutes.  We now wait for 60 seconds, and then cancel the first
-        # pilot.  The 2 units currently running on that pilot will fail, and
+        # pilot.  The 2 tasks currently running on that pilot will fail, and
         # maybe 2 more which are being pre-fetched into the pilot at that stage
         # - all others should get rescheduled to the other pilot.
         time.sleep(60)
         pilots[0].wait(state=rp.PMGR_ACTIVE)
         pilots[0].cancel()
 
-        # Wait for all compute units to reach a terminal state (DONE or FAILED).
-        umgr.wait_units()
+        # Wait for all tasks to reach a terminal state (DONE or FAILED).
+        tmgr.wait_tasks()
 
-        print('units all completed')
+        print('tasks all completed')
         print('----------------------------------------------------------------------')
 
-        for unit in units:
-            unit.wait()
+        for task in tasks:
+            task.wait()
 
-        for unit in units:
+        for task in tasks:
             print("* Task %s state: %s, exit code: %s"
-                  % (unit.uid, unit.state, unit.exit_code))
+                  % (task.uid, task.state, task.exit_code))
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

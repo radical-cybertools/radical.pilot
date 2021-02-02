@@ -18,17 +18,17 @@ def expand_description(descr):
 
       in:  ['input.dat']
       out: {'source' : 'client:///input.dat',
-            'target' : 'unit:///input.dat',
+            'target' : 'task:///input.dat',
             'action' : rp.TRANSFER}
 
       in:  ['input.dat > staged.dat']
       out: {'source' : 'client:///input.dat',
-            'target' : 'unit:///staged.dat',
+            'target' : 'task:///staged.dat',
             'action' : rp.TRANSFER}
 
     This method changes the given description in place - repeated calls on the
     same description instance will have no effect.  However, we expect this
-    method to be called only once during unit construction.
+    method to be called only once during task construction.
     """
 
     if descr.get('input_staging')  is None: descr['input_staging']  = list()
@@ -143,7 +143,7 @@ def complete_url(path, context, log=None):
         * `client://`  : the client's working directory
         * `resource://`: the RP    sandbox on the target resource
         * `pilot://`   : the pilot sandbox on the target resource
-        * `unit://`    : the unit  sandbox on the target resource
+        * `task://`    : the task  sandbox on the target resource
 
     For the above schemas, we interpret `schema://` the same as `schema:///`,
     ie. we treat this as a namespace, not as location qualified by a hostname.

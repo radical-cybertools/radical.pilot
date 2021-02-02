@@ -84,8 +84,8 @@ def get_session_docs(db, sid, cache=None, cachedir=None):
     json_data['session'] = bson2json(list(db[sid].find({'type': 'session'})))
     json_data['pmgr'   ] = bson2json(list(db[sid].find({'type': 'pmgr'   })))
     json_data['pilot'  ] = bson2json(list(db[sid].find({'type': 'pilot'  })))
-    json_data['umgr'   ] = bson2json(list(db[sid].find({'type': 'umgr'   })))
-    json_data['unit'   ] = bson2json(list(db[sid].find({'type': 'unit'   })))
+    json_data['tmgr'   ] = bson2json(list(db[sid].find({'type': 'tmgr'   })))
+    json_data['task'   ] = bson2json(list(db[sid].find({'type': 'task'   })))
 
     if  len(json_data['session']) == 0:
         raise ValueError ('no session %s in db' % sid)
@@ -96,19 +96,15 @@ def get_session_docs(db, sid, cache=None, cachedir=None):
     # there can only be one session, not a list of one
     json_data['session'] = json_data['session'][0]
 
-    # we want to add a list of handled units to each pilot doc
+    # we want to add a list of handled tasks to each pilot doc
     for pilot in json_data['pilot']:
 
-        pilot['unit_ids'] = list()
+        pilot['task_ids'] = list()
 
-        for unit in json_data['unit']:
+        for task in json_data['task']:
 
-            if 'pilot' not in unit:
-                import pprint
-                pprint.pprint(unit)
-
-            if  unit['pilot'] == pilot['uid']:
-                pilot['unit_ids'].append (unit['uid'])
+            if task['pilot'] == pilot['uid']:
+                pilot['task_ids'].append(task['uid'])
 
     # if we got here, we did not find a cached version -- thus add this dataset
     # to the cache
@@ -158,12 +154,12 @@ def get_session_slothist(db, sid, cache=None, cachedir=None):
                 slot_infos  [slot_name] = list()
                 slot_started[slot_name] = sys.maxsize
 
-        for unit_doc in docs['unit']:
-            if unit_doc['pilot'] == pilot_doc['uid']:
+        for task_doc in docs['task']:
+            if task_doc['pilot'] == pilot_doc['uid']:
 
                 started  = None
                 finished = None
-                for event in sorted (unit_doc['state_history'],
+                for event in sorted (task_doc['state_history'],
                                      key=lambda x: x['timestamp']):
                     if started:
                         finished = event['timestamp']
@@ -172,10 +168,10 @@ def get_session_slothist(db, sid, cache=None, cachedir=None):
                         started = event['timestamp']
 
                 if not started or not finished:
-                  # print "no start/end for cu %s - ignored" % unit_doc['uid']
+                  # print "no start/end for t %s - ignored" % task_doc['uid']
                     continue
 
-                for slot_id in unit_doc['opaque_slots']:
+                for slot_id in task_doc['opaque_slots']:
                     if slot_id not in slot_infos:
                       # print "slot %s for pilot %s unknown - ignored" \
                       #     % (slot_id, pid)
@@ -247,9 +243,9 @@ def get_session_events(db, sid, cache=None, cachedir=None):
                              event['state'], odoc])
 
 
-    for doc in docs['unit']:
+    for doc in docs['task']:
         odoc  = dict()
-        otype = 'unit'
+        otype = 'task'
         oid   = doc['uid']
         pid   = doc['pilot']
 

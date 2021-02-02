@@ -1,8 +1,8 @@
-""" (Compute) Unit tests
+""" Task tests
 """
 import os
 import sys
-import unittest
+import tasktest
 
 from pymongo import MongoClient
 
@@ -10,7 +10,7 @@ import radical.pilot as rp
 
 # -----------------------------------------------------------------------------
 #
-class TestPilot(unittest.TestCase):
+class TestPilot(tasktest.TestCase):
     # silence deprecation warnings under py3
 
     def failUnless(self, expr):
@@ -31,11 +31,11 @@ class TestPilot(unittest.TestCase):
         try:
             pm = rp.PilotManager(session=session)
 
-            cpd = rp.ComputePilotDescription()
+            cpd = rp.PilotDescription()
             cpd.resource = "local.localhost"
             cpd.cores = 1
             cpd.runtime = 1
-            cpd.sandbox = "/tmp/rp.sandbox.unittests"
+            cpd.sandbox = "/tmp/rp.sandbox.tasktests"
             cpd.cleanup = True
 
             pilot = pm.submit_pilots(descriptions=cpd)
@@ -70,7 +70,7 @@ class TestPilot(unittest.TestCase):
         try:
             pm = rp.PilotManager(session=session)
 
-            cpd = rp.ComputePilotDescription()
+            cpd = rp.PilotDescription()
             cpd.resource = "local.localhost"
             cpd.cores = 1
             cpd.runtime = 1
@@ -81,11 +81,11 @@ class TestPilot(unittest.TestCase):
             pilot.wait(timeout=300)
             assert pilot.state == rp.FAILED, "State is '%s' instead of 'Failed'." % pilot.state
 
-            cpd = rp.ComputePilotDescription()
+            cpd = rp.PilotDescription()
             cpd.resource = "local.localhost"
             cpd.cores = 100000000000  # This should fail - at least in 2014 ;-)
             cpd.runtime = 1
-            cpd.sandbox = "/tmp/rp.sandbox.unittests"
+            cpd.sandbox = "/tmp/rp.sandbox.tasktests"
             cpd.cleanup = True
 
             pilot = pm.submit_pilots(descriptions=cpd)
@@ -105,11 +105,11 @@ class TestPilot(unittest.TestCase):
         try:
             pm = rp.PilotManager(session=session)
 
-            cpd = rp.ComputePilotDescription()
+            cpd = rp.PilotDescription()
             cpd.resource = "local.localhost"
             cpd.cores = 1
             cpd.runtime = 1
-            cpd.sandbox = "/tmp/rp.sandbox.unittests"
+            cpd.sandbox = "/tmp/rp.sandbox.tasktests"
             cpd.cleanup = True
 
             pilot = pm.submit_pilots(descriptions=cpd)

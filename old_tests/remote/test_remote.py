@@ -4,7 +4,7 @@
 
 import os
 import sys
-import unittest
+import tasktest
 
 from pymongo import MongoClient
 
@@ -14,7 +14,7 @@ import radical.pilot as rp
 
 # -----------------------------------------------------------------------------
 #
-class TestRemoteSubmission(unittest.TestCase):
+class TestRemoteSubmission(tasktest.TestCase):
     # silence deprecation warnings under py3
 
     def setUp(self):
@@ -22,7 +22,7 @@ class TestRemoteSubmission(unittest.TestCase):
         self.test_resource = os.getenv('RADICAL_PILOT_TEST_REMOTE_RESOURCE',     "local.localhost")
         self.test_ssh_uid  = os.getenv('RADICAL_PILOT_TEST_REMOTE_SSH_USER_ID',  None)
         self.test_ssh_key  = os.getenv('RADICAL_PILOT_TEST_REMOTE_SSH_USER_KEY', None)
-        self.test_workdir  = os.getenv('RADICAL_PILOT_TEST_REMOTE_WORKDIR',      "/tmp/rp.sandbox.unittests")
+        self.test_workdir  = os.getenv('RADICAL_PILOT_TEST_REMOTE_WORKDIR',      "/tmp/rp.sandbox.tasktests")
         self.test_cores    = os.getenv('RADICAL_PILOT_TEST_REMOTE_CORES',        "1")
         self.test_num_cus  = os.getenv('RADICAL_PILOT_TEST_REMOTE_NUM_CUS',      "2")
         self.test_timeout  = os.getenv('RADICAL_PILOT_TEST_TIMEOUT',             "5")
@@ -49,7 +49,7 @@ class TestRemoteSubmission(unittest.TestCase):
 
         pm = rp.PilotManager(session=session)
 
-        cpd = rp.ComputePilotDescription()
+        cpd = rp.PilotDescription()
         cpd.resource = self.test_resource
         cpd.cores = self.test_cores
         cpd.runtime = 15
@@ -57,30 +57,30 @@ class TestRemoteSubmission(unittest.TestCase):
 
         pilot = pm.submit_pilots(descriptions=cpd)
 
-        um = rp.UnitManager(session=session, scheduler='round_robin')
+        um = rp.TaskManager(session=session, scheduler='round_robin')
         um.add_pilots(pilot)
 
         cudescs = []
         for _ in range(0,int(self.test_num_cus)):
-            cudesc = rp.ComputeUnitDescription()
+            cudesc = rp.TaskDescription()
             cudesc.cores = 1
             cudesc.executable = "/bin/sleep"
             cudesc.arguments = ['10']
             cudescs.append(cudesc)
 
-        cus = um.submit_units(cudescs)
+        cus = um.submit_tasks(cudescs)
 
-        for cu in cus:
-            assert cu is not None
-            assert cu.start_time is None
-            assert cu.stop_time is None
+        for t in cus:
+            assert t is not None
+            assert t.start_time is None
+            assert t.stop_time is None
 
-        ret = um.wait_units(timeout=5*60)
+        ret = um.wait_tasks(timeout=5*60)
         print "Return states from wait: %s" % ret
 
-        for cu in cus:
-            assert cu.state == rp.DONE, "state: %s" % cu.state
-            assert cu.stop_time is not None
+        for t in cus:
+            assert t.state == rp.DONE, "state: %s" % t.state
+            assert t.stop_time is not None
 
         pm.cancel_pilots()
 
@@ -100,7 +100,7 @@ class TestRemoteSubmission(unittest.TestCase):
 
         pm = rp.PilotManager(session=session)
 
-        cpd = rp.ComputePilotDescription()
+        cpd = rp.PilotDescription()
         cpd.resource          = self.test_resource
         cpd.cores             = self.test_cores
         cpd.runtime           = 2
@@ -109,8 +109,8 @@ class TestRemoteSubmission(unittest.TestCase):
         pilot = pm.submit_pilots(descriptions=cpd)
 
         assert pilot is not None
-        #assert cu.start_time is None
-        #assert cu.start_time is None
+        #assert t.start_time is None
+        #assert t.start_time is None
 
         pilot.wait(state=rp.PMGR_ACTIVE, timeout=5*60)
         assert pilot.state == rp.PMGR_ACTIVE
@@ -139,7 +139,7 @@ class TestRemoteSubmission(unittest.TestCase):
 
         pm = rp.PilotManager(session=session)
 
-        cpd = rp.ComputePilotDescription()
+        cpd = rp.PilotDescription()
         cpd.resource          = self.test_resource
         cpd.cores             = self.test_cores
         cpd.runtime           = 2
@@ -148,8 +148,8 @@ class TestRemoteSubmission(unittest.TestCase):
         pilot = pm.submit_pilots(descriptions=cpd)
 
         assert pilot is not None
-        #assert cu.start_time is None
-        #assert cu.start_time is None
+        #assert t.start_time is None
+        #assert t.start_time is None
 
         pilot.wait(state=rp.PMGR_ACTIVE, timeout=5*60)
         assert pilot.state == rp.PMGR_ACTIVE, "Expected state 'PMGR_ACTIVE' but got %s" % pilot.state

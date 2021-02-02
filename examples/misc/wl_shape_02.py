@@ -41,7 +41,7 @@ if __name__ == '__main__':
                    'access_schema' :     config[resource]['schema'],
                    'cores'         : 8
                   }
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
         pmgr  = rp.PilotManager(session=session)
         pilot = pmgr.submit_pilots(pdesc)
 
@@ -51,10 +51,10 @@ if __name__ == '__main__':
                         'action': rp.TRANSFER})
         report.ok('>>ok\n')
 
-        report.header('submit units')
+        report.header('submit tasks')
 
-        umgr = rp.UnitManager(session=session)
-        umgr.add_pilots(pilot)
+        tmgr = rp.TaskManager(session=session)
+        tmgr.add_pilots(pilot)
 
         args = 'mdrun -o traj.trr -e ener.edr -s topol.tpr -g mdlog.log ' \
              + '-c outgro -cpo state.cpt'
@@ -65,38 +65,38 @@ if __name__ == '__main__':
         cudis = list()
         for f in ['grompp.mdp', 'mdout.mdp', 'start.gro',
                   'topol.top',  'topol.tpr']:
-            cudis.append({'source': 'pilot:///gromacs/%s' % f, 
-                          'target': 'unit:///%s' % f,
+            cudis.append({'source': 'pilot:///gromacs/%s' % f,
+                          'target': 'task:///%s' % f,
                           'action': rp.LINK})
 
         n = 2
-        n = 2 * 1024  # number of units to run
-        report.info('create %d unit description(s)\n\t' % n)
-        cuds = list()
+        n = 2 * 1024  # number of tasks to run
+        report.info('create %d task description(s)\n\t' % n)
+        tds = list()
         for i in range(0, n):
 
-            # create a new CU description, and fill it.
+            # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.ComputeUnitDescription()
-            cud.executable       = 'date'
-          # cud.arguments        = '1'.split()
-          # cud.executable       = 'gmx'
-          # cud.arguments        = args.split()
-            cud.tags             = tags
-            cud.gpu_processes    = 0
-            cud.cpu_processes    = 2  # '1-32'
-            cud.cpu_threads      = 2  # '1-16'
-            cud.cpu_process_type = rp.MPI
-            cud.cpu_thread_type  = rp.OpenMP
-      #     cud.input_staging    = cudis
+            td = rp.TaskDescription()
+            td.executable       = 'date'
+          # td.arguments        = '1'.split()
+          # td.executable       = 'gmx'
+          # td.arguments        = args.split()
+            td.tags             = tags
+            td.gpu_processes    = 0
+            td.cpu_processes    = 2  # '1-32'
+            td.cpu_threads      = 2  # '1-16'
+            td.cpu_process_type = rp.MPI
+            td.cpu_thread_type  = rp.OpenMP
+      #     td.input_staging    = cudis
 
-            cuds.append(cud)
+            tds.append(td)
             report.progress()
         report.ok('>>ok\n')
 
-        umgr.submit_units(cuds)
+        tmgr.submit_tasks(tds)
         report.header('gather results')
-        umgr.wait_units()
+        tmgr.wait_tasks()
 
 
     finally:

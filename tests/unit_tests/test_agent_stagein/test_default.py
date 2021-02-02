@@ -1,5 +1,6 @@
 # pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
+import os
 import glob
 
 from unittest import TestCase, mock
@@ -17,12 +18,13 @@ class TestDefault(TestCase):
     #
     def setUp(self):
         ret = list()
-        for fin in glob.glob('tests/unit_tests/test_agent_stagein/test_cases/unit.*.json'):
+        pwd = os.path.dirname(__file__)
+        for fin in glob.glob('%s/test_cases/task.*.json' % pwd):
             tc     = ru.read_json(fin)
-            unit   = tc['unit'   ]
+            task   = tc['task'   ]
             result = tc['results']
             if result:
-                ret.append([unit, result])
+                ret.append([task, result])
 
         return ret
 
@@ -53,14 +55,14 @@ class TestDefault(TestCase):
 
         # ----------------------------------------------------------------------
         #
-        def _handle_unit_side_effect(unit, actionables):
-            _advance_side_effect(unit, actionables, False, False)
+        def _handle_task_side_effect(task, actionables):
+            _advance_side_effect(task, actionables, False, False)
 
 
         tests = self.setUp()
         component = Default(cfg=None, session=None)
-        component._handle_unit = mock.MagicMock(
-                                       side_effect=_handle_unit_side_effect)
+        component._handle_task = mock.MagicMock(
+                                       side_effect=_handle_task_side_effect)
         component.advance = mock.MagicMock(side_effect=_advance_side_effect)
         component._log = ru.Logger('dummy')
 
@@ -72,7 +74,11 @@ class TestDefault(TestCase):
             self.assertEqual(global_state, test[1][1])
 
 
-# ------------------------------------------------------------------------------
+if __name__ == '__main__':
+
+    tc = TestDefault()
+    tc.test_work()
+
 
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

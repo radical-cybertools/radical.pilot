@@ -6,12 +6,12 @@ from description import Description
 # ------------------------------------------------------------------------------
 #
 
-class ComputePilotDescription (Description) :
+class PilotDescription (Description) :
     """
-    The ComputePilotDescription is a description based on
+    The PilotDescription is a description based on
     SAGA Job Description.
 
-    It offers the application to describe a ComputePilot in an abstract
+    It offers the application to describe a Pilot in an abstract
     way that is dealt with by the Pilot-Manager.
 
     Class members:
@@ -37,7 +37,7 @@ class ComputePilotDescription (Description) :
         # resource requirements
         'candidate_hosts',          # List of specific hostnames to run on.
         'cpu_architecture',         # Specify specific arch required.
-        'total_physical_memory',    # mem for CU usage
+        'total_physical_memory',    # mem for Task usage
         'operating_system_type',    # Specify specific OS required.
         'queue'                     # Specify queue name of backend system.
     """

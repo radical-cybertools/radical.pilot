@@ -5,7 +5,7 @@ import errno
 
 import radical.utils as ru
 
-# max number of cu out/err chars to push to tail
+# max number of t out/err chars to push to tail
 MAX_IO_LOGLENGTH = 1024
 
 
