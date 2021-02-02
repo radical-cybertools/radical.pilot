@@ -225,7 +225,7 @@ create_gtod()
          | cut -f1 -d'/')
     printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
         "$now" "sync_abs" "bootstrap_0" "MainThread" "$PILOT_ID" \
-        "PMGR_ACTIVE_PENDING" "$(hostname):$ip:$now:$now:$now" \
+        "PMGR_ACTIVE_PENDING" "$(hostname):${ip%$'\n'*}:$now:$now:$now" \
         | tee -a "$PROFILE"
 }
 
@@ -1701,6 +1701,9 @@ PILOT_SCRIPT=`which radical-pilot-agent`
 # after all is said and done, we should end up with a usable python version.
 # Verify it
 verify_install
+
+# we should have a better `gtod` now
+test -z $(which radical-gtod) || cp $(which radical-gtod ./gtod)
 
 AGENT_CMD="$PYTHON $PILOT_SCRIPT"
 
