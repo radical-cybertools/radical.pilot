@@ -201,6 +201,23 @@ gtod()
         # no nanoseconds
         date '+%s.000000'
     fi
+
+    chmod 0755 ./gtod
+
+    # initialize profile
+    PROFILE="bootstrap_0.prof"
+    now=$(./gtod)
+    echo "#time,event,comp,thread,uid,state,msg" > "$PROFILE"
+
+    ip=$(ip addr \
+         | grep 'state UP' -A2 \
+         | grep 'inet' \
+         | awk '{print $2}' \
+         | cut -f1 -d'/')
+    printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
+        "$now" "sync_abs" "bootstrap_0" "MainThread" "$PILOT_ID" \
+        "PMGR_ACTIVE_PENDING" "$(hostname):${ip%$'\n'*}:$now:$now:$now" \
+        | tee -a "$PROFILE"
 }
 
 
@@ -1673,6 +1690,9 @@ PILOT_SCRIPT=`which radical-pilot-agent`
 # after all is said and done, we should end up with a usable python version.
 # Verify it
 verify_install
+
+# we should have a better `gtod` now
+test -z $(which radical-gtod) || cp $(which radical-gtod ./gtod)
 
 AGENT_CMD="$PYTHON $PILOT_SCRIPT"
 
