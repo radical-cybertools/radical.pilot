@@ -44,7 +44,7 @@ testing can  be controlled via a set of environment variables:
 +-------------------------------------------+-------------------------------------+
 | ``RADICAL_PILOT_TEST_REMOTE_CORES``       | Number of cores to allocate.        |
 +-------------------------------------------+-------------------------------------+
-| ``RADICAL_PILOT_TEST_REMOTE_NUM_CUS``     | Number of Compute Units to run.     |
+| ``RADICAL_PILOT_TEST_REMOTE_NUM_CUS``     | Number of Tasks to run.     |
 +-------------------------------------------+-------------------------------------+
 | ``RADICAL_PILOT_TEST_TIMEOUT``            | Test timeout in minutes.            |
 +-------------------------------------------+-------------------------------------+

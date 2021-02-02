@@ -1,7 +1,7 @@
 import os
 import shutil
 import errno
-import unittest
+import tasktest
 import json
 
 import radical.utils as ru
@@ -11,11 +11,11 @@ from radical.pilot.agent.lm.orte import ORTE
 try:
     import mock
 except ImportError:
-    from unittest import mock
+    from tasktest import mock
 
 session_id = 'rp.session.test.orte'
 
-class TestORTElaunchMethod(unittest.TestCase):
+class TestORTElaunchMethod(tasktest.TestCase):
 
 
     def setUp(self):
@@ -47,7 +47,7 @@ class TestORTElaunchMethod(unittest.TestCase):
                                    "stderr": None,
                                    "stdout": None
                                   }
-        self._cu['uid'] = 'unit.000000'
+        self._cu['uid'] = 'task.000000'
         self._cu['slots'] = {'nodes': [{'name': 'node1',
                                         'uid': 'node_1',
                                         'core_map': [[0]],
@@ -88,5 +88,5 @@ class TestORTElaunchMethod(unittest.TestCase):
 #
 if __name__ == '__main__':
 
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestORTElaunchMethod)
-    unittest.TextTestRunner(verbosity=2).run(suite)
+    suite = tasktest.TestLoader().loadTestsFromTestCase(TestORTElaunchMethod)
+    tasktest.TextTestRunner(verbosity=2).run(suite)

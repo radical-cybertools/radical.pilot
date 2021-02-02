@@ -33,7 +33,7 @@ and change the code below accordging to the instructions in the comments.
 
 You will need to make the necessary changes to ``coupled_tasks.py`` as you did
 in the previous example.  The important difference between this file and the
-previous file is that there are three separate "USER DEFINED CU DESCRIPTION"
+previous file is that there are three separate "USER DEFINED TASK DESCRIPTION"
 sections - numbered 1-3. Again, these two sections will not require any
 modifications for the purposes of this tutorial. We will not review every
 variable again, but instead, review the relationship between the 3 task
@@ -50,11 +50,11 @@ In this case, the important logic to draw your attention too is around line 140:
 .. code-block:: python
 
         print "Waiting for 'A' and 'B' CUs to complete..."
-        umgr.wait_units()
+        tmgr.wait_tasks()
         print "Executing 'C' tasks now..."
 
 In this example, we submit both the A and B tasks to the Pilot, but instead of
-running C tasks right away, we call ``wait()`` on the unit manager.  This tells
+running C tasks right away, we call ``wait()`` on the task manager.  This tells
 RADICAL-Pilot to wait for all of the submitted tasks to finish, before continuing in
 the code. After all the A and B (submitted tasks) have finished, it then submits
 the C tasks. 

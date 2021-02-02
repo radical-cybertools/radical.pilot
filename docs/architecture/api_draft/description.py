@@ -7,8 +7,8 @@ from attributes import *
 #
 class Description (Attributes) :
     """ 
-    Base class for ComputeUnitDescription, DataUnitDescription,
-    ComputePilotDescription and DataPilotDescription.
+    Base class for TaskDescription, DataTaskDescription,
+    PilotDescription and DataPilotDescription.
     """
 
     # --------------------------------------------------------------------------

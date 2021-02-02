@@ -28,7 +28,7 @@ class MPIRunRSH(LaunchMethod):
             raise Exception("mpirun_rsh could not be found")
 
         # We don't use the full pathname as the user might load a different
-        # compiler / MPI library suite from his CU pre_exec that requires
+        # compiler / MPI library suite from his Task pre_exec that requires
         # the launcher from that version, as experienced on stampede in #572.
         self.launch_command = 'mpirun_rsh'
 
@@ -43,14 +43,14 @@ class MPIRunRSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        opaque_slots = cu['slots']
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_cores   = cud['cores']
-        task_env     = cud.get('environment') or dict()
-        task_args    = cud.get('arguments')   or list()
+        opaque_slots = t['slots']
+        td          = t['description']
+        task_exec    = td['executable']
+        task_cores   = td['cores']
+        task_env     = td.get('environment') or dict()
+        task_args    = td.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
         if 'task_slots' not in opaque_slots:

@@ -4,7 +4,7 @@
 RP is configurable in many different ways, for two main reasons:
 
   * RP is used for *research* in distributed computing;
-  * RP targets a wide variety of resources and use cases with a 
+  * RP targets a wide variety of resources and use cases with a
     single code base.
 
 
@@ -12,7 +12,7 @@ There exist multiple dimensions of configurability, using different means:
 
   * *resource configuration files* contain settings which adapt RP to different
     resource types;
-  * *agent, session, umgr and pmgr configuration files* contain settings which
+  * *agent, session, tmgr and pmgr configuration files* contain settings which
     tune RP towards certain use cases and experiments
   * *environment variables* control RP's logging and profiling behavior
 
@@ -58,7 +58,7 @@ a wide range of resource independent configuration settings, which tune its
 behavior and performance in various ways.
 
 First, there is a set of configuration options which affects how the different
-agent components communicate which each other, and with the RP database: buling
+agent components communicate which each other, and with the RP database: pulling
 options, timeouts, buffer sizes, artificial barriers (for experiments) etc. are
 part of those options.
 
@@ -71,10 +71,10 @@ constraints though such as:
   * the agent topology influences the number of nodes available for the
     workload;
   * internal and external network connectivity constraints the placement of some
-    components; 
+    components;
   * some components (such as the agent scheduler and communication bridges)
     cannot be made redundant;
-  * the agent instance is placed by the batch system, and thus resource dependent 
+  * the agent instance is placed by the batch system, and thus resource dependent
     and not configurable.
 
 In general, an agent config is structured like this:
@@ -83,10 +83,10 @@ In general, an agent config is structured like this:
 {
   'option 1' : 'value 1',
   'option 2' : 'value 2',
-  'agents'   : [ 
+  'agents'   : [
     {
       'target'     : 'local',
-      'mode'       : 'shared', 
+      'mode'       : 'shared',
       'partition'  : '50%',
       'bridges'    : [ {'type'       : 'queue 1` } ,
                        {'type'       : 'pubsub 2`} ,
@@ -94,12 +94,12 @@ In general, an agent config is structured like this:
       'components' : [ {'type'       : 'component 1`, 'count' : '2'},
                        {'type'       : 'component 2`, 'count' : '2'} ],
        'agents'    : [ {'target'     : 'node',
-                        'mode'       : 'shared', 
+                        'mode'       : 'shared',
                         'components' : [{'type' : 'component 3`, 'count': '8'}]}]
     },
     {
       'target'     : 'local',
-      'mode'       : 'shared', 
+      'mode'       : 'shared',
       'partition'  : '50%',
       'bridges'    : [ {'type'       : 'queue 1` } ,
                        {'type'       : 'pubsub 2`} ,
@@ -119,7 +119,7 @@ This example is to be interpreted as follows:
     same node as the parent agent; is set to `node` when the respective agent is
     to be started on an otherwise unoccupied node
   * `mode` is set to `shared`, if the agent's node can also be used to execute
-    compute units; is set to `reserved` if the node is exclusively used for the
+    tasks; is set to `reserved` if the node is exclusively used for the
     agent, and not shared with the workload.
   * `partition` allows to run multiple independent agent instances in the same
     pilot job, each managing a subset (partition) of the available nodes.

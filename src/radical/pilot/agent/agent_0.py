@@ -177,14 +177,14 @@ class Agent_0(rpu.Worker):
 
         # some of the bridge addresses also need to be exposed to the workload
         if app_comm:
-            if 'unit_environment' not in self._cfg:
-                self._cfg['unit_environment'] = dict()
+            if 'task_environment' not in self._cfg:
+                self._cfg['task_environment'] = dict()
             for ac in app_comm:
                 if ac not in self._cfg['bridges']:
                     raise RuntimeError('missing app_comm %s' % ac)
-                self._cfg['unit_environment']['RP_%s_IN' % ac.upper()] = \
+                self._cfg['task_environment']['RP_%s_IN' % ac.upper()] = \
                         self._cfg['bridges'][ac]['addr_in']
-                self._cfg['unit_environment']['RP_%s_OUT' % ac.upper()] = \
+                self._cfg['task_environment']['RP_%s_OUT' % ac.upper()] = \
                         self._cfg['bridges'][ac]['addr_out']
 
 
@@ -193,7 +193,7 @@ class Agent_0(rpu.Worker):
     def initialize(self):
 
         # registers the staging_input_queue as this is what we want to push
-        # units to
+        # tasks to
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
                              rpc.AGENT_STAGING_INPUT_QUEUE)
 
@@ -201,8 +201,8 @@ class Agent_0(rpu.Worker):
         self.register_timed_cb(self._agent_command_cb,
                                timer=self._cfg['db_poll_sleeptime'])
 
-        # register idle callback to pull for units
-        self.register_timed_cb(self._check_units_cb,
+        # register idle callback to pull for tasks
+        self.register_timed_cb(self._check_tasks_cb,
                                timer=self._cfg['db_poll_sleeptime'])
 
         # sub-agents are started, components are started, bridges are up: we are
@@ -395,7 +395,7 @@ class Agent_0(rpu.Worker):
                 agent_cmd = {
                     'uid'              : sa,
                     'slots'            : slots,
-                    'unit_sandbox_path': self._pwd,
+                    'task_sandbox_path': self._pwd,
                     'description'      : {'cpu_processes'    : 1,
                                           'gpu_process_type' : 'posix',
                                           'gpu_thread_type'  : 'posix',
@@ -485,7 +485,7 @@ class Agent_0(rpu.Worker):
         # Check if there's a command waiting
         # FIXME: this pull should be done by the update worker, and commands
         #        should then be communicated over the command pubsub
-        # FIXME: commands go to pmgr, umgr, session docs
+        # FIXME: commands go to pmgr, tmgr, session docs
         # FIXME: check if pull/wipe are atomic
         # FIXME: long runnign commands can time out on hb
         retdoc = self._dbs._c.find_and_modify(
@@ -524,9 +524,9 @@ class Agent_0(rpu.Worker):
 
                 return False  # we are done
 
-            elif cmd == 'cancel_units':
-                self._log.info('cancel_units cmd')
-                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units',
+            elif cmd == 'cancel_tasks':
+                self._log.info('cancel_tasks cmd')
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_tasks',
                                                   'arg' : arg})
             else:
                 self._log.warn('could not interpret cmd "%s" - ignore', cmd)
@@ -671,58 +671,58 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _check_units_cb(self):
+    def _check_tasks_cb(self):
 
-        # Check for compute units waiting for input staging and log pull.
+        # Check for tasks waiting for input staging and log pull.
         #
         # FIXME: Unfortunately, 'find_and_modify' is not bulkable, so we have
-        #        to use 'find'.  To avoid finding the same units over and over
+        #        to use 'find'.  To avoid finding the same tasks over and over
         #        again, we update the 'control' field *before* running the next
         #        find -- so we do it right here.
         #        This also blocks us from using multiple ingest threads, or from
-        #        doing late binding by unit pull :/
-        unit_cursor = self._dbs._c.find({'type'    : 'unit',
+        #        doing late binding by task pull :/
+        task_cursor = self._dbs._c.find({'type'    : 'task',
                                          'pilot'   : self._pid,
                                          'control' : 'agent_pending'})
-        if not unit_cursor.count():
-            self._log.info('units pulled:    0')
+        if not task_cursor.count():
+            self._log.info('tasks pulled:    0')
             return True
 
-        # update the units to avoid pulling them again next time.
-        unit_list = list(unit_cursor)
-        unit_uids = [unit['uid'] for unit in unit_list]
+        # update the tasks to avoid pulling them again next time.
+        task_list = list(task_cursor)
+        task_uids = [task['uid'] for task in task_list]
 
-        self._dbs._c.update({'type'  : 'unit',
-                             'uid'   : {'$in'     : unit_uids}},
+        self._dbs._c.update({'type'  : 'task',
+                             'uid'   : {'$in'     : task_uids}},
                             {'$set'  : {'control' : 'agent'}},
                             multi=True)
 
-        self._log.info("units pulled: %4d", len(unit_list))
-        self._prof.prof('get', msg='bulk: %d' % len(unit_list), uid=self._pid)
+        self._log.info("tasks pulled: %4d", len(task_list))
+        self._prof.prof('get', msg='bulk: %d' % len(task_list), uid=self._pid)
 
-        for unit in unit_list:
+        for task in task_list:
 
-            # make sure the units obtain env settings (if needed)
-            if 'unit_environment' in self._cfg:
-                if not unit['description'].get('environment'):
-                    unit['description']['environment'] = dict()
-                for k,v in self._cfg['unit_environment'].items():
-                    unit['description']['environment'][k] = v
+            # make sure the tasks obtain env settings (if needed)
+            if 'task_environment' in self._cfg:
+                if not task['description'].get('environment'):
+                    task['description']['environment'] = dict()
+                for k,v in self._cfg['task_environment'].items():
+                    task['description']['environment'][k] = v
 
             # we need to make sure to have the correct state:
-            unit['state'] = rps._unit_state_collapse(unit['states'])
-            self._prof.prof('get', uid=unit['uid'])
+            task['state'] = rps._task_state_collapse(task['states'])
+            self._prof.prof('get', uid=task['uid'])
 
-            # FIXME: raise or fail unit!
-            if unit['state'] != rps.AGENT_STAGING_INPUT_PENDING:
-                self._log.error('invalid state: %s', (pprint.pformat(unit)))
+            # FIXME: raise or fail task!
+            if task['state'] != rps.AGENT_STAGING_INPUT_PENDING:
+                self._log.error('invalid state: %s', (pprint.pformat(task)))
 
-            unit['control'] = 'agent'
+            task['control'] = 'agent'
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).  We don't publish nor profile as advance,
         # since that happened already on the module side when the state was set.
-        self.advance(unit_list, publish=False, push=True)
+        self.advance(task_list, publish=False, push=True)
 
         return True
 
