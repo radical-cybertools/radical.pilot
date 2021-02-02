@@ -22,16 +22,16 @@ No state information could be obtained for that pilot.
 
 PENDING = 'Pending'
 
-""" 
+"""
 This state identifies a newly constructed pilot which is not yet Running, but is
-waiting to acquire control over the target resource.  
+waiting to acquire control over the target resource.
 This state corresponds to the BES state Pending.  This state is initial.
 """
 
 RUNNING = 'Running'
 """
 The pilot has successfully acquired control over the target resource,  and can
-serve unit requests.  
+serve task requests.
 This state corresponds to the BES state Running.
 """
 
@@ -45,11 +45,11 @@ This state corresponds to the BES state Finished. This state is final.
 
 CANCELED = 'Canceled'
 """
-The pilot has been canceled, i.e. cancel() has been called on the job instance. 
+The pilot has been canceled, i.e. cancel() has been called on the job instance.
 This state corresponds to the BES state Canceled. This state is final.
 """
 
-FAILED = 'Failed' 
+FAILED = 'Failed'
 """
 The pilot has abnormally finished -- it either met an internal error condition
 which caused it to abort, or it has been unexpectedly killed by the resource
@@ -59,56 +59,55 @@ This state corresponds to the BES state Failed. This state is final.
 
 
 """
-Compute Unit States
+Task States
 -------------------
 
 These states are exactly the same as for the pilot, see above -- the
-documentation below clarifies the specific meaning of the states for Compute
-Units.
+documentation below clarifies the specific meaning of the states for Tasks.
 
 * Unknown
-  No state information could be obtained for that unit.
+  No state information could be obtained for that task.
 
 * Pending
-  This state identifies a newly submitted unit which is not yet Running, but
+  This state identifies a newly submitted task which is not yet Running, but
   is waiting to be assigned to and enacted by a Pilot.
   This state corresponds to the BES state Pending. This state is initial.
 
 * Running
-  The unit has successfully assigned to a pilot and is being executed by that
+  The task has successfully assigned to a pilot and is being executed by that
   pilot -- i.e., it consumes resources.
   This state corresponds to the BES state Running.
 
 * Done
-  The unit's execution has finished, and does not utilize any resources on the
+  The task's execution has finished, and does not utilize any resources on the
   target resource anymore.  It finished due to 'natural causes' -- for example,
   it might have reached the end of its designated lifetime.
   This state corresponds to the BES state Finished. This state is final.
 
-* Canceled    
-  The unit has been canceled, i.e. cancel() has been called on it.
+* Canceled
+  The task has been canceled, i.e. cancel() has been called on it.
   This state corresponds to the BES state Canceled. This state is final.
 
-* Failed  
-  The unit has abnormally finished -- it either met an internal error condition
+* Failed
+  The task has abnormally finished -- it either met an internal error condition
   which caused it to abort, or it has been unexpectedly killed by the pilot or
-  unit manager.
+  task manager.
   This state corresponds to the BES state Failed. This state is final.
 """
 
 
 """
-Data Unit States
+Data Task States
 ----------------
 
-Data Unit states differ slightly from the Compute Unit states: DUs don't have
-a DONE state (as DUs don't have a lifetime), and the CU state 'RUNNING'
+Data Task states differ slightly from the Task states: DUs don't have
+a DONE state (as DUs don't have a lifetime), and the Task state 'RUNNING'
 corresponds to the DU state 'Avalable'.
 
 The documentation below again documents the exact meaning of the states for DUs.
 
 * Unknown
-  No state information could be obtained for that unit.
+  No state information could be obtained for that task.
 
 * Pending
   Data are not yet available, but are scheduled for transfer, or transfer is in
@@ -117,10 +116,10 @@ The documentation below again documents the exact meaning of the states for DUs.
 * Running
   All DU content is available on at least one DataPilot.
 
-* Canceled    
+* Canceled
   The data is scheduled for removal and cannot be used anymore.
 
-* Failed  
+* Failed
   The data could not be transferred, and will not become available in the
   future.
 """
@@ -138,7 +137,7 @@ import radical.saga.exceptions as rse
 class IncorrectURL (rse.IncorrectUrl) :
   """
   The given URL could not be interpreted, for example due to an incorrect
-  / unknown schema. 
+  / unknown schema.
   """
   pass
 
@@ -195,20 +194,20 @@ class NoSuccess (rse.NoSuccess) :
 Glossary
 --------
 
-CU  = Compute Unit
-CUD = CU Description
+Task  = Task
+TD = Task Description
 
-DU  = Data Unit
+DU  = Data Task
 DUD = DU Description
 
-CP  = Compute Pilot
+CP  = Pilot
 CPD = CP Description
 
 DP  = Data Pilot
 DPD = DP Description
 
 PS = Pilot Service
-US  = Unit Service
+US  = Task Service
 
 
 
@@ -235,41 +234,41 @@ Signature Template:
 
 
 # ------------------------------------------------------------------------------
-# 
-class UnitDescription(dict):
-    """ 
-    Base class for ComputeUnitDescription and DataUnitDescription, to cleanly
+#
+class TaskDescription(dict):
+    """
+    Base class for TaskDescription and DataTaskDescription, to cleanly
     specify the signatures for methods which handle both types.
     """
     pass
 
 
 # ------------------------------------------------------------------------------
-# 
-class ComputeUnitDescription(UnitDescription):
-    """Task description to instantiate a Compute Unit.
-    
-    The ComputeUnitDescription is a job/task description loosely based on SAGA
+#
+class TaskDescription(TaskDescription):
+    """Task description to instantiate a Task.
+
+    The TaskDescription is a job/task description loosely based on SAGA
     Job Description.
 
     Class members:
 
         # Action description
-        'name',                 # Non-unique name/label of CU.
+        'name',                 # Non-unique name/label of Task.
         'executable',           # The "action" to execute
         'arguments',            # Arguments to the "action"
-        'cleanup',              # cleanup after the CU has finished
+        'cleanup',              # cleanup after the Task has finished
         'environment',          # "environment" settings for the "action"
-        'start_time',           # When should the CU start
-        'working_directory',    # Where to start the CU
+        'start_time',           # When should the Task start
+        'working_directory',    # Where to start the Task
 
         # I/O
         'input',                # stdin
         'error',                # stderr
         'output',               # stdout
         'file_transfer',        # file transfer, duh!
-        'input_data',           # DataUnits for input.
-        'output_data',          # DataUnits for output.
+        'input_data',           # DataTasks for input.
+        'output_data',          # DataTasks for output.
 
         # Parallelism
         'spmd_variation',       # Type and startup mechanism.
@@ -280,7 +279,7 @@ class ComputeUnitDescription(UnitDescription):
         'cpu_architecture',     # Specific requirement for binary
         'operating_system_type',# Specific OS version required?
         'total_physical_memory',# May not be physical, but in sync with saga.
-        'wall_time_limit',      # CU will not run longer than this.
+        'wall_time_limit',      # Task will not run longer than this.
 
         # Startup ordering dependencies
         # (Are only considered within scope of bulk submission.)
@@ -293,8 +292,8 @@ class ComputeUnitDescription(UnitDescription):
 
 # ------------------------------------------------------------------------------
 #
-class ComputeUnit():
-    """ComputeUnit object that allows for direct operations on CUs.
+class Task():
+    """Task object that allows for direct operations on CUs.
 
     Class members:
 
@@ -308,16 +307,16 @@ class ComputeUnit():
 
     def __init__(self, cu_id):
         """
-        Compute Unit constructor.
+        Task constructor.
 
-        Use the 'get_unit()' call on the US for bulk and async CU construction.
+        Use the 'get_task()' call on the US for bulk and async Task construction.
 
         Keyword argument(s)::
-            id(string):  ID referencing the unit to be referenced by the created
+            id(string):  ID referencing the task to be referenced by the created
                          object instance..
 
         Return::
-            ComputeUnit: class instance representing the referenced CU.
+            Task: class instance representing the referenced Task.
 
         Raises::
             DoesNotExist
@@ -329,7 +328,7 @@ class ComputeUnit():
         pass
 
     def list_metrics(self):
-        """List the metrics available for this ComputeUnit.
+        """List the metrics available for this Task.
 
         For example:
 
@@ -381,7 +380,7 @@ class ComputeUnit():
         pass
 
     def wait(self, timeout=1.0, state='FINAL'):
-        """Returns when the unit reaches the specified state, or after timeout
+        """Returns when the task reaches the specified state, or after timeout
         seconds, whichever comes first.
 
         Calls with timeout<0.0 will wait forever.
@@ -401,9 +400,9 @@ class ComputeUnit():
 
 
 # ------------------------------------------------------------------------------
-# 
-class DataUnitDescription(UnitDescription):
-    """Describe a DU used for input or output of a CU.
+#
+class DataTaskDescription(TaskDescription):
+    """Describe a DU used for input or output of a Task.
 
     Class members:
 
@@ -421,8 +420,8 @@ class DataUnitDescription(UnitDescription):
 
 # ------------------------------------------------------------------------------
 #
-class DataUnit():
-    """DataUnit is a logical handle to a piece of data without explicitly
+class DataTask():
+    """DataTask is a logical handle to a piece of data without explicitly
     refering to its location.
 
 
@@ -434,8 +433,8 @@ class DataUnit():
 
     """
 
-    def __init__(self, data_unit_description=None):
-        """ Data Unit constructor to reconnect to an existing DU.
+    def __init__(self, data_task_description=None):
+        """ Data Task constructor to reconnect to an existing DU.
 
         Keyword argument(s)::
 
@@ -457,7 +456,7 @@ class DataUnit():
         """
 
     def wait(self, state='AVAILABLE'):
-        """Wait for Data Unit to become available..
+        """Wait for Data Task to become available..
 
         Keyword arguments::
 
@@ -474,7 +473,7 @@ class DataUnit():
         """
 
     def remove(self):
-        """Remove all replicas of all contents in Data Unit.
+        """Remove all replicas of all contents in Data Task.
 
         Keyword argument::
 
@@ -496,7 +495,7 @@ class DataUnit():
         """
 
     def export(self, dest_uri):
-        """Export the data of this Data Unit to the specified destination
+        """Export the data of this Data Task to the specified destination
             location.
 
         Keyword argument::
@@ -532,7 +531,7 @@ class DataUnit():
         """
 
     def split(self, num_of_chunks=None, size_of_chunks=None):
-        """Split the DU unit in a set of DUs based on the number of chunks
+        """Split the DU task in a set of DUs based on the number of chunks
         and chunk size.
 
         The split method is on the DU because it splits the DU into new
@@ -553,7 +552,7 @@ class DataUnit():
         pass
         """
         chunks = []
-        for i, lfn in enumerate (self.units[du_id].lfns) :
+        for i, lfn in enumerate (self.tasks[du_id].lfns) :
             chunk_id = i%n_chunks
             if not chunk_id in chunks :
                 new_dus[chunk_id] = []
@@ -561,13 +560,13 @@ class DataUnit():
 
         new_dus = []
         for chunk in chunks
-            new_dus.append (DataUnit (chunk)
+            new_dus.append (DataTask (chunk)
 
         return new_dus
         """
 
     def merge(self, input_ids, data_pilot=None, replicate_to_all=False):
-        """Merge DU units into one DU.
+        """Merge DU tasks into one DU.
 
         The merge method is on the DU (and not DP or US) because a DU is not necessarily
         associated to A DP or US.
@@ -582,7 +581,7 @@ class DataUnit():
 
         Return::
 
-            output_id(DU id): the merged unit.
+            output_id(DU id): the merged task.
 
         Raises::
 
@@ -593,21 +592,21 @@ class DataUnit():
         """
         combined = []
         for du_id in input_ids :
-            du = DataUnit (du_id)
+            du = DataTask (du_id)
             compined.append (du.files)
-        return DataUnit (combined)
+        return DataTask (combined)
         """
 
 
 # ------------------------------------------------------------------------------
 #
-class ComputePilotDescription(dict):
-    """Description used to instantiate a ComputePilot.
+class PilotDescription(dict):
+    """Description used to instantiate a Pilot.
 
-    The ComputePilotDescription is a description based on
+    The PilotDescription is a description based on
     SAGA Job Description.
 
-    It offers the application to describe a ComputePilot in an abstract
+    It offers the application to describe a Pilot in an abstract
     way that is dealt with by the Pilot-Manager.
 
     Class members:
@@ -625,7 +624,7 @@ class ComputePilotDescription(dict):
         'output',                   # stdout
         'file_transfer',            # out/err staging
 
-        # Parallelism 
+        # Parallelism
         # reconsider for SP2
         'slots'                     # total number of cores
         'spmd_variation',           # expected startup mechanism for CUs (def. None)
@@ -633,7 +632,7 @@ class ComputePilotDescription(dict):
         # resource requirements
         'candidate_hosts',          # List of specific hostnames to run on.
         'cpu_architecture',         # Specify specific arch required.
-        'total_physical_memory',    # mem for CU usage
+        'total_physical_memory',    # mem for Task usage
         'operating_system_type',    # Specify specific OS required.
         'queue'                     # Specify queue name of backend system.
     """
@@ -641,7 +640,7 @@ class ComputePilotDescription(dict):
 
 # ------------------------------------------------------------------------------
 #
-class ComputePilot():
+class Pilot():
     """Object representing a physical computing resource.
 
     Class members::
@@ -654,15 +653,15 @@ class ComputePilot():
     """
 
     def __init__(self, pilot_id=None):
-        """Constructor for the ComputePilot.
+        """Constructor for the Pilot.
 
         Keyword argument::
 
-            id(string): if specified, don't create a new ComputePilot but
+            id(string): if specified, don't create a new Pilot but
             instantiate it based on the id.
 
         Return::
-            cp(ComputePilot): the ComputePilot object
+            cp(Pilot): the Pilot object
 
 
         """
@@ -709,12 +708,12 @@ class ComputePilot():
 class PilotService():
     """PilotService()
 
-        Factory for ComputePilot and DataPilot instances.
+        Factory for Pilot and DataPilot instances.
     """
-    
+
     def __init__ (self, url=None):
         """Constructor for the PilotService.
-        
+
         This could take arguments to reconnect to an existing PS.
 
         Keyword argument(s)::
@@ -732,14 +731,14 @@ class PilotService():
 
 
     def submit_pilot(self, pilot_description, context=None):
-        """Instantiate and return ComputePilot object.
+        """Instantiate and return Pilot object.
 
 
         Keyword argument(s)::
 
-            pilot_description(ComputePilotDescription): Instantiate a ComputePilot.
+            pilot_description(PilotDescription): Instantiate a Pilot.
             or
-            pilot_description([ComputePilotDescription]): Instantiate ComputePilots in bulk.
+            pilot_description([PilotDescription]): Instantiate Pilots in bulk.
             or
             pilot_description(DataPilotDescription): Instantiate a DataPilot.
             or
@@ -749,16 +748,16 @@ class PilotService():
 
         Return::
 
-            pilot_id(ID): An ID representing a Compute or Data Pilot.
+            pilot_id(ID): An ID representing a Pilot.
             or
-            pilot_id([ID]): A list of IDs representing a Compute or Data Pilots
+            pilot_id([ID]): A list of IDs representing Pilots
                             that were submitted in bulk.
 
         """
         pass
 
     def cancel_pilot(self, pilot_id):
-        """Cancel (a) ComputePilot(s).
+        """Cancel (a) Pilot(s).
 
 
         Keyword argument(s)::
@@ -791,9 +790,9 @@ class PilotService():
 
         Return::
 
-            pilot(ComputePilot): A ComputePilot object.
+            pilot(Pilot): A Pilot object.
             or
-            pilots([ComputePilot]): A list of ComputePilot objects.
+            pilots([Pilot]): A list of Pilot objects.
 
         """
         pass
@@ -841,7 +840,7 @@ class DataPilot():
             name(type): description
             or
             None
-            Add a Data Unit to this Data Pilot.
+            Add a Data Task to this Data Pilot.
 
         """
         pass
@@ -888,38 +887,38 @@ class DataPilot():
         pass
         """
         # cancel all DUs
-        for du in self.units.keys () :
+        for du in self.tasks.keys () :
             du.cancel ()
         """
 
 
 # ------------------------------------------------------------------------------
 #
-class UnitService():
-    """Service that brings the ComputePilot's and DataPilot's together.
-       and adds some scheduling, and enacts DU/CU dependencies.
+class TaskService():
+    """Service that brings the Pilot's and DataPilot's together.
+       and adds some scheduling, and enacts DU/Task dependencies.
 
     """
 
     def __init__(self, url=None, scheduler='default'):
-        """ UnitService constructor.
+        """ TaskService constructor.
 
-        The instantiation of the Unit Service object could possibly be
-        done to re-connect to a persistently running Unit Service.
+        The instantiation of the Task Service object could possibly be
+        done to re-connect to a persistently running Task Service.
         The constructor would need accommodate that.
 
         Keyword argument::
 
-            url:       reconnect to an existing UnitService
+            url:       reconnect to an existing TaskService
             scheduler: use the given scheduler.  Only applicabvle if id==None,
-                       i.e. if a new UnitService is requested.
+                       i.e. if a new TaskService is requested.
 
         Return::
 
             None
 
         Properties:
-         
+
             id:        identifies the service instance for reconnection
             scheduler: the scheduler used in this service instance
 
@@ -937,11 +936,11 @@ class UnitService():
 
         Keyword argument(s)::
 
-            pilot(ComputePilot): A ComputePilot instance.
+            pilot(Pilot): A Pilot instance.
             or
             pilot(DataPilot): A DataPilot instance.
             or
-            pilot([ComputePilot]): A list of ComputePilot instances.
+            pilot([Pilot]): A list of Pilot instances.
             or
             pilot([DataPilot]): A list of DataPilot instances.
 
@@ -972,11 +971,11 @@ class UnitService():
 
     def list_pilot (self, compute=True, data=True):
         """Return a list Pilot IDs of specified type of Pilots that are
-        assigned to this UnitService.
+        assigned to this TaskService.
 
         Keyword arguments::
 
-            compute(bool): Enable the listing of Compute Pilots (default=True)
+            compute(bool): Enable the listing of Pilots (default=True)
             data(bool): Enable the listing Data Pilots (default=True)
 
         Return::
@@ -1004,55 +1003,55 @@ class UnitService():
 
         Return::
 
-            pilot(ComputePilot): A ComputePilot object.
+            pilot(Pilot): A Pilot object.
             or
             pilot(DataPilot): A DataPilot object.
             or
-            pilot([ComputePilot]): A list of ComputePilot objects.
+            pilot([Pilot]): A list of Pilot objects.
             or
             pilot([DataPilot]): A list of DataPilot objects.
 
         """
         pass
 
-    def submit_unit(self, uds):
-        """Accepts a CUD or DUD and returns a CU or DU.
+    def submit_task(self, uds):
+        """Accepts a TD or DUD and returns a Task or DU.
 
         Keyword argument(s)::
 
-            uds(ComputeUnitDescription): The CUD.
+            uds(TaskDescription): The TD.
             or
-            uds(DataUnitDescription): The DUD.
+            uds(DataTaskDescription): The DUD.
             or
-            uds([ComputeUnitDescription]): The list of CUDs.
+            uds([TaskDescription]): The list of CUDs.
             or
-            uds([DataUnitDescription]): The list of DUDs.
+            uds([DataTaskDescription]): The list of DUDs.
 
         Return::
 
-            unit_id(ID): The ID of the Unit submitted.
+            task_id(ID): The ID of the Task submitted.
             or
-            unit_id([ID]): The list of IDs of the Units submitted.
+            task_id([ID]): The list of IDs of the Tasks submitted.
 
         """
         pass
 
 
-    def wait_unit (self, uids, state=FINAL, timeout=-1.0):
+    def wait_task (self, uids, state=FINAL, timeout=-1.0):
         """
-        Wait for all the CUs and DUs handled by this UnitService.
-        """ 
+        Wait for all the CUs and DUs handled by this TaskService.
+        """
         pass
 
 
-    def cancel_unit (self, uids):
-        """Cancel the specified Compute Unit or Data Unit by its ID.
+    def cancel_task (self, uids):
+        """Cancel the specified Task or Data Task by its ID.
 
         Keyword argument(s)::
 
-            unit_id(ID): The Unit to cancel.
+            task_id(ID): The Task to cancel.
             or
-            unit_id([ID]): The list of Units to cancel.
+            task_id([ID]): The list of Tasks to cancel.
 
          Return::
 
@@ -1061,24 +1060,24 @@ class UnitService():
         """
         pass
 
-    def get_unit (self, uids):
-        """Get a DU or CU based on its id.
+    def get_task (self, uids):
+        """Get a DU or Task based on its id.
 
         Keyword argument::
 
-            id(ID): The ID of the unit we want to acquire an instance of.
+            id(ID): The ID of the task we want to acquire an instance of.
             or
-            id([ID]): The list of IDs of the units we want to acquire instances of.
+            id([ID]): The list of IDs of the tasks we want to acquire instances of.
 
         Return::
 
-            unit(ComputeUnit): A ComputeUnit object.
+            task(Task): A Task object.
             or
-            unit(DataUnit): A DataUnit object.
+            task(DataTask): A DataTask object.
             or
-            unit([ComputeUnit]): A list of ComputeUnit objects.
+            task([Task]): A list of Task objects.
             or
-            unit([DataUnit]): A list of DataUnit objects.
+            task([DataTask]): A list of DataTask objects.
 
         """
         pass
@@ -1175,7 +1174,7 @@ class Callback () :
       job.run()
 
 
-    See documentation of the :class:`saga.Attribute` interface for further 
+    See documentation of the :class:`saga.Attribute` interface for further
     details and examples.
     """
 
@@ -1221,7 +1220,7 @@ class Attributes (_object) :
     #
     # The GFD.90 interface supports CamelCasing, and thus converts all keys to
     # underscore before using them.
-    # 
+    #
     def set_attribute (self, key, val) :
         """
         set_attribute(key, val)
@@ -1247,7 +1246,7 @@ class Attributes (_object) :
         being raised.
 
         Note that set_attribute() will trigger callbacks, if a new value
-        (different from the old value) is given.  
+        (different from the old value) is given.
         """
 
         key    = self._attributes_t_keycheck   (key)
@@ -1278,7 +1277,7 @@ class Attributes (_object) :
         """
         list_attributes ()
 
-        List all attributes which have been explicitly set. 
+        List all attributes which have been explicitly set.
         """
 
         return self._attributes_i_list ()

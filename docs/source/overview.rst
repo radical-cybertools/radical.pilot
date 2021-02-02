@@ -67,22 +67,22 @@ For RP it makes no difference if new tasks arrive while other tasks are
 executing.
 
 
-What is a Compute Unit (CU)?
+What is a Task (Task)?
 ============================
 
-In RP, tasks are called ``ComputeUnits`` (CU, or 'unit'), indicating that are
-independent and self-contained units of computation. Each CU represents a
-self-contained, executable part of the application's workload.  A CU is
+In RP, tasks are called ``Tasks`` (Task, or 'task'), indicating that are
+independent and self-contained tasks of computation. Each Task represents a
+self-contained, executable part of the application's workload.  A Task is
 described by the following attributes:
 
   * `executable`    : the name of the executable to be run on the target machines
   * `arguments`     : a list of argument strings to be passed to the executable
-  * `environment`   : a dictionary of environment variable/value pairs to be set before unit execution
+  * `environment`   : a dictionary of environment variable/value pairs to be set before task execution
   * `input_staging` : a set of staging directives for input data
   * `output_staging`: a set of staging directives for output data
 
 For more details, see the
-:class:`API documentation <radical.pilot.ComputeUnitDescription>`
+:class:`API documentation <radical.pilot.TaskDescription>`
 
 
 What is a Pilot?
@@ -95,7 +95,7 @@ abstraction.
 
 RP is a pilot system, capable of (1) acquiring resources by submitting jobs to
 HPC platforms; (2) managing those resources on the user's (or application's)
-behalf; and (3) executing sets and sequences of ``ComputeUnits`` on those
+behalf; and (3) executing sets and sequences of ``Tasks`` on those
 resources.
 
 Usually, applications written with RP: (1) define one or more pilots; (2)
@@ -103,19 +103,19 @@ define the HPC platform where each pilot should be submitted; (3) the type and
 amount of resources that each pilot should acquire on that resource; and (3)
 the time for which each pilot's resources should be available (i.e.,
 walltime). Once each pilot is defined, the application can schedule
-``ComputeUnits`` for execution on it.
+``Tasks`` for execution on it.
 
 Figure 1 shows a high-level representation of RP architecture (yellow boxes)
 when deployed on two HPC platforms (Resource A and B), executing an
 application (Application) with 5 pilots (green boxes) and 36 CUs (red
-circles). Application contains pilot and CU descriptions; RP Client has two
-components: Pilot Manager and Unit Manager. Pilot descriptions are passed to
-the Pilot Manager and Unit descriptions to the Unit Manager. The Pilot Manager
+circles). Application contains pilot and Task descriptions; RP Client has two
+components: Pilot Manager and Task Manager. Pilot descriptions are passed to
+the Pilot Manager and Task descriptions to the Task Manager. The Pilot Manager
 uses Pilot Launcher to launch 2 of the 5 described pilots. One pilot is
 submitted to the local Resource Management (RM) system of Resource A, the
 other pilot to the RM of Resource B. Once instantiated, each pilot becomes
-available for CU execution. At that point, RP Unit Manager sends 2 units to
-Resource A and 5 units to Resource B.
+available for Task execution. At that point, RP Task Manager sends 2 tasks to
+Resource A and 5 tasks to Resource B.
 
 .. figure:: architecture.png
    :width: 600pt
@@ -142,14 +142,14 @@ Why do I need a MongoDB to run RP?
 RP applications use a MongoDB database to communicate with the pilots they
 created: upon startup, pilots connect to the MongoDB database and look for CUs
 to execute.  Similarly, pilots push information into the database about, for
-example, units which completed execution. You can run your own MongoDB or use
+example, tasks which completed execution. You can run your own MongoDB or use
 one provided by the RADICAL group. In each case, the MongoDB database needs to
 be accessible by the login node of the target HPC resource and by the host on
 which the RP application executes.
 
 Generally, RP applications should not be run on the login node of a HPC
 machine. RP executes several processes and may require relevant amount of ram,
-depending on the number of pilots and units required by the application.
+depending on the number of pilots and tasks required by the application.
 Executing RP on the login node of HPC machines almost certainly violates the
 policy of fair usage enforced by the managers of those machines. In rare
 cases, RP has to be executed from a login node but it should not be assumed as
@@ -162,7 +162,7 @@ Why do I need RADICAL-SAGA to run RP?
 =====================================
 
 RP needs to submit one or more jobs to the target HPC machine(s) in order to
-acquire the resources on which to schedule the application compute units. RP
+acquire the resources on which to schedule the application tasks. RP
 uses SAGA to describe these jobs, independent from the batch system used by
 each target machine. SAGA is then used to translate this job description into
 a specific batch job description and to submit it to the machine's batch
@@ -172,21 +172,21 @@ system.
 How do I monitor pilots and CUs?
 ================================
 
-Pilots and units progress according to state models. Figure 2 shows the state
-models of a pilot (left) and of a CU (right). States ending in ``pending``
-(light blue boxes) indicate that pilots or units are queued in one of the RP
-components. All the other states (blue boxes) indicate that pilots or units
+Pilots and tasks progress according to state models. Figure 2 shows the state
+models of a pilot (left) and of a Task (right). States ending in ``pending``
+(light blue boxes) indicate that pilots or tasks are queued in one of the RP
+components. All the other states (blue boxes) indicate that pilots or tasks
 are managed by an RP component.
 
 .. figure:: global-state-model-plain.png
    :width: 400pt
-   :alt: Pilot and CU state models.
+   :alt: Pilot and Task state models.
 
-   Figure 2. (left) Pilot state model; (right) Compute Unit state model.
+   Figure 2. (left) Pilot state model; (right) Task state model.
 
-When writing an RP application, ``pilot.state`` and ``unit.state`` always
+When writing an RP application, ``pilot.state`` and ``task.state`` always
 report the current state of the entities. Callbacks can be registered for
-notifications on unit and pilot state changes.
+notifications on task and pilot state changes.
 
 Setting the environment variable ``RADICAL_LOG_LVL=INFO`` in the shell from
 which the RP application is executed, turns on logging. Logging provides

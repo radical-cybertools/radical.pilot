@@ -1,7 +1,7 @@
 
 # Protocols used in RP
 
-RP uses Queues to communicate Pilots and Units between state enacting
+RP uses Queues to communicate Pilots and Tasks between state enacting
 components.  RP also uses PubSub channels to communicate other types of
 information, such as state updates, heartbeat information, shutdown commands,
 etc.
@@ -14,11 +14,11 @@ This document describes what messages are sent in what format over what channel.
 The context in which queues are used is always well defined: for each    queue
 type, only one specific source and sink exist in the code, with very few
 exceptions.  There is thus no need to send meta data along with the messages,
-and we only send 'things', ie. pilots or units, which are represented by plain
+and we only send 'things', i.e., pilots or tasks, which are represented by plain
 python dicts.  All 'things' are guaranteed to have the following fields:
 
     'uid':    string, unique ID
-    'type':   string, entity type (session | umgr | unit | pmgr | pilot)
+    'type':   string, entity type (session | tmgr | task | pmgr | pilot)
     'state':  string, state of the thing if stateful, 'None' otherwise
 
 
@@ -40,7 +40,7 @@ also define the structure of the 'arg' fields, where applicable.
 ### `STATE`
 
     'cmd' : 'state_update'
-    'arg' : {'ttype' : 'pilot|unit',   # what kind of state is updated?
+    'arg' : {'ttype' : 'pilot|task',   # what kind of state is updated?
              'thing' : <dict>}         # the thing to update
 
 where the 'thing' dict always has a 'uid' and 'state' field, ie. is the same
@@ -66,17 +66,17 @@ see also code comments in rp/worker/update.py
     
     'cmd' : 'cancel'
     'arg' : {'from'  : <string>,      # who says so?
-             'ttype' : 'unit|pilot',  # what is to be canceled? 
+             'ttype' : 'task|pilot',  # what is to be canceled? 
              'uid'   : <string>}      # what thing exactly?
     
     
     'cmd' : 'add_pilot'
-    'arg' : {'from'  : <string>,      # on what umgr?
+    'arg' : {'from'  : <string>,      # on what tmgr?
              'uid'   : <string>}      # what pilot is added?
     
     
     'cmd' : 'remove_pilot'
-    'arg' : {'from'  : <string>,      # from what umgr?
+    'arg' : {'from'  : <string>,      # from what tmgr?
              'uid'   : <string>}      # what pilot is removed?
 
 

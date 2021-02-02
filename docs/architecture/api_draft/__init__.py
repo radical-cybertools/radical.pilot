@@ -9,22 +9,22 @@ from callback                      import Callback
 from attributes                    import Attributes
 from description                   import Description
 
-from compute_unit_description      import ComputeUnitDescription
-from data_unit_description         import DataUnitDescription
+from task_description      import TaskDescription
+from data_task_description         import DataTaskDescription
 
-from unit                          import Unit
-from compute_unit                  import ComputeUnit
-from data_unit                     import DataUnit
+from task                          import Task
+from task                  import Task
+from data_task                     import DataTask
 
-from compute_pilot_description     import ComputePilotDescription
+from pilot_description     import PilotDescription
 from data_pilot_description        import DataPilotDescription
 
 from pilot                         import Pilot
-from compute_pilot                 import ComputePilot
+from pilot                 import Pilot
 from data_pilot                    import DataPilot
 
 from pilot_manager                 import PilotManager
-from unit_manager                  import UnitManager
+from task_manager                  import TaskManager
 
 
 # ------------------------------------------------------------------------------

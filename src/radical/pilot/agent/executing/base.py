@@ -28,8 +28,8 @@ EXECUTING_NAME_FUNCS   = "FUNCS"
 #
 class AgentExecutingComponent(rpu.Component):
     """
-    Manage the creation of CU processes, and watch them until they are completed
-    (one way or the other).  The spawner thus moves the unit from
+    Manage the creation of Task processes, and watch them until they are completed
+    (one way or the other).  The spawner thus moves the task from
     PendingExecution to Executing, and then to a final state (or PendingStageOut
     of course).
     """
@@ -43,8 +43,8 @@ class AgentExecutingComponent(rpu.Component):
 
         rpu.Component.__init__(self, cfg, session)
 
-        # if so configured, let the CU know what to use as tmp dir
-        self._cu_tmp = cfg.get('cu_tmp', os.environ.get('TMP', '/tmp'))
+        # if so configured, let the Task know what to use as tmp dir
+        self._task_tmp = cfg.get('task_tmp', os.environ.get('TMP', '/tmp'))
 
 
     # --------------------------------------------------------------------------

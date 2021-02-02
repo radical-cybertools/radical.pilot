@@ -1,7 +1,7 @@
 import os
 import shutil
 import errno
-import unittest
+import tasktest
 import json
 
 import radical.utils as ru
@@ -13,10 +13,10 @@ import hostlist
 try:
     import mock
 except ImportError:
-    from unittest import mock
+    from tasktest import mock
 
 
-class TestComponentSlurmResourceManager(unittest.TestCase):
+class TestComponentSlurmResourceManager(tasktest.TestCase):
 
     @classmethod
     def setUpClass(self):
@@ -383,9 +383,9 @@ if __name__ == "__main__":
 
     suites = list()
     for test_class in test_classes:
-        suite = unittest.TestLoader().loadTestsFromTestCase(test_class)
+        suite = tasktest.TestLoader().loadTestsFromTestCase(test_class)
         suites.append(suite)
 
-    big_suite = unittest.TestSuite(suites)
+    big_suite = tasktest.TestSuite(suites)
 
-    unittest.TextTestRunner(verbosity=2).run(big_suite)
+    tasktest.TextTestRunner(verbosity=2).run(big_suite)
