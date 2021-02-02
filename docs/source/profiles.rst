@@ -13,7 +13,7 @@ attribute `_config`, which accepts a dict of the following structure:
 
 .. code-block:: python
 
-        pdesc = rp.ComputePilotDescription()
+        pdesc = rp.PilotDescription()
         pdesc.resource = "local.localhost"
         pdesc.runtime  = 5 # minutes
         pdesc.cores    = 8
@@ -50,9 +50,9 @@ attribute `_config`, which accepts a dict of the following structure:
                                                  'UpdateWorker'    :  1}}
 
 That configuration tunes the concurrency of some of the pilot components (here
-we use two `ExecWorker` instances to spawn units.  Further, we request that
-the number of compute units handled by the `ExecWorker` is 'blown up'
-(multiplied) by 10.  This will created 9 near-identical units for every unit
+we use two `ExecWorker` instances to spawn tasks.  Further, we request that
+the number of tasks handled by the `ExecWorker` is 'blown up'
+(multiplied) by 10.  This will created 9 near-identical tasks for every task
 which enters that component, and thus the load increases on that specific
 component, but not on any of the previous ones.  Finally, we instruct all
 components but the `ExecWorker`, `watch_queue` and `Watcher` to drop the
@@ -63,12 +63,12 @@ Setting these parameters requires some understanding of the pilot
 architecture. While in general the application semantics remains unaltered,
 these parameters do significantly alter resource consumption.  Also, there do
 exist invalid combinations which will cause the agent to fail, specifically it
-will usually be invalid to push updates of cloned units to the client module
+will usually be invalid to push updates of cloned tasks to the client module
 (via MongoDB).
 
 The pilot profiling (as stored in `agent.prof` in the pilot sandbox) will
-contain timings for the cloned units.  The unit IDs will be based upon the
-original unit IDs, but have an appendix `.clone.0001` etc., depending on the
+contain timings for the cloned tasks.  The task IDs will be based upon the
+original task IDs, but have an appendix `.clone.0001` etc., depending on the
 value of the respective blowup factor.  In general, only one of the
-blowup-factors should be larger than one (otherwise the number of units will
+blowup-factors should be larger than one (otherwise the number of tasks will
 grow exponentially, which is probably not what you want).

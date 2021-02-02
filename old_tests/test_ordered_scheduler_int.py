@@ -36,45 +36,45 @@ def test_ordered_scheduler():
                    'exit_on_error' : True,
                    'cores'         : 10
                   }
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
         pmgr  = rp.PilotManager(session=session)
         pilot = pmgr.submit_pilots(pdesc)
 
         report.header('submit pipelines')
 
-        umgr = rp.UnitManager(session=session)
-        umgr.add_pilots(pilot)
+        tmgr = rp.TaskManager(session=session)
+        tmgr.add_pilots(pilot)
 
         n_pipes  = 2
         n_stages = 5
         n_tasks  = 4
 
-        cuds = list()
+        tds = list()
         for p in range(n_pipes):
             for s in range(n_stages):
                 for t in range(n_tasks):
-                    cud = rp.ComputeUnitDescription()
-                    cud.executable       = '%s/pipeline_task.sh' % pwd
-                    cud.arguments        = [p, s, t, 10]
-                    cud.cpu_processes    = 1
-                    cud.tags             = {'order': {'ns'   : p,
+                    td = rp.TaskDescription()
+                    td.executable       = '%s/pipeline_task.sh' % pwd
+                    td.arguments        = [p, s, t, 10]
+                    td.cpu_processes    = 1
+                    td.tags             = {'order': {'ns'   : p,
                                                       'order': s,
                                                       'size' : n_tasks}}
-                    cud.name             =  'p%03d-s%03d-t%03d' % (p, s, t)
-                    cuds.append(cud)
+                    td.name             =  'p%03d-s%03d-t%03d' % (p, s, t)
+                    tds.append(td)
                     report.progress()
 
         import random
-        random.shuffle(cuds)
+        random.shuffle(tds)
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        umgr.submit_units(cuds)
+        # assigning Tasks to the Pilots.
+        tmgr.submit_tasks(tds)
 
-        # Wait for all compute units to reach a final state
+        # Wait for all tasks to reach a final state
         report.header('gather results')
-        umgr.wait_units()
+        tmgr.wait_tasks()
 
 
     except Exception as e:

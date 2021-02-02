@@ -9,38 +9,39 @@ This example assumes that you are familiar with submitting at least one RADICAL-
 to a remote resource and moves forward explaining how to submit multiple pilots
 to multiple resources.
 
-The simplest usage of a pilot-job system is to submit multiple identical tasks
-(a 'Bag of Tasks') collectively, i.e. as one big job! Such usage arises for
-example to perform either a parameter sweep job or a set of ensemble simulation.
+The simplest usage of a pilot system is to collectively submit multiple identical 
+tasks, i.e., a 'Bag of Tasks' (BoT). For example, BoT are used to perform 
+either a parameter sweep or a set of ensemble simulations.
 
-We will create an example which submits N jobs using RADICAL-Pilot to M different
-resources. The jobs are all identical, except that they each record their number and
-where they run in their output. This type of run is very useful if you are running
-many jobs using the same executable (but perhaps with different input files).
-Rather than submit each job individually to the queuing systems and then wait for
-every job to become active and complete, you submit multiple container jobs (called Pilots)
-that reserve the number of cores needed to run all of your jobs across multiple platforms.
-When this pilots become active, your tasks (which are named 'Compute Units' or 'CUs') are pulled by
-RADICAL-Pilot from the MongoDB server and executed.
+We will create an example which submits N tasks using RADICAL-Pilot to M HPC
+resources. The tasks are all identical, except that each outputs its ID and
+where it run. BoT are useful if you are running multiple tasks using the same
+executable (but perhaps with different input files). Rather than individually
+queuing each task as a job to the batch systems of an HPC resource, and then
+wait for every job to become active and complete, you submit multiple container
+jobs (called pilots) that reserve the resources (e.g., CPU cores and/or GPUs)
+needed to run all your tasks across one or more HPC platforms. When these pilots
+become active, RADICAL-Pilot pulls your tasks from the MongoDB server and
+executes them on the acquired HPC resources.
 
 
-Launching Multiple ComputePilots
+Launching Multiple Pilots
 --------------------------------
 
-You can describe multiple :class:`radical.pilot.ComputePilot` save them to a list and submit them via a :class:`radical.pilot.ComputePilotDescription` to the PilotManager:
+You can describe multiple :class:`radical.pilot.Pilot` save them to a list and submit them via a :class:`radical.pilot.PilotDescription` to the PilotManager:
 
 .. code-block:: python
 
     pilot_list=list()
 
-    pdesc = radical.pilot.ComputePilotDescription()
+    pdesc = radical.pilot.PilotDescription()
     pdesc.resource  = "xsede.comet"
     pdesc.runtime   = 10
     pdesc.cores     = 12
 
     pilot_list.append(pdesc)
 
-    pdesc2 = radical.pilot.ComputePilotDescription()
+    pdesc2 = radical.pilot.PilotDescription()
     pdesc2.resource  = "xsede.gordon"
     pdesc2.runtime   = 10
     pdesc2.cores     = 16
@@ -53,16 +54,17 @@ You can describe multiple :class:`radical.pilot.ComputePilot` save them to a lis
 .. warning:: Make sure that you have the same user name to all the resources you are submitting and add only one context to the Session
 
 
-Scheduling ComputeUnits Across Multiple ComputePilots
+Scheduling Tasks Across Multiple Pilots
 -----------------------------------------------------
-In order to be able to schedule ComputeUnits to multiple ComputePilots, you first need
+
+In order to be able to schedule tasks to multiple pilots, you first need
 to select one of the schedulers that support multi-pilot submission when you define
-the  :class:`radical.pilot.UnitManager`. In our example we use the Round-Robin
+the  :class:`radical.pilot.TaskManager`. In our example we use the Round-Robin
 scheduler.
 
 .. code-block:: python
 
-   umgr = rp.UnitManager (session=session,
+   tmgr = rp.TaskManager (session=session,
                           scheduler=rp.SCHEDULER_ROUND_ROBIN)
 
 
@@ -123,10 +125,10 @@ The output should look something like this:
 .. code-block:: none
 
     Initializing Pilot Manager ...
-    Submitting Compute Pilots to Pilot Manager ...
-    Initializing Unit Manager ...
-    Registering Compute Pilots with Unit Manager ...
-    Submit Compute Units to Unit Manager ...
+    Submitting Pilots to Pilot Manager ...
+    Initializing Task Manager ...
+    Registering Pilots with Task Manager ...
+    Submit Tasks to Task Manager ...
     Waiting for CUs to complete ...
     ...
     Waiting for CUs to complete ...
@@ -159,4 +161,3 @@ The Complete Example
 .. warning:: Make sure to adjust ... before you attempt to run it.
 
 .. literalinclude:: ../../../examples/docs/simple_bot_mult_res.py
-
