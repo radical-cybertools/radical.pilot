@@ -1017,8 +1017,6 @@ class Default(PMGRLaunchingComponent):
         #
         if resource not in self._sandboxes:
 
-            tgt_path = ru.Url(pilot['session_sandbox']).path
-
             for sdist in sdist_paths:
                 base = os.path.basename(sdist)
                 ret['fts'].append({
