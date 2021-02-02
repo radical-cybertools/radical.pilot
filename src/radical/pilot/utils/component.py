@@ -3,6 +3,7 @@
 # pylint: disable=redefined-builtin  # W0622 Redefining built-in 'input'
 
 import os
+import sys
 import copy
 import time
 
@@ -11,6 +12,11 @@ import radical.utils   as ru
 
 from ..          import constants      as rpc
 from ..          import states         as rps
+
+
+def out(msg):
+    sys.stdout.write('%s\n' % msg)
+    sys.stdout.flush()
 
 
 # ------------------------------------------------------------------------------
@@ -487,6 +493,11 @@ class Component(object):
             except:
                 self._log.exception('work cb error [ignored]')
 
+        try:
+            self._finalize()
+        except Exception:
+            self._log.exception('worker thread finalialization failed')
+
 
     # --------------------------------------------------------------------------
     #
@@ -497,11 +508,11 @@ class Component(object):
         #        should really be derived from rp module inspection via an
         #        `ru.PluginManager`.
         #
-        from radical.pilot import worker       as rpw
-        from radical.pilot import pmgr         as rppm
-        from radical.pilot import umgr         as rpum
-        from radical.pilot import agent        as rpa
-        from radical.pilot import task_overlay as rpt
+        from radical.pilot import worker as rpw
+        from radical.pilot import pmgr   as rppm
+        from radical.pilot import umgr   as rpum
+        from radical.pilot import agent  as rpa
+        from radical.pilot import raptor as rpt
       # from radical.pilot import constants as rpc
 
         comp = {
@@ -632,6 +643,7 @@ class Component(object):
         self._log.debug('%s close prof', self.uid)
         try:
             self._prof.prof('component_final')
+            self._prof.flush()
             self._prof.close()
         except Exception:
             pass
@@ -658,7 +670,6 @@ class Component(object):
                        ru.get_thread_name(), ru.get_caller_name())
 
         self._term.set()
-        self._finalize()
 
 
     # --------------------------------------------------------------------------
@@ -1134,13 +1145,13 @@ class Component(object):
         This is evaluated in self.publish.
         '''
 
+        if not things:
+            return
+
         if not ts:
             ts = time.time()
 
         things = ru.as_list(things)
-
-        if not things:
-            return
 
         self._log.debug('advance bulk: %s [%s, %s]', len(things), push, publish)
 
@@ -1178,6 +1189,8 @@ class Component(object):
             for thing in things:
                 if '$all' in thing:
                     del(thing['$all'])
+                    if '$set' in thing:
+                        del(thing['$set'])
                     to_publish.append(thing)
 
                 elif thing['state'] in rps.FINAL:
@@ -1187,8 +1200,10 @@ class Component(object):
                     tmp = {'uid'   : thing['uid'],
                            'type'  : thing['type'],
                            'state' : thing['state']}
-                    for key in thing.get('$set', []):
-                        tmp[key] = thing[key]
+                    if '$set' in thing:
+                        for key in thing['$set']:
+                            tmp[key] = thing[key]
+                        del(thing['$set'])
                     to_publish.append(tmp)
 
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
@@ -1198,7 +1213,7 @@ class Component(object):
           #     self._prof.prof('publish', uid=thing['uid'],
           #                     state=thing['state'], ts=ts)
 
-        # never carry $all across component boundaries!
+        # never carry $all and across component boundaries!
         for thing in things:
             if '$all' in thing:
                 del(thing['$all'])
@@ -1255,15 +1270,7 @@ class Component(object):
         push information into a publication channel
         '''
 
-        if pubsub not in self._publishers:
-            self._log.warn("can't route msg for '%s': %s" % (pubsub,
-                                                 list(self._publishers.keys())))
-            return
-
-          # raise RuntimeError("can't route '%s' notification: %s" % (pubsub,
-          #     self._publishers.keys()))
-
-        if not self._publishers[pubsub]:
+        if not self._publishers.get(pubsub):
             raise RuntimeError("no msg route for '%s': %s" % (pubsub, msg))
 
         self._publishers[pubsub].put(pubsub, msg)
