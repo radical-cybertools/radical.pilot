@@ -4,6 +4,20 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
+1.5.12 Release                                                        2021-02-02
+--------------------------------------------------------------------------------
+
+  - multi-dvm support
+  - cleanup of raptor
+  - fix for bootstrap profiling
+  - fix help string in bin/radical-pilot-create-static-ve
+  - forward compatibility for tags
+  - fix data stager for multi-pilot case
+  - parametric integration tests
+  - scattered fixes for raptor and sub-agent profiling
+  - support new resource utilization plots
+
+
 1.5.11 Release                                                        2021-01-19
 --------------------------------------------------------------------------------
 
