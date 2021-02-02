@@ -391,7 +391,7 @@ class Continuous(AgentSchedulingComponent):
 
         # in case of PRTE/2 LM: key `partition` from task description attribute
         #                       `tags` represents a DVM ID
-        partition = cud.get('tags', {}).get('partition')
+        partition = td.get('tags', {}).get('partition')
         if self._rm_partitions and partition is not None:
             if partition not in self._rm_partitions:
                 raise ValueError('partition id (%s) out of range' % partition)
