@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
     session   = rp.Session()
     try:
-        pd = rp.ComputePilotDescription(cfg.pilot_descr)
+        pd = rp.PilotDescription(cfg.pilot_descr)
         pd.cores   = nodes * cpn + cpn
         pd.gpus    = nodes * gpn + gpn
         pd.runtime = cfg.runtime
@@ -44,7 +44,7 @@ if __name__ == '__main__':
         tds = list()
 
         for i in range(n_masters):
-            td                = rp.ComputeUnitDescription(cfg.master_descr)
+            td = rp.TaskDescription(cfg.master_descr)
             td.uid            = ru.generate_id('master.%(item_counter)06d',
                                         ru.ID_CUSTOM,
                                         ns=session.uid)
@@ -76,12 +76,12 @@ if __name__ == '__main__':
             tds.append(td)
 
         pmgr  = rp.PilotManager(session=session)
-        umgr  = rp.UnitManager(session=session)
+        tmgr  = rp.TaskManager(session=session)
         pilot = pmgr.submit_pilots(pd)
-        task  = umgr.submit_units(tds)
+        task  = tmgr.submit_tasks(tds)
 
-        umgr.add_pilots(pilot)
-        umgr.wait_units()
+        tmgr.add_pilots(pilot)
+        tmgr.wait_tasks()
 
     finally:
         session.close(download=True)

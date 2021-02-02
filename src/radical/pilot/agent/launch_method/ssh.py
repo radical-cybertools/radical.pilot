@@ -52,13 +52,13 @@ class SSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        slots        = cu['slots']
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_env     = cud.get('environment') or dict()
-        task_args    = cud.get('arguments')   or list()
+        slots        = t['slots']
+        td          = t['description']
+        task_exec    = td['executable']
+        task_env     = td.get('environment') or dict()
+        task_args    = td.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
         if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
@@ -72,7 +72,7 @@ class SSH(LaunchMethod):
                               % (self.name, slots))
 
         if len(slots['nodes']) > 1:
-            raise RuntimeError('ssh cannot run multinode units')
+            raise RuntimeError('ssh cannot run multinode tasks')
 
         host = slots['nodes'][0]['name']
 

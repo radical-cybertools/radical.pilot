@@ -13,9 +13,9 @@ dh = ru.DebugHelper ()
 RUNTIME  =    60
 SLEEP    =    10
 PILOTS   =     2
-UNITS    =    10
+TASKS    =    10
 CNT      =     0
-SCHED    = rp.umgr.scheduler.SCHEDULER_BACKFILLING
+SCHED    = rp.tmgr.scheduler.SCHEDULER_BACKFILLING
 
 resources = {
     'osg.xsede-virt-clust' : {
@@ -38,19 +38,19 @@ def pilot_state_cb (pilot, state):
     if not pilot:
         return
 
-    print("[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
+    print("[Callback]: Pilot '%s' state: %s." % (pilot.uid, state))
 
 
 # ------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state):
+def task_state_cb (task, state):
 
-    if not unit:
+    if not task:
         return
 
     global CNT
 
-    print("[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot, state))
+    print("[Callback]: task %s on %s: %s." % (task.uid, task.pilot, state))
 
     if state in [rp.FAILED, rp.DONE, rp.CANCELED]:
         CNT += 1
@@ -59,7 +59,7 @@ def unit_state_cb (unit, state):
 
 # ------------------------------------------------------------------------------
 #
-def wait_queue_size_cb(umgr, wait_queue_size):
+def wait_queue_size_cb(tmgr, wait_queue_size):
 
     print("[Callback]: wait_queue_size: %s." % wait_queue_size)
 
@@ -90,21 +90,21 @@ if __name__ == "__main__":
         pmgr = rp.PilotManager(session=session)
         pmgr.register_callback(pilot_state_cb)
 
-        umgr = rp.UnitManager(session=session, scheduler=SCHED)
-        umgr.register_callback(unit_state_cb,      rp.UNIT_STATE)
-        umgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
+        tmgr = rp.TaskManager(session=session, scheduler=SCHED)
+        tmgr.register_callback(task_state_cb,      rp.TASK_STATE)
+        tmgr.register_callback(wait_queue_size_cb, rp.WAIT_QUEUE_SIZE)
 
-        cuds = list()
-        for unit_count in range(0, UNITS):
-            cud = rp.ComputeUnitDescription()
-            cud.executable     = "/bin/sh"
-            cud.arguments      = ["-c", "echo $HOSTNAME:$OSG_HOSTNAME && sleep %d" % SLEEP]
-            cud.cores          = 1
-            cuds.append(cud)
+        tds = list()
+        for task_count in range(0, TASKS):
+            td = rp.TaskDescription()
+            td.executable     = "/bin/sh"
+            td.arguments      = ["-c", "echo $HOSTNAME:$OSG_HOSTNAME && sleep %d" % SLEEP]
+            td.cores          = 1
+            tds.append(td)
 
-        units = umgr.submit_units(cuds)
+        tasks = tmgr.submit_tasks(tds)
 
-        pdesc = rp.ComputePilotDescription()
+        pdesc = rp.PilotDescription()
         pdesc.resource        = resource
         pdesc.cores           = config[resource].get('cores', 1),
         pdesc.gpus            = config[resource].get('gpus', 0),
@@ -126,13 +126,13 @@ if __name__ == "__main__":
         # TODO: bulk submit pilots here
         for p in range(PILOTS):
             pilot = pmgr.submit_pilots(pdesc)
-            umgr.add_pilots(pilot)
+            tmgr.add_pilots(pilot)
 
-        umgr.wait_units()
+        tmgr.wait_tasks()
 
-        for cu in units:
+        for t in tasks:
             print("* Task %s state %s, exit code: %s, stdout: %s, pilot: %s"
-                % (cu.uid, cu.state, cu.exit_code, cu.stdout, cu.pilot))
+                % (t.uid, t.state, t.exit_code, t.stdout, t.pilot))
 
       # os.system("radicalpilot-stats -m stat,plot -s %s > %s.stat"
       #          % (session.uid, session_name))

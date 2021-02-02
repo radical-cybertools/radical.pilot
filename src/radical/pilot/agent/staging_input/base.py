@@ -72,18 +72,18 @@ class AgentStagingInputComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
+    def work(self, tasks):
 
-        if not isinstance(units, list):
-            units = [units]
+        if not isinstance(tasks, list):
+            tasks = [tasks]
 
-        self.advance(units, rps.AGENT_STAGING_INPUT, publish=True, push=False)
+        self.advance(tasks, rps.AGENT_STAGING_INPUT, publish=True, push=False)
 
-        self._work(units)
+        self._work(tasks)
 
     # --------------------------------------------------------------------------
     #
-    def _work(self, units):
+    def _work(self, tasks):
 
         # this needs to be overloaded by the inheriting implementation
         raise NotImplementedError('work() is not implemented')

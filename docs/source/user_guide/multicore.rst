@@ -1,7 +1,7 @@
 .. _chapter_example_multicore:
 
 ************************************************
-Executing Multicore / Multithreaded ComputeUnits  
+Executing Multicore / Multithreaded Tasks  
 ************************************************
 
 Multithreaded Applications
@@ -10,12 +10,12 @@ Multithreaded Applications
 MPI Applications
 ----------------
 
-To define an MPI ComputeUnit, all you need to do is to set the ``cores`` and the 
-``mpi`` arguments in the ComputeUnitDescription.
+To define an MPI task, all you need to do is to set the ``cores`` and the 
+``mpi`` arguments in the TaskDescription.
 
 .. code-block:: python
 
-    pdesc = radical.pilot.ComputeUnitDescription()
+    pdesc = radical.pilot.TaskDescription()
     [...]
     pdesc.mpi      = True
     pdesc.cores    = 32

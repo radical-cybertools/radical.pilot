@@ -79,7 +79,7 @@ class Spark(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _allocate_slot(self, cu):
+    def _allocate_slot(self, t):
         """
         This implementation checks if the number of cores and memory size
         that exist in the YARN cluster are enough for an application to fit in
@@ -100,8 +100,8 @@ class Spark(AgentSchedulingComponent):
         # accept. It needs to go either from the configuration file or find a
         # way to take this value for the YARN scheduler config.
 
-        cores_requested = cu['description']['cpu_processes'] \
-                        * cu['description']['threads']
+        cores_requested = t['description']['cpu_processes'] \
+                        * t['description']['threads']
         mem_requested   = 2048
         slots           = None
 

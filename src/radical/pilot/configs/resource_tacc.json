@@ -79,10 +79,10 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_cu"                : ["LMOD_CMD",
+        "export_to_task"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : []
+        "task_pre_exec"               : []
     },
 
     "frontera_wf0": {
@@ -165,10 +165,10 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_cu"                : ["LMOD_CMD",
+        "export_to_task"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : []
+        "task_pre_exec"               : []
     },
 
     "frontera_prte": {
@@ -245,7 +245,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_cu"                : ["LMOD_CMD",
+        "export_to_task"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
         "cu_pre_exec"                 : ["module restore"]

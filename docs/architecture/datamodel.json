@@ -11,7 +11,7 @@
     "_id": "objectID()",
 }
 
-# This is a queue document. It represent a unit manager. It lives  
+# This is a queue document. It represent a task manager. It lives  
 # in a collection called sinon.<SID>.queues
 # ensureIndex( {} )
 #
@@ -36,12 +36,12 @@
     }
 }
 
-# This is a compute unit document. It represents a compute unit.
-# It lives in a collection called sinon.<SID>.computeunits 
+# This is a task document. It represents a task.
+# It lives in a collection called sinon.<SID>.computetasks 
 # ensureIndex( { "_ManagerID": 1, "_PilotID": 1 } )
 {
     "_id": "objectID()",
-    "_UnitManagerID": "manager.objectID()",
+    "_TaskManagerID": "manager.objectID()",
     "_PilotID:": "pilot.objectID()",
 
     "Name": "BSON.STRING",
