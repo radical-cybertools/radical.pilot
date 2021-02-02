@@ -1702,6 +1702,9 @@ PILOT_SCRIPT=`which radical-pilot-agent`
 # Verify it
 verify_install
 
+# we should have a better `gtod` now
+test -z $(which radical-gtod) || cp $(which radical-gtod ./gtod)
+
 AGENT_CMD="$PYTHON $PILOT_SCRIPT"
 
 verify_rp_install

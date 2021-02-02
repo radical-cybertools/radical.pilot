@@ -116,10 +116,6 @@ class Default(PMGRLaunchingComponent):
         except:
             self._log.exception('finalization error')
 
-        self.unregister_timed_cb(self._pilot_watcher_cb)
-        self.unregister_input(rps.PMGR_LAUNCHING_PENDING,
-                              rpc.PMGR_LAUNCHING_QUEUE, self.work)
-
 
     # --------------------------------------------------------------------------
     #
@@ -431,10 +427,6 @@ class Default(PMGRLaunchingComponent):
 
         rcfg = self._session.get_resource_config(resource, schema)
         sid  = self._session.uid
-
-        # we create a deep-copy of the resource cfg, so that this code is fee to
-        # change it as needed
-        rcfg = ru.Config(cfg=rcfg.as_dict())
 
         # ----------------------------------------------------------------------
         # the rcfg can contain keys with string expansion placeholders where
@@ -1025,8 +1017,6 @@ class Default(PMGRLaunchingComponent):
         #
         if resource not in self._sandboxes:
 
-            tgt_path = ru.Url(pilot['session_sandbox']).path
-
             for sdist in sdist_paths:
                 base = os.path.basename(sdist)
                 ret['fts'].append({
@@ -1072,6 +1062,12 @@ class Default(PMGRLaunchingComponent):
         jd.candidate_hosts       = candidate_hosts
         jd.environment           = dict()
         jd.system_architecture   = system_architecture
+
+        # register used resources in DB (enacted on next advance)
+        pilot['resources'] = {'cpu': number_cores,
+                              'gpu': number_gpus}
+        pilot['$set']      = ['resources']
+
 
         # we set any saga_jd_supplement keys which are not already set above
         for key, val in saga_jd_supplement.items():

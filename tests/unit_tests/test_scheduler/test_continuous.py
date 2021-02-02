@@ -197,6 +197,7 @@ class TestContinuous(TestCase):
         self.assertEqual(component._tag_history, {})
       # self.assertEqual(component._tag_history, {'unit.000001': [1]})
 
+
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Continuous, '__init__', return_value=None)

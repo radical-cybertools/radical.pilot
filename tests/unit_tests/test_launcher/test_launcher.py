@@ -97,7 +97,7 @@ class TestLauncher(TestCase):
                                          'candidate_hosts': None,
                                          }
                    }
-        ret = component._prepare_pilot(resource, rcfg, pilot, {})
+        ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')
         assert(ret['jd'].name == 'pilot.0000')
         assert(ret['jd'].environment['RADICAL_BASE'] ==
                str(session._get_resource_sandbox(pilot)))
@@ -116,7 +116,7 @@ class TestLauncher(TestCase):
                                          'candidate_hosts': None,
                                          }
                    }
-        ret = component._prepare_pilot(resource, rcfg, pilot, {})
+        ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')
         assert(ret['jd'].name == 'bar')
 
         # test resource config parameter `system_architecture`
@@ -127,7 +127,7 @@ class TestLauncher(TestCase):
         # value for "ornl.summit" is 4
         resource = 'ornl.summit'
         rcfg = configs.ornl.summit
-        ret = component._prepare_pilot(resource, rcfg, pilot, {})
+        ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')
         assert (ret['jd'].system_architecture['smt'] == 4)
 
 
