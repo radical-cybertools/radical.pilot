@@ -1,5 +1,5 @@
 
-# pylint: disable=eval-used
+
 
 import os
 import sys
@@ -33,7 +33,7 @@ class Worker(rpu.Component):
         # generate a MPI rank dependent UID for each worker process
         # FIXME: this should be delegated to ru.generate_id
         # FIXME: why do we need to import `os` again after MPI Spawn?
-        import os                                                         # noqa
+        import os                                   # pylint: disable=reimported
 
         # FIXME: rank determination should be moved to RU
         rank = None
@@ -409,12 +409,11 @@ class Worker(rpu.Component):
                   # while not self._res_evt.wait(timeout=1.0):
                   #     self._log.debug('=== req_alloc_wait %s', task['uid'])
 
-                    if True:
-                        time.sleep(0.01)
+                    time.sleep(0.01)
 
-                        # break on termination
-                        if self._term.is_set():
-                            return False
+                    # break on termination
+                    if self._term.is_set():
+                        return False
 
                     self._res_evt.clear()
 

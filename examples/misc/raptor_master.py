@@ -51,7 +51,7 @@ class MyMaster(rp.raptor.Master):
         # create an initial list of work items to be distributed to the workers.
         # Work items MUST be serializable dictionaries.
         idx   = rank
-        total = int(eval(self._cfg.workload.total))
+        total = int(eval(self._cfg.workload.total))                       # noqa
         while idx < total:
 
             uid  = 'request.%06d' % idx

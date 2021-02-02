@@ -360,7 +360,7 @@ class Master(rpu.Component):
         # get work from the overloading implementation
         try:
             self.create_work_items()
-        except Exception as e:
+        except Exception:
             self._log.exception('failed to create work')
             self._term.set()
 
