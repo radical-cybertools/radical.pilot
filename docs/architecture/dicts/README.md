@@ -12,7 +12,7 @@ millions of tasks.  We compare the following approaches:
   - `GOOD`    : `good` module (schema validator)
   - `SCHEMA`  : `schema` module (schema validator)
   - `PYDANTIC`: `pydantic` module (type annotator)
-  - `NEW_CUD` : `radical.pilot.ComputeUnitDescription` (new implementation)
+  - `NEW_CUD` : `radical.pilot.TaskDescription` (new implementation)
   - `RU_CFG`  : `radical.utils.Config` (munched dictionary)
   - `RU_DICT` : `radical.utils.DictMixin` (RU dict implementation)
   - `RU_MUNCH`: `radical.utils.Munch` (munched dict with typed schema)

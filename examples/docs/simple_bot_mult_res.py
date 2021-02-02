@@ -25,7 +25,7 @@ def pilot_state_cb (pilot, state):
     if not pilot:
         return
 
-    print("[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
+    print("[Callback]: Pilot '%s' state: %s." % (pilot.uid, state))
 
     if state == rp.FAILED:
         sys.exit (1)
@@ -33,17 +33,17 @@ def pilot_state_cb (pilot, state):
 
 # ------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state):
+def task_state_cb (task, state):
 
-    if not unit:
+    if not task:
         return
 
     global CNT
 
-    print("[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state))
+    print("[Callback]: task %s on %s: %s." % (task.uid, task.pilot_id, state))
 
     if state == rp.FAILED:
-        print("stderr: %s" % unit.stderr)
+        print("stderr: %s" % task.stderr)
         sys.exit(2)
 
 
@@ -79,7 +79,7 @@ if __name__ == "__main__":
       # c.user_pass = "PutYourPasswordHere"
         session.add_context(c)
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         print("Initializing Pilot Manager ...")
         pmgr = rp.PilotManager(session=session)
 
@@ -105,7 +105,7 @@ if __name__ == "__main__":
         pilot_list = list()
 
         # Create the description of the first pilot and add it to the list
-        pdesc = rp.ComputePilotDescription ()
+        pdesc = rp.PilotDescription ()
         pdesc.resource = "xsede.gordon"
         pdesc.runtime  = 10
         pdesc.cores    = 1
@@ -114,7 +114,7 @@ if __name__ == "__main__":
         pilot_list.append(pdesc)
 
         # Create the description of the secind pilot and add it to the list
-        pdesc2 = rp.ComputePilotDescription ()
+        pdesc2 = rp.PilotDescription ()
         pdesc2.resource = "xsede.comet"
         pdesc2.runtime  = 10
         pdesc2.cores    = 1
@@ -127,50 +127,50 @@ if __name__ == "__main__":
 
         # Submit the pilot list to the Pilot Manager. Actually all the pilots are
         # submitted to the Pilot Manager at once.
-        print("Submitting Compute Pilots to Pilot Manager ...")
+        print("Submitting  Pilots to Pilot Manager ...")
         pilots = pmgr.submit_pilots(pilot_list)
 
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
-        # a UnitManager object. The scheduler that supports multi-pilot sessions
+        # Combine the Pilot, the Tasks and a scheduler via
+        # a TaskManager object. The scheduler that supports multi-pilot sessions
         # is Round Robin. Direct Submittion does not.
-        print("Initializing Unit Manager ...")
-        umgr = rp.UnitManager (session=session,
+        print("Initializing Task Manager ...")
+        tmgr = rp.TaskManager (session=session,
                                scheduler=rp.SCHEDULER_ROUND_ROBIN)
 
-        # Register our callback with the UnitManager. This callback will get
-        # called every time any of the units managed by the UnitManager
+        # Register our callback with the TaskManager. This callback will get
+        # called every time any of the tasks managed by the TaskManager
         # change their state.
-        umgr.register_callback(unit_state_cb)
+        tmgr.register_callback(task_state_cb)
 
-        # Add the created ComputePilot to the UnitManager.
-        print("Registering Compute Pilots with Unit Manager ...")
-        umgr.add_pilots(pilots)
+        # Add the created Pilot to the TaskManager.
+        print("Registering  Pilots with Task Manager ...")
+        tmgr.add_pilots(pilots)
 
-        NUMBER_JOBS  = 64  # the total number of cus to run
+        NUMBER_JOBS  = 64  # the total number of tasks to run
 
-        # submit CUs to pilot job
-        cudesc_list = []
+        # submit tasks to pilot job
+        taskdesc_list = []
         for i in range(NUMBER_JOBS):
 
-            # -------- BEGIN USER DEFINED CU DESCRIPTION --------- #
-            cudesc = rp.ComputeUnitDescription()
-            cudesc.environment = {'CU_NO': i}
-            cudesc.executable  = "/bin/echo"
-            cudesc.arguments   = ['I am CU number $CU_NO from $HOSTNAME']
-            cudesc.cores       = 1
-            # -------- END USER DEFINED CU DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED Task DESCRIPTION --------- #
+            taskdesc = rp.TaskDescription()
+            taskdesc.environment = {'task_NO': i}
+            taskdesc.executable  = "/bin/echo"
+            taskdesc.arguments   = ['I am Task number $task_NO from $HOSTNAME']
+            taskdesc.cores       = 1
+            # -------- END USER DEFINED Task DESCRIPTION --------- #
 
-            cudesc_list.append(cudesc)
+            taskdesc_list.append(taskdesc)
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        print("Submit Compute Units to Unit Manager ...")
-        cu_set = umgr.submit_units (cudesc_list)
+        # assigning Tasks to the Pilots.
+        print("Submit Tasks to Task Manager ...")
+        task_set = tmgr.submit_tasks (taskdesc_list)
 
-        print("Waiting for CUs to complete ...")
-        umgr.wait_units()
-        print("All CUs completed successfully!")
+        print("Waiting for tasks to complete ...")
+        tmgr.wait_tasks()
+        print("All tasks completed successfully!")
 
 
     except Exception as e:

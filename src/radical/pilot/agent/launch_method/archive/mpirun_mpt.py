@@ -35,13 +35,13 @@ class MPIRun_MPT(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        slots        = cu['slots']
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_env     = cud.get('environment') or dict()
-        task_args    = cud.get('arguments')   or list()
+        slots        = t['slots']
+        td          = t['description']
+        task_exec    = td['executable']
+        task_env     = td.get('environment') or dict()
+        task_args    = td.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
         # Construct the executable and arguments
@@ -75,10 +75,10 @@ class MPIRun_MPT(LaunchMethod):
 
         # On Cheyenne (which is the only machine that requires mpirun_mpt
         # currently), we also have to set MPI_SHEPHERD=true, we add it to the
-        # environment of the cu which will get parsed in the spawner
-        if 'environment' not in list(cu['description'].keys()):
-            cu['description']['environment'] = dict()
-        cu['description']['environment']['MPI_SHEPHERD'] = True
+        # environment of the t which will get parsed in the spawner
+        if 'environment' not in list(t['description'].keys()):
+            t['description']['environment'] = dict()
+        t['description']['environment']['MPI_SHEPHERD'] = True
 
         # -np:  usually it is len(hostlist), as it means run N processes over
         # N hosts but for Cheyenne it is 1 since specification of the host means

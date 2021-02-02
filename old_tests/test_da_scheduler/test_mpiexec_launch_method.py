@@ -1,7 +1,7 @@
 import os
 import shutil
 import errno
-import unittest
+import tasktest
 import json
 
 import radical.utils as ru
@@ -11,11 +11,11 @@ from radical.pilot.agent.lm.mpiexec import MPIExec
 try:
     import mock
 except ImportError:
-    from unittest import mock
+    from tasktest import mock
 
 session_id = 'rp.session.test.mpiexec'
 
-class TestMPIEXEClaunchMethod(unittest.TestCase):
+class TestMPIEXEClaunchMethod(tasktest.TestCase):
 
 
     def setUp(self):
@@ -47,7 +47,7 @@ class TestMPIEXEClaunchMethod(unittest.TestCase):
                                    "stderr": None,
                                    "stdout": None
                                   }
-        self._cu['uid'] = 'unit.000000'
+        self._cu['uid'] = 'task.000000'
         self._cu['slots'] = {'nodes': [{'name': 'node1',
                                         'uid': 1,
                                         'core_map': [[0],[1]],
@@ -90,5 +90,5 @@ class TestMPIEXEClaunchMethod(unittest.TestCase):
 #
 if __name__ == '__main__':
 
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestMPIEXEClaunchMethod)
-    unittest.TextTestRunner(verbosity=2).run(suite)
+    suite = tasktest.TestLoader().loadTestsFromTestCase(TestMPIEXEClaunchMethod)
+    tasktest.TextTestRunner(verbosity=2).run(suite)

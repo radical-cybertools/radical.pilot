@@ -1,12 +1,11 @@
 .. _chapter_example_remote_and_hpc_pilots:
 
 ************************************
-Launching Remote / HPC ComputePilots  
+Launching Remote / HPC Pilots  
 ************************************
 
-**This chapter describes how to use RADICAL-Pilot to execute ComputeUnits 
-on ComputePilots running on one or more distributed HPC 
-clusters.**
+**This chapter describes how to use RADICAL-Pilot to execute tasks 
+on pilots running on one or more HPC clusters.**
 
 As a pilot-job system, RADICAL-Pilot aims to provide a programmable resource
 overlay that allows a user to efficiently execute their workloads (tasks)
@@ -31,8 +30,8 @@ Authentication and Security Contexts
 ------------------------------------
 
 RADICAL-Pilot's remote capabilities are built to a large extend on top of SSH and
-SFTP. ComputePilot agents are transferred on-the-fly via SFTP and launched via
-SSH on the remote clusters. Once a ComputePilot agent has been started, the 
+SFTP. Pilot agents are transferred on-the-fly via SFTP and launched via
+SSH on the remote clusters. Once a pilot agent has been started, the 
 rest of the communication between RADICAL-Pilot and the agent happens through
 MongoDB (see diagram below).
 
@@ -52,7 +51,7 @@ MongoDB (see diagram below).
                            | +~~~~~~~+     |
                            +---------------+
 
-In order to allow RADICAL-Pilot to launch ComputePilot agents on a remote  host
+In order to allow RADICAL-Pilot to launch pilot agents on a remote  host
 via SSH, you need to provided it with the right credentials. This is done via
 the :class:`radical.pilot.Context` class.
 
@@ -78,14 +77,14 @@ user name you use on the remote host:
 Once you have added a credential to a session, it is available to all
 PilotManagers that are created withing this session.
 
-Launching an HPC ComputePilot
+Launching an HPC Pilot
 -----------------------------
 
-You can describe a :class:`radical.pilot.ComputePilot` via a :class:`radical.pilot.ComputePilotDescription` to the PilotManager:
+You can describe a :class:`radical.pilot.Pilot` via a :class:`radical.pilot.PilotDescription` to the PilotManager:
 
 .. code-block:: python
 
-    pdesc = radical.pilot.ComputePilotDescription()
+    pdesc = radical.pilot.PilotDescription()
     pdesc.resource  = "xsede.bridges"
     pdesc.runtime   = 15
     pdesc.cores     = 28
@@ -93,10 +92,10 @@ You can describe a :class:`radical.pilot.ComputePilot` via a :class:`radical.pil
     pilot = pmgr.submit_pilots(pdesc)
 
 
-.. Launching Multiple ComputePilots
+.. Launching Multiple Pilots
 .. --------------------------------
 
-.. Scheduling ComputeUnits Across Multiple ComputePilots
+.. Scheduling Tasks Across Multiple Pilots
 .. -----------------------------------------------------
 
 

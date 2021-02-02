@@ -1,6 +1,6 @@
 
 
-# Unit and Pilot types
+# Task and Pilot types
 DATA              = 1
 COMPUTE           = 2
 ANY               = DATA | COMPUTE
@@ -27,9 +27,9 @@ DESCRIPTION       = 'Description'
 SCHEDULER         = 'Scheduler'
 
 UID               = 'UID'
-UNITS             = 'Units'
-UNIT_MANAGER      = 'UnitManager'
-UNIT_MANAGERS     = 'UnitManagers'
+TASKS             = 'Tasks'
+TASK_MANAGER      = 'TaskManager'
+TASK_MANAGERS     = 'TaskManagers'
 
 PID               = 'PID'
 PILOT             = 'Pilot'
@@ -37,7 +37,7 @@ PILOTS            = 'Pilots'
 PILOT_MANAGER     = 'PilotManager'
 # ...
 
-# ComputeUnitDescription keys
+# TaskDescription keys
 RESOURCE          = 'Resource'
 NAME              = 'Name'
 EXECUTABLE        = 'Executable'
@@ -71,14 +71,14 @@ START_AFTER       = 'StartAfter'
 START_BEFORE      = 'StartBefore'
 CONCURRENT_WITH   = 'ConcurrentWith'
 
-# DataUnitDescription keys
+# DataTaskDescription keys
 NAME              = 'Name'
 FILE_URLS         = 'FileURLs'
 LIFETIME          = 'Lifetime'
 CLEANUP           = 'Cleanup'
 SIZE              = 'Size'
 
-# ComputePilotDescription keys
+# PilotDescription keys
 RESOURCE          = 'Resource'
 
 # ------------------------------------------------------------------------------
