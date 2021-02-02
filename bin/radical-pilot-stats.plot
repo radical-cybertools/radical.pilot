@@ -39,8 +39,8 @@ pilot_states_dat_list    = ''
 pilot_callbacks_dat_list = ''
 pilot_slots_dat_list     = ''
 pilot_queue_dat_list     = ''
-unit_states_dat_list     = ''
-unit_callbacks_dat_list  = ''
+task_states_dat_list     = ''
+task_callbacks_dat_list  = ''
 offset_list              = ''
 
 color_list_1 = "#FF8855 #88FF55 #8855FF #FF55FF #55FFFF"
@@ -57,15 +57,15 @@ do for [i=1:pilot_num] {
     pilot_callbacks_dat      = '/tmp/rp.' . session . '.pilot.callbacks.' . pid . '.dat'
     pilot_slots_dat          = '/tmp/rp.' . session . '.pilot.slots.'     . pid . '.dat'
     pilot_queue_dat          = '/tmp/rp.' . session . '.pilot.queue.'     . pid . '.dat'
-    unit_states_dat          = '/tmp/rp.' . session . '.unit.states.'     . pid . '.dat'
-    unit_callbacks_dat       = '/tmp/rp.' . session . '.unit.callbacks.'  . pid . '.dat'
+    task_states_dat          = '/tmp/rp.' . session . '.task.states.'     . pid . '.dat'
+    task_callbacks_dat       = '/tmp/rp.' . session . '.task.callbacks.'  . pid . '.dat'
 
     pilot_states_dat_list    = pilot_states_dat_list    . pilot_states_dat    . ' '
     pilot_callbacks_dat_list = pilot_callbacks_dat_list . pilot_callbacks_dat . ' '
     pilot_slots_dat_list     = pilot_slots_dat_list     . pilot_slots_dat     . ' '
     pilot_queue_dat_list     = pilot_queue_dat_list     . pilot_queue_dat     . ' '
-    unit_states_dat_list     = unit_states_dat_list     . unit_states_dat     . ' '
-    unit_callbacks_dat_list  = unit_callbacks_dat_list  . unit_callbacks_dat  . ' '
+    task_states_dat_list     = task_states_dat_list     . task_states_dat     . ' '
+    task_callbacks_dat_list  = task_callbacks_dat_list  . task_callbacks_dat  . ' '
 
 }
 
@@ -74,9 +74,9 @@ hex(i)      = "0123456789ABCDEF"[i:i]
 hexx(i)     = hex(i).hex(i)
 color_1(i)  = word(color_list_1,i)
 color_2(i)  = word(color_list_2,i)
-get_title(i)= sprintf("%s: %-15s (%4s cores / %4s units)", \
+get_title(i)= sprintf("%s: %-15s (%4s cores / %4s tasks)", \
                       word(pilot_id_list,i), word(pilot_name_list,i), \
-                      word(slotnum_list,i),  word(unitnum_list,i))
+                      word(slotnum_list,i),  word(tasknum_list,i))
 
 # print 'palette '
 # do for [i=1:pilot_num] {
@@ -132,7 +132,7 @@ do for [term_i=1:words(terms)] {
     }
 
     # pilot 1: pilot states, pilot notifications
-    #          unit states, unit state notifications,
+    #          task states, task state notifications,
     #          slots, maxslots
     set style line 100 lt 1 lc rgb '#FF9944' pt 7 ps term_mult*0.6 lw term_mult*2
     set style line 101 lt 1 lc rgb '#AA6666' pt 6 ps term_mult*0.4 lw term_mult*1
@@ -229,16 +229,16 @@ do for [term_i=1:words(terms)] {
                 "FAILED         " 12)
 
     set xlabel ''
-    set ylabel "UNITS\n[states]" offset second -0.06,0
+    set ylabel "TASKS\n[states]" offset second -0.06,0
     set format x ""
     set grid
 
   # set style line 100 lt 1 lc rgb '#FF9944' pt 7 ps term_mult*0.6 lw term_mult*2
   # set style line 101 lt 1 lc rgb '#AA6666' pt 6 ps term_mult*0.4 lw term_mult*1
     plot for [i=1:pilot_num] \
-         word(unit_states_dat_list,i)    using 1:($2+offset(i,0.05))      title '' with steps  lt 1 lc rgb color_1(i) lw term_mult*2, \
+         word(task_states_dat_list,i)    using 1:($2+offset(i,0.05))      title '' with steps  lt 1 lc rgb color_1(i) lw term_mult*2, \
          for [i=1:pilot_num] \
-         word(unit_callbacks_dat_list,i) using 1:($2+offset(i,0.05)+0.05) title '' with points lt 1 lc rgb color_2(i) lw term_mult*1
+         word(task_callbacks_dat_list,i) using 1:($2+offset(i,0.05)+0.05) title '' with points lt 1 lc rgb color_2(i) lw term_mult*1
 
     # ------------------------------------------------------------------------------------
     set xrange  [0:maxtime]
@@ -252,7 +252,7 @@ do for [term_i=1:words(terms)] {
 
     set xlabel  'time (in seconds)'
     set ylabel  "PILOT ACTIVITY\n[slots / queue]" offset second -00,0
-    set y2label "UNIT WAIT QUEUE SIZE"            offset second -00.0,0
+    set y2label "TASK WAIT QUEUE SIZE"            offset second -00.0,0
     set grid
   unset format
 
@@ -287,11 +287,11 @@ do for [term_i=1:words(terms)] {
          NaN with lines title get_title(i) lt 1 lc rgb color_1(i) lw term_mult*2
 
 #   plot NaN lw   0 t 'PILOT 1 ('.pilot_1_name.'):'                      , \
-#        NaN ls 100 t 'pilot/unit states changes'                        , \
-#        NaN ls 101 t 'pilot/unit states notifications'                  , \
+#        NaN ls 100 t 'pilot/task states changes'                        , \
+#        NaN ls 101 t 'pilot/task states notifications'                  , \
 #        NaN ls 104 t 'busy slot (i.e. used CPU core)'                   , \
 #        NaN ls 105 t 'total number of slots'                            , \
-#        NaN ls 106 t 'unit queue length'                                , \
+#        NaN ls 106 t 'task queue length'                                , \
 #        NaN lw   0 t ' '
 #   }
 

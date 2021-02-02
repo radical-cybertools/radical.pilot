@@ -12,7 +12,7 @@ import threading
 try:
     import mock
 except ImportError:
-    from unittest import mock
+    from tasktest import mock
 
 # User Input for test
 #-----------------------------------------------------------------------------------------------------------------------
@@ -56,8 +56,8 @@ def setUp():
 
 
 def nompi():
-    cu = dict()
-    cu['description'] = {
+    t = dict()
+    t['description'] = {
         'environment': dict(),
         'cpu_process_type': None,
         'gpu_process_type': None,
@@ -67,13 +67,13 @@ def nompi():
         'lfs_per_process': 1024
     }
     
-    return cu
+    return t
 #-----------------------------------------------------------------------------------------------------------------------
 
 
 def mpi():
-    cu = dict()
-    cu['description'] = {
+    t = dict()
+    t['description'] = {
 
         'environment': dict(),
         'cpu_process_type': 'MPI',
@@ -85,7 +85,7 @@ def mpi():
 
     }
     
-    return cu
+    return t
 #-----------------------------------------------------------------------------------------------------------------------
 # Cleanup any folders and files to leave the system state
 # as prior to the test
@@ -98,13 +98,13 @@ def tearDown():
 #-----------------------------------------------------------------------------------------------------------------------
 
 
-# Test umgr input staging of a single file
+# Test tmgr input staging of a single file
 #-----------------------------------------------------------------------------------------------------------------------
 @mock.patch.object(Continuous, '__init__', return_value=None)
 @mock.patch.object(Continuous, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
 @mock.patch('radical.utils.raise_on')
-def test_nonmpi_unit_with_tagging(
+def test_nonmpi_task_with_tagging(
         mocked_init,
         mocked_method,
         mocked_profiler,
@@ -135,12 +135,12 @@ def test_nonmpi_unit_with_tagging(
             'lfs': component._lrms_lfs_per_node
         }))
 
-    # Allocate first CUD -- should land on first node
-    cu = nompi()
-    cu['uid'] = 'unit.000000'
-    component._try_allocation(cu)
-    slot1 = cu['slots']
-    assert component._tag_history == {'unit.000000': [1]}
+    # Allocate first TD -- should land on first node
+    t = nompi()
+    t['uid'] = 'task.000000'
+    component._try_allocation(t)
+    slot1 = t['slots']
+    assert component._tag_history == {'task.000000': [1]}
     assert slot1 == {'cores_per_node': 2,
                      'lfs_per_node': component._lrms_lfs_per_node,
                      'nodes': [{'lfs': {'size': 1024, 'path': 'abc'},
@@ -151,7 +151,7 @@ def test_nonmpi_unit_with_tagging(
                      'lm_info': 'INFO',
                      'gpus_per_node': 1}
 
-    # Assert resulting node list values after first CUD
+    # Assert resulting node list values after first TD
     assert component.nodes == [{'lfs': {'size': 4096, 'path': 'abc'},
                                 'cores': [1, 0],
                                 'name': 'a',
@@ -178,14 +178,14 @@ def test_nonmpi_unit_with_tagging(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    # Allocate second CUD -- should land on first node
-    cu = nompi()
-    cu['uid'] = 'unit.000001'
-    cu['description']['tag'] = 'unit.000000'
-    component._try_allocation(cu)
-    slot2 = cu['slots']
-    assert component._tag_history == {'unit.000000': [1],
-                                      'unit.000001': [1]}
+    # Allocate second TD -- should land on first node
+    t = nompi()
+    t['uid'] = 'task.000001'
+    t['description']['tag'] = 'task.000000'
+    component._try_allocation(t)
+    slot2 = t['slots']
+    assert component._tag_history == {'task.000000': [1],
+                                      'task.000001': [1]}
     assert slot2 == {'cores_per_node': 2,
                      'lfs_per_node': component._lrms_lfs_per_node,
                      'nodes': [{'lfs': {'size': 1024, 'path': 'abc'},
@@ -196,7 +196,7 @@ def test_nonmpi_unit_with_tagging(
                      'lm_info': 'INFO',
                      'gpus_per_node': 1}
 
-    # Assert resulting node list values after second CUD
+    # Assert resulting node list values after second TD
     assert component.nodes == [{'lfs': {'size': 3072, 'path': 'abc'},
                                 'cores': [1, 1],
                                 'name': 'a',
@@ -223,17 +223,17 @@ def test_nonmpi_unit_with_tagging(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    # Allocate third CUD -- should return None as first node is not released
-    cu = nompi()    
-    cu['uid'] = 'unit.000002'
-    cu['description']['cpu_threads'] = 1
-    cu['description']['tag'] = 'unit.000000'
+    # Allocate third TD -- should return None as first node is not released
+    t = nompi()    
+    t['uid'] = 'task.000002'
+    t['description']['cpu_threads'] = 1
+    t['description']['tag'] = 'task.000000'
 
-    component._try_allocation(cu)
-    slot3 = cu['slots']
+    component._try_allocation(t)
+    slot3 = t['slots']
     assert slot3 == None
-    assert component._tag_history == {'unit.000000': [1],
-                                      'unit.000001': [1]}
+    assert component._tag_history == {'task.000000': [1],
+                                      'task.000001': [1]}
 
     #
     component._release_slot(slot2)
@@ -264,14 +264,14 @@ def test_nonmpi_unit_with_tagging(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    # Allocate fourth CUD -- should land on first node
-    cu = nompi()    
-    cu['uid'] = 'unit.000002'
-    cu['description']['cpu_threads'] = 1
-    cu['description']['tag'] = 'unit.000000'
+    # Allocate fourth TD -- should land on first node
+    t = nompi()    
+    t['uid'] = 'task.000002'
+    t['description']['cpu_threads'] = 1
+    t['description']['tag'] = 'task.000000'
 
-    component._try_allocation(cu)
-    slot4 = cu['slots']
+    component._try_allocation(t)
+    slot4 = t['slots']
     assert slot4 == {'cores_per_node': 2,
                      'lfs_per_node': component._lrms_lfs_per_node,
                      'nodes': [{'lfs': {'size': 1024, 'path': 'abc'},
@@ -281,9 +281,9 @@ def test_nonmpi_unit_with_tagging(
                                 'uid': 1}],
                      'lm_info': 'INFO',
                      'gpus_per_node': 1}
-    assert component._tag_history == {'unit.000000': [1],
-                                      'unit.000001': [1],
-                                      'unit.000002': [1]}
+    assert component._tag_history == {'task.000000': [1],
+                                      'task.000001': [1],
+                                      'task.000002': [1]}
 
     assert component.nodes == [{'lfs': {'size': 3072, 'path': 'abc'},
                                 'cores': [1, 1],
@@ -317,7 +317,7 @@ def test_nonmpi_unit_with_tagging(
 @mock.patch.object(Continuous, 'advance')
 @mock.patch.object(ru.Profiler, 'prof')
 @mock.patch('radical.utils.raise_on')
-def test_mpi_unit_with_tagging(
+def test_mpi_task_with_tagging(
         mocked_init,
         mocked_method,
         mocked_profiler,
@@ -348,15 +348,15 @@ def test_mpi_unit_with_tagging(
             'lfs': component._lrms_lfs_per_node
         }))
 
-    # Allocate first CUD -- should land on first node
-    cu = mpi()
-    cu['uid'] = 'unit.000000'
-    cu['description']['cpu_processes'] = 2
-    cu['description']['cpu_threads'] = 1
-    cu['description']['lfs_per_process'] = 1024
-    component._try_allocation(cu)
-    slot1 = cu['slots']
-    assert component._tag_history == {'unit.000000': [1]}
+    # Allocate first TD -- should land on first node
+    t = mpi()
+    t['uid'] = 'task.000000'
+    t['description']['cpu_processes'] = 2
+    t['description']['cpu_threads'] = 1
+    t['description']['lfs_per_process'] = 1024
+    component._try_allocation(t)
+    slot1 = t['slots']
+    assert component._tag_history == {'task.000000': [1]}
     assert slot1 == {'cores_per_node': 2,
                      'lfs_per_node': component._lrms_lfs_per_node,
                      'nodes': [{'lfs': {'size': 2048, 'path': 'abc'},
@@ -367,7 +367,7 @@ def test_mpi_unit_with_tagging(
                      'lm_info': 'INFO',
                      'gpus_per_node': 1}
 
-    # Assert resulting node list values after first CUD
+    # Assert resulting node list values after first TD
     assert component.nodes == [{'lfs': {'size': 3072, 'path': 'abc'},
                                 'cores': [1, 1],
                                 'name': 'a',
@@ -394,23 +394,23 @@ def test_mpi_unit_with_tagging(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    # Allocate second CUD -- should return None as the first node is
+    # Allocate second TD -- should return None as the first node is
     # not yet released
-    cu = mpi()
-    cu['uid'] = 'unit.000001'
-    cu['description']['tag'] = 'unit.000000'
-    component._try_allocation(cu)
-    slot2 = cu['slots']
+    t = mpi()
+    t['uid'] = 'task.000001'
+    t['description']['tag'] = 'task.000000'
+    component._try_allocation(t)
+    slot2 = t['slots']
     assert slot2 == None
-    assert component._tag_history == {'unit.000000': [1]}
+    assert component._tag_history == {'task.000000': [1]}
 
-    # Allocate third CUD -- should land on second and third node
-    cu = mpi()
-    cu['uid'] = 'unit.000002'
-    cu['description']['cpu_processes'] = 2
-    cu['description']['cpu_threads'] = 2    
-    component._try_allocation(cu)
-    slot3 = cu['slots']
+    # Allocate third TD -- should land on second and third node
+    t = mpi()
+    t['uid'] = 'task.000002'
+    t['description']['cpu_processes'] = 2
+    t['description']['cpu_threads'] = 2    
+    component._try_allocation(t)
+    slot3 = t['slots']
     assert slot3 == {'cores_per_node': 2,
                      'lfs_per_node': component._lrms_lfs_per_node,
                      'nodes': [{'lfs': {'size': 1024, 'path': 'abc'},
@@ -425,8 +425,8 @@ def test_mpi_unit_with_tagging(
                                 'uid': 3}],
                      'lm_info': 'INFO',
                      'gpus_per_node': 1}
-    assert component._tag_history == {'unit.000000': [1],
-                                      'unit.000002': [2, 3]}
+    assert component._tag_history == {'task.000000': [1],
+                                      'task.000002': [2, 3]}
 
     # Assert resulting node list values after second CUDslot release
     assert component.nodes == [{'lfs': {'size': 3072, 'path': 'abc'},
@@ -455,19 +455,19 @@ def test_mpi_unit_with_tagging(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    # Allocate fourth CUD -- should return None as the second node is not
+    # Allocate fourth TD -- should return None as the second node is not
     # yet released
-    cu = mpi()
-    cu['uid'] = 'unit.000003'
-    cu['description']['cpu_threads'] = 2    
-    cu['description']['tag'] = 'unit.000002'
-    component._try_allocation(cu)
-    slot4 = cu['slots']
+    t = mpi()
+    t['uid'] = 'task.000003'
+    t['description']['cpu_threads'] = 2    
+    t['description']['tag'] = 'task.000002'
+    component._try_allocation(t)
+    slot4 = t['slots']
     assert slot4 == None
-    assert component._tag_history == {'unit.000000': [1],
-                                      'unit.000002': [2, 3]}
+    assert component._tag_history == {'task.000000': [1],
+                                      'task.000002': [2, 3]}
 
-    # Release first node and allocate second CUD again
+    # Release first node and allocate second TD again
     component._release_slot(slot1)
 
     assert component.nodes == [{'lfs': {'size': 5120, 'path': 'abc'},
@@ -496,11 +496,11 @@ def test_mpi_unit_with_tagging(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    cu = mpi()
-    cu['uid'] = 'unit.000001'
-    cu['description']['tag'] = 'unit.000000'
-    component._try_allocation(cu)
-    slot2 = cu['slots']
+    t = mpi()
+    t['uid'] = 'task.000001'
+    t['description']['tag'] = 'task.000000'
+    component._try_allocation(t)
+    slot2 = t['slots']
     assert slot2 == {'cores_per_node': 2,
                      'lfs_per_node': component._lrms_lfs_per_node,
                      'nodes': [{'lfs': {'size': 1024, 'path': 'abc'},
@@ -510,11 +510,11 @@ def test_mpi_unit_with_tagging(
                                 'uid': 1}],
                      'lm_info': 'INFO',
                      'gpus_per_node': 1}
-    assert component._tag_history == {'unit.000000': [1],
-                                      'unit.000001': [1],
-                                      'unit.000002': [2, 3]}
+    assert component._tag_history == {'task.000000': [1],
+                                      'task.000001': [1],
+                                      'task.000002': [2, 3]}
 
-    # Release second and third nodes and allocate fourth CUD again
+    # Release second and third nodes and allocate fourth TD again
     component._release_slot(slot3)
 
     assert component.nodes == [{'lfs': {'size': 4096, 'path': 'abc'},
@@ -543,12 +543,12 @@ def test_mpi_unit_with_tagging(
                                 'gpus': [0],
                                 'uid': 5}]
 
-    cu = mpi()    
-    cu['uid'] = 'unit.000003'
-    cu['description']['tag'] = 'unit.000002'
-    cu['description']['cpu_threads'] = 2
-    component._try_allocation(cu)
-    slot4 = cu['slots']
+    t = mpi()    
+    t['uid'] = 'task.000003'
+    t['description']['tag'] = 'task.000002'
+    t['description']['cpu_threads'] = 2
+    component._try_allocation(t)
+    slot4 = t['slots']
     assert slot4 == {'cores_per_node': 2,
                      'lfs_per_node': component._lrms_lfs_per_node,
                      'nodes': [{'lfs': {'size': 1024, 'path': 'abc'},
@@ -558,10 +558,10 @@ def test_mpi_unit_with_tagging(
                                 'uid': 2}],
                      'lm_info': 'INFO',
                      'gpus_per_node': 1}
-    assert component._tag_history == {'unit.000000': [1],
-                                      'unit.000001': [1],
-                                      'unit.000002': [2, 3],
-                                      'unit.000003': [2]}
+    assert component._tag_history == {'task.000000': [1],
+                                      'task.000001': [1],
+                                      'task.000002': [2, 3],
+                                      'task.000003': [2]}
 
     assert component.nodes == [{'lfs': {'size': 4096, 'path': 'abc'},
                                 'cores': [1, 0],
