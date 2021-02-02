@@ -8,10 +8,10 @@ from   constants   import *
 #
 class Pilot (Attributes) :
     """ 
-    Base class for DataPilot and ComputePilot.
+    Base class for DataPilot and Pilot.
 
     Notes:
-      - no direct submission, as that is equivalent to a UnitService with just
+      - no direct submission, as that is equivalent to a TaskService with just
         one pilot.
 
     """
@@ -42,11 +42,11 @@ class Pilot (Attributes) :
         Move the pilot into Canceled state -- unless it it was in a final state,
         then state is not changed.
 
-        `drain` determines what happens to the units which are managed by that
-        pilot.  If `True`, the pilot's cancellation is delayed until all units
-        reach a final state.  If `False` (the default), then `RUNNING` units
-        will be canceled, and `PENDING` units will be re-assinged to their
-        respective unit managers for re-scheduling to other pilots.
+        `drain` determines what happens to the tasks which are managed by that
+        pilot.  If `True`, the pilot's cancellation is delayed until all tasks
+        reach a final state.  If `False` (the default), then `RUNNING` tasks
+        will be canceled, and `PENDING` tasks will be re-assinged to their
+        respective task managers for re-scheduling to other pilots.
         """
 
         raise Exception ("%s.cancel() is not implemented" % self.__class__.__name__)

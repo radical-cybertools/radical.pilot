@@ -39,14 +39,14 @@ if __name__ == '__main__':
                    'exit_on_error' : True,
                    'cores'         : 32
                   }
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
         pmgr  = rp.PilotManager(session=session)
         pilot = pmgr.submit_pilots(pdesc)
 
         report.header('submit bags of tasks')
 
-        umgr = rp.UnitManager(session=session)
-        umgr.add_pilots(pilot)
+        tmgr = rp.TaskManager(session=session)
+        tmgr.add_pilots(pilot)
 
         # run N bags of tasks, where each bag contains M tasks of different
         # sizes.  All tasks within the same bag are to get scheduled on the
@@ -58,27 +58,27 @@ if __name__ == '__main__':
 
         assert(len(task_size) == bag_size)
 
-        cuds = list()
+        tds = list()
         for b in range(n_bags):
             for tid,s in enumerate(task_size):
-                cud = rp.ComputeUnitDescription()
-                cud.executable       = '%s/colocated_task.sh' % pwd
-                cud.arguments        = [b, bag_size, tid]
-                cud.cpu_processes    = s
-                cud.cpu_process_type = rp.MPI
-                cud.tags             = {'colocate': {'bag' : b,
+                td = rp.TaskDescription()
+                td.executable       = '%s/colocated_task.sh' % pwd
+                td.arguments        = [b, bag_size, tid]
+                td.cpu_processes    = s
+                td.cpu_process_type = rp.MPI
+                td.tags             = {'colocate': {'bag' : b,
                                                      'size': bag_size}}
-                cud.name             =  'b%03d-t%03d' % (b, tid)
-                print(cud.name)
-                cuds.append(cud)
+                td.name             =  'b%03d-t%03d' % (b, tid)
+                print(td.name)
+                tds.append(td)
                 report.progress()
 
-        random.shuffle(cuds)
+        random.shuffle(tds)
 
-        umgr.submit_units(cuds)
+        tmgr.submit_tasks(tds)
 
         report.header('gather results')
-        umgr.wait_units()
+        tmgr.wait_tasks()
 
 
     except Exception as e:
