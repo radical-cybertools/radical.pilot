@@ -55,7 +55,7 @@ class LaunchMethod(object):
 
     # List of environment variables that designated Launch Methods should export
     # FIXME: we should find out what env vars are changed or added by
-    #        cud.pre_exec, and then should also export those.  That would make
+    #        td.pre_exec, and then should also export those.  That would make
     #        our launch script ore complicated though...
     EXPORT_ENV_VARIABLES = [
         'LD_LIBRARY_PATH',
@@ -71,8 +71,8 @@ class LaunchMethod(object):
         'RP_SESSION_ID',
         'RP_SPAWNER_ID',
         'RP_TMP',
-        'RP_UNIT_ID',
-        'RP_UNIT_NAME',
+        'RP_TASK_ID',
+        'RP_TASK_NAME',
         'RP_PILOT_SANDBOX',
         'RADICAL_BASE'
     ]
@@ -91,7 +91,7 @@ class LaunchMethod(object):
         self._log     = self._session._log    # pylint: disable=protected-access
         self._log.debug('create LaunchMethod: %s', type(self))
 
-        # A per-launch_method list of env vars to remove from the CU env
+        # A per-launch_method list of env vars to remove from the Task env
         self.env_removables = []
 
         self._configure()
@@ -293,7 +293,7 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
@@ -305,7 +305,7 @@ class LaunchMethod(object):
                          impaired=False):
 
         # Open appropriately named temporary file
-        # NOTE: we make an assumption about the unit sandbox here
+        # NOTE: we make an assumption about the task sandbox here
         filename = '%s/%s.hosts' % (sandbox, uid)
         with open(filename, 'w') as fout:
 
@@ -364,7 +364,7 @@ class LaunchMethod(object):
     #
     def _create_arg_string(self, args):
 
-        # unit Arguments (if any)
+        # task Arguments (if any)
         arg_string = ''
         if args:
             for arg in args:

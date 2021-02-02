@@ -34,5 +34,11 @@ class TestComponent(TestCase):
         component.output(things=[1,2], state='test_state')
 
 
+if __name__ == '__main__':
+
+    tc = TestComponent()
+    tc.test_output()
+
+
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

@@ -31,7 +31,7 @@ DEFAULT_BULK_COLLECTION_SIZE =  100  # seconds
 #
 class Update(rpu.Worker):
     '''
-    An UpdateWorker pushes CU and Pilot state updates to mongodb.  Its instances
+    An UpdateWorker pushes Task and Pilot state updates to mongodb.  Its instances
     compete for update requests on the update_queue.  Those requests will be
     triplets of collection name, query dict, and update dict.  Update requests
     will be collected into bulks over some time (BULK_COLLECTION_TIME) and
@@ -149,7 +149,7 @@ class Update(rpu.Worker):
 
         Supported types are:
 
-          - unit
+          - task
           - pilot
 
         supported 'cmds':

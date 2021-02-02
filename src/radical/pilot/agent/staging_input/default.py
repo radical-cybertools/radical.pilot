@@ -25,7 +25,7 @@ from ...staging_directives import complete_url
 class Default(AgentStagingInputComponent):
     """
     This component performs all agent side input staging directives for compute
-    units.  It gets units from the agent_staging_input_queue, in
+    tasks.  It gets tasks from the agent_staging_input_queue, in
     AGENT_STAGING_INPUT_PENDING state, will advance them to AGENT_STAGING_INPUT
     state while performing the staging, and then moves then to the
     AGENT_SCHEDULING_PENDING state, into the agent_scheduling_queue.
@@ -53,47 +53,47 @@ class Default(AgentStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _work(self, units):
+    def _work(self, tasks):
 
-        # we first filter out any units which don't need any input staging, and
+        # we first filter out any tasks which don't need any input staging, and
         # advance them again as a bulk.  We work over the others one by one, and
         # advance them individually, to avoid stalling from slow staging ops.
 
-        no_staging_units = list()
-        staging_units    = list()
+        no_staging_tasks = list()
+        staging_tasks    = list()
 
-        for unit in units:
+        for task in tasks:
 
             # check if we have any staging directives to be enacted in this
             # component
             actionables = list()
-            for sd in unit['description'].get('input_staging', []):
+            for sd in task['description'].get('input_staging', []):
 
                 if sd['action'] in [rpc.LINK, rpc.COPY, rpc.MOVE, rpc.TARBALL]:
                     actionables.append(sd)
 
             if actionables:
-                staging_units.append([unit, actionables])
+                staging_tasks.append([task, actionables])
             else:
-                no_staging_units.append(unit)
+                no_staging_tasks.append(task)
 
-        if no_staging_units:
-            self.advance(no_staging_units, rps.AGENT_SCHEDULING_PENDING,
+        if no_staging_tasks:
+            self.advance(no_staging_tasks, rps.AGENT_SCHEDULING_PENDING,
                          publish=True, push=True)
 
-        for unit,actionables in staging_units:
-            self._handle_unit(unit, actionables)
+        for task,actionables in staging_tasks:
+            self._handle_task(task, actionables)
 
 
     # --------------------------------------------------------------------------
     #
-    def _handle_unit(self, unit, actionables):
+    def _handle_task(self, task, actionables):
 
-        uid = unit['uid']
+        uid = task['uid']
 
         # By definition, this compoentn lives on the pilot's target resource.
         # As such, we *know* that all staging ops which would refer to the
-        # resource now refer to file://localhost, and thus translate the unit,
+        # resource now refer to file://localhost, and thus translate the task,
         # pilot and resource sandboxes into that scope.  Some assumptions are
         # made though:
         #
@@ -102,24 +102,24 @@ class Default(AgentStagingInputComponent):
         #
         # FIXME: this is costly and should be cached.
 
-        unit_sandbox     = ru.Url(unit['unit_sandbox'])
-        pilot_sandbox    = ru.Url(unit['pilot_sandbox'])
-        resource_sandbox = ru.Url(unit['resource_sandbox'])
+        task_sandbox     = ru.Url(task['task_sandbox'])
+        pilot_sandbox    = ru.Url(task['pilot_sandbox'])
+        resource_sandbox = ru.Url(task['resource_sandbox'])
 
-        unit_sandbox.schema     = 'file'
+        task_sandbox.schema     = 'file'
         pilot_sandbox.schema    = 'file'
         resource_sandbox.schema = 'file'
 
-        unit_sandbox.host       = 'localhost'
+        task_sandbox.host       = 'localhost'
         pilot_sandbox.host      = 'localhost'
         resource_sandbox.host   = 'localhost'
 
-        src_context = {'pwd'      : str(unit_sandbox),       # !!!
-                       'unit'     : str(unit_sandbox),
+        src_context = {'pwd'      : str(task_sandbox),       # !!!
+                       'task'     : str(task_sandbox),
                        'pilot'    : str(pilot_sandbox),
                        'resource' : str(resource_sandbox)}
-        tgt_context = {'pwd'      : str(unit_sandbox),       # !!!
-                       'unit'     : str(unit_sandbox),
+        tgt_context = {'pwd'      : str(task_sandbox),       # !!!
+                       'task'     : str(task_sandbox),
                        'pilot'    : str(pilot_sandbox),
                        'resource' : str(resource_sandbox)}
 
@@ -139,7 +139,7 @@ class Default(AgentStagingInputComponent):
                               rpc.TRANSFER, rpc.TARBALL])
 
             # we only handle staging which does *not* include 'client://' src or
-            # tgt URLs - those are handled by the umgr staging components
+            # tgt URLs - those are handled by the tmgr staging components
             if src.startswith('client://') and action != rpc.TARBALL:
                 self._log.debug('skip staging for src %s', src)
                 self._prof.prof('staging_in_skip', uid=uid, msg=did)
@@ -151,12 +151,12 @@ class Default(AgentStagingInputComponent):
                 continue
 
             # Fix for when the target PATH is empty
-            # we assume current directory is the unit staging 'unit://'
+            # we assume current directory is the task staging 'task://'
             # and we assume the file to be copied is the base filename
             # of the source
             if tgt is None: tgt = ''
             if tgt.strip() == '':
-                tgt = 'unit:///{}'.format(os.path.basename(src))
+                tgt = 'task:///{}'.format(os.path.basename(src))
             # Fix for when the target PATH is exists *and* it is a folder
             # we assume the 'current directory' is the target folder
             # and we assume the file to be copied is the base filename
@@ -178,7 +178,7 @@ class Default(AgentStagingInputComponent):
             # for local ops (copy, link, move)
             if flags & rpc.CREATE_PARENTS and action != rpc.TRANSFER:
                 tgtdir = os.path.dirname(tgt.path)
-                if tgtdir != unit_sandbox.path:
+                if tgtdir != task_sandbox.path:
                     self._log.debug("mkdir %s", tgtdir)
                     rpu.rec_makedir(tgtdir)
 
@@ -211,7 +211,7 @@ class Default(AgentStagingInputComponent):
                 # NOTE:  TRANSFER directives don't arrive here right now.
                 # FIXME: we only handle srm staging right now, and only for
                 #        a specific target proxy. Other TRANSFER directives are
-                #        left to umgr input staging.  We should use SAGA to
+                #        left to tmgr input staging.  We should use SAGA to
                 #        attempt all staging ops which do not involve the client
                 #        machine.
                 if src.schema == 'srm':
@@ -228,7 +228,7 @@ class Default(AgentStagingInputComponent):
             elif action == rpc.TARBALL:
 
                 # If somethig was staged via the tarball method, the tarball is
-                # extracted and then removed from the unit folder.  The target
+                # extracted and then removed from the task folder.  The target
                 # path is expected to be an *absolute* path on the target system
                 # - any relative paths specified by the application are expected
                 # to get expanded on the client side.
@@ -244,7 +244,7 @@ class Default(AgentStagingInputComponent):
             self._prof.prof('staging_in_stop', uid=uid, msg=did)
 
         # all staging is done -- pass on to the scheduler
-        self.advance(unit, rps.AGENT_SCHEDULING_PENDING, publish=True, push=True)
+        self.advance(task, rps.AGENT_SCHEDULING_PENDING, publish=True, push=True)
 
 
 # ------------------------------------------------------------------------------

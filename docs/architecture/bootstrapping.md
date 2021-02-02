@@ -12,7 +12,7 @@ target resource, and (ii) to host the bootstrapping chain - described below.
 One of the bootstrapping stages (`bootstrap_1.py`) partitions the resources,
 acquired by the pilot job, to one or more partitions.  On each partition, the
 bootstrapper places one pilot agent which manages that partition and executes
-units on its resources.
+tasks on its resources.
 
 ### Implementation:
 
@@ -141,7 +141,7 @@ write configuration files for those sub-agents, and then again use the
 to execute `bootstrap_2.sh agent_$n` on the target node.  Using `bootstrap_2.sh`
 will ensure that the sub-agents find the same environment as `Agent_0`.  Using
 the launch and spawner methods of RP avoids special code paths for agent and
-unit execution - which are ultimately the same thing.
+task execution - which are ultimately the same thing.
 
 
 ## `Agent_n`
@@ -156,7 +156,7 @@ The sub-agent components will connect to the communication bridges (their
 addresses have been stored in the sub-agent configuration files by `Agent_0`),
 and will report successful startup and component instantiation.  Once all
 sub-agents report for duty, the bootstrapping process is complete, and the agent
-start operation by pulling units from the database.
+start operation by pulling tasks from the database.
 
 ---
 

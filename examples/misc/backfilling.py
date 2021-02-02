@@ -25,7 +25,7 @@ import radical.pilot as rp
 def pilot_state_cb (pilot, state):
     """ this callback is invoked on all pilot state changes """
 
-    print("[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
+    print("[Callback]: Pilot '%s' state: %s." % (pilot.uid, state))
 
     if state == rp.FAILED:
         sys.exit (1)
@@ -33,10 +33,10 @@ def pilot_state_cb (pilot, state):
 
 # ------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state):
-    """ this callback is invoked on all unit state changes """
+def task_state_cb (task, state):
+    """ this callback is invoked on all task state changes """
 
-    print("[Callback]: ComputeUnit  '%s' state: %s." % (unit.uid, state))
+    print("[Callback]: Task  '%s' state: %s." % (task.uid, state))
 
     if state == rp.FAILED:
         sys.exit (1)
@@ -63,7 +63,7 @@ if __name__ == "__main__":
     # clause...
     try:
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session=session)
 
         # Register our callback with the PilotManager. This callback will get
@@ -71,7 +71,7 @@ if __name__ == "__main__":
         # change their state.
         pmgr.register_callback(pilot_state_cb)
 
-        pdesc = rp.ComputePilotDescription()
+        pdesc = rp.PilotDescription()
         pdesc.resource  = "local.localhost"
         pdesc.runtime   = 12  # minutes
         pdesc.cores     = 4
@@ -80,7 +80,7 @@ if __name__ == "__main__":
         pilot_1 = pmgr.submit_pilots(pdesc)
 
         # create a second pilot with a new description
-        pdesc = rp.ComputePilotDescription()
+        pdesc = rp.PilotDescription()
         pdesc.resource  = "local.localhost"
         pdesc.runtime   = 40  # minutes
         pdesc.cores     = 32
@@ -92,43 +92,43 @@ if __name__ == "__main__":
 
         pilot_3 = pmgr.submit_pilots(pdesc)
 
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
-        # a UnitManager object.
-        umgr = rp.UnitManager (session=session, scheduler=rp.SCHEDULER_BACKFILLING)
+        # Combine the Pilot, the Tasks and a scheduler via
+        # a TaskManager object.
+        tmgr = rp.TaskManager (session=session, scheduler=rp.SCHEDULER_BACKFILLING)
 
-        # Register our callback with the UnitManager. This callback will get
-        # called every time any of the units managed by the UnitManager
+        # Register our callback with the TaskManager. This callback will get
+        # called every time any of the tasks managed by the TaskManager
         # change their state.
-        umgr.register_callback(unit_state_cb)
+        tmgr.register_callback(task_state_cb)
 
-        # Add the previsouly created ComputePilot to the UnitManager.
-        umgr.add_pilots([pilot_1, pilot_2, pilot_3])
+        # Add the previsouly created Pilot to the TaskManager.
+        tmgr.add_pilots([pilot_1, pilot_2, pilot_3])
 
       # # wait until first pilots become active
         pilot_1.wait (state=rp.PMGR_ACTIVE)
 
-        # Create a workload of 8 ComputeUnits.
+        # Create a workload of 8 Tasks.
         cus = list()
 
-        for unit_count in range(0, 512):
-            cu = rp.ComputeUnitDescription()
-            cu.executable = '/bin/sleep'
-            cu.arguments = ['10']
-            cus.append(cu)
+        for task_count in range(0, 512):
+            t = rp.TaskDescription()
+            t.executable = '/bin/sleep'
+            t.arguments = ['10']
+            cus.append(t)
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(cus)
+        # assigning Tasks to the Pilots.
+        tasks = tmgr.submit_tasks(cus)
 
-        # Wait for all compute units to reach a terminal state (DONE or FAILED).
-        umgr.wait_units()
+        # Wait for all tasks to reach a terminal state (DONE or FAILED).
+        tmgr.wait_tasks()
 
         pmgr.cancel_pilots ()
 
-        for unit in units:
-            print("* Unit %s state: %s, exit code: %s"
-                % (unit.uid, unit.state, unit.exit_code))
+        for task in tasks:
+            print("* Task %s state: %s, exit code: %s"
+                % (task.uid, task.state, task.exit_code))
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

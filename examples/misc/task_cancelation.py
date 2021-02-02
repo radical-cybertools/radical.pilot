@@ -22,10 +22,10 @@ if __name__ == '__main__':
                    'runtime'       : 60,
                    'cores'         :  8
                   }
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
         pilot = pmgr.submit_pilots(pdesc)
-        umgr  = rp.UnitManager(session=session)
-        umgr.add_pilots(pilot)
+        tmgr  = rp.TaskManager(session=session)
+        tmgr.add_pilots(pilot)
 
         # wait until pilot is active to have somewhat sensible timings below
         pilot.wait(rp.PMGR_ACTIVE)
@@ -34,15 +34,15 @@ if __name__ == '__main__':
         # submit 32 tasks, each running for 10 seconds.  We have 8 cores, so the
         # tasks will run in 4 batches of 8 at a time.
         t_start = time.time()
-        cuds    = list()
+        tds    = list()
         for _ in range(32):
 
-            cud = rp.ComputeUnitDescription()
-            cud.executable = '%s/examples/hello_rp.sh' % os.getcwd()
-            cud.arguments  = [10]
-            cuds.append(cud)
+            td = rp.TaskDescription()
+            td.executable = '%s/examples/hello_rp.sh' % os.getcwd()
+            td.arguments  = [10]
+            tds.append(td)
 
-        tasks = umgr.submit_units(cuds)
+        tasks = tmgr.submit_tasks(tds)
 
         # wait until 8 tasks are done (16 cores: should take about 10 seconds
         print('%d total  - wait for 8 tasks' % len(tasks))
@@ -64,7 +64,7 @@ if __name__ == '__main__':
         cancel_uids = cancel_uids[:12]
         n_canceled  = len(cancel_uids)
 
-        umgr.cancel_units(uids=cancel_uids)
+        tmgr.cancel_tasks(uids=cancel_uids)
 
       # # this would also work:
       # n_canceled = 0
@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
         # 12 tasks should be left which fit on the available cores in two
         # batches (8 + 4), and we should wait for about 20 seconds or so
-        umgr.wait_units()
+        tmgr.wait_tasks()
         t_done = time.time()
 
         # print some statistocs

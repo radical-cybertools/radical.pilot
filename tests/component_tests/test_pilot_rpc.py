@@ -13,7 +13,7 @@ if __name__ == '__main__':
         session = rp.Session()
         sid     = session.uid
         pmgr    = rp.PilotManager(session)
-        pdesc   = rp.ComputePilotDescription({'resource': 'local.localhost'})
+        pdesc   = rp.PilotDescription({'resource': 'local.localhost'})
         pilot   = pmgr.submit_pilots(pdesc)
         result  = pilot.rpc(rpc='hello', args=['world'])
         assert(result == 'hello world')
