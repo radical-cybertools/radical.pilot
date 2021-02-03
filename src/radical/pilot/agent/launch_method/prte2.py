@@ -253,16 +253,13 @@ class PRTE2(LaunchMethod):
                    'version_info': prte_info,
                    'cvd_id_mode' : 'physical'}
 
-        # extra time to allow the DVM(s) to stabilize
-        time.sleep(10.)
-
         # check that all DVMs are ready
         for _dvm_id, _dvm_ready in enumerate(dvm_ready_list):
 
             if not _dvm_ready.is_set():
 
-                # additional time to confirm that "DVM ready" was just delayed
-                if _dvm_ready.wait(timeout=5.):
+                # extra time to confirm that "DVM ready" was just delayed
+                if _dvm_ready.wait(timeout=10.):
                     continue
 
                 log.info('prte-%s to be re-started', _dvm_id)
@@ -276,13 +273,11 @@ class PRTE2(LaunchMethod):
                 vm_size = len(dvm_hosts_list[_dvm_id])
                 dvm_uri_list[_dvm_id] = _start_dvm(_dvm_id, vm_size, _dvm_ready)
 
-                # additional time for re-started DVM to stabilize
-                time.sleep(10.)
-
                 # FIXME: with the current approach there is only one attempt to
                 #        restart DVM(s). If a failure during the start process
                 #        will keep appears then need to consider re-assignment
-                #        of nodes from failed DVM(s)
+                #        of nodes from failed DVM(s) + add time for re-started
+                #        DVM to stabilize: `time.sleep(10.)`
 
         # we need to inform the actual LaunchMethod instance about the prte URI.
         # So we pass it back to the ResourceManager which will keep it in an
