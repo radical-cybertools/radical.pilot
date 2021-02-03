@@ -171,9 +171,12 @@ class ResourceManager(object):
             self._log.info("ResourceManager config hook succeeded (%s)" % lm)
 
         # check for partitions after `rm_config_hook` was applied
+        # NOTE: partition ids should be of a string type, because of JSON
+        #       serialization (agent config), which keeps dict keys as strings
         if self.lm_info.get('dvm_hosts'):
             # case of DVM partitioning (PRTE/2 LM)
-            self.partitions = dict(enumerate(self.lm_info['dvm_hosts']))
+            self.partitions = {
+                str(k): v for k, v in enumerate(self.lm_info['dvm_hosts'])}
 
         # For now assume that all nodes have equal amount of cores and gpus
         cores_avail = (len(self.node_list) + len(self.agent_nodes)) * self.cores_per_node

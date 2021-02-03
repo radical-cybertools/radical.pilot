@@ -393,10 +393,11 @@ class Continuous(AgentSchedulingComponent):
         #                       `tags` represents a DVM ID
         partition = td.get('tags', {}).get('partition')
         if self._rm_partitions and partition is not None:
+            partition = str(partition)
             if partition not in self._rm_partitions:
                 raise ValueError('partition id (%s) out of range' % partition)
             # partition id becomes a part of a co-locate tag
-            tag = str(partition) + ('' if not tag else '_%s' % tag)
+            tag = partition + ('' if not tag else '_%s' % tag)
             if tag not in self._tag_history:
                 self._tag_history[tag] = self._rm_partitions[partition]
         task_partition_id = None
@@ -518,7 +519,7 @@ class Continuous(AgentSchedulingComponent):
         # if tag `colocate` was provided, then corresponding nodes should be
         # stored in the tag history (if partition nodes were kept under this
         # key before then it will be overwritten)
-        if tag is not None and tag != str(partition):
+        if tag is not None and tag != partition:
             self._tag_history[tag] = [node['uid'] for node in slots['nodes']]
 
         # this should be nicely filled out now - return
