@@ -89,7 +89,7 @@ class Agent_0(rpu.Worker):
 
         # run our own slow-paced heartbeat monitor to watch pmgr heartbeats
         # FIXME: we need to get pmgr freq
-        freq = 10
+        freq = 100
         tint = freq / 3
         tout = freq * 3
         self._hb = ru.Heartbeat(uid=self._pid,
