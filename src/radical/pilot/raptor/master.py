@@ -136,7 +136,7 @@ class Master(rpu.Component):
         del(cfg['channel'])
         del(cfg['cmgr'])
 
-        cfg['log_lvl'] = 'debug'
+        cfg['log_lvl'] = 'error'
         cfg['kind']    = 'master'
         cfg['base']    = pwd
         cfg['uid']     = ru.generate_id('master.%(item_counter)06d',
