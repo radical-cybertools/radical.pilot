@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import queue
+import psutil
 import signal
 
 import threading         as mt
@@ -15,6 +16,23 @@ import radical.utils     as ru
 from .. import Session
 from .. import utils     as rpu
 from .. import constants as rpc
+
+
+def out(msg):
+    sys.stdout.write('%s\n' % msg)
+    sys.stdout.flush()
+
+
+def _close_dfs(signum, frame):
+    out('handling signal %s' % signum)
+    proc = psutil.Process()
+    for f in proc.open_files():
+        out('SIGKILL: close %s' % f[0])
+        os.close(f[1])
+
+
+signal.signal(signal.SIGINT,  _close_dfs)
+signal.signal(signal.SIGTERM, _close_dfs)
 
 
 # ------------------------------------------------------------------------------
@@ -522,6 +540,10 @@ class Worker(rpu.Component):
         # ----------------------------------------------------------------------
 
         ret = 1  # in case we fall through before ret can be set by the task
+
+        e_done = mt.Event()
+        e_tout = mt.Event()
+
         try:
             mode = task['mode']
             assert(mode in self._modes), 'no such call mode %s' % mode
@@ -536,9 +558,6 @@ class Worker(rpu.Component):
 
             tout = task.get('timeout')
             self._log.debug('dispatch with tout %s', tout)
-
-            e_done = mt.Event()
-            e_tout = mt.Event()
 
             if tout:
                 self._log.debug('start tout thread')
