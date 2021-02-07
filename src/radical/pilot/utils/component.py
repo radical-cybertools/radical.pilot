@@ -467,7 +467,7 @@ class Component(object):
             if not self._thread.is_alive():
                 raise RuntimeError('worker thread died during initialization')
 
-            time.sleep(0.1)
+            time.sleep(0.01)
 
         assert(self._thread.is_alive())
 
@@ -929,7 +929,7 @@ class Component(object):
                             if self._timeout and \
                                self._timeout > (time.time() - self._last):
                                 # not yet
-                                time.sleep(0.1)  # FIXME: make configurable
+                                time.sleep(0.01)  # FIXME: make configurable
                                 continue
 
                             with self._cb_lock:
@@ -1044,7 +1044,7 @@ class Component(object):
 
         # if no action occurs in this iteration, idle
         if not self._inputs:
-            time.sleep(0.1)
+            time.sleep(0.01)
             return True
 
         for name in self._inputs:
@@ -1055,8 +1055,7 @@ class Component(object):
             # FIXME: a simple, 1-thing caching mechanism would likely
             #        remove the req/res overhead completely (for any
             #        non-trivial worker).
-            things = input.get_nowait(500)  # in microseconds
-            things = ru.as_list(things)
+            things = input.get_nowait(200)  # in microseconds
 
             if not things:
                 return True
@@ -1065,10 +1064,10 @@ class Component(object):
             # need to sort the things into buckets by state before
             # pushing them
             buckets = dict()
-            for thing in things:
+            for thing in ru.as_list(things):
                 state = thing.get('state')  # can be stateless
                 uid   = thing.get('uid')    # and not have uids
-                self._prof.prof('get', uid=uid, state=state)
+              # self._prof.prof('get', uid=uid, state=state)
 
                 if state not in buckets:
                     buckets[state] = list()
@@ -1239,16 +1238,16 @@ class Component(object):
                     # unknown target state -- error
                     for thing in _things:
                         self._log.debug("lost  %s [%s]", thing['uid'], _state)
-                        self._prof.prof('lost', uid=thing['uid'], state=_state,
-                                        ts=ts)
+                      # self._prof.prof('lost', uid=thing['uid'], state=_state,
+                      #                 ts=ts)
                     continue
 
                 if not self._outputs[_state]:
                     # empty output -- drop thing
                     for thing in _things:
                         self._log.debug('drop  %s [%s]', thing['uid'], _state)
-                        self._prof.prof('drop', uid=thing['uid'], state=_state,
-                                        ts=ts)
+                      # self._prof.prof('drop', uid=thing['uid'], state=_state,
+                      #                 ts=ts)
                     continue
 
                 output = self._outputs[_state]
@@ -1258,9 +1257,9 @@ class Component(object):
                 output.put(_things)
 
                 ts = time.time()
-                for thing in _things:
-                    self._prof.prof('put', uid=thing['uid'], state=_state,
-                                    msg=output.name, ts=ts)
+              # for thing in _things:
+              #     self._prof.prof('put', uid=thing['uid'], state=_state,
+              #                     msg=output.name, ts=ts)
 
 
     # --------------------------------------------------------------------------

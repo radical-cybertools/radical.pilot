@@ -55,6 +55,8 @@ PILOT_DURATIONS = {
     #
     # resources on agent nodes are consumed for all of the pilot's lifetime
     'agent' : {
+        'total'     : [{ru.EVENT: 'bootstrap_0_start'},
+                       {ru.EVENT: 'bootstrap_0_stop' }]
     }
 }
 

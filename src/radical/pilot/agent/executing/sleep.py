@@ -39,10 +39,10 @@ class Sleep(AgentExecutingComponent) :
         self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
                              rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
-        self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
+        self.register_publisher(rpc.AGENT_UNSCHEDULE_PUBSUB)
 
         self._terminate  = mt.Event()
-        self._tasks_lock = ru.RLock()
+        self._tasks_lock = mt.RLock()
         self._tasks      = list()
         self._delay      = 0.1
 
@@ -91,12 +91,14 @@ class Sleep(AgentExecutingComponent) :
 
         while not self._terminate.is_set():
 
-            time.sleep(self._delay)
-
             with self._tasks_lock:
                 now = time.time()
                 to_finish   = [t for t in self._tasks if t['to_finish'] <= now]
                 self._tasks = [t for t in self._tasks if t['to_finish'] >  now]
+
+          # if not to_finish:
+            time.sleep(self._delay)
+          # continue
 
             for t in to_finish:
                 uid = t['uid']

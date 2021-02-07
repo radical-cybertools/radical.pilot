@@ -476,7 +476,7 @@ class AgentSchedulingComponent(rpu.Component):
         if not self._waitpool:
             return
 
-        self._prof.prof('tsmap_start')
+      # self._prof.prof('tsmap_start')
 
         for uid,task in self._waitpool.items():
             ts = task['tuple_size']
@@ -485,7 +485,7 @@ class AgentSchedulingComponent(rpu.Component):
             self._ts_map[ts].add(uid)
 
         self._ts_valid = True
-        self._prof.prof('tsmap_stop')
+      # self._prof.prof('tsmap_stop')
 
 
     # --------------------------------------------------------------------------
@@ -630,7 +630,7 @@ class AgentSchedulingComponent(rpu.Component):
           # self._log.debug('=== schedule tasks c: %s %s', r, a)
 
             if not active:
-                time.sleep(0.1)  # FIXME: configurable
+                time.sleep(0.01)  # FIXME: configurable
 
           # self._log.debug('=== schedule tasks x: %s %s', resources, active)
 
@@ -657,8 +657,8 @@ class AgentSchedulingComponent(rpu.Component):
         #
         tasks = list(self._waitpool.values())
         tasks.sort(key=lambda x:
-                (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
-                 reverse=True)
+             (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
+              reverse=True)
 
         # cycle through waitpool, and see if we get anything placed now.
         scheduled, unscheduled = ru.lazy_bisect(tasks,
@@ -666,8 +666,8 @@ class AgentSchedulingComponent(rpu.Component):
                                                 on_skip=self._prof_sched_skip,
                                                 log=self._log)
 
-        for task in scheduled:
-            self._prof.prof('schedule_wait', uid=task['uid'])
+      # for task in scheduled:
+      #     self._prof.prof('schedule_wait', uid=task['uid'])
 
         self._waitpool = {task['uid']:task for task in unscheduled}
 
@@ -731,7 +731,7 @@ class AgentSchedulingComponent(rpu.Component):
 
                 # task got scheduled - advance state, notify world about the
                 # state change, and push it out toward the next component.
-                self._prof.prof('schedule_first', uid=task['uid'])
+              # self._prof.prof('schedule_first', uid=task['uid'])
                 td = task['description']
                 task['$set']      = ['resources']
                 task['resources'] = {'cpu': td['cpu_processes'] *
@@ -840,40 +840,41 @@ class AgentSchedulingComponent(rpu.Component):
 
                     # found one - swap the slots and push out to executor
                     replace['slots'] = task['slots']
-                    placed.append(placed)
+                    placed.append(replace['uid'])
 
                     # unschedule task A and schedule task B have the same
                     # timestamp
                     ts = time.time()
                     self._prof.prof('unschedule_stop', uid=task['uid'], ts=ts)
-                    self._prof.prof('schedule_fast', uid=replace['uid'], ts=ts)
+                  # self._prof.prof('schedule_fast', uid=replace['uid'], ts=ts)
+                    self._prof.prof('schedule_ok', uid=replace['uid'], ts=ts)
                     self.advance(replace, rps.AGENT_EXECUTING_PENDING,
                                           publish=True, push=True)
 
-            to_release.append(task)
-
-        if not to_release:
-            if not to_unschedule:
-                # no new resources, not been active
-                return False, False
-            else:
-                # no new resources, but activity
-                return False, True
 
         # we have tasks to unschedule, which will free some resources. We can
         # thus try to schedule larger tasks again, and also inform the caller
         # about resource availability.
         for task in to_release:
             self.unschedule_task(task)
-            self._prof.prof('unschedule_stop', uid=task['uid'])
 
         # if previously waiting tasks were placed, remove them from the waitpool
         if placed:
-            self._waitpool = {task['uid'] : task
-                                            for task in self._waitpool.values()
-                                            if  task['uid'] not in placed}
+            for uid in placed:
+                del(self._waitpool[uid])
+
+        if to_release:
+            # new resources, activity
+            return True, True
+        elif to_unschedule:
+            # no new resources, but activity
+            return False, True
+        else:
+            # no new resources, no activity
+            return False, False
+
+
         # we have new resources, and were active
-        return True, True
 
 
     # --------------------------------------------------------------------------
