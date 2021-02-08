@@ -557,14 +557,14 @@ class Worker(rpu.Component):
             os.environ['CUDA_VISIBLE_DEVICES'] = os.environ['RP_TASK_GPUS']
 
             tout = task.get('timeout')
-            self._log.debug('dispatch with tout %s', tout)
+          # self._log.debug('dispatch with tout %s', tout)
 
             if tout:
-                self._log.debug('start tout thread')
+              # self._log.debug('start tout thread')
                 watcher = mt.Thread(target=t_tout, args=[tout, e_tout, e_done])
                 watcher.daemon = True
                 watcher.start()
-                self._log.debug('started tout thread')
+              # self._log.debug('started tout thread')
 
             out, err, ret = self._modes[mode](task.get('data'))
 
@@ -576,7 +576,7 @@ class Worker(rpu.Component):
 
         except Exception as e:
 
-            self._log.exception('dispatch failed')
+         #  self._log.exception('dispatch failed')
             out = None
             err = 'dispatch failed: %s' % e
             ret = 1
