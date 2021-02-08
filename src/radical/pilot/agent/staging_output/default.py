@@ -23,13 +23,13 @@ from ...staging_directives import complete_url
 class Default(AgentStagingOutputComponent):
     """
     This component performs all agent side output staging directives for compute
-    units.  It gets units from the agent_staging_output_queue, in
+    tasks.  It gets tasks from the agent_staging_output_queue, in
     AGENT_STAGING_OUTPUT_PENDING state, will advance them to
     AGENT_STAGING_OUTPUT state while performing the staging, and then moves then
-    to the UMGR_STAGING_OUTPUT_PENDING state, which at the moment requires the
+    to the TMGR_STAGING_OUTPUT_PENDING state, which at the moment requires the
     state change to be published to MongoDB (no push into a queue).
 
-    Note that this component also collects stdout/stderr of the units (which
+    Note that this component also collects stdout/stderr of the tasks (which
     can also be considered staging, really).
     """
 
@@ -49,109 +49,109 @@ class Default(AgentStagingOutputComponent):
         self.register_input(rps.AGENT_STAGING_OUTPUT_PENDING,
                             rpc.AGENT_STAGING_OUTPUT_QUEUE, self.work)
 
-        # we don't need an output queue -- units are picked up via mongodb
-        self.register_output(rps.UMGR_STAGING_OUTPUT_PENDING, None)  # drop
+        # we don't need an output queue -- tasks are picked up via mongodb
+        self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING, None)  # drop
 
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
+    def work(self, tasks):
 
-        if not isinstance(units, list):
-            units = [units]
+        if not isinstance(tasks, list):
+            tasks = [tasks]
 
-        self.advance(units, rps.AGENT_STAGING_OUTPUT, publish=True, push=False)
+        self.advance(tasks, rps.AGENT_STAGING_OUTPUT, publish=True, push=False)
 
-        # we first filter out any units which don't need any input staging, and
+        # we first filter out any tasks which don't need any input staging, and
         # advance them again as a bulk.  We work over the others one by one, and
         # advance them individually, to avoid stalling from slow staging ops.
 
-        no_staging_units = list()
-        staging_units    = list()
+        no_staging_tasks = list()
+        staging_tasks    = list()
 
-        for unit in units:
+        for task in tasks:
 
-            uid = unit['uid']
+            uid = task['uid']
 
-            # From here on, any state update will hand control over to the umgr
-            # again.  The next unit update should thus push *all* unit details,
+            # From here on, any state update will hand control over to the tmgr
+            # again.  The next task update should thus push *all* task details,
             # not only state.
-            unit['$all']    = True
-            unit['control'] = 'umgr_pending'
+            task['$all']    = True
+            task['control'] = 'tmgr_pending'
 
             # we always dig for stdout/stderr
-            self._handle_unit_stdio(unit)
+            self._handle_task_stdio(task)
 
-            # NOTE: all units get here after execution, even those which did not
+            # NOTE: all tasks get here after execution, even those which did not
             #       finish successfully.  We do that so that we can make
-            #       stdout/stderr available for failed units (see
-            #       _handle_unit_stdio above).  But we don't need to perform any
-            #       other staging for those units, and in fact can make them
+            #       stdout/stderr available for failed tasks (see
+            #       _handle_task_stdio above).  But we don't need to perform any
+            #       other staging for those tasks, and in fact can make them
             #       final.
-            if unit['target_state'] != rps.DONE:
-                unit['state'] = unit['target_state']
-                self._log.debug('unit %s skips staging: %s', uid, unit['state'])
-                no_staging_units.append(unit)
+            if task['target_state'] != rps.DONE:
+                task['state'] = task['target_state']
+                self._log.debug('task %s skips staging: %s', uid, task['state'])
+                no_staging_tasks.append(task)
                 continue
 
             # check if we have any staging directives to be enacted in this
             # component
             actionables = list()
-            for sd in unit['description'].get('output_staging', []):
+            for sd in task['description'].get('output_staging', []):
                 if sd['action'] in [rpc.LINK, rpc.COPY, rpc.MOVE]:
                     actionables.append(sd)
 
             if actionables:
-                # this unit needs some staging
-                staging_units.append([unit, actionables])
+                # this task needs some staging
+                staging_tasks.append([task, actionables])
             else:
-                # this unit does not need any staging at this point, and can be
+                # this task does not need any staging at this point, and can be
                 # advanced
-                unit['state'] = rps.UMGR_STAGING_OUTPUT_PENDING
-                no_staging_units.append(unit)
+                task['state'] = rps.TMGR_STAGING_OUTPUT_PENDING
+                no_staging_tasks.append(task)
 
-        if no_staging_units:
-            self.advance(no_staging_units, publish=True, push=True)
+        if no_staging_tasks:
+            self.advance(no_staging_tasks, publish=True, push=True)
 
-        for unit,actionables in staging_units:
-            self._handle_unit_staging(unit, actionables)
+        for task,actionables in staging_tasks:
+            self._handle_task_staging(task, actionables)
 
 
     # --------------------------------------------------------------------------
     #
-    def _handle_unit_stdio(self, unit):
+    def _handle_task_stdio(self, task):
 
-        sandbox = unit['unit_sandbox_path']
-        uid     = unit['uid']
+        sandbox = task['task_sandbox_path']
+        uid     = task['uid']
 
         self._prof.prof('staging_stdout_start', uid=uid)
 
         # TODO: disable this at scale?
-        if unit.get('stdout_file') and os.path.isfile(unit['stdout_file']):
-            with open(unit['stdout_file'], 'r') as stdout_f:
+        if task.get('stdout_file') and os.path.isfile(task['stdout_file']):
+            with open(task['stdout_file'], 'r') as stdout_f:
                 try:
                     txt = ru.as_string(stdout_f.read())
                 except UnicodeDecodeError:
-                    txt = "unit stdout is binary -- use file staging"
+                    txt = "task stdout is binary -- use file staging"
 
-                unit['stdout'] += rpu.tail(txt)
+                task['stdout'] += rpu.tail(txt)
 
         self._prof.prof('staging_stdout_stop',  uid=uid)
         self._prof.prof('staging_stderr_start', uid=uid)
 
         # TODO: disable this at scale?
-        if unit.get('stderr_file') and os.path.isfile(unit['stderr_file']):
-            with open(unit['stderr_file'], 'r') as stderr_f:
+        if task.get('stderr_file') and os.path.isfile(task['stderr_file']):
+            with open(task['stderr_file'], 'r') as stderr_f:
                 try:
                     txt = ru.as_string(stderr_f.read())
                 except UnicodeDecodeError:
-                    txt = "unit stderr is binary -- use file staging"
+                    txt = "task stderr is binary -- use file staging"
 
-                unit['stderr'] += rpu.tail(txt)
+                task['stderr'] += rpu.tail(txt)
 
             # to help with ID mapping, also parse for PRTE output:
             # [batch3:122527] JOB [3673,4] EXECUTING
-            with open(unit['stderr_file'], 'r') as stderr_f:
+            with open(task['stderr_file'], 'r') as stderr_f:
 
                 for line in stderr_f.readlines():
                     line = line.strip()
@@ -162,15 +162,15 @@ class Default(AgentStagingOutputComponent):
                         tid   = elems[2]
                         self._log.info('PRTE IDMAP: %s:%s' % (tid, uid))
 
-                unit['stderr'] += rpu.tail(txt)
+                task['stderr'] += rpu.tail(txt)
 
         self._prof.prof('staging_stderr_stop', uid=uid)
         self._prof.prof('staging_uprof_start', uid=uid)
 
-        unit_prof = "%s/%s.prof" % (sandbox, uid)
-        if os.path.isfile(unit_prof):
+        task_prof = "%s/%s.prof" % (sandbox, uid)
+        if os.path.isfile(task_prof):
             try:
-                with open(unit_prof, 'r') as prof_f:
+                with open(task_prof, 'r') as prof_f:
                     txt = ru.as_string(prof_f.read())
                     for line in txt.split("\n"):
                         if line:
@@ -187,13 +187,13 @@ class Default(AgentStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _handle_unit_staging(self, unit, actionables):
+    def _handle_task_staging(self, task, actionables):
 
-        uid = unit['uid']
+        uid = task['uid']
 
         # By definition, this compoentn lives on the pilot's target resource.
         # As such, we *know* that all staging ops which would refer to the
-        # resource now refer to file://localhost, and thus translate the unit,
+        # resource now refer to file://localhost, and thus translate the task,
         # pilot and resource sandboxes into that scope.  Some assumptions are
         # made though:
         #
@@ -202,24 +202,24 @@ class Default(AgentStagingOutputComponent):
         #
         # FIXME: this is costly and should be cached.
 
-        unit_sandbox     = ru.Url(unit['unit_sandbox'])
-        pilot_sandbox    = ru.Url(unit['pilot_sandbox'])
-        resource_sandbox = ru.Url(unit['resource_sandbox'])
+        task_sandbox     = ru.Url(task['task_sandbox'])
+        pilot_sandbox    = ru.Url(task['pilot_sandbox'])
+        resource_sandbox = ru.Url(task['resource_sandbox'])
 
-        unit_sandbox.schema     = 'file'
+        task_sandbox.schema     = 'file'
         pilot_sandbox.schema    = 'file'
         resource_sandbox.schema = 'file'
 
-        unit_sandbox.host       = 'localhost'
+        task_sandbox.host       = 'localhost'
         pilot_sandbox.host      = 'localhost'
         resource_sandbox.host   = 'localhost'
 
-        src_context = {'pwd'      : str(unit_sandbox),       # !!!
-                       'unit'     : str(unit_sandbox),
+        src_context = {'pwd'      : str(task_sandbox),       # !!!
+                       'task'     : str(task_sandbox),
                        'pilot'    : str(pilot_sandbox),
                        'resource' : str(resource_sandbox)}
-        tgt_context = {'pwd'      : str(unit_sandbox),       # !!!
-                       'unit'     : str(unit_sandbox),
+        tgt_context = {'pwd'      : str(task_sandbox),       # !!!
+                       'task'     : str(task_sandbox),
                        'pilot'    : str(pilot_sandbox),
                        'resource' : str(resource_sandbox)}
 
@@ -238,7 +238,7 @@ class Default(AgentStagingOutputComponent):
                               'invalid staging action'
 
             # we only handle staging which does *not* include 'client://' src or
-            # tgt URLs - those are handled by the umgr staging components
+            # tgt URLs - those are handled by the tmgr staging components
             if src.startswith('client://'):
                 self._log.debug('skip staging for src %s', src)
                 self._prof.prof('staging_out_skip', uid=uid, msg=did)
@@ -250,12 +250,12 @@ class Default(AgentStagingOutputComponent):
                 continue
 
             # Fix for when the target PATH is empty
-            # we assume current directory is the unit staging 'unit://'
+            # we assume current directory is the task staging 'task://'
             # and we assume the file to be copied is the base filename
             # of the source
             if tgt is None: tgt = ''
             if tgt.strip() == '':
-                tgt = 'unit:///{}'.format(os.path.basename(src))
+                tgt = 'task:///{}'.format(os.path.basename(src))
             # Fix for when the target PATH is exists *and* it is a folder
             # we assume the 'current directory' is the target folder
             # and we assume the file to be copied is the base filename
@@ -276,7 +276,7 @@ class Default(AgentStagingOutputComponent):
             # for local ops (copy, link, move)
             if flags & rpc.CREATE_PARENTS and action != rpc.TRANSFER:
                 tgtdir = os.path.dirname(tgt.path)
-                if tgtdir != unit_sandbox.path:
+                if tgtdir != task_sandbox.path:
                     self._log.debug("mkdir %s", tgtdir)
                     rpu.rec_makedir(tgtdir)
 
@@ -303,10 +303,10 @@ class Default(AgentStagingOutputComponent):
             elif action == rpc.TRANSFER: pass
                 # This is currently never executed. Commenting it out.
                 # Uncomment and implement when uploads directly to remote URLs
-                # from units are supported.
+                # from tasks are supported.
                 # FIXME: we only handle srm staging right now, and only for
                 #        a specific target proxy. Other TRANSFER directives are
-                #        left to umgr output staging.  We should use SAGA to
+                #        left to tmgr output staging.  We should use SAGA to
                 #        attempt all staging ops which do not target the client
                 #        machine.
                 # if tgt.schema == 'srm':
@@ -321,8 +321,8 @@ class Default(AgentStagingOutputComponent):
 
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
-        # all agent staging is done -- pass on to umgr output staging
-        self.advance(unit, rps.UMGR_STAGING_OUTPUT_PENDING,
+        # all agent staging is done -- pass on to tmgr output staging
+        self.advance(task, rps.TMGR_STAGING_OUTPUT_PENDING,
                            publish=True, push=False)
 
 

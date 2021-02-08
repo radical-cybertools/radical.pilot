@@ -30,23 +30,23 @@ class TestPilot(TestCase):
         pmgr._session._get_pilot_sandbox = mock.Mock(return_value=sandbox_url)
         pmgr._session._get_client_sandbox = mock.Mock(return_value=sandbox_url)
 
-        descr = rp.ComputePilotDescription({'resource': 'foo', 'uid': 'foo'})
-        self.assertEqual(rp.ComputePilot(pmgr, descr).uid, 'foo')
+        descr = rp.PilotDescription({'resource': 'foo', 'uid': 'foo'})
+        self.assertEqual(rp.Pilot(pmgr, descr).uid, 'foo')
 
         with self.assertRaises(ValueError):
-            rp.ComputePilot(pmgr, descr)
+            rp.Pilot(pmgr, descr)
 
-        descr = rp.ComputePilotDescription({'resource': 'foo'})
-        self.assertEqual(rp.ComputePilot(pmgr, descr).uid, 'pilot.0000')
+        descr = rp.PilotDescription({'resource': 'foo'})
+        self.assertEqual(rp.Pilot(pmgr, descr).uid, 'pilot.0000')
 
-        descr = rp.ComputePilotDescription({'resource': 'foo', 'uid': 'bar'})
-        self.assertEqual(rp.ComputePilot(pmgr, descr).uid, 'bar')
+        descr = rp.PilotDescription({'resource': 'foo', 'uid': 'bar'})
+        self.assertEqual(rp.Pilot(pmgr, descr).uid, 'bar')
 
         with self.assertRaises(ValueError):
-            rp.ComputePilot(pmgr, descr)
+            rp.Pilot(pmgr, descr)
 
-        descr = rp.ComputePilotDescription({'resource': 'foo'})
-        self.assertEqual(rp.ComputePilot(pmgr, descr).uid, 'pilot.0001')
+        descr = rp.PilotDescription({'resource': 'foo'})
+        self.assertEqual(rp.Pilot(pmgr, descr).uid, 'pilot.0001')
 
 
 # ------------------------------------------------------------------------------

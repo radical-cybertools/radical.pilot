@@ -317,15 +317,15 @@ class Yarn(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        slots        = cu['slots']
-        work_dir     = cu['unit_sandbox_path']
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_cores   = cud['cpu_processes'] * cud['cpu_threads']
-        task_env     = cud.get('environment') or {}
-        task_args    = cud.get('arguments')   or []
+        slots        = t['slots']
+        work_dir     = t['task_sandbox_path']
+        td          = t['description']
+        task_exec    = td['executable']
+        task_cores   = td['cpu_processes'] * td['cpu_threads']
+        task_env     = td.get('environment') or {}
+        task_args    = td.get('arguments')   or []
         task_argstr  = self._create_arg_string(task_args)
 
         # Construct the args_string which is the arguments given as input to the
@@ -361,7 +361,7 @@ class Yarn(LaunchMethod):
         # ----------------------------------------------------------------------
         # Create YARN script
         # This funcion creates the necessary script for the execution of the
-        # CU's workload in a YARN application. The function is responsible
+        # Task's workload in a YARN application. The function is responsible
         # to set all the necessary variables, stage in, stage out and create
         # the execution command that will run in the distributed shell that
         # the YARN application provides. There reason for staging out is
@@ -375,9 +375,9 @@ class Yarn(LaunchMethod):
         print_str += "echo '# Staging Input Files'>>ExecScript.sh\n"
 
         self._log.debug('Creating input staging')
-        if cud.get('input_staging'):
+        if td.get('input_staging'):
             scp_input_files = '"'
-            for InputFile in cud['input_staging']:
+            for InputFile in td['input_staging']:
                 scp_input_files += '%s/%s ' % (work_dir, InputFile['target'])
             scp_input_files += '"'
             print_str += "echo 'start=""`date +%s.%3N`""'>>ExecScript.sh\n"
@@ -386,9 +386,9 @@ class Yarn(LaunchMethod):
             print_str += "echo 'time_spent=""$(echo ""$stop - $start"" | bc)""'>>ExecScript.sh\n"
             print_str += "echo 'echo $time_spent >>Yprof'>>ExecScript.sh\n"
 
-        if cud.get('pre_exec'):
+        if td.get('pre_exec'):
             pre_exec_string = ''
-            for elem in cud['pre_exec']:
+            for elem in td['pre_exec']:
                 pre_exec_string += '%s;' % elem
             pre_exec_string += ''
             print_str += "echo ''>>ExecScript.sh\n"
@@ -415,8 +415,8 @@ class Yarn(LaunchMethod):
         print_str += "echo 'YarnUser=$(whoami)'>>ExecScript.sh\n"
         scp_output_files = 'Ystderr Ystdout'
 
-        if cud.get('output_staging'):
-            for OutputFile in cud['output_staging']:
+        if td.get('output_staging'):
+            for OutputFile in td['output_staging']:
                 scp_output_files += ' %s' % (OutputFile['source'])
         print_str += "echo 'scp -v %s $YarnUser@%s:%s'>>ExecScript.sh\n" % (scp_output_files, client_node, work_dir)
         print_str += "echo 'stop=""`date +%s.%3N`""'>>ExecScript.sh\n"
@@ -432,7 +432,7 @@ class Yarn(LaunchMethod):
         for key,val in list(task_env.items()):
             env_string += '-shell_env ' + key + '=' + str(val) + ' '
 
-        # app_name = '-appname '+ cud['uid']
+        # app_name = '-appname '+ td['uid']
         # Construct the ncores_string which is the number of cores used by the
         # container to run the script
         if task_cores:
