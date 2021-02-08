@@ -128,6 +128,13 @@
         "cores"    : 64
     },
 
+     "xsede.comet_ssh_funcs_mpirun"  : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "compute",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
     "xsede.comet_ortelib"  : {
         "project"  : "TG-MCB090174",
         "queue"    : "debug",

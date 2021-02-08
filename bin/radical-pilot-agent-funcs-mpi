@@ -1,0 +1,671 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import time
+import dill
+import queue
+import pickle
+import codecs
+from mpi4py import MPI
+from io import StringIO
+import multiprocessing as mp
+import threading       as mt
+
+import radical.utils   as ru
+
+from mpi4py.futures import _lib
+from mpi4py.futures import Future
+from mpi4py.futures import Executor
+from mpi4py.futures import as_completed
+
+MPI.pickle.__init__(dill.dumps, dill.loads)
+# Run this with mpirun -n x ./radical-pilot-agent-mpi-funcs
+# FIXME: the func executor may need a small bootstrapper
+# TODO : the func executor might need to support 2 cases:
+#        if MPIExecutor then:
+#            run in MPI mode
+#        else:
+#           run in Normal mode         
+
+pwd = sys.argv[1]
+
+# ------------------------------------------------------------------------------
+# activate virtenv if needed
+ve = None
+if len(sys.argv) > 2:
+    ve = sys.argv[2]
+
+if ve and ve not in ['', 'None', None]:
+
+    activate = "%s/bin/activate_this.py" % ve
+
+    exec(open(activate).read(), dict(__file__=activate))
+
+
+# ------------------------------------------------------------------------------
+#
+def _starmap_helper(submit, function, iterable, timeout, unordered):
+    if timeout is not None:
+        timer = getattr(time, 'monotonic', time.time)
+        end_time = timeout + timer()
+
+    futures = [submit(function, *args) for args in iterable]
+    if unordered:
+        futures = set(futures)
+
+    def result_iterator():  # pylint: disable=missing-docstring
+        try:
+            if unordered:
+                if timeout is None:
+                    iterator = as_completed(futures)
+                else:
+                    iterator = as_completed(futures, end_time - timer())
+                for future in iterator:
+                    futures.remove(future)
+                    future = [future]
+                    yield future.pop().result()
+            else:
+                futures.reverse()
+                if timeout is None:
+                    while futures:
+                        yield futures.pop().result()
+                else:
+                    while futures:
+                        yield futures.pop().result(end_time - timer())
+        except:
+            while futures:
+                futures.pop().cancel()
+            raise
+    return result_iterator()
+
+# ------------------------------------------------------------------------------
+#
+def _apply_chunks(function, chunk):
+    return [function(*args) for args in chunk]
+
+# ------------------------------------------------------------------------------
+#
+def _build_chunks(chunksize, iterable):
+    iterable = iter(iterable)
+    while True:
+        chunk = tuple(itertools.islice(iterable, chunksize))
+        if not chunk:
+            return
+        yield (chunk,)
+
+# ------------------------------------------------------------------------------
+#
+def _chain_from_iterable_of_lists(iterable):
+    for item in iterable:
+        item.reverse()
+        while item:
+            yield item.pop()
+
+# ------------------------------------------------------------------------------
+#
+def _starmap_chunks(submit, function, iterable,
+                    timeout, unordered, chunksize):
+    # pylint: disable=too-many-arguments
+    function = functools.partial(_apply_chunks, function)
+    iterable = _build_chunks(chunksize, iterable)
+    result = _starmap_helper(submit, function, iterable,
+                             timeout, unordered)
+    return _chain_from_iterable_of_lists(result)
+
+# ------------------------------------------------------------------------------
+#
+class MPIExecutor(Executor):
+    """MPI-based asynchronous executor."""
+
+    Future = Future
+
+    def __init__(self, max_workers=None,
+                 initializer=None, initargs=(), **kwargs):
+        """Initialize a new MPIExecutor instance.
+        Args:
+            max_workers: The maximum number of MPI processes that can be used
+                to execute the given calls. If ``None`` or not given then the
+                number of worker processes will be determined from the MPI
+                universe size attribute if defined, otherwise a single worker
+                process will be spawned.
+            initializer: An callable used to initialize workers processes.
+            initargs: A tuple of arguments to pass to the initializer.
+        Keyword Args:
+            python_exe: Path to Python executable used to spawn workers.
+            python_args: Command line arguments to pass to Python executable.
+            mpi_info: Dict or iterable with ``(key, value)`` pairs.
+            globals: Dict or iterable with global variables to set in workers.
+            main: If ``False``, do not import ``__main__`` in workers.
+            path: List of paths to append to ``sys.path`` in workers.
+            wdir: Path to set current working directory in workers.
+            env: Environment variables to update ``os.environ`` in workers.
+        """
+        if max_workers is not None:
+            max_workers = int(max_workers)
+            if max_workers <= 0:
+                raise ValueError("max_workers must be greater than 0")
+            kwargs['max_workers'] = max_workers
+        if initializer is not None:
+            if not callable(initializer):
+                raise TypeError("initializer must be a callable")
+            kwargs['initializer'] = initializer
+            kwargs['initargs'] = initargs
+
+        self._options = kwargs
+        self._shutdown = False
+        self._broken = None
+        self._lock = mt.Lock()
+        self._pool = None
+
+    _make_pool = staticmethod(_lib.WorkerPool)
+
+    def _bootstrap(self):
+        if self._pool is None:
+            self._pool = self._make_pool(self)
+
+    def bootup(self, wait=True):
+        """Allocate executor resources eagerly.
+        Args:
+            wait: If ``True`` then bootup will not return until the
+                executor resources are ready to process submissions.
+        """
+        with self._lock:
+            if self._shutdown:
+                raise RuntimeError("cannot bootup after shutdown")
+            self._bootstrap()
+            if wait:
+                self._pool.wait()
+            return self
+
+    def submit(self, fn, *args, **kwargs):
+        """Submit a callable to be executed with the given arguments.
+        Schedule the callable to be executed as ``fn(*args, **kwargs)`` and
+        return a `Future` instance representing the execution of the callable.
+        Returns:
+            A `Future` representing the given call.
+        """
+        # pylint: disable=arguments-differ
+        with self._lock:
+            if self._broken:
+                raise _lib.BrokenExecutor(self._broken)
+            if self._shutdown:
+                raise RuntimeError("cannot submit after shutdown")
+            self._bootstrap()
+            future = self.Future()
+            task = (fn, args, kwargs)
+            self._pool.push((future, task))
+            return future
+
+    def map(self, fn, *iterables, timeout=None, chunksize=1, unordered=False):
+        """Return an iterator equivalent to ``map(fn, *iterables)``.
+        Args:
+            fn: A callable that will take as many arguments as there are
+                passed iterables.
+            iterables: Iterables yielding positional arguments to be passed to
+                the callable.
+            timeout: The maximum number of seconds to wait. If ``None``, then
+                there is no limit on the wait time.
+            chunksize: The size of the chunks the iterable will be broken into
+                before being passed to a worker process.
+            unordered: If ``True``, yield results out-of-order, as completed.
+        Returns:
+            An iterator equivalent to built-in ``map(func, *iterables)``
+            but the calls may be evaluated out-of-order.
+        Raises:
+            TimeoutError: If the entire result iterator could not be generated
+                before the given timeout.
+            Exception: If ``fn(*args)`` raises for any values.
+        """
+        # pylint: disable=arguments-differ
+        return self.starmap(fn, zip(*iterables), timeout, chunksize, unordered)
+
+    def starmap(self, fn, iterable,
+                timeout=None, chunksize=1, unordered=False):
+        """Return an iterator equivalent to ``itertools.starmap(...)``.
+        Args:
+            fn: A callable that will take positional argument from iterable.
+            iterable: An iterable yielding ``args`` tuples to be used as
+                positional arguments to call ``fn(*args)``.
+            timeout: The maximum number of seconds to wait. If ``None``, then
+                there is no limit on the wait time.
+            chunksize: The size of the chunks the iterable will be broken into
+                before being passed to a worker process.
+            unordered: If ``True``, yield results out-of-order, as completed.
+        Returns:
+            An iterator equivalent to ``itertools.starmap(fn, iterable)``
+            but the calls may be evaluated out-of-order.
+        Raises:
+            TimeoutError: If the entire result iterator could not be generated
+                before the given timeout.
+            Exception: If ``fn(*args)`` raises for any values.
+        """
+        # pylint: disable=too-many-arguments
+        if chunksize < 1:
+            raise ValueError("chunksize must be >= 1.")
+        if chunksize == 1:
+            return _starmap_helper(self.submit, fn, iterable,
+                                   timeout, unordered)
+        else:
+            return _starmap_chunks(self.submit, fn, iterable,
+                                   timeout, unordered, chunksize)
+
+    def shutdown(self, wait=True, *, cancel_futures=False):
+        """Clean-up the resources associated with the executor.
+        It is safe to call this method several times. Otherwise, no other
+        methods can be called after this one.
+        Args:
+            wait: If ``True`` then shutdown will not return until all running
+                futures have finished executing and the resources used by the
+                executor have been reclaimed.
+            cancel_futures: If ``True`` then shutdown will cancel all pending
+                futures. Futures that are completed or running will not be
+                cancelled.
+        """
+        with self._lock:
+            if not self._shutdown:
+                self._shutdown = True
+                if self._pool is not None:
+                    self._pool.done()
+            if cancel_futures:
+                if self._pool is not None:
+                    self._pool.cancel()
+            if wait:
+                if self._pool is not None:
+                    self._pool.join()
+                    self._pool = None
+
+# ------------------------------------------------------------------------------
+#
+class MPICommExecutor:
+    """Context manager for `MPIExecutor`.
+    This context manager splits a MPI (intra)communicator in two
+    disjoint sets: a single master process and the remaining worker
+    processes. These sets are then connected through an intercommunicator.
+    The target of the ``with`` statement is assigned either an
+    `MPIExecutor` instance (at the master) or ``None`` (at the workers).
+    Example::
+        with MPICommExecutor(MPI.COMM_WORLD, root=0) as executor:
+            if executor is not None: # master process
+                executor.submit(...)
+                executor.map(...)
+    """
+
+    # pylint: disable=too-few-public-methods
+
+    def __init__(self, comm=None, root=0, **kwargs):
+        """Initialize a new MPICommExecutor instance.
+        Args:
+            comm: MPI (intra)communicator.
+            root: Designated master process.
+        Raises:
+            ValueError: If the communicator has wrong kind or
+               the root value is not in the expected range.
+        """
+        if comm is None:
+            comm = _lib.get_comm_world()
+        if comm.Is_inter():
+            raise ValueError("Expecting an intracommunicator")
+        if root < 0 or root >= comm.Get_size():
+            raise ValueError("Expecting root in range(comm.size)")
+
+        self._comm = comm
+        self._root = root
+        self._options = kwargs
+        self._executor = None
+
+    def __enter__(self):
+        """Return `MPIExecutor` instance at the root."""
+        # pylint: disable=protected-access
+        if self._executor is not None:
+            raise RuntimeError("__enter__")
+
+        comm = self._comm
+        root = self._root
+        options = self._options
+        executor = None
+
+        if _lib.SharedPool:
+            assert root == 0
+            executor = MPIExecutor(**options)
+            executor._pool = _lib.SharedPool(executor)
+        elif comm.Get_size() == 1:
+            executor = MPIExecutor(**options)
+            executor._pool = _lib.ThreadPool(executor)
+        elif comm.Get_rank() == root:
+            executor = MPIExecutor(**options)
+            executor._pool = _lib.SplitPool(executor, comm, root)
+        else:
+            _lib.server_main_split(comm, root)
+
+        self._executor = executor
+        return executor
+
+    def __exit__(self, *args):
+        """Shutdown `MPIExecutor` instance at the root."""
+        executor = self._executor
+        self._executor = None
+
+        if executor is not None:
+            executor.shutdown(wait=True)
+            return False
+        else:
+            return True
+
+# ------------------------------------------------------------------------------
+#
+class ThreadPoolExecutor(MPIExecutor):
+    """`MPIExecutor` subclass using a pool of threads."""
+    _make_pool = staticmethod(_lib.ThreadPool)
+
+# ------------------------------------------------------------------------------
+#
+class ProcessPoolExecutor(MPIExecutor):
+    """`MPIExecutor` subclass using a pool of processes."""
+    _make_pool = staticmethod(_lib.SpawnPool)
+
+
+# ------------------------------------------------------------------------------
+#
+class Tasker():
+    '''
+    This executor is running as an RP task (master) and owns a complete node.
+    On each core of that node and other nodes (if possible), it spawns a worker 
+    process to execute function calls.Communication to those processes is establshed
+    via two mp.Queue instances, one for feeding call requests to the worker processes,
+    and one to collect results from their execution
+
+    Once the workers are prepared, the Executor will listens on an task level
+    ZMQ channel for incoming call requests, which are then proxied to the
+    workers as described above.  This happens in a separate thread.  Another
+    thread is spawned to inversely collect the results as described above and to
+    proxy them to an outgoing ZMQ channel.  The Executor main thread will listen
+    on a 3rd ZMQ channel for control messages, and specifically for termination
+    commands.
+
+    This class takes an executor (currently we set it up to MPI executot) and check
+    if the executor is provided it will use that executor to run the tasks (assuming that
+    these tasks are valid tasks for the provided executors).
+    '''
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, n_workers=None, executor = MPICommExecutor):
+        
+        '''
+        Since it is possible, we might need to provide the n_workers to:
+        MPIExecutor(max_workers = n_workers)
+        '''
+        self._nw      = n_workers
+        self._uid     = os.environ['RP_FUNCS_ID']
+        self._log     = ru.Logger(self._uid,   ns='radical.pilot', path=pwd)
+        self._prof    = ru.Profiler(self._uid, ns='radical.pilot', path=pwd)
+        self._cfg     = ru.read_json('%s/%s.cfg' % (pwd, self._uid))
+        self.Executor = executor
+
+        self._initialize()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _initialize(self):
+        '''
+        set up processes, threads and communication channels
+        '''
+
+        self._prof.prof('init_start', uid=self._uid)
+
+        addr_req  = self._cfg.get('req_get')
+        addr_res  = self._cfg.get('res_put')
+        addr_ctrl = self._cfg.get('ctrl')
+
+        self._log.debug('req get addr: %s', addr_req)
+        self._log.debug('res put addr: %s', addr_res)
+        self._log.debug('ctrl    addr: %s', addr_ctrl)
+
+        assert(addr_req)
+        assert(addr_res)
+        assert(addr_ctrl)
+
+        # connect to
+        #
+        #   - the queue which feeds us tasks
+        #   - the queue were we send completed tasks
+        #   - the command queue (for termination)
+        #
+        self._zmq_req  = ru.zmq.Getter(channel='funcs_req_queue', url=addr_req)
+        self._zmq_res  = ru.zmq.Putter(channel='funcs_res_queue', url=addr_res)
+        self._zmq_ctrl = ru.zmq.Getter(channel='control_pubsub',  url=addr_ctrl)
+
+        # use mp.Queue instances to proxy tasks to the worker processes
+        self._mpq_work    = mp.Queue()
+        self._mpq_result  = mp.Queue()
+
+        # signal for thread termination
+        self._term = mt.Event()
+
+        # start threads to feed / drain the workers
+        self._t_get_work    = mt.Thread(target=self._get_work)
+        self._t_get_results = mt.Thread(target=self._get_results)
+
+        self._t_get_work.daemon    = True
+        self._t_get_results.daemon = True
+
+        self._t_get_work.start()
+        self._t_get_results.start()
+
+        wid  = '%s.%03d' % (self._uid, 1)
+    
+        # FIXME: start the watcher in the background (no termination for now!)
+        self._watcher = mt.Thread(target=self.watch)
+        self._watcher.daemon = True
+        self._watcher.start()
+    
+        # start the work
+        self._work(self._uid, wid)
+        self._prof.prof('init_stop', uid=self._uid)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def watch(self):
+        '''
+        listen on the command channel for things to do (like, terminate).
+        '''
+
+        try:
+            while True:
+
+                msgs = self._zmq_ctrl.get_nowait(100)
+                time.sleep(1)
+
+                if not msgs:
+                    continue
+
+                for msg in msgs:
+
+                    self._prof.prof('cmd', uid=self._uid, msg=msg['cmd'])
+
+                    if msg['cmd'] == 'term':
+
+                        sys.exit(0)
+
+                    else:
+                        self._log.error('unknown command %s', msg)
+
+        finally:
+
+            # kill worker processes
+            # The MPIExecutor will handle the termination so 
+            pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_work(self):
+        '''
+        thread feeding tasks pulled from the ZMQ work queue to worker processes
+        '''
+
+        # FIXME: This drains the qork queue with no regard of load balancing.
+        #        For example, the first <n_cores> tasks may stall this executer
+        #        for a long time, but new tasks are pulled nonetheless, even if
+        #        other executors are not stalling and could execute them timely.
+        #        We should at most fill a cache of limited size.
+
+        while not self._term.is_set():
+
+            tasks = self._zmq_req.get_nowait(1000)
+
+            if tasks:
+
+                self._log.debug('got %d tasks', len(tasks))
+
+                # send task individually to load balance workers
+                for task in tasks:
+                    self._mpq_work.put(task)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_results(self):
+        '''
+        thread feeding back results from to workers to the result ZMQ queue
+        '''
+
+        while not self._term.is_set():
+
+            # we always pull *individual* tasks from the result queue
+            try:
+                task = self._mpq_result.get(block=True, timeout=0.1)
+
+            except queue.Empty:
+                continue
+
+            if task:
+                self._zmq_res.put(task)
+
+    # --------------------------------------------------------------------------
+    #
+    def prepare_func(self, func):
+
+        function_info = {}
+        function_info = pickle.loads(codecs.decode(func.encode(), "base64"))
+
+        code        = function_info["_cud_code"]
+        args        = function_info["_cud_args"]
+        kwargs      = function_info["_cud_kwargs"]
+
+        from radical.pilot.serialize import serializer as serialize
+
+        fn = serialize.FuncSerializer.deserialize(code)
+
+        return fn, args, kwargs
+
+    # --------------------------------------------------------------------------
+    #
+    def _work(self, uid, wid):
+        '''
+        work loop for worker processes: pull a task from the work queue,
+        run it, push the result onto the result queue
+        '''
+
+        self._prof.prof('work_start', comp=wid, uid=uid)
+
+        while True:
+
+            try:
+                task = self._mpq_work.get(block=True, timeout=0.1)
+
+            except queue.Empty:
+                continue
+
+          # import pprint
+          # pprint.pprint(task)
+
+            tid   = task['uid']
+            descr = task['description']
+            exe   = descr['executable']
+            args  = descr.get('arguments', list())
+            pres  = descr.get('pre_exec',  list())
+            cmd   = '%s(%s)' % (exe, ','.join(args))
+
+            self._prof.prof('task_get', comp=wid, uid=tid)
+          # self._log.debug('get %s: %s', tid, cmd)
+
+            def check_obj(obj):
+                '''
+                Check the object type if pickled or not
+                to distinguish between exec and eval
+                '''
+                try:
+                    obj = pickle.loads(codecs.decode(exe.encode(),"base64"))
+                    if isinstance(obj, dict) is True:
+                        return True
+
+                except:
+                    return False
+
+            try:
+                for pre in pres:
+                    if pre.split()[0] == 'import':
+                        for mod in pre.split()[1:]:
+                            if mod not in globals():
+                                globals()[mod] = ru.import_module(mod)
+                                locals() [mod] = globals()[mod]
+
+                if check_obj(exe) is True:
+             
+                    old_stdout = sys.stdout
+                    new_stdout = None
+
+                    try:
+                        sys.stdout = new_stdout = StringIO()
+                        fn, args, kwargs = self.prepare_func(exe)
+                        self._log.debug("Executing function %s!", fn)
+                        with self.Executor(MPI.COMM_WORLD, root=0) as mpi_executor:
+                            self._log.debug("Entered the MPI world with size")
+                            self._log.debug(MPI.COMM_WORLD.Get_size())
+                            self._log.debug(args)
+                            '''
+                            We might need to differntiate on the user level between
+                            1- mpi_executor.submit(fn, *args, *kwargs)
+                            2- mpi_executor.map(fn, range(data))
+                            '''
+                            if executor is not None:
+                               result = mpi_executor.map(fn, args)
+                               self._log.debug("Exited the MPI world")
+                    except Exception as e:
+                        self._log.debug("Setting the function for execution failed due to %s!", e)
+ 
+                        raise
+                    finally:
+                        sys.stdout = old_stdout
+                        self._log.debug("Executing got value of %s!", new_stdout.getvalue())
+                        task['stdout'] = new_stdout.getvalue()
+
+                else:
+                    task['stdout'] = eval(cmd)
+
+                task['stderr'] = None
+                task['state']  = 'DONE'
+            except Exception as e:
+                task['stdout'] = None
+                task['stderr'] = str(e)
+                task['state']  = 'FAILED'
+
+            self._prof.prof('task_put', comp=wid, uid=tid)
+
+            task['wid'] = wid
+            self._mpq_result.put(task)
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__':
+
+    tasker = Tasker()
+    
+
+# ------------------------------------------------------------------------------
+
