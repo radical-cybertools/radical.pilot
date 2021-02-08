@@ -23,16 +23,16 @@ def out(msg):
     sys.stdout.flush()
 
 
-def _close_dfs(signum, frame):
-    out('handling signal %s' % signum)
-    proc = psutil.Process()
-    for f in proc.open_files():
-        out('SIGKILL: close %s' % f[0])
-        os.close(f[1])
-
-
-signal.signal(signal.SIGINT,  _close_dfs)
-signal.signal(signal.SIGTERM, _close_dfs)
+# def _close_dfs(signum, frame):
+#     out('handling signal %s' % signum)
+#     proc = psutil.Process()
+#     for f in proc.open_files():
+#         out('SIGKILL: close %s' % f[0])
+#         os.close(f[1])
+#     sys.exit()
+# 
+# NOTE: this conflicts with the `TERM` signal send by the dispatched process
+# signal.signal(signal.SIGTERM, _close_dfs)
 
 
 # ------------------------------------------------------------------------------
@@ -472,7 +472,6 @@ class Worker(rpu.Component):
 
                     self._res_evt.clear()
 
-
                 self._prof.prof('req_start', uid=task['uid'], msg=self._uid)
 
                 # we got an allocation for this task, and can run it, so apply
@@ -536,7 +535,8 @@ class Worker(rpu.Component):
                     self._result_queue.put([task, '', 'timeout', 1])
                     ru.cancel_main_thread()
                     os.kill(os.getpid(), signal.SIGTERM)
-                    break
+                    os.kill(os.getpid(), signal.SIGKILL)
+                    sys.exit()
         # ----------------------------------------------------------------------
 
         ret = 1  # in case we fall through before ret can be set by the task
