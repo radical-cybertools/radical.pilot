@@ -3,6 +3,7 @@ import os
 import sys
 import copy
 import time
+import json
 
 import threading         as mt
 
@@ -25,12 +26,17 @@ def out(msg):
 #
 class Master(rpu.Component):
 
+    # FIXME: instead of the input and output queue, use the default component
+    #        facilities
+
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg=None, backend='zmq'):
+    def __init__(self, cfg, backend='zmq'):
 
         self._backend = backend  # FIXME: use
 
+        self._uid      = os.environ['RP_TASK_ID']
+        self._name     = os.environ['RP_TASK_NAME']
         self._lock     = ru.Lock('master')
         self._workers  = dict()      # wid: worker
         self._requests = dict()      # bookkeeping of submitted requests
@@ -46,29 +52,62 @@ class Master(rpu.Component):
 
         rpu.Component.__init__(self, cfg, self._session)
 
-        self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
-                             rpc.AGENT_STAGING_INPUT_QUEUE)
-
         self.register_publisher(rpc.STATE_PUBSUB)
         self.register_publisher(rpc.CONTROL_PUBSUB)
 
         self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
-        # set up RU ZMQ Queues for request distribution and result collection
-        req_cfg = ru.Config(cfg={'channel'    : '%s.to_req' % self._uid,
-                                 'type'       : 'queue',
-                                 'uid'        : self._uid + '.req',
-                                 'path'       : os.getcwd(),
-                                 'stall_hwm'  : 0,
-                                 'bulk_size'  : 56})
+        # send new worker tasks and agent input staging / agent scheduler
+        self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
+                             rpc.AGENT_STAGING_INPUT_QUEUE)
 
-        res_cfg = ru.Config(cfg={'channel'    : '%s.to_res' % self._uid,
-                                 'type'       : 'queue',
-                                 'uid'        : self._uid + '.res',
-                                 'path'       : os.getcwd(),
-                                 'stall_hwm'  : 0,
-                                 'bulk_size'  : 56})
+        # set up zmq queues between the agent scheduler and this master so that
+        # we can receive new requests from RP tasks
+        qname = '%s_input_queue' % self._uid
+        input_cfg = ru.Config(cfg={'channel'   : qname,
+                                   'type'      : 'queue',
+                                   'uid'       : '%s_input' % self._uid,
+                                   'path'      : os.getcwd(),
+                                   'stall_hwm' : 0,
+                                   'bulk_size' : 56})
+
+        self._input_queue  = ru.zmq.Queue(input_cfg)
+        self._input_queue.start()
+
+        # begin to receive tasks in that queue
+        self._input_getter = ru.zmq.Getter(qname,
+                                      self._input_queue.addr_get,
+                                      cb=self._receive_tasks)
+
+        # and register that input queue with the scheduler
+        self._log.debug('=== register raptor queue')
+        self.publish(rpc.CONTROL_PUBSUB,
+                      {'cmd': 'register_raptor_queue',
+                       'arg': {'name' : self._uid,
+                               'queue': qname,
+                               'addr' : str(self._input_queue.addr_put)}})
+        self._log.debug('=== registered raptor queue')
+
+        # send completed request tasks to agent output staging / tmgr
+        self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
+                             rpc.AGENT_STAGING_OUTPUT_QUEUE)
+
+        # set up zmq queues between this master and all workers for request
+        # distribution and result collection
+        req_cfg = ru.Config(cfg={'channel'  : '%s.to_req' % self._uid,
+                                 'type'     : 'queue',
+                                 'uid'      : self._uid + '.req',
+                                 'path'     : os.getcwd(),
+                                 'stall_hwm': 0,
+                                 'bulk_size': 56})
+
+        res_cfg = ru.Config(cfg={'channel'  : '%s.to_res' % self._uid,
+                                 'type'     : 'queue',
+                                 'uid'      : self._uid + '.res',
+                                 'path'     : os.getcwd(),
+                                 'stall_hwm': 0,
+                                 'bulk_size': 56})
 
         self._req_queue = ru.zmq.Queue(req_cfg)
         self._res_queue = ru.zmq.Queue(res_cfg)
@@ -125,7 +164,10 @@ class Master(rpu.Component):
         cfg['kind']    = 'master'
         cfg['base']    = pwd
 
-        return ru.Config(cfg=cfg)
+        cfg = ru.Config(cfg=cfg)
+        cfg['uid'] = self._uid
+
+        return cfg
 
 
     # --------------------------------------------------------------------------
@@ -326,9 +368,8 @@ class Master(rpu.Component):
     #
     def stop(self, timeout=None):
 
+        self._log.debug('set term from stop: %s', ru.get_stacktrace())
         self._term.set()
-        if self._thread:
-            self._thread.join()
 
         rpu.Component.stop(self, timeout=timeout)
 
@@ -362,26 +403,39 @@ class Master(rpu.Component):
             self.create_work_items()
         except Exception:
             self._log.exception('failed to create work')
+            self._log.debug('set term from run')
             self._term.set()
 
         # wait for the submitted requests to complete
         while not self._term.is_set():
 
-            # count completed items
-            with self._lock:
-                states = [req.state for req in self._requests.values()]
+            self._log.debug('still alive')
 
-            completed = [s for s in states if s in ['DONE', 'FAILED']]
-
-            self._log.debug('%d =?= %d', len(completed), len(states))
-            if len(completed) == len(states):
-                break
-
-            # FIXME: this should be replaced by an async state check.  Maybe
-            #        subscrive to state updates on the update pubsub?
             time.sleep(1.0)
 
         self._log.debug('=== master term')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _receive_tasks(self, tasks):
+
+        self._log.debug('=== receive tasks')
+
+        requests = list()
+        for task in ru.as_list(tasks):
+
+            self._log.debug('=== req.task get: %s', task['uid'])
+
+            # FIXME: abuse of arguments
+            req = json.loads(task['description']['arguments'][0])
+            req['is_task'] = True
+            req['uid']     = task['uid']
+            req['task']    = task  # this duplicates the request :-/
+            self._log.debug('=== req.task get: %s', task['uid'])
+            requests.append(req)
+
+        self.request(requests)
 
 
     # --------------------------------------------------------------------------
@@ -427,7 +481,7 @@ class Master(rpu.Component):
     #
     def _result_cb(self, msg):
 
-      # self._log.debug('master _result_cb: %s', msg)
+        self._log.debug('=== master _result_cb: %s', msg)
 
         # update result and error information for the corresponding request UID
         uid = msg['req']
@@ -435,15 +489,26 @@ class Master(rpu.Component):
         err = msg['err']
         ret = msg['ret']
 
-        req = self._requests[uid]
-        req.set_result(out, err, ret)
-
         try:
+            req = self._requests[uid]
+            req.set_result(out, err, ret)
+
             new_items = ru.as_list(self.result_cb([req]))
             for item in new_items:
                 self.request(item)
         except:
-            self._log.exception('result callback failed')
+            self._log.exception('==== result callback failed')
+
+        # if the request is a task, also push it into the output queue
+        self._log.debug('=== %s: %s', uid, req.task)
+        if req.task:
+
+            if ret == 0: req.task['target_state'] = rps.DONE
+            else       : req.task['target_state'] = rps.FAILED
+
+            self._log.debug('=== req.task put: %s', req.task['uid'])
+            self.advance(req.task, rps.AGENT_STAGING_OUTPUT_PENDING,
+                                   publish=True, push=True)
 
 
     # --------------------------------------------------------------------------
@@ -453,6 +518,15 @@ class Master(rpu.Component):
         terminate all workers
         '''
 
+        self._log.debug('=== TERM: %s', ru.get_stacktrace())
+
+        # unregister input queue
+        self.publish(rpc.CONTROL_PUBSUB, {
+                    'cmd': 'unregister_raptor_queue',
+                    'arg': {'name' : self._uid,
+                            'queue': self._input_queue.channel}})
+
+        self._log.debug('set term from terminate')
         self._term.set()
         for uid in self._workers:
             self._log.debug('=== master %s sends term to %s', self._uid, uid)

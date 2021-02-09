@@ -39,6 +39,11 @@ class Request(object):
 
 
     @property
+    def task(self):
+        return self._req.get('task')
+
+
+    @property
     def work(self):
         return self._req
 
@@ -58,6 +63,7 @@ class Request(object):
         # FIXME: we should not need to reconstruict the dict
         return {'uid'      : self._uid,
                 'state'    : self._state,
+                'task'     : self._req.get('task'),
                 'cpus'     : self._req.get('cores', 1),
                 'gpus'     : self._req.get('gpus',  0),
                 'timeout'  : self._req.get('timeout'),

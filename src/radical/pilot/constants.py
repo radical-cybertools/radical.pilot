@@ -28,6 +28,8 @@ AGENT_SCHEDULING_QUEUE         = 'agent_scheduling_queue'
 AGENT_EXECUTING_QUEUE          = 'agent_executing_queue'
 AGENT_STAGING_OUTPUT_QUEUE     = 'agent_staging_output_queue'
 
+RAPTOR_SCHEDULING_QUEUE        = 'raptor_scheduling_queue'
+
 AGENT_STAGING_INPUT_COMPONENT  = 'agent_staging_input'
 AGENT_SCHEDULING_COMPONENT     = 'agent_scheduling'
 AGENT_EXECUTING_COMPONENT      = 'agent_executing'

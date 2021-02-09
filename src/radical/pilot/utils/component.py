@@ -14,9 +14,26 @@ from ..          import constants      as rpc
 from ..          import states         as rps
 
 
+# ------------------------------------------------------------------------------
+#
 def out(msg):
     sys.stdout.write('%s\n' % msg)
     sys.stdout.flush()
+
+
+# ------------------------------------------------------------------------------
+#
+_components = list()
+
+
+def _atfork_child():
+    global _components
+    for c in _components:
+        c._subscribers = dict()
+    _components = list()
+
+
+ru.atfork(ru.noop, ru.noop, _atfork_child)
 
 
 # ------------------------------------------------------------------------------
@@ -36,6 +53,9 @@ class ComponentManager(object):
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg):
+
+        global _components
+        _components.append(self)
 
         self._cfg  = ru.Config('radical.pilot.cmgr', cfg=cfg)
         self._sid  = self._cfg.sid

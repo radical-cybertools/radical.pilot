@@ -2,6 +2,7 @@
 
 import os
 import sys
+import json
 
 import radical.utils as ru
 import radical.pilot as rp
@@ -41,11 +42,13 @@ if __name__ == '__main__':
 
         tds = list()
 
-        for i in range(n_masters):
+      # for i in range(n_masters):
+        for i in range(1):
             td = rp.TaskDescription(cfg.master_descr)
-            td.uid            = ru.generate_id('master.%(item_counter)06d',
-                                        ru.ID_CUSTOM,
-                                        ns=session.uid)
+            td.uid            = 'raptor.test'
+          # td.uid            = ru.generate_id('master.%(item_counter)06d',
+          #                                    ru.ID_CUSTOM,
+          #                                    ns=session.uid)
             td.executable     = "/bin/sh"
             td.cpu_threads    = cpn
             td.gpu_processes  = gpn
@@ -78,8 +81,30 @@ if __name__ == '__main__':
         pilot = pmgr.submit_pilots(pd)
         task  = tmgr.submit_tasks(tds)
 
+        requests = list()
+        for i in range(2):
+
+            td  = rp.TaskDescription()
+            uid = 'raptor.req.%06d' % i
+            # ------------------------------------------------------------------
+            # work serialization goes here
+            work = json.dumps({'mode'      :  'call',
+                               'cores'     :  1,
+                               'timeout'   :  100,
+                               'data'      : {'method': 'hello',
+                                              'kwargs': {'count': i,
+                                                         'uid': uid}}})
+            # ------------------------------------------------------------------
+            requests.append(rp.TaskDescription({
+                               'uid'       : uid,
+                               'executable': 'raptor',
+                               'scheduler' : 'raptor.test',
+                               'arguments' : [work]}))
+
+        tmgr.submit_tasks(requests)
+
         tmgr.add_pilots(pilot)
-        tmgr.wait_tasks()
+        tmgr.wait_tasks(uids=[r['uid'] for r in requests])
 
     finally:
         session.close(download=True)

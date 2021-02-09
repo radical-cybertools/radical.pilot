@@ -40,6 +40,7 @@ PILOT                  = 'pilot'
 STDOUT                 = 'stdout'
 STDERR                 = 'stderr'
 RESTARTABLE            = 'restartable'
+SCHEDULER              = 'scheduler'
 TAGS                   = 'tags'
 TAG                    = 'tag'  # temporary: will be merged with "tags"
                                 # (for agent.scheduler.continuous.Continuous)
@@ -259,6 +260,11 @@ class TaskDescription(ru.Description):
        default: `False`
 
 
+    .. data:: scheduler
+
+       Request the task to be handled by a specific agent scheduler
+
+
     .. data:: tags
 
        Configuration specific tags which influence task scheduling and
@@ -373,6 +379,7 @@ class TaskDescription(ru.Description):
                MEM_PER_PROCESS : int         ,
 
                RESTARTABLE     : bool        ,
+               SCHEDULER       : str         ,
                TAGS            : {None: None},
                TAG             : None        ,
                METADATA        : None        ,
@@ -408,6 +415,7 @@ class TaskDescription(ru.Description):
                MEM_PER_PROCESS : 0           ,
 
                RESTARTABLE     : False       ,
+               SCHEDULER       : ''          ,
                TAGS            : dict()      ,
                TAG             : None        ,
                METADATA        : None        ,

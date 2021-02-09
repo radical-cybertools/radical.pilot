@@ -132,7 +132,8 @@ class Worker(rpu.Component):
 
         # `info` is a placeholder for any additional meta data communicated to
         # the worker.  Only first rank publishes.
-        if self._cfg['rank'] == 0:
+        if self._cfg['rank'] == 0 or True:
+            self._log.debug('=== register')
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
                                               'arg': {'uid' : self._cfg['wid'],
                                                       'info': self._info}})
@@ -495,7 +496,7 @@ class Worker(rpu.Component):
             mode = task['mode']
             assert(mode in self._modes), 'no such call mode %s' % mode
 
-            self._log.debug('=== debug %s: %s', task['uid'], task)
+            self._log.debug('=== dispatch %s', task['uid'])
             tout = task.get('timeout')
             self._log.debug('dispatch with tout %s', tout)
 
@@ -577,7 +578,7 @@ class Worker(rpu.Component):
 
         try:
             task, out, err, ret = result
-          # self._log.debug('result cb: task %s', task['uid'])
+            self._log.debug('result cb: task %s', task['uid'])
 
             with self._plock:
                 pid  = task['pid']
@@ -593,6 +594,7 @@ class Worker(rpu.Component):
 
             self._res_put.put(res)
             self._prof.prof('req_stop', uid=task['uid'], msg=self._uid)
+
         except:
             self._log.exception('result cb failed')
             raise
