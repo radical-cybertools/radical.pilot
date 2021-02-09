@@ -1,3 +1,4 @@
+# pylint: disable=unused-argument
 
 __copyright__ = 'Copyright 2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
