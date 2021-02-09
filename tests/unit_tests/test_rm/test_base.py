@@ -55,3 +55,4 @@ class TestBaseResourceManager(TestCase):
 
 
 # ------------------------------------------------------------------------------
+# pylint: enable=unused-argument
