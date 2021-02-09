@@ -173,12 +173,13 @@ class TestContinuous(TestCase):
         task['uid'] = cfg[1]['task']['uid']
         task['description'] = cfg[1]['task']['description']
         component.nodes = cfg[1]['setup']['lm']['slots']['nodes']
-        component._tag_history = dict()
+        component._tag_history       = dict()
         component._rm_cores_per_node = 32
         component._rm_gpus_per_node  = 2
         component._rm_lfs_per_node   = {"size": 0, "path": "/dev/null"}
         component._rm_mem_per_node   = 1024
         component._rm_lm_info        = dict()
+        component._rm_partitions     = dict()
         component._log               = ru.Logger('dummy')
         component._dvm_host_list     = None
         component._node_offset       = 0
