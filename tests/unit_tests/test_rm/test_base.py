@@ -29,17 +29,17 @@ class TestBaseResourceManager(TestCase):
 
         # required config keys: `cores`, `gpus`
         with self.assertRaises(KeyError):
-            _ = ResourceManager(cfg={'cores': 1}, session=mock.Mock())
+            _ = ResourceManager(cfg={'cores': 1}, session=mock.Mock())  # noqa
 
         with self.assertRaises(KeyError):
-            _ = ResourceManager(cfg={'gpus': 1}, session=mock.Mock())
+            _ = ResourceManager(cfg={'gpus': 1}, session=mock.Mock())  # noqa
 
         default_cfg = {'cores': 1, 'gpus': 0}
 
         # RuntimeError if `self.cores_per_node` or `self.node_list` not set,
         # these attributes are set by an overwritten method `_configure`
         with self.assertRaises(RuntimeError):
-            _ = ResourceManager(cfg=default_cfg, session=mock.Mock())
+            _ = ResourceManager(cfg=default_cfg, session=mock.Mock())  # noqa
 
         component = NewResourceManager(cfg=default_cfg, session=mock.Mock())
 
