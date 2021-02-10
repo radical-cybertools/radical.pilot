@@ -81,13 +81,11 @@ class Master(rpu.Component):
                                       cb=self._receive_tasks)
 
         # and register that input queue with the scheduler
-        self._log.debug('=== register raptor queue')
         self.publish(rpc.CONTROL_PUBSUB,
                       {'cmd': 'register_raptor_queue',
                        'arg': {'name' : self._uid,
                                'queue': qname,
                                'addr' : str(self._input_queue.addr_put)}})
-        self._log.debug('=== registered raptor queue')
 
         # send completed request tasks to agent output staging / tmgr
         self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
@@ -413,26 +411,20 @@ class Master(rpu.Component):
 
             time.sleep(1.0)
 
-        self._log.debug('=== master term')
-
 
     # --------------------------------------------------------------------------
     #
     def _receive_tasks(self, tasks):
 
-        self._log.debug('=== receive tasks')
-
         requests = list()
         for task in ru.as_list(tasks):
-
-            self._log.debug('=== req.task get: %s', task['uid'])
 
             # FIXME: abuse of arguments
             req = json.loads(task['description']['arguments'][0])
             req['is_task'] = True
             req['uid']     = task['uid']
             req['task']    = task  # this duplicates the request :-/
-            self._log.debug('=== req.task get: %s', task['uid'])
+
             requests.append(req)
 
         self.request(requests)
@@ -459,8 +451,6 @@ class Master(rpu.Component):
                 objs.append(request)
 
         # push the request message (as dictionary) onto the request queue
-        self._log.debug('=== put %d: [%s]', len(dicts),
-                         [r['uid'] for r in dicts])
         self._req_put.put(dicts)
 
         # return the request to the master script for inspection etc.
@@ -481,8 +471,6 @@ class Master(rpu.Component):
     #
     def _result_cb(self, msg):
 
-        self._log.debug('=== master _result_cb: %s', msg)
-
         # update result and error information for the corresponding request UID
         uid = msg['req']
         out = msg['out']
@@ -496,10 +484,9 @@ class Master(rpu.Component):
             self.result_cb([req])
 
         except:
-            self._log.exception('==== result callback failed')
+            self._log.exception('result callback failed')
 
         # if the request is a task, also push it into the output queue
-        self._log.debug('=== %s: %s', uid, req.task)
         if req.task:
 
             req.task['stdout']    = out
@@ -509,7 +496,6 @@ class Master(rpu.Component):
             if ret == 0: req.task['target_state'] = rps.DONE
             else       : req.task['target_state'] = rps.FAILED
 
-            self._log.debug('=== req.task put: %s', req.task['uid'])
             self.advance(req.task, rps.AGENT_STAGING_OUTPUT_PENDING,
                                    publish=True, push=True)
 
@@ -521,8 +507,6 @@ class Master(rpu.Component):
         terminate all workers
         '''
 
-        self._log.debug('=== TERM: %s', ru.get_stacktrace())
-
         # unregister input queue
         self.publish(rpc.CONTROL_PUBSUB, {
                     'cmd': 'unregister_raptor_queue',
@@ -532,7 +516,6 @@ class Master(rpu.Component):
         self._log.debug('set term from terminate')
         self._term.set()
         for uid in self._workers:
-            self._log.debug('=== master %s sends term to %s', self._uid, uid)
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_terminate',
                                               'arg': {'uid': uid}})
 
@@ -542,10 +525,10 @@ class Master(rpu.Component):
             states = [self._workers[uid]['state'] for uid in uids]
             if set(states) == {'DONE'}:
                 break
-            self._log.debug('=== states: %s', states)
+            self._log.debug('term states: %s', states)
             time.sleep(1)
 
-        self._log.debug('=== all workers terminated')
+        self._log.debug('all workers terminated')
 
 
 # ------------------------------------------------------------------------------
