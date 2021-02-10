@@ -52,7 +52,7 @@ class MyMaster(rp.raptor.Master):
         # Work items MUST be serializable dictionaries.
         idx   = rank
         total = int(eval(self._cfg.workload.total))                       # noqa
-        while idx < 1:
+        while idx < total:
 
             uid  = 'request.%06d' % idx
             item = {'uid'    : uid,
@@ -63,7 +63,7 @@ class MyMaster(rp.raptor.Master):
                     'data'   : {'method': 'hello',
                                 'kwargs': {'count': idx,
                                            'uid'  : uid}}}
-          # self.request(item)
+            self.request(item)
             idx += world_size
 
         self._prof.prof('create_stop')
@@ -113,7 +113,7 @@ if __name__ == '__main__':
     # those workers and execute them.  Insert one smaller worker (see above)
     # NOTE: this assumes a certain worker size / layout
     print('workers: %d' % n_workers)
-    master.submit(descr=descr, count=1, cores=cpn, gpus=gpn)
+    master.submit(descr=descr, count=n_workers, cores=cpn, gpus=gpn)
 
     # wait until `m` of those workers are up
     # This is optional, work requests can be submitted before and will wait in

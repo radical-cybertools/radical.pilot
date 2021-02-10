@@ -3,6 +3,7 @@
 import os
 import sys
 import json
+import time
 
 import radical.utils as ru
 import radical.pilot as rp
@@ -82,7 +83,7 @@ if __name__ == '__main__':
         task  = tmgr.submit_tasks(tds)
 
         requests = list()
-        for i in range(2):
+        for i in range(eval(cfg.workload.total)):
 
             td  = rp.TaskDescription()
             uid = 'raptor.req.%06d' % i
@@ -100,11 +101,15 @@ if __name__ == '__main__':
                                'executable': 'raptor',
                                'scheduler' : 'raptor.test',
                                'arguments' : [work]}))
+            break
+
 
         tmgr.submit_tasks(requests)
 
         tmgr.add_pilots(pilot)
         tmgr.wait_tasks(uids=[r['uid'] for r in requests])
+
+        time.sleep(1000)
 
     finally:
         session.close(download=True)
