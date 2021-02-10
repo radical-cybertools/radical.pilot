@@ -154,7 +154,7 @@ class PRTE2(LaunchMethod):
             # FIXME: need to derive the message size from DVM size - smaller
             #        DVMs will never need large messages, as they can't run
             #        large tasks
-            prte += ' --prtemca ptl_base_max_msg_size %d'  % PTL_MAX_MSG_SIZE
+            prte += ' --pmixmca ptl_base_max_msg_size %d'  % PTL_MAX_MSG_SIZE
             prte += ' --prtemca routed_radix %d' % dvm_size
             # 2 tweaks on Summit, which should not be needed in the long run:
             # - ensure 1 ssh per dvm
@@ -361,7 +361,7 @@ class PRTE2(LaunchMethod):
                     dvm_id = _dvm_id
                     break
 
-        flags += ' --prtemca ptl_base_max_msg_size %d' % PTL_MAX_MSG_SIZE
+        flags += ' --pmixmca ptl_base_max_msg_size %d' % PTL_MAX_MSG_SIZE
         flags += ' --verbose'  # needed to get prte profile events
 
         task_args_str = self._create_arg_string(task_args)
