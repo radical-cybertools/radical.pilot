@@ -43,13 +43,11 @@ if __name__ == '__main__':
 
         tds = list()
 
-      # for i in range(n_masters):
-        for i in range(1):
+        for i in range(n_masters):
             td = rp.TaskDescription(cfg.master_descr)
-            td.uid            = 'raptor.test'
-          # td.uid            = ru.generate_id('master.%(item_counter)06d',
-          #                                    ru.ID_CUSTOM,
-          #                                    ns=session.uid)
+            td.uid            = ru.generate_id('master.%(item_counter)06d',
+                                               ru.ID_CUSTOM,
+                                               ns=session.uid)
             td.executable     = "/bin/sh"
             td.cpu_threads    = cpn
             td.gpu_processes  = gpn
@@ -86,7 +84,7 @@ if __name__ == '__main__':
         for i in range(eval(cfg.workload.total)):
 
             td  = rp.TaskDescription()
-            uid = 'raptor.req.%06d' % i
+            uid = 'req.%06d' % i
             # ------------------------------------------------------------------
             # work serialization goes here
             work = json.dumps({'mode'      :  'call',
@@ -98,8 +96,8 @@ if __name__ == '__main__':
             # ------------------------------------------------------------------
             requests.append(rp.TaskDescription({
                                'uid'       : uid,
-                               'executable': 'raptor',
-                               'scheduler' : 'raptor.test',
+                               'executable': '-',
+                               'scheduler' : 'master.%06d' % (i % n_masters),
                                'arguments' : [work]}))
             break
 
@@ -109,7 +107,7 @@ if __name__ == '__main__':
         tmgr.add_pilots(pilot)
         tmgr.wait_tasks(uids=[r['uid'] for r in requests])
 
-        time.sleep(1000)
+        time.sleep(120)
 
     finally:
         session.close(download=True)
