@@ -44,18 +44,18 @@ implementation. The user is **strongly invited** to carefully read that
 section before starting to use RP.
 
 .. It allows a user to run large numbers of computational tasks (called
-.. ``ComputeUnits``) concurrently and sequentially, on one or more remote
-.. ``ComputePilots`` that RADICAL-Pilot can start transparently on a multitude
+.. ``Tasks``) concurrently and sequentially, on one or more remote
+.. ``Pilots`` that RADICAL-Pilot can start transparently on a multitude
 .. of different distributed resources, like HPC clusters and Clouds.
 
 .. In this model, a part (slice) of a resource is acquired by a user's
-.. application so that the application can directly schedule ``ComputeUnits``
+.. application so that the application can directly schedule ``Tasks``
 .. into that resource slice, rather than going through the system's job
 .. scheduler.  In many cases, this can drastically shorten overall execution
-.. time as the individual ``ComputeUnits`` don't have to wait in the system's
-.. scheduler queue but can execute directly on the ``ComputePilots``.
+.. time as the individual ``Tasks`` don't have to wait in the system's
+.. scheduler queue but can execute directly on the ``Pilots``.
 
-.. ``ComputeUnits`` can be sequential, multi-threaded (e.g. OpenMP), parallel
+.. ``Tasks`` can be sequential, multi-threaded (e.g. OpenMP), parallel
 .. process (e.g. MPI) executables, Hadoop or Spark applications.
 
 

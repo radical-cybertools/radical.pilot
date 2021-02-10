@@ -4,13 +4,10 @@ __license__   = 'MIT'
 
 
 import os
-import sys
 import copy
 import stat
 import time
 import pprint
-import subprocess          as sp
-import multiprocessing     as mp
 
 import radical.utils       as ru
 
@@ -20,7 +17,6 @@ from ..   import constants as rpc
 from ..db import DBSession
 
 from .resource_manager import ResourceManager
-from .launch_method    import LaunchMethod
 
 
 # ------------------------------------------------------------------------------
@@ -56,8 +52,14 @@ class Agent_0(rpu.Worker):
 
         # this is the earliest point to sync bootstrap and agent profiles
         prof = ru.Profiler(ns='radical.pilot', name='agent.0')
-        prof.prof('sync_rel', uid=cfg.pid, msg='agent.0')
         prof.prof('hostname', uid=cfg.pid, msg=ru.get_hostname())
+
+        # store the original environment in `env/orig.env`.  Ensure that current
+        # env settings are removed, to always negate the `pre_bootstrap_*`
+        # directives
+        ru.rec_makedir('./env/')
+        orig = ru.env_read('./orig.env')
+        ru.env_prep(orig, unset=os.environ, script_path='./env/orig.env')
 
         # connect to MongoDB for state push/pull
         self._connect_db()
@@ -152,8 +154,11 @@ class Agent_0(rpu.Worker):
         self._rm = ResourceManager.create(name=self._cfg.resource_manager,
                                            cfg=self._cfg, session=self._session)
 
-        # add the resource manager information to our own config
+        # Add the resource manager information to our own config.  The RM will
+        # also initialize and configure the launch methods, and LM info may are
+        # also added to the config.
         self._cfg['rm_info'] = self._rm.rm_info
+        self._cfg['lm_info'] = self._rm.lm_info
 
 
     # --------------------------------------------------------------------------
@@ -178,14 +183,14 @@ class Agent_0(rpu.Worker):
 
         # some of the bridge addresses also need to be exposed to the workload
         if app_comm:
-            if 'unit_environment' not in self._cfg:
-                self._cfg['unit_environment'] = dict()
+            if 'task_environment' not in self._cfg:
+                self._cfg['task_environment'] = dict()
             for ac in app_comm:
                 if ac not in self._cfg['bridges']:
                     raise RuntimeError('missing app_comm %s' % ac)
-                self._cfg['unit_environment']['RP_%s_IN' % ac.upper()] = \
+                self._cfg['task_environment']['RP_%s_IN' % ac.upper()] = \
                         self._cfg['bridges'][ac]['addr_in']
-                self._cfg['unit_environment']['RP_%s_OUT' % ac.upper()] = \
+                self._cfg['task_environment']['RP_%s_OUT' % ac.upper()] = \
                         self._cfg['bridges'][ac]['addr_out']
 
 
@@ -194,7 +199,7 @@ class Agent_0(rpu.Worker):
     def initialize(self):
 
         # registers the staging_input_queue as this is what we want to push
-        # units to
+        # tasks to
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
                              rpc.AGENT_STAGING_INPUT_QUEUE)
 
@@ -202,8 +207,8 @@ class Agent_0(rpu.Worker):
         self.register_timed_cb(self._agent_command_cb,
                                timer=self._cfg['db_poll_sleeptime'])
 
-        # register idle callback to pull for units
-        self.register_timed_cb(self._check_units_cb,
+        # register idle callback to pull for tasks
+        self.register_timed_cb(self._check_tasks_cb,
                                timer=self._cfg['db_poll_sleeptime'])
 
         # sub-agents are started, components are started, bridges are up: we are
@@ -212,8 +217,7 @@ class Agent_0(rpu.Worker):
                  'uid'              : self._pid,
                  'state'            : rps.PMGR_ACTIVE,
                  'resource_details' : {
-                     'lm_info'      : self._rm.lm_info.get('version_info'),
-                     'lm_detail'    : self._rm.lm_info.get('lm_detail'),
+                     'lm_info'      : self._rm.lm_info,
                      'rm_info'      : self._rm.rm_info},
                  '$set'             : ['resource_details']}
         self.advance(pilot, publish=True, push=False)
@@ -339,14 +343,14 @@ class Agent_0(rpu.Worker):
 
         self._log.debug('start_sub_agents')
 
+        # store the current environment as the sub-agents will use the same
+        ru.env_prep(os.environ, script_path='./env/agent.env')
+
         # the configs are written, and the sub-agents can be started.  To know
         # how to do that we create the agent launch method, have it creating
         # the respective command lines per agent instance, and run via
         # popen.
         #
-        # actually, we only create the agent_lm once we really need it for
-        # non-local sub_agents.
-        agent_lm   = None
         for sa in self._cfg['agents']:
 
             target = self._cfg['agents'][sa]['target']
@@ -357,12 +361,6 @@ class Agent_0(rpu.Worker):
                 cmdline = '/bin/sh -l %s/bootstrap_2.sh %s' % (self._pwd, sa)
 
             elif target == 'node':
-
-                if not agent_lm:
-                    agent_lm = LaunchMethod.create(
-                        name    = self._cfg['agent_launch_method'],
-                        cfg     = self._cfg,
-                        session = self._session)
 
                 node = self._cfg['rm_info']['agent_nodes'][sa]
                 # start agent remotely, use launch method
@@ -375,28 +373,29 @@ class Agent_0(rpu.Worker):
                 #        out for the moment, which will make this unable to
                 #        work with a number of launch methods.  Can the
                 #        offset computation be moved to the ResourceManager?
-                bs_name = "%s/bootstrap_2.sh" % (self._pwd)
-                ls_name = "%s/%s.sh" % (self._pwd, sa)
+                bs_name       = "%s/bootstrap_2.sh" % (self._pwd)
+                launch_script = "%s/%s.launch.sh"   % (self._pwd, sa)
+                exec_script   = "%s/%s.exec.sh"     % (self._pwd, sa)
                 slots = {
                     'cpu_processes'    : 1,
                     'cpu_threads'      : 1,
                     'gpu_processes'    : 0,
                     'gpu_threads'      : 0,
-                  # 'nodes'            : [[node[0], node[1], [[0]], []]],
-                    'nodes'            : [{'name'    : node[0],
-                                           'uid'     : node[1],
+                  # 'ranks'            : [[node[0], node[1], [[0]], []]],
+                    'ranks'            : [{'node'    : node[0],
+                                           'node_id' : node[1],
                                            'core_map': [[0]],
                                            'gpu_map' : [],
                                            'lfs'     : {'path': '/tmp', 'size': 0}
                                          }],
                     'cores_per_node'   : self._cfg['rm_info']['cores_per_node'],
                     'gpus_per_node'    : self._cfg['rm_info']['gpus_per_node'],
-                    'lm_info'          : self._cfg['rm_info']['lm_info'],
+                    'lm_info'          : self._cfg['lm_info'],
                 }
-                agent_cmd = {
+                agent_task = {
                     'uid'              : sa,
                     'slots'            : slots,
-                    'unit_sandbox_path': self._pwd,
+                    'task_sandbox_path': self._pwd,
                     'description'      : {'cpu_processes'    : 1,
                                           'gpu_process_type' : 'posix',
                                           'gpu_thread_type'  : 'posix',
@@ -405,63 +404,40 @@ class Agent_0(rpu.Worker):
                                           'arguments'        : [bs_name, sa],
                                          }
                 }
-                cmd, hop = agent_lm.construct_command(agent_cmd,
-                        launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "%s"' % ls_name)
 
-                with open (ls_name, 'w') as ls:
-                    # note that 'exec' only makes sense if we don't add any
-                    # commands (such as post-processing) after it.
-                    ls.write('#!/bin/sh\n\n')
-                    for k,v in agent_cmd['description'].get('environment', {}).items():
-                        ls.write('export "%s"="%s"\n' % (k, v))
-                    ls.write('\n')
-                    for pe_cmd in agent_cmd['description'].get('pre_exec', []):
-                        ls.write('%s\n' % pe_cmd)
-                    ls.write('\n')
-                    ls.write('exec %s\n\n' % cmd)
-                    st = os.stat(ls_name)
-                    os.chmod(ls_name, st.st_mode | stat.S_IEXEC)
+                # find a launcher to use
+                launcher = self._rm.find_launcher(agent_task)
+                if not launcher:
+                    raise RuntimeError('no launch method found for sub agent')
 
-                if hop : cmdline = hop
-                else   : cmdline = ls_name
+                with open(launch_script, 'w') as fout:
 
-            # ------------------------------------------------------------------
-            class _SA(mp.Process):
+                    fout.write('#!/bin/sh\n\n')
+                    cmds = launcher.get_launcher_env()
+                    for cmd in cmds:
+                        fout.write('%s || exit 1\n' % cmd)
+                    fout.write('%s\n' % launcher.get_launch_cmd(agent_task,
+                                                                exec_script))
+                    fout.write('exit $?\n\n')
 
-                def __init__(self, sa, cmd, log):
-                    self._name = sa
-                    self._cmd  = cmd.split()
-                    self._log  = log
-                    self._proc = None
-                    super(_SA, self).__init__(name=self._name)
+                with open(exec_script, 'w') as fout:
 
-                    self.start()
+                    # FIXME: source agent env
+                    fout.write('#!/bin/sh\n\n')
+                    fout.write('. ./env/agent.env\n')
+                    fout.write('/bin/sh -l ./bootstrap_2.sh %s\n\n' % sa)
 
-
-                def run(self):
-
-                    sys.stdout = open('%s.out' % self._name, 'w')
-                    sys.stderr = open('%s.err' % self._name, 'w')
-                    out        = open('%s.out' % self._name, 'w')
-                    err        = open('%s.err' % self._name, 'w')
-                    self._proc = sp.Popen(args=self._cmd, stdout=out, stderr=err)
-                    self._log.debug('sub-agent %s spawned [%s]', self._name,
-                            self._proc)
-
-                    assert(self._proc)
-
-                    # FIXME: lifetime, use daemon agent launcher
-                    while True:
-                        time.sleep(0.1)
-                        if self._proc.poll() is None:
-                            return True   # all is well
-                        else:
-                            return False  # proc is gone - terminate
-            # ------------------------------------------------------------------
+                # make sure scripts are executable
+                st = os.stat(launch_script)
+                st = os.stat(exec_script)
+                os.chmod(launch_script, st.st_mode | stat.S_IEXEC)
+                os.chmod(exec_script,   st.st_mode | stat.S_IEXEC)
 
             # spawn the sub-agent
+            cmdline = './%s' % launch_script
             self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
-            _SA(sa, cmdline, log=self._log)
+            ru.sh_callout_bg(launch_script, stdout='%s.out' % sa,
+                                            stderr='%s.err' % sa)
 
             # FIXME: register heartbeats?
 
@@ -486,7 +462,7 @@ class Agent_0(rpu.Worker):
         # Check if there's a command waiting
         # FIXME: this pull should be done by the update worker, and commands
         #        should then be communicated over the command pubsub
-        # FIXME: commands go to pmgr, umgr, session docs
+        # FIXME: commands go to pmgr, tmgr, session docs
         # FIXME: check if pull/wipe are atomic
         # FIXME: long runnign commands can time out on hb
         retdoc = self._dbs._c.find_and_modify(
@@ -525,9 +501,9 @@ class Agent_0(rpu.Worker):
 
                 return False  # we are done
 
-            elif cmd == 'cancel_units':
-                self._log.info('cancel_units cmd')
-                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_units',
+            elif cmd == 'cancel_tasks':
+                self._log.info('cancel_tasks cmd')
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_tasks',
                                                   'arg' : arg})
             else:
                 self._log.warn('could not interpret cmd "%s" - ignore', cmd)
@@ -548,8 +524,6 @@ class Agent_0(rpu.Worker):
         '''
 
         # FIXME: implement a timeout, and/or a registry of rpc clients
-
-        self._log.debug('=== rpc check')
 
         retdoc = self._dbs._c.find_and_modify(
                     query ={'uid' : self._pid},
@@ -601,7 +575,7 @@ class Agent_0(rpu.Worker):
         # ready to receive and proxy rpc response -- forward rpc request on
         # control channel
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'rpc_req',
-                                          'arg' : rpc_req})
+                                          'arg' :  rpc_req})
 
         return True  # keeb cb registered (self._check_rpc)
 
@@ -615,32 +589,32 @@ class Agent_0(rpu.Worker):
         testing, and `prep_env` for environment preparation requests.
         '''
 
-        cmd     = msg['cmd']
-        rpc_req = msg['arg']
-
-        rpc_res = {'uid': rpc_req['uid']}
+        cmd = msg['cmd']
+        arg = msg['arg']
 
         if cmd != 'rpc_req':
             # not an rpc request
             return True
 
-        req = rpc_req['rpc']
+        req = arg['rpc']
         if req not in ['hello', 'prep_env']:
             # we don't handle that request
             return True
 
+        rpc_res = {'uid': arg['uid']}
         try:
             if req == 'hello'   :
-                ret = 'hello %s' % ' '.join(rpc_req['arg'])
+                ret = 'hello %s' % ' '.join(arg['arg'])
 
             elif req == 'prep_env':
-                env_id   = rpc_req['arg']['env_id']
-                env_spec = rpc_req['arg']['env_spec']
-                ret = self._prepare_env(env_id, env_spec)
+                env_id   = arg['arg']['env_id']
+                env_spec = arg['arg']['env_spec']
+                self._prepare_env(env_id, env_spec)
+                ret = (env_id, env_spec)
 
         except Exception as e:
             # request failed for some reason - indicate error
-            rpc_res['err'] = str(e)
+            rpc_res['err'] = repr(e)
             rpc_res['ret'] = None
 
         else:
@@ -650,7 +624,7 @@ class Agent_0(rpu.Worker):
 
         # publish the response (success or failure)
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
-                                          'arg': rpc_res})
+                                          'arg':  rpc_res})
         return True
 
 
@@ -673,58 +647,58 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _check_units_cb(self):
+    def _check_tasks_cb(self):
 
-        # Check for compute units waiting for input staging and log pull.
+        # Check for tasks waiting for input staging and log pull.
         #
         # FIXME: Unfortunately, 'find_and_modify' is not bulkable, so we have
-        #        to use 'find'.  To avoid finding the same units over and over
+        #        to use 'find'.  To avoid finding the same tasks over and over
         #        again, we update the 'control' field *before* running the next
         #        find -- so we do it right here.
         #        This also blocks us from using multiple ingest threads, or from
-        #        doing late binding by unit pull :/
-        unit_cursor = self._dbs._c.find({'type'    : 'unit',
+        #        doing late binding by task pull :/
+        task_cursor = self._dbs._c.find({'type'    : 'task',
                                          'pilot'   : self._pid,
                                          'control' : 'agent_pending'})
-        if not unit_cursor.count():
-            self._log.info('units pulled:    0')
+        if not task_cursor.count():
+            self._log.info('tasks pulled:    0')
             return True
 
-        # update the units to avoid pulling them again next time.
-        unit_list = list(unit_cursor)
-        unit_uids = [unit['uid'] for unit in unit_list]
+        # update the tasks to avoid pulling them again next time.
+        task_list = list(task_cursor)
+        task_uids = [task['uid'] for task in task_list]
 
-        self._dbs._c.update({'type'  : 'unit',
-                             'uid'   : {'$in'     : unit_uids}},
+        self._dbs._c.update({'type'  : 'task',
+                             'uid'   : {'$in'     : task_uids}},
                             {'$set'  : {'control' : 'agent'}},
                             multi=True)
 
-        self._log.info("units pulled: %4d", len(unit_list))
-        self._prof.prof('get', msg='bulk: %d' % len(unit_list), uid=self._pid)
+        self._log.info("tasks pulled: %4d", len(task_list))
+        self._prof.prof('get', msg='bulk: %d' % len(task_list), uid=self._pid)
 
-        for unit in unit_list:
+        for task in task_list:
 
-            # make sure the units obtain env settings (if needed)
-            if 'unit_environment' in self._cfg:
-                if not unit['description'].get('environment'):
-                    unit['description']['environment'] = dict()
-                for k,v in self._cfg['unit_environment'].items():
-                    unit['description']['environment'][k] = v
+            # make sure the tasks obtain env settings (if needed)
+            if 'task_environment' in self._cfg:
+                if not task['description'].get('environment'):
+                    task['description']['environment'] = dict()
+                for k,v in self._cfg['task_environment'].items():
+                    task['description']['environment'][k] = v
 
             # we need to make sure to have the correct state:
-            unit['state'] = rps._unit_state_collapse(unit['states'])
-            self._prof.prof('get', uid=unit['uid'])
+            task['state'] = rps._task_state_collapse(task['states'])
+            self._prof.prof('get', uid=task['uid'])
 
-            # FIXME: raise or fail unit!
-            if unit['state'] != rps.AGENT_STAGING_INPUT_PENDING:
-                self._log.error('invalid state: %s', (pprint.pformat(unit)))
+            # FIXME: raise or fail task!
+            if task['state'] != rps.AGENT_STAGING_INPUT_PENDING:
+                self._log.error('invalid state: %s', (pprint.pformat(task)))
 
-            unit['control'] = 'agent'
+            task['control'] = 'agent'
 
         # now we really own the CUs, and can start working on them (ie. push
         # them into the pipeline).  We don't publish nor profile as advance,
         # since that happened already on the module side when the state was set.
-        self.advance(unit_list, publish=False, push=True)
+        self.advance(task_list, publish=False, push=True)
 
         return True
 

@@ -53,48 +53,24 @@ PWD = os.getcwd()
 #
 class LaunchMethod(object):
 
-    # List of environment variables that designated Launch Methods should export
-    # FIXME: we should find out what env vars are changed or added by
-    #        cud.pre_exec, and then should also export those.  That would make
-    #        our launch script ore complicated though...
-    EXPORT_ENV_VARIABLES = [
-        'LD_LIBRARY_PATH',
-        'PATH',
-        'PYTHONPATH',
-        'OMP_NUM_THREADS',
-        'CUDA_VISIBLE_DEVICES',
-        'RP_AGENT_ID',
-        'RP_GTOD',
-        'RP_PILOT_ID',
-        'RP_PILOT_STAGING',
-        'RP_PROF',
-        'RP_SESSION_ID',
-        'RP_SPAWNER_ID',
-        'RP_TMP',
-        'RP_UNIT_ID',
-        'RP_UNIT_NAME',
-        'RP_PILOT_SANDBOX',
-        'RADICAL_BASE'
-    ]
-
     MPI_FLAVOR_OMPI    = 'OMPI'
     MPI_FLAVOR_HYDRA   = 'HYDRA'
     MPI_FLAVOR_UNKNOWN = 'unknown'
 
+
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, session):
+    def __init__(self, name, cfg, log, prof):
 
-        self.name     = name
-        self._cfg     = cfg
-        self._session = session
-        self._log     = self._session._log    # pylint: disable=protected-access
-        self._log.debug('create LaunchMethod: %s', type(self))
+        log.debug('===== lm base init start')
+        self.name  = name
+        self._cfg  = cfg
+        self._log  = log
+        self._prof = prof
+        self._pwd  = os.getcwd()
 
-        # A per-launch_method list of env vars to remove from the CU env
-        self.env_removables = []
-
-        self._configure()
+        self._info = self._cfg.get('lm_info', {}).get(self.name)
+        log.debug('===== lm base init stop: %s', self._info)
 
 
     # --------------------------------------------------------------------------
@@ -102,8 +78,9 @@ class LaunchMethod(object):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, cfg, session):
+    def create(cls, name, cfg, log, prof):
 
+        log.debug('===== lm create %s start', name)
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
             raise TypeError("LaunchMethod create only available to base class!")
@@ -128,24 +105,6 @@ class LaunchMethod(object):
         from .spark          import Spark
         from .srun           import Srun
 
-      # # deprecated
-      # from .orte           import ORTE
-      # from .orte_lib       import ORTELib
-      # from .mpirun_ccmrun  import MPIRunCCMRun
-      # from .mpirun_dplace  import MPIRunDPlace
-      # from .mpirun_mpt     import MPIRun_MPT
-      # from .mpirun_rsh     import MPIRunRSH
-      # from .dplace         import DPlace
-      # from .poe            import POE
-      # from .runjob         import Runjob
-      # from .mpirun_ccmrun  import MPIRunCCMRun
-      # from .mpirun_dplace  import MPIRunDPlace
-      # from .mpirun_mpt     import MPIRun_MPT
-      # from .mpirun_rsh     import MPIRunRSH
-      # from .dplace         import DPlace
-      # from .poe            import POE
-      # from .runjob         import Runjob
-
         try:
             impl = {
                 LM_NAME_APRUN         : APRun,
@@ -169,117 +128,49 @@ class LaunchMethod(object):
                 LM_NAME_SPARK         : Spark,
                 LM_NAME_SRUN          : Srun,
 
-              # # deprecated
-              # LM_NAME_ORTE          : ORTE,
-              # LM_NAME_ORTE_LIB      : ORTELib,
-              # LM_NAME_DPLACE        : DPlace,
-              # LM_NAME_POE           : POE,
-              # LM_NAME_RUNJOB        : Runjob,
             }[name]
-            return impl(name, cfg, session)
+            return impl(name, cfg, log, prof)
 
         except KeyError:
-            session._log.exception('invalid lm %s' % name)
-            return None
+            log.exception('invalid lm %s' % name)
+            raise
 
         except Exception:
-            session._log.exception('unusable lm %s' % name)
-            return None
+            log.exception('unusable lm %s' % name)
+            raise
 
 
     # --------------------------------------------------------------------------
     #
-    @classmethod
-    def rm_config_hook(cls, name, cfg, rm, log, profiler):
-        '''
-        This hook will allow the ResourceManager to perform launch methods
-        specific configuration steps.  The ResourceManager layer MUST ensure
-        that this hook is called exactly once (globally).  This will be a NOOP
-        for LaunchMethods which do not overload this method.  Exceptions fall
-        through to the ResourceManager.
-        '''
+    def initialize(self, rm, lmcfg):
 
-        # Make sure that we are the base-class!
-        if cls != LaunchMethod:
-            raise TypeError("LaunchMethod config hook only available to base class!")
-
-        from .fork           import Fork
-        from .prte           import PRTE
-        from .prte2          import PRTE2
-        from .flux           import Flux
-        from .jsrun          import JSRUN
-        from .yarn           import Yarn
-        from .spark          import Spark
-
-        # # deprecated
-        # from .orte           import ORTE
-
-        impl = {
-            LM_NAME_FORK          : Fork,
-            LM_NAME_PRTE          : PRTE,
-            LM_NAME_PRTE2         : PRTE2,
-            LM_NAME_FLUX          : Flux,
-            LM_NAME_JSRUN         : JSRUN,
-            LM_NAME_YARN          : Yarn,
-            LM_NAME_SPARK         : Spark,
-
-            # # deprecated
-            # LM_NAME_ORTE          : ORTE,
-
-        }.get(name)
-
-        if not impl:
-            log.info('no config hook defined for LaunchMethod %s' % name)
-            return None
-
-        log.info('ResourceManager config hook for LaunchMethod %s: %s' % (name, impl))
-        return impl.rm_config_hook(name, cfg, rm, log, profiler)
+        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
 
     # --------------------------------------------------------------------------
     #
-    @classmethod
-    def rm_shutdown_hook(cls, name, cfg, rm, lm_info, log, profiler):
-        '''
-        This hook is symmetric to the config hook above, and is called during
-        shutdown sequence, for the sake of freeing allocated resources.
-        '''
+    def finalize(self):
 
-        # Make sure that we are the base-class!
-        if cls != LaunchMethod:
-            raise TypeError("LaunchMethod shutdown hook only available to base class!")
-
-        from .prte           import PRTE
-        from .prte2          import PRTE2
-        from .flux           import Flux
-        from .yarn           import Yarn
-        from .spark          import Spark
-
-        # # deprecated
-        # from .orte           import ORTE
-
-        impl = {
-            LM_NAME_PRTE          : PRTE,
-            LM_NAME_PRTE2         : PRTE2,
-            LM_NAME_FLUX          : Flux,
-            LM_NAME_YARN          : Yarn,
-            LM_NAME_SPARK         : Spark
-
-            # # deprecated
-            # LM_NAME_ORTE          : ORTE,
-        }.get(name)
-
-        if not impl:
-            log.info('no shutdown hook defined for LaunchMethod %s' % name)
-            return None
-
-        log.info('ResourceManager shutdown hook for LaunchMethod %s: %s' % (name, impl))
-        return impl.rm_shutdown_hook(name, cfg, rm, lm_info, log, profiler)
+        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def can_launch(self, task):
+
+        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launcher_env(self):
+
+        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launch_cmd(self):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
@@ -293,7 +184,7 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def get_rank_exec(self, task, rank_id, rank):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
@@ -305,7 +196,7 @@ class LaunchMethod(object):
                          impaired=False):
 
         # Open appropriately named temporary file
-        # NOTE: we make an assumption about the unit sandbox here
+        # NOTE: we make an assumption about the task sandbox here
         filename = '%s/%s.hosts' % (sandbox, uid)
         with open(filename, 'w') as fout:
 
@@ -364,30 +255,31 @@ class LaunchMethod(object):
     #
     def _create_arg_string(self, args):
 
-        # unit Arguments (if any)
+        if not args:
+            return ''
+
         arg_string = ''
-        if args:
-            for arg in args:
-                if not arg:
-                    # ignore empty args
-                    continue
+        for arg in args:
+            if not arg:
+                # ignore empty args
+                continue
 
-                if arg in ['>', '>>', '<', '<<', '|', '||', '&&', '&']:
-                    # Don't quote shell direction arguments, etc.
-                    arg_string += '%s ' % arg
-                    continue
+            if arg in ['>', '>>', '<', '<<', '|', '||', '&&', '&']:
+                # Don't quote shell direction arguments, etc.
+                arg_string += '%s ' % arg
+                continue
 
-                if any([c in arg for c in ['?', '*']]):
-                    # Don't quote arguments with wildcards
-                    arg_string += '%s ' % arg
-                    continue
+            if any([c in arg for c in ['?', '*']]):
+                # Don't quote arguments with wildcards
+                arg_string += '%s ' % arg
+                continue
 
-                arg = arg.replace('"', '\\"')    # Escape all double quotes
-                if arg[0] == arg[-1] == "'" :    # between outer single quotes?
-                    arg_string += '%s ' % arg    # ... pass it as is.
+            arg = arg.replace('"', '\\"')    # Escape all double quotes
+            if arg[0] == arg[-1] == "'" :    # between outer single quotes?
+                arg_string += '%s ' % arg    # ... pass it as is.
 
-                else:
-                    arg_string += '"%s" ' % arg  # else return double quoted
+            else:
+                arg_string += '"%s" ' % arg  # else return double quoted
 
         return arg_string
 

@@ -3,6 +3,8 @@
 # Unset functions/aliases of commands that will be used during bootstrap as
 # these custom functions can break assumed/expected behavior
 export PS1='#'
+export LC_NUMERIC="C"
+
 unset PROMPT_COMMAND
 unset -f cd ls uname pwd date bc cat echo grep
 
@@ -16,17 +18,8 @@ echo "safe environment of bootstrap_0"
 
 # store the sorted env for logging, but also so that we can dig original env
 # settings for task environments, if needed
-env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' > env.orig
-
-
-# create a `deactivate` script
-old_path=$(  grep 'export PATH='       env.orig | cut -f 2- -d '=')
-old_pypath=$(grep 'export PYTHONPATH=' env.orig | cut -f 2- -d '=')
-old_pyhome=$(grep 'export PYTHONHOME=' env.orig | cut -f 2- -d '=')
-
-echo "export PATH='$old_path'"          > deactivate
-echo "export PYTHONPATH='$old_pypath'" >> deactivate
-echo "export PYTHONHOME='$old_pyhome'" >> deactivate
+# NOTE: this assumes that no multi-line values are set in the environment
+env | sort > orig.env
 
 
 # interleave stdout and stderr, to get a coherent set of log messages
@@ -52,7 +45,7 @@ fi
 # Copyright 2013-2015, RADICAL @ Rutgers
 # Licensed under the MIT License
 #
-# This script launches a radical.pilot compute pilot.  If needed, it creates and
+# This script launches a radical.pilot pilot.  If needed, it creates and
 # populates a virtualenv on the fly, into $VIRTENV.
 #
 # https://xkcd.com/1987/
@@ -148,40 +141,6 @@ export MAKEFLAGS="-j"
 
 # ------------------------------------------------------------------------------
 #
-# check what env variables changed from the original env, and create a
-# `deactivate` script which resets the original values.
-#
-create_deactivate()
-{
-    # capture the current environment
-    env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' \
-        > env.bs_0
-
-    # find all variables which changed
-    changed=$(diff -w env.orig env.bs_0 | grep '='        \
-                                        | cut -f 3 -d ' ' \
-                                        | cut -f 1 -d '=' \
-                                        | sort -u)
-
-    # capture the original values in `deactivate`.  If no original value exists,
-    # unset the variable
-    for var in $changed
-    do
-        orig=$(grep -e "^export $var=" env.orig)
-        if test -z "$orig"
-        then
-            # var did not exist
-            echo "unset  $var" >> deactivate
-        else
-            # var existed, value may or may not be empty
-            echo "$orig" >> deactivate
-        fi
-    done
-}
-
-
-# ------------------------------------------------------------------------------
-#
 # If profiling is enabled, compile our little gtod app and take the first time
 #
 create_gtod()
@@ -200,6 +159,7 @@ create_gtod()
         test -x '/bin/bash' && shell=/bin/bash
 
         echo "#!$SHELL"                                > ./gtod
+        echo "export LC_NUMERIC=C"                    >> ./gtod
         echo "if test -z \"\$EPOCHREALTIME\""         >> ./gtod
         echo "then"                                   >> ./gtod
         echo "  awk 'BEGIN {srand(); print srand()}'" >> ./gtod
@@ -210,8 +170,40 @@ create_gtod()
 
     chmod 0755 ./gtod
 
-    TIME_ZERO=`./gtod`
-    export TIME_ZERO
+    # initialize profile
+    PROFILE="bootstrap_0.prof"
+    now=$(./gtod)
+    echo "#time,event,comp,thread,uid,state,msg" > "$PROFILE"
+
+    ip=$(ip addr \
+         | grep 'state UP' -A2 \
+         | grep 'inet' \
+         | awk '{print $2}' \
+         | cut -f1 -d'/')
+    printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
+        "$now" "sync_abs" "bootstrap_0" "MainThread" "$PILOT_ID" \
+        "PMGR_ACTIVE_PENDING" "$(hostname):${ip%$'\n'*}:$now:$now:$now" \
+        | tee -a "$PROFILE"
+}
+
+
+# ------------------------------------------------------------------------------
+#
+create_prof(){
+
+
+    cat > ./prof <<EOT
+#!/bin/sh
+
+test -z "\$RP_PROF_TGT" && exit
+
+now=\$($(pwd)/gtod)
+printf "%.7f,\$1,\$RP_SPAWNER_ID,MainThread,\$RP_UNIT_ID,AGENT_EXECUTING,\n" \
+       "\$now" >> "\$RP_PROF_TGT"
+
+EOT
+
+    chmod 0755 ./prof
 }
 
 
@@ -228,15 +220,7 @@ profile_event()
 
     event=$1
     msg=$2
-
-    epoch=`./gtod`
-    now=$(awk "BEGIN{print($epoch - $TIME_ZERO)}")
-
-    if ! test -f "$PROFILE"
-    then
-        # initialize profile
-        echo "#time,name,uid,state,event,msg" > "$PROFILE"
-    fi
+    now=$(./gtod)
 
     # TIME   = 0  # time of event (float, seconds since epoch)  mandatory
     # EVENT  = 1  # event ID (string)                           mandatory
@@ -855,17 +839,23 @@ virtenv_activate()
     python_dist="$2"
 
     if test "$python_dist" = "anaconda"; then
-        test -e "`which conda`" && conda activate "$virtenv" || \
-        (test -e "$virtenv/bin/activate" && . "$virtenv/bin/activate")
+        if ! test -z $(which conda); then
+            eval "$(conda shell.posix hook)"
+            conda activate "$virtenv"
+
+        elif test -e "$virtenv/bin/activate"; then
+            . "$virtenv/bin/activate"
+        fi
+
         if test -z "$CONDA_PREFIX"; then
-            echo "ERROR: activating of (conda) virtenv failed - abort"
+            echo "Loading of conda env failed!"
             exit 1
         fi
     else
         unset VIRTUAL_ENV
         . "$virtenv/bin/activate"
         if test -z "$VIRTUAL_ENV"; then
-            echo "ERROR: activating of virtenv failed - abort"
+            echo "Loading of virtual env failed!"
             exit 1
         fi
     fi
@@ -1478,7 +1468,7 @@ untar "$TARBALL"
 echo '# -------------------------------------------------------------------'
 
 # before we change anything else in the pilot environment, we safe a couple of
-# env vars to later re-create a close-to-pristine env for unit execution.
+# env vars to later re-create a close-to-pristine env for task execution.
 _OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
 _OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
 _OLD_VIRTUAL_PATH="$PATH"
@@ -1524,14 +1514,9 @@ PB1_LDLB="$LD_LIBRARY_PATH"
 #        We should split the parsing and the execution of those.
 #        "bootstrap start" is here so that $PILOT_ID is known.
 # Create header for profile log
-if ! test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
-then
-    echo 'create gtod'
-    create_gtod
-else
-    echo 'create gtod'
-    create_gtod
-fi
+echo 'create gtod, prof'
+create_gtod
+create_prof
 profile_event 'bootstrap_0_start'
 
 # NOTE: if the virtenv path contains a symbolic link element, then distutil will
@@ -1689,6 +1674,9 @@ PILOT_SCRIPT=`which radical-pilot-agent`
 # Verify it
 verify_install
 
+# we should have a better `gtod` now
+test -z $(which radical-gtod) || cp $(which radical-gtod ./gtod)
+
 AGENT_CMD="$PYTHON $PILOT_SCRIPT"
 
 verify_rp_install
@@ -1757,8 +1745,9 @@ export PATH="$PB1_PATH"
 export LD_LIBRARY_PATH="$PB1_LDLB"
 
 # activate virtenv
-if test "$PYTHON_DIST" = "anaconda" && test -e "`which conda`"
+if test "$PYTHON_DIST" = "anaconda" && ! test -z $(which conda)
 then
+    eval "\$(conda shell.posix hook)"
     conda activate $VIRTENV
 else
     . $VIRTENV/bin/activate
@@ -1795,7 +1784,7 @@ chmod 0755 bootstrap_2.sh
 
 #
 # Create a barrier to start the agent.
-# This can be used by experimental scripts to push all units to the DB before
+# This can be used by experimental scripts to push all tasks to the DB before
 # the agent starts.
 #
 if ! test -z "$RADICAL_PILOT_BARRIER"
@@ -1864,12 +1853,8 @@ fi
 # ./packer.sh 2>&1 >> bootstrap_0.out &
 # PACKER_ID=$!
 
-# all env settings are done, bootstrap stages are created - as last action
-# capture the resulting env differences in a deactivate script
-create_deactivate
-
 # start the master agent instance (zero)
-profile_event 'sync_rel' 'agent.0'
+profile_event 'bootstrap_0_ok'
 if test -z "$CCM"; then
     ./bootstrap_2.sh 'agent.0'    \
                    1> agent.0.bootstrap_2.out \
@@ -1922,7 +1907,7 @@ profile_event 'agent_final' "$AGENT_PID:$AGENT_EXITCODE `date --rfc-3339=ns | cu
 
 # cleanup flags:
 #   l : pilot log files
-#   u : unit work dirs
+#   u : task work dirs
 #   v : virtualenv
 #   e : everything
 echo
@@ -1932,7 +1917,7 @@ echo "#"
 
 profile_event 'cleanup_start'
 contains $CLEANUP 'l' && rm -r "$PILOT_SANDBOX/agent.*"
-contains $CLEANUP 'u' && rm -r "$PILOT_SANDBOX/unit.*"
+contains $CLEANUP 'u' && rm -r "$PILOT_SANDBOX/task.*"
 contains $CLEANUP 'v' && rm -r "$VIRTENV/" # FIXME: in what cases?
 contains $CLEANUP 'e' && rm -r "$PILOT_SANDBOX/"
 profile_event 'cleanup_stop'

@@ -5,7 +5,7 @@ import errno
 
 import radical.utils as ru
 
-# max number of cu out/err chars to push to tail
+# max number of t out/err chars to push to tail
 MAX_IO_LOGLENGTH = 1024
 
 
@@ -42,23 +42,6 @@ def get_rusage():
 
     return "real %3f sec | user %.3f sec | system %.3f sec | mem %.2f kB" \
          % (rtime, utime, stime, rss)
-
-
-# ------------------------------------------------------------------------------
-#
-def rec_makedir(target):
-
-    # recursive makedir which ignores errors if dir already exists
-
-    try:
-        os.makedirs(target)
-
-    except OSError as e:
-        # ignore failure on existing directory
-        if e.errno == errno.EEXIST and os.path.isdir(os.path.dirname(target)):
-            pass
-        else:
-            raise
 
 
 # ----------------------------------------------------------------------------------

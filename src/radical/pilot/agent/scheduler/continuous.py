@@ -11,21 +11,21 @@ from .base import AgentSchedulingComponent
 # ------------------------------------------------------------------------------
 #
 # This is a continuous scheduler with awareness of a node's file-storage and
-# memory capabilities.  The scheduler respects node tagging (place unit on same
-# node as other units with the same tag).
+# memory capabilities.  The scheduler respects node tagging (place task on same
+# node as other tasks with the same tag).
 #
 #
 # Continuous:
 #
 # The scheduler attempts to find continuous stretches of nodes to place
-# a multinode-unit.
+# a multinode-task.
 #
 #
 # Local Storage:
 #
 # The storage availability will be obtained from the rm_node_list and assigned
 # to the node list of the class. The lfs requirement will be obtained from the
-# cud in the alloc_nompi and alloc_mpi methods. Using the availability and
+# td in the alloc_nompi and alloc_mpi methods. Using the availability and
 # requirement, the _find_resources method will return the core and gpu ids.
 #
 # Expected DS of the nodelist
@@ -49,14 +49,14 @@ from .base import AgentSchedulingComponent
 #              ]
 #
 # lfs storage and memory is specified in MByte.  The scheduler assumes that
-# both are freed when the unit finishes.
+# both are freed when the task finishes.
 #
 #
-# Unit Tagging:
+# Task Tagging:
 #
-# The scheduler attempts to schedule units with the same tag onto the same node,
-# so that the unit can reuse the previous unit's data.  This assumes that
-# storage is not freed when the units finishes.
+# The scheduler attempts to schedule tasks with the same tag onto the same node,
+# so that the task can reuse the previous task's data.  This assumes that
+# storage is not freed when the tasks finishes.
 #
 # FIXME: the alert reader will realize a discrepancy in the above set of
 #        assumptions.
@@ -66,7 +66,7 @@ from .base import AgentSchedulingComponent
 class Continuous(AgentSchedulingComponent):
     '''
     The Continuous scheduler attempts to place threads and processes of
-    a compute units onto nodes in the cluster.
+    a tasks onto nodes in the cluster.
     '''
 
     # --------------------------------------------------------------------------
@@ -86,7 +86,7 @@ class Continuous(AgentSchedulingComponent):
 
         # * scattered:
         #   This is the continuous scheduler, because it attempts to allocate
-        #   a *continuous* set of cores/nodes for a unit.  It does, however,
+        #   a *continuous* set of cores/nodes for a task.  It does, however,
         #   also allow to scatter the allocation over discontinuous nodes if
         #   this option is set.  This implementation is not optimized for the
         #   scattered mode!  The default is 'False'.
@@ -101,7 +101,7 @@ class Continuous(AgentSchedulingComponent):
             self._log.info('blocked cores: %s' % blocked_cores)
             self._log.info('blocked gpus : %s' % blocked_gpus)
 
-        self.nodes = []
+        self.nodes = list()
         for node, node_uid in self._rm_node_list:
 
             node_entry = {'name'   : node,
@@ -155,6 +155,10 @@ class Continuous(AgentSchedulingComponent):
             self._rm_cores_per_node -= len(blocked_cores)
             self._rm_gpus_per_node  -= len(blocked_gpus)
 
+        self._dvm_host_list = list()
+        if isinstance(self._lm_info, dict):
+            self._dvm_host_list = self._lm_info.get('dvm_hosts') or []
+
 
     # --------------------------------------------------------------------------
     #
@@ -173,15 +177,15 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def unschedule_unit(self, unit):
+    def unschedule_task(self, task):
         '''
         This method is called when previously aquired resources are not needed
         anymore.  `slots` are the resource slots as previously returned by
-        `schedule_unit()`.
+        `schedule_task()`.
         '''
 
         # reflect the request in the nodelist state (set to `FREE`)
-        self._change_slot_states(unit['slots'], rpc.FREE)
+        self._change_slot_states(task['slots'], rpc.FREE)
 
 
     # --------------------------------------------------------------------------
@@ -278,8 +282,8 @@ class Continuous(AgentSchedulingComponent):
             core_map = [cores]
             gpu_map  = [[gpu] for gpu in gpus]
 
-            slots.append({'uid'     : node_uid,
-                          'name'    : node_name,
+            slots.append({'node'    : node_name,
+                          'node_id' : node_uid,
                           'core_map': core_map,
                           'gpu_map' : gpu_map,
                           'lfs'     : {'size': lfs_per_slot,
@@ -295,7 +299,7 @@ class Continuous(AgentSchedulingComponent):
     # --------------------------------------------------------------------------
     #
     #
-    def schedule_unit(self, unit):
+    def schedule_task(self, task):
         '''
         Find an available set of slots, potentially across node boundaries (in
         the MPI case).  By default, we only allow for partial allocations on the
@@ -319,17 +323,17 @@ class Continuous(AgentSchedulingComponent):
         on a single node.
         '''
 
-      # self._log.debug('find_resources %s', unit['uid'])
+      # self._log.debug('find_resources %s', task['uid'])
 
-        cud = unit['description']
-        mpi = bool('mpi' in cud['cpu_process_type'].lower())
+        td = task['description']
+        mpi = bool('mpi' in td['cpu_process_type'].lower())
 
         # dig out the allocation request details
-        req_slots      = cud['cpu_processes']
-        cores_per_slot = cud['cpu_threads']
-        gpus_per_slot  = cud['gpu_processes']
-        lfs_per_slot   = cud['lfs_per_process']
-        mem_per_slot   = cud['mem_per_process']
+        req_slots      = td['cpu_processes']
+        cores_per_slot = td['cpu_threads']
+        gpus_per_slot  = td['gpu_processes']
+        lfs_per_slot   = td['lfs_per_process']
+        mem_per_slot   = td['mem_per_process']
 
         # make sure that processes are at least single-threaded
         if not cores_per_slot:
@@ -379,7 +383,29 @@ class Continuous(AgentSchedulingComponent):
         # set conditions to find the first matching node
         is_first = True
         is_last  = False
-        tag      = cud.get('tag')
+        tag      = td.get('tag')
+
+        # `tag` will soon be deprecated - check also for `tags: {colocate:uid}`
+        # as the current way to specify colocation requests
+        if not tag:
+            tag = td.get('tags', {}).get('colocate')
+
+        # - PRRTE related - start -
+        # use tag as a DVM ID, so task will be allocated to nodes that are
+        # handled by a corresponding DVM (only applied with `dvm_host_list`)
+        # FIXME: new coming attribute `tags` would consider `dvm_id`
+        if self._dvm_host_list and tag is not None:
+            try:
+                tag = int(tag)
+            except (TypeError, ValueError):
+                tag = None
+            else:
+                if len(self._dvm_host_list) <= tag:
+                    raise ValueError('dvm_id (%s) out of range' % tag)
+                if tag not in self._tag_history:
+                    self._tag_history[tag] = self._dvm_host_list[tag]
+        unit_dvm_id = None
+        # - PRRTE related - end -
 
         # what remains to be allocated?  all of it right now.
         alc_slots = list()
@@ -395,20 +421,35 @@ class Continuous(AgentSchedulingComponent):
           # self._log.debug('req1: %s = %s + %s', req_slots, rem_slots,
           #                                       len(alc_slots))
 
-            # Check if a unit is tagged to use this node.  This means we check
+            # Check if a task is tagged to use this node.  This means we check
             #   - if a tag exists
             #   - if the tag has been used before
             #   - if the previous use included this node
             # If a tag exists, continue to consider this node if the tag was
-            # used for this node - else continune to the next node.
-            if tag:
-                if tag in self._tag_history:
-                    if node_uid not in self._tag_history[tag]:
-                        continue
+            # used for this node - else continue to the next node.
+            node_dvm_id = None  # get dvm_id for the node (if applicable)
+            if tag is not None and tag in self._tag_history:
+                if node_uid not in self._tag_history[tag]:
+                    continue
+            # - PRRTE related - start -
+            elif self._dvm_host_list:
+                # check that nodes assigned to the unit have the same dvm_id
+                # FIXME: handle the case when unit (MPI task) would require
+                #        more nodes than the amount available per DVM
+                _skip_node = True
+                for dvm_id, dvm_hosts in enumerate(self._dvm_host_list):
+                    if node_uid in dvm_hosts:
+                        if unit_dvm_id is None or unit_dvm_id == dvm_id:
+                            node_dvm_id = dvm_id  # save to use later
+                            _skip_node = False
+                        break
+                if _skip_node:
+                    continue
+            # - PRRTE related - end -
 
             # if only a small set of cores/gpus remains unallocated (ie. less
             # than node size), we are in fact looking for the last node.  Note
-            # that this can also be the first node, for small units.
+            # that this can also be the first node, for small tasks.
             if  rem_slots < slots_per_node:
                 is_last = True
 
@@ -451,6 +492,11 @@ class Continuous(AgentSchedulingComponent):
                 # try next node
                 continue
 
+            # - PRRTE related - start -
+            if node_dvm_id is not None and unit_dvm_id is None:
+                unit_dvm_id = node_dvm_id  # save dvm_id for unit
+            # - PRRTE related - end -
+
             # this node got a match, store away the found slots and continue
             # search for remaining ones
             rem_slots -= len(new_slots)
@@ -471,19 +517,19 @@ class Continuous(AgentSchedulingComponent):
         if  rem_slots > 0:
             return None  # signal failure
 
-        slots = {'nodes'         : alc_slots,
+        slots = {'ranks'         : alc_slots,
                  'cores_per_node': self._rm_cores_per_node,
                  'gpus_per_node' : self._rm_gpus_per_node,
                  'lfs_per_node'  : self._rm_lfs_per_node,
                  'mem_per_node'  : self._rm_mem_per_node,
-                 'lm_info'       : self._rm_lm_info,
+                 'lm_info'       : self._lm_info,
                 }
 
-
-        # allocation worked!  If the unit was tagged, store the node IDs for
-        # this tag, so that later units can reuse that information
-        if tag:
-            self._tag_history[tag] = [node['uid'] for node in slots['nodes']]
+        # allocation worked!  If the task was tagged, store the node IDs for
+        # this tag, so that later tasks can reuse that information
+        if not self._dvm_host_list and tag is not None:
+            self._tag_history[tag] = [rank['node_id']
+                                      for rank in slots['ranks']]
 
         # this should be nicely filled out now - return
         return slots

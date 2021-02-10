@@ -19,28 +19,32 @@ from .constants  import *
 from .session                   import Session
 from .context                   import Context
 
-from .unit_manager              import UnitManager
-from .compute_unit              import ComputeUnit
-from .compute_unit_description  import ComputeUnitDescription
-from .compute_unit_description  import POSIX, MPI, OpenMP, CUDA, FUNC
+from .task_manager              import TaskManager
+from .task                      import Task
+from .task_description          import TaskDescription
+from .task_description          import POSIX, MPI, OpenMP, CUDA, FUNC
 
 from .pilot_manager             import PilotManager
-from .compute_pilot             import ComputePilot
-from .compute_pilot_description import ComputePilotDescription
+from .pilot                     import Pilot
+from .pilot_description         import PilotDescription
+
+from .deprecated                import ComputePilot, ComputePilotDescription
+from .deprecated                import ComputeUnit,  ComputeUnitDescription
+from .deprecated                import UnitManager
 
 
 # ------------------------------------------------------------------------------
 # make submodules available -- mostly for internal use
 from . import utils
 from . import worker
-from . import umgr
+from . import tmgr
 from . import pmgr
 from . import agent
 
-from .agent import Agent_0
-from .agent import Agent_n
+from .agent  import Agent_0
+from .agent  import Agent_n
 
-from .task_overlay import Master, Worker
+from .raptor import Master, Worker
 
 
 # ------------------------------------------------------------------------------

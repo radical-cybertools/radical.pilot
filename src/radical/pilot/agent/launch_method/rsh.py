@@ -38,13 +38,13 @@ class RSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        slots        = cu['slots']
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_env     = cud.get('environment') or dict()
-        task_args    = cud.get('arguments')   or list()
+        slots        = t['slots']
+        td          = t['description']
+        task_exec    = td['executable']
+        task_env     = td.get('environment') or dict()
+        task_args    = td.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
         if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
@@ -53,25 +53,17 @@ class RSH(LaunchMethod):
         if not launch_script_hop:
             raise ValueError("RSH launch method needs launch_script_hop!")
 
-        if 'nodes' not in slots:
+        if 'ranks' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'
                               % (self.name, slots))
 
-        if len(slots['nodes']) > 1:
-            raise RuntimeError('rsh cannot run multinode units')
+        if len(slots['ranks']) > 1:
+            raise RuntimeError('rsh cannot run multinode tasks')
 
-        host = slots['nodes'][0]['name']
-
-        # Pass configured and available environment variables to the remote shell
-        export_vars  = ' '.join(['%s=%s' % (var, os.environ[var])
-                                 for var in self.EXPORT_ENV_VARIABLES
-                                  if var in os.environ])
-        export_vars += ' '.join(['%s=%s' % (var, task_env[var])
-                                 for var in task_env])
+        host = slots['ranks'][0]['node']
 
         # Command line to execute launch script via rsh on host
-        rsh_hop_cmd = "%s %s %s %s" % (self.launch_command, host,
-                                       export_vars, launch_script_hop)
+        rsh_hop_cmd = "%s %s %s" % (self.launch_command, host, launch_script_hop)
 
         return task_command, rsh_hop_cmd
 

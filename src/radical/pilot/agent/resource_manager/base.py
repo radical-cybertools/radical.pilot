@@ -1,6 +1,6 @@
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2016, http://radical.rutgers.edu'
+__license__   = 'MIT'
 
 import os
 
@@ -14,7 +14,6 @@ RM_NAME_FORK        = 'FORK'
 RM_NAME_CCM         = 'CCM'
 RM_NAME_LOADLEVELER = 'LOADLEVELER'
 RM_NAME_LSF         = 'LSF'
-RM_NAME_LSF_SUMMIT  = 'LSF_SUMMIT'
 RM_NAME_PBSPRO      = 'PBSPRO'
 RM_NAME_SGE         = 'SGE'
 RM_NAME_SLURM       = 'SLURM'
@@ -30,7 +29,7 @@ RM_NAME_DEBUG       = 'DEBUG'
 # Base class for ResourceManager implementations.
 #
 class ResourceManager(object):
-    """
+    '''
     The Resource Manager provides three fundamental information:
 
       ResourceManager.node_list      : list of node names
@@ -47,21 +46,12 @@ class ResourceManager(object):
     The ResourceManager will reserve nodes for the agent execution, by deriving
     the respectively required node count from the config's 'agents' section.
     Those nodes will be listed in ResourceManager.agent_node_list. Schedulers
-    MUST NOT use the agent_node_list to place compute units -- CUs are limited
+    MUST NOT use the agent_node_list to place tasks -- CUs are limited
     to the nodes in ResourceManager.node_list.
-    """
 
-    # TODO: Core counts dont have to be the same number for all hosts.
-
-    # TODO: We might not have reserved the whole node.
-
-    # TODO: Given that the Agent can determine the real core count, in
-    #       principle we could just ignore the config and use as many as we
-    #       have to our availability (taken into account that we might not
-    #       have the full node reserved of course)
-    #       Answer: at least on Yellowstone this doesnt work for MPI,
-    #               as you can't spawn more tasks then the number of slots.
-
+    Last but not least, the RM will intialize the launch methods and ensure that
+    the executor (or any other component really) finds them ready to use.
+    '''
 
     # --------------------------------------------------------------------------
     #
@@ -75,7 +65,7 @@ class ResourceManager(object):
         self.requested_cores = self._cfg['cores']
         self.requested_gpus  = self._cfg['gpus']
 
-        self._log.info("Configuring ResourceManager %s.", self.name)
+        self._log.info('Configuring ResourceManager %s.', self.name)
 
         self.lm_info         = dict()
         self.rm_info         = dict()
@@ -106,13 +96,13 @@ class ResourceManager(object):
                 pass  # ignore that one
             elif target == 'node':
                 self._agent_reqs.append(agent)
-            else :
-                raise ValueError("ill-formatted agent target '%s'" % target)
+            else:
+                raise ValueError('ill-formatted agent target %s' % target)
 
         # We are good to get rolling, and to detect the runtime environment of
         # the local ResourceManager.
         self._configure()
-        self._log.info("Discovered execution environment: %s", self.node_list)
+        self._log.info('Discovered execution environment: %s', self.node_list)
 
         # Make sure we got a valid nodelist and a valid setting for
         # cores_per_node
@@ -139,35 +129,35 @@ class ResourceManager(object):
 
         # Check if we can do any work
         if not self.node_list:
-            raise RuntimeError('ResourceManager has no nodes left to run units')
+            raise RuntimeError('ResourceManager has no nodes left to run tasks')
 
-        # After ResourceManager configuration, we call any existing config hooks
-        # on the launch methods.  Those hooks may need to adjust the
-        # ResourceManager settings (hello ORTE).  We only call LaunchMethod
-        # hooks *once* (thus the set)
-        launch_methods = set()
-        launch_methods.add(self._cfg.get('mpi_launch_method'))
-        launch_methods.add(self._cfg.get('task_launch_method'))
-        launch_methods.add(self._cfg.get('agent_launch_method'))
+        # After ResourceManager configuration, we will instantiate all launch
+        # methods and call their `configure` method to set them up.  Any other
+        # component can then instantiate the LM's without calling `configure`
+        # again.
+        #
+        # Note that the LM configure may need to adjust the ResourceManager
+        # settings (hello ORTE).
+        launch_methods       = self._cfg.resource_cfg.launch_methods
+        self._launchers      = dict()
 
-        launch_methods.discard(None)
+        for name, lmcfg in launch_methods.items():
+            if name == 'order':
+                self._launch_order = lmcfg
+                continue
 
-        for lm in launch_methods:
             try:
-                ru.dict_merge(
-                    self.lm_info,
-                    rpa.LaunchMethod.rm_config_hook(name=lm,
-                                                    cfg=self._cfg,
-                                                    rm=self,
-                                                    log=self._log,
-                                                    profiler=self._prof))
-            except Exception as e:
-                # FIXME don't catch/raise
-                self._log.exception(
-                    "ResourceManager config hook failed: %s" % e)
-                raise
+                lm = rpa.LaunchMethod.create(name, self._cfg,
+                                                   self._log, self._prof)
 
-            self._log.info("ResourceManager config hook succeeded (%s)" % lm)
+                self.lm_info[name]    = lm.initialize(self, lmcfg)
+                self._launchers[name] = lm
+
+            except:
+                self._log.exception('skip LM %s' % name)
+
+        if not self._launchers:
+            raise RuntimeError('no valid launch methods found')
 
         # For now assume that all nodes have equal amount of cores and gpus
         cores_avail = (len(self.node_list) + len(self.agent_nodes)) * self.cores_per_node
@@ -176,11 +166,11 @@ class ResourceManager(object):
         # on debug runs, we allow more cpus/gpus to appear than physically exist
         if 'RADICAL_DEBUG' not in os.environ:
             if cores_avail < int(self.requested_cores):
-                raise ValueError("Not enough cores available (%s < %s)."
+                raise ValueError('Not enough cores available (%s < %s).'
                                 % (str(cores_avail), str(self.requested_cores)))
 
             if gpus_avail < int(self.requested_gpus):
-                raise ValueError("Not enough gpus available (%s < %s)."
+                raise ValueError('Not enough gpus available (%s < %s).'
                                 % (str(gpus_avail), str(self.requested_gpus)))
 
 
@@ -190,7 +180,7 @@ class ResourceManager(object):
         #
         # five elements are well defined:
         #   lm_info:        the dict received via the LM's rm_config_hook
-        #   node_list:      a list of node names to be used for unit execution
+        #   node_list:      a list of node names to be used for task execution
         #   cores_per_node: as the name says
         #   gpus_per_node:  as the name says
         #   agent_nodes:    list of node names reserved for agent execution
@@ -200,7 +190,6 @@ class ResourceManager(object):
         # ResourceManager can thus expand this dict, but is then likely bound to
         # a specific scheduler which can interpret the additional information.
         self.rm_info['name']           = self.name
-        self.rm_info['lm_info']        = self.lm_info
         self.rm_info['node_list']      = self.node_list
         self.rm_info['cores_per_node'] = self.cores_per_node
         self.rm_info['gpus_per_node']  = self.gpus_per_node
@@ -221,7 +210,6 @@ class ResourceManager(object):
         from .fork        import Fork
         from .loadleveler import LoadLeveler
         from .lsf         import LSF
-        from .lsf_summit  import LSF_SUMMIT
         from .pbspro      import PBSPro
         from .sge         import SGE
         from .slurm       import Slurm
@@ -233,7 +221,7 @@ class ResourceManager(object):
 
         # Make sure that we are the base-class!
         if cls != ResourceManager:
-            raise TypeError("ResourceManager Factory only available to base class!")
+            raise TypeError('ResourceManager Factory only available to base class!')
 
         try:
             impl = {
@@ -241,7 +229,6 @@ class ResourceManager(object):
                 RM_NAME_CCM         : CCM,
                 RM_NAME_LOADLEVELER : LoadLeveler,
                 RM_NAME_LSF         : LSF,
-                RM_NAME_LSF_SUMMIT  : LSF_SUMMIT,
                 RM_NAME_PBSPRO      : PBSPro,
                 RM_NAME_SGE         : SGE,
                 RM_NAME_SLURM       : Slurm,
@@ -254,45 +241,43 @@ class ResourceManager(object):
             return impl(cfg, session)
 
         except KeyError as e:
-            raise RuntimeError("ResourceManager '%s' unknown" % name) from e
+            raise RuntimeError('ResourceManager %s unknown' % name) from e
 
 
     # --------------------------------------------------------------------------
     #
     def stop(self):
 
-        # During ResourceManager termination, we call any existing shutdown hooks on the
-        # launch methods.  We only call LaunchMethod shutdown hooks *once*
-        launch_methods = set()
-        launch_methods.add(self._cfg.get('mpi_launch_method'))
-        launch_methods.add(self._cfg.get('task_launch_method'))
-        launch_methods.add(self._cfg.get('agent_launch_method'))
-
-        launch_methods.discard(None)
-
-        for lm in launch_methods:
+        # clean up launch methods
+        for name in self._launchers:
             try:
-                ru.dict_merge(
-                    self.lm_info,
-                    rpa.LaunchMethod.rm_shutdown_hook(name=lm,
-                                                      cfg=self._cfg,
-                                                      rm=self,
-                                                      lm_info=self.lm_info,
-                                                      log=self._log,
-                                                      profiler=self._prof))
-            except Exception as e:
-                self._log.exception(
-                    "ResourceManager shutdown hook failed: %s" % e)
-                raise
+                self._launchers[name].finalize()
 
-            self._log.info("ResourceManager shutdown hook succeeded (%s)" % lm)
+            except Exception as e:
+                # this is not fatal
+                self._log.exception('LM %s finalize failed' % name)
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
 
-        raise NotImplementedError("_Configure missing for %s" % self.name)
+        raise NotImplementedError('_Configure missing for %s' % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def find_launcher(self, task):
+
+        # NOTE: this code is duplicated from the executor base class
+
+        for name in self._launch_order:
+
+            launcher = self._launchers[name]
+            if launcher.can_launch(task):
+                return launcher
+
+        return None
 
 
 # ------------------------------------------------------------------------------

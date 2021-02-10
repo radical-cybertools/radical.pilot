@@ -17,9 +17,13 @@
         "gpus_per_node"               : 4,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SRUN",
-        "mpi_launch_method"           : "MPIRUN",
+        "launch_methods"              : {
+                                         "order" : ["FORK", "SSH", "SRUN", "MPIRUN"],
+                                         "FORK"  : {},
+                                         "SSH"   : {},
+                                         "SRUN"  : {},
+                                         "MPIRUN": {}
+                                        },
         "pre_bootstrap_0"             : ["module load anaconda3",
                                          "module load openmpi/gcc"
                                         ],
@@ -29,8 +33,8 @@
         "default_remote_workdir"      : "/scratch/gpfs/$USER/",
         "virtenv"                     : "/scratch/gpfs/$USER/ve.rp",
         "virtenv_mode"                : "use",
-        "export_to_cu"                : [],
-        "cu_pre_exec"                 : [],
+        "export_to_task"                : [],
+        "task_pre_exec"               : [],
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
         "mem_per_node"                : 0,
@@ -54,9 +58,11 @@
         "gpus_per_node"               : 4,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "MPIRUN",
-        "task_launch_method"          : "MPIRUN",
-        "mpi_launch_method"           : "MPIRUN",
+        "launch_methods"              : {
+                                         "order" : ["FORK", "MPIRUN"],
+                                         "FORK"  : {},
+                                         "MPIRUN": {}
+                                        },
         "pre_bootstrap_0"             : ["module load anaconda3"
                                         ],
         "default_remote_workdir"      : "$HOME/",
@@ -65,8 +71,8 @@
         "python_dist"                 : "default",
         "virtenv"                     : "/scratch/gpfs/$USER/ve.rp",
         "virtenv_mode"                : "use",
-        "export_to_cu"                : [],
-        "cu_pre_exec"                 : [],
+        "export_to_task"                : [],
+        "task_pre_exec"               : [],
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
         "mem_per_node"                : 0,
@@ -95,9 +101,16 @@
         "gpus_per_node"               : 0,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SRUN",
-        "mpi_launch_method"           : "SRUN",
+        "launch_methods"              : {
+                                         "order": ["FORK", "SRUN"],
+                                         "FORK" : {},
+                                         "SRUN" : {
+                                             "env_prep": [
+                                                 "module load intel/18.0/64/18.0.3.222",
+                                                 "module load intel-mpi/intel/2018.3/64"
+                                             ]
+                                         }
+                                        },
         "pre_bootstrap_0"             : ["module purge",
                                          "module load intel/18.0/64/18.0.3.222",
                                          "module load intel-mpi/intel/2018.3/64",
@@ -109,8 +122,8 @@
         "valid_roots"                 : [],
         "rp_version"                  : "local",
         "python_dist"                 : "default",
-        "export_to_cu"                : [],
-        "cu_pre_exec"                 : [],
+        "export_to_task"                : [],
+        "task_pre_exec"               : [],
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
         "mem_per_node"                : 0,
@@ -122,7 +135,7 @@
         "notes"                       : "",
         "schemas"                     : ["local", "ssh"],
         "mandatory_args"              : [],
-        "local"                      :
+        "local"                       :
         {
             "job_manager_endpoint"    : "slurm://tigercpu.princeton.edu/",
             "job_manager_hop"         : "fork://localhost/",
@@ -139,9 +152,16 @@
         "gpus_per_node"               : 4,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SRUN",
-        "mpi_launch_method"           : "SRUN",
+        "launch_methods"              : {
+                                         "order": ["FORK", "SRUN"],
+                                         "FORK" : {},
+                                         "SRUN" : {
+                                             "env_prep": [
+                                                 "module load intel/18.0/64/18.0.3.222",
+                                                 "module load intel-mpi/intel/2018.3/64"
+                                             ]
+                                         }
+                                        },
         "pre_bootstrap_0"             : ["module purge",
                                          "module load intel/18.0/64/18.0.3.222",
                                          "module load intel-mpi/intel/2018.3/64",
@@ -153,8 +173,8 @@
         "valid_roots"                 : [],
         "rp_version"                  : "local",
         "python_dist"                 : "default",
-        "export_to_cu"                : [],
-        "cu_pre_exec"                 : [],
+        "export_to_task"                : [],
+        "task_pre_exec"               : [],
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
         "mem_per_node"                : 0,

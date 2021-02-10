@@ -24,9 +24,11 @@
         "agent_scheduler"             : "CONTINUOUS",
       # "agent_scheduler"             : "CONTINUOUS_COLO",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "FORK",
-        "task_launch_method"          : "FORK",
-        "mpi_launch_method"           : "MPIEXEC",
+        "launch_methods"              : {
+                                         "order"  : ["FORK", "MPIEXEC"],
+                                         "FORK"   : {},
+                                         "MPIEXEC": {}
+                                        },
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
@@ -56,9 +58,11 @@
         "resource_manager"            : "FORK",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "FORK",
-        "task_launch_method"          : "FORK",
-        "mpi_launch_method"           : "MPIEXEC",
+        "launch_methods"              : {
+                                         "order"  : ["FORK", "MPIEXEC"],
+                                         "FORK"   : {},
+                                         "MPIEXEC": {}
+                                        },
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda",
@@ -88,9 +92,11 @@
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "SHELLFS",
-        "agent_launch_method"         : "PRTE",
-        "task_launch_method"          : "PRTE",
-        "mpi_launch_method"           : "PRTE",
+        "launch_methods"              : {
+                                         "order": ["FORK", "PRRTE"],
+                                         "FORK" : {},
+                                         "PRRTE": {}
+                                        },
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
       # "virtenv"                     : "$HOME/radical/radical.pilot.merge/ve/",
@@ -125,10 +131,12 @@
         "agent_config"                : "default",
         "agent_scheduler"             : "FLUX",
         "agent_spawner"               : "FLUX",
-        "agent_launch_method"         : "FORK",
-        "func_launch_method"          : "FUNC",
-        "task_launch_method"          : "FLUX",
-        "mpi_launch_method"           : "FLUX",
+        "launch_methods"              : {
+                                         "order": ["FUNCS", "FLUX", "FORK"],
+                                         "FORK" : {},
+                                         "FUNCS": {},
+                                         "FLUX" : {}
+                                        },
         "rp_version"                  : "installed",
         "virtenv_mode"                : "use",
         "virtenv"                     : "$HOME/radical/radical.pilot.test/ve3/",
@@ -160,9 +168,10 @@
         "resource_manager"            : "FORK",
         "agent_scheduler"             : "NOOP",
         "agent_spawner"               : "FUNCS",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "FUNCS",
-      # "mpi_launch_method"           : "MPIRUN",
+        "launch_methods"              : {
+                                         "order": ["FUNCS"],
+                                         "FUNCS": {}
+                                        },
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",

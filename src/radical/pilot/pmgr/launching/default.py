@@ -154,6 +154,157 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
+    def _handle_pilot_input_staging(self, pilot, sds):
+
+        pid = pilot['uid']
+
+        # NOTE: no task sandboxes defined!
+        src_context = {'pwd'     : pilot['client_sandbox'],
+                       'pilot'   : pilot['pilot_sandbox'],
+                       'resource': pilot['resource_sandbox']}
+        tgt_context = {'pwd'     : pilot['pilot_sandbox'],
+                       'pilot'   : pilot['pilot_sandbox'],
+                       'resource': pilot['resource_sandbox']}
+
+        # Iterate over all directives
+        for sd in sds:
+
+            # TODO: respect flags in directive
+
+            action = sd['action']
+            flags  = sd['flags']
+            did    = sd['uid']
+            src    = sd['source']
+            tgt    = sd['target']
+
+            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
+
+            self._prof.prof('staging_in_start', uid=pid, msg=did)
+
+            src = complete_url(src, src_context, self._log)
+            tgt = complete_url(tgt, tgt_context, self._log)
+
+            if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
+                self._prof.prof('staging_in_fail', uid=pid, msg=did)
+                raise ValueError("invalid action '%s' on pilot level" % action)
+
+            self._log.info('transfer %s to %s', src, tgt)
+
+            # FIXME: make sure that tgt URL points to the right resource
+            # FIXME: honor sd flags if given (recursive...)
+            flags = rsfs.CREATE_PARENTS
+
+            if os.path.isdir(src.path):
+                flags |= rsfs.RECURSIVE
+
+            # Define and open the staging directory for the pilot
+            # We use the target dir construct here, so that we can create
+            # the directory if it does not yet exist.
+
+            # url used for cache (sandbox url w/o path)
+            fs_url      = rs.Url(pilot['pilot_sandbox'])
+            fs_url.path = '/'
+            key         = str(fs_url)
+
+            self._log.debug("rs.file.Directory ('%s')", key)
+
+            with self._cache_lock:
+                if key in self._saga_fs_cache:
+                    fs = self._saga_fs_cache[key]
+
+                else:
+                    fs = rsfs.Directory(fs_url, session=self._session)
+                    self._saga_fs_cache[key] = fs
+
+            fs.copy(src, tgt, flags=flags)
+
+            sd['state'] = rps.DONE
+
+            self._prof.prof('staging_in_stop', uid=pid, msg=did)
+
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'pilot_staging_input_result',
+                                          'arg': {'pilot': pilot,
+                                                  'sds'  : sds}})
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _handle_pilot_output_staging(self, pilot, sds):
+
+        pid = pilot['uid']
+
+        # NOTE: no task sandboxes defined!
+        src_context = {'pwd'     : pilot['pilot_sandbox'],
+                       'pilot'   : pilot['pilot_sandbox'],
+                       'resource': pilot['resource_sandbox']}
+        tgt_context = {'pwd'     : pilot['client_sandbox'],
+                       'pilot'   : pilot['pilot_sandbox'],
+                       'resource': pilot['resource_sandbox']}
+
+        # Iterate over all directives
+        for sd in sds:
+
+            try:
+
+                action = sd['action']
+                flags  = sd['flags']
+                did    = sd['uid']
+                src    = sd['source']
+                tgt    = sd['target']
+
+                assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
+
+                self._prof.prof('staging_out_start', uid=pid, msg=did)
+
+                if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
+                    raise ValueError("invalid pilot action '%s'" % action)
+
+                src = complete_url(src, src_context, self._log)
+                tgt = complete_url(tgt, tgt_context, self._log)
+
+                self._log.info('transfer %s to %s', src, tgt)
+
+                # FIXME: make sure that tgt URL points to the right resource
+                # FIXME: honor sd flags if given (recursive...)
+                flags = rsfs.CREATE_PARENTS
+
+                if os.path.isdir(src.path):
+                    flags |= rsfs.RECURSIVE
+
+                # Define and open the staging directory for the pilot
+
+                # url used for cache (sandbox url w/o path)
+                fs_url      = rs.Url(pilot['pilot_sandbox'])
+                fs_url.path = '/'
+                key         = str(fs_url)
+
+                with self._cache_lock:
+                    if key in self._saga_fs_cache:
+                        fs = self._saga_fs_cache[key]
+
+                    else:
+                        fs = rsfs.Directory(fs_url, session=self._session)
+                        self._saga_fs_cache[key] = fs
+
+                fs.copy(src, tgt, flags=flags)
+
+                sd['state'] = rps.DONE
+                self._prof.prof('staging_out_stop', uid=pid, msg=did)
+
+            except:
+                self._log.exception('pilot level staging failed')
+                self._prof.prof('staging_out_fail', uid=pid, msg=did)
+                sd['state'] = rps.FAILED
+
+
+            self.publish(rpc.CONTROL_PUBSUB,
+                         {'cmd': 'pilot_staging_output_result',
+                          'arg': {'pilot': pilot,
+                                  'sds'  : [sd]}})
+
+
+    # --------------------------------------------------------------------------
+    #
     def _pilot_watcher_cb(self):
 
         # FIXME: we should actually use SAGA job state notifications!
@@ -403,7 +554,8 @@ class Default(PMGRLaunchingComponent):
 
                     self._start_pilot_bulk(resource, schema, pilots)
 
-                    self.advance(pilots, rps.PMGR_ACTIVE_PENDING, push=False, publish=True)
+                    self.advance(pilots, rps.PMGR_ACTIVE_PENDING,
+                                         push=False, publish=True)
 
                 except Exception:
                     self._log.exception('bulk launch failed')
@@ -502,7 +654,8 @@ class Default(PMGRLaunchingComponent):
             pid = pilot['uid']
             os.makedirs('%s/%s' % (tmp_dir, pid))
 
-            info = self._prepare_pilot(resource, rcfg, pilot, expand)
+            info = self._prepare_pilot(resource, rcfg, pilot, expand, tar_name)
+
             ft_list += info['fts']
             jd_list.append(info['jd'])
 
@@ -640,7 +793,7 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _prepare_pilot(self, resource, rcfg, pilot, expand):
+    def _prepare_pilot(self, resource, rcfg, pilot, expand, tar_name):
 
         pid = pilot["uid"]
         ret = {'fts': list(),  # tar for staging
@@ -671,7 +824,6 @@ class Default(PMGRLaunchingComponent):
 
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
-        agent_launch_method     = rcfg.get('agent_launch_method')
         agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
         agent_spawner           = rcfg.get('agent_spawner',       DEFAULT_AGENT_SPAWNER)
         agent_config            = rcfg.get('agent_config',        DEFAULT_AGENT_CONFIG)
@@ -680,11 +832,9 @@ class Default(PMGRLaunchingComponent):
         default_queue           = rcfg.get('default_queue')
         forward_tunnel_endpoint = rcfg.get('forward_tunnel_endpoint')
         resource_manager        = rcfg.get('resource_manager')
-        mpi_launch_method       = rcfg.get('mpi_launch_method', '')
         pre_bootstrap_0         = rcfg.get('pre_bootstrap_0', [])
         pre_bootstrap_1         = rcfg.get('pre_bootstrap_1', [])
         python_interpreter      = rcfg.get('python_interpreter')
-        task_launch_method      = rcfg.get('task_launch_method')
         rp_version              = rcfg.get('rp_version')
         virtenv_mode            = rcfg.get('virtenv_mode',        DEFAULT_VIRTENV_MODE)
         virtenv                 = rcfg.get('virtenv',             default_virtenv)
@@ -694,13 +844,17 @@ class Default(PMGRLaunchingComponent):
         lfs_size_per_node       = rcfg.get('lfs_size_per_node',  0)
         python_dist             = rcfg.get('python_dist')
         virtenv_dist            = rcfg.get('virtenv_dist',        DEFAULT_VIRTENV_DIST)
-        cu_tmp                  = rcfg.get('cu_tmp')
+        task_tmp                  = rcfg.get('task_tmp')
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
         stage_cacerts           = rcfg.get('stage_cacerts', False)
-        cu_pre_exec             = rcfg.get('cu_pre_exec')
-        cu_post_exec            = rcfg.get('cu_post_exec')
-        export_to_cu            = rcfg.get('export_to_cu')
+        export_to_task          = rcfg.get('export_to_task')
+        task_pre_launch         = rcfg.get('task_pre_launch')
+        task_pre_exec           = rcfg.get('task_pre_exec')
+        task_pre_rank           = rcfg.get('task_pre_rank')
+        task_post_launch        = rcfg.get('task_post_launch')
+        task_post_exec          = rcfg.get('task_post_exec')
+        task_post_rank          = rcfg.get('task_post_rank')
         mandatory_args          = rcfg.get('mandatory_args', [])
         system_architecture     = rcfg.get('system_architecture', {})
         saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
@@ -840,13 +994,11 @@ class Default(PMGRLaunchingComponent):
 
         # ----------------------------------------------------------------------
         # sanity checks
-        if not python_dist        : raise RuntimeError("missing python distribution")
-        if not virtenv_dist       : raise RuntimeError("missing virtualenv distribution")
-        if not agent_spawner      : raise RuntimeError("missing agent spawner")
-        if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
-        if not resource_manager   : raise RuntimeError("missing resource manager")
-        if not agent_launch_method: raise RuntimeError("missing agentlaunch method")
-        if not task_launch_method : raise RuntimeError("missing task launch method")
+        if not python_dist     : raise RuntimeError("missing python distribution")
+        if not virtenv_dist    : raise RuntimeError("missing virtualenv distribution")
+        if not agent_spawner   : raise RuntimeError("missing agent spawner")
+        if not agent_scheduler : raise RuntimeError("missing agent scheduler")
+        if not resource_manager: raise RuntimeError("missing resource manager")
 
         # massage some values
         if not queue:
@@ -854,7 +1006,7 @@ class Default(PMGRLaunchingComponent):
 
         if  cleanup and isinstance(cleanup, bool):
             #  l : log files
-            #  u : unit work dirs
+            #  u : task work dirs
             #  v : virtualenv
             #  e : everything (== pilot sandbox)
             if shared_filesystem:
@@ -897,8 +1049,6 @@ class Default(PMGRLaunchingComponent):
             gpus_per_node = int(gpus_per_node)
             number_gpus   = int(gpus_per_node *
                             math.ceil(float(number_gpus) / gpus_per_node))
-
-        tar_name = '%s.%s.tgz' % (sid, self.uid)
 
         # set mandatory args
         bootstrap_args  = ""
@@ -954,17 +1104,18 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['session_sandbox']     = session_sandbox
         agent_cfg['resource_sandbox']    = resource_sandbox
         agent_cfg['resource_manager']    = resource_manager
-        agent_cfg['agent_launch_method'] = agent_launch_method
-        agent_cfg['task_launch_method']  = task_launch_method
-        agent_cfg['mpi_launch_method']   = mpi_launch_method
         agent_cfg['cores_per_node']      = cores_per_node
         agent_cfg['gpus_per_node']       = gpus_per_node
         agent_cfg['lfs_path_per_node']   = lfs_path_per_node
         agent_cfg['lfs_size_per_node']   = lfs_size_per_node
-        agent_cfg['cu_tmp']              = cu_tmp
-        agent_cfg['export_to_cu']        = export_to_cu
-        agent_cfg['cu_pre_exec']         = cu_pre_exec
-        agent_cfg['cu_post_exec']        = cu_post_exec
+        agent_cfg['task_tmp']            = task_tmp
+        agent_cfg['export_to_task']      = export_to_task
+        agent_cfg['task_pre_launch']     = task_pre_launch
+        agent_cfg['task_pre_exec']       = task_pre_exec
+        agent_cfg['task_pre_rank']       = task_pre_rank
+        agent_cfg['task_post_launch']    = task_post_launch
+        agent_cfg['task_post_exec']      = task_post_exec
+        agent_cfg['task_post_rank']      = task_post_rank
         agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
         agent_cfg['debug']               = self._log.getEffectiveLevel()
 
@@ -982,9 +1133,20 @@ class Default(PMGRLaunchingComponent):
         self._log.debug("Write agent cfg to '%s'.", cfg_tmp_file)
         ru.write_json(agent_cfg, cfg_tmp_file)
 
-        ret['fts'].append({'src': cfg_tmp_file,
-                           'tgt': '%s/%s' % (pilot_sandbox, agent_cfg_name),
-                           'rem': True})  # purge the tmp file after packing
+        # always stage agent cfg for each pilot, not in the tarball
+        # FIXME: purge the tmp file after staging
+        self._log.debug('=== cfg %s -> %s', agent_cfg['pid'], pilot_sandbox)
+        ret['sds'].append({'source': cfg_tmp_file,
+                           'target': '%s/%s' % (pilot['pilot_sandbox'], agent_cfg_name),
+                           'action': rpc.TRANSFER})
+
+        # always stage the bootstrapper for each pilot, not in the tarball
+        # FIXME: this results in many staging ops for many pilots
+        bootstrapper_path = os.path.abspath("%s/agent/bootstrap_0.sh"
+                                           % self._root_dir)
+        ret['sds'].append({'source': bootstrapper_path,
+                           'target': '%s/bootstrap_0.sh' % pilot['pilot_sandbox'],
+                           'action': rpc.TRANSFER})
 
         # ----------------------------------------------------------------------
         # we also touch the log and profile tarballs in the target pilot sandbox
@@ -1008,18 +1170,11 @@ class Default(PMGRLaunchingComponent):
 
             for sdist in sdist_paths:
                 base = os.path.basename(sdist)
-                ret['fts'].append({'src': sdist,
-                                   'tgt': '%s/%s' % (session_sandbox, base),
-                                   'rem': False
+                ret['fts'].append({
+                    'src': sdist,
+                    'tgt': '%s/%s' % (session_sandbox, base),
+                    'rem': False
                 })
-
-            # Copy the bootstrap shell script.
-            bootstrapper_path = os.path.abspath("%s/agent/bootstrap_0.sh"
-                              % self._root_dir)
-            ret['fts'].append({'src': bootstrapper_path,
-                               'tgt': session_sandbox,
-                               'rem': False
-            })
 
             # Some machines cannot run pip due to outdated CA certs.
             # For those, we also stage an updated certificate bundle
@@ -1036,15 +1191,6 @@ class Default(PMGRLaunchingComponent):
 
             self._sandboxes[resource] = True
 
-        # always stage the bootstrapper for each pilot, but *not* in the tarball
-        # FIXME: this results in many staging ops for many pilots
-        bootstrapper_path = os.path.abspath("%s/agent/bootstrap_0.sh"
-                                           % self._root_dir)
-        bootstrap_tgt = '%s/bootstrap_0.sh' % (pilot_sandbox)
-        ret['sds'].append({'source': bootstrapper_path,
-                           'target': bootstrap_tgt,
-                           'action': rpc.TRANSFER})
-
         # ----------------------------------------------------------------------
         # Create SAGA Job description and submit the pilot job
 
@@ -1052,7 +1198,7 @@ class Default(PMGRLaunchingComponent):
 
         jd.name                  = job_name
         jd.executable            = "/bin/bash"
-        jd.arguments             = ['-l %s %s' % (bootstrap_tgt, bootstrap_args)]
+        jd.arguments             = ['-l ./bootstrap_0.sh %s' % bootstrap_args]
         jd.working_directory     = pilot_sandbox
         jd.project               = project
         jd.output                = "bootstrap_0.out"
@@ -1067,6 +1213,12 @@ class Default(PMGRLaunchingComponent):
         jd.candidate_hosts       = candidate_hosts
         jd.environment           = dict()
         jd.system_architecture   = system_architecture
+
+        # register used resources in DB (enacted on next advance)
+        pilot['resources'] = {'cpu': number_cores,
+                              'gpu': number_gpus}
+        pilot['$set']      = ['resources']
+
 
         # we set any saga_jd_supplement keys which are not already set above
         for key, val in saga_jd_supplement.items():
@@ -1150,8 +1302,6 @@ class Default(PMGRLaunchingComponent):
 
         for sd in sds:
             sd['prof_id'] = pilot['uid']
-
-        for sd in sds:
             sd['source'] = str(complete_url(sd['source'], loc_ctx, self._log))
             sd['target'] = str(complete_url(sd['target'], rem_ctx, self._log))
 
@@ -1248,4 +1398,3 @@ class Default(PMGRLaunchingComponent):
 
 
 # ------------------------------------------------------------------------------
-

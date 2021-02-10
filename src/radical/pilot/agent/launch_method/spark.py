@@ -25,7 +25,7 @@ class Spark(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def rm_config_hook(cls, name, cfg, rm, log, profiler=None):
+    def rm_config_hook(cls, name, lmcfg, cfg, rm, log, profiler=None):
 
         import radical.utils as ru
 
@@ -159,19 +159,19 @@ class Spark(LaunchMethod):
     #
     def _configure(self):
 
-        self._log.info(self._cfg['rm_info']['lm_info'])
-        self.launch_command = self._cfg['rm_info']['lm_info']['launch_command']
+        self._log.info(self._cfg['lm_info'])
+        self.launch_command = self._cfg['lm_info']['launch_command']
         self._log.info('SPARK was called')
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        slots        = cu['slots']
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_args    = cud.get('arguments')
-        task_env     = cud.get('environment')
+        slots        = t['slots']
+        td          = t['description']
+        task_exec    = td['executable']
+        task_args    = td.get('arguments')
+        task_env     = td.get('environment')
 
         # Construct the args_string which is the arguments given as input to the
         # shell script. Needs to be a string

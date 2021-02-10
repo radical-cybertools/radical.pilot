@@ -98,7 +98,7 @@ class Flux(AgentExecutingComponent) :
         cmd = msg['cmd']
       # arg = msg['arg']
 
-        if cmd == 'cancel_units':
+        if cmd == 'cancel_tasks':
 
             # FIXME: clarify how to cancel tasks in Flux
             pass
@@ -108,9 +108,9 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
+    def work(self, tasks):
 
-        self._task_q.put(ru.as_list(units))
+        self._task_q.put(ru.as_list(tasks))
 
         if self._term:
             self._log.warn('threads triggered termination')
@@ -127,8 +127,7 @@ class Flux(AgentExecutingComponent) :
             # thread local initialization
             import flux
 
-            flux_url    = self._cfg['rm_info']['lm_info']\
-                                              ['flux_env']['FLUX_URI']
+            flux_url    = self._cfg['lm_info']['flux_env']['FLUX_URI']
             flux_handle = flux.Flux(url=flux_url)
             flux_handle.event_subscribe('job-state')
 

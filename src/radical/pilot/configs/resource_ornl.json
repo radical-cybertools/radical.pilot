@@ -22,9 +22,11 @@
         "agent_config"                : "rhea",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "APRUN",
-        "task_launch_method"          : "APRUN",
-        "mpi_launch_method"           : "APRUN",
+        "launch_methods"              : {
+                                         "order": ["FORK", "APRUN"],
+                                         "FORK" : {},
+                                         "APRUN": {}
+                                        },
         "pre_bootstrap_0"             : [
             "module purge",
             "module load PE-gnu",
@@ -70,9 +72,12 @@
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "MPIRUN",
+        "launch_methods"              : {
+                                         "order" : ["FORK", "SSH", "MPIRUN"],
+                                         "FORK"  : {},
+                                         "SSH"   : {},
+                                         "MPIRUN": {}
+                                        },
         "pre_bootstrap_0"             : [
             "module load python",
             "module load python/3.7.0",
@@ -100,18 +105,23 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "batch",
-        "resource_manager"            : "LSF_SUMMIT",
+        "resource_manager"            : "LSF",
         "lfs_per_node"                : "/tmp",
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "JSRUN",
-        "task_launch_method"          : "JSRUN",
-        "mpi_launch_method"           : "JSRUN",
+        "launch_methods"              : {
+                                         "order": ["FORK", "JSRUN"],
+                                         "FORK" : {},
+                                         "JSRUN": {
+                                             "env_prep": [
+                                                 "module unload xl",
+                                                 "module unload xalt",
+                                                 "module unload spectrum-mpi"
+                                             ]
+                                         }
+                                        },
         "pre_bootstrap_0"             : [
-                                         "module unload xl",
-                                         "module unload xalt",
-                                         "module unload spectrum-mpi",
                                          "module unload py-pip",
                                          "module unload py-virtualenv",
                                          "module unload py-setuptools",
@@ -121,17 +131,12 @@
                                          "module list"
                                         ],
         "pre_bootstrap_1"             : [
-                                         "module unload xl",
-                                         "module unload xalt",
-                                         "module unload spectrum-mpi",
                                          "module unload py-pip",
                                          "module unload py-virtualenv",
                                          "module unload py-setuptools",
                                          "module load   gcc/8.1.1",
                                          "module load   zeromq/4.2.5",
-                                         "module load   python/3.7.0",
-                                         # increase process limit on node
-                                         "ulimit -u 65536"
+                                         "module load   python/3.7.0"
                                         ],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
@@ -156,14 +161,28 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "batch",
-        "resource_manager"            : "LSF_SUMMIT",
+        "resource_manager"            : "LSF",
         "lfs_per_node"                : "/tmp",
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "PRTE",
-        "mpi_launch_method"           : "PRTE",
+        "launch_methods"              : {
+                                         "order": ["FORK", "PRTE"],
+                                         "FORK" : {},
+                                         "PRTE" : {
+                                             "env_prep": [
+                                                 "module unload xl",
+                                                 "module unload xalt",
+                                                 "module unload spectrum-mpi",
+                                                 "module use    /sw/summit/ums/ompix/gcc/8.1.1/modules",
+                                                 "module load   prrte/1.0.0_devtiming",
+                                                 "export PRRTE_PREFIX=$PRRTE_DIR"
+                                             ],
+                                             "cmds": [
+                                                 "ulimit -u 65536"
+                                             ]
+                                         }
+                                        },
         "pre_bootstrap_0"             : [
                                          "module unload xl",
                                          "module unload xalt",
@@ -173,10 +192,7 @@
                                          "module unload py-setuptools",
                                          "module load   gcc/8.1.1",
                                          "module load   zeromq/4.2.5",
-                                         "module load   python/3.7.0",
-                                         "module use    /sw/summit/ums/ompix/gcc/8.1.1/modules",
-                                         "module load   prrte/1.0.0_devtiming",
-                                         "export PRRTE_PREFIX=$PRRTE_DIR"
+                                         "module load   python/3.7.0"
                                         ],
         "pre_bootstrap_1"             : [
                                          "module unload xl",
@@ -187,11 +203,7 @@
                                          "module unload py-setuptools",
                                          "module load   gcc/8.1.1",
                                          "module load   zeromq/4.2.5",
-                                         "module load   python/3.7.0",
-                                         "module use    /sw/summit/ums/ompix/gcc/8.1.1/modules",
-                                         "module load   prrte/1.0.0_devtiming",
-                                         "export PRRTE_PREFIX=$PRRTE_DIR",
-                                         "ulimit -u 65536"
+                                         "module load   python/3.7.0"
                                         ],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
@@ -203,6 +215,7 @@
         "gpus_per_node"               : 6,
         "sockets_per_node"            : 2,
         "system_architecture"         : {"smt": 4,
-                                         "options": ["gpumps"]}
+                                         "options": ["gpumps"]},
+        "dvm_count"                   : 1
     }
 }

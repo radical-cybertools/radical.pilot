@@ -35,12 +35,12 @@ class APRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        cud        = cu['description']
-        slots      = cu['slots']
-        executable = cud['executable']
-        args       = cud['arguments']
+        td        = t['description']
+        slots      = t['slots']
+        executable = td['executable']
+        args       = td['arguments']
         argstr     = self._create_arg_string(args)
 
         if argstr: cmd = "%s %s" % (executable, argstr)
@@ -48,27 +48,27 @@ class APRun(LaunchMethod):
 
         # we get something like the following from the scheduler:
         #
-        #     cu = { ...
+        #     t = { ...
         #       'cpu_processes'    : 4,
         #       'cpu_process_type' : 'mpi',
         #       'cpu_threads'      : 2,
         #       'gpu_processes     : 2,
         #       'slots':
-        #       {   # 'nodes': [{'name': node_name,
-        #           #            'uid': node_uid,
+        #       {   # 'ranks': [{'node'    : node_name,
+        #           #            'node_id' : node_uid,
         #           #            'core_map': [core_map],
-        #           #            'gpu_map': [gpu_map],
+        #           #            'gpu_map' : [gpu_map],
         #           #            'lfs': lfs}],
-        #         'nodes'         : [{  'name': node_1,
-        #                               'uid': node_uid_1,
+        #         'ranks'         : [{  'node'    : node_1,
+        #                               'node_id' : node_uid_1,
         #                               'core_map': [[0, 2], [4, 6]],
-        #                               'gpu_map': [[0]],
-        #                               'lfs': 1024},
-        #                            {  'name': node_2,
-        #                               'uid': node_uid_2,
+        #                               'gpu_map' : [[0]],
+        #                               'lfs'     : 1024},
+        #                            {  'node'    : node_2,
+        #                               'node_id' : node_uid_2,
         #                               'core_map': [[1, 3], [5, 7]],
-        #                               'gpu_map': [[0]],
-        #                               'lfs': 1024}
+        #                               'gpu_map' : [[0]],
+        #                               'lfs'     : 1024}
         #                            ],
         #         'cores_per_node': 8,
         #         'gpus_per_node' : 1,
@@ -76,7 +76,7 @@ class APRun(LaunchMethod):
         #       }
         #     }
         #
-        # The 'nodes' entry here defines what nodes and cores we should ask
+        # The 'ranks' entry here defines what nodes and cores we should ask
         # aprun to populate with processes.
         #
         # The relevant aprun documentation is at (search for `-cc` and `-L`):
@@ -98,9 +98,9 @@ class APRun(LaunchMethod):
         # Each node can only be used *once* in that way for any individual
         # aprun command.  This means that the depth must be uniform for that
         # node, over *both* cpu and gpu processes.  This limits the mixability
-        # of cpu and gpu processes for units started via aprun.
+        # of cpu and gpu processes for tasks started via aprun.
         #
-        # Below we sift through the unit slots and create a slot list which
+        # Below we sift through the task slots and create a slot list which
         # basically defines sets of cores (-cc) for each node (-L).  Those sets
         # need to have the same size per node (the depth -d).  The number of
         # sets defines the number of procs to start (-n/-N).
@@ -130,16 +130,16 @@ class APRun(LaunchMethod):
         # Note that the `-n` argument needs to be adjusted accordingly.
         #
         nodes = dict()
-        for node in slots['nodes']:
+        for rank in slots['ranks']:
 
-            node_id = node['uid']
+            node_id = rank['node_id']
             if node_id not in nodes:
                 # keep all cpu and gpu slots, record depths
                 nodes[node_id] = {'cpu' : list(),
                                   'gpu' : list()}
 
             # add all cpu and gpu process slots to the node list.
-            for cpu_slot in node['core_map']: nodes[node_id]['cpu'].append(cpu_slot)
+            for cpu_slot in rank['core_map']: nodes[node_id]['cpu'].append(cpu_slot)
 
 
         self._log.debug('aprun slots: %s', pprint.pformat(slots))

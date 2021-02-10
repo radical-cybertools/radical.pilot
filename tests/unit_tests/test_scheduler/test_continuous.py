@@ -1,7 +1,8 @@
+#!/usr/bin/env python3
 
 # pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
-__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
+__copyright__ = "Copyright 2013-2021, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 import glob
@@ -25,14 +26,15 @@ class TestContinuous(TestCase):
     #
     def setUp(self):
 
-        ret = list()
-        pat = os.path.dirname(__file__) + '/test_cases_continuous/unit*.json'
+        ret  = list()
+        base = os.path.dirname(__file__)
+        pat  = '%s/test_cases_continuous/task*.json' % base
 
         for fin in glob.glob(pat):
             test_cases = ru.read_json(fin)
             ret.append(test_cases)
 
-        cfg_fname = os.path.dirname(__file__) + '/test_cases_continuous/test_continuous.json'
+        cfg_fname = '%s/test_cases_continuous/test_continuous.json' % base
         cfg_tests = ru.read_json(cfg_fname)
 
         return cfg_tests, ret
@@ -151,73 +153,99 @@ class TestContinuous(TestCase):
     @mock.patch.object(Continuous, '__init__', return_value=None)
     @mock.patch.object(Continuous, '_configure', return_value=None)
     @mock.patch.object(Continuous, '_find_resources',
-                       return_value=[{'name'    : 'a',
-                                      'uid'     : 1,
+                       return_value=[{'node'    : 'a',
+                                      'node_id' : '1',
                                       'core_map': [[0]],
                                       'gpu_map' : [[0]],
                                       'lfs'     : {'path': '/dev/null',
                                                    'size': 1234},
                                       'mem'     : 128}])
-    def test_schedule_unit(self,
+    @mock.patch('radical.utils.Logger')
+    def test_schedule_task(self,
                            mocked_init,
                            mocked_configure,
-                           mocked_find_resources):
+                           mocked_find_resources,
+                           mocked_Logger):
 
         _, cfg = self.setUp()
         component = Continuous(cfg=None, session=None)
-        unit = dict()
-        unit['uid'] = cfg[1]['unit']['uid']
-        unit['description'] = cfg[1]['unit']['description']
+        task = dict()
+        task['uid'] = cfg[1]['task']['uid']
+        task['description'] = cfg[1]['task']['description']
         component.nodes = cfg[1]['setup']['lm']['slots']['nodes']
-
+        component._tag_history = dict()
         component._rm_cores_per_node = 32
         component._rm_gpus_per_node  = 2
         component._rm_lfs_per_node   = {"size": 0, "path": "/dev/null"}
         component._rm_mem_per_node   = 1024
-        component._rm_lm_info = 'INFO'
-        component._log = ru.Logger('dummy')
-        component._node_offset = 0
+        component._rm_lm_info        = dict()
+        component._log               = ru.Logger('dummy')
+        component._dvm_host_list     = None
+        component._node_offset       = 0
         test_slot =  {'cores_per_node': 32,
                       'gpus_per_node': 2,
-                      'lfs_per_node': {'path': '/dev/null', 'size': 0},
-                      'lm_info': 'INFO',
-                      'mem_per_node': 1024,
-                      'nodes': [{'core_map': [[0]],
-                                 'gpu_map' : [[0]],
-                                 'lfs': {'path': '/dev/null', 'size': 1234},
-                                 'mem': 128,
-                                 'name': 'a',
-                                 'uid': 1}]}
+                      'lfs_per_node' : {'path': '/dev/null', 'size': 0},
+                      'lm_info'      : {},
+                      'mem_per_node' : 1024,
+                      'ranks'        : [{'core_map': [[0]],
+                                         'gpu_map' : [[0]],
+                                         'lfs'     : {'path' : '/dev/null',
+                                                      'size' : 1234},
+                                         'mem'     : 128,
+                                         'node'    : 'a',
+                                         'node_id' : 1}]}
         try:
             self.assertEqual(component.schedule_unit(unit), test_slot)
         except:
             with pytest.raises(AssertionError):
                 raise
 
+        self.assertEqual(component.schedule_task(task), test_slot)
+        self.assertEqual(component._tag_history, {})
+      # self.assertEqual(component._tag_history, {'task.000001': [1]})
+
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Continuous, '__init__', return_value=None)
-    def test_unschedule_unit(self, mocked_init):
+    def test_unschedule_task(self, mocked_init):
 
         component = Continuous(cfg=None, session=None)
         _, cfg   = self.setUp()
 
-        unit = {
-                'description': cfg[1]['unit']['description'],
-                'slots'      : cfg[1]['setup']['lm']['slots']
+        task = {
+                'description': cfg[1]['task']['description'],
+                'slots'      : cfg[1]['setup']['slots']
                }
 
         component.nodes = cfg[1]['setup']['lm']['slots']['nodes']
         component._log  = ru.Logger('dummy')
 
-        component.unschedule_unit(unit)
+        component.unschedule_task(task)
         try:
             self.assertEqual(component.nodes[0]['cores'], [0])
             self.assertEqual(component.nodes[0]['gpus'], [0])
         except:
             with pytest.raises(AssertionError):
                 raise
+
+
+if __name__ == '__main__':
+
+    tc = TestContinuous()
+    tc.test_configure()
+    tc.test_unschedule_task()
+    tc.test_find_resources()
+    tc.test_schedule_task()
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__':
+
+    tc = TestContinuous()
+    tc.test_schedule_unit()
+    tc.test_unschedule_unit()
 
 
 # ------------------------------------------------------------------------------

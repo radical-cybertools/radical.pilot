@@ -2,7 +2,7 @@
 {
     "stampede2_ssh": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
         "gsissh"                      :
@@ -24,27 +24,38 @@
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "IBRUN",
+        "launch_methods"              : {
+                                         "order": ["FORK", "SSH", "IBRUN"],
+                                         "FORK" : {},
+                                         "SSH"  : {
+                                             "env_prep": [
+                                                 "module load TACC"
+                                             ]
+                                         },
+                                         "IBRUN": {
+                                             "env_prep": [
+                                                 "module load TACC"
+                                             ]
+                                         }
+                                        },
         "pre_bootstrap_0"             :["module load TACC",
-                                         "module load intel/18.0.0",
-                                         "module load python3/3.7.0"
+                                        "module load intel/18.0.0",
+                                        "module load python3/3.7.0"
                                         ],
         "default_remote_workdir"      : "$WORK",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_cu"                : ["LMOD_CMD",
+        "export_to_task"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : []
+        "task_pre_exec"               : []
     },
 
     "stampede2_mpirun": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
         "gsissh"                      :
@@ -66,9 +77,15 @@
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "MPIRUN",
-        "task_launch_method"          : "MPIRUN",
-        "mpi_launch_method"           : "MPIRUN",
+        "launch_methods"              : {
+                                         "order" : ["FORK", "MPIRUN"],
+                                         "FORK"  : {},
+                                         "MPIRUN": {
+                                             "env_prep": [
+                                                 "module load TACC"
+                                             ]
+                                         }
+                                        },
         "pre_bootstrap_0"             : ["module load TACC",
                                          "module load intel/18.0.0",
                                          "module load python3/3.7.0"
@@ -78,15 +95,15 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_cu"                : ["LMOD_CMD",
+        "export_to_task"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : ["module restore"]
+        "task_pre_exec"               : ["module restore"]
     },
 
     "stampede2_ibrun": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
         "gsissh"                      :
@@ -109,9 +126,15 @@
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "IBRUN",
-        "task_launch_method"          : "IBRUN",
-        "mpi_launch_method"           : "IBRUN",
+        "launch_methods"              : {
+                                         "order" : ["FORK", "IBRUN"],
+                                         "FORK"  : {},
+                                         "IBRUN" : {
+                                             "env_prep": [
+                                                 "module load TACC"
+                                             ]
+                                         }
+                                        },
       # "blocked_cores"               : [64, 65, 66, 67],
       # "blocked_gpus"                : [0],
         "pre_bootstrap_0"             : ["module load TACC",
@@ -123,15 +146,15 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_cu"                : ["LMOD_CMD",
+        "export_to_task"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : []
+        "task_pre_exec"               : []
     },
 
     "stampede2_srun": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
         "gsissh"                      :
@@ -153,9 +176,15 @@
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SRUN",
-        "task_launch_method"          : "SRUN",
-        "mpi_launch_method"           : "SRUN",
+        "launch_methods"              : {
+                                         "order": ["FORK", "SRUN"],
+                                         "FORK" : {},
+                                         "SRUN" : {
+                                             "env_prep": [
+                                                 "module load TACC"
+                                             ]
+                                         }
+                                        },
         "pre_bootstrap_0"             :["module load TACC",
                                          "module load intel/18.0.0",
                                          "module load python3/3.7.0"
@@ -165,15 +194,15 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_cu"                : ["LMOD_CMD",
+        "export_to_task"                : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : []
+        "task_pre_exec"               : []
     },
 
     "comet_ssh": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
@@ -193,9 +222,20 @@
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "IBRUN",
+        "launch_methods"              : {
+                                         "order": ["FORK", "SSH", "IBRUN"],
+                                         "FORK" : {},
+                                         "SRUN" : {
+                                             "env_prep": [
+                                                 "module load TACC"
+                                             ]
+                                         },
+                                         "IBRUN" : {
+                                             "env_prep": [
+                                                 "module load TACC"
+                                             ]
+                                         }
+                                        },
         "pre_bootstrap_0"             : ["module load python"],
         "default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
         "valid_roots"                 : ["/oasis/scratch/comet"],
@@ -203,12 +243,12 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "cu_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
+        "task_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
     },
 
     "comet_ssh_funcs": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
@@ -228,8 +268,16 @@
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "NOOP",
         "agent_spawner"               : "FUNCS",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "FUNCS",
+        "launch_methods"              : {
+                                         "order": ["FORK", "SSH", "FUNCS"],
+                                         "FORK" : {},
+                                         "SRUN" : {
+                                             "env_prep": [
+                                                 "module load TACC"
+                                             ]
+                                         },
+                                         "FUNCS" : {}
+                                        },
         "pre_bootstrap_0"             : ["module load python"],
         "default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
         "valid_roots"                 : ["/oasis/scratch/comet"],
@@ -237,12 +285,12 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "cu_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
+        "task_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
     },
 
     "comet_spark": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
@@ -263,9 +311,12 @@
         "agent_type"                  : "multicore",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "FORK",
-        "task_launch_method"          : "SPARK",
-        "mpi_launch_method"           : "MPIRUN_RSH",
+        "launch_methods"              : {
+                                         "order"     : ["FORK", "SPARK", "MPIRUN_RSH"],
+                                         "FORK"      : {},
+                                         "SPARK"     : {},
+                                         "MPIRUN_RSH": {}
+                                        },
         "pre_bootstrap_0"             : ["module load python"],
         "pre_bootstrap_1"             : [
             "export PATH=$PATH",
@@ -281,7 +332,7 @@
 
     "comet_mpirun": {
         "description"                 : "The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["ssh", "gsissh"],
         "mandatory_args"              : ["project"],
         "ssh"                         :
@@ -301,9 +352,12 @@
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "MPIRUN",
+        "launch_methods"              : {
+                                         "order" : ["FORK", "SSH", "MPIRUN"],
+                                         "FORK"  : {},
+                                         "SSH"   : {},
+                                         "MPIRUN": {}
+                                        },
         "pre_bootstrap_0"             : ["module reset",
                                          "module load intel",
                                          "module load python"
@@ -317,12 +371,12 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "cu_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
+        "task_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
     },
 
     "bridges_mpiexec": {
         "description"                 : "The XSEDE 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription.",
         "schemas"                     : ["gsissh", "ssh", "go"],
       # "mandatory_args"              : [],
         "gsissh"                      :
@@ -346,29 +400,35 @@
         "lfs_size_per_node"           : 3713368,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "MPIEXEC",
-        "mpi_launch_method"           : "MPIEXEC",
+        "launch_methods"              : {
+                                         "order"  : ["FORK", "SSH", "MPIEXEC"],
+                                         "FORK"   : {},
+                                         "SSH"    : {},
+                                         "MPIEXEC": {
+                                             "env_prep": [
+                                                 "module load intel/19.3",
+                                                 "module load mpi/intel_openmpi/19.3"
+                                             ]
+                                         }
+                                        },
         "pre_bootstrap_0"             : ["module purge",
                                          "module load slurm",
-                                         "module load anaconda3",
-                                         "module load intel/19.3",
-                                         "module load mpi/intel_openmpi/19.3"
+                                         "module load anaconda3"
                                         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/home", "/pylon1", "/pylon5"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda",
-        "export_to_cu"                : [],
-        "cu_pre_exec"                 : [],
+        "export_to_task"                : [],
+        "task_pre_exec"               : [],
         "system_architecture"         : {"gpu": "p100"},
         "gpus_per_node"               : 2
     },
 
     "bridges": {
         "description"                 : "The XSEDE 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
-        "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription.",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription.",
         "schemas"                     : ["gsissh", "ssh", "go"],
       # "mandatory_args"              : [],
         "gsissh"                      :
@@ -392,12 +452,18 @@
         "lfs_size_per_node"           : 3713368,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "MPIRUN",
+        "launch_methods"              : {
+                                         "order" : ["FORK", "SSH", "MPIRUN"],
+                                         "FORK"  : {},
+                                         "SSH"   : {},
+                                         "MPIRUN": {
+                                             "env_prep": [
+                                                 "module load gcc",
+                                                 "module load mpi/gcc_openmpi"
+                                             ]
+                                         }
+                                        },
         "pre_bootstrap_0"             : ["module reset",
-                                         "module load gcc",
-                                         "module load mpi/gcc_openmpi",
                                          "module load slurm",
                                          "module load anaconda3"
                                         ],
@@ -406,8 +472,8 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda",
-        "export_to_cu"                : [],
-        "cu_pre_exec"                 : [],
+        "export_to_task"                : [],
+        "task_pre_exec"               : [],
         "gpus_per_node"               : 2,
         "system_architecture"         : {"gpu": "p100"}
     }

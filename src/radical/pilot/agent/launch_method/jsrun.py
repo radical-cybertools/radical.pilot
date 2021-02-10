@@ -28,31 +28,9 @@ class JSRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    @classmethod
-    def rm_config_hook(cls, name, cfg, rm, log, profiler):
-
-        if 'session.lassen' in cfg['sid'].lower():
-            # correctness of GPU IDs is based on env var CUDA_VISIBLE_DEVICES
-            # which value is taken from `gpu_map`, it is set at class
-            # `radical.pilot.agent.scheduler.base.AgentSchedulingComponent`
-            # (method `_handle_cuda`)
-            #
-            # *) since the launching happens at the login node Lassen@LLNL
-            #    thus the session name can be used to identify the machine
-            #
-            # FIXME: the `cvd_id_mode` setting should eventually move into the
-            #        resource config.
-            lm_info = {'cvd_id_mode': 'physical'}
-        else:
-            lm_info = {'cvd_id_mode': 'logical'}
-        return lm_info
-
-
-    # --------------------------------------------------------------------------
-    #
     def _create_resource_set_file(self, slots, uid, sandbox):
         """
-        This method takes as input a CU slots and creates the necessary
+        This method takes as input a Task slots and creates the necessary
         resource set file. This resource set file is then used by jsrun to
         place and execute tasks on nodes.
 
@@ -76,7 +54,7 @@ class JSRUN(LaunchMethod):
         ----------
         slots : List of dictionaries.
 
-            The slots that the unit will be placed. A slot has the following
+            The slots that the task will be placed. A slot has the following
             format:
 
             {"nodes"         : [{"name"    : "a",
@@ -91,32 +69,33 @@ class JSRUN(LaunchMethod):
              "lm_info"       : "INFO",
             }
 
-        uid     : unit ID (string)
-        sandbox : unit sandbox (string)
+        uid     : task ID (string)
+        sandbox : task sandbox (string)
         mpi     : MPI or not (bool, default: False)
 
         """
 
         # if `cpu_index_using: physical` is set to run at Lassen@LLNL,
         #  then it returns an error "error in ptssup_mkcltsock_afunix()"
-        if slots['nodes'][0]['name'].lower().startswith('lassen'):
+        if slots['ranks'][0]['node'].lower().startswith('lassen'):
             rs_str = ''
         else:
             rs_str = 'cpu_index_using: physical\n'
-        rank = 0
-        for node in slots['nodes']:
 
-            gpu_maps = list(node['gpu_map'])
-            for map_set in node['core_map']:
+        rank_id = 0
+        for rank in slots['ranks']:
+
+            gpu_maps = list(rank['gpu_map'])
+            for map_set in rank['core_map']:
                 cores = ','.join(str(core) for core in map_set)
-                rs_str += 'rank: %d: {'  % rank
-                rs_str += ' host: %s;'  % str(node['uid'])
+                rs_str += 'rank: %d: {' % rank_id
+                rs_str += ' host: %s;'  % str(rank['node_id'])
                 rs_str += ' cpu: {%s}'  % cores
                 if gpu_maps:
                     gpus = [str(gpu_map[0]) for gpu_map in gpu_maps]
                     rs_str += '; gpu: {%s}' % ','.join(gpus)
-                rs_str += '}\n'
-                rank   += 1
+                rs_str  += '}\n'
+                rank_id += 1
 
         rs_name = '%s/%s.rs' % (sandbox, uid)
         with open(rs_name, 'w') as fout:
@@ -127,15 +106,15 @@ class JSRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        uid          = cu['uid']
-        slots        = cu['slots']
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_args    = cud.get('arguments')   or list()
+        uid          = t['uid']
+        slots        = t['slots']
+        td           = t['description']
+        task_exec    = td['executable']
+        task_args    = td.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
-        task_sandbox = cu['unit_sandbox_path']
+        task_sandbox = t['task_sandbox_path']
 
         assert(slots), 'missing slots for %s' % uid
 
@@ -145,15 +124,6 @@ class JSRUN(LaunchMethod):
         else          : task_command = task_exec
 
         env_string = ''
-      # task_env   = cud.get('environment') or dict()
-      # env_list   = self.EXPORT_ENV_VARIABLES + task_env.keys()
-      # env_string = ' '.join(['-E "%s"' % var for var in env_list])
-      #
-      # # jsrun fails if an -E export is not set
-      # for var in env_list:
-      #     if var not in os.environ:
-      #         os.environ[var] = ''
-
         # from https://www.olcf.ornl.gov/ \
         #             wp-content/uploads/2018/11/multi-gpu-workshop.pdf
         #
@@ -161,8 +131,8 @@ class JSRUN(LaunchMethod):
         # CUDA without MPI, use jsrun --smpiargs="off"
         #
         # We only set this for CUDA tasks
-        if 'cuda' in cud.get('gpu_thread_type', '').lower():
-            if 'mpi' in cud.get('gpu_process_type', '').lower():
+        if 'cuda' in td.get('gpu_thread_type', '').lower():
+            if 'mpi' in td.get('gpu_process_type', '').lower():
                 smpiargs = '--smpiargs="-gpu"'
             else:
                 smpiargs = '--smpiargs="off"'
