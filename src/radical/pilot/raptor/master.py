@@ -344,7 +344,7 @@ class Master(rpu.Component):
     #
     def create_work_items(self):
         '''
-        This method MUST be implemented by the child class.  It is expected to
+        This method can be implemented by the child class.  It is expected to
         return a list of work items.  When calling `run()`, the master will
         distribute those work items to the workers and collect the results.
         Run will finish once all work items are collected.
@@ -352,7 +352,7 @@ class Master(rpu.Component):
         NOTE: work items are expected to be serializable dictionaries.
         '''
 
-        raise NotImplementedError('method be implemented by child class')
+        pass
 
 
     # --------------------------------------------------------------------------
@@ -493,15 +493,18 @@ class Master(rpu.Component):
             req = self._requests[uid]
             req.set_result(out, err, ret)
 
-            new_items = ru.as_list(self.result_cb([req]))
-            for item in new_items:
-                self.request(item)
+            self.result_cb([req])
+
         except:
             self._log.exception('==== result callback failed')
 
         # if the request is a task, also push it into the output queue
         self._log.debug('=== %s: %s', uid, req.task)
         if req.task:
+
+            req.task['stdout']    = out
+            req.task['stderr']    = err
+            req.task['exit_code'] = ret
 
             if ret == 0: req.task['target_state'] = rps.DONE
             else       : req.task['target_state'] = rps.FAILED
