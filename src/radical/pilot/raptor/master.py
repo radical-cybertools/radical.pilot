@@ -3,6 +3,8 @@ import os
 import sys
 import copy
 import time
+import psutil
+import signal
 
 import threading         as mt
 
@@ -19,6 +21,18 @@ from .request import Request
 def out(msg):
     sys.stdout.write('%s\n' % msg)
     sys.stdout.flush()
+
+
+def _close_dfs(signum, frame):
+    out('handling signal %s' % signum)
+    proc = psutil.Process()
+    for f in proc.open_files():
+        out('SIGKILL: close %s' % f[0])
+        os.close(f[1])
+
+
+signal.signal(signal.SIGINT,  _close_dfs)
+signal.signal(signal.SIGTERM, _close_dfs)
 
 
 # ------------------------------------------------------------------------------
@@ -122,7 +136,7 @@ class Master(rpu.Component):
         del(cfg['channel'])
         del(cfg['cmgr'])
 
-        cfg['log_lvl'] = 'debug'
+        cfg['log_lvl'] = 'error'
         cfg['kind']    = 'master'
         cfg['base']    = pwd
         cfg['uid']     = ru.generate_id('master.%(item_counter)06d',

@@ -237,7 +237,7 @@ echo "$($RP_GTOD),$1,task_script,MainThread,$RP_TASK_ID,AGENT_EXECUTING,$2" >> $
             env_string += 'export RP_TASK_NAME="%s"\n'     % task['description'].get('name')
             env_string += 'export RP_GTOD="%s"\n'          % self.gtod
             env_string += 'export RP_PROF="%s"\n'          % self.prof
-          # env_string += 'export RP_TMP="%s"\n'           % self._task_tmp
+            env_string += 'export RP_TMP="%s"\n'           % self._task_tmp
             env_string += 'export RP_TASK_SANDBOX="%s"\n'  % sandbox
             env_string += 'export RP_PILOT_SANDBOX="%s"\n' % self._pwd
             env_string += 'export RP_PILOT_STAGING="%s"\n' % self._pwd

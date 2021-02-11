@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import queue
+import psutil
 import signal
 
 import threading         as mt
@@ -15,6 +16,23 @@ import radical.utils     as ru
 from .. import Session
 from .. import utils     as rpu
 from .. import constants as rpc
+
+
+def out(msg):
+    sys.stdout.write('%s\n' % msg)
+    sys.stdout.flush()
+
+
+# def _close_dfs(signum, frame):
+#     out('handling signal %s' % signum)
+#     proc = psutil.Process()
+#     for f in proc.open_files():
+#         out('SIGKILL: close %s' % f[0])
+#         os.close(f[1])
+#     sys.exit()
+# 
+# NOTE: this conflicts with the `TERM` signal send by the dispatched process
+# signal.signal(signal.SIGTERM, _close_dfs)
 
 
 # ------------------------------------------------------------------------------
@@ -453,7 +471,6 @@ class Worker(rpu.Component):
 
                     self._res_evt.clear()
 
-
                 self._prof.prof('req_start', uid=task['uid'], msg=self._uid)
 
                 # we got an allocation for this task, and can run it, so apply
@@ -517,10 +534,15 @@ class Worker(rpu.Component):
                     self._result_queue.put([task, '', 'timeout', 1])
                     ru.cancel_main_thread()
                     os.kill(os.getpid(), signal.SIGTERM)
-                    break
+                    os.kill(os.getpid(), signal.SIGKILL)
+                    sys.exit()
         # ----------------------------------------------------------------------
 
         ret = 1  # in case we fall through before ret can be set by the task
+
+        e_done = mt.Event()
+        e_tout = mt.Event()
+
         try:
             mode = task['mode']
             assert(mode in self._modes), 'no such call mode %s' % mode
@@ -534,17 +556,14 @@ class Worker(rpu.Component):
             os.environ['CUDA_VISIBLE_DEVICES'] = os.environ['RP_TASK_GPUS']
 
             tout = task.get('timeout')
-            self._log.debug('dispatch with tout %s', tout)
-
-            e_done = mt.Event()
-            e_tout = mt.Event()
+          # self._log.debug('dispatch with tout %s', tout)
 
             if tout:
-                self._log.debug('start tout thread')
+              # self._log.debug('start tout thread')
                 watcher = mt.Thread(target=t_tout, args=[tout, e_tout, e_done])
                 watcher.daemon = True
                 watcher.start()
-                self._log.debug('started tout thread')
+              # self._log.debug('started tout thread')
 
             out, err, ret = self._modes[mode](task.get('data'))
 
@@ -556,7 +575,7 @@ class Worker(rpu.Component):
 
         except Exception as e:
 
-            self._log.exception('dispatch failed')
+         #  self._log.exception('dispatch failed')
             out = None
             err = 'dispatch failed: %s' % e
             ret = 1

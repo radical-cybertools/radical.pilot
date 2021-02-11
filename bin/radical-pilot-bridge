@@ -83,15 +83,17 @@ def main(cfg):
 
     # basic setup: cfg, logger and profiler
     log  = ru.Logger(name=cfg.uid, ns='radical.pilot', path=cfg.path)
-    prof = ru.Profiler(name=cfg.uid, ns='radical.pilot', path=cfg.path)
+    prof = ru.Profiler(name=cfg.uid, ns='radical.pilot', path=cfg.path,
+                       enabled=False)
 
     try:
-        prof.prof('bridge_start', uid=cfg.uid)
-        prof.disable()
+      # prof.prof('bridge_start', uid=cfg.uid)
+      # prof.disable()
         wrapped_main(cfg, log, prof)
     finally:
-        prof.enable()
-        prof.prof('bridge_stop', uid=cfg.uid)
+        pass
+      # prof.enable()
+      # prof.prof('bridge_stop', uid=cfg.uid)
 
 
 def wrapped_main(cfg, log, prof):
