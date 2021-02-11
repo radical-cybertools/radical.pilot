@@ -1250,9 +1250,9 @@ def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
 
     if not task_metrics:
         if pilot.cfg['task_launch_method'] == 'PRTE':
-            task_metrics = UNIT_DURATIONS_PRTE
+            task_metrics = TASK_DURATIONS_PRTE
         else:
-            task_metrics = UNIT_DURATIONS_DEFAULT
+            task_metrics = TASK_DURATIONS_DEFAULT
 
     if not pilot_metrics:
         pilot_metrics = PILOT_DURATIONS
