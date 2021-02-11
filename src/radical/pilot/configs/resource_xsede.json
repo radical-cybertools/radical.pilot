@@ -410,6 +410,47 @@
         "task_pre_exec"               : [],
         "gpus_per_node"               : 2,
         "system_architecture"         : {"gpu": "p100"}
+    },
+
+    "bridges2": {
+        "description"                 : "The XSEDE 'Bridges2' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription.",
+        "schemas"                     : ["gsissh", "ssh"],
+      # "mandatory_args"              : [],
+        "gsissh"                      :
+        {
+            "job_manager_endpoint"    : "slurm+gsissh://bridges2.psc.xsede.org:2222/",
+            "filesystem_endpoint"     : "gsisftp://bridges2.psc.xsede.org:2222/"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://bridges2.psc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://bridges2.psc.xsede.org/"
+        },
+        "default_queue"               : "RM",
+        "resource_manager"            : "SLURM",
+        "lfs_path_per_node"           : "${LOCAL}",
+        "lfs_size_per_node"           : 2516582,
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "SSH",
+        "mpi_launch_method"           : "MPIRUN",
+        "pre_bootstrap_0"             : ["module reset",
+                                         "module load gcc",
+                                         "module load openmpi/3.1.6-gcc8.3.1",
+                                         "module load anaconda3"
+                                        ],
+        "default_remote_workdir"      : "$PROJECT",
+        "valid_roots"                 : ["/home", "/oasis"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "anaconda",
+        "export_to_task"                : [],
+        "task_pre_exec"               : [],
+        "gpus_per_node"               : 8,
+        "system_architecture"         : {"gpu": "v100"}
     }
+
 }
 
