@@ -114,24 +114,22 @@ class PRTE(LaunchMethod):
         dvm_count      = cfg['resource_cfg'].get('dvm_count') or 1
         nodes_per_dvm  = math.ceil(num_nodes / dvm_count)
 
-        dvm_uri_list   = []
-        dvm_hosts_list = []
+        # format: {<id>: {'nodes': [...], 'details': {'dvm_uri': <uri>}}}
+        # LM specific parameters will be kept under `'details'`
+        partitions     = {}
 
         # go through every dvm instance
         for dvm_id in range(dvm_count):
+
             node_list = rm.node_list[dvm_id       * nodes_per_dvm:
                                      (dvm_id + 1) * nodes_per_dvm]
-            # keep node uids in `dvm_hosts_list`
-            dvm_hosts_list.append([node[1] for node in node_list])
-
-            vm_size   = len(node_list)
             furi      = '%s/prrte.%s.uri'   % (os.getcwd(), dvm_id)
             fhosts    = '%s/prrte.%s.hosts' % (os.getcwd(), dvm_id)
-
             with open(fhosts, 'w') as fout:
                 num_slots = rm.cores_per_node * rm.smt
                 for node in node_list:
                     fout.write('%s slots=%d\n' % (node[0], num_slots))
+            vm_size = len(node_list)
 
             prte  = '%s'               % prte_cmd
             prte += ' --prefix %s'     % os.environ['PRRTE_PREFIX']
@@ -224,10 +222,11 @@ class PRTE(LaunchMethod):
                           uid=cfg['pid'],
                           msg='dvm_id=%s' % dvm_id)
 
-            dvm_uri_list.append(dvm_uri)
+            partitions[str(dvm_id)] = {
+                'nodes'  : [node[1] for node in node_list],
+                'details': {'dvm_uri': dvm_uri}}
 
-        lm_info = {'dvm_uri'     : dvm_uri_list,
-                   'dvm_hosts'   : dvm_hosts_list,
+        lm_info = {'partitions'  : partitions,
                    'version_info': prte_info,
                    'cvd_id_mode' : 'physical'}
 
@@ -253,20 +252,21 @@ class PRTE(LaunchMethod):
         if not prun:
             raise Exception("Couldn't find prun")
 
-        for dvm_id, dvm_uri in enumerate(lm_info.get('dvm_uri', [])):
+        for p_id, p_data in lm_info.get('partitions', {}).items():
+            dvm_uri = p_data['details']['dvm_uri']
             try:
-                log.info('terminating prte-%s (%s)', dvm_id, dvm_uri)
+                log.info('terminating prte-%s (%s)', p_id, dvm_uri)
                 ru.sh_callout('%s --hnp %s --terminate' % (prun, dvm_uri))
                 profiler.prof(event='dvm_stop',
                               uid=cfg['pid'],
-                              msg='dvm_id=%s' % dvm_id)
+                              msg='dvm_id=%s' % p_id)
             except Exception as e:
                 # use the same event name as for runtime failures - those are
                 # not distinguishable at the moment from termination failures
                 profiler.prof(event='dvm_fail',
                               uid=cfg['pid'],
-                              msg='dvm_id=%s | error: %s' % (dvm_id, e))
-                log.debug('prte-%s termination failed (%s)', dvm_id, dvm_uri)
+                              msg='dvm_id=%s | error: %s' % (p_id, e))
+                log.debug('prte-%s termination failed (%s)', p_id, dvm_uri)
 
 
     # --------------------------------------------------------------------------
@@ -285,7 +285,7 @@ class PRTE(LaunchMethod):
         time.sleep(0.1)
 
         slots        = t['slots']
-        td          = t['description']
+        td           = t['description']
         task_exec    = td['executable']
         task_env     = td.get('environment') or dict()
         task_args    = td.get('arguments')   or list()
@@ -304,8 +304,8 @@ class PRTE(LaunchMethod):
             raise RuntimeError('lm_info missing for %s: %s'
                                % (self.name, slots))
 
-        if 'dvm_uri' not in slots['lm_info']:
-            raise RuntimeError('dvm_uri not in lm_info for %s: %s'
+        if 'partitions' not in slots['lm_info']:
+            raise RuntimeError('no partitions in lm_info for %s: %s'
                                % (self.name, slots))
 
         if task_argstr: task_command = '%s %s' % (task_exec, task_argstr)
@@ -325,7 +325,7 @@ class PRTE(LaunchMethod):
         map_flag += ' --pmca ptl_base_max_msg_size %d' % PTL_BASE_MAX_MSG_SIZE
       # map_flag += ' --pmca rmaps_base_verbose 5'
 
-        dvm_id = 0  # default value
+        dvm_uri = ''
         if 'nodes' not in slots:
             # this task is unscheduled - we leave it to PRRTE/PMI-X to
             # correctly place the task
@@ -344,9 +344,9 @@ class PRTE(LaunchMethod):
 
             # scheduler makes sure that all hosts are from the same DVM
             _host_uid = slots['nodes'][0]['uid']
-            for _dvm_id, _dvm_hosts in enumerate(slots['lm_info']['dvm_hosts']):
-                if _host_uid in _dvm_hosts:
-                    dvm_id = _dvm_id
+            for partition in slots['lm_info']['partitions'].values():
+                if _host_uid in partition['nodes']:
+                    dvm_uri = '--hnp "%s"' % partition['details']['dvm_uri']
                     break
 
         # Additional (debug) arguments to prun
@@ -359,10 +359,8 @@ class PRTE(LaunchMethod):
         else:
             debug_string = '--verbose'  # needed to get prte profile events
 
-        dvm_uri = slots['lm_info']['dvm_uri'][dvm_id]
-
       # env_string = ''  # FIXME
-        command = '%s --hnp "%s" %s %s %s %s' % (self.launch_command,
+        command = '%s %s %s %s %s %s' % (self.launch_command,
                   dvm_uri, map_flag, debug_string, env_string, task_command)
 
         return command, None
