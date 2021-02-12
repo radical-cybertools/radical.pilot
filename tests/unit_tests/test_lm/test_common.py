@@ -13,7 +13,7 @@ def setUp(test_type, test_name):
 
     ret = list()
     pwd = os.path.dirname(__file__)
-    for fin in glob.glob('%s/test_cases/task.*.json' % pwd):
+    for fin in glob.glob('%s/../test_cases/task.*.json' % pwd):
 
         tc                = ru.read_json(fin)
         task              = tc['task'   ]
