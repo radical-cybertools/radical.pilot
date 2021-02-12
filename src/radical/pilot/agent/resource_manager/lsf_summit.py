@@ -57,6 +57,7 @@ class LSF_SUMMIT(ResourceManager):
         self.rm_info            = dict()
         self.slot_list          = list()
         self.node_list          = list()
+        self.partitions         = dict()
         self.agent_nodes        = dict()
         self.sockets_per_node   = None
         self.cores_per_socket   = None
@@ -146,6 +147,13 @@ class LSF_SUMMIT(ResourceManager):
 
             self._log.info("ResourceManager config hook succeeded (%s)" % lm)
 
+        # check for partitions after `rm_config_hook` was applied
+        # NOTE: partition ids should be of a string type, because of JSON
+        #       serialization (agent config), which keeps dict keys as strings
+        if self.lm_info.get('partitions'):
+            self.partitions = {str(k): v['nodes']
+                               for k, v in self.lm_info['partitions'].items()}
+
       # # For now assume that all nodes have equal amount of cores and gpus
       # cores_avail = (len(self.node_list) + len(self.agent_nodes)) \
       #             * self.cores_per_socket * self.sockets_per_node
@@ -160,6 +168,7 @@ class LSF_SUMMIT(ResourceManager):
         # it defines
         #   lm_info:            dict received via the LM's rm_config_hook
         #   node_list:          list of node names to be used for task execution
+        #   partitions:         a dict with partition id and list of node uids
         #   sockets_per_node:   integer number of sockets on a node
         #   cores_per_socket:   integer number of cores per socket
         #   gpus_per_socket:    integer number of gpus per socket
@@ -173,6 +182,7 @@ class LSF_SUMMIT(ResourceManager):
             'name'             : self.name,
             'lm_info'          : self.lm_info,
             'node_list'        : self.node_list,
+            'partitions'       : self.partitions,
             'sockets_per_node' : self.sockets_per_node,
             'cores_per_socket' : self.cores_per_socket * self.smt,
             'gpus_per_socket'  : self.gpus_per_socket,
