@@ -11,15 +11,44 @@ from radical.pilot.agent.resource_manager.lsf_summit import LSF_SUMMIT
 
 class TestLSF_SUMMIT(TestCase):
 
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def setUpClass(cls):
+        cls._base_path = os.path.dirname(__file__) + '/../'
+        cls._host_file_path = '%s/test_cases/rm/nodelist.lsf' % cls._base_path
 
     # --------------------------------------------------------------------------
     #
-    @mock.patch.object(LSF_SUMMIT, '__init__',   return_value=None)
+    def test_init(self):
+
+        os.environ['LSB_DJOB_HOSTFILE'] = self._host_file_path
+
+        default_cfg = {'cores'              : 1,
+                       'agent_launch_method': None,
+                       'task_launch_method' : None}
+
+        component = LSF_SUMMIT(cfg=default_cfg, session=mock.Mock())
+
+        self.assertEqual(component.name, 'LSF_SUMMIT')
+        self.assertEqual(component._cfg, default_cfg)
+        self.assertIsInstance(component.partitions, dict)
+
+        # check that `self.rm_info` has all necessary keys
+        rm_info_keys = ['name', 'lm_info', 'node_list', 'partitions',
+                        'agent_nodes', 'sockets_per_node', 'cores_per_socket',
+                        'gpus_per_socket', 'cores_per_node', 'gpus_per_node',
+                        'lfs_per_node', 'mem_per_node', 'smt']
+        for rm_info_key in component.rm_info.keys():
+            self.assertIn(rm_info_key, rm_info_keys)
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(LSF_SUMMIT, '__init__', return_value=None)
     @mock.patch('radical.utils.raise_on')
     def test_configure(self, mocked_init, mocked_raise_on):
 
-        base = os.path.dirname(__file__) + '/../'
-        os.environ['LSB_DJOB_HOSTFILE'] = '%s/test_cases/rm/nodelist.lsf' % base
+        os.environ['LSB_DJOB_HOSTFILE'] = self._host_file_path
 
         # Test 1 no config file
         component = LSF_SUMMIT(cfg=None, session=None)
@@ -35,7 +64,7 @@ class TestLSF_SUMMIT(TestCase):
         self.assertEqual(component.mem_per_node, 0)
 
         # Test 2 config file
-        os.environ['LSB_DJOB_HOSTFILE'] = '%s/test_cases/rm/nodelist.lsf' % base
+        os.environ['LSB_DJOB_HOSTFILE'] = self._host_file_path
 
         component = LSF_SUMMIT(cfg=None, session=None)
         component._log = ru.Logger('dummy')
@@ -52,14 +81,12 @@ class TestLSF_SUMMIT(TestCase):
         self.assertEqual(component.lfs_per_node, {'path': 'test/', 'size': 100})
         self.assertEqual(component.mem_per_node, 0)
 
-
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    @mock.patch.object(LSF_SUMMIT, '__init__',   return_value=None)
+    @mock.patch.object(LSF_SUMMIT, '__init__', return_value=None)
     @mock.patch('radical.utils.raise_on')
     def test_configure_error(self, mocked_init, mocked_raise_on):
 
-        base = os.path.dirname(__file__) + '/../'
         # Test 1 no config file
         if 'LSB_DJOB_HOSTFILE' in os.environ:
             del os.environ['LSB_DJOB_HOSTFILE']
@@ -70,9 +97,9 @@ class TestLSF_SUMMIT(TestCase):
 
         with self.assertRaises(RuntimeError):
             component._configure()
-    #
-    #    # Test 2 config file
-        os.environ['LSB_DJOB_HOSTFILE'] = '%s/test_cases/rm/nodelist.lsf' % base
+
+        # Test 2 config file
+        os.environ['LSB_DJOB_HOSTFILE'] = self._host_file_path
 
         component = LSF_SUMMIT(cfg=None, session=None)
         component._log = ru.Logger('dummy')
@@ -88,6 +115,7 @@ class TestLSF_SUMMIT(TestCase):
 if __name__ == '__main__':
 
     tc = TestLSF_SUMMIT()
+    tc.test_init()
     tc.test_configure()
     tc.test_configure_error()
 
