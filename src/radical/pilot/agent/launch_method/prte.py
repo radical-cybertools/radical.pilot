@@ -308,8 +308,6 @@ class PRTE(LaunchMethod):
             raise RuntimeError('no partitions in lm_info for %s: %s'
                                % (self.name, slots))
 
-        partitions = slots['lm_info']['partitions']
-
         if task_argstr: task_command = '%s %s' % (task_exec, task_argstr)
         else          : task_command = task_exec
 
@@ -346,9 +344,9 @@ class PRTE(LaunchMethod):
 
             # scheduler makes sure that all hosts are from the same DVM
             _host_uid = slots['nodes'][0]['uid']
-            for _p_id, _p_data in partitions.items():
-                if _host_uid in _p_data['nodes']:
-                    dvm_uri = '--hnp "%s"' % _p_data['details']['dvm_uri']
+            for partition in slots['lm_info']['partitions'].values():
+                if _host_uid in partition['nodes']:
+                    dvm_uri = '--hnp "%s"' % partition['details']['dvm_uri']
                     break
 
         # Additional (debug) arguments to prun

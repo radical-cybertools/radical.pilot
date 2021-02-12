@@ -342,8 +342,6 @@ class PRTE2(LaunchMethod):
         if not slots['lm_info'].get('partitions'):
             raise RuntimeError('no partitions (%s): %s' % (self.name, slots))
 
-        partitions = slots['lm_info']['partitions']
-
         flags  = ' --np %d'                               % n_procs
         flags += ' --map-by hwthread:PE=%d:OVERSUBSCRIBE' % n_threads
         flags += ' --bind-to hwthread:overload-allowed'
@@ -363,9 +361,9 @@ class PRTE2(LaunchMethod):
 
             # scheduler makes sure that all nodes are from the same dvm
             _host_uid = slots['nodes'][0]['uid']
-            for _p_id, _p_data in partitions.items():
-                if _host_uid in _p_data['nodes']:
-                    dvm_uri = '--dvm-uri "%s"' % _p_data['details']['dvm_uri']
+            for partition in slots['lm_info']['partitions'].values():
+                if _host_uid in partition['nodes']:
+                    dvm_uri = '--dvm-uri "%s"' % partition['details']['dvm_uri']
                     break
 
         flags += ' --pmixmca ptl_base_max_msg_size %d' % PTL_MAX_MSG_SIZE
