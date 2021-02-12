@@ -222,10 +222,12 @@ create_gtod()
          | grep 'state UP' -A2 \
          | grep 'inet' \
          | awk '{print $2}' \
-         | cut -f1 -d'/')
+         | cut -f1 -d'/' \
+         | tr '\n' ' ' \
+         | cut -f1 -d' ')
     printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
         "$now" "sync_abs" "bootstrap_0" "MainThread" "$PILOT_ID" \
-        "PMGR_ACTIVE_PENDING" "$(hostname):${ip%$'\n'*}:$now:$now:$now" \
+        "PMGR_ACTIVE_PENDING" "$(hostname):$ip:$now:$now:$now" \
         | tee -a "$PROFILE"
 }
 
