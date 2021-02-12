@@ -23,8 +23,8 @@ RUNTIME           = 'runtime'
 APP_COMM          = 'app_comm'
 CLEANUP           = 'cleanup'
 EXIT_ON_ERROR     = 'exit_on_error'
-
 LAYOUT            = 'layout'
+SERVICES          = 'services'
 
 NODES             = 'nodes'
 CORES             = 'cores'
@@ -163,6 +163,14 @@ class PilotDescription(ru.Description):
        their configuration.
 
 
+    .. data:: services
+
+       [Type: [`str`]] [optional] A list of commands which get started on
+       a separate service compute node right after bootstrapping, and before any
+       RP task is launched.  That service compute node will not be used for any
+       other tasks.
+
+
     .. data:: prepare_env
 
        [Type: `dict`] [optional]: specification of task environments to be
@@ -211,6 +219,7 @@ class PilotDescription(ru.Description):
         OUTPUT_STAGING  : [str]      ,
         PREPARE_ENV     : {str: None},
         LAYOUT          : None       ,
+        SERVICES        : [str]      ,
     }
 
     _defaults = {
@@ -233,6 +242,7 @@ class PilotDescription(ru.Description):
         OUTPUT_STAGING  : []         ,
         PREPARE_ENV     : {}         ,
         LAYOUT          : 'default'  ,
+        SERVICES        : []         ,
     }
 
 
