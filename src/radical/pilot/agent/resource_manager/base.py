@@ -70,6 +70,7 @@ class ResourceManager(object):
         self.lm_info         = dict()
         self.rm_info         = dict()
         self.node_list       = list()
+        self.partitions      = dict()
         self.agent_nodes     = dict()
         self.cores_per_node  = 0
         self.gpus_per_node   = 0
@@ -159,6 +160,13 @@ class ResourceManager(object):
         if not self._launchers:
             raise RuntimeError('no valid launch methods found')
 
+        # check for partitions after `rm_config_hook` was applied
+        # NOTE: partition ids should be of a string type, because of JSON
+        #       serialization (agent config), which keeps dict keys as strings
+        if self.lm_info.get('partitions'):
+            self.partitions = {str(k): v['nodes']
+                               for k, v in self.lm_info['partitions'].items()}
+
         # For now assume that all nodes have equal amount of cores and gpus
         cores_avail = (len(self.node_list) + len(self.agent_nodes)) * self.cores_per_node
         gpus_avail  = (len(self.node_list) + len(self.agent_nodes)) * self.gpus_per_node
@@ -181,6 +189,7 @@ class ResourceManager(object):
         # five elements are well defined:
         #   lm_info:        the dict received via the LM's rm_config_hook
         #   node_list:      a list of node names to be used for task execution
+        #   partitions:     a dict with partition id and list of node uids
         #   cores_per_node: as the name says
         #   gpus_per_node:  as the name says
         #   agent_nodes:    list of node names reserved for agent execution
@@ -191,6 +200,7 @@ class ResourceManager(object):
         # a specific scheduler which can interpret the additional information.
         self.rm_info['name']           = self.name
         self.rm_info['node_list']      = self.node_list
+        self.rm_info['partitions']     = self.partitions
         self.rm_info['cores_per_node'] = self.cores_per_node
         self.rm_info['gpus_per_node']  = self.gpus_per_node
         self.rm_info['agent_nodes']    = self.agent_nodes
