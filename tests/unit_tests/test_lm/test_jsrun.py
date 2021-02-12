@@ -63,7 +63,7 @@ class TestJSRun(TestCase):
         for task, result, _ , resource_filename  in test_cases:
             component._create_resource_set_file.return_value = resource_filename
             command, hop = component.construct_command(task, None)
-            self.assertEqual([command, hop] == result)
+            self.assertEqual([command, hop], result)
 
 
 if __name__ == '__main__':
