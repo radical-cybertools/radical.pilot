@@ -4,6 +4,26 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
+1.6.0  Release                                                        2021-02-13
+--------------------------------------------------------------------------------
+
+  - rename ComputeUnit             -> Task
+  - rename ComputeUnitDescription  -> TaskDescription
+  - rename ComputePilot            -> Pilot
+  - rename ComputePilotDescription -> PilotDescription
+  - rename UnitManager             -> TaskManager
+  - related renames to state and constant names etc
+  - backward compatibility for now deprecated names
+  - preparation for agent partitioning (RM)
+  - multi-DVM support for PRTE.v1 and PRTE.v2
+  - RM class tests
+  - Bridges2 support
+  - fix to co-scheduling tags
+  - fix handling of IP variable in bootstrap
+  - doc and test updates, linter fixes, etc
+  - update scheduler tag types
+
+
 1.5.12 Release                                                        2021-02-02
 --------------------------------------------------------------------------------
 
@@ -1369,4 +1389,5 @@ API Changes:
 
         
 --------------------------------------------------------------------------------
+
 
