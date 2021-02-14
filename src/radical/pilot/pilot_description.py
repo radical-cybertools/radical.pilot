@@ -47,7 +47,8 @@ class PilotDescription(ru.Description):
     a new pilot.
 
     .. note:: A PilotDescription **MUST** define at least
-              :data:`resource`, :data:`cores` and :data:`runtime`.
+              :data:`resource`, :data:`cores` or :data:`nodes`,
+              and :data:`runtime`.
 
     **Example**::
 
@@ -101,7 +102,7 @@ class PilotDescription(ru.Description):
 
     .. data:: cores
 
-       [Type: `int`] [**mandatory**] The number of cores the pilot should
+       [Type: `int`] [optional] The number of cores the pilot should
        allocate on the target resource.
 
        NOTE: for local pilots, you can set a number larger than the physical
@@ -111,6 +112,14 @@ class PilotDescription(ru.Description):
 
        [Type: `int`] [optional] The number of gpus the pilot should allocate
        on the target resource.
+
+    .. data:: nodes
+
+       [Type: `int`] [optional] The number of nodes the pilot should
+       allocate on the target resource.
+
+       NOTE: either `cores` or `nodes` must be specified.  If `nodes` are
+             specified, `gpus` must not be specified.
 
     .. data:: memory
 
@@ -200,6 +209,7 @@ class PilotDescription(ru.Description):
         SANDBOX         : str        ,
         CORES           : int        ,
         GPUS            : int        ,
+        NODES           : int        ,
         MEMORY          : int        ,
         QUEUE           : str        ,
         JOB_NAME        : str        ,
@@ -222,6 +232,7 @@ class PilotDescription(ru.Description):
         SANDBOX         : None       ,
         CORES           : 1          ,
         GPUS            : 0          ,
+        NODES           : 1          ,
         MEMORY          : 0          ,
         QUEUE           : None       ,
         JOB_NAME        : None       ,

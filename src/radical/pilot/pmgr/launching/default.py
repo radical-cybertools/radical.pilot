@@ -811,6 +811,7 @@ class Default(PMGRLaunchingComponent):
 
         # ----------------------------------------------------------------------
         # pilot description and resource configuration
+        number_nodes    = pilot['description']['nodes']
         number_cores    = pilot['description']['cores']
         number_gpus     = pilot['description']['gpus']
         required_memory = pilot['description']['memory']
@@ -841,7 +842,7 @@ class Default(PMGRLaunchingComponent):
         rp_version              = rcfg.get('rp_version')
         virtenv_mode            = rcfg.get('virtenv_mode',        DEFAULT_VIRTENV_MODE)
         virtenv                 = rcfg.get('virtenv',             default_virtenv)
-        cores_per_node          = rcfg.get('cores_per_node', 0)
+        cores_per_node          = rcfg.get('cores_per_node', 1)
         gpus_per_node           = rcfg.get('gpus_per_node',  0)
         lfs_path_per_node       = rcfg.get('lfs_path_per_node', None)
         lfs_size_per_node       = rcfg.get('lfs_size_per_node',  0)
@@ -858,7 +859,6 @@ class Default(PMGRLaunchingComponent):
         system_architecture     = rcfg.get('system_architecture', {})
         saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
 
-        self._log.debug(cores_per_node)
         self._log.debug(pprint.pformat(rcfg))
 
         # make sure that mandatory args are known
@@ -1050,6 +1050,12 @@ class Default(PMGRLaunchingComponent):
             gpus_per_node = int(gpus_per_node)
             number_gpus   = int(gpus_per_node *
                             math.ceil(float(number_gpus) / gpus_per_node))
+
+        if number_nodes:
+            number_cores = number_nodes * cores_per_node
+            number_gpus  = number_nodes * gpus_per_node
+            self._log.debug('=== nodes: %s [%s %s]', number_nodes, cores_per_node, gpus_per_node)
+            self._log.debug('=== nodes: %s [%s %s]', number_nodes, number_cores,   number_gpus)
 
         # set mandatory args
         bootstrap_args  = ""
