@@ -7,6 +7,7 @@ import dill
 import queue
 import pickle
 import codecs
+import itertools
 from mpi4py import MPI
 from io import StringIO
 import multiprocessing as mp
@@ -632,7 +633,7 @@ class Tasker():
                             1- mpi_executor.submit(fn, *args, *kwargs)
                             2- mpi_executor.map(fn, range(data))
                             '''
-                            if executor is not None:
+                            if mpi_executor is not None:
                                result = mpi_executor.map(fn, args)
                                self._log.debug("Exited the MPI world")
                     except Exception as e:
