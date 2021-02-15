@@ -44,9 +44,9 @@ class Sleep(AgentExecutingComponent) :
         self._terminate  = mt.Event()
         self._tasks_lock = mt.RLock()
         self._tasks      = list()
-        self._delay      = 0.1
+        self._delay      = 1.0
 
-        self._watcher = mt.Thread(target=self._timed)
+        self._watcher = mt.Thread(target=self._collect)
         self._watcher.daemon = True
         self._watcher.start()
 
@@ -70,10 +70,6 @@ class Sleep(AgentExecutingComponent) :
 
         now = time.time()
         for t in tasks:
-          # assert(t['description']['executable'].endswith('sleep'))
-            t['to_finish'] = now + float(t['description']['arguments'][0])
-
-        for t in tasks:
             uid = t['uid']
             self._prof.prof('exec_start',      uid=uid)
             self._prof.prof('exec_ok',         uid=uid)
@@ -81,34 +77,50 @@ class Sleep(AgentExecutingComponent) :
             self._prof.prof('task_exec_start', uid=uid)
             self._prof.prof('app_start',       uid=uid)
 
+            t['to_finish'] = now + float(t['description']['arguments'][0])
+
+        self._log.debug('=== started new tasks        : %d', len(tasks))
+
         with self._tasks_lock:
             self._tasks.extend(tasks)
 
 
     # --------------------------------------------------------------------------
     #
-    def _timed(self):
+    def _collect(self):
 
         while not self._terminate.is_set():
 
             with self._tasks_lock:
-                now = time.time()
-                to_finish   = [t for t in self._tasks if t['to_finish'] <= now]
-                self._tasks = [t for t in self._tasks if t['to_finish'] >  now]
 
-          # if not to_finish:
-            time.sleep(self._delay)
-          # continue
+                to_finish   = list()
+                to_continue = list()
+                now         = time.time()
 
+                for task in self._tasks:
+                    if task['to_finish'] <= now: to_finish.append(task)
+                    else                       : to_continue.append(task)
+
+                self._tasks = to_continue
+
+            if not to_finish:
+                time.sleep(self._delay)
+                continue
+
+            uids = list()
             for t in to_finish:
                 uid = t['uid']
+                uids.append(uid)
                 t['target_state'] = 'DONE'
                 self._prof.prof('app_stop',         uid=uid)
                 self._prof.prof('task_exec_stop',   uid=uid)
                 self._prof.prof('task_stop',        uid=uid)
                 self._prof.prof('exec_stop',        uid=uid)
                 self._prof.prof('unschedule_start', uid=uid)
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, t)
+
+            self._log.debug('=== collected                : %d', len(to_finish))
+
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, to_finish)
 
             self.advance(to_finish, rps.AGENT_STAGING_OUTPUT_PENDING,
                                     publish=True, push=True)

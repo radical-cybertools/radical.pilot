@@ -71,7 +71,7 @@ def get_session_docs(db, sid, cache=None, cachedir=None):
     try:
         if  os.path.isfile (cache):
           # print 'using cache: %s' % cache
-            return ru.read_json (cache)
+            return ru.read_json(cache, filter_comments=False)
     except Exception as e:
         # continue w/o cache
         sys.stderr.write("cannot read session cache at %s (%s)\n" % (cache, e))
@@ -110,7 +110,9 @@ def get_session_docs(db, sid, cache=None, cachedir=None):
     # to the cache
     try:
         os.system ('mkdir -p %s' % cachedir)
-        ru.write_json (json_data, "%s/%s.json" % (cachedir, sid))
+        with open("%s/%s.json" % (cachedir, sid)) as fout:
+            fout.write(ru.as_bytes(json_data))
+
     except Exception:
         # we can live without cache, no problem...
         pass

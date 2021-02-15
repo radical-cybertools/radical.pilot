@@ -220,7 +220,7 @@ class ORTE(AgentExecutingComponent):
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             if task['slots']:
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, [task])
 
             self.advance(task, rps.FAILED, publish=True, push=False)
 
@@ -240,7 +240,7 @@ class ORTE(AgentExecutingComponent):
             # task launch failed
             self._prof.prof('exec_fail', uid=uid)
             self._log.error("task %s startup failed: %s", uid, status)
-            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, [task])
 
             task['target_state'] = rps.FAILED
             self.advance(task, rps.AGENT_STAGING_OUTPUT_PENDING,
@@ -268,7 +268,7 @@ class ORTE(AgentExecutingComponent):
         task['exit_code'] = exit_code
         task['finished']  = timestamp
 
-        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, [task])
 
         if exit_code != 0:
             # task failed - fail after staging output

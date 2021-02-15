@@ -199,7 +199,7 @@ class Shell(AgentExecutingComponent):
             with self._cancel_lock:
                 self._tasks_to_cancel.remove(task['uid'])
 
-            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, [task])
             self.advance(task, rps.CANCELED, publish=True, push=False)
             return True
 
@@ -263,7 +263,7 @@ class Shell(AgentExecutingComponent):
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             if task.get('slots'):
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, [task])
 
             self.advance(task, rps.FAILED, publish=True, push=False)
 
@@ -576,7 +576,7 @@ prof(){
         self._prof.prof('exec_stop', uid=task['uid'])
 
         # for final states, we can free the slots.
-        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, [task])
 
         if data : task['exit_code'] = int(data)
         else    : task['exit_code'] = None

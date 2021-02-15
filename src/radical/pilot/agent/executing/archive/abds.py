@@ -212,7 +212,7 @@ class ABDS(AgentExecutingComponent):
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             if task['slots']:
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, [task])
 
             self.advance(task, rps.FAILED, publish=True, push=False)
 
@@ -497,7 +497,7 @@ prof(){
                         self._tasks_to_watch.remove(task)
 
                         del(task['proc'])  # proc is not json serializable
-                        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+                        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, [task])
                         self.advance(task, rps.CANCELED, publish=True, push=False)
 
                 else:
@@ -516,7 +516,7 @@ prof(){
                     # Free the Slots, Flee the Flots, Ree the Frots!
                     self._tasks_to_watch.remove(task)
                     del(task['proc'])  # proc is not json serializable
-                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, [task])
 
                     if exit_code != 0:
                         # The task failed - fail after staging output

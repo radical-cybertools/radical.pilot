@@ -110,9 +110,6 @@ class Default(TMGRStagingInputComponent):
     #
     def work(self, tasks):
 
-        if not isinstance(tasks, list):
-            tasks = [tasks]
-
         self.advance(tasks, rps.TMGR_STAGING_INPUT, publish=True, push=False)
 
         # we first filter out any tasks which don't need any input staging, and

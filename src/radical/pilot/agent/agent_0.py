@@ -9,6 +9,7 @@ import copy
 import stat
 import time
 import pprint
+import threading           as mt
 import subprocess          as sp
 import multiprocessing     as mp
 
@@ -202,8 +203,10 @@ class Agent_0(rpu.Worker):
                                timer=self._cfg['db_poll_sleeptime'])
 
         # register idle callback to pull for tasks
-        self.register_timed_cb(self._check_tasks_cb,
-                               timer=self._cfg['db_poll_sleeptime'])
+        self._ingest = mt.Thread(target=self._ingest)
+        self._ingest.daemon = True
+        self._ingest.start()
+
 
         # sub-agents are started, components are started, bridges are up: we are
         # ready to roll!  Update pilot state.
@@ -671,6 +674,14 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
+    def _ingest(self):
+
+        while not self._term.is_set():
+            self._check_tasks_cb()
+
+
+    # --------------------------------------------------------------------------
+    #
     def _check_tasks_cb(self):
 
         # Check for tasks waiting for input staging and log pull.
@@ -686,7 +697,8 @@ class Agent_0(rpu.Worker):
                                          'control' : 'agent_pending'})
         if not task_cursor.count():
             self._log.info('tasks pulled:    0')
-            return True
+            time.sleep(self._cfg['db_poll_sleeptime'])
+            return
 
         # update the tasks to avoid pulling them again next time.
         task_list = list(task_cursor)
@@ -723,8 +735,6 @@ class Agent_0(rpu.Worker):
         # them into the pipeline).  We don't publish nor profile as advance,
         # since that happened already on the module side when the state was set.
         self.advance(task_list, publish=False, push=True)
-
-        return True
 
 
     # --------------------------------------------------------------------------

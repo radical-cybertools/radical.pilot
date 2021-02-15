@@ -2,6 +2,8 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
+import pprint
+
 import math as m
 
 from ...   import constants as rpc
@@ -219,6 +221,8 @@ class Continuous(AgentSchedulingComponent):
                thread count and using physical core IDs for process placement?
         '''
 
+      # self._log.debug('=== find on %s: %s * [%s, %s]', node['uid'], )
+
         # check if the node can host the request
         free_cores = node['cores'].count(rpc.FREE)
         free_gpus  = node['gpus'].count(rpc.FREE)
@@ -231,13 +235,13 @@ class Continuous(AgentSchedulingComponent):
             alc_slots = int(m.floor(free_cores / cores_per_slot))
 
         if gpus_per_slot:
-            alc_slots = min(alc_slots, int(m.floor(free_gpus / gpus_per_slot )))
+            alc_slots = min(alc_slots, int(m.floor(free_gpus / gpus_per_slot)))
 
         if lfs_per_slot:
-            alc_slots = min(alc_slots, int(m.floor(free_lfs / lfs_per_slot )))
+            alc_slots = min(alc_slots, int(m.floor(free_lfs / lfs_per_slot)))
 
         if mem_per_slot:
-            alc_slots = min(alc_slots, int(m.floor(free_mem / mem_per_slot )))
+            alc_slots = min(alc_slots, int(m.floor(free_mem / mem_per_slot)))
 
         # is this enough?
         if not alc_slots:
@@ -359,22 +363,30 @@ class Continuous(AgentSchedulingComponent):
         assert(mem_per_slot   <= mem_per_node),   'too much mem     per proc %s' % mem_per_slot
 
         # check what resource type limits teh number of slots per node
+        t = list()
         slots_per_node = int(m.floor(cores_per_node / cores_per_slot))
+        t.append([cores_per_node, cores_per_slot, slots_per_node])
 
         if gpus_per_slot:
             slots_per_node = min(slots_per_node,
-                                 int(m.floor(gpus_per_node / gpus_per_slot )))
+                                 int(m.floor(gpus_per_node / gpus_per_slot)))
+        t.append([gpus_per_node, gpus_per_slot, slots_per_node])
 
         if lfs_per_slot:
             slots_per_node = min(slots_per_node,
                                  int(m.floor(lfs_per_node / lfs_per_slot)))
+        t.append([lfs_per_node, lfs_per_slot, slots_per_node])
 
         if mem_per_slot:
             slots_per_node = min(slots_per_node,
                                  int(m.floor(mem_per_node / mem_per_slot)))
+        t.append([mem_per_node, mem_per_slot, slots_per_node])
 
         if not mpi and req_slots > slots_per_node:
-            raise ValueError('non-mpi task does not fit on a single node')
+            raise ValueError('non-mpi task does not fit on a single node:'
+                    '%s * %s:%s > %s:%s -- %s > %s [%s %s] %s' % (req_slots, cores_per_slot,
+                    gpus_per_slot, cores_per_node, gpus_per_node, req_slots,
+                    slots_per_node, cores_per_slot, gpus_per_slot, t))
 
         # set conditions to find the first matching node
         is_first = True
@@ -410,7 +422,7 @@ class Continuous(AgentSchedulingComponent):
         for node in self._iterate_nodes():
 
             node_uid  = node['uid']
-          # node_name = node['name']
+            node_name = node['name']
 
           # self._log.debug('next %s : %s', node_uid, node_name)
           # self._log.debug('req1: %s = %s + %s', req_slots, rem_slots,

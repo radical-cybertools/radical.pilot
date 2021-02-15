@@ -19,6 +19,9 @@ def out(msg):
     sys.stdout.flush()
 
 
+CHUNKSIZE = 1024
+
+
 # ------------------------------------------------------------------------------
 #
 class ComponentManager(object):
@@ -1049,6 +1052,8 @@ class Component(object):
 
         for name in self._inputs:
 
+          # self._log.debug('== work_cb %s', name)
+
             input  = self._inputs[name]['queue']
             states = self._inputs[name]['states']
 
@@ -1060,14 +1065,15 @@ class Component(object):
             if not things:
                 return True
 
+            self._log.debug('== work_cb %s got %d ', name, len(things))
+
             # the worker target depends on the state of things, so we
             # need to sort the things into buckets by state before
             # pushing them
             buckets = dict()
-            for thing in ru.as_list(things):
+            for thing in things:
                 state = thing.get('state')  # can be stateless
                 uid   = thing.get('uid')    # and not have uids
-              # self._prof.prof('get', uid=uid, state=state)
 
                 if state not in buckets:
                     buckets[state] = list()
@@ -1081,26 +1087,30 @@ class Component(object):
                 assert(state in self._workers), 'no worker for state %s' % state
 
                 try:
-                    to_cancel = list()
 
-                    for thing in things:
-
-                        uid = thing.get('uid')
-
+                    # filter out canceled things
+                    if self._cancel_list:
                         # FIXME: this can become expensive over time
                         #        if the cancel list is never cleaned
-                        if uid and uid in self._cancel_list:
-                            with self._cancel_lock:
-                                self._cancel_list.remove(uid)
-                            to_cancel.append(thing)
+                        to_cancel = list()
+                        with self._cancel_lock:
+                            if thing['uid'] in self._cancel_list:
+                                to_cancel.append(thing)
 
-                        self._log.debug('got %s (%s)', uid, state)
+                            self._cancel_list = [x for x in self._cancel_list
+                                                   if  x not in to_cancel]
 
-                    if to_cancel:
-                        # only advance stateful entities, otherwise just drop
-                        if state:
-                            self.advance(to_cancel, rps.CANCELED, publish=True,
-                                                                  push=False)
+                        if to_cancel:
+                            # only advance stateful entities, otherwise just drop
+                            if state:
+                                self.advance(to_cancel, rps.CANCELED,
+                                             publish=True, push=False)
+
+
+                  # self._log.debug('== got %d things (%s)', len(things), state)
+                  # for thing in things:
+                  #     self._log.debug('got %s (%s)', thing['uid'], state)
+
                     with self._work_lock:
                         self._workers[state](things)
 
@@ -1152,7 +1162,7 @@ class Component(object):
 
         things = ru.as_list(things)
 
-        self._log.debug('advance bulk: %s [%s, %s]', len(things), push, publish)
+      # self._log.debug('advance bulk: %s [%s, %s]', len(things), push, publish)
 
         # assign state, sort things by state
         buckets = dict()
@@ -1228,32 +1238,32 @@ class Component(object):
               # ts = time.time()
                 if _state in rps.FINAL:
                     # things in final state are dropped
-                    for thing in _things:
-                        self._log.debug('final %s [%s]', thing['uid'], _state)
-                        self._prof.prof('drop', uid=thing['uid'], state=_state,
-                                        ts=ts)
+                  # for thing in _things:
+                  #     self._log.debug('final %s [%s]', thing['uid'], _state)
+                  #     self._prof.prof('drop', uid=thing['uid'], state=_state,
+                  #                     ts=ts)
                     continue
 
                 if _state not in self._outputs:
                     # unknown target state -- error
-                    for thing in _things:
-                        self._log.debug("lost  %s [%s]", thing['uid'], _state)
-                      # self._prof.prof('lost', uid=thing['uid'], state=_state,
-                      #                 ts=ts)
+                  # for thing in _things:
+                  #   # self._log.debug("lost  %s [%s]", thing['uid'], _state)
+                  #   # self._prof.prof('lost', uid=thing['uid'], state=_state,
+                  #   #                 ts=ts)
                     continue
 
                 if not self._outputs[_state]:
                     # empty output -- drop thing
-                    for thing in _things:
-                        self._log.debug('drop  %s [%s]', thing['uid'], _state)
-                      # self._prof.prof('drop', uid=thing['uid'], state=_state,
-                      #                 ts=ts)
+                  # for thing in _things:
+                  #     self._log.debug('drop  %s [%s]', thing['uid'], _state)
+                  #   # self._prof.prof('drop', uid=thing['uid'], state=_state,
+                  #   #                 ts=ts)
                     continue
 
                 output = self._outputs[_state]
 
                 # push the thing down the drain
-                self._log.debug('put bulk %s: %s', _state, len(_things))
+              # self._log.debug('put bulk %s: %s', _state, len(_things))
                 output.put(_things)
 
                 ts = time.time()

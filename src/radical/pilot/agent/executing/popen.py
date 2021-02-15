@@ -183,7 +183,7 @@ class Popen(AgentExecutingComponent) :
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             self._prof.prof('unschedule_start', uid=task['uid'])
-            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, [task])
 
             self.advance(task, rps.FAILED, publish=True, push=False)
 
@@ -397,6 +397,9 @@ prof(){
             exit_code = task['proc'].poll()
             uid       = task['uid']
 
+            to_unschedule = list()
+            to_publish    = list()
+
             if exit_code is None:
                 # Process is still running
 
@@ -427,7 +430,7 @@ prof(){
 
                     del(task['proc'])  # proc is not json serializable
                     self._prof.prof('unschedule_start', uid=task['uid'])
-                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+                    to_unschedule.append(task)
                     self.advance(task, rps.CANCELED, publish=True, push=False)
 
                     # we don't need to watch canceled tasks
@@ -450,7 +453,7 @@ prof(){
                 self._tasks_to_watch.remove(task)
                 del(task['proc'])  # proc is not json serializable
                 self._prof.prof('unschedule_start', uid=task['uid'])
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+                to_unschedule.append(task)
 
                 if exit_code != 0:
                     # The task failed - fail after staging output
@@ -462,7 +465,11 @@ prof(){
                     # directives -- at the very least, we'll upload stdout/stderr
                     task['target_state'] = rps.DONE
 
-                self.advance(task, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
+            if to_publish:
+                self.advance(to_publish, rps.AGENT_STAGING_OUTPUT_PENDING,
+                                         publish=True, push=True)
+            if to_unschedule:
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, to_unschedule)
 
         return action
 

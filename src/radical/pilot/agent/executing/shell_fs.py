@@ -226,7 +226,7 @@ class ShellFS(AgentExecutingComponent):
             with self._cancel_lock:
                 self._to_cancel.remove(task['uid'])
 
-            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, [task])
             self.advance(task, rps.CANCELED, publish=True, push=False)
             return True
 
@@ -256,7 +256,7 @@ class ShellFS(AgentExecutingComponent):
 
             # Free the Slots, Flee the Flots, Ree the Frots!
             if task.get('slots'):
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, [task])
 
             self.advance(task, rps.FAILED, publish=True, push=False)
 
@@ -466,7 +466,7 @@ prof(){
             del(self._registry[uid])
 
         # free task slots.
-        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, [task])
 
         if ret is None:
             task['exit_code'] = None
