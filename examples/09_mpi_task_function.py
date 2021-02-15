@@ -24,8 +24,14 @@ pythontask = PythonTask.pythontask
 @pythontask
 def fun(x):
     from mpi4py import MPI
-    exitcode = os.system('/bin/echo "on %s print %g"' % (MPI.COMM_WORLD.rank,x))
-    return exitcode
+
+    ec = os.system('/bin/echo "on %s print %s"' % (MPI.COMM_WORLD.rank, x))
+    ret = 'on %s print %s' % (MPI.COMM_WORLD.rank, x)
+    sys.stdout.write('sys %s\n' % ret)
+    sys.stdout.flush()
+
+    return ec
+
 
 # ------------------------------------------------------------------------------
 #

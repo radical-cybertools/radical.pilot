@@ -619,6 +619,7 @@ class Tasker():
              
                     old_stdout = sys.stdout
                     new_stdout = None
+                    result     = None
 
                     try:
                         sys.stdout = new_stdout = StringIO()
@@ -628,14 +629,16 @@ class Tasker():
                             self._log.debug("Entered the MPI world with size")
                             self._log.debug(MPI.COMM_WORLD.Get_size())
                             self._log.debug(args)
+                            self._log.debug(fn)
                             '''
                             We might need to differntiate on the user level between
                             1- mpi_executor.submit(fn, *args, *kwargs)
                             2- mpi_executor.map(fn, range(data))
                             '''
                             if mpi_executor is not None:
-                               result = mpi_executor.map(fn, args)
-                               self._log.debug("Exited the MPI world")
+                                result = mpi_executor.map(fn, args)
+                                self._log.debug("Exited the MPI world: %s",
+                                        [i for i in result])
                     except Exception as e:
                         self._log.debug("Setting the function for execution failed due to %s!", e)
  
