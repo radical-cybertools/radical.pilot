@@ -1037,25 +1037,29 @@ class Default(PMGRLaunchingComponent):
                 self._log.error('virtenv_mode is local, no local env found')
                 raise ValueError('no local env found')
 
-        # if cores_per_node is set (!= None), then we need to
-        # allocation full nodes, and thus round up
-        if cores_per_node:
-            cores_per_node = int(cores_per_node)
-            number_cores   = int(cores_per_node *
-                             math.ceil(float(number_cores) / cores_per_node))
-
-        # if gpus_per_node is set (!= None), then we need to
-        # allocation full nodes, and thus round up
-        if gpus_per_node:
-            gpus_per_node = int(gpus_per_node)
-            number_gpus   = int(gpus_per_node *
-                            math.ceil(float(number_gpus) / gpus_per_node))
-
         if number_nodes:
             number_cores = number_nodes * cores_per_node
             number_gpus  = number_nodes * gpus_per_node
-            self._log.debug('=== nodes: %s [%s %s]', number_nodes, cores_per_node, gpus_per_node)
-            self._log.debug('=== nodes: %s [%s %s]', number_nodes, number_cores,   number_gpus)
+            self._log.debug('nodes: %s [%s %s]',
+                            number_nodes, cores_per_node, gpus_per_node)
+            self._log.debug('nodes: %s [%s %s]',
+                            number_nodes, number_cores,   number_gpus)
+
+        else:
+
+            # if cores_per_node is set (!= None), then we need to
+            # allocation full nodes, and thus round up
+            if cores_per_node:
+                cores_per_node = int(cores_per_node)
+                number_cores   = int(cores_per_node *
+                                 math.ceil(float(number_cores) / cores_per_node))
+
+            # if gpus_per_node is set (!= None), then we need to
+            # allocation full nodes, and thus round up
+            if gpus_per_node:
+                gpus_per_node = int(gpus_per_node)
+                number_gpus   = int(gpus_per_node *
+                                math.ceil(float(number_gpus) / gpus_per_node))
 
         # set mandatory args
         bootstrap_args  = ""
