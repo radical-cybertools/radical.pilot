@@ -230,9 +230,9 @@ class PilotDescription(ru.Description):
         RUNTIME         : 10         ,
         APP_COMM        : []         ,
         SANDBOX         : None       ,
-        CORES           : 1          ,
+        CORES           : 0          ,
         GPUS            : 0          ,
-        NODES           : 1          ,
+        NODES           : 0          ,
         MEMORY          : 0          ,
         QUEUE           : None       ,
         JOB_NAME        : None       ,
@@ -264,8 +264,14 @@ class PilotDescription(ru.Description):
         if not self.get('resource'):
             raise ValueError("Pilot description needs 'resource'")
 
+        if not self.get('cores') and not self.get('nodes'):
+            raise ValueError("Pilot description needs 'cores' or 'nodes'")
 
+        if self.get('cores') and self.get('nodes'):
+            raise ValueError("Pilot description needs 'cores' *or* 'nodes'")
 
+        if self.get('gpus') and self.get('nodes'):
+            raise ValueError("Pilot description needs 'gpus' *or* 'nodes'")
 
 
 # ------------------------------------------------------------------------------
