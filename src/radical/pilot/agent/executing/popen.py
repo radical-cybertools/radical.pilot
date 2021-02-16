@@ -397,8 +397,8 @@ prof(){
             exit_code = task['proc'].poll()
             uid       = task['uid']
 
-            to_unschedule = list()
-            to_publish    = list()
+            to_advance    = list()
+            to_cancel     = list()
 
             if exit_code is None:
                 # Process is still running
@@ -430,8 +430,7 @@ prof(){
 
                     del(task['proc'])  # proc is not json serializable
                     self._prof.prof('unschedule_start', uid=task['uid'])
-                    to_unschedule.append(task)
-                    self.advance(task, rps.CANCELED, publish=True, push=False)
+                    to_cancel.append(task)
 
                     # we don't need to watch canceled tasks
                     self._tasks_to_watch.remove(task)
@@ -453,7 +452,7 @@ prof(){
                 self._tasks_to_watch.remove(task)
                 del(task['proc'])  # proc is not json serializable
                 self._prof.prof('unschedule_start', uid=task['uid'])
-                to_unschedule.append(task)
+                to_advance.append(task)
 
                 if exit_code != 0:
                     # The task failed - fail after staging output
@@ -465,11 +464,13 @@ prof(){
                     # directives -- at the very least, we'll upload stdout/stderr
                     task['target_state'] = rps.DONE
 
-            if to_publish:
-                self.advance(to_publish, rps.AGENT_STAGING_OUTPUT_PENDING,
+            if to_cancel:
+                self.advance(to_cancel, rps.CANCELED,
+                                        publish=True, push=False)
+            if to_advance:
+                self.advance(to_advance, rps.AGENT_STAGING_OUTPUT_PENDING,
                                          publish=True, push=True)
-            if to_unschedule:
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, to_unschedule)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, to_cancel + to_advance)
 
         return action
 
