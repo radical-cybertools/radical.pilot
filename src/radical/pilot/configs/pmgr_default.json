@@ -15,6 +15,11 @@
         "pmgr_launching_queue" : {"kind"      : "queue",
                                   "log_level" : "error",
                                   "stall_hwm" : 0,
+                                  "bulk_size" : 0},
+
+        "pmgr_comm_pubsub"     : {"kind"      : "pubsub",
+                                  "log_level" : "debug",
+                                  "stall_hwm" : 0,
                                   "bulk_size" : 0}
     },
 

@@ -102,12 +102,6 @@ def wrapped_main(cfg, log, prof):
 
     # create the bridge, store connection addresses in FS, and begin to work
     bridge = ru.zmq.Bridge.create(cfg)
-
-    ru.write_json('%s/%s.cfg' % (cfg.path, cfg.uid),
-                  {'uid'          : cfg.uid,
-                   bridge.type_in : str(bridge.addr_in),
-                   bridge.type_out: str(bridge.addr_out)})
-
     bridge.start()
 
     # bridge runs - send heartbeats so that cmgr knows about it
@@ -133,7 +127,7 @@ def wrapped_main(cfg, log, prof):
     # register cmgr heartbeat by beating once
     hb.beat(uid=cfg.cmgr)
 
-    # record cmgr heartbeats
+    # react on cmgr heartbeats
     def hb_sub_cb(topic, msg):
         if msg['uid'] == cfg.cmgr:
             hb.beat(uid=cfg.cmgr)

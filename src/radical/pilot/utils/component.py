@@ -1029,7 +1029,7 @@ class Component(object):
                                                           log=self._log,
                                                           prof=self._prof)
 
-        self._subscribers[pubsub].subscribe(topic=pubsub, cb=cb,
+        self._subscribers[pubsub].subscribe(topic=ru.as_string(pubsub), cb=cb,
                                             lock=self._cb_lock)
 
 

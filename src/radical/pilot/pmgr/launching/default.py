@@ -17,8 +17,10 @@ import radical.utils           as ru
 
 from ...  import states        as rps
 from ...  import constants     as rpc
+from ...  import utils         as rpu
 
 from .base import PMGRLaunchingComponent
+
 
 from ...staging_directives import complete_url, expand_staging_directives
 
@@ -77,7 +79,7 @@ class Default(PMGRLaunchingComponent):
         self.register_timed_cb(self._pilot_watcher_cb, timer=10.0)
 
         # we listen for pilot cancel commands
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
         # also listen for completed staging directives
         self.register_subscriber(rpc.STAGER_RESPONSE_PUBSUB, self._staging_ack_cb)
@@ -88,6 +90,9 @@ class Default(PMGRLaunchingComponent):
         self._log.info(ru.get_version([self._mod_dir, self._root_dir]))
         self._rp_version, _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
                 ru.get_version([self._mod_dir, self._root_dir])
+
+        # create our own bridges to communicate with the pilots
+        self._bridges = list()
 
 
     # --------------------------------------------------------------------------
@@ -119,7 +124,14 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _pmgr_control_cb(self, topic, msg):
+    def _pmgr_comm_cb(self, topic, msg):
+
+        self._log.debug('comm msg: %s', msg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _control_cb(self, topic, msg):
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -150,157 +162,6 @@ class Default(PMGRLaunchingComponent):
 
 
         return True
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _handle_pilot_input_staging(self, pilot, sds):
-
-        pid = pilot['uid']
-
-        # NOTE: no task sandboxes defined!
-        src_context = {'pwd'     : pilot['client_sandbox'],
-                       'pilot'   : pilot['pilot_sandbox'],
-                       'resource': pilot['resource_sandbox']}
-        tgt_context = {'pwd'     : pilot['pilot_sandbox'],
-                       'pilot'   : pilot['pilot_sandbox'],
-                       'resource': pilot['resource_sandbox']}
-
-        # Iterate over all directives
-        for sd in sds:
-
-            # TODO: respect flags in directive
-
-            action = sd['action']
-            flags  = sd['flags']
-            did    = sd['uid']
-            src    = sd['source']
-            tgt    = sd['target']
-
-            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
-
-            self._prof.prof('staging_in_start', uid=pid, msg=did)
-
-            src = complete_url(src, src_context, self._log)
-            tgt = complete_url(tgt, tgt_context, self._log)
-
-            if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
-                self._prof.prof('staging_in_fail', uid=pid, msg=did)
-                raise ValueError("invalid action '%s' on pilot level" % action)
-
-            self._log.info('transfer %s to %s', src, tgt)
-
-            # FIXME: make sure that tgt URL points to the right resource
-            # FIXME: honor sd flags if given (recursive...)
-            flags = rsfs.CREATE_PARENTS
-
-            if os.path.isdir(src.path):
-                flags |= rsfs.RECURSIVE
-
-            # Define and open the staging directory for the pilot
-            # We use the target dir construct here, so that we can create
-            # the directory if it does not yet exist.
-
-            # url used for cache (sandbox url w/o path)
-            fs_url      = rs.Url(pilot['pilot_sandbox'])
-            fs_url.path = '/'
-            key         = str(fs_url)
-
-            self._log.debug("rs.file.Directory ('%s')", key)
-
-            with self._cache_lock:
-                if key in self._saga_fs_cache:
-                    fs = self._saga_fs_cache[key]
-
-                else:
-                    fs = rsfs.Directory(fs_url, session=self._session)
-                    self._saga_fs_cache[key] = fs
-
-            fs.copy(src, tgt, flags=flags)
-
-            sd['state'] = rps.DONE
-
-            self._prof.prof('staging_in_stop', uid=pid, msg=did)
-
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'pilot_staging_input_result',
-                                          'arg': {'pilot': pilot,
-                                                  'sds'  : sds}})
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _handle_pilot_output_staging(self, pilot, sds):
-
-        pid = pilot['uid']
-
-        # NOTE: no task sandboxes defined!
-        src_context = {'pwd'     : pilot['pilot_sandbox'],
-                       'pilot'   : pilot['pilot_sandbox'],
-                       'resource': pilot['resource_sandbox']}
-        tgt_context = {'pwd'     : pilot['client_sandbox'],
-                       'pilot'   : pilot['pilot_sandbox'],
-                       'resource': pilot['resource_sandbox']}
-
-        # Iterate over all directives
-        for sd in sds:
-
-            try:
-
-                action = sd['action']
-                flags  = sd['flags']
-                did    = sd['uid']
-                src    = sd['source']
-                tgt    = sd['target']
-
-                assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
-
-                self._prof.prof('staging_out_start', uid=pid, msg=did)
-
-                if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
-                    raise ValueError("invalid pilot action '%s'" % action)
-
-                src = complete_url(src, src_context, self._log)
-                tgt = complete_url(tgt, tgt_context, self._log)
-
-                self._log.info('transfer %s to %s', src, tgt)
-
-                # FIXME: make sure that tgt URL points to the right resource
-                # FIXME: honor sd flags if given (recursive...)
-                flags = rsfs.CREATE_PARENTS
-
-                if os.path.isdir(src.path):
-                    flags |= rsfs.RECURSIVE
-
-                # Define and open the staging directory for the pilot
-
-                # url used for cache (sandbox url w/o path)
-                fs_url      = rs.Url(pilot['pilot_sandbox'])
-                fs_url.path = '/'
-                key         = str(fs_url)
-
-                with self._cache_lock:
-                    if key in self._saga_fs_cache:
-                        fs = self._saga_fs_cache[key]
-
-                    else:
-                        fs = rsfs.Directory(fs_url, session=self._session)
-                        self._saga_fs_cache[key] = fs
-
-                fs.copy(src, tgt, flags=flags)
-
-                sd['state'] = rps.DONE
-                self._prof.prof('staging_out_stop', uid=pid, msg=did)
-
-            except:
-                self._log.exception('pilot level staging failed')
-                self._prof.prof('staging_out_fail', uid=pid, msg=did)
-                sd['state'] = rps.FAILED
-
-
-            self.publish(rpc.CONTROL_PUBSUB,
-                         {'cmd': 'pilot_staging_output_result',
-                          'arg': {'pilot': pilot,
-                                  'sds'  : [sd]}})
 
 
     # --------------------------------------------------------------------------
@@ -677,7 +538,7 @@ class Default(PMGRLaunchingComponent):
             # direct staging, use first pilot for staging context
             # NOTE: this implies that the SDS can only refer to session
             #       sandboxes, not to pilot sandboxes!
-            self._log.debug('==== %s', info['sds'])
+            self._log.debug(info['sds'])
             self._stage_in(pilots[0], info['sds'])
 
         for ft in ft_list:
@@ -1129,6 +990,49 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
         agent_cfg['debug']               = self._log.getEffectiveLevel()
 
+
+        # the pilot also gets contact points points for some client side
+        # communication channels.  If the pilot happens to be able to
+        # connect to them, they will get used for communication
+        # - otherwise we fall back to MongoDB.
+        #
+        # We will need a separate queue for each pilot from which the
+        # pilot can pull tasks, so that queue cannot be defined in
+        # a static config file.  Instead we start it here and own that
+        # queue for as long as the agent lives (in practice, for as long
+        # as this pmgr lives).
+
+        bcfg = ru.Config(cfg={'channel'    : '%s.in' % pid,
+                              'type'       : 'queue',
+                              'stall_hwm'  : 1,
+                              'bulk_size'  : 0,
+                              'path'       : self._cfg.path})
+        b_in = ru.zmq.Queue(bcfg)
+        b_in.start()
+        self._bridges.append(b_in)
+
+        bcfg = ru.Config(cfg={'channel'    : '%s.out' % pid,
+                              'type'       : 'queue',
+                              'stall_hwm'  : 1,
+                              'bulk_size'  : 0,
+                              'path'       : self._cfg.path})
+        b_out = ru.zmq.Queue(bcfg)
+        b_out.start()
+        self._bridges.append(b_out)
+
+        self.register_subscriber('pmgr_comm_pubsub', self._pmgr_comm_cb)
+
+        comm_cfg = ru.read_json('%s/pmgr_comm_pubsub.cfg' % self._cfg.path)
+
+        agent_cfg['pilot_comm'] = {
+                'input'  : {'channel': b_in.channel,
+                            'put'    : str(b_in.addr_put),
+                            'get'    : str(b_in.addr_get)},
+                'output' : {'channel': b_out.channel,
+                            'put'    : str(b_out.addr_put),
+                            'get'    : str(b_out.addr_get)},
+                'comm'   : comm_cfg}
+
         # we'll also push the agent config into MongoDB
         pilot['cfg'] = agent_cfg
 
@@ -1145,7 +1049,7 @@ class Default(PMGRLaunchingComponent):
 
         # always stage agent cfg for each pilot, not in the tarball
         # FIXME: purge the tmp file after staging
-        self._log.debug('=== cfg %s -> %s', agent_cfg['pid'], pilot_sandbox)
+        self._log.debug('cfg %s -> %s', agent_cfg['pid'], pilot_sandbox)
         ret['sds'].append({'source': cfg_tmp_file,
                            'target': '%s/%s' % (pilot['pilot_sandbox'], agent_cfg_name),
                            'action': rpc.TRANSFER})
@@ -1272,11 +1176,6 @@ class Default(PMGRLaunchingComponent):
             for sdist in sdist_names:
                 jd.file_transfer.extend([
                     'site:%s/%s > %s' % (session_sandbox, sdist, sdist)
-                ])
-
-            if stage_cacerts:
-                jd.file_transfer.extend([
-                    'site:%s/%s > %s' % (session_sandbox, certs, certs)
                 ])
 
         self._log.debug("Bootstrap command line: %s %s", jd.executable, jd.arguments)

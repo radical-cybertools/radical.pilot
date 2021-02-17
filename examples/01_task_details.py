@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
         report.info('\n')
         for task in tasks:
-            report.plain('  * %s: %s, exit: %3s, out: %s\n'
+            report.plain('  * %s: %s, exit: %3s, out: %s'
                     % (task.uid, task.state[:4],
                         task.exit_code, task.stdout[:35]))
 
@@ -114,13 +114,6 @@ if __name__ == '__main__':
         report.plain("pilot id     : %s\n" % task_dict['pilot'])
         report.plain("exit code    : %s\n" % task_dict['exit_code'])
         report.plain("stdout       : %s\n" % task_dict['stdout'])
-
-        # get some more details for one task:
-        task_dict = tasks[1].as_dict()
-        report.plain("task workdir : %s\n" % task_dict['task_sandbox'])
-        report.plain("pilot id     : %s\n" % task_dict['pilot'])
-        report.plain("exit code    : %s\n" % task_dict['exit_code'])
-        report.plain("exit stdout  : %s\n" % task_dict['stdout'])
 
 
     except Exception as e:

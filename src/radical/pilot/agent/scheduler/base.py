@@ -457,7 +457,7 @@ class AgentSchedulingComponent(rpu.Component):
                 ret += glyphs[gpu]
             ret += '|'
 
-      # self._log.debug("==== status: %-30s: %s", msg, ret)
+      # self._log.debug("status: %-30s: %s", msg, ret)
 
         return ret
 
@@ -542,7 +542,7 @@ class AgentSchedulingComponent(rpu.Component):
             msg = [msg]
 
         self._queue_unsched.put(msg)
-      # self._log.debug('=== unscheduled from queue   : %d', len(msg))
+      # self._log.debug('unscheduled from queue   : %d', len(msg))
 
         # return True to keep the cb registered
         return True
@@ -607,19 +607,19 @@ class AgentSchedulingComponent(rpu.Component):
             # idle if this iteration changes no state
             old_state = [resources, len(self._waitpool)]
 
-          # self._log.debug('==== schedule  tasks 0: RX %s [%d]', resources, len(self._waitpool))
+          # self._log.debug('schedule  tasks 0: RX %s [%d]', resources, len(self._waitpool))
 
             # if we have new resources, try to place waiting tasks.
             r_wait = False
             if resources:
                 r_wait = self._schedule_waitpool()
-              # self._log.debug('==== scheduled tasks w: RX %s %s', resources, r_wait)
+              # self._log.debug('scheduled tasks w: RX %s %s', resources, r_wait)
 
             # always try to schedule newly incoming tasks
             # running out of resources for incoming could still mean we have
             # smaller slots for waiting tasks, so ignore `r` for now.
             r_inc = self._schedule_incoming()
-          # self._log.debug('==== scheduled tasks i: RX %s %s', resources, r_inc)
+          # self._log.debug('scheduled tasks i: RX %s %s', resources, r_inc)
 
             # if we had resources, but could not schedule any incoming not any
             # waiting, then we effectively ran out of *useful* resources
@@ -633,7 +633,7 @@ class AgentSchedulingComponent(rpu.Component):
             r = self._unschedule_completed()
             if not resources and r:
                 resources = True
-          # self._log.debug('==== scheduled tasks c: RX %s %s', resources, r)
+          # self._log.debug('scheduled tasks c: RX %s %s', resources, r)
 
             # idle if this iteration changes no state
             if old_state != [resources, len(self._waitpool)]:
@@ -651,7 +651,7 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def _schedule_waitpool(self):
 
-      # self._log.debug("==== schedule waitpool %d waiting" % len(self._waitpool))
+      # self._log.debug("schedule waitpool %d waiting" % len(self._waitpool))
 
         resources = None  # default: no change to resource state
 
@@ -668,14 +668,14 @@ class AgentSchedulingComponent(rpu.Component):
              (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
               reverse=True)
 
-      # self._log.debug("==== schedule waitpool %d", len(tasks))
+      # self._log.debug("schedule waitpool %d", len(tasks))
         # cycle through waitpool, and see if we get anything placed now.
         scheduled, unscheduled = ru.lazy_bisect(tasks,
                                                 check=self._try_allocation,
                                                 on_skip=self._prof_sched_skip,
                                                 log=self._log)
 
-      # self._log.debug("==== schedules waitpool %d", len(scheduled))
+      # self._log.debug("schedules waitpool %d", len(scheduled))
       # for task in scheduled:
       #     self._prof.prof('schedule_wait', uid=task['uid'])
 
@@ -689,7 +689,7 @@ class AgentSchedulingComponent(rpu.Component):
                 resources = False
 
         if scheduled:
-            self._log.debug('=== scheduled   from waitpool: %d', len(scheduled))
+            self._log.debug('scheduled   from waitpool: %d', len(scheduled))
 
             # update task resources
             for task in scheduled:
@@ -701,7 +701,7 @@ class AgentSchedulingComponent(rpu.Component):
             self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
                                                              push=True)
 
-     #  self._log.debug("==== after  schedule waitpool %s: %d waiting",
+     #  self._log.debug("after  schedule waitpool %s: %d waiting",
      #                                 resources, len(self._waitpool))
         return resources
 
@@ -710,7 +710,7 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def _schedule_incoming(self):
 
-      # self._log.debug("==== before schedule incoming: waiting: %d",
+      # self._log.debug("before schedule incoming: waiting: %d",
       #         len(self._waitpool))
 
         resources = None  # n o change in resource status
@@ -734,7 +734,7 @@ class AgentSchedulingComponent(rpu.Component):
                     if len(tasks) > CHUNKSIZE:
                         # stop collecting, schedule what we have, only continue
                         # here when all tasks can be scheduled
-                      # self._log.debug('==== break for chunk %d', CHUNKSIZE)
+                      # self._log.debug('break for chunk %d', CHUNKSIZE)
                         break
 
             except queue.Empty:
@@ -742,11 +742,11 @@ class AgentSchedulingComponent(rpu.Component):
                 pass
 
             if not tasks:
-              # self._log.debug('==== return for empty queue')
+              # self._log.debug('return for empty queue')
                 # no resource change, no activity
                 return None
 
-            self._log.debug("==== schedule incoming [%d]", len(tasks))
+            self._log.debug("schedule incoming [%d]", len(tasks))
 
             # handle largest tasks first
             # FIXME: this needs lazy-bisect
@@ -782,8 +782,8 @@ class AgentSchedulingComponent(rpu.Component):
                 # if tasks remain waiting, we are out of usable resources
                 resources = False
 
-            self._log.debug('=== unscheduled incoming: %d', len(scheduled))
-            self._log.debug('=== scheduled   incoming: %d', len(unscheduled))
+            self._log.debug('unscheduled incoming: %d', len(scheduled))
+            self._log.debug('scheduled   incoming: %d', len(unscheduled))
 
             # if we could not schedule any task from the last chunk, then we
             # should break to allow the unschedule to kick in
@@ -792,7 +792,7 @@ class AgentSchedulingComponent(rpu.Component):
             if unscheduled:
                 break
 
-        self._log.debug("==== after  schedule incoming: waiting: %d",
+        self._log.debug("after  schedule incoming: waiting: %d",
                 len(self._waitpool))
 
         return resources
@@ -802,7 +802,7 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def _unschedule_completed(self):
 
-      # self._log.debug("==== unschedule completed")
+      # self._log.debug("unschedule completed")
 
         to_unschedule = list()
         try:
@@ -822,7 +822,7 @@ class AgentSchedulingComponent(rpu.Component):
             while not self._proc_term.is_set():
                 tasks = self._queue_unsched.get(timeout=0.001)
                 to_unschedule.extend(tasks)
-              # self._log.debug('=== unscheduled to batch     : %d', len(tasks))
+              # self._log.debug('unscheduled to batch     : %d', len(tasks))
                 if len(to_unschedule) > CHUNKSIZE:
                     break
 
@@ -830,13 +830,13 @@ class AgentSchedulingComponent(rpu.Component):
             # no more unschedule requests
             pass
 
-      # self._log.debug("==== unschedule completed %d", len(to_unschedule))
+      # self._log.debug("unschedule completed %d", len(to_unschedule))
         if to_unschedule:
 
             # rebuild the tuple_size binning, maybe
-            self._log.debug('=== unscheduled refresh      : %d', len(to_unschedule))
+            self._log.debug('unscheduled refresh      : %d', len(to_unschedule))
             self._refresh_ts_map()
-            self._log.debug('=== unscheduled refreshed    : %d', len(to_unschedule))
+            self._log.debug('unscheduled refreshed    : %d', len(to_unschedule))
 
 
         to_release = list()  # unscheduling tasks to release slots from
@@ -896,7 +896,7 @@ class AgentSchedulingComponent(rpu.Component):
                     to_advance.append(replace)
 
         if to_advance:
-            self._log.debug('=== unscheduled advance      : %d', len(to_advance))
+            self._log.debug('unscheduled advance      : %d', len(to_advance))
             self.advance(to_advance, rps.AGENT_EXECUTING_PENDING,
                                      publish=True, push=True)
 
@@ -904,21 +904,21 @@ class AgentSchedulingComponent(rpu.Component):
         # we have tasks to unschedule, which will free some resources. We can
         # thus try to schedule larger tasks again, and also inform the caller
         # about resource availability.
-      # self._log.debug("==== release    completed %d", len(to_release))
+      # self._log.debug("release    completed %d", len(to_release))
         if to_release:
             for task in to_release:
                 self.unschedule_task(task)
                 self._prof.prof('unschedule_stop', uid=task['uid'])
 
-            self._log.debug('=== unscheduled release      : %d', len(to_release))
+            self._log.debug('unscheduled release      : %d', len(to_release))
 
         # if previously waiting tasks were placed, remove them from the waitpool
-      # self._log.debug("==== scheduled  completed %d", len(placed))
+      # self._log.debug("scheduled  completed %d", len(placed))
         if placed:
             for uid in placed:
                 del(self._waitpool[uid])
 
-      # self._log.debug("=== unscheduled and replaced : %d / %d", len(to_unschedule), len(placed))
+      # self._log.debug("unscheduled and replaced : %d / %d", len(to_unschedule), len(placed))
 
         if   to_release: return True   # new resources
         else           : return False

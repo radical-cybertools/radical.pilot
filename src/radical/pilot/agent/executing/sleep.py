@@ -79,7 +79,7 @@ class Sleep(AgentExecutingComponent) :
 
             t['to_finish'] = now + float(t['description']['arguments'][0])
 
-        self._log.debug('=== started new tasks        : %d', len(tasks))
+        self._log.debug('started new tasks        : %d', len(tasks))
 
         with self._tasks_lock:
             self._tasks.extend(tasks)
@@ -118,7 +118,7 @@ class Sleep(AgentExecutingComponent) :
                 self._prof.prof('exec_stop',        uid=uid)
                 self._prof.prof('unschedule_start', uid=uid)
 
-            self._log.debug('=== collected                : %d', len(to_finish))
+            self._log.debug('collected                : %d', len(to_finish))
 
             self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, to_finish)
 

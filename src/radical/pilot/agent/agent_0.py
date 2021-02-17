@@ -55,12 +55,17 @@ class Agent_0(rpu.Worker):
         self._starttime   = time.time()
         self._final_cause = None
 
+        rpu.Worker.__init__(self, self._cfg, session)
+
         # this is the earliest point to sync bootstrap and agent profiles
         prof = ru.Profiler(ns='radical.pilot', name='agent.0')
         prof.prof('hostname', uid=cfg.pid, msg=ru.get_hostname())
 
         # connect to MongoDB for state push/pull
         self._connect_db()
+
+        # connect to client communication channels, maybe
+        self._connect_communication()
 
         # configure ResourceManager before component startup, as components need
         # ResourceManager information for function (scheduler, executor)
@@ -84,8 +89,6 @@ class Agent_0(rpu.Worker):
         # at this point the session is up and connected, and it should have
         # brought up all communication bridges and components.  We are
         # ready to rumble!
-        rpu.Worker.__init__(self, self._cfg, session)
-
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._check_control)
 
         # run our own slow-paced heartbeat monitor to watch pmgr heartbeats
@@ -140,6 +143,53 @@ class Agent_0(rpu.Worker):
 
         self._dbs = DBSession(sid=self._cfg.sid, dburl=self._cfg.dburl,
                               cfg=self._cfg, log=self._log)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _connect_communication(self):
+
+        # when running on the same host as the client, we may be able to bypass
+        # MongoDB and instead connect to the client's ZMQ communication
+        # channels.
+        #
+        cfg = self._cfg.pilot_comm
+
+        ru.write_json('pmgr_comm_pubsub.cfg', cfg.comm)
+        self.register_subscriber('pmgr_comm_pubsub', self._pilot_comm_cb)
+        self.register_publisher('pmgr_comm_pubsub')
+
+        self._client_input  = ru.zmq.Getter(cfg.input['channel'],
+                                            cfg.input['get'],
+                                            self._client_input_cb)
+
+        self._client_output = ru.zmq.Putter(cfg.output['channel'],
+                                            cfg.output['get'])
+
+        # allo comm pubsub to connect
+        time.sleep(1)
+
+        # how do we verify that the comm channel is up?
+        self.publish('pmgr_comm_pubsub', msg={'cmd': 'pilot_connect',
+                                              'arg': {'pid'   : self._pid,
+                                                      'input' : cfg.input,
+                                                      'output': cfg.output}})
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _client_input_cb(self, msg):
+
+        self._log.debug('=== input cb: %s %s', msg)
+        self._client_output.put(msg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _pilot_comm_cb(self, topic, msg):
+
+        self._log.debug('=== ctl sub cb: %s %s', topic, msg)
+
 
     # --------------------------------------------------------------------------
     #
@@ -565,7 +615,7 @@ class Agent_0(rpu.Worker):
             # document has no rpc request
             return True
 
-        self._log.debug('=== rpc req: %s', rpc_req)
+        self._log.debug('rpc req: %s', rpc_req)
 
         # RPCs are synchronous right now - we send the RPC on the command
         # channel, hope that some component picks it up and replies, and then

@@ -5,6 +5,7 @@ __license__   = 'MIT'
 
 import os
 import sys
+import random
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -40,7 +41,8 @@ if __name__ == '__main__':
     try:
 
         # read the config used for resource details
-        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
+        config = ru.read_json('%s/config.json'
+                              % os.path.dirname(os.path.abspath(__file__)))
         pmgr   = rp.PilotManager(session=session)
         tmgr   = rp.TaskManager(session=session)
 
@@ -51,20 +53,19 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {'resource'      : resource,
-                   'runtime'       : 30,  # pilot runtime (min)
+                   'runtime'       : 120,  # pilot runtime (min)
                    'exit_on_error' : True,
                    'project'       : config[resource].get('project', None),
                    'queue'         : config[resource].get('queue', None),
                    'access_schema' : config[resource].get('schema', None),
-                   'cores'         : config[resource].get('cores', 1),
-                   'gpus'          : config[resource].get('gpus', 0),
+                   'nodes'         : 1024 * 4,
                   }
         pdesc = rp.PilotDescription(pd_init)
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        n = 1024  # number of tasks to run
+        n = 1024 * 1024  # number of tasks to run
         report.header('submit %d tasks' % n)
 
         # Register the pilot in a TaskManager object.
@@ -78,11 +79,16 @@ if __name__ == '__main__':
         for i in range(0, n):
 
             # create a new task description, and fill it.
-            # Here we don't use dict initialization.
-            td = rp.TaskDescription()
-            td.executable    = '/bin/date'
-            td.cpu_processes = 1
-            tds.append(td)
+            tds.append(rp.TaskDescription({
+
+                    'sandbox'         : 'task_sandbox',
+                    'executable'      : '%s/examples/hello_rp.sh' % os.getcwd(),
+                    'arguments'       : [random.randint(1,10) + 10],
+                    'cpu_process_type': rp.MPI,
+                    'cpu_processes'   : random.choice([1, 2, 4, 8, 16]),
+                    'cpu_threads'     : random.randint(1,2),
+                    'gpu_processes'   : random.choice([0,0,0,0,0,0,1,2]),
+            }))
             report.progress()
 
         report.progress_done()

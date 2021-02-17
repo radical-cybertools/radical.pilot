@@ -292,7 +292,7 @@ class TaskDescription(ru.Description):
 
 
     Staging Directives
-    ==================
+    ------------------
 
     The Staging Directives are specified using a dict in the following form:
 

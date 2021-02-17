@@ -221,7 +221,7 @@ class Continuous(AgentSchedulingComponent):
                thread count and using physical core IDs for process placement?
         '''
 
-      # self._log.debug('=== find on %s: %s * [%s, %s]', node['uid'], )
+      # self._log.debug('find on %s: %s * [%s, %s]', node['uid'], )
 
         # check if the node can host the request
         free_cores = node['cores'].count(rpc.FREE)

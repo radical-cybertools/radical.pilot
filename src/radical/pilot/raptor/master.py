@@ -381,7 +381,7 @@ class Master(rpu.Component):
             #        subscrive to state updates on the update pubsub?
             time.sleep(1.0)
 
-        self._log.debug('=== master term')
+        self._log.debug('master term')
 
 
     # --------------------------------------------------------------------------
@@ -405,7 +405,7 @@ class Master(rpu.Component):
                 objs.append(request)
 
         # push the request message (as dictionary) onto the request queue
-        self._log.debug('=== put %d: [%s]', len(dicts),
+        self._log.debug('put %d: [%s]', len(dicts),
                          [r['uid'] for r in dicts])
         self._req_put.put(dicts)
 
@@ -455,7 +455,7 @@ class Master(rpu.Component):
 
         self._term.set()
         for uid in self._workers:
-            self._log.debug('=== master %s sends term to %s', self._uid, uid)
+            self._log.debug('master %s sends term to %s', self._uid, uid)
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_terminate',
                                               'arg': {'uid': uid}})
 
@@ -465,10 +465,10 @@ class Master(rpu.Component):
             states = [self._workers[uid]['state'] for uid in uids]
             if set(states) == {'DONE'}:
                 break
-            self._log.debug('=== states: %s', states)
+            self._log.debug('states: %s', states)
             time.sleep(1)
 
-        self._log.debug('=== all workers terminated')
+        self._log.debug('all workers terminated')
 
 
 # ------------------------------------------------------------------------------

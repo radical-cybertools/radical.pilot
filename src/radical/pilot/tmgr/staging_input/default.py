@@ -10,7 +10,7 @@ import tarfile
 import radical.utils as ru
 import radical.saga  as rs
 
-rs.fs = rs.filesystem
+rsfs = rs.filesystem
 
 from ...   import states    as rps
 from ...   import constants as rpc
@@ -62,12 +62,15 @@ class Default(TMGRStagingInputComponent):
         self.register_input(rps.TMGR_STAGING_INPUT_PENDING,
                             rpc.TMGR_STAGING_INPUT_QUEUE, self.work)
 
-        # FIXME: this queue is inaccessible, needs routing via mongodb
+        # this queue is inaccessible, needs routing via mongodb
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING, None)
+
+        # alternatively, we keep a registry of pilot specific queues to route
+        self._pilot_queues = dict()  # pid : zmq.Putter
 
         # we subscribe to the command channel to learn about pilots being added
         # to this task manager.
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._base_command_cb)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
 
     # --------------------------------------------------------------------------
@@ -80,7 +83,7 @@ class Default(TMGRStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _base_command_cb(self, topic, msg):
+    def _control_cb(self, topic, msg):
 
         # keep track of `add_pilots` commands and updates self._pilots
         # accordingly.
@@ -88,20 +91,30 @@ class Default(TMGRStagingInputComponent):
         cmd = msg.get('cmd')
         arg = msg.get('arg')
 
-        if cmd not in ['add_pilots']:
+        if cmd == 'add_pilots':
+
+            pilots = arg.get('pilots', [])
+
+            if not isinstance(pilots, list):
+                pilots = [pilots]
+
+            with self._pilots_lock:
+                for pilot in pilots:
+                    pid = pilot['uid']
+                    self._log.debug('add pilot %s', pid)
+                    if pid not in self._pilots:
+                        self._pilots[pid] = pilot
+
+        elif cmd == 'pilot_connect':
+
+            pid = arg['pid']
+            cfg = arg['cfg']
+
+            self._pilot_queues[pid] = ru.zmq.Putter(cfg['input']['channel'],
+                                                    cfg['input']['put'])
+
+        else:
             self._log.debug('skip cmd %s', cmd)
-
-        pilots = arg.get('pilots', [])
-
-        if not isinstance(pilots, list):
-            pilots = [pilots]
-
-        with self._pilots_lock:
-            for pilot in pilots:
-                pid = pilot['uid']
-                self._log.debug('add pilot %s', pid)
-                if pid not in self._pilots:
-                    self._pilots[pid] = pilot
 
         return True
 
@@ -116,10 +129,14 @@ class Default(TMGRStagingInputComponent):
         # advance them again as a bulk.  We work over the others one by one, and
         # advance them individually, to avoid stalling from slow staging ops.
 
-        no_staging_tasks = list()
-        staging_tasks    = list()
+        staging_tasks    = dict()  # pid: [tasks]
+        no_staging_tasks = dict()  # pid: [tasks]
 
         for task in tasks:
+
+            pid  = task['pilot']
+            if pid not in staging_tasks   : staging_tasks[pid]    = list()
+            if pid not in no_staging_tasks: no_staging_tasks[pid] = list()
 
             # no matter if we perform any staging or not, we will push the full
             # task info to the DB on the next advance, and will pass control to
@@ -135,9 +152,9 @@ class Default(TMGRStagingInputComponent):
                     actionables.append(sd)
 
             if actionables:
-                staging_tasks.append([task, actionables])
+                staging_tasks[pid].append([task, actionables])
             else:
-                no_staging_tasks.append(task)
+                no_staging_tasks[pid].append(task)
 
         # Optimization: if we obtained a large bulk of tasks, we at this point
         # attempt a bulk mkdir for the task sandboxes, to free the agent of
@@ -162,17 +179,16 @@ class Default(TMGRStagingInputComponent):
         # to do about the pilot configuration (sandbox, access schema, etc), so
         # we only attempt this optimization for tasks scheduled to pilots for
         # which we learned those details.
-        task_sboxes_by_pid = dict()
-        for task in no_staging_tasks:
-            sbox = task['task_sandbox']
-            pid  = task['pilot']
-            if pid not in task_sboxes_by_pid:
-                task_sboxes_by_pid[pid] = list()
-            task_sboxes_by_pid[pid].append(sbox)
+        sboxes = dict()  # pid: [sboxes]
+        for pid in no_staging_tasks:
+            for task in no_staging_tasks[pid]:
+                if pid not in sboxes:
+                    sboxes[pid] = list()
+                sboxes[pid].append(task['task_sandbox'])
 
         # now trigger the bulk mkdir for all filesystems which have more than
         # a certain tasks tohandle in this bulk:
-        for pid in task_sboxes_by_pid:
+        for pid in sboxes:
 
             with self._pilots_lock:
                 pilot = self._pilots.get(pid)
@@ -182,10 +198,11 @@ class Default(TMGRStagingInputComponent):
                 self._log.debug('pid unknown - skip optimizion', pid)
                 continue
 
-            session_sbox = self._session._get_session_sandbox(pilot)
-            task_sboxes  = task_sboxes_by_pid[pid]
+            task_sboxes  = sboxes[pid]
 
             if len(task_sboxes) >= TASK_BULK_MKDIR_THRESHOLD:
+
+                session_sbox = self._session._get_session_sandbox(pilot)
 
                 self._log.debug('tar %d sboxes', len(task_sboxes))
 
@@ -196,7 +213,7 @@ class Default(TMGRStagingInputComponent):
                 sbox_fs_str  = str(sbox_fs)
                 if sbox_fs_str not in self._fs_cache:
                     self._fs_cache[sbox_fs_str] = \
-                            rs.fs.Directory(sbox_fs, session=self._session)
+                            rsfs.Directory(sbox_fs, session=self._session)
                 saga_dir = self._fs_cache[sbox_fs_str]
 
                 # we have two options for a bulk mkdir:
@@ -238,7 +255,7 @@ class Default(TMGRStagingInputComponent):
                                                              type(session_sbox))
                     self._log.debug('copy: %s -> %s', tar_url, tar_rem_path)
                     saga_dir.copy(tar_url, tar_rem_path,
-                                             flags=rs.fs.CREATE_PARENTS)
+                                             flags=rsfs.CREATE_PARENTS)
 
                     # get a job service handle to the target resource and run
                     # the untar command.  Use the hop to skip the batch system
@@ -261,14 +278,18 @@ class Default(TMGRStagingInputComponent):
                             j.exit_code)
 
 
-        if no_staging_tasks:
+        for pid in no_staging_tasks:
 
-            # nothing to stage, push to the agent
-            self.advance(no_staging_tasks, rps.AGENT_STAGING_INPUT_PENDING,
-                         publish=True, push=True)
+            self.advance(no_staging_tasks[pid], rps.AGENT_STAGING_INPUT_PENDING,
+                         publish=True, push=False)
 
-        for task,actionables in staging_tasks:
-            self._handle_task(task, actionables)
+            if pid in self._pilot_queues:
+                self._pilot_queues[pid].put(no_staging_tasks[pid])
+
+        for pid in staging_tasks:
+
+            for task,actionables in staging_tasks[pid]:
+                self._handle_task(task, actionables)
 
 
     # --------------------------------------------------------------------------
@@ -301,10 +322,10 @@ class Default(TMGRStagingInputComponent):
         self._log.debug('key %s / %s', key, tmp)
 
         if key not in self._fs_cache:
-            self._fs_cache[key] = rs.fs.Directory(tmp, session=self._session)
+            self._fs_cache[key] = rsfs.Directory(tmp, session=self._session)
 
         saga_dir = self._fs_cache[key]
-        saga_dir.make_dir(sandbox, flags=rs.fs.CREATE_PARENTS)
+        saga_dir.make_dir(sandbox, flags=rsfs.CREATE_PARENTS)
         self._prof.prof("create_sandbox_stop", uid=uid)
 
         # Loop over all transfer directives and filter out tarball staging
@@ -380,10 +401,10 @@ class Default(TMGRStagingInputComponent):
                 # Check if the src is a folder, if true
                 # add recursive flag if not already specified
                 if os.path.isdir(src.path):
-                    flags |= rs.fs.RECURSIVE
+                    flags |= rsfs.RECURSIVE
 
                 # Always set CREATE_PARENTS
-                flags |= rs.fs.CREATE_PARENTS
+                flags |= rsfs.CREATE_PARENTS
 
                 src = complete_url(src, src_context, self._log)
                 tgt = complete_url(tgt, tgt_context, self._log)
@@ -405,6 +426,10 @@ class Default(TMGRStagingInputComponent):
         # staging is done, we can advance the task at last
         self.advance(task, rps.AGENT_STAGING_INPUT_PENDING,
                            publish=True, push=True)
+
+        pid = task['pilot']
+        if pid in self._pilot_queues:
+            self._pilot_queues[pid].put([task])
 
 
 # ------------------------------------------------------------------------------

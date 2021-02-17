@@ -389,10 +389,10 @@ class Worker(rpu.Component):
         invoke them.
         '''
 
-        self._log.debug('=== req_loop %s', len(ru.as_list(tasks)))
+        self._log.debug('req_loop %s', len(ru.as_list(tasks)))
         for task in ru.as_list(tasks):
 
-            self._log.debug('=== req_recv %s', task['uid'])
+            self._log.debug('req_recv %s', task['uid'])
             task['worker'] = self._uid
 
             try:
@@ -400,14 +400,14 @@ class Worker(rpu.Component):
                 # many cpus and gpus we need to mark as busy
                 while not self._alloc_task(task):
 
-                    self._log.debug('=== req_alloc %s', task['uid'])
+                    self._log.debug('req_alloc %s', task['uid'])
                     # no resource - wait for new resources
                     #
                     # NOTE: this will block smaller tasks from being executed
                     #       right now.  alloc_task is not a proper scheduler,
                     #       after all.
                   # while not self._res_evt.wait(timeout=1.0):
-                  #     self._log.debug('=== req_alloc_wait %s', task['uid'])
+                  #     self._log.debug('req_alloc_wait %s', task['uid'])
 
                     time.sleep(0.01)
 
@@ -418,7 +418,7 @@ class Worker(rpu.Component):
                     self._res_evt.clear()
 
 
-                self._log.debug('=== req_alloced %s', task['uid'])
+                self._log.debug('req_alloced %s', task['uid'])
                 self._prof.prof('req_start', uid=task['uid'], msg=self._uid)
 
                 # we got an allocation for this task, and can run it, so apply
@@ -443,7 +443,7 @@ class Worker(rpu.Component):
                 self._log.debug('applied: %s: %s: %s',
                                 task['uid'], proc.pid, self._pool.keys())
 
-                self._log.debug('=== req_started %s: %s', task['uid'], proc.pid)
+                self._log.debug('req_started %s: %s', task['uid'], proc.pid)
 
 
             except Exception as e:
@@ -460,7 +460,7 @@ class Worker(rpu.Component):
 
                 self._res_put.put(res)
 
-        self._log.debug('=== req_looped')
+        self._log.debug('req_looped')
 
 
     def _after_fork():
@@ -495,7 +495,7 @@ class Worker(rpu.Component):
             mode = task['mode']
             assert(mode in self._modes), 'no such call mode %s' % mode
 
-            self._log.debug('=== debug %s: %s', task['uid'], task)
+            self._log.debug('debug %s: %s', task['uid'], task)
             tout = task.get('timeout')
             self._log.debug('dispatch with tout %s', tout)
 
@@ -507,9 +507,9 @@ class Worker(rpu.Component):
           # dispatcher = mp.Process(target=_dispatch_thread)
           # dispatcher.daemon = True
           # dispatcher.start()
-          # self._log.debug('=== join %s: %s', task['uid'], task)
+          # self._log.debug('join %s: %s', task['uid'], task)
           # dispatcher.join(timeout=tout)
-          # self._log.debug('=== joined %s: %s', task['uid'], tout)
+          # self._log.debug('joined %s: %s', task['uid'], tout)
           #
           # if dispatcher.is_alive():
           #     dispatcher.kill()
@@ -551,7 +551,7 @@ class Worker(rpu.Component):
         try:
             while not self._term.is_set():
 
-              # self._log.debug('=== waiting for results')
+              # self._log.debug('waiting for results')
 
                 try:
                     res = self._result_queue.get(timeout=0.1)
@@ -565,7 +565,7 @@ class Worker(rpu.Component):
             raise
 
         finally:
-            self._log.debug('=== send unregister')
+            self._log.debug('send unregister')
             if self._cfg['rank'] == 0:
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_unregister',
                                                   'arg': {'uid' : self._cfg['wid']}})
