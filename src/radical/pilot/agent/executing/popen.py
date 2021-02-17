@@ -52,7 +52,6 @@ class Popen(AgentExecutingComponent) :
     def __init__(self, cfg, session):
 
         self._watcher   = None
-        self._terminate = mt.Event()
 
         AgentExecutingComponent.__init__ (self, cfg, session)
 
@@ -351,7 +350,7 @@ prof(){
     def _watch(self):
 
         try:
-            while not self._terminate.is_set():
+            while not self._term.is_set():
 
                 tasks = list()
                 try:
