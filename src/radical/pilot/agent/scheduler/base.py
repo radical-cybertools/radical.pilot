@@ -964,8 +964,6 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def _handle_cuda(self, task):
 
-        return
-
         # Check if task requires GPUs.  If so, set CUDA_VISIBLE_DEVICES to the
         # list of assigned  GPU IDs.  We only handle uniform GPU setting for
         # now, and will isse a warning on non-uniform ones.
