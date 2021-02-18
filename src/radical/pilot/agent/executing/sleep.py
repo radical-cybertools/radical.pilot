@@ -77,7 +77,7 @@ class Sleep(AgentExecutingComponent) :
             self._prof.prof('task_exec_start', uid=uid)
             self._prof.prof('app_start',       uid=uid)
 
-            t['to_finish'] = now + float(t['description']['arguments'][0])
+            t['deadline'] = now + float(t['description']['arguments'][0])
 
         self._log.debug('started new tasks        : %d', len(tasks))
 
@@ -98,8 +98,8 @@ class Sleep(AgentExecutingComponent) :
                 now         = time.time()
 
                 for task in self._tasks:
-                    if task['to_finish'] <= now: to_finish.append(task)
-                    else                       : to_continue.append(task)
+                    if task['deadline'] <= now: to_finish.append(task)
+                    else                      : to_continue.append(task)
 
                 self._tasks = to_continue
 
