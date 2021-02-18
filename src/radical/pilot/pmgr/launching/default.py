@@ -15,6 +15,8 @@ import tempfile
 import radical.saga            as rs
 import radical.utils           as ru
 
+rsfs = rs.filesystem
+
 from ...  import states        as rps
 from ...  import constants     as rpc
 
@@ -150,157 +152,6 @@ class Default(PMGRLaunchingComponent):
 
 
         return True
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _handle_pilot_input_staging(self, pilot, sds):
-
-        pid = pilot['uid']
-
-        # NOTE: no task sandboxes defined!
-        src_context = {'pwd'     : pilot['client_sandbox'],
-                       'pilot'   : pilot['pilot_sandbox'],
-                       'resource': pilot['resource_sandbox']}
-        tgt_context = {'pwd'     : pilot['pilot_sandbox'],
-                       'pilot'   : pilot['pilot_sandbox'],
-                       'resource': pilot['resource_sandbox']}
-
-        # Iterate over all directives
-        for sd in sds:
-
-            # TODO: respect flags in directive
-
-            action = sd['action']
-            flags  = sd['flags']
-            did    = sd['uid']
-            src    = sd['source']
-            tgt    = sd['target']
-
-            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
-
-            self._prof.prof('staging_in_start', uid=pid, msg=did)
-
-            src = complete_url(src, src_context, self._log)
-            tgt = complete_url(tgt, tgt_context, self._log)
-
-            if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
-                self._prof.prof('staging_in_fail', uid=pid, msg=did)
-                raise ValueError("invalid action '%s' on pilot level" % action)
-
-            self._log.info('transfer %s to %s', src, tgt)
-
-            # FIXME: make sure that tgt URL points to the right resource
-            # FIXME: honor sd flags if given (recursive...)
-            flags = rsfs.CREATE_PARENTS
-
-            if os.path.isdir(src.path):
-                flags |= rsfs.RECURSIVE
-
-            # Define and open the staging directory for the pilot
-            # We use the target dir construct here, so that we can create
-            # the directory if it does not yet exist.
-
-            # url used for cache (sandbox url w/o path)
-            fs_url      = rs.Url(pilot['pilot_sandbox'])
-            fs_url.path = '/'
-            key         = str(fs_url)
-
-            self._log.debug("rs.file.Directory ('%s')", key)
-
-            with self._cache_lock:
-                if key in self._saga_fs_cache:
-                    fs = self._saga_fs_cache[key]
-
-                else:
-                    fs = rsfs.Directory(fs_url, session=self._session)
-                    self._saga_fs_cache[key] = fs
-
-            fs.copy(src, tgt, flags=flags)
-
-            sd['state'] = rps.DONE
-
-            self._prof.prof('staging_in_stop', uid=pid, msg=did)
-
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'pilot_staging_input_result',
-                                          'arg': {'pilot': pilot,
-                                                  'sds'  : sds}})
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _handle_pilot_output_staging(self, pilot, sds):
-
-        pid = pilot['uid']
-
-        # NOTE: no task sandboxes defined!
-        src_context = {'pwd'     : pilot['pilot_sandbox'],
-                       'pilot'   : pilot['pilot_sandbox'],
-                       'resource': pilot['resource_sandbox']}
-        tgt_context = {'pwd'     : pilot['client_sandbox'],
-                       'pilot'   : pilot['pilot_sandbox'],
-                       'resource': pilot['resource_sandbox']}
-
-        # Iterate over all directives
-        for sd in sds:
-
-            try:
-
-                action = sd['action']
-                flags  = sd['flags']
-                did    = sd['uid']
-                src    = sd['source']
-                tgt    = sd['target']
-
-                assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
-
-                self._prof.prof('staging_out_start', uid=pid, msg=did)
-
-                if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
-                    raise ValueError("invalid pilot action '%s'" % action)
-
-                src = complete_url(src, src_context, self._log)
-                tgt = complete_url(tgt, tgt_context, self._log)
-
-                self._log.info('transfer %s to %s', src, tgt)
-
-                # FIXME: make sure that tgt URL points to the right resource
-                # FIXME: honor sd flags if given (recursive...)
-                flags = rsfs.CREATE_PARENTS
-
-                if os.path.isdir(src.path):
-                    flags |= rsfs.RECURSIVE
-
-                # Define and open the staging directory for the pilot
-
-                # url used for cache (sandbox url w/o path)
-                fs_url      = rs.Url(pilot['pilot_sandbox'])
-                fs_url.path = '/'
-                key         = str(fs_url)
-
-                with self._cache_lock:
-                    if key in self._saga_fs_cache:
-                        fs = self._saga_fs_cache[key]
-
-                    else:
-                        fs = rsfs.Directory(fs_url, session=self._session)
-                        self._saga_fs_cache[key] = fs
-
-                fs.copy(src, tgt, flags=flags)
-
-                sd['state'] = rps.DONE
-                self._prof.prof('staging_out_stop', uid=pid, msg=did)
-
-            except:
-                self._log.exception('pilot level staging failed')
-                self._prof.prof('staging_out_fail', uid=pid, msg=did)
-                sd['state'] = rps.FAILED
-
-
-            self.publish(rpc.CONTROL_PUBSUB,
-                         {'cmd': 'pilot_staging_output_result',
-                          'arg': {'pilot': pilot,
-                                  'sds'  : [sd]}})
 
 
     # --------------------------------------------------------------------------
@@ -687,7 +538,8 @@ class Default(PMGRLaunchingComponent):
             tgt_dir = os.path.dirname(tgt)
 
             if tgt_dir.startswith('..'):
-              # raise ValueError('staging tgt %s outside pilot sbox: %s' % (ft['tgt'], tgt))
+              # raise ValueError('staging tgt %s outside pilot sbox: %s'
+              #                  % (ft['tgt'], tgt))
                 tgt = ft['tgt']
                 tgt_dir = os.path.dirname(tgt)
 
@@ -993,13 +845,14 @@ class Default(PMGRLaunchingComponent):
 
         # ----------------------------------------------------------------------
         # sanity checks
-        if not python_dist        : raise RuntimeError("missing python distribution")
-        if not virtenv_dist       : raise RuntimeError("missing virtualenv distribution")
-        if not agent_spawner      : raise RuntimeError("missing agent spawner")
-        if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
-        if not resource_manager   : raise RuntimeError("missing resource manager")
-        if not agent_launch_method: raise RuntimeError("missing agentlaunch method")
-        if not task_launch_method : raise RuntimeError("missing task launch method")
+        RE = RuntimeError
+        if not python_dist        : raise RE("missing python distribution")
+        if not virtenv_dist       : raise RE("missing virtualenv distribution")
+        if not agent_spawner      : raise RE("missing agent spawner")
+        if not agent_scheduler    : raise RE("missing agent scheduler")
+        if not resource_manager   : raise RE("missing resource manager")
+        if not agent_launch_method: raise RE("missing agentlaunch method")
+        if not task_launch_method : raise RE("missing task launch method")
 
         # massage some values
         if not queue:
@@ -1272,11 +1125,6 @@ class Default(PMGRLaunchingComponent):
             for sdist in sdist_names:
                 jd.file_transfer.extend([
                     'site:%s/%s > %s' % (session_sandbox, sdist, sdist)
-                ])
-
-            if stage_cacerts:
-                jd.file_transfer.extend([
-                    'site:%s/%s > %s' % (session_sandbox, certs, certs)
                 ])
 
         self._log.debug("Bootstrap command line: %s %s", jd.executable, jd.arguments)
