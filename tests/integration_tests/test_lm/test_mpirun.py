@@ -6,7 +6,7 @@ import radical.utils as ru
 
 from unittest import mock, TestCase
 
-from radical.pilot.agent.launch_method.ssh import SSH
+from radical.pilot.agent.launch_method.mpirun import MPIRun
 
 
 # ------------------------------------------------------------------------------
@@ -16,27 +16,30 @@ class TestTask(TestCase):
     # --------------------------------------------------------------------------
     #
     def setUp(self) -> dict:
-        path = os.path.dirname(__file__) + '../test_config/resources.json'
+        path = os.path.dirname(__file__) + '/../test_config/resources.json'
         resources = ru.read_json(path)
         hostname = socket.gethostname()
 
         for host in resources.keys():
             if host in hostname:
-                return resources[host]
+                return resources[host], host
 
     # --------------------------------------------------------------------------
     #
-    @mock.patch.object(SSH, '__init__',   return_value=None)
+    @mock.patch.object(MPIRun, '__init__',   return_value=None)
     @mock.patch('radical.utils.Logger')
     def test_configure(self, mocked_init, mocked_Logger):
-        cfg = self.setUp()
-        component = SSH(name=None, cfg=None, session=None)
+        cfg, host = self.setUp()
+        component = MPIRun(name=None, cfg=None, session=None)
+        component.name = 'mpirun'
         component._log = mocked_Logger
-        component._cfg = {}
+        component._cfg = ru.Munch({'resource': host})
         component.env_removables = []
         component._configure()
-        command = cfg['ssh_path'] + ' -o StrictHostKeyChecking=no -o ControlMaster=auto'
-        self.assertEqual(component.launch_command, command)
+
+        self.assertEqual(component.launch_command, cfg['mpirun_path'])
+        self.assertEqual(component.mpi_version, cfg['mpi_version'])
+        self.assertEqual(component.mpi_flavor, cfg['mpi_flavor'])
     # --------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
