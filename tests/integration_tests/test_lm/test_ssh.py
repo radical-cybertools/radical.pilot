@@ -16,7 +16,7 @@ class TestTask(TestCase):
     # --------------------------------------------------------------------------
     #
     def setUp(self) -> dict:
-        path = os.path.dirname(__file__) + '../test_config/resources.json'
+        path = os.path.dirname(__file__) + '/../test_config/resources.json'
         resources = ru.read_json(path)
         hostname = socket.gethostname()
 

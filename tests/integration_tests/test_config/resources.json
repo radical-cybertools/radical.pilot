@@ -1,8 +1,8 @@
 
 {
     "comet": {
-      "cpus_on_node": 24,
-      "gpus_on_node": 0,
+      "cpus_per_node": 24,
+      "gpus_per_node": 0,
       "ssh_path": "/bin/ssh"
     },
     "bridges2": {
