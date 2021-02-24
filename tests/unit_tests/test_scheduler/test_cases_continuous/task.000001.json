@@ -30,9 +30,9 @@
                 "nodes"         : [{"name"    : "a",
                                     "uid"     : "1",
                                     "cores"   : [1],
-                                    "gpus"    : [1],
+                                    "gpus"    : [0],
                                     "core_map": [[0]],
-                                    "gpu_map" : [[0]],
+                                    "gpu_map" : [],
                                     "mem"     : 0,
                                     "lfs"     : {"size": 0,
                                                  "path": "/dev/null"}

@@ -6,7 +6,6 @@ __copyright__ = "Copyright 2013-2021, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 import glob
-import pytest
 import os
 
 from unittest import TestCase
@@ -81,7 +80,6 @@ class TestContinuous(TestCase):
     @mock.patch('radical.utils.Logger')
     def test_find_resources(self, mocked_init, mocked_configure, mocked_logger):
 
-        _, cfg = self.setUp()
         component = Continuous(cfg=None, session=None)
         result = [{'uid': 2,
                    'name': 'a',
@@ -137,61 +135,58 @@ class TestContinuous(TestCase):
                            mocked_Logger):
 
         _, cfg = self.setUp()
-        component = Continuous(cfg=None, session=None)
-        task = dict()
-        task['uid'] = cfg[1]['task']['uid']
-        task['description'] = cfg[1]['task']['description']
-        component.nodes = cfg[1]['setup']['lm']['slots']['nodes']
-        component._tag_history       = dict()
-        component._rm_cores_per_node = 32
-        component._rm_gpus_per_node  = 2
-        component._rm_lfs_per_node   = {"size": 0, "path": "/dev/null"}
-        component._rm_mem_per_node   = 1024
-        component._rm_lm_info        = dict()
-        component._rm_partitions     = dict()
-        component._log               = ru.Logger('dummy')
-        component._dvm_host_list     = None
-        component._node_offset       = 0
-        test_slot =  {'cores_per_node': 32,
-                      'gpus_per_node': 2,
-                      'lfs_per_node': {'path': '/dev/null', 'size': 0},
-                      'lm_info': {},
-                      'mem_per_node': 1024,
-                      'nodes': [{'core_map': [[0]],
-                                 'gpu_map' : [[0]],
-                                 'lfs': {'path': '/dev/null', 'size': 1234},
-                                 'mem': 128,
-                                 'name': 'a',
-                                 'uid': 1}]}
-
-        self.assertEqual(component.schedule_task(task), test_slot)
-        self.assertEqual(component._tag_history, {})
-      # self.assertEqual(component._tag_history, {'task.000001': [1]})
+        for task_descr in cfg:
+            component = Continuous(cfg=None, session=None)
+            task = dict()
+            task['uid'] = task_descr['task']['uid']
+            task['description'] = task_descr['task']['description']
+            component.nodes = task_descr['setup']['lm']['slots']['nodes']
+            component._tag_history       = dict()
+            component._rm_cores_per_node = 32
+            component._rm_gpus_per_node  = 2
+            component._rm_lfs_per_node   = {"size": 0, "path": "/dev/null"}
+            component._rm_mem_per_node   = 1024
+            component._rm_lm_info        = dict()
+            component._rm_partitions     = dict()
+            component._log               = mocked_Logger
+            component._dvm_host_list     = None
+            component._node_offset       = 0
+            test_slot = {'cores_per_node': 32,
+                         'gpus_per_node': 2,
+                         'lfs_per_node': {'path': '/dev/null', 'size': 0},
+                         'lm_info': {},
+                         'mem_per_node': 1024,
+                         'nodes': [{'core_map': [[0]],
+                                    'gpu_map' : [[0]],
+                                    'lfs': {'path': '/dev/null', 'size': 1234},
+                                    'mem': 128,
+                                    'name': 'a',
+                                    'uid': 1}]}
+            slot = component.schedule_task(task)
+            self.assertEqual(slot, test_slot)
+            self.assertEqual(component._tag_history, {})
 
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Continuous, '__init__', return_value=None)
-    def test_unschedule_task(self, mocked_init):
+    @mock.patch('radical.utils.Logger')
+    def test_unschedule_task(self, mocked_init, mocked_Logger):
 
-        component = Continuous(cfg=None, session=None)
         _, cfg   = self.setUp()
+        for task_descr in cfg:
+            task = {
+                    'description': task_descr['task']['description'],
+                    'slots'      : task_descr['setup']['lm']['slots']
+                    }
+            component = Continuous(cfg=None, session=None)
+            component.nodes = task_descr['setup']['lm']['slots']['nodes']
+            component._log  = mocked_Logger
 
-        task = {
-                'description': cfg[1]['task']['description'],
-                'slots'      : cfg[1]['setup']['lm']['slots']
-               }
+            component.unschedule_task(task)
 
-        component.nodes = cfg[1]['setup']['lm']['slots']['nodes']
-        component._log  = ru.Logger('dummy')
-
-        component.unschedule_task(task)
-        try:
             self.assertEqual(component.nodes[0]['cores'], [0])
             self.assertEqual(component.nodes[0]['gpus'], [0])
-        except:
-            with pytest.raises(AssertionError):
-                raise
 
 
 if __name__ == '__main__':
