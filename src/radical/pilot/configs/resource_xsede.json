@@ -304,7 +304,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "MPIRUN",
-        "pre_bootstrap_0"             : ["module reset",
+        "pre_bootstrap_0"             : ["module purge",
                                          "module load intel",
                                          "module load python"
                                         ],
