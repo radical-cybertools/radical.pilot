@@ -93,11 +93,11 @@
         "cores"    : 40
     },
 
-    "xsede.bridges" : {
+    "xsede.bridges2" : {
         "project"  : null,
-        "queue"    : "RM-small",
+        "queue"    : "RM",
         "schema"   : "gsissh",
-        "cores"    : 24
+        "cores"    : 128
     },
 
     "xsede.wrangler" : {
