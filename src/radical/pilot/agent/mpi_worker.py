@@ -8,6 +8,7 @@ import dill
 import pickle
 import codecs
 
+from io import StringIO
 from subprocess import Popen
 import multiprocessing as mp
 import threading       as mt
@@ -21,7 +22,8 @@ class MPI_Func_Worker():
 
     def __init__(self):
 
-        self._log     = ru.Logger(name='mpi_func_exec', level='DEBUG')#ru.Logger(self._uid,   ns='radical.pilot', path=self._pwd)
+        self._log     = ru.Logger(name='mpi_func_exec', level='DEBUG')
+        #ru.Logger(self._uid,   ns='radical.pilot', path=self._pwd)
         self._log.debug('MPI worker got init')
 
         self.THIS_SCRIPT = os.path.realpath(__file__)
@@ -58,12 +60,26 @@ class MPI_Func_Worker():
         self._log.debug('launch mpirun task file Got called with')
         self._log.debug(task_file)
         cmds = self.mpirun_cmds(task_file, **kwargs)
+        self._log.debug('MPIRUN Command is %s',cmds)
         p_env = os.environ.copy()
         p_env['PYTHONPATH'] = ':'.join([os.getcwd()] + os.environ.get('PYTHONPATH', '').split(':'))
-        p = Popen(cmds, env=p_env)
-        retcode = p.wait()
+        
+        old_stdout = sys.stdout
+        new_stdout = None
+        result     = None
+        
+        try:
+            sys.stdout = new_stdout = StringIO()
+            p = Popen(cmds, env=p_env)
+            retcode = p.wait()
+        except Exception as e:
+            return e
+            
         if retcode != 0:
             self._log.error('Failed to run task')
+            return ('Failed to run task')
+        else:
+            return new_stdout.getvalue()
     
     def mpirun_cmds(self, task_file, **kwargs):
         self._log.debug('mpirun cmds Got called with')
@@ -80,15 +96,16 @@ class MPI_Func_Worker():
         return cmds
     
     def mpirun_task_file(self, func):
-        self._log.debug('mpirun task file got called witj')
+        self._log.debug('mpirun task file got called with')
         self._log.debug(func)
-        from mpi4py import MPI
-        from mpi4py.futures import MPICommExecutor
-        MPI.pickle.__init__(dill.dumps, dill.loads)
-    
-        rank = MPI.COMM_WORLD.Get_rank()
-        fn, args, kwargs = prepare_func(func)
+        fn, args, kwargs = self.prepare_func(func)
+        self._log.debug(fn)
+        self._log.debug(args)
+
         try:
+            from mpi4py import MPI
+            from mpi4py.futures import MPICommExecutor
+            MPI.pickle.__init__(dill.dumps, dill.loads)
             with MPICommExecutor(MPI.COMM_WORLD, root=0) as executor:
                  if executor is not None:
                     result =  executor.map(fn, *args)
