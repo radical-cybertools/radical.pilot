@@ -811,10 +811,10 @@ class AgentSchedulingComponent(rpu.Component):
                 for name in to_raptor:
 
                     if name in self._raptor_queues:
-                        self._log.debug('=== fwd to %s: %d', len(to_raptor[name]))
+                        self._log.debug('=== fwd to %s: %d', name, len(to_raptor[name]))
                         self._raptor_queues[name].put(to_raptor[name])
                     else:
-                        self._log.debug('=== cache %s: %d', len(to_raptor[name]))
+                        self._log.debug('=== cache %s: %d', name, len(to_raptor[name]))
                         if name not in self._raptor_tasks:
                             self._raptor_tasks[name] = to_raptor[name]
                         else:
