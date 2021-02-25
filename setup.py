@@ -253,7 +253,8 @@ setup_args = {
                             'setproctitle',
                             'ntplib',
                             'mpi4py',
-                            'dill'
+                            'dill',
+                            'whichcraft'
                            ],
     'extras_require'     : {'autopilot' : ['github3.py']},
     'tests_require'      : ['pytest',

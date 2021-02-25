@@ -10,6 +10,7 @@ import radical.pilot as rp
 import radical.utils as ru
 from radical.pilot import PythonTask
 
+
 dh = ru.DebugHelper()
 
 
@@ -19,9 +20,10 @@ dh = ru.DebugHelper()
 #
 # ------------------------------------------------------------------------------
 
-pythontask = PythonTask.pythontask
+mpitask = PythonTask.mpirun
 
-@pythontask
+
+@mpitask
 def fun(x):
     from mpi4py import MPI
 
@@ -67,15 +69,16 @@ if __name__ == '__main__':
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
-        pd_init = {'resource'      : 'xsede.comet_ssh_funcs_mpirun',#resource,
+        
+        pd_init = {'resource'      : resource,
                    'runtime'       : 60,  # pilot runtime (min)
                    'exit_on_error' : True,
-                   'project'       : 'unc100',#config[resource].get('project', None),
-                   'queue'         : 'compute',#config[resource].get('queue',   None),
-                   'access_schema' : 'gsissh',#config[resource].get('schema',  None),
-                   'cores'         : 48,#config[resource].get('cores', 1),
-                   'gpus'          : config[resource].get('gpus', 0),
-                  }
+                   'project'       : config[resource].get('project', None),
+                   'queue'         : config[resource].get('queue',   None),
+                   'access_schema' : config[resource].get('schema',  None),
+                   'cores'         : 4,#config[resource].get('cores', 1),
+                   'gpus'          : config[resource].get('gpus', 0),}
+
         pdesc = rp.PilotDescription(pd_init)
 
         # Launch the pilot.
@@ -104,9 +107,9 @@ if __name__ == '__main__':
             td.executable       = fun(jobs)
             td.arguments        = []
             td.gpu_processes    = 0
-            td.cpu_processes    = 24
+            td.cpu_processes    = 4
             td.cpu_threads      = 1
-            td.cpu_process_type = rp.MPI_FUNC
+            td.cpu_process_type = rp.FUNC
             tds.append(td)
             report.progress()
 
