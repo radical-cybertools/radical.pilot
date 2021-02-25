@@ -1,12 +1,12 @@
 
 {
     "comet": {
-      "cpus_per_node": 24,
+      "cores_per_node": 24,
       "gpus_per_node": 0,
       "ssh_path": "/bin/ssh"
     },
     "bridges2": {
-      "cpus_per_node": 40,
+      "cores_per_node": 40,
       "gpus_per_node": 0,
       "mpirun_path": "mpirun",
       "mpi_flavor": "OMPI",

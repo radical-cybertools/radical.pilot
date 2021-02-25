@@ -43,7 +43,7 @@ class TestTask(TestCase):
         print(cfg)
 
         self.assertEqual(component.node_list, [[node, node]])
-        self.assertEqual(component.cores_per_node, cfg['cpus_per_node'])
+        self.assertEqual(component.cores_per_node, cfg['cores_per_node'])
         self.assertEqual(component.gpus_per_node, cfg['gpus_per_node'])
         self.assertEqual(component.lfs_per_node, {'path': None, 'size': 0})
 
