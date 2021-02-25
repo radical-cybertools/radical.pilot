@@ -58,15 +58,15 @@ class Default(TMGRStagingInputComponent):
         self._js_cache    = dict()
         self._pilots      = dict()
         self._pilots_lock = ru.RLock()
+        self._connected   = list()  # list of pilot conected by ZMQ
 
         self.register_input(rps.TMGR_STAGING_INPUT_PENDING,
                             rpc.TMGR_STAGING_INPUT_QUEUE, self.work)
 
+        self.register_publisher(rpc.AGENT_STAGING_INPUT_PUBSUB)
+
         # this queue is inaccessible, needs routing via mongodb
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING, None)
-
-        # alternatively, we keep a registry of pilot specific queues to route
-        self._pilot_queues = dict()  # pid : zmq.Putter
 
         # we subscribe to the command channel to learn about pilots being added
         # to this task manager.
@@ -93,30 +93,50 @@ class Default(TMGRStagingInputComponent):
 
         if cmd == 'add_pilots':
 
-            pilots = arg.get('pilots', [])
-
-            if not isinstance(pilots, list):
-                pilots = [pilots]
+            pilots = arg['pilots']
 
             with self._pilots_lock:
+
                 for pilot in pilots:
                     pid = pilot['uid']
                     self._log.debug('add pilot %s', pid)
+
                     if pid not in self._pilots:
                         self._pilots[pid] = pilot
 
         elif cmd == 'pilot_connect':
 
             pid = arg['pid']
-            cfg = arg['cfg']
+            self._log.debug('register pilot %s', pid)
 
-            self._pilot_queues[pid] = ru.zmq.Putter(cfg['input']['channel'],
-                                                    cfg['input']['put'])
-
-        else:
-            self._log.debug('skip cmd %s', cmd)
+            if pid not in self._connected:
+                self._connected.append(pid)
 
         return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _advance_tasks(self, tasks, pid, state=None):
+
+        if not state:
+            state = rps.AGENT_STAGING_INPUT_PENDING
+
+        if pid not in self._connected:
+
+            for task in tasks:
+                # pass control via MongoDB
+                task['$all']    = True
+                task['control'] = 'agent_pending'
+                self._log.debug('=== send to mdb: %d', len(tasks))
+
+        # perform and publish state update
+        self.advance(tasks, state, publish=True, push=False)
+
+        # publish to the agent_staging_input_pubsub
+        self._log.debug('=== send to pq: %d', len(tasks))
+        self.publish(rpc.AGENT_STAGING_INPUT_PUBSUB, msg=tasks,
+                topic=pid)
 
 
     # --------------------------------------------------------------------------
@@ -137,12 +157,6 @@ class Default(TMGRStagingInputComponent):
             pid  = task['pilot']
             if pid not in staging_tasks   : staging_tasks[pid]    = list()
             if pid not in no_staging_tasks: no_staging_tasks[pid] = list()
-
-            # no matter if we perform any staging or not, we will push the full
-            # task info to the DB on the next advance, and will pass control to
-            # the agent.
-            task['$all']    = True
-            task['control'] = 'agent_pending'
 
             # check if we have any staging directives to be enacted in this
             # component
@@ -280,16 +294,20 @@ class Default(TMGRStagingInputComponent):
 
         for pid in no_staging_tasks:
 
-            self.advance(no_staging_tasks[pid], rps.AGENT_STAGING_INPUT_PENDING,
-                         publish=True, push=False)
-
-            if pid in self._pilot_queues:
-                self._pilot_queues[pid].put(no_staging_tasks[pid])
+            self._advance_tasks(no_staging_tasks[pid], pid)
 
         for pid in staging_tasks:
 
             for task,actionables in staging_tasks[pid]:
-                self._handle_task(task, actionables)
+                try:
+                    self._handle_task(task, actionables)
+                    self._advance_tasks([task], pid=task['pilot'])
+
+                except Exception as e:
+                    # FIXME: serialize exception
+                    task['exception'] = str(e)
+                    self._advance_tasks([task], pid=task['pilot'],
+                                                state=rps.FAILED)
 
 
     # --------------------------------------------------------------------------
@@ -421,15 +439,6 @@ class Default(TMGRStagingInputComponent):
             tar_sd['action'] = rpc.TARBALL
             task['description']['input_staging'].append(tar_sd)
             os.remove(tar_path)
-
-
-        # staging is done, we can advance the task at last
-        self.advance(task, rps.AGENT_STAGING_INPUT_PENDING,
-                           publish=True, push=True)
-
-        pid = task['pilot']
-        if pid in self._pilot_queues:
-            self._pilot_queues[pid].put([task])
 
 
 # ------------------------------------------------------------------------------

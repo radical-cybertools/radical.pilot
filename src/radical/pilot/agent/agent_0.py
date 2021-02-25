@@ -61,12 +61,6 @@ class Agent_0(rpu.Worker):
         prof = ru.Profiler(ns='radical.pilot', name='agent.0')
         prof.prof('hostname', uid=cfg.pid, msg=ru.get_hostname())
 
-        # connect to MongoDB for state push/pull
-        self._connect_db()
-
-        # connect to client communication channels, maybe
-        self._connect_communication()
-
         # configure ResourceManager before component startup, as components need
         # ResourceManager information for function (scheduler, executor)
         self._configure_rm()
@@ -81,6 +75,12 @@ class Agent_0(rpu.Worker):
 
         self._cmgr.start_bridges()
         self._cmgr.start_components()
+
+        # connect to client communication channels, maybe
+        self._connect_client()
+
+        # connect to MongoDB for state push/pull
+        self._connect_db()
 
         # create the sub-agent configs and start the sub agents
         self._write_sa_configs()
@@ -147,46 +147,103 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _connect_communication(self):
+    def _connect_client(self):
 
         # when running on the same host as the client, we may be able to bypass
         # MongoDB and instead connect to the client's ZMQ communication
         # channels.
         #
-        cfg = self._cfg.pilot_comm
+        cfg = self._cfg.client_comm
 
-        ru.write_json('pmgr_comm_pubsub.cfg', cfg.comm)
-        self.register_subscriber('pmgr_comm_pubsub', self._pilot_comm_cb)
-        self.register_publisher('pmgr_comm_pubsub')
+        # connect to the client's scheduler pubsub (to get tasks)
+        self._client_input = ru.zmq.Subscriber(
+                                channel='agent_staging_input_pubsub',
+                                url=cfg.agent_staging_input_pubsub.sub,
+                                cb=self._client_input_cb,
+                                log=self._log,
+                                prof=self._prof)
+        self._client_input.subscribe(self._pid)
 
-        self._client_input  = ru.zmq.Getter(cfg.input['channel'],
-                                            cfg.input['get'],
-                                            self._client_input_cb)
+        # completed tasks are fed back to the tmgr staging output queue
+        self._log.debug('=== reg output: %s', cfg.tmgr_staging_output_queue.put)
+        self._client_output = ru.zmq.Putter(rpc.TMGR_STAGING_OUTPUT_QUEUE,
+                                url=cfg.tmgr_staging_output_queue.put)
+        self._log.debug('=== reg output: ok')
 
-        self._client_output = ru.zmq.Putter(cfg.output['channel'],
-                                            cfg.output['get'])
+        # and control pubsub (to register)
+        self._client_ctrl = ru.zmq.Publisher(channel='control_pubsub',
+                                url=cfg.control_pubsub.sub,
+                                log=self._log,
+                                prof=self._prof)
 
-        # allo comm pubsub to connect
+        # and listen for completed tasks to foward to client
+        self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
+                            rpc.AGENT_COLLECTING_QUEUE,
+                            self._agent_collect_cb)
+
+        # allow control pubsub to connect
         time.sleep(1)
 
         # how do we verify that the comm channel is up?
-        self.publish('pmgr_comm_pubsub', msg={'cmd': 'pilot_connect',
-                                              'arg': {'pid'   : self._pid,
-                                                      'input' : cfg.input,
-                                                      'output': cfg.output}})
+        self._client_ctrl.put(rpc.CONTROL_PUBSUB,
+                              msg={'cmd': 'pilot_register',
+                                   'arg': {'pid': self._pid}})
 
 
     # --------------------------------------------------------------------------
     #
     def _client_input_cb(self, msg):
 
-        self._log.debug('=== input cb: %s %s', msg)
-        self._client_output.put(msg)
+        self._log.debug('=== input cb: %s', msg)
+
+        for task in msg:
+
+            # make sure the tasks obtain env settings (if needed)
+            if 'task_environment' in self._cfg:
+                if not task['description'].get('environment'):
+                    task['description']['environment'] = dict()
+                for k,v in self._cfg['task_environment'].items():
+                    task['description']['environment'][k] = v
+
+            # we need to make sure to have the correct state:
+          # task['state'] = rps._task_state_collapse(task['states'])
+          # self._prof.prof('get', uid=task['uid'])
+
+            # FIXME: raise or fail task!
+            if task['state'] != rps.AGENT_STAGING_INPUT_PENDING:
+                self._log.error('=== invalid state: %s:%s:%s', task['uid'],
+                        task['state'], task.get('states'))
+
+            task['control'] = 'agent'
+
+        # now we really own the CUs, and can start working on them (ie. push
+        # them into the pipeline).  We don't publish nor profile as advance,
+        # since that happened already on the module side when the state was set.
+        self.advance(msg, publish=False, push=True)
 
 
     # --------------------------------------------------------------------------
     #
-    def _pilot_comm_cb(self, topic, msg):
+    def _agent_collect_cb(self, msg):
+
+        self._log.debug('=== collect cb: %s', msg)
+
+        if self._client_output:
+            self._log.debug('=== to client: %s', msg)
+            self._client_output.put(msg)
+
+        else:
+            self._log.debug('=== to MongoDB: %s', msg)
+            for task in msg:
+                task['$all']    = True
+                task['control'] = 'tmgr_pending'
+            self.advance(msg, publish=True, push=False)
+
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _client_ctrl_cb(self, topic, msg):
 
         self._log.debug('=== ctl sub cb: %s %s', topic, msg)
 
@@ -252,10 +309,10 @@ class Agent_0(rpu.Worker):
         self.register_timed_cb(self._agent_command_cb,
                                timer=self._cfg['db_poll_sleeptime'])
 
-        # register idle callback to pull for tasks
-        self._ingest = mt.Thread(target=self._ingest)
-        self._ingest.daemon = True
-        self._ingest.start()
+        # start ingest thread to pull in tasks
+        self._ingest_thread = mt.Thread(target=self._ingest)
+        self._ingest_thread.daemon = True
+        self._ingest_thread.start()
 
 
         # sub-agents are started, components are started, bridges are up: we are
@@ -401,7 +458,8 @@ class Agent_0(rpu.Worker):
         agent_lm   = None
         for sa in self._cfg['agents']:
 
-            target = self._cfg['agents'][sa]['target']
+            target  = self._cfg['agents'][sa]['target']
+            cmdline = None
 
             if target == 'local':
 
@@ -512,6 +570,7 @@ class Agent_0(rpu.Worker):
             # ------------------------------------------------------------------
 
             # spawn the sub-agent
+            assert(cmdline)
             self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
             _SA(sa, cmdline, log=self._log)
 
@@ -680,6 +739,7 @@ class Agent_0(rpu.Worker):
         rpc_res = {'uid': arg['uid']}
         try:
             print(arg)
+            ret = None
             if req == 'hello'   :
                 ret = 'hello %s' % ' '.join(arg['arg'])
 
@@ -746,7 +806,7 @@ class Agent_0(rpu.Worker):
                                          'pilot'   : self._pid,
                                          'control' : 'agent_pending'})
         if not task_cursor.count():
-            self._log.info('tasks pulled:    0')
+          # self._log.info('tasks pulled:    0')
             time.sleep(self._cfg['db_poll_sleeptime'])
             return
 

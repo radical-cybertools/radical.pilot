@@ -150,6 +150,8 @@ class ComponentManager(object):
         check if any bridges are defined under `cfg['bridges']` and start them
         '''
 
+        self._log.debug('=== starting bridges (%s)', cfg)
+
         self._prof.prof('start_bridges_start', uid=self._uid)
 
         timeout = self._cfg.heartbeat.timeout
@@ -1274,7 +1276,7 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def publish(self, pubsub, msg):
+    def publish(self, pubsub, msg, topic=None):
         '''
         push information into a publication channel
         '''
@@ -1282,7 +1284,10 @@ class Component(object):
         if not self._publishers.get(pubsub):
             raise RuntimeError("no msg route for '%s': %s" % (pubsub, msg))
 
-        self._publishers[pubsub].put(pubsub, msg)
+        if not topic:
+            topic = pubsub
+
+        self._publishers[pubsub].put(topic, msg)
 
 
 # ------------------------------------------------------------------------------

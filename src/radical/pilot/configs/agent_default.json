@@ -35,43 +35,20 @@
     # stall_hwm and batch_size is 1 (no stalling, no bulking).
     #
     "bridges" : {
-        "agent_staging_input_queue"  : { "kind"      : "queue",
-                                         "log_level" : "error",
-                                         "stall_hwm" : 0,
-                                         "bulk_size" : 0},
-        "agent_scheduling_queue"     : { "kind"      : "queue",
-                                         "log_level" : "error",
-                                         "stall_hwm" : 0,
-                                         "bulk_size" : 0},
-        "agent_executing_queue"      : { "kind"      : "queue",
-                                         "log_level" : "error",
-                                         "stall_hwm" : 0,
-                                         "bulk_size" : 0},
-        "agent_staging_output_queue" : { "kind"      : "queue",
-                                         "log_level" : "error",
-                                         "stall_hwm" : 0,
-                                         "bulk_size" : 0},
+        "agent_staging_input_queue"  : {"kind": "queue"},
+        "agent_scheduling_queue"     : {"kind": "queue"},
+        "agent_executing_queue"      : {"kind": "queue"},
+        "agent_staging_output_queue" : {"kind": "queue"},
 
-        "funcs_req_queue"            : { "kind"      : "queue",
-                                         "log_level" : "error",
-                                         "stall_hwm" : 0,
-                                         "bulk_size" : 1},
-        "funcs_res_queue"            : { "kind"      : "queue",
-                                         "log_level" : "error",
-                                         "stall_hwm" : 0,
-                                         "bulk_size" : 1},
+        "funcs_req_queue"            : {"kind": "queue"},
+        "funcs_res_queue"            : {"kind": "queue"},
 
-        "agent_unschedule_pubsub"    : { "kind"      : "pubsub",
-                                         "log_level" : "error"},
-        "agent_schedule_pubsub"      : { "kind"      : "pubsub",
-                                         "log_level" : "error"},
+        "agent_unschedule_pubsub"    : {"kind": "pubsub"},
+        "agent_schedule_pubsub"      : {"kind": "pubsub"},
 
-        "control_pubsub"             : { "kind"      : "pubsub",
-                                         "log_level" : "error"},
-        "state_pubsub"               : { "kind"      : "pubsub",
-                                         "log_level" : "error"}
-      # "log_pubsub"                 : { "kind"      : "pubsub",
-      #                                  "log_level" : "error"}
+        "control_pubsub"             : {"kind": "pubsub"},
+        "state_pubsub"               : {"kind": "pubsub"}
+      # "log_pubsub"                 : {"kind": "pubsub"}
     },
 
     "components" : {

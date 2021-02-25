@@ -5,6 +5,7 @@ __license__   = 'MIT'
 
 import os
 import sys
+import time
 
 verbose  = os.environ.get('RADICAL_PILOT_VERBOSE', 'REPORT')
 os.environ['RADICAL_PILOT_VERBOSE'] = verbose
@@ -45,13 +46,14 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
+        config = ru.read_json('%s/config.json' % os.path.dirname(__file__))
         report.ok('>>ok\n')
 
         report.header('submit pilots')
 
         # Add a PilotManager. PilotManagers manage one or more pilots.
         pmgr = rp.PilotManager(session=session)
+        tmgr = rp.TaskManager(session=session)
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
@@ -68,17 +70,14 @@ if __name__ == '__main__':
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
-
-
         report.header('submit tasks')
 
         # Register the pilot in a TaskManager object.
-        tmgr = rp.TaskManager(session=session)
         tmgr.add_pilots(pilot)
 
         # Create a workload of tasks.
         # Each task runs '/bin/date'.
-        n = 128  # number of tasks to run
+        n = 1024  # number of tasks to run
         report.info('create %d task description(s)\n\t' % n)
 
         tds = list()
@@ -106,7 +105,7 @@ if __name__ == '__main__':
         for task in tasks:
             report.plain('  * %s: %s, exit: %3s, out: %s'
                     % (task.uid, task.state[:4],
-                        task.exit_code, task.stdout[:35]))
+                        task.exit_code, task.stdout))
 
         # get some more details for one task:
         task_dict = tasks[0].as_dict()
@@ -132,7 +131,7 @@ if __name__ == '__main__':
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close()
+        session.close(download=False)
 
     report.header()
 

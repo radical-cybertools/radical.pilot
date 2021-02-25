@@ -5,8 +5,7 @@ __license__   = "MIT"
 
 import os
 
-import radical.saga  as rs
-import radical.utils as ru
+import radical.saga as rs
 
 from ...   import states             as rps
 from ...   import constants          as rpc
@@ -43,15 +42,8 @@ class Default(TMGRStagingOutputComponent):
         self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
                             rpc.TMGR_STAGING_OUTPUT_QUEUE, self.work)
 
-        # we also listen on individual pilot queues
-        self._pilot_queues = dict()  # pid : zmq.Getter
-
-        # we subscribe to the command channel to learn about pilots being added
-        # to this task manager.
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
-
         # we don't need an output queue -- tasks will be final
-        #
+
 
     # --------------------------------------------------------------------------
     #
@@ -63,29 +55,10 @@ class Default(TMGRStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _control_cb(self, topic, msg):
-
-        cmd = msg.get('cmd')
-        arg = msg.get('arg')
-
-        if cmd == 'pilot_connect':
-
-            pid = arg['pid']
-            cfg = arg['cfg']
-
-            self._pilot_queues[pid] = ru.zmq.Getter(cfg['output']['channel'],
-                                                    cfg['output']['get'],
-                                                    self.work)
-
-        else:
-            self._log.debug('skip cmd %s', cmd)
-
-        return True
-
-
-    # --------------------------------------------------------------------------
-    #
     def work(self, tasks):
+
+        if not isinstance(tasks, list):
+            tasks = [tasks]
 
         self.advance(tasks, rps.TMGR_STAGING_OUTPUT, publish=True, push=False)
 

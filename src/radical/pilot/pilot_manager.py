@@ -140,7 +140,8 @@ class PilotManager(rpu.Component):
         self._stager_queue = self.get_output_ep(rpc.STAGER_REQUEST_QUEUE)
 
         # we also listen for completed staging directives
-        self.register_subscriber(rpc.STAGER_RESPONSE_PUBSUB, self._staging_ack_cb)
+        self.register_subscriber(rpc.STAGER_RESPONSE_PUBSUB,
+                                     self._staging_ack_cb)
         self._active_sds = dict()
         self._sds_lock   = ru.Lock('pmgr_sds_lock')
 

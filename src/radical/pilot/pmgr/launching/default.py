@@ -91,9 +91,6 @@ class Default(PMGRLaunchingComponent):
         self._rp_version, _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
                 ru.get_version([self._mod_dir, self._root_dir])
 
-        # create our own bridges to communicate with the pilots
-        self._bridges = list()
-
 
     # --------------------------------------------------------------------------
     #
@@ -120,13 +117,6 @@ class Default(PMGRLaunchingComponent):
 
         except:
             self._log.exception('finalization error')
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _pmgr_comm_cb(self, topic, msg):
-
-        self._log.debug('comm msg: %s', msg)
 
 
     # --------------------------------------------------------------------------
@@ -208,7 +198,8 @@ class Default(PMGRLaunchingComponent):
             for pid in self._checking:
 
                 state = self._pilots[pid]['job'].state
-                self._log.debug('saga job state: %s %s %s', pid, self._pilots[pid]['job'],  state)
+                self._log.debug('saga job state: %s %s %s', pid, self.
+                                                    _pilots[pid]['job'],  state)
 
                 if state in [rs.job.DONE, rs.job.FAILED, rs.job.CANCELED]:
                     pilot = self._pilots[pid]['pilot']
@@ -990,48 +981,17 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
         agent_cfg['debug']               = self._log.getEffectiveLevel()
 
+        # pilot needs to know where to fetch tasks from and where to
+        # send tasks back to
+        agent_cfg['client_comm'] = {
+               'agent_staging_input_pubsub':
+               ru.read_json('%s/agent_staging_input_pubsub.cfg' % self._cfg.path),
+               'tmgr_staging_output_queue':
+               ru.read_json('%s/tmgr_staging_output_queue.cfg' % self._cfg.path),
+               'control_pubsub':
+               ru.read_json('%s/control_pubsub.cfg' % self._cfg.path),
+        }
 
-        # the pilot also gets contact points points for some client side
-        # communication channels.  If the pilot happens to be able to
-        # connect to them, they will get used for communication
-        # - otherwise we fall back to MongoDB.
-        #
-        # We will need a separate queue for each pilot from which the
-        # pilot can pull tasks, so that queue cannot be defined in
-        # a static config file.  Instead we start it here and own that
-        # queue for as long as the agent lives (in practice, for as long
-        # as this pmgr lives).
-
-        bcfg = ru.Config(cfg={'channel'    : '%s.in' % pid,
-                              'type'       : 'queue',
-                              'stall_hwm'  : 1,
-                              'bulk_size'  : 0,
-                              'path'       : self._cfg.path})
-        b_in = ru.zmq.Queue(bcfg)
-        b_in.start()
-        self._bridges.append(b_in)
-
-        bcfg = ru.Config(cfg={'channel'    : '%s.out' % pid,
-                              'type'       : 'queue',
-                              'stall_hwm'  : 1,
-                              'bulk_size'  : 0,
-                              'path'       : self._cfg.path})
-        b_out = ru.zmq.Queue(bcfg)
-        b_out.start()
-        self._bridges.append(b_out)
-
-        self.register_subscriber('pmgr_comm_pubsub', self._pmgr_comm_cb)
-
-        comm_cfg = ru.read_json('%s/pmgr_comm_pubsub.cfg' % self._cfg.path)
-
-        agent_cfg['pilot_comm'] = {
-                'input'  : {'channel': b_in.channel,
-                            'put'    : str(b_in.addr_put),
-                            'get'    : str(b_in.addr_get)},
-                'output' : {'channel': b_out.channel,
-                            'put'    : str(b_out.addr_put),
-                            'get'    : str(b_out.addr_get)},
-                'comm'   : comm_cfg}
 
         # we'll also push the agent config into MongoDB
         pilot['cfg'] = agent_cfg

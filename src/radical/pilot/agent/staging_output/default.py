@@ -50,7 +50,9 @@ class Default(AgentStagingOutputComponent):
                             rpc.AGENT_STAGING_OUTPUT_QUEUE, self.work)
 
         # we don't need an output queue -- tasks are picked up via mongodb
-        self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING, None)  # drop
+        self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING,
+                             rpc.AGENT_COLLECTING_QUEUE)
+
 
 
     # --------------------------------------------------------------------------
@@ -72,12 +74,6 @@ class Default(AgentStagingOutputComponent):
         for task in tasks:
 
             uid = task['uid']
-
-            # From here on, any state update will hand control over to the tmgr
-            # again.  The next task update should thus push *all* task details,
-            # not only state.
-            task['$all']    = True
-            task['control'] = 'tmgr_pending'
 
             # we always dig for stdout/stderr
             self._handle_task_stdio(task)

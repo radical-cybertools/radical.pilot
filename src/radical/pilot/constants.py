@@ -23,10 +23,12 @@ TMGR_SCHEDULING_COMPONENT      = 'tmgr_scheduling'
 TMGR_STAGING_INPUT_COMPONENT   = 'tmgr_staging_input'
 TMGR_STAGING_OUTPUT_COMPONENT  = 'tmgr_staging_output'
 
+AGENT_STAGING_INPUT_PUBSUB     = 'agent_staging_input_pubsub'
 AGENT_STAGING_INPUT_QUEUE      = 'agent_staging_input_queue'
 AGENT_SCHEDULING_QUEUE         = 'agent_scheduling_queue'
 AGENT_EXECUTING_QUEUE          = 'agent_executing_queue'
 AGENT_STAGING_OUTPUT_QUEUE     = 'agent_staging_output_queue'
+AGENT_COLLECTING_QUEUE         = 'agent_collecting_queue'
 
 AGENT_STAGING_INPUT_COMPONENT  = 'agent_staging_input'
 AGENT_SCHEDULING_COMPONENT     = 'agent_scheduling'
