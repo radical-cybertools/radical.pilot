@@ -251,12 +251,12 @@ class Tasker():
             try:
                 if check_obj(exe) is True:
                     self._log.debug("Object is Callable")
-             
+                    state  = None
                     result = None
                     try:
                         kwargs = {}
                         self._log.debug("Starting execution and GOT exec of  %s!", exe)
-                        result = self.worker.launch_mpirun_task_file(exe, **kwargs)
+                        state, result = self.worker.launch_mpirun_task_file(exe, **kwargs)
    
                     except Exception as e:
                         self._log.debug("Setting the function for execution failed due to %s!", e)
@@ -264,10 +264,17 @@ class Tasker():
                         task['state']  = 'FAILED'
                         raise
 
-                    self._log.debug("Executing got value of %s!", result)
-                    task['stdout'] = result
-                    task['stderr'] = None
-                    task['state']  = 'DONE'
+                    if state == 'DONE':
+                        self._log.debug("Executing done value of %s!", result)
+                        task['stdout'] = result
+                        task['stderr'] = None
+                        task['state']  = state
+                    else:
+                        self._log.debug("Executing failed value of %s!", result)
+                        task['stdout'] = result
+                        task['stderr'] = None
+                        task['state']  = state
+
 
             except Exception as e:
 

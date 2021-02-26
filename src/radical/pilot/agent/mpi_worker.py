@@ -9,7 +9,7 @@ import pickle
 import codecs
 
 from io import StringIO
-from subprocess import Popen
+import subprocess      as sp
 import multiprocessing as mp
 import threading       as mt
 
@@ -64,22 +64,23 @@ class MPI_Func_Worker():
         p_env = os.environ.copy()
         p_env['PYTHONPATH'] = ':'.join([os.getcwd()] + os.environ.get('PYTHONPATH', '').split(':'))
         
-        old_stdout = sys.stdout
-        new_stdout = None
-        result     = None
-        
-        try:
-            sys.stdout = new_stdout = StringIO()
-            p = Popen(cmds, env=p_env)
-            retcode = p.wait()
-        except Exception as e:
-            return e
-            
+        p = sp.Popen(cmds, env=p_env, stdout = sp.PIPE,
+                                      stderr = sp.PIPE)
+        retcode = p.wait()
+        result = []
+
         if retcode != 0:
             self._log.error('Failed to run task')
-            return ('Failed to run task')
+            for line in iter(p.stderr.readline,b''):
+                result.append(line.rstrip())
+
+            proc_err = ru.as_string(result)
+            return 'FAILED', proc_err 
         else:
-            return new_stdout.getvalue()
+            for line in iter(p.stdout.readline,b''):
+                result.append(line.rstrip())
+            proc_out = ru.as_string(result)
+            return 'DONE', proc_out
     
     def mpirun_cmds(self, task_file, **kwargs):
         self._log.debug('mpirun cmds Got called with')
