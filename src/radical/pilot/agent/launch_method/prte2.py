@@ -335,8 +335,11 @@ class PRTE2(LaunchMethod):
         if not slots['lm_info'].get('partitions'):
             raise RuntimeError('no partitions (%s): %s' % (self.name, slots))
 
-        flags  = ' --np %d'                               % n_procs
-        flags += ' --map-by hwthread:PE=%d:OVERSUBSCRIBE' % n_threads
+        if n_threads == 1: map_to_object = 'hwthread'
+        else             : map_to_object = 'node:HWTCPUS'
+
+        flags  = ' --np %d'                         % n_procs
+        flags += ' --map-by %s:PE=%d:OVERSUBSCRIBE' % (map_to_object, n_threads)
         flags += ' --bind-to hwthread:overload-allowed'
         if self._verbose:
             flags += ':REPORT'
