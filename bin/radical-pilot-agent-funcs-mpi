@@ -256,7 +256,7 @@ class Tasker():
                     try:
                         kwargs = {}
                         self._log.debug("Starting execution and GOT exec of  %s!", exe)
-                        state, result = self.worker.launch_mpirun_task_file(exe, **kwargs)
+                        state, result = self.worker.launch_mpirun_func(exe, **kwargs)
    
                     except Exception as e:
                         self._log.debug("Setting the function for execution failed due to %s!", e)

@@ -55,11 +55,11 @@ class MPI_Func_Worker():
         return fn, args, kwargs
     
     
-    def launch_mpirun_task_file(self, task_file, **kwargs):
+    def launch_mpirun_func(self, func, **kwargs):
 
         self._log.debug('launch mpirun task file Got called with')
-        self._log.debug(task_file)
-        cmds = self.mpirun_cmds(task_file, **kwargs)
+        self._log.debug(func)
+        cmds = self.mpirun_cmds(func, **kwargs)
         self._log.debug('MPIRUN Command is %s',cmds)
         p_env = os.environ.copy()
         p_env['PYTHONPATH'] = ':'.join([os.getcwd()] + os.environ.get('PYTHONPATH', '').split(':'))
@@ -82,9 +82,9 @@ class MPI_Func_Worker():
             proc_out = ru.as_string(result)
             return 'DONE', proc_out
     
-    def mpirun_cmds(self, task_file, **kwargs):
+    def mpirun_cmds(self, func, **kwargs):
         self._log.debug('mpirun cmds Got called with')
-        self._log.debug(task_file)
+        self._log.debug(func)
         cmds = list(self.MPIRUN)
         for k in kwargs:
             mpiarg = '-{}'.format(str(k).replace('_', '-'))
@@ -92,11 +92,11 @@ class MPI_Func_Worker():
             v = kwargs[k]
             if v is not None:
                 cmds.append(str(v))
-        cmds.extend([sys.executable, self.THIS_SCRIPT, task_file])
+        cmds.extend([sys.executable, self.THIS_SCRIPT, func])
         
         return cmds
     
-    def mpirun_task_file(self, func):
+    def mpirun_func(self, func):
         self._log.debug('mpirun task file got called with')
         self._log.debug(func)
         fn, args, kwargs = self.prepare_func(func)
@@ -117,6 +117,6 @@ class MPI_Func_Worker():
             raise RuntimeError('Task failed to run here %s', e)
 
 if __name__ == '__main__':
-    task_file = sys.argv[1]
+    func = sys.argv[1]
     execute   = MPI_Func_Worker()
-    execute.mpirun_task_file(task_file)
+    execute.mpirun_func(func)
