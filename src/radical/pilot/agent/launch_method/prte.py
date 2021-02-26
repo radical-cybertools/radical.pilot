@@ -308,6 +308,11 @@ class PRTE(LaunchMethod):
             raise RuntimeError('no partitions in lm_info for %s: %s'
                                % (self.name, slots))
 
+        partitions = slots['lm_info']['partitions']
+        # `partition_id` should be set in a scheduler
+        prid = slots.get('partition_id') or partitions.keys()[0]
+        dvm_uri = '--hnp "%s"' % partitions[prid]['details']['dvm_uri']
+
         if task_argstr: task_command = '%s %s' % (task_exec, task_argstr)
         else          : task_command = task_exec
 
@@ -325,7 +330,6 @@ class PRTE(LaunchMethod):
         map_flag += ' --pmca ptl_base_max_msg_size %d' % PTL_BASE_MAX_MSG_SIZE
       # map_flag += ' --pmca rmaps_base_verbose 5'
 
-        dvm_uri = ''
         if 'nodes' not in slots:
             # this task is unscheduled - we leave it to PRRTE/PMI-X to
             # correctly place the task
@@ -341,13 +345,6 @@ class PRTE(LaunchMethod):
             map_flag += ' -host %s' % ','.join(hosts)
             # another way to provide list of hosts:
             #    map_flag += ' -host %s:%s' % (hosts[0], n_procs)
-
-            # scheduler makes sure that all hosts are from the same DVM
-            _host_uid = slots['nodes'][0]['uid']
-            for partition in slots['lm_info']['partitions'].values():
-                if _host_uid in partition['nodes']:
-                    dvm_uri = '--hnp "%s"' % partition['details']['dvm_uri']
-                    break
 
         # Additional (debug) arguments to prun
         if self._verbose:

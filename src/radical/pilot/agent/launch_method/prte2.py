@@ -2,6 +2,7 @@
 __copyright__ = 'Copyright 2020-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
+import collections
 import math
 import os
 import signal
@@ -335,6 +336,11 @@ class PRTE2(LaunchMethod):
         if not slots['lm_info'].get('partitions'):
             raise RuntimeError('no partitions (%s): %s' % (self.name, slots))
 
+        partitions = slots['lm_info']['partitions']
+        # `partition_id` should be set in a scheduler
+        prid = slots.get('partition_id') or partitions.keys()[0]
+        dvm_uri = '--dvm-uri "%s"' % partitions[prid]['details']['dvm_uri']
+
         if n_threads == 1: map_to_object = 'hwthread'
         else             : map_to_object = 'node:HWTCPUS'
 
@@ -344,23 +350,15 @@ class PRTE2(LaunchMethod):
         if self._verbose:
             flags += ':REPORT'
 
-        dvm_uri = ''
         if 'nodes' not in slots:
             # this task is unscheduled - we leave it to PRRTE/PMI-X
             # to correctly place the task
             pass
         else:
-            # FIXME: ensure correct binding for procs and threads via slotfile
-
-            hosts = [node['name'] for node in slots['nodes']]
-            flags += ' --host %s:%s' % (hosts[0], len(hosts))
-
-            # scheduler makes sure that all nodes are from the same dvm
-            _host_uid = slots['nodes'][0]['uid']
-            for partition in slots['lm_info']['partitions'].values():
-                if _host_uid in partition['nodes']:
-                    dvm_uri = '--dvm-uri "%s"' % partition['details']['dvm_uri']
-                    break
+            hosts = collections.defaultdict(int)
+            for node in slots['nodes']:
+                hosts[node['name']] += 1
+            flags += ' --host ' + ','.join(['%s:%s' % x for x in hosts.items()])
 
         flags += ' --pmixmca ptl_base_max_msg_size %d' % PTL_MAX_MSG_SIZE
         flags += ' --verbose'  # needed to get prte profile events

@@ -17,7 +17,9 @@
                 "lm_info"       : {
                                    "partitions"     : {
                                        "0" : {
-                                           "nodes"  : ["node1"],
+                                           "details": {"dvm_uri": "unused_uri"}
+                                       },
+                                       "1" : {
                                            "details": {"dvm_uri": "dvm_uri"}
                                        }
                                    },
@@ -29,6 +31,7 @@
                                    "nodename"       : "test"
                                   },
                 "lfs_per_node"  : 0,
+                "partition_id"  : "1",
                 "nodes"         : [{"name"    : "node1",
                                     "uid"     : "node1",
                                     "core_map": [[0]],
