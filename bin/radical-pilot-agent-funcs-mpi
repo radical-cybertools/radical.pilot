@@ -34,12 +34,12 @@ if ve and ve not in ['', 'None', None]:
 class Tasker():
     '''
     This executor is running as an RP task (master) and owns a complete node.
-    On each core of that node and other nodes (if possible), it spawns a worker 
-    process to execute function calls.Communication to those processes is establshed
-    via two mp.Queue instances, one for feeding call requests to the worker processes,
-    and one to collect results from their execution
+    On each core of that node and other nodes (if possible), it spawns a specail 
+    mpi-worker(s) process to execute function calls.Communication to those processes
+    is establshed via two mp.Queue instances, one for feeding call requests to the 
+    worker processes, and one to collect results from their execution.
 
-    Once the workers are prepared, the Executor will listens on an task level
+    Once the mpi-workers are prepared, the Executor will listens on an task level
     ZMQ channel for incoming call requests, which are then proxied to the
     workers as described above.  This happens in a separate thread.  Another
     thread is spawned to inversely collect the results as described above and to
@@ -60,12 +60,12 @@ class Tasker():
         Since it is possible, we might need to provide the n_workers to:
         MPIExecutor(max_workers = n_workers)
         '''
-        self._nw      = n_workers
-        self._uid     = os.environ['RP_FUNCS_ID']
-        self._log     = ru.Logger(self._uid,   ns='radical.pilot', path=pwd)
-        self._prof    = ru.Profiler(self._uid, ns='radical.pilot', path=pwd)
-        self._cfg     = ru.read_json('%s/%s.cfg' % (pwd, self._uid))
-        self.worker   = MPI_Func_Worker()
+        self._nw       = n_workers
+        self._uid      = os.environ['RP_FUNCS_ID']
+        self._log      = ru.Logger(self._uid,   ns='radical.pilot', path=pwd)
+        self._prof     = ru.Profiler(self._uid, ns='radical.pilot', path=pwd)
+        self._cfg      = ru.read_json('%s/%s.cfg' % (pwd, self._uid))
+        self._worker   = MPI_Func_Worker()
 
         self._initialize()
 
@@ -120,7 +120,6 @@ class Tasker():
 
         wid  = '%s.%03d' % (self._uid, 1)
     
-        # FIXME: start the watcher in the background (no termination for now!)
         self._watcher = mt.Thread(target=self.watch)
         self._watcher.daemon = True
         self._watcher.start()
@@ -250,27 +249,23 @@ class Tasker():
 
             try:
                 if check_obj(exe) is True:
-                    self._log.debug("Object is Callable")
-                    state  = None
-                    result = None
+                    state      = None
+                    result     = None
+                    mpi_kwargs = descr
+
                     try:
-                        kwargs = {}
-                        self._log.debug("Starting execution and GOT exec of  %s!", exe)
-                        state, result = self.worker.launch_mpirun_func(exe, **kwargs)
+                        state, result = self._worker.launch_mpirun_func(exe, **mpi_kwargs)
    
                     except Exception as e:
-                        self._log.debug("Setting the function for execution failed due to %s!", e)
                         task['stderr'] = str(e)
                         task['state']  = 'FAILED'
                         raise
 
                     if state == 'DONE':
-                        self._log.debug("Executing done value of %s!", result)
                         task['stdout'] = result
                         task['stderr'] = None
                         task['state']  = state
                     else:
-                        self._log.debug("Executing failed value of %s!", result)
                         task['stdout'] = result
                         task['stderr'] = None
                         task['state']  = state

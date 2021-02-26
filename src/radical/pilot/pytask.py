@@ -36,6 +36,7 @@ class PythonTask(object):
         """
         if not callable(f):
             raise ValueError('Task function not callable')
+
         @functools.wraps(f)
         def decor(*args, **kwargs): 
             TASK = {'func'  :f,
@@ -59,9 +60,6 @@ class PythonTask(object):
         return decor
 
     # --------------------------------------------------------------------------
-    #
-    # FIXME: an MPI call mode should be added.  That could work along these
-    #        lines of:
     #
     # --------------------------------------------------------------------------
     #  def jsrun(f):

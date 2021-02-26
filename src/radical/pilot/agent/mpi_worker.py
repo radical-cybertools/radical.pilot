@@ -8,33 +8,28 @@ import dill
 import pickle
 import codecs
 
-from io import StringIO
 import subprocess      as sp
-import multiprocessing as mp
 import threading       as mt
-
-from whichcraft import which
+import multiprocessing as mp
 
 import radical.utils   as ru
+from whichcraft import which
 
 
 class MPI_Func_Worker():
 
     def __init__(self):
 
-        self._log     = ru.Logger(name='mpi_func_exec', level='DEBUG')
-        #ru.Logger(self._uid,   ns='radical.pilot', path=self._pwd)
+        self._pwd = os.getcwd()
+        self._uid = os.environ['RP_FUNCS_ID']
+        self._log = ru.Logger(self._uid,   ns='radical.pilot', path=self._pwd)
         self._log.debug('MPI worker got init')
 
         self.THIS_SCRIPT = os.path.realpath(__file__)
         self.MPIRUN      = ['mpirun']
         self.MPIRUN[0]   = which(self.MPIRUN[0])
         if not os.path.exists(self.MPIRUN[0]):
-            raise RuntimeError('Cannot find mpirun')
-        #self._pwd           = os.getcwd()
-        #self._uid     = os.environ['RP_FUNCS_ID']
-        
-
+            raise RuntimeError('mpirun not found')
     
     # --------------------------------------------------------------------------
     #
@@ -59,7 +54,8 @@ class MPI_Func_Worker():
 
         self._log.debug('launch mpirun task file Got called with')
         self._log.debug(func)
-        cmds = self.mpirun_cmds(func, **kwargs)
+      
+        cmds = self.construct_mpirun_cmds(func, **kwargs)
         self._log.debug('MPIRUN Command is %s',cmds)
         p_env = os.environ.copy()
         p_env['PYTHONPATH'] = ':'.join([os.getcwd()] + os.environ.get('PYTHONPATH', '').split(':'))
@@ -82,14 +78,26 @@ class MPI_Func_Worker():
             proc_out = ru.as_string(result)
             return 'DONE', proc_out
     
-    def mpirun_cmds(self, func, **kwargs):
+    def construct_mpirun_cmds(self, func, **kwargs):
+
+        mpi_kwargs = {}
+
+        if 'cpu_processes' in kwargs:
+            mpi_kwargs['np'] = kwargs['cpu_processes']
+        else:
+            pass
+        if 'cpu_threads' in kwargs:
+            os.environ['OMP_NUM_THREADS'] = str(kwargs['cpu_threads'])
+        else:
+            pass
+
         self._log.debug('mpirun cmds Got called with')
         self._log.debug(func)
         cmds = list(self.MPIRUN)
-        for k in kwargs:
-            mpiarg = '-{}'.format(str(k).replace('_', '-'))
-            cmds.append(mpiarg)
-            v = kwargs[k]
+        for k in mpi_kwargs:
+            mpi_arg = '-{}'.format(str(k).replace('_', '-'))
+            cmds.append(mpi_arg)
+            v = mpi_kwargs[k]
             if v is not None:
                 cmds.append(str(v))
         cmds.extend([sys.executable, self.THIS_SCRIPT, func])
@@ -113,8 +121,7 @@ class MPI_Func_Worker():
                     self._log.debug(result)
 
         except Exception as e:
-            self._log.error(e)
-            raise RuntimeError('Task failed to run here %s', e)
+            self._log.exception('MPICommExecutor failed')
 
 if __name__ == '__main__':
     func = sys.argv[1]
