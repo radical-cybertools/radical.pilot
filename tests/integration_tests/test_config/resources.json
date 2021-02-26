@@ -12,5 +12,10 @@
       "mpirun_path": "mpirun",
       "mpi_flavor": "OMPI",
       "mpi_version": "2.1.2"
+    },
+    "summit": {
+      "cores_per_node": 42,
+      "gpus_per_node": 0,
+      "jsrun_path": "/opt/ibm/spectrum_mpi/jsm_pmix/bin/jsrun"
     }
 }
