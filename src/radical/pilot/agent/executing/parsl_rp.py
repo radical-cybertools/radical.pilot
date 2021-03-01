@@ -54,7 +54,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
     def __init__(self,
                  label: str = 'RADICALExecutor',
                  resource: str = None,
-                 login_method: str = None,                  # Specify the connection protocol SSH/GISSH/local
+                 login_method: str = None,
                  walltime: int = None,
                  managed: bool = True,
                  max_tasks: Union[int, float] = float('inf'),
@@ -62,9 +62,6 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                  partition : Optional[str] = " ",
                  project: Optional[str] = " ",):
 
-
-        self.report.title('RP version %s :' % rp.version)
-        self.report.header("Initializing RADICALExecutor with ParSL version %s :" % parsl.__version__)
         self.label              = label
         self.project            = project
         self.resource           = resource
@@ -82,6 +79,9 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.report  = ru.Reporter(name='radical.pilot')
         self.session = rp.Session(uid=ru.generate_id('parsl.radical_executor.session',
                                                       mode=ru.ID_PRIVATE))
+
+        self.report.title('RP version %s :' % rp.version)
+        self.report.header("Initializing RADICALExecutor with ParSL version %s :" % parsl.__version__)
         self.pmgr    = rp.PilotManager(session=self.session)
         self.tmgr    = rp.TaskManager(session=self.session)
 
@@ -131,7 +131,6 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             temp        = ' '.join(shlex.quote(arg) for arg in (shlex.split(source_code,
                                                                             comments=True, posix=True)))
             task_exe    = re.findall(r"'(.*?).format", temp,re.DOTALL)[0]
-
             if 'exe' in kwargs:
                 code = "{0} {1}".format(kwargs['exe'], task_exe)
             else:
