@@ -21,6 +21,7 @@ from .context                   import Context
 
 from .task_manager              import TaskManager
 from .task                      import Task
+from .pytask                    import PythonTask
 from .task_description          import TaskDescription
 from .task_description          import POSIX, MPI, OpenMP, CUDA, FUNC
 
@@ -40,6 +41,8 @@ from . import worker
 from . import tmgr
 from . import pmgr
 from . import agent
+from . import task
+from . import serialize
 
 from .agent  import Agent_0
 from .agent  import Agent_n

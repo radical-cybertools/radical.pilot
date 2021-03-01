@@ -8,6 +8,7 @@ import sys
 
 import radical.pilot as rp
 import radical.utils as ru
+from radical.pilot import PythonTask
 
 dh = ru.DebugHelper()
 
@@ -18,18 +19,28 @@ dh = ru.DebugHelper()
 #
 # ------------------------------------------------------------------------------
 
+import random
+from typing import Callable
+from functools import partial
 
-# ------------------------------------------------------------------------------
-#
-def mathma(a,b):
-    import math
-    eq = []
-    for i in range(2):
-        if a > b:
-            eq.append(math.exp(a*b))
-        else:
-            eq.append(math.exp(a+b))
-    print(eq)
+
+def AA(func:Callable, x= random.random()):
+    eq = func(x)
+    print (eq * 4)
+
+
+def AB(z):
+    import random
+    return random.random() * z
+
+
+def AC(y):
+    import time
+    return time.time()
+
+
+wrapped_function = partial(AA, AB)  # or wrapped_function = partial(AA, AC)
+
 
 # ------------------------------------------------------------------------------
 #
@@ -60,7 +71,7 @@ if __name__ == '__main__':
 
         report.header('submit pilots')
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session=session)
 
         # Define an [n]-core local pilot that runs for [x] minutes
@@ -74,58 +85,58 @@ if __name__ == '__main__':
                    'cores'         : config[resource].get('cores', 1),
                    'gpus'          : config[resource].get('gpus', 0),
                   }
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        report.header('submit units')
+        report.header('submit tasks')
 
-        # Register the ComputePilot in a UnitManager object.
-        umgr = rp.UnitManager(session=session)
-        umgr.add_pilots(pilot)
+        # Register the Pilot in a TaskManager object.
+        tmgr = rp.TaskManager(session=session)
+        tmgr.add_pilots(pilot)
 
-        # Create a workload of ComputeUnits.
-        # Each compute unit runs '/bin/date'.
+        # Create a workload of Tasks.
+        # Each task runs '/bin/date'.
 
         n = 1024 * 2
         report.progress_tgt(n, label='create')
 
-        cuds = list()
+        tds = list()
         for i in range(0, n):
 
-            # create a new CU description, and fill it.
+            # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.ComputeUnitDescription()
-            cud.pre_exec         = []
-            cud.executable       = mathma # Function reference
-            cud.arguments        = [5, 7]  # Function arguments
-            cud.gpu_processes    = 0
-            cud.cpu_processes    = 1
-            cud.cpu_threads      = 1
-            cud.cpu_process_type = rp.FUNC
-            cuds.append(cud)
+            td = rp.TaskDescription()
+            td.pre_exec         = []
+            td.executable       = PythonTask(wrapped_function)
+            td.arguments        = []
+            td.gpu_processes    = 0
+            td.cpu_processes    = 1
+            td.cpu_threads      = 1
+            td.cpu_process_type = rp.FUNC
+            tds.append(td)
             report.progress()
 
         report.progress_done()
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(cuds)
+        # assigning Tasks to the Pilots.
+        tasks = tmgr.submit_tasks(tds)
 
-        # Wait for all compute units to reach a final state (DONE, CANCELED or
+        # Wait for all tasks to reach a final state (DONE, CANCELED or
         # FAILED).
         report.header('gather results')
-        umgr.wait_units()
+        tmgr.wait_tasks()
 
-        for unit in (units[-10:]):
-            if unit.state == rp.DONE:
+        for task in (tasks[-10:]):
+            if task.state == rp.DONE:
                 print('\t+ %s: %-10s: %10s: %s'
-                     % (unit.uid, unit.state, unit.pilot, unit.stdout))
+                     % (task.uid, task.state, task.pilot, task.stdout))
             else:
                 print('\t- %s: %-10s: %10s: %s'
-                     % (unit.uid, unit.state, unit.pilot, unit.stderr))
+                     % (task.uid, task.state, task.pilot, task.stderr))
 
 
     except Exception as e:

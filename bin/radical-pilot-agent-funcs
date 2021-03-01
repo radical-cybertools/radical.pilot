@@ -5,7 +5,6 @@ import sys
 import time
 import pickle
 import codecs
-import contextlib
 from io import StringIO
 import multiprocessing as mp
 import threading       as mt
@@ -212,36 +211,20 @@ class Executor(object):
 
     # --------------------------------------------------------------------------
     #
-    def decompose(self, function_info):
-        '''
-        Decompose the function dictionary keys/values and assigned
-        them to different variables.
-        '''
-        code        = function_info["_cud_code"]
-        name        = function_info["_cud_name"]
-        args        = function_info["_cud_args"]
-        kwargs      = function_info["_cud_kwargs"]
-        return (name, code, args, kwargs)
+    def prepare_func(self, func):
 
-    # --------------------------------------------------------------------------
-    #
-    def prepare_func(self, func, args):
-
-        u_ns = locals()
-        u_ns.update({'__builtins__': __builtins__})
         function_info = {}
-
         function_info = pickle.loads(codecs.decode(func.encode(), "base64"))
 
-        fn_name, fn, fn_args, fn_kwargs = self.decompose(function_info)
-        u_ns.update({'__cud_args'  : fn_args,
-                     '__cud_kwargs': fn_kwargs,
-                     '__cud_output': None})
-        source = fn.split('\n')
-        fn_call = "__cud_output = %s(%s)" % (fn_name, ','.join(args))
-        source.append(fn_call)
-        code = "\n".join(source)
-        return code
+        code        = function_info["_cud_code"]
+        args        = function_info["_cud_args"]
+        kwargs      = function_info["_cud_kwargs"]
+
+        from radical.pilot.serialize import serializer as serialize
+
+        fn = serialize.FuncSerializer.deserialize(code)
+
+        return fn, args, kwargs
 
     # --------------------------------------------------------------------------
     #
@@ -282,10 +265,10 @@ class Executor(object):
                 try:
                     obj = pickle.loads(codecs.decode(exe.encode(),"base64"))
                     if isinstance(obj, dict) is True:
-                       return True
+                        return True
 
                 except:
-                       return False
+                    return False
 
             try:
                 for pre in pres:
@@ -297,17 +280,15 @@ class Executor(object):
 
                 if check_obj(exe) is True:
 
-                    try:
-                        function_code = self.prepare_func(exe, args)
-                    except Exception:
-                        self._log.debug("Setting the function for execution failed!")
-                        raise
-
                     old_stdout = sys.stdout
                     new_stdout = None
                     try:
                         sys.stdout = new_stdout = StringIO()
-                        exec(function_code)
+                        fn, args, kwargs = self.prepare_func(exe)
+                        fn(*args, **kwargs)
+                    except Exception:
+                        self._log.debug("Setting the function for execution failed!")
+                        raise
                     finally:
                         sys.stdout = old_stdout
                         task['stdout'] = new_stdout.getvalue()
