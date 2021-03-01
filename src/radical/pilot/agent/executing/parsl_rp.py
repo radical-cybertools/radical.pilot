@@ -43,7 +43,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                         ParSL API                          |         ParSL DFK/dflow               |      Task Translator      |     RP-Client/Unit-Manager
         ---------------------------------------------------|---------------------------------------|---------------------------|----------------------------                                                     
                                                            |                                       |                           |
-         parsl_tasks_description ------>  ParSL_tasks{}----+-> Dep. check ------> ParSL_tasks{} <--+--> ParSL Task/Tasks desc. | umgr.submit_units(RP_units)
+         parsl_tasks_description ------>  ParSL_tasks{}----+-> Dep. check ------> ParSL_tasks{} <--+--> ParSL Task/Tasks desc. | tmgr.submit_units(RP_units)
                                            +api.submit     | Data management          +dfk.submit  |             |             |
                                                            |                                       |             v             |
                                                            |                                       |     RP Unit/Units desc. --+->   
@@ -62,27 +62,28 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                  partition : Optional[str] = " ",
                  project: Optional[str] = " ",):
 
-        self.logger = ru.Logger(name='radical.pilot.parsl.executor', level='DEBUG')
-        self.report = ru.Reporter(name='radical.pilot')  
 
         self.report.title('RP version %s :' % rp.version)
         self.report.header("Initializing RADICALExecutor with ParSL version %s :" % parsl.__version__)
-        self.label = label
-        self.project = project
-        self.resource = resource
-        self.login_method = login_method
-        self.partition = partition
-        self.walltime = walltime
-        self.future_tasks = {}
-        self.managed = managed
-        self.max_tasks = max_tasks
-        self._task_counter = 0
-        self.run_dir = '.'
+        self.label              = label
+        self.project            = project
+        self.resource           = resource
+        self.login_method       = login_method
+        self.partition          = partition
+        self.walltime           = walltime
+        self.future_tasks       = {}
+        self.managed            = managed
+        self.max_tasks          = max_tasks
+        self._task_counter      = 0
+        self.run_dir            = '.'
         self.worker_logdir_root = worker_logdir_root
+
+        self.logger  = ru.Logger(name='radical.pilot.parsl.executor', level='DEBUG')
+        self.report  = ru.Reporter(name='radical.pilot')
         self.session = rp.Session(uid=ru.generate_id('parsl.radical_executor.session',
-                                                     mode=ru.ID_PRIVATE))
+                                                      mode=ru.ID_PRIVATE))
         self.pmgr    = rp.PilotManager(session=self.session)
-        self.umgr    = rp.UnitManager(session=self.session)
+        self.tmgr    = rp.TaskManager(session=self.session)
 
     def unit_state_cb(self, unit, state):
 
@@ -115,9 +116,9 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                           'cores'         : 1*self.max_tasks,
                           'gpus'          : 0,}
 
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
         pilot = self.pmgr.submit_pilots(pdesc)
-        self.umgr.add_pilots(pilot)
+        self.tmgr.add_pilots(pilot)
 
         return True
 
@@ -186,10 +187,10 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         tu = self.task_translate(func, args, kwargs)
 
         try:
-            self.umgr.register_callback(self.unit_state_cb) 
+            self.tmgr.register_callback(self.unit_state_cb) 
             self.report.progress_tgt(self._task_counter, label='create')
 
-            task                  = rp.ComputeUnitDescription()
+            task                  = rp.TaskDescription()
             task.name             = task_id
             task.pre_exec         = tu['pre_exec']
             task.executable       = tu['source_code']
@@ -198,7 +199,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             task.cpu_threads      = tu['nthrd']
             task.cpu_process_type = tu['ptype']
             self.report.progress()
-            self.umgr.submit_units(task)
+            self.tmgr.submit_units(task)
 
         except Exception as e:
             # Something unexpected happened in the pilot code above
