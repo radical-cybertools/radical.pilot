@@ -1,9 +1,9 @@
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
-__license__   = "MIT"
-
+__copyright__ = 'Copyright 2016-2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import pprint
+
 import radical.utils as ru
 
 from .base import LaunchMethod
@@ -23,7 +23,6 @@ class APRun(LaunchMethod):
 
         LaunchMethod.__init__(self, name, cfg, session)
 
-
     # --------------------------------------------------------------------------
     #
     def _configure(self):
@@ -32,18 +31,17 @@ class APRun(LaunchMethod):
 
         # TODO: ensure that only one concurrent aprun per node is executed!
 
-
     # --------------------------------------------------------------------------
     #
     def construct_command(self, t, launch_script_hop):
 
-        td        = t['description']
+        td         = t['description']
         slots      = t['slots']
         executable = td['executable']
         args       = td['arguments']
         argstr     = self._create_arg_string(args)
 
-        if argstr: cmd = "%s %s" % (executable, argstr)
+        if argstr: cmd = '%s %s' % (executable, argstr)
         else     : cmd = executable
 
         # we get something like the following from the scheduler:
@@ -135,12 +133,12 @@ class APRun(LaunchMethod):
             node_id = node['uid']
             if node_id not in nodes:
                 # keep all cpu and gpu slots, record depths
-                nodes[node_id] = {'cpu' : list(),
-                                  'gpu' : list()}
+                nodes[node_id] = {'cpu': list(),
+                                  'gpu': list()}
 
             # add all cpu and gpu process slots to the node list.
-            for cpu_slot in node['core_map']: nodes[node_id]['cpu'].append(cpu_slot)
-
+            for cpu_slot in node['core_map']:
+                nodes[node_id]['cpu'].append(cpu_slot)
 
         self._log.debug('aprun slots: %s', pprint.pformat(slots))
         self._log.debug('      nodes: %s', pprint.pformat(nodes))
@@ -175,7 +173,7 @@ class APRun(LaunchMethod):
                 core_specs.append(','.join([str(core) for core in cpu_slot]))
             pin_specs  =  ':'.join(core_specs)
 
-            # count toal cpu / gpu processes
+            # count total cpu / gpu processes
             nprocs = len(cpu_slots)
 
             # create the unique part of the node spec, and keep spec info like
@@ -194,7 +192,6 @@ class APRun(LaunchMethod):
 
             node_specs[spec_key]['nprocs'].add(nprocs)
             node_specs[spec_key]['nodes' ].append(node_id)
-
 
         aprun_command = self.launch_command
 
@@ -216,8 +213,8 @@ class APRun(LaunchMethod):
       # # remove trailing colon from above
       # aprun_command = aprun_command[:-1]
 
-        procs   = cud['cpu_processes']
-        threads = cud['cpu_threads']
+        procs   = td['cpu_processes']
+        threads = td['cpu_threads']
         aprun_command += ' -n %s -d %s %s' % (procs, threads, cmd)
 
         self._log.debug('aprun cmd: %s', aprun_command)
