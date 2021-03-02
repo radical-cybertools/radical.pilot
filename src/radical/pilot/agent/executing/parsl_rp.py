@@ -123,6 +123,12 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.tmgr.add_pilots(pilot)
 
         return True
+    
+    def unwrap(self, func):
+        while hasattr(func, '__wrapped__'):
+            func = func.__wrapped__
+        return func
+
 
 
     def task_translate(self, func, args, kwargs):
@@ -150,14 +156,16 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         elif task_type.startswith('@python_app'):
 
-            task_args = []
-            for arg in args:
-                task_args.append(arg)
-            task_kwargs = list(kwargs.values())
+            rp_func  = self.unwrap(func)
 
-            cu = {"source_code": PythonTask(func, task_args[1:], kwargs),
+            # We ignore the resource dict. form PaRSL
+            new_args = list(args)
+            new_args.pop(0)      
+            args = tuple(new_args)
+
+            cu = {"source_code": PythonTask(rp_func, *args, **kwargs),
                   "name"       : func.__name__,
-                  "args"       : task_args[1:] + task_kwargs, # We ignore the resource dict. form PaRSL
+                  "args"       : [],
                   "kwargs"     : kwargs,
                   "pre_exec"   : None if 'pre_exec' not in kwargs else kwargs['pre_exec'],
                   "ptype"      : rp.FUNC,
