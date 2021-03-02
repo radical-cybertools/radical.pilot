@@ -695,19 +695,24 @@ class TaskManager(rpu.Component):
         if len(pilots) == 0:
             raise ValueError('cannot add no pilots')
 
+        pilot_docs = list()
         with self._pilots_lock:
 
             # sanity check, and keep pilots around for inspection
             for pilot in pilots:
-                pid = pilot.uid
+
+                if isinstance(pilot, dict):
+                    pilot_dict = pilot
+                else:
+                    pilot_dict = pilot.as_dict()
+                    # real object: subscribe for state updates
+                    pilot.register_callback(self._pilot_state_cb)
+
+                pid = pilot_dict['uid']
                 if pid in self._pilots:
                     raise ValueError('pilot %s already added' % pid)
-                self._pilots[pid] = pilot
-
-                # subscribe for state updates
-                pilot.register_callback(self._pilot_state_cb)
-
-        pilot_docs = [pilot.as_dict() for pilot in pilots]
+                self._pilots[pid] = pilot_dict
+                pilot_docs.append(pilot_dict)
 
         # publish to the command channel for the scheduler to pick up
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'add_pilots',
