@@ -139,7 +139,7 @@ indication on event ordering *within each individual component*.
     get                 : tasks   received from task manager         (uid: pilot, msg: 'bulk size: %d')
     get                 : task    received from task manager         (uid: task)
     dvm_start           : DVM startup by launch method               (uid: pilot, msg: 'dvm_id=%d') [CFG-DVM])
-    dvm_uri_ok          : DVM URI is set successfully                (uid: pilot, msg: 'dvm_id=%d') [CFG-DVM])
+    dvm_uri             : DVM URI is set successfully                (uid: pilot, msg: 'dvm_id=%d') [CFG-DVM])
     dvm_ready           : DVM is ready for execution                 (uid: pilot, msg: 'dvm_id=%d') [CFG-DVM])
     dvm_stop            : DVM terminated                             (uid: pilot, msg: 'dvm_id=%d') [CFG-DVM])
     dvm_fail            : DVM termination failed                     (uid: pilot, msg: 'dvm_id=%d') [CFG-DVM])
@@ -147,7 +147,7 @@ indication on event ordering *within each individual component*.
 
     partial orders
     * per instance      : sync_rel, hostname, (cmd | get)*
-    * per instance      : dvm_start, dvm_uri_ok, dvm_ready, (dvm_stop | dvm_fail)
+    * per instance      : dvm_start, dvm_uri, dvm_ready, (dvm_stop | dvm_fail)
 
 
 ### AgentSchedulingComponent (Component)

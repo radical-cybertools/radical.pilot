@@ -218,7 +218,7 @@ class PRTE2(LaunchMethod):
                 raise Exception('DVM URI not found')
 
             log.info('prte-%s startup successful: [%s]', dvm_id, dvm_uri)
-            profiler.prof(event='dvm_uri_ok',
+            profiler.prof(event='dvm_uri',
                           uid=cfg['pid'],
                           msg='dvm_id=%s' % dvm_id)
 
