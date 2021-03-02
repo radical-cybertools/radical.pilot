@@ -14,6 +14,8 @@ import inspect
 import radical.pilot as rp
 import radical.utils as ru
 
+from radical.pilot import PythonTask
+
 from concurrent.futures import Future
 
 from multiprocessing import Process, Queue
@@ -136,14 +138,14 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             else:
                 code = task_exe
 
-            cu = {"source_code": code,
-                  "name"       : func.__name__,
-                   "args"      : None,
-                   "kwargs"    : kwargs,
-                   "pre_exec"  : None if 'pre_exec' not in kwargs else kwargs['pre_exec'],
-                   "ptype"     : None if 'ptype' not in kwargs else kwargs['ptype'],
-                   "nproc"     : 1 if 'nproc' not in kwargs else kwargs['nproc'],
-                   "nthrd"     : 1 if 'nthrd' not in kwargs else kwargs['nthrd']}
+            cu =  {"source_code": code,
+                   "name"       : func.__name__,
+                   "args"       : None,
+                   "kwargs"     : kwargs,
+                   "pre_exec"   : None if 'pre_exec' not in kwargs else kwargs['pre_exec'],
+                   "ptype"      : None if 'ptype' not in kwargs else kwargs['ptype'],
+                   "nproc"      : 1 if 'nproc' not in kwargs else kwargs['nproc'],
+                   "nthrd"      : 1 if 'nthrd' not in kwargs else kwargs['nthrd']}
 
 
         elif task_type.startswith('@python_app'):
@@ -153,7 +155,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                 task_args.append(arg)
             task_kwargs = list(kwargs.values())
 
-            cu = {"source_code": func,
+            cu = {"source_code": PythonTask(func, task_args[1:], kwargs),
                   "name"       : func.__name__,
                   "args"       : task_args[1:] + task_kwargs, # We ignore the resource dict. form PaRSL
                   "kwargs"     : kwargs,
@@ -198,7 +200,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             task.cpu_threads      = tu['nthrd']
             task.cpu_process_type = tu['ptype']
             self.report.progress()
-            self.tmgr.submit_units(task)
+            self.tmgr.submit_tasks(task)
 
         except Exception as e:
             # Something unexpected happened in the pilot code above
