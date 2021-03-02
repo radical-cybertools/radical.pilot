@@ -20,11 +20,10 @@ dh = ru.DebugHelper()
 #
 # ------------------------------------------------------------------------------
 
-mpitask = PythonTask.mpirun
+mpitask = PythonTask
 
-
-@mpitask
-def fun(x):
+@mpitask.mpirun
+def mpi_func(x):
     from mpi4py import MPI
 
     ec = os.system('/bin/echo "on %s print %s"' % (MPI.COMM_WORLD.rank, x))
@@ -33,8 +32,6 @@ def fun(x):
     sys.stdout.flush()
 
     return ec
-
-
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
@@ -76,7 +73,7 @@ if __name__ == '__main__':
                    'project'       : config[resource].get('project', None),
                    'queue'         : config[resource].get('queue',   None),
                    'access_schema' : config[resource].get('schema',  None),
-                   'cores'         : 4,#config[resource].get('cores', 1),
+                   'cores'         : config[resource].get('cores', 1),
                    'gpus'          : config[resource].get('gpus', 0),}
 
         pdesc = rp.PilotDescription(pd_init)
@@ -93,7 +90,7 @@ if __name__ == '__main__':
         # Create a workload of Tasks.
         # Each task runs '/bin/date'.
 
-        n = 1
+        n = 1024
         report.progress_tgt(n, label='create')
 
         tds = list()
@@ -104,10 +101,10 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             td = rp.TaskDescription()
             td.pre_exec         = []
-            td.executable       = fun(jobs)
+            td.executable       = mpi_func(jobs)
             td.arguments        = []
             td.gpu_processes    = 0
-            td.cpu_processes    = 4
+            td.cpu_processes    = 2
             td.cpu_threads      = 1
             td.cpu_process_type = rp.FUNC
             tds.append(td)
