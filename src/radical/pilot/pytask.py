@@ -9,7 +9,7 @@ class PythonTask(object):
 
     TASK = {} 
 
-    def __new__(cls, func):
+    def __new__(cls, func, *args, **kwargs):
         """
         We handle wrapped functions here with no args or kwargs.
         Example:
@@ -20,8 +20,8 @@ class PythonTask(object):
         """
 
         TASK = {'func'  :func,
-                'args'  :(),
-                'kwargs':{}}
+                'args'  :args,
+                'kwargs':kwargs}
 
         return TASK
 
