@@ -164,11 +164,10 @@
         "task_launch_method"          : "FUNCS",
       # "mpi_launch_method"           : "MPIRUN",
         "rp_version"                  : "local",
-        "virtenv_mode"                : "use",
-        "virtenv"                     : "$HOME/ve/test/",
+        "virtenv_mode"                : "create",
         "python_dist"                 : "default",
         "pre_bootstrap_0"             : [],
-        "cores_per_node"              : 4,
+        "cores_per_node"              : 8,
         "gpus_per_node"               : 1
   },
 
@@ -194,11 +193,10 @@
         "task_launch_method"          : "MPIFUNCS",
       # "mpi_launch_method"           : "MPIRUN",
         "rp_version"                  : "local",
-        "virtenv_mode"                : "use",
-        "virtenv"                     : "$HOME/ve/test/",
+        "virtenv_mode"                : "create",
         "python_dist"                 : "default",
         "pre_bootstrap_0"             : [],
-        "cores_per_node"              : 4,
+        "cores_per_node"              : 8,
         "gpus_per_node"               : 1
   }
 
