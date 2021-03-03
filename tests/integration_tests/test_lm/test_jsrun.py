@@ -16,22 +16,22 @@ class TestTask(TestCase):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def setUpClass(self) -> dict:
+    def setUpClass(cls):
         path = os.path.dirname(__file__) + '/../test_config/resources.json'
         resources = ru.read_json(path)
         hostname = 'summit'
 
         for host in resources.keys():
             if host in hostname:
-                self.host = host
-                self.resource = resources[host]
+                cls.host = host
+                cls.resource = resources[host]
+                break
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(JSRUN, '__init__',   return_value=None)
     @mock.patch('radical.utils.Logger')
     def test_configure(self, mocked_init, mocked_Logger):
-        cfg = self.setUp()
         component = JSRUN(name=None, cfg=None, session=None)
         component._log = mocked_Logger
         component._configure()
