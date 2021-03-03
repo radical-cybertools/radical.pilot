@@ -42,7 +42,7 @@ if __name__ == '__main__':
 
     # use the resource specified as argument, fall back to localhost
     if len(sys.argv) == 2: resource = sys.argv[1]
-    else                 : resource = 'local.localhost_funcs'
+    else                 : resource = 'local.localhost_funcs_mpi'
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
