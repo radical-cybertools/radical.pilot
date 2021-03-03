@@ -3,7 +3,6 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import os
-import socket
 
 from unittest import mock, TestCase
 
@@ -48,6 +47,7 @@ class TestTask(TestCase):
         self.assertEqual(component.lfs_per_node, {'path': None,
                                                  'size': 0})
         self.assertEqual(component.mem_per_node, 0)
+
 
 # ------------------------------------------------------------------------------
 #
