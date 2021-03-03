@@ -226,8 +226,8 @@ class PRTE2(LaunchMethod):
 
         # ----------------------------------------------------------------------
 
-        # format: {<id>: {'nodes': [...], 'details': {'dvm_uri': <uri>}}}
-        # LM specific parameters will be kept under `'details'`
+        # format: {<id>: {'nodes': [...], 'dvm_uri': <uri>}}
+        # `nodes` will be moved to RM, and the rest is LM details per partition
         partitions = {}
 
         # go through every dvm instance
@@ -249,7 +249,7 @@ class PRTE2(LaunchMethod):
             partition_id = str(_dvm_id)
             partitions[partition_id] = {
                 'nodes'  : [node[1] for node in node_list],
-                'details': {'dvm_uri': _dvm_uri}}
+                'dvm_uri': _dvm_uri}
 
             # extra time to confirm that "DVM ready" was just delayed
             if _dvm_ready.wait(timeout=15.):
@@ -262,7 +262,7 @@ class PRTE2(LaunchMethod):
             except: pass
 
             # re-start DVM
-            partitions[partition_id]['details']['dvm_uri'] = \
+            partitions[partition_id]['dvm_uri'] = \
                 _start_dvm(_dvm_id, _dvm_size, _dvm_ready)
 
             # FIXME: with the current approach there is only one attempt to
@@ -275,12 +275,11 @@ class PRTE2(LaunchMethod):
                    'version_info': prte_info,
                    'cvd_id_mode' : 'physical'}
 
-        # we need to inform the actual LaunchMethod instance about partitions,
-        # which includes list of nodes per partition/dvm and dvm_uri (which is
-        # in section 'details'). So we pass it back to the ResourceManager,
-        # which will keep it in an 'lm_info', which will then be passed as part
-        # of the slots via the scheduler, as well partition 'nodes' will be kept
-        # in the ResourceManager separately.
+        # we need to inform the actual LaunchMethod instance about partitions
+        # (`partition_id` per task and `dvm_uri` per partition). List of nodes
+        # will be stored in ResourceManager and the rest details about
+        # partitions will be kept in `lm_info`, which will be passed as part of
+        # the slots via the scheduler.
         return lm_info
 
     # --------------------------------------------------------------------------
@@ -296,7 +295,7 @@ class PRTE2(LaunchMethod):
             raise Exception('termination command not found')
 
         for p_id, p_data in lm_info.get('partitions', {}).items():
-            dvm_uri = p_data['details']['dvm_uri']
+            dvm_uri = p_data['dvm_uri']
             try:
                 log.info('terminating prte-%s (%s)', p_id, dvm_uri)
                 _, err, _ = ru.sh_callout('%s --dvm-uri "%s"' % (cmd, dvm_uri))
@@ -338,8 +337,8 @@ class PRTE2(LaunchMethod):
 
         partitions = slots['lm_info']['partitions']
         # `partition_id` should be set in a scheduler
-        prid = slots.get('partition_id') or partitions.keys()[0]
-        dvm_uri = '--dvm-uri "%s"' % partitions[prid]['details']['dvm_uri']
+        partition_id = slots.get('partition_id') or partitions.keys()[0]
+        dvm_uri = '--dvm-uri "%s"' % partitions[partition_id]['dvm_uri']
 
         if n_threads == 1: map_to_object = 'hwthread'
         else             : map_to_object = 'node:HWTCPUS'

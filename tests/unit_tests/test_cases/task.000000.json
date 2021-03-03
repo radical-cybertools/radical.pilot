@@ -16,12 +16,8 @@
                 "gpus_per_node" : 1,
                 "lm_info"       : {
                                    "partitions"     : {
-                                       "0" : {
-                                           "details": {"dvm_uri": "unused_uri"}
-                                       },
-                                       "1" : {
-                                           "details": {"dvm_uri": "dvm_uri"}
-                                       }
+                                       "0" : {"dvm_uri": "unused_uri"},
+                                       "1" : {"dvm_uri": "dvm_uri"}
                                    },
                                    "spark_home"     : "/",
                                    "master_ip"      : "test_ip",

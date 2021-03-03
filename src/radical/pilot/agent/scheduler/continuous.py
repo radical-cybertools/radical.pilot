@@ -422,11 +422,11 @@ class Continuous(AgentSchedulingComponent):
             #   - if the previous use included this node
             # If a tag exists, continue to consider this node if the tag was
             # used for this node - else continue to the next node.
-            node_partition_id = None
             if tag is not None and tag in self._tag_history:
                 if node_uid not in self._tag_history[tag]:
                     continue
 
+            node_partition_id = None
             if self._rm_partitions:
                 # nodes assigned to the task should be from the same partition
                 # FIXME: handle the case when unit (MPI task) would require

@@ -21,9 +21,7 @@
                 "task_offsets"  : [0],
                 "lm_info"       : {
                                    "partitions"     : {
-                                       "0" : {
-                                           "details": {"dvm_uri": "dvm_uri"}
-                                       }
+                                       "0" : {"dvm_uri": "dvm_uri"}
                                    }
                 },
                 "lfs_per_node"  : 0,
