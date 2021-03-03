@@ -158,7 +158,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
             rp_func  = self.unwrap(func)
 
-            # We ignore the resource dict. form PaRSL
+            # We ignore the resource dict from Parsl
             new_args = list(args)
             new_args.pop(0)      
             args = tuple(new_args)
@@ -168,13 +168,12 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                   "args"       : [],
                   "kwargs"     : kwargs,
                   "pre_exec"   : None if 'pre_exec' not in kwargs else kwargs['pre_exec'],
-                  "ptype"      : rp.FUNC,
+                  "ptype"      : rp.FUNC if 'ptype' not in kwargs else rp.MPI_FUNC,
                   "nproc"      : 1 if 'nproc' not in kwargs else kwargs['nproc'],
                   "nthrd"      : 1 if 'nthrd' not in kwargs else kwargs['nthrd']}
 
         else:
             pass
-
         return cu
 
     def submit(self, func, *args, **kwargs):
