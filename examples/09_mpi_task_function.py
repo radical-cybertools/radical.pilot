@@ -106,7 +106,7 @@ if __name__ == '__main__':
             td.gpu_processes    = 0
             td.cpu_processes    = 2
             td.cpu_threads      = 1
-            td.cpu_process_type = rp.FUNC
+            td.cpu_process_type = rp.MPI_FUNC
             tds.append(td)
             report.progress()
 
