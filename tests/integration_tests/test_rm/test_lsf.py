@@ -18,14 +18,16 @@ class TestTask(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    def setUp(self) -> dict:
+    @classmethod
+    def setUpClass(self) -> dict:
         path = os.path.dirname(__file__) + '/../test_config/resources.json'
         resources = ru.read_json(path)
         hostname = 'summit'
 
         for host in resources.keys():
             if host in hostname:
-                return resources[host]
+                self.host = host
+                self.resource = resources[host]
 
     # ------------------------------------------------------------------------------
     #
@@ -33,16 +35,15 @@ class TestTask(TestCase):
     @mock.patch('radical.utils.Logger')
     def test_configure(self, mocked_init, mocked_Logger):
 
-        cfg = self.setUp()
         component = LSF_SUMMIT(cfg=None, session=None)
         component._log    = mocked_Logger
         component._cfg    = {}
         component._configure()
 
         self.assertEqual(component.sockets_per_node, 1)
-        self.assertEqual(component.cores_per_socket, cfg['cores_per_node'])
+        self.assertEqual(component.cores_per_socket, self.resource['cores_per_node'])
         self.assertEqual(component.gpus_per_socket, 0)
-        self.assertEqual(component.cores_per_node, cfg['cores_per_node'])
+        self.assertEqual(component.cores_per_node, self.resource['cores_per_node'])
         self.assertEqual(component.gpus_per_node, 0)
         self.assertEqual(component.lfs_per_node, {'path': None,
                                                  'size': 0})
