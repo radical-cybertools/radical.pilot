@@ -33,6 +33,8 @@ module load gcc/8.1.1
 module load zeromq/4.2.5
 module load python/3.7.0-anaconda3-5.3.0
 
+eval "$(conda shell.posix hook)"
+
 conda create -p testing python=3.7 pytest PyGithub -y -c conda-forge
 
 source activate $PWD/testing
