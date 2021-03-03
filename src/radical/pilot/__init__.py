@@ -23,7 +23,7 @@ from .task_manager              import TaskManager
 from .task                      import Task
 from .pytask                    import PythonTask
 from .task_description          import TaskDescription
-from .task_description          import POSIX, MPI, OpenMP, CUDA, FUNC
+from .task_description          import POSIX, MPI, OpenMP, CUDA, FUNC, MPI_FUNC
 
 from .pilot_manager             import PilotManager
 from .pilot                     import Pilot
@@ -46,6 +46,7 @@ from . import serialize
 
 from .agent  import Agent_0
 from .agent  import Agent_n
+from .agent  import MPI_Func_Worker
 
 from .raptor import Master, Worker
 

@@ -4,17 +4,15 @@ __license__   = "MIT"
 
 import functools
 
+TASK = dict 
 
 class PythonTask(object):
-
-    TASK = {} 
 
     def __new__(cls, func, *args, **kwargs):
         """
         We handle wrapped functions here with no args or kwargs.
         Example:
         import PythonTask
-
         wrapped_func   = partial(func_A, func_AB)      
         cud.EXECUTABLE = PythonTask(wrapped_func)
         """
@@ -35,6 +33,10 @@ class PythonTask(object):
             return (x)
         cud.EXECUTABLE = func_C(2)
         """
+
+        if not callable(f):
+            raise ValueError('Task function not callable')
+
         @functools.wraps(f)
         def decor(*args, **kwargs): 
             TASK = {'func'  :f,
@@ -43,3 +45,16 @@ class PythonTask(object):
             return TASK 
         return decor
 
+    def mpirun(f):
+
+        if not callable(f):
+            raise ValueError('Task function not callable')
+        
+        @functools.wraps(f)
+        def decor(*args, **kwargs):
+            
+            TASK = {'func'  :f,
+                    'args'  :args,
+                    'kwargs':kwargs}
+            return TASK 
+        return decor

@@ -240,6 +240,7 @@ setup_args = {
                             'bin/radical-pilot-agent-funcs',
                             'bin/radical-pilot-agent-statepush',
                             'bin/radical-pilot-worker',
+                            'bin/radical-pilot-agent-funcs-mpi',
                            ],
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.c',
                                  '*.md', 'VERSION', 'SDIST', sdist_name]},
@@ -251,7 +252,9 @@ setup_args = {
                             'netifaces',
                             'setproctitle',
                             'ntplib',
-                            'dill'
+                            'mpi4py',
+                            'dill',
+                            'whichcraft'
                            ],
     'extras_require'     : {'autopilot' : ['github3.py']},
     'tests_require'      : ['pytest',

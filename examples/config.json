@@ -100,6 +100,13 @@
         "cores"    : 128
     },
 
+    "xsede.bridges2_funcs_mpirun": {
+        "project"  : null,
+        "queue"    : "RM",
+        "schema"   : "gsissh",
+        "cores"    : 128
+    },
+
     "xsede.wrangler" : {
         "project"  : "TG-MCB090174",
         "queue"    : "debug",
@@ -122,6 +129,13 @@
     },
 
     "xsede.comet_ssh_funcs"  : {
+        "project"  : "TG-MCB090174",
+        "queue"    : "compute",
+        "schema"   : "gsissh",
+        "cores"    : 64
+    },
+
+     "xsede.comet_ssh_funcs_mpirun"  : {
         "project"  : "TG-MCB090174",
         "queue"    : "compute",
         "schema"   : "gsissh",
