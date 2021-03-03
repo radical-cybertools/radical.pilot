@@ -55,7 +55,7 @@ class TestTask(TestCase):
                 if '{node}' in result[i]:
                     print(result[i])
                     result[i] = result[i].format(node=self.node_name)
-        
+
             component = JSRUN(name=None, cfg=None, session=None)
             component._log = mocked_Logger
             component._configure()
