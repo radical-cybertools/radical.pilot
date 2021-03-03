@@ -93,17 +93,15 @@ class MPIFUNCS(AgentExecutingComponent) :
             uid   = 'func_exec.%04d' % idx
             pwd   = '%s/%s' % (self._pwd, uid)
             funcs = {'uid'        : uid,
-                     'description': {'executable'       : exe,
-                                     'arguments'        : [pwd, ve],
-                                     'cpu_processes'    : 48,
-                                     'cpu_process_type' : rp.MPI,
+                     'description': {'executable'   : exe,
+                                     'arguments'    : [pwd, ve],
+                                     'cpu_processes': 1,
                                      'environment'  : [],
                                     },
-                     'task_sandbox_path': sbox,
-                     'slots'      : {'nodes'        : [{'name'     : node[0],
-                                                        'uid'      : node[1],
-                                                        'core_map' : [[0],[1],[2],[3]],
-                                                        'gpu_map'  : []
+                     'slots'      : {'nodes'        : [{'name'  : node[0],
+                                                        'uid'   : node[1],
+                                                        'cores' : [[0]],
+                                                        'gpus'  : []
                                                        }]
                                     },
                      'cfg'        : {'req_get'      : req_cfg['get'],
