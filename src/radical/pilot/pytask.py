@@ -33,6 +33,7 @@ class PythonTask(object):
             return (x)
         cud.EXECUTABLE = func_C(2)
         """
+
         if not callable(f):
             raise ValueError('Task function not callable')
 
