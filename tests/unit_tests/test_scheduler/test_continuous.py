@@ -2,8 +2,8 @@
 
 # pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
-__copyright__ = "Copyright 2013-2021, http://radical.rutgers.edu"
-__license__ = "MIT"
+__copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import glob
 import pytest
@@ -184,22 +184,18 @@ class TestContinuous(TestCase):
         component._dvm_host_list     = None
         component._node_offset       = 0
         test_slot =  {'cores_per_node': 32,
-                      'gpus_per_node': 2,
-                      'lfs_per_node' : {'path': '/dev/null', 'size': 0},
-                      'lm_info'      : {},
-                      'mem_per_node' : 1024,
-                      'ranks'        : [{'core_map': [[0]],
-                                         'gpu_map' : [[0]],
-                                         'lfs'     : {'path' : '/dev/null',
-                                                      'size' : 1234},
-                                         'mem'     : 128,
-                                         'node'    : 'a',
-                                         'node_id' : 1}]}
-        try:
-            self.assertEqual(component.schedule_unit(unit), test_slot)
-        except:
-            with pytest.raises(AssertionError):
-                raise
+                      'gpus_per_node' : 2,
+                      'lfs_per_node'  : {'path': '/dev/null', 'size': 0},
+                      'lm_info'       : {},
+                      'mem_per_node'  : 1024,
+                      'partition_id'. : None,
+                      'ranks'         : [{'core_map': [[0]],
+                                          'gpu_map' : [[0]],
+                                          'lfs'     : {'path': '/dev/null', 
+                                                       'size': 1234},
+                                          'mem'     : 128,
+                                          'node'    : 'a',
+                                          'node_id' : 1}]}
 
         self.assertEqual(component.schedule_task(task), test_slot)
         self.assertEqual(component._tag_history, {})
