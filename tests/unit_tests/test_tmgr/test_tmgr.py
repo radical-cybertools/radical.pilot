@@ -5,9 +5,6 @@
 __copyright__ = "Copyright 2013-2021, http://radical.rutgers.edu"
 __license__ = "MIT"
 
-import glob
-import os
-
 from unittest import TestCase
 from unittest import mock
 
