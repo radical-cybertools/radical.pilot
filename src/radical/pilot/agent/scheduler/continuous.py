@@ -422,11 +422,12 @@ class Continuous(AgentSchedulingComponent):
             #   - if the previous use included this node
             # If a tag exists, continue to consider this node if the tag was
             # used for this node - else continue to the next node.
-            node_partition_id = None
             if tag is not None and tag in self._tag_history:
                 if node_uid not in self._tag_history[tag]:
                     continue
-            elif self._rm_partitions:
+
+            node_partition_id = None
+            if self._rm_partitions:
                 # nodes assigned to the task should be from the same partition
                 # FIXME: handle the case when unit (MPI task) would require
                 #        more nodes than the amount available per partition
@@ -443,7 +444,7 @@ class Continuous(AgentSchedulingComponent):
             # if only a small set of cores/gpus remains unallocated (ie. less
             # than node size), we are in fact looking for the last node.  Note
             # that this can also be the first node, for small tasks.
-            if  rem_slots < slots_per_node:
+            if rem_slots < slots_per_node:
                 is_last = True
 
             # we allow partial nodes on the first and last node, and on any
@@ -509,12 +510,12 @@ class Continuous(AgentSchedulingComponent):
             return None  # signal failure
 
         slots = {'nodes'         : alc_slots,
+                 'partition_id'  : task_partition_id,
                  'cores_per_node': self._rm_cores_per_node,
                  'gpus_per_node' : self._rm_gpus_per_node,
                  'lfs_per_node'  : self._rm_lfs_per_node,
                  'mem_per_node'  : self._rm_mem_per_node,
-                 'lm_info'       : self._rm_lm_info,
-                }
+                 'lm_info'       : self._rm_lm_info}
 
         # if tag `colocate` was provided, then corresponding nodes should be
         # stored in the tag history (if partition nodes were kept under this
