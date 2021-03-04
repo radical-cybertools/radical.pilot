@@ -33,7 +33,7 @@ class TestTask(TestCase):
     # ------------------------------------------------------------------------------
     #
     @mock.patch.object(Slurm, '__init__',   return_value=None)
-    @mock.patch.object('radical.utils.Logger')
+    @mock.patch('radical.utils.Logger')
     def test_configure(self, mocked_init, mocked_Logger):
 
         component = Slurm(cfg=None, session=None)
