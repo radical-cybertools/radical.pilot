@@ -515,7 +515,7 @@ class Continuous(AgentSchedulingComponent):
                  'gpus_per_node' : self._rm_gpus_per_node,
                  'lfs_per_node'  : self._rm_lfs_per_node,
                  'mem_per_node'  : self._rm_mem_per_node,
-                 'lm_info'       : self._rm_lm_info}
+                 'lm_info'       : self._lm_info}
 
         # if tag `colocate` was provided, then corresponding nodes should be
         # stored in the tag history (if partition nodes were kept under this
