@@ -21,13 +21,11 @@
                 "task_offsets"  : [0],
                 "lm_info"       : {
                                    "partitions"     : {
-                                       "0" : {
-                                           "nodes"  : ["node1"],
-                                           "details": {"dvm_uri": "dvm_uri"}
-                                       }
+                                       "0" : {"dvm_uri": "dvm_uri"}
                                    }
                 },
                 "lfs_per_node"  : 0,
+                "partition_id"  : "0",
                 "nodes"         : [{"name"    : "node1",
                                     "uid"     : "node1",
                                     "core_map": [[0]],
