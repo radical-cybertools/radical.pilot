@@ -29,6 +29,7 @@ if os.environ.get('RADICAL_PILOT_BULK_CB', '').lower() in ['true', 'yes', '1']:
 #
 _seen = list()
 
+
 def _warn(old_type, new_type):
     if old_type not in _seen:
         _seen.append(old_type)
@@ -799,7 +800,7 @@ class TaskManager(rpu.Component):
         deprecated - use `list_tasks()`
         '''
         _warn(self.list_units, self.list_tasks)
-        return self.list_tasks(uids=uids)
+        return self.list_tasks()
 
 
     # --------------------------------------------------------------------------
