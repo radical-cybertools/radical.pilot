@@ -174,8 +174,9 @@ class ResourceManager(object):
         # NOTE: partition ids should be of a string type, because of JSON
         #       serialization (agent config), which keeps dict keys as strings
         if self.lm_info.get('partitions'):
-            self.partitions = {str(k): v['nodes']
-                               for k, v in self.lm_info['partitions'].items()}
+            for k, v in self.lm_info['partitions'].items():
+                self.partitions[str(k)] = v['nodes']
+                del v['nodes']  # do not keep nodes in `lm_info['partitions']`
 
         # For now assume that all nodes have equal amount of cores and gpus
         cores_avail = (len(self.node_list) + len(self.agent_nodes)) * self.cores_per_node
