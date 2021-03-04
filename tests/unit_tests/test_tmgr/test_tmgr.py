@@ -18,17 +18,16 @@ from radical.pilot.task_manager import TaskManager
 
 class TestTaskManager(TestCase):
 
-
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(TaskManager, '__init__', return_value=None)
     @mock.patch('radical.utils.Logger')
     def test_add_pilots(self, mocked_init, mocked_Logger):
 
-        self.maxDiff = None
         global_pilots = []
 
         def publish_side_effect(rpc, pilot):
+            print(type(pilot), pilot)
             nonlocal global_pilots
             global_pilots.append(pilot)
 
@@ -41,8 +40,9 @@ class TestTaskManager(TestCase):
 
         mocked_pilot = ru.Munch({"uid":'pilot.0000'})
         component.add_pilots(mocked_pilot)
-        result = {'cmd': 'add_pilots', 'arg': {'tmgr': 'tmgr.0000', 'pilots': [{'uid': 'pilot.0000'}]}}
-        self.assertEqual(global_pilots[0], result)
+        # result = ru.Munch({'cmd': 'add_pilots','arg': {'pilots': [{'uid': 'pilot.0000'}], 'tmgr': 'tmgr.0000'}})
+        self.assertEqual(component._pilots['pilot.0000'], ru.Munch({"uid":'pilot.0000'}))
+        # self.assertEqual(global_pilots[0], result)
 
         with self.assertRaises(ValueError):
             component.add_pilots(mocked_pilot)
