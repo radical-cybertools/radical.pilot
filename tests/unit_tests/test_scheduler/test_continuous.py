@@ -188,6 +188,7 @@ class TestContinuous(TestCase):
                       'lfs_per_node': {'path': '/dev/null', 'size': 0},
                       'lm_info': {},
                       'mem_per_node': 1024,
+                      'partition_id': None,
                       'nodes': [{'core_map': [[0]],
                                  'gpu_map' : [[0]],
                                  'lfs': {'path': '/dev/null', 'size': 1234},
