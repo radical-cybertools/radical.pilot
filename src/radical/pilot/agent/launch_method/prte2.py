@@ -2,6 +2,7 @@
 __copyright__ = 'Copyright 2020-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
+import collections
 import math
 import os
 import signal
@@ -98,13 +99,11 @@ class PRTE2(LaunchMethod):
         # get `dvm_count` from resource config
         # FIXME: another option is to introduce `nodes_per_dvm` in config
         #        dvm_count = math.ceil(len(rm.node_list) / nodes_per_dvm)
-        dvm_count      = cfg['resource_cfg'].get('dvm_count') or 1
-        nodes_per_dvm  = math.ceil(len(rm.node_list) / dvm_count)
+        dvm_count     = cfg['resource_cfg'].get('dvm_count') or 1
+        nodes_per_dvm = math.ceil(len(rm.node_list) / dvm_count)
 
         # additional info to form prrte related files (uri-/hosts-file)
-        dvm_file_info  = {'base_path': os.getcwd()}
-        # list of threading.Event that checks DVM's readiness
-        dvm_ready_list = []
+        dvm_file_info = {'base_path': os.getcwd()}
 
         # ----------------------------------------------------------------------
         def _watch_dvm(dvm_process, dvm_id, dvm_ready_flag):
@@ -118,9 +117,12 @@ class PRTE2(LaunchMethod):
                     log.debug('prte-%s output: %s', dvm_id, line)
 
                     # final confirmation that DVM has started successfully
-                    if 'DVM ready' in str(line):
-                        log.info('prte-%s is ready', dvm_id)
+                    if not dvm_ready_flag.is_set() and 'DVM ready' in str(line):
                         dvm_ready_flag.set()
+                        log.info('prte-%s is ready', dvm_id)
+                        profiler.prof(event='dvm_ready',
+                                      uid=cfg['pid'],
+                                      msg='dvm_id=%s' % dvm_id)
 
                 else:
                     time.sleep(1.)
@@ -152,7 +154,7 @@ class PRTE2(LaunchMethod):
             #        DVMs will never need large messages, as they can't run
             #        large tasks
             prte += ' --pmixmca ptl_base_max_msg_size %d'  % PTL_MAX_MSG_SIZE
-            prte += ' --prtemca routed_radix %d' % dvm_size
+            prte += ' --prtemca routed_radix %d'           % dvm_size
             # 2 tweaks on Summit, which should not be needed in the long run:
             # - ensure 1 ssh per dvm
             prte += ' --prtemca plm_rsh_num_concurrent %d' % dvm_size
@@ -197,7 +199,7 @@ class PRTE2(LaunchMethod):
             dvm_watcher.start()
 
             dvm_uri = None
-            for _ in range(100):
+            for _ in range(30):
                 time.sleep(.5)
 
                 try:
@@ -216,7 +218,7 @@ class PRTE2(LaunchMethod):
                 raise Exception('DVM URI not found')
 
             log.info('prte-%s startup successful: [%s]', dvm_id, dvm_uri)
-            profiler.prof(event='dvm_ok',
+            profiler.prof(event='dvm_uri',
                           uid=cfg['pid'],
                           msg='dvm_id=%s' % dvm_id)
 
@@ -224,8 +226,8 @@ class PRTE2(LaunchMethod):
 
         # ----------------------------------------------------------------------
 
-        # format: {<id>: {'nodes': [...], 'details': {'dvm_uri': <uri>}}}
-        # LM specific parameters will be kept under `'details'`
+        # format: {<id>: {'nodes': [...], 'dvm_uri': <uri>}}
+        # `nodes` will be moved to RM, and the rest is LM details per partition
         partitions = {}
 
         # go through every dvm instance
@@ -239,54 +241,45 @@ class PRTE2(LaunchMethod):
                 num_slots = rm.cores_per_node * rm.smt
                 for node in node_list:
                     fout.write('%s slots=%d\n' % (node[0], num_slots))
-            vm_size = len(node_list)
 
-            dvm_ready = mt.Event()
-            dvm_ready_list.append(dvm_ready)
+            _dvm_size  = len(node_list)
+            _dvm_ready = mt.Event()
+            _dvm_uri   = _start_dvm(_dvm_id, _dvm_size, _dvm_ready)
 
-            partitions[str(_dvm_id)] = {
+            partition_id = str(_dvm_id)
+            partitions[partition_id] = {
                 'nodes'  : [node[1] for node in node_list],
-                'details': {'dvm_uri': _start_dvm(_dvm_id, vm_size, dvm_ready)}}
+                'dvm_uri': _dvm_uri}
 
-        # check that all DVMs are ready
-        for _dvm_id, _dvm_ready in enumerate(dvm_ready_list):
+            # extra time to confirm that "DVM ready" was just delayed
+            if _dvm_ready.wait(timeout=15.):
+                continue
 
-            if not _dvm_ready.is_set():
+            log.info('prte-%s to be re-started', _dvm_id)
 
-                partition_id = str(_dvm_id)
+            # terminate DVM (if it is still running)
+            try   : ru.sh_callout('pterm --dvm-uri "%s"' % _dvm_uri)
+            except: pass
 
-                # extra time to confirm that "DVM ready" was just delayed
-                if _dvm_ready.wait(timeout=10.):
-                    continue
+            # re-start DVM
+            partitions[partition_id]['dvm_uri'] = \
+                _start_dvm(_dvm_id, _dvm_size, _dvm_ready)
 
-                log.info('prte-%s to be re-started', _dvm_id)
-
-                # terminate DVM (if it is still running)
-                _dvm_uri = partitions[partition_id]['details']['dvm_uri']
-                try   : ru.sh_callout('pterm --dvm-uri "%s"' % _dvm_uri)
-                except: pass
-
-                # re-start DVM
-                vm_size = len(partitions[partition_id]['nodes'])
-                partitions[partition_id]['details']['dvm_uri'] = \
-                    _start_dvm(_dvm_id, vm_size, _dvm_ready)
-
-                # FIXME: with the current approach there is only one attempt to
-                #        restart DVM(s). If a failure during the start process
-                #        will keep appears then need to consider re-assignment
-                #        of nodes from failed DVM(s) + add time for re-started
-                #        DVM to stabilize: `time.sleep(10.)`
+            # FIXME: with the current approach there is only one attempt to
+            #        restart DVM(s). If a failure during the start process
+            #        will keep appears then need to consider re-assignment
+            #        of nodes from failed DVM(s) + add time for re-started
+            #        DVM to stabilize: `time.sleep(10.)`
 
         lm_info = {'partitions'  : partitions,
                    'version_info': prte_info,
                    'cvd_id_mode' : 'physical'}
 
-        # we need to inform the actual LaunchMethod instance about partitions,
-        # which includes list of nodes per partition/dvm and dvm_uri (which is
-        # in section 'details'). So we pass it back to the ResourceManager,
-        # which will keep it in an 'lm_info', which will then be passed as part
-        # of the slots via the scheduler, as well partition 'nodes' will be kept
-        # in the ResourceManager separately.
+        # we need to inform the actual LaunchMethod instance about partitions
+        # (`partition_id` per task and `dvm_uri` per partition). List of nodes
+        # will be stored in ResourceManager and the rest details about
+        # partitions will be kept in `lm_info`, which will be passed as part of
+        # the slots via the scheduler.
         return lm_info
 
     # --------------------------------------------------------------------------
@@ -302,7 +295,7 @@ class PRTE2(LaunchMethod):
             raise Exception('termination command not found')
 
         for p_id, p_data in lm_info.get('partitions', {}).items():
-            dvm_uri = p_data['details']['dvm_uri']
+            dvm_uri = p_data['dvm_uri']
             try:
                 log.info('terminating prte-%s (%s)', p_id, dvm_uri)
                 _, err, _ = ru.sh_callout('%s --dvm-uri "%s"' % (cmd, dvm_uri))
@@ -342,29 +335,29 @@ class PRTE2(LaunchMethod):
         if not slots['lm_info'].get('partitions'):
             raise RuntimeError('no partitions (%s): %s' % (self.name, slots))
 
-        flags  = ' --np %d'                               % n_procs
-        flags += ' --map-by hwthread:PE=%d:OVERSUBSCRIBE' % n_threads
+        partitions = slots['lm_info']['partitions']
+        # `partition_id` should be set in a scheduler
+        partition_id = slots.get('partition_id') or partitions.keys()[0]
+        dvm_uri = '--dvm-uri "%s"' % partitions[partition_id]['dvm_uri']
+
+        if n_threads == 1: map_to_object = 'hwthread'
+        else             : map_to_object = 'node:HWTCPUS'
+
+        flags  = ' --np %d'                         % n_procs
+        flags += ' --map-by %s:PE=%d:OVERSUBSCRIBE' % (map_to_object, n_threads)
         flags += ' --bind-to hwthread:overload-allowed'
         if self._verbose:
             flags += ':REPORT'
 
-        dvm_uri = ''
         if 'nodes' not in slots:
             # this task is unscheduled - we leave it to PRRTE/PMI-X
             # to correctly place the task
             pass
         else:
-            # FIXME: ensure correct binding for procs and threads via slotfile
-
-            hosts = [node['name'] for node in slots['nodes']]
-            flags += ' --host %s:%s' % (hosts[0], len(hosts))
-
-            # scheduler makes sure that all nodes are from the same dvm
-            _host_uid = slots['nodes'][0]['uid']
-            for partition in slots['lm_info']['partitions'].values():
-                if _host_uid in partition['nodes']:
-                    dvm_uri = '--dvm-uri "%s"' % partition['details']['dvm_uri']
-                    break
+            hosts = collections.defaultdict(int)
+            for node in slots['nodes']:
+                hosts[node['name']] += 1
+            flags += ' --host ' + ','.join(['%s:%s' % x for x in hosts.items()])
 
         flags += ' --pmixmca ptl_base_max_msg_size %d' % PTL_MAX_MSG_SIZE
         flags += ' --verbose'  # needed to get prte profile events
