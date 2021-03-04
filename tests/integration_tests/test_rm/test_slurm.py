@@ -18,33 +18,35 @@ class TestTask(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    def setUp(self) -> dict:
+    @classmethod
+    def setUpClass(cls) -> None:
         path = os.path.dirname(__file__) + '/../test_config/resources.json'
         resources = ru.read_json(path)
         hostname = socket.gethostname()
 
         for host in resources.keys():
             if host in hostname:
-                return resources[host]
+                cls.host = host
+                cls.resource = resources[host]
+                break
 
     # ------------------------------------------------------------------------------
     #
     @mock.patch.object(Slurm, '__init__',   return_value=None)
-    def test_configure(self, mocked_init):
+    @mock.patch.object('radical.utils.Logger')
+    def test_configure(self, mocked_init, mocked_Logger):
 
-        cfg = self.setUp()
         component = Slurm(cfg=None, session=None)
-        component._log    = ru.Logger('dummy')
+        component._log    = mocked_Logger
         component._cfg    = {}
         component.lm_info = {'cores_per_node': None}
         component._configure()
 
         node = os.environ['SLURM_NODELIST']
-        print(cfg)
 
         self.assertEqual(component.node_list, [[node, node]])
-        self.assertEqual(component.cores_per_node, cfg['cores_per_node'])
-        self.assertEqual(component.gpus_per_node, cfg['gpus_per_node'])
+        self.assertEqual(component.cores_per_node, self.resource['cores_per_node'])
+        self.assertEqual(component.gpus_per_node, self.resource['gpus_per_node'])
         self.assertEqual(component.lfs_per_node, {'path': None, 'size': 0})
 
 
