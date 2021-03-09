@@ -63,13 +63,14 @@ if __name__ == '__main__':
                    'project'       : config[resource].get('project', None),
                    'queue'         : config[resource].get('queue', None),
                    'access_schema' : config[resource].get('schema', None),
-                   'cores'         : config[resource].get('cores', 1),
+                   'cores'         : 1024 * 2,
                    'gpus'          : config[resource].get('gpus', 0),
                    }
         pdesc = rp.PilotDescription(pd_init)
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
+      # pmgr.wait_pilots(uids=pilot.uid, state=rp.PMGR_ACTIVE)
         report.header('submit tasks')
 
         # Register the pilot in a TaskManager object.
@@ -77,10 +78,11 @@ if __name__ == '__main__':
 
         # Create a workload of tasks.
         # Each task runs '/bin/date'.
-        n = 1024  # number of tasks to run
-        report.info('create %d task description(s)\n\t' % n)
+        n = 64 * 1024  # number of tasks to run
+        report.info('create %d task description(s)\n' % n)
 
         tds = list()
+        report.progress_tgt(n, label='create')
         for i in range(0, n):
 
             # create a new task description, and fill it.
@@ -90,7 +92,7 @@ if __name__ == '__main__':
             tds.append(td)
             report.progress()
 
-        report.ok('>>ok\n')
+        report.progress_done()
 
         # Submit the previously created task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
@@ -131,7 +133,7 @@ if __name__ == '__main__':
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close(download=False)
+        session.close(download=True)
 
     report.header()
 

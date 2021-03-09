@@ -208,7 +208,7 @@ class FUNCS(AgentExecutingComponent) :
         while not self._terminate.is_set():
 
             # pull tasks from "funcs_out_queue"
-            tasks = self._res_queue.get_nowait(1000)
+            tasks = self._res_queue.get_nowait(timeout=1000)
 
             if tasks:
 

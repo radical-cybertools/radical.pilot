@@ -159,42 +159,75 @@ class Agent_0(rpu.Worker):
         self._client_input = ru.zmq.Subscriber(
                                 channel='agent_staging_input_pubsub',
                                 url=cfg.agent_staging_input_pubsub.sub,
+                                topic=self._pid,
                                 cb=self._client_input_cb,
                                 log=self._log,
                                 prof=self._prof)
         self._client_input.subscribe(self._pid)
 
         # completed tasks are fed back to the tmgr staging output queue
-        self._log.debug('=== reg output: %s', cfg.tmgr_staging_output_queue.put)
         self._client_output = ru.zmq.Putter(rpc.TMGR_STAGING_OUTPUT_QUEUE,
                                 url=cfg.tmgr_staging_output_queue.put)
-        self._log.debug('=== reg output: ok')
-
-        # and control pubsub (to register)
-        self._client_ctrl = ru.zmq.Publisher(channel='control_pubsub',
-                                url=cfg.control_pubsub.sub,
-                                log=self._log,
-                                prof=self._prof)
 
         # and listen for completed tasks to foward to client
         self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
                             rpc.AGENT_COLLECTING_QUEUE,
                             self._agent_collect_cb)
 
+        # and control pubsub (to register)
+        self._client_ctrl_pub = ru.zmq.Publisher(channel=rpc.CONTROL_PUBSUB,
+                                    url=cfg.control_pubsub.pub,
+                                    log=self._log,
+                                    prof=self._prof)
+
+        # and control pubsub (to register)
+        self._client_ctrl_sub = ru.zmq.Subscriber(channel=rpc.CONTROL_PUBSUB,
+                                    url=cfg.control_pubsub.sub,
+                                    log=self._log,
+                                    prof=self._prof,
+                                    topic=rpc.CONTROL_PUBSUB)
+
         # allow control pubsub to connect
         time.sleep(1)
 
-        # how do we verify that the comm channel is up?
-        self._client_ctrl.put(rpc.CONTROL_PUBSUB,
+        # channels are set up, register client
+        self._client_ctrl_pub.put(rpc.CONTROL_PUBSUB,
                               msg={'cmd': 'pilot_register',
                                    'arg': {'pid': self._pid}})
+        self._log.debug('pilot registered')
+
+        # and wait for at most 30 seconds for acknoweldgement
+        start = time.time()
+        self._registered = False
+        while True:
+
+            tout = 30 - (time.time() - start)
+            if tout < 0:
+                break
+
+            topic, msg = self._client_ctrl_sub.get_nowait(timeout=tout)
+            if not msg:
+                continue
+
+            cmd = msg['cmd']
+            if cmd != 'pilot_register_ok':
+                continue
+
+            pid = msg['arg']['pid']
+            if pid == self._pid:
+                self._registered = True
+                break
+
+        self._log.debug('registered: %s', self._registered)
+
+
 
 
     # --------------------------------------------------------------------------
     #
-    def _client_input_cb(self, msg):
+    def _client_input_cb(self, topic, msg):
 
-        self._log.debug('=== input cb: %s', msg)
+        self._log.debug('=== input cb %s: %s', topic, len(msg))
 
         for task in msg:
 
@@ -211,7 +244,7 @@ class Agent_0(rpu.Worker):
 
             # FIXME: raise or fail task!
             if task['state'] != rps.AGENT_STAGING_INPUT_PENDING:
-                self._log.error('=== invalid state: %s:%s:%s', task['uid'],
+                self._log.error('invalid state: %s:%s:%s', task['uid'],
                         task['state'], task.get('states'))
 
             task['control'] = 'agent'
@@ -226,14 +259,14 @@ class Agent_0(rpu.Worker):
     #
     def _agent_collect_cb(self, msg):
 
-        self._log.debug('=== collect cb: %s', msg)
+        self._log.debug('=== collect cb: %s', len(msg))
 
         if self._client_output:
-            self._log.debug('=== to client: %s', msg)
+            self._log.debug('=== to client: %s', len(msg))
             self._client_output.put(msg)
 
         else:
-            self._log.debug('=== to MongoDB: %s', msg)
+            self._log.debug('=== to MongoDB: %s', len(msg))
             for task in msg:
                 task['$all']    = True
                 task['control'] = 'tmgr_pending'
@@ -309,23 +342,31 @@ class Agent_0(rpu.Worker):
         self.register_timed_cb(self._agent_command_cb,
                                timer=self._cfg['db_poll_sleeptime'])
 
-        # start ingest thread to pull in tasks
-        self._ingest_thread = mt.Thread(target=self._ingest)
-        self._ingest_thread.daemon = True
-        self._ingest_thread.start()
-
+      # # start ingest thread to pull in tasks
+      # self._ingest_thread = mt.Thread(target=self._ingest)
+      # self._ingest_thread.daemon = True
+      # self._ingest_thread.start()
 
         # sub-agents are started, components are started, bridges are up: we are
-        # ready to roll!  Update pilot state.
-        pilot = {'type'             : 'pilot',
-                 'uid'              : self._pid,
-                 'state'            : rps.PMGR_ACTIVE,
-                 'resource_details' : {
-                     'lm_info'      : self._rm.lm_info.get('version_info'),
-                     'lm_detail'    : self._rm.lm_info.get('lm_detail'),
-                     'rm_info'      : self._rm.rm_info},
-                 '$set'             : ['resource_details']}
+        # ready to roll!  Send state update via client control pubsub
+        rm_info = self._rm.rm_info
+        n_nodes = len(rm_info['node_list'])
+        pilot = {
+                'type'     : 'pilot',
+                'uid'      : self._pid,
+                'state'    : rps.PMGR_ACTIVE,
+                'resources': {'rm_info': rm_info,
+                              'cpu'    : rm_info['cores_per_node'] * n_nodes,
+                              'gpu'    : rm_info['gpus_per_node']  * n_nodes}}
+
+        self._client_ctrl_pub.put(topic=rpc.CONTROL_PUBSUB,
+                                  msg={'cmd':  'pilot_activate',
+                                       'arg': {'pilot': pilot}})
+
+        # also update via MongoDB as fallback
         self.advance(pilot, publish=True, push=False)
+
+        self._log.debug('=== sent pilot_activate')
 
 
     # --------------------------------------------------------------------------
@@ -819,7 +860,7 @@ class Agent_0(rpu.Worker):
                             {'$set'  : {'control' : 'agent'}},
                             multi=True)
 
-        self._log.info("tasks pulled: %4d", len(task_list))
+        self._log.info("=== tasks pulled from db: %4d", len(task_list))
         self._prof.prof('get', msg='bulk: %d' % len(task_list), uid=self._pid)
 
         for task in task_list:

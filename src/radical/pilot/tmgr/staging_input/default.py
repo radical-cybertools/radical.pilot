@@ -104,13 +104,17 @@ class Default(TMGRStagingInputComponent):
                     if pid not in self._pilots:
                         self._pilots[pid] = pilot
 
-        elif cmd == 'pilot_connect':
+        elif cmd == 'pilot_register':
 
             pid = arg['pid']
-            self._log.debug('register pilot %s', pid)
+            self._log.debug('=== register pilot %s', pid)
 
             if pid not in self._connected:
                 self._connected.append(pid)
+
+            # let pilot know that tasks will arive via ZMQ
+            self.publish(rpc.CONTROL_PUBSUB, msg={'cmd': 'pilot_register_ok',
+                                                  'arg': {'pid': pid}})
 
         return True
 
@@ -124,11 +128,16 @@ class Default(TMGRStagingInputComponent):
 
         if pid not in self._connected:
 
+            self._log.debug('=== send to mdb: %d', len(tasks))
+
             for task in tasks:
                 # pass control via MongoDB
                 task['$all']    = True
                 task['control'] = 'agent_pending'
-                self._log.debug('=== send to mdb: %d', len(tasks))
+
+            # insert tasks into the database, as a bulk.
+            self._session._dbs.insert_tasks(tasks)
+
 
         # perform and publish state update
         self.advance(tasks, state, publish=True, push=False)
@@ -284,12 +293,12 @@ class Default(TMGRStagingInputComponent):
 
                     cmd = "tar xvf %s/%s -C %s" % (session_sbox.path, tar_name,
                                                    session_sbox.path)
-                    j   = js_tmp.run_job(cmd)
+                    j = js_tmp.run_job(cmd)
                     j.wait()
                     self._log.debug('untar : %s', cmd)
-                    self._log.debug('untar : %s\n---\n%s\n---\n%s',
-                            j.get_stdout_string(), j.get_stderr_string(),
-                            j.exit_code)
+                  # self._log.debug('untar : %s\n---\n%s\n---\n%s',
+                  #         j.get_stdout_string(), j.get_stderr_string(),
+                  #         j.exit_code)
 
 
         for pid in no_staging_tasks:

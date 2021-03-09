@@ -877,7 +877,7 @@ class TaskManager(rpu.Component):
 
         # insert tasks into the database, as a bulk.
         task_docs = [u.as_dict() for u in tasks]
-        self._session._dbs.insert_tasks(task_docs)
+      # self._session._dbs.insert_tasks(task_docs)
 
         # Only after the insert can we hand the tasks over to the next
         # components (ie. advance state).

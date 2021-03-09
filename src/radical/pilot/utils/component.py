@@ -150,8 +150,7 @@ class ComponentManager(object):
         check if any bridges are defined under `cfg['bridges']` and start them
         '''
 
-        self._log.debug('=== starting bridges (%s)', cfg)
-
+        self._log.debug('starting bridges (%s)', cfg)
         self._prof.prof('start_bridges_start', uid=self._uid)
 
         timeout = self._cfg.heartbeat.timeout
@@ -1062,7 +1061,7 @@ class Component(object):
             # FIXME: a simple, 1-thing caching mechanism would likely
             #        remove the req/res overhead completely (for any
             #        non-trivial worker).
-            things = input.get_nowait(200)  # in microseconds
+            things = input.get_nowait(timeout=200)     # microseconds
 
             if not things:
                 return True

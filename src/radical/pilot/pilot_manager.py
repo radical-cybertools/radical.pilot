@@ -7,6 +7,7 @@ __license__   = "MIT"
 import os
 import time
 import threading as mt
+from radical.pilot.constants import PILOT_STATE
 
 import radical.utils as ru
 
@@ -156,6 +157,9 @@ class PilotManager(rpu.Component):
         # also listen to the state pubsub for pilot state changes
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_sub_cb)
 
+        # also listen to the state control for pilot activation
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_sub_cb)
+
         # let session know we exist
         self._session._register_pmgr(self)
 
@@ -286,8 +290,7 @@ class PilotManager(rpu.Component):
         for pilot_dict in pilot_dicts:
             self._log.debug('state pulled: %s: %s', pilot_dict['uid'],
                                                     pilot_dict['state'])
-            if not self._update_pilot(pilot_dict, publish=True):
-                return False
+            self._update_pilot(pilot_dict, publish=True)
 
         return True
 
@@ -321,10 +324,30 @@ class PilotManager(rpu.Component):
 
                 # we got the state update from the state callback - don't
                 # publish it again
-                if not self._update_pilot(thing, publish=False):
-                    return False
+                self._update_pilot(thing, publish=False)
 
         return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _control_sub_cb(self, topic, msg):
+
+        if self._terminate.is_set():
+            return False
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        self._log.debug('=== got control cmd %s: %s', cmd, arg)
+
+        if cmd == 'pilot_activate':
+            pilot = arg['pilot']
+            self._update_pilot(pilot, publish=True)
+
+            # store resource json for RA
+            fname = '%s/%s.resources.json' % (self._cfg.path, pilot['uid'])
+            ru.write_json(fname, pilot['resources'])
 
 
     # --------------------------------------------------------------------------
@@ -340,25 +363,25 @@ class PilotManager(rpu.Component):
 
             # we don't care about pilots we don't know
             if pid not in self._pilots:
-                return True  # this is not an error
+                return   # this is not an error
 
             # only update on state changes
             current = self._pilots[pid].state
             target  = pilot_dict['state']
             if current == target:
-                return True
+                return
 
             target, passed = rps._pilot_state_progress(pid, current, target)
-          # print '%s current: %s' % (pid, current)
-          # print '%s target : %s' % (pid, target )
-          # print '%s passed : %s' % (pid, passed )
+            self._log.debug('=== %s current: %s', pid, current)
+            self._log.debug('=== %s target : %s', pid, target )
+            self._log.debug('=== %s passed : %s', pid, passed )
 
             if target in [rps.CANCELED, rps.FAILED]:
                 # don't replay intermediate states
                 passed = passed[-1:]
 
             for s in passed:
-              # print '%s advance: %s' % (pid, s )
+                self._log.debug('=== %s advance: %s', pid, s )
                 # we got state from either pubsub or DB, so don't publish again.
                 # we also don't need to maintain bulks for that reason.
                 pilot_dict['state'] = s
@@ -371,8 +394,6 @@ class PilotManager(rpu.Component):
                     self._log.info('pilot %s is %s: %s [%s]', pid, s,
                                     pilot_dict.get('lm_info'),
                                     pilot_dict.get('lm_detail'))
-
-            return True
 
 
     # --------------------------------------------------------------------------

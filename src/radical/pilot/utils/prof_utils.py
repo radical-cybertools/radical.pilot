@@ -688,11 +688,12 @@ def get_session_description(sid, src=None, dburl=None):
         tree[uid]['description'] = dict()
 
     for pilot in sorted(json['pilot'], key=lambda k: k['uid']):
-        uid  = pilot['uid']
-        pmgr = pilot['pmgr']
-        pilot['cfg']['resource_details'] = pilot['resource_details']
-        tree[pmgr]['children'].append(uid)
-        tree[uid] = {'uid'        : uid,
+        pid     = pilot['uid']
+        pmgr    = pilot['pmgr']
+        details = ru.read_json('%s/%s.resources.json' % (src, pid))
+        pilot['cfg']['resource_details'] = details
+        tree[pmgr]['children'].append(pid)
+        tree[pid] = {'uid'        : pid,
                      'etype'      : 'pilot',
                      'cfg'        : pilot['cfg'],
                      'resources'  : pilot['resources'],

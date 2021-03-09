@@ -135,7 +135,7 @@ class Executor(object):
 
         while True:
 
-          # msgs = self._zmq_ctl.get_nowait(100)
+          # msgs = self._zmq_ctl.get_nowait(timeout=100)
             msgs = None
             time.sleep(1)
 
@@ -173,7 +173,7 @@ class Executor(object):
 
         while not self._term.is_set():
 
-            tasks = self._zmq_req.get_nowait(1000)
+            tasks = self._zmq_req.get_nowait(timeout=1000)
 
             if tasks:
 
