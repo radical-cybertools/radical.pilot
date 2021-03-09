@@ -88,12 +88,12 @@ if __name__ == '__main__':
             uid = 'raptor.req.%06d' % i
             # ------------------------------------------------------------------
             # work serialization goes here
-            work = json.dumps({'mode'      :  'call',
-                               'cores'     :  1,
-                               'timeout'   :  100,
-                               'data'      : {'method': 'hello',
-                                              'kwargs': {'count': i,
-                                                         'uid': uid}}})
+            work = json.dumps({'mode'   :  'call',
+                               'cores'  :  1,
+                               'timeout':  100,
+                               'data'   : {'method': 'hello',
+                                           'kwargs': {'count': i,
+                                                      'uid'  : uid}}})
             # ------------------------------------------------------------------
             requests.append(rp.TaskDescription({
                                'uid'       : uid,
