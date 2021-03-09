@@ -795,7 +795,7 @@ class TaskManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def list_units(self, uids=None):
+    def list_units(self, uids=None):                                      # noqa
         '''
         deprecated - use `list_tasks()`
         '''
