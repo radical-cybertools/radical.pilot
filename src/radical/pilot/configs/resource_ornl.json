@@ -2,7 +2,7 @@
 {
     "andes": {
         "description"                 : "704 compute nodes",
-        "notes"                       : "Requires RSA SecurID and pre-set conda env",
+        "notes"                       : "Requires RSA SecurID and uses local virtual env",
         "schemas"                     : ["local"],
         "local"                       : {
             "job_manager_endpoint"    : "slurm://andes.olcf.ornl.gov/",
@@ -19,17 +19,15 @@
         "pre_bootstrap_0"             : ["source /sw/andes/python/3.7/anaconda-base/etc/profile.d/conda.sh"],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
-        "python_dist"                 : "anaconda",
-        "virtenv"                     : "$HOME/ve.rp",
-        "virtenv_mode"                : "use",
-        "rp_version"                  : "installed",
+        "python_dist"                 : "local",
+        "virtenv_mode"                : "local",
         "stage_cacerts"               : true,
         "cores_per_node"              : 32
     },
 
     "andes_gpu": {
         "description"                 : "9 gpu nodes",
-        "notes"                       : "Requires RSA SecurID and pre-set conda env",
+        "notes"                       : "Requires RSA SecurID and uses local virtual env",
         "schemas"                     : ["local"],
         "local"                       : {
             "job_manager_endpoint"    : "slurm://andes.olcf.ornl.gov/",
@@ -46,10 +44,8 @@
         "pre_bootstrap_0"             : ["source /sw/andes/python/3.7/anaconda-base/etc/profile.d/conda.sh"],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
-        "python_dist"                 : "anaconda",
-        "virtenv"                     : "$HOME/ve.rp",
-        "virtenv_mode"                : "use",
-        "rp_version"                  : "installed",
+        "python_dist"                 : "local",
+        "virtenv_mode"                : "local",
         "stage_cacerts"               : true,
         "cores_per_node"              : 28,
         "gpus_per_node"               : 2,
