@@ -18,15 +18,11 @@ class TestTask(TestCase):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def setUpClass(self) -> dict:
+    def setUpClass(cls) -> dict:
         path = os.path.dirname(__file__) + '/../test_config/resources.json'
         resources = ru.read_json(path)
-        hostname = 'summit'
-
-        for host in resources.keys():
-            if host in hostname:
-                self.host = host
-                self.resource = resources[host]
+        cls.host = 'summit'
+        cls.resource = resources[cls.host]
 
     # ------------------------------------------------------------------------------
     #
