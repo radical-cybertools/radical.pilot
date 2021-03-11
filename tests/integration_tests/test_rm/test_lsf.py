@@ -18,7 +18,7 @@ class TestTask(TestCase):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def setUpClass(cls) -> dict:
+    def setUpClass(cls):
         path = os.path.dirname(__file__) + '/../test_config/resources.json'
         resources = ru.read_json(path)
         cls.host = 'summit'
