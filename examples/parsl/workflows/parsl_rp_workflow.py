@@ -25,20 +25,23 @@ usage_tracking=True)
 parsl.load(config)
 
 @python_app
-def mathma(a, nproc):  #python function has no ptype
-    import math
-    for i in range(10):
-        x = math.exp(a*i)
-        print (x)
+def wait_sleep_double(x, foo_1, foo_2, nproc):
+     import time
+     time.sleep(2)   # Sleep for 2 seconds
+     print(x*2)
+     return x*2
 
-results  = []
-out_file = "/home/aymen/mathma_{0}".format(0)
-for i in range(5):
-    results.append(mathma(10, nproc=1))
+# Launch two apps, which will execute in parallel, since they do not have to
+# wait on any futures
+doubled_x = wait_sleep_double(10, None, None, nproc=1)
+doubled_y = wait_sleep_double(10, None, None, nproc=1)
 
+# The third app depends on the first two:
+#    doubled_x   doubled_y     (2 s)
+#           \     /
+#           doublex_z          (2 s)
+doubled_z = wait_sleep_double(10, doubled_x, doubled_y, nproc=1)
 
-# wait for all apps to complete
-[r.result() for r in results]
+# doubled_z will be done in ~4s
+print(doubled_z.result())
 
-# print each job status, they will now be finished
-print ("Job Status: {}".format([r.done() for r in results]))
