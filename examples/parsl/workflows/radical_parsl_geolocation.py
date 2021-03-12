@@ -27,12 +27,12 @@ parsl.load(config)
 
 @python_app
 def sift(ptype = rp.FUNCS, nproc)-> str:
-    import subprocess as sp
+    import subprocess
     proc = subprocess.Popen("$HOME/RADICAL/integration_usecases/geolocation/CudaSift/cudasift"
                             " $HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40.jpg"
                             " 2000 2000 2000 2000 $HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40-1.jpg"
                             " 2000 2000 2000 2000", shell = True, stdout=subprocess.PIPE)
-    match_path = proc.stdout.readlines()[-1])
+    match_path = proc.stdout.readlines()[-1]
     output_file = []
     output_file.append(match_path)
     return output_file
@@ -75,7 +75,7 @@ def ransac(sift_matches_file:str):  #python function has no ptype
 
 sift_results   = []
 ransac_results = []
-num_images     = 11026
+num_images     = 2
 
 # submit image matching tasks
 for i in range(num_images):
