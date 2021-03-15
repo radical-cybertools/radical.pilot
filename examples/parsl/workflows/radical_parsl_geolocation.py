@@ -29,7 +29,7 @@ parsl.load(config)
 def sift(nproc)-> str:
     import os
     import subprocess
-    os.environ["LD_LIBRARY_PATH"] = "/oasis/projects/nsf/unc100/aymen/anaconda3/lib:$LD_LIBRARY_PATH"
+    os.environ["LD_LIBRARY_PATH"] = "/oasis/projects/nsf/unc100/$USER/anaconda3/lib:$LD_LIBRARY_PATH"
     proc = subprocess.Popen("$HOME/RADICAL/integration_usecases/geolocation/CudaSift/cudasift"
                             " $HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40.jpg"
                             " 2000 2000 2000 2000 $HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40-1.jpg"
