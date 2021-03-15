@@ -12,7 +12,7 @@ parsl.set_stream_logger()
 config = Config(
          executors=[RADICALExecutor(
                         label = 'RADICALExecutor',
-                        resource = 'xsede_comet_ssh_funcs',
+                        resource = 'xsede.comet_ssh_funcs',
                         login_method = 'gsissh',
                         project = '',
                         partition = '', 
@@ -85,7 +85,7 @@ for i in range(num_images):
 print ("Job Status: {}".format([r.done() for r in sift_results]))
 
 for i in range(len(sift_results)):
-    ransc_result.append(ransac(sift_results[i], nproc=1))
+    ransc_results.append(ransac(sift_results[i], nproc=1))
 
 # wait for all ransac apps to complete
 [r.result() for r in ransac_results]
