@@ -27,12 +27,13 @@ parsl.load(config)
 
 @python_app
 def sift(nproc)-> str:
+    import os
     import subprocess
     proc = subprocess.Popen("$HOME/RADICAL/integration_usecases/geolocation/CudaSift/cudasift"
                             " $HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40.jpg"
                             " 2000 2000 2000 2000 $HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40-1.jpg"
                             " 2000 2000 2000 2000", shell = True, stdout=subprocess.PIPE)
-    match_path = proc.stdout.readlines()[-1]
+    match_path = str(proc.stdout.readlines()[-1], 'utf-8')
     output_file = []
     output_file.append(match_path)
     return output_file
@@ -46,7 +47,7 @@ def ransac(sift_matches_file:str, nproc):  #python function has no ptype
     
     MIN_MATCH_COUNT = 10
     
-    img1 = cv2.imread('$HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40.jpg',0)   # queryImage
+    img1 = cv2.imread('$HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40.jpg',0)     # queryImage
     img2 = cv2.imread('$HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40-1.jpg',0)   # trainImage
 
     data_pt1 = []
