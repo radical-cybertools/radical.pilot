@@ -85,7 +85,7 @@ for i in range(num_images):
 print ("Job Status: {}".format([r.done() for r in sift_results]))
 
 for i in range(len(sift_results)):
-    ransc_results.append(ransac(sift_results[i], nproc=1))
+    ransac_results.append(ransac(sift_results[i], nproc=1))
 
 # wait for all ransac apps to complete
 [r.result() for r in ransac_results]
