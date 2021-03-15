@@ -15,6 +15,8 @@ import radical.utils   as ru
 import queue
 
 # FIXME: the func executor may need a small bootstrapper
+# FIXME: the func executor need to recieve "term" signal from 
+#        `funcs.py` to trigger the termination of the workers here
 
 pwd = sys.argv[1]
 
@@ -244,9 +246,6 @@ class Executor(object):
             except queue.Empty:
                 continue
 
-          # import pprint
-          # pprint.pprint(task)
-
             tid   = task['uid']
             descr = task['description']
             exe   = descr['executable']
@@ -255,7 +254,6 @@ class Executor(object):
             cmd   = '%s(%s)' % (exe, ','.join(args))
 
             self._prof.prof('task_get', comp=wid, uid=tid)
-          # self._log.debug('get %s: %s', tid, cmd)
 
             def check_obj(obj):
                 '''
@@ -283,9 +281,12 @@ class Executor(object):
                     old_stdout = sys.stdout
                     new_stdout = None
                     try:
+                        self._prof.prof('func_prep', uid=self._uid)
                         sys.stdout = new_stdout = StringIO()
                         fn, args, kwargs = self.prepare_func(exe)
+                        self._prof.prof('func_start', uid=self._uid)
                         fn(*args, **kwargs)
+                        self._prof.prof('func_stop', uid=self._uid)
                     except Exception:
                         self._log.debug("Setting the function for execution failed!")
                         raise
@@ -303,7 +304,6 @@ class Executor(object):
                 task['stderr'] = str(e)
                 task['state']  = 'FAILED'
 
-          # self._log.debug('put %s: %s', tid, str(task['res']))
             self._prof.prof('task_put', comp=wid, uid=tid)
 
             task['wid'] = wid
