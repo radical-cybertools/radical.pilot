@@ -46,12 +46,12 @@ def ransac(sift_matches_file:str, nproc):  #python function has no ptype
     
     MIN_MATCH_COUNT = 10
     
-    img1 = cv2.imread('$HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40.jpg',0)     # queryImage
+    img1 = cv2.imread('$HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40.jpg',0)    # queryImage
     img2 = cv2.imread('$HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40-1.jpg',0)   # trainImage
 
     data_pt1 = []
     data_pt2 = []
-    good = data_pt1
+
     with open(sift_matches_file, 'r') as csvfile:
          csv_reader = csv.reader(csvfile, delimiter=',')
          csv_reader.__next__()
@@ -64,7 +64,7 @@ def ransac(sift_matches_file:str, nproc):  #python function has no ptype
     src_pts = np.float32(data_pt1).reshape(-1,1,2)
     dst_pts = np.float32(data_pt2).reshape(-1,1,2)
 
-    M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
+    M, mask     = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
     matchesMask = mask.ravel().tolist()
 
     h,w  = img1.shape
