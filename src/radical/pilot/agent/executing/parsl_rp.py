@@ -60,6 +60,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                  walltime: int = None,
                  managed: bool = True,
                  max_tasks: Union[int, float] = float('inf'),
+                 gpus: Optional[int]  = 0,
                  worker_logdir_root: Optional[str] = ".",
                  partition : Optional[str] = " ",
                  project: Optional[str] = " ",):
@@ -73,6 +74,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.future_tasks       = {}
         self.managed            = managed
         self.max_tasks          = max_tasks
+        self.gpus               = gpus
         self._task_counter      = 0
         self.run_dir            = '.'
         self.worker_logdir_root = worker_logdir_root
@@ -116,7 +118,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                           'queue'         : self.partition,
                           'access_schema' : self.login_method,
                           'cores'         : 1*self.max_tasks,
-                          'gpus'          : 0,}
+                          'gpus'          : self.gpus,}
 
         pdesc = rp.PilotDescription(pd_init)
         pilot = self.pmgr.submit_pilots(pdesc)
@@ -151,7 +153,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                    "pre_exec"   : None if 'pre_exec' not in kwargs else kwargs['pre_exec'],
                    "ptype"      : None if 'ptype' not in kwargs else kwargs['ptype'],
                    "nproc"      : 1 if 'nproc' not in kwargs else kwargs['nproc'],
-                   "nthrd"      : 1 if 'nthrd' not in kwargs else kwargs['nthrd']}
+                   "nthrd"      : 1 if 'nthrd' not in kwargs else kwargs['nthrd'],
+                   "ngpus"      : 0 if 'ngpus' not in kwargs else kwargs['ngpus']}
 
 
         elif task_type.startswith('@python_app'):
@@ -170,7 +173,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                   "pre_exec"   : None if 'pre_exec' not in kwargs else kwargs['pre_exec'],
                   "ptype"      : rp.FUNC if 'ptype' not in kwargs else rp.MPI_FUNC,
                   "nproc"      : 1 if 'nproc' not in kwargs else kwargs['nproc'],
-                  "nthrd"      : 1 if 'nthrd' not in kwargs else kwargs['nthrd']}
+                  "nthrd"      : 1 if 'nthrd' not in kwargs else kwargs['nthrd'],
+                  "ngpus"      : 0 if 'ngpus' not in kwargs else kwargs['ngpus']}
 
         else:
             pass
@@ -206,6 +210,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             task.cpu_processes    = tu['nproc']
             task.cpu_threads      = tu['nthrd']
             task.cpu_process_type = tu['ptype']
+            task.gpu_processes    = tu['ngpus']
+            task.gpu_process_type = None
             self.report.progress()
             self.tmgr.submit_tasks(task)
 

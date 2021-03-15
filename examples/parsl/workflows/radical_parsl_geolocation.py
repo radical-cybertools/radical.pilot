@@ -18,7 +18,8 @@ config = Config(
                         partition = '', 
                         walltime = 30,
                         managed = True,
-                        max_tasks = 1)
+                        max_tasks = 1,
+                        gpus = 4)
                         ],
 strategy= None,
 usage_tracking=True)
@@ -38,7 +39,7 @@ def sift(nproc)-> str:
     return match_path
 
 @python_app
-def ransac(sift_matches_file:str, nproc):  #python function has no ptype
+def ransac(sift_matches_file:str, nproc, ngpus):  #python function has no ptype
     import csv
     import cv2
     import numpy as np
@@ -85,7 +86,7 @@ for i in range(num_images):
 print ("Job Status: {}".format([r.done() for r in sift_results]))
 
 for i in range(len(sift_results)):
-    ransac_results.append(ransac(sift_results[i], nproc=1))
+    ransac_results.append(ransac(sift_results[i], nproc=1, ngpus=1))
 
 # wait for all ransac apps to complete
 [r.result() for r in ransac_results]
