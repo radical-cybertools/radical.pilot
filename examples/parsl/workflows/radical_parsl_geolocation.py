@@ -29,14 +29,13 @@ parsl.load(config)
 def sift(nproc)-> str:
     import os
     import subprocess
+    os.environ["LD_LIBRARY_PATH"] = "/oasis/projects/nsf/unc100/aymen/anaconda3/lib:$LD_LIBRARY_PATH"
     proc = subprocess.Popen("$HOME/RADICAL/integration_usecases/geolocation/CudaSift/cudasift"
                             " $HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40.jpg"
                             " 2000 2000 2000 2000 $HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40-1.jpg"
                             " 2000 2000 2000 2000", shell = True, stdout=subprocess.PIPE)
     match_path = str(proc.stdout.readlines()[-1], 'utf-8')
-    output_file = []
-    output_file.append(match_path)
-    return output_file
+    return match_path
 
 @python_app
 def ransac(sift_matches_file:str, nproc):  #python function has no ptype
@@ -82,7 +81,6 @@ num_images     = 2
 for i in range(num_images):
     sift_results.append(sift(nproc=1))
 
-
 # print each job status, they will now be finished
 print ("Job Status: {}".format([r.done() for r in sift_results]))
 
@@ -94,5 +92,3 @@ for i in range(len(sift_results)):
 
 # print each job status, they will now be finished
 print ("Job Status: {}".format([r.done() for r in ransac_results]))
-
-
