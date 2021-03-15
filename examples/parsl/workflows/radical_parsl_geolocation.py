@@ -26,7 +26,7 @@ usage_tracking=True)
 parsl.load(config)
 
 @python_app
-def sift(ptype = rp.FUNCS, nproc)-> str:
+def sift(nproc)-> str:
     import subprocess
     proc = subprocess.Popen("$HOME/RADICAL/integration_usecases/geolocation/CudaSift/cudasift"
                             " $HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40.jpg"
@@ -38,7 +38,7 @@ def sift(ptype = rp.FUNCS, nproc)-> str:
     return output_file
 
 @python_app
-def ransac(sift_matches_file:str):  #python function has no ptype
+def ransac(sift_matches_file:str, nproc):  #python function has no ptype
     import csv
     import cv2
     import numpy as np
@@ -79,14 +79,14 @@ num_images     = 2
 
 # submit image matching tasks
 for i in range(num_images):
-    sift_results.append(sift(ptype=rp.FUNCS, nproc=1))
+    sift_results.append(sift(nproc=1))
 
 
 # print each job status, they will now be finished
 print ("Job Status: {}".format([r.done() for r in sift_results]))
 
 for i in range(len(sift_results)):
-    ransc_result.append(ransac(sift_results[i]))
+    ransc_result.append(ransac(sift_results[i], nproc=1))
 
 # wait for all ransac apps to complete
 [r.result() for r in ransac_results]
