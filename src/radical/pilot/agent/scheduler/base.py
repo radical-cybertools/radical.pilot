@@ -730,18 +730,29 @@ class AgentSchedulingComponent(rpu.Component):
         # We define `tuple_size` as
         #     `(cpu_processes + gpu_processes) * cpu_threads`
         #
-        tasks = list(self._waitpool.values())
-        tasks.sort(key=lambda x:
+        tasks   = list(self._waitpool.values())
+        to_wait = list()
+        to_test = list()
+
+        for task in tasks:
+            named_env = task['description'].get('named_env')
+            if named_env:
+                if os.path.exists('%s.ok' % named_env):
+                    to_test.append(task)
+                else:
+                    to_wait.append(task)
+
+        to_test.sort(key=lambda x:
                 (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
                  reverse=True)
 
         # cycle through waitpool, and see if we get anything placed now.
-        scheduled, unscheduled = ru.lazy_bisect(tasks,
+        scheduled, unscheduled = ru.lazy_bisect(to_test,
                                                 check=self._try_allocation,
                                                 on_skip=self._prof_sched_skip,
                                                 log=self._log)
 
-        self._waitpool = {task['uid']:task for task in unscheduled}
+        self._waitpool = {task['uid']:task for task in (unscheduled + to_wait)}
 
         # update task resources
         for task in scheduled:
@@ -831,6 +842,18 @@ class AgentSchedulingComponent(rpu.Component):
         to_wait = list()
         for task in sorted(to_schedule, key=lambda x: x['tuple_size'][0],
                            reverse=True):
+
+            # FIXME: This is a slow and inefficient way to wait for named VEs.
+            #        The semantics should move to the upcoming eligibility
+            #        checker
+            # FIXME: Note that this code is duplicated in _schedule_waitpool
+            named_env = task['description'].get('named_env')
+            if named_env:
+                if not os.path.exists('%s.ok' % named_env):
+                    to_wait.append(task)
+                    self._log.debug('delay %s, no env %s',
+                                    task['uid'], named_env)
+                    continue
 
             # either we can place the task straight away, or we have to
             # put it in the wait pool.
