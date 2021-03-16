@@ -42,13 +42,13 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
     .. code:: python
                                                                                                                      RADICAL Executor
         ----------------------------------------------------------------------------------------------------------------------------------------------------
-                        ParSL API                          |         ParSL DFK/dflow               |      Task Translator      |     RP-Client/Unit-Manager
+                        ParSL API                          |         ParSL DFK/dflow               |      Task Translator      |     RP-Client/Task-Manager
         ---------------------------------------------------|---------------------------------------|---------------------------|----------------------------                                                     
                                                            |                                       |                           |
-         parsl_tasks_description ------>  ParSL_tasks{}----+-> Dep. check ------> ParSL_tasks{} <--+--> ParSL Task/Tasks desc. | tmgr.submit_units(RP_units)
+         parsl_tasks_description ------>  ParSL_tasks{}----+-> Dep. check ------> ParSL_tasks{} <--+--> ParSL Task/Tasks desc. | tmgr.submit_Tasks(RP_tasks)
                                            +api.submit     | Data management          +dfk.submit  |             |             |
                                                            |                                       |             v             |
-                                                           |                                       |     RP Unit/Units desc. --+->   
+                                                           |                                       |     RP Task/Tasks desc. --+->   
         ----------------------------------------------------------------------------------------------------------------------------------------------------
     """        
   
@@ -89,21 +89,26 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.pmgr    = rp.PilotManager(session=self.session)
         self.tmgr    = rp.TaskManager(session=self.session)
 
-    def unit_state_cb(self, unit, state):
+    def task_state_cb(self, task, state):
 
         """
         Update the state of Parsl Future tasks
-        Based on RP unit state
+        Based on RP task state
         """
-        task = self.future_tasks[unit.name]
+        parsl_task = self.future_tasks[task.name]
         if state == rp.DONE:
-            task.set_result(unit.stdout)
+            parsl_task.set_result(task.stdout)
             print('\t+ %s: %-10s: %10s: %s'
-                  % (unit.uid, unit.state, unit.pilot, unit.stdout))
-        elif state == rp.FAILED:
-            task.set_result(unit.stderr)
+                  % (task.uid, task.state, task.pilot, task.stdout))
+
+        if state == rp.CANCELED:
+            parsl_task.cancel()
+            print('\t+ %s: %-10s: %10s: %s'
+                  % (task.uid, task.state, task.pilot, task.stdout))
+        if state == rp.FAILED:
+            parsl_task.set_exception(task.stderr)
             print('\t- %s: %-10s: %10s: %s'
-                  % (unit.uid, unit.state, unit.pilot, unit.stderr))
+                  % (task.uid, task.state, task.pilot, task.stderr))
 
 
     def start(self):
@@ -182,7 +187,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
     def submit(self, func, *args, **kwargs):
         """
-        Submits task/tasks to RADICAL unit_manager.
+        Submits task/tasks to RADICAL task_manager.
 
         Args:
             - func (callable) : Callable function
@@ -199,7 +204,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         tu = self.task_translate(func, args, kwargs)
 
         try:
-            self.tmgr.register_callback(self.unit_state_cb) 
+            self.tmgr.register_callback(self.task_state_cb) 
             self.report.progress_tgt(self._task_counter, label='create')
 
             task                  = rp.TaskDescription()
