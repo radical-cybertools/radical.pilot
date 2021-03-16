@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # This is an example MPI4Py program that is used
 # by different examples and tests.
