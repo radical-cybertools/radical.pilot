@@ -103,8 +103,8 @@ class TMGRSchedulingComponent(rpu.Component):
             impl = impl(cfg, session)
             return impl
 
-        except KeyError:
-            raise ValueError("Scheduler '%s' unknown or defunct" % name)
+        except KeyError as e:
+            raise ValueError("Scheduler '%s' unknown or defunct" % name) from e
 
 
     # --------------------------------------------------------------------------
