@@ -3,7 +3,6 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os
 import time
 import queue
 import logging
