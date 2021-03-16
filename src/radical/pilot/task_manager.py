@@ -101,12 +101,12 @@ class TaskManager(rpu.Component):
         """
 
         self._pilots      = dict()
-        self._pilots_lock = ru.RLock('tmgr.pilots_lock')
+        self._pilots_lock = ru.RLock('%s.pilots_lock' % self._uid)
         self._uids        = list()   # known task UIDs
         self._tasks       = dict()
-        self._tasks_lock  = ru.RLock('tmgr.tasks_lock')
+        self._tasks_lock  = ru.RLock('%s.tasks_lock' % self._uid)
         self._callbacks   = dict()
-        self._cb_lock     = ru.RLock('tmgr.cb_lock')
+        self._cb_lock     = ru.RLock('%s.cb_lock' % self._uid)
         self._terminate   = mt.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
