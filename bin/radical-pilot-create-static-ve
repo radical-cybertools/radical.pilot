@@ -27,7 +27,7 @@ if ! test -z "$DEFAULTS"
 then
     # by default, install all RCT dependencies
     MODULES="$MODULES apache-libcloud chardet colorama future idna msgpack"
-    MODULES="$MODULES msgpack-python netifaces ntplib parse pymongo " \
+    MODULES="$MODULES msgpack-python netifaces ntplib parse pymongo"
     MODULES="$MODULES python-hostlist pyzmq regex requests setproctitle urllib3"
 fi
 
@@ -148,6 +148,7 @@ fi
 # create the ve, install bare necessities
 mkdir -p "$PREFIX"
 cd $PREFIX
+PREFIX=`pwd -P`
 
 # for conda environments, install virtualenv in the env
 if ! test -z "$CONDA_DEFAULT_ENV"
