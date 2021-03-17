@@ -1,16 +1,19 @@
-
 {
     "comet": {
-      "cpus_on_node": 24,
-      "gpus_on_node": 0,
+      "cores_per_node": 24,
+      "gpus_per_node": 0,
       "ssh_path": "/bin/ssh"
     },
-    "bridges": {
-      "cpus_on_node": 28,
-      "gpus_on_node": 0,
-      "ssh_path": "/bin/ssh",
+    "bridges2": {
+      "cores_per_node": 40,
+      "gpus_per_node": 0,
       "mpirun_path": "mpirun",
       "mpi_flavor": "OMPI",
-      "mpi_version": "2.1.2"
+      "mpi_version": "3.1.6"
+    },
+    "summit": {
+      "cores_per_node": 42,
+      "gpus_per_node": 0,
+      "jsrun_path": "/opt/ibm/spectrum_mpi/jsm_pmix/bin/jsrun"
     }
 }
