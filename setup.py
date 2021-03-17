@@ -108,11 +108,11 @@ def get_version(_mod_root):
         with open(_path + '/VERSION', 'w') as f:
             f.write(_version + '\n')
 
-        _sdist_name = '%s-%s.tar.gz' % (name, _version)
-        _sdist_name = _sdist_name.replace('/', '-')
-        _sdist_name = _sdist_name.replace('@', '-')
-        _sdist_name = _sdist_name.replace('#', '-')
-        _sdist_name = _sdist_name.replace('_', '-')
+        _sdist_name = '%s-%s.tar.gz' % (name, _version_base)
+      # _sdist_name = _sdist_name.replace('/', '-')
+      # _sdist_name = _sdist_name.replace('@', '-')
+      # _sdist_name = _sdist_name.replace('#', '-')
+      # _sdist_name = _sdist_name.replace('_', '-')
 
         if '--record'    in sys.argv or \
            'bdist_egg'   in sys.argv or \
