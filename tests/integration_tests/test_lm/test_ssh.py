@@ -27,14 +27,15 @@ class TestTask(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(SSH, '__init__',   return_value=None)
-    def test_configure(self, mocked_init):
+    @mock.patch('radical.utils.Logger')
+    def test_configure(self, mocked_init, mocked_Logger):
         cfg = self.setUp()
 
         if not cfg:
             return
 
         component = SSH(name=None, cfg=None, session=None)
-        component._log = ru.Logger('dummy')
+        component._log = mocked_Logger
         component._cfg = {}
         component.env_removables = []
         component._configure()
