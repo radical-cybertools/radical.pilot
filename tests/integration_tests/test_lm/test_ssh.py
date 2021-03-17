@@ -16,7 +16,7 @@ class TestTask(TestCase):
     # --------------------------------------------------------------------------
     #
     def setUp(self) -> dict:
-        path = os.path.dirname(__file__) + '../test_config/resources.json'
+        path = os.path.dirname(__file__) + '/../test_config/resources.json'
         resources = ru.read_json(path)
         hostname = socket.gethostname()
 
@@ -27,10 +27,11 @@ class TestTask(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(SSH, '__init__',   return_value=None)
-    def test_configure(self, mocked_init):
+    @mock.patch('radical.utils.Logger')
+    def test_configure(self, mocked_init, mocked_Logger):
         cfg = self.setUp()
         component = SSH(name=None, cfg=None, session=None)
-        component._log = ru.Logger('dummy')
+        component._log = mocked_Logger
         component._cfg = {}
         component.env_removables = []
         component._configure()
