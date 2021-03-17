@@ -117,10 +117,17 @@ class Srun(LaunchMethod):
             mapping += ' --gpus-per-task %d' % n_gpus
 
         if nodefile:
-            mapping += ' --nodelist=%s' % nodefile
+            mapping += ' --nodefile=%s' % nodefile
 
         cmd = '%s %s %s %s' % (self.launch_command, mapping, env, task_cmd)
         return cmd, None
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_cmd(self):
+
+        return "echo $PMIX_RANK"
 
 
 # ------------------------------------------------------------------------------
