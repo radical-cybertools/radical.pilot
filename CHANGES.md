@@ -4,6 +4,20 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
+1.6.1  Release                                                        2021-03-09
+--------------------------------------------------------------------------------
+
+  - support for Andes@ORNL, obsolete Rhea@ORNL
+  - add_pilot() also accepts pilot dict
+  - fixed conda activation for PRTE2 config (Summit@ORNL)
+  - fixed partitions handling in LSF_SUMMIT RM
+  - reorganized DVM start process (prte2)
+  - conf fixes for comet
+  - updated events for PRTE2 LM
+  - integration test for Bridges2
+  - prepare partitioning
+
+
 1.6.0  Release                                                        2021-02-13
 --------------------------------------------------------------------------------
 
@@ -1389,5 +1403,4 @@ API Changes:
 
         
 --------------------------------------------------------------------------------
-
 
