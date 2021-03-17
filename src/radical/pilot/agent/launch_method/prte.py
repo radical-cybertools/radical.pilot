@@ -114,8 +114,8 @@ class PRTE(LaunchMethod):
         dvm_count      = cfg['resource_cfg'].get('dvm_count') or 1
         nodes_per_dvm  = math.ceil(num_nodes / dvm_count)
 
-        # format: {<id>: {'nodes': [...], 'details': {'dvm_uri': <uri>}}}
-        # LM specific parameters will be kept under `'details'`
+        # format: {<id>: {'nodes': [...], 'dvm_uri': <uri>}}
+        # `nodes` will be moved to RM, and the rest is LM details per partition
         partitions     = {}
 
         # go through every dvm instance
@@ -218,13 +218,13 @@ class PRTE(LaunchMethod):
 
             log.info('prte-%s startup successful: [%s]', dvm_id, dvm_uri)
 
-            profiler.prof(event='dvm_ok',
+            profiler.prof(event='dvm_uri',
                           uid=cfg['pid'],
                           msg='dvm_id=%s' % dvm_id)
 
             partitions[str(dvm_id)] = {
                 'nodes'  : [node[1] for node in node_list],
-                'details': {'dvm_uri': dvm_uri}}
+                'dvm_uri': dvm_uri}
 
         lm_info = {'partitions'  : partitions,
                    'version_info': prte_info,
@@ -233,10 +233,11 @@ class PRTE(LaunchMethod):
         # extra time to allow the DVM(s) to stabilize
         time.sleep(10)
 
-        # we need to inform the actual LaunchMethod instance about the prte URI.
-        # So we pass it back to the ResourceManager which will keep it in an
-        # 'lm_info', which will then be passed as part of the slots via the
-        # scheduler
+        # we need to inform the actual LaunchMethod instance about partitions
+        # (`partition_id` per task and `dvm_uri` per partition). List of nodes
+        # will be stored in ResourceManager and the rest details about
+        # partitions will be kept in `lm_info`, which will be passed as part of
+        # the slots via the scheduler.
         return lm_info
 
 
@@ -253,7 +254,7 @@ class PRTE(LaunchMethod):
             raise Exception("Couldn't find prun")
 
         for p_id, p_data in lm_info.get('partitions', {}).items():
-            dvm_uri = p_data['details']['dvm_uri']
+            dvm_uri = p_data['dvm_uri']
             try:
                 log.info('terminating prte-%s (%s)', p_id, dvm_uri)
                 ru.sh_callout('%s --hnp %s --terminate' % (prun, dvm_uri))
@@ -308,6 +309,11 @@ class PRTE(LaunchMethod):
             raise RuntimeError('no partitions in lm_info for %s: %s'
                                % (self.name, slots))
 
+        partitions = slots['lm_info']['partitions']
+        # `partition_id` should be set in a scheduler
+        partition_id = slots.get('partition_id') or partitions.keys()[0]
+        dvm_uri = '--hnp "%s"' % partitions[partition_id]['dvm_uri']
+
         if task_argstr: task_command = '%s %s' % (task_exec, task_argstr)
         else          : task_command = task_exec
 
@@ -325,7 +331,6 @@ class PRTE(LaunchMethod):
         map_flag += ' --pmca ptl_base_max_msg_size %d' % PTL_BASE_MAX_MSG_SIZE
       # map_flag += ' --pmca rmaps_base_verbose 5'
 
-        dvm_uri = ''
         if 'nodes' not in slots:
             # this task is unscheduled - we leave it to PRRTE/PMI-X to
             # correctly place the task
@@ -341,13 +346,6 @@ class PRTE(LaunchMethod):
             map_flag += ' -host %s' % ','.join(hosts)
             # another way to provide list of hosts:
             #    map_flag += ' -host %s:%s' % (hosts[0], n_procs)
-
-            # scheduler makes sure that all hosts are from the same DVM
-            _host_uid = slots['nodes'][0]['uid']
-            for partition in slots['lm_info']['partitions'].values():
-                if _host_uid in partition['nodes']:
-                    dvm_uri = '--hnp "%s"' % partition['details']['dvm_uri']
-                    break
 
         # Additional (debug) arguments to prun
         if self._verbose:
