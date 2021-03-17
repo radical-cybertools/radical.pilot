@@ -16,7 +16,7 @@ class TestTask(TestCase):
     # --------------------------------------------------------------------------
     #
     def setUp(self) -> dict:
-        path = os.path.dirname(__file__) + '../test_config/resources.json'
+        path = os.path.dirname(__file__) + '/../test_config/resources.json'
         resources = ru.read_json(path)
         hostname = socket.gethostname()
 
@@ -24,14 +24,19 @@ class TestTask(TestCase):
             if host in hostname:
                 return resources[host]
 
+
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(MPIRun, '__init__',   return_value=None)
     def test_configure(self, mocked_init):
         cfg = self.setUp()
         component = MPIRun(name=None, cfg=None, session=None)
+        component.name = 'MPIRUN'
         component._log = ru.Logger('dummy')
-        component._cfg = {}
+        component._cfg = ru.Config(cfg=cfg)
+        if not cfg:
+            return
+
         component.env_removables = []
         component._configure()
         self.assertEqual(component.launch_command, cfg['mpirun_path'])

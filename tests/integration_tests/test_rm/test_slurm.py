@@ -19,13 +19,15 @@ class TestTask(TestCase):
     # --------------------------------------------------------------------------
     #
     def setUp(self) -> dict:
-        path = os.path.dirname(__file__) + '../test_config/resources.json'
+
+        path = os.path.dirname(__file__) + '/../test_config/resources.json'
         resources = ru.read_json(path)
         hostname = socket.gethostname()
 
         for host in resources.keys():
             if host in hostname:
                 return resources[host]
+
 
     # ------------------------------------------------------------------------------
     #
@@ -38,6 +40,10 @@ class TestTask(TestCase):
         os.environ['SLURM_CPUS_ON_NODE'] = '24'
 
         cfg = self.setUp()
+        if not cfg:
+            # test won't work on this resource
+            return
+
         component = Slurm(cfg=None, session=None)
         component._log    = ru.Logger('dummy')
         component._cfg    = {}
