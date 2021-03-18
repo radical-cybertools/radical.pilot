@@ -30,12 +30,6 @@ def sift(nproc, ngpus)-> str:
     import os
     import subprocess
     os.system("export LD_LIBRARY_PATH=/oasis/projects/nsf/unc100/aymen/anaconda3/lib:$LD_LIBRARY_PATH")
-    '''
-    match_path = os.popen('$HOME/RADICAL/integration_usecases/geolocation/CudaSift/cudasift' 
-                          ' $HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40.jpg'
-                          ' 2000 2000 2000 2000 $HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40-1.jpg'
-                          ' 2000 2000 2000 2000').read()[-1]
-    '''
     proc = subprocess.Popen("$HOME/RADICAL/integration_usecases/geolocation/CudaSift/cudasift"
                             " $HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40.jpg"
                             " 2000 2000 2000 2000 $HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40-1.jpg"
