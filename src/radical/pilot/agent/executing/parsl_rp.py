@@ -106,7 +106,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             print('\t+ %s: %-10s: %10s: %s'
                   % (task.uid, task.state, task.pilot, task.stdout))
         if state == rp.FAILED:
-            parsl_task.set_exception(Exception(str(task.stderr))
+            parsl_task.set_exception(Exception(str(task.stderr)))
             print('\t- %s: %-10s: %10s: %s'
                   % (task.uid, task.state, task.pilot, task.stderr))
 
