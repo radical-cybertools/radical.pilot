@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 __author__    = 'RADICAL Team'
 __email__     = 'radical@rutgers.edu'
