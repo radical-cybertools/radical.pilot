@@ -59,6 +59,7 @@ class MPIRun(LaunchMethod):
         else:
             self._log.debug('===== lm MPIRUN init_info stop: ---')
 
+
     # --------------------------------------------------------------------------
     #
     def initialize(self, rm, lmcfg):

@@ -139,8 +139,8 @@ class ResourceManager(object):
         #
         # Note that the LM configure may need to adjust the ResourceManager
         # settings (hello ORTE).
-        launch_methods       = self._cfg.resource_cfg.launch_methods
-        self._launchers      = dict()
+        launch_methods  = self._cfg.resource_cfg.launch_methods
+        self._launchers = dict()
 
         for name, lmcfg in launch_methods.items():
             if name == 'order':
