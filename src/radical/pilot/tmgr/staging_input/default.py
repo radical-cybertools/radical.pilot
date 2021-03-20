@@ -107,7 +107,7 @@ class Default(TMGRStagingInputComponent):
         elif cmd == 'pilot_register':
 
             pid = arg['pid']
-            self._log.debug('=== register pilot %s', pid)
+            self._log.debug('register pilot %s', pid)
 
             if pid not in self._connected:
                 self._connected.append(pid)

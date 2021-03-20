@@ -4,7 +4,6 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
-import sys
 import copy
 
 import radical.utils                as ru
@@ -13,7 +12,6 @@ import radical.saga.filesystem      as rsfs
 import radical.saga.utils.pty_shell as rsup
 
 from .constants import RESOURCE_CONFIG_LABEL_DEFAULT
-from .db        import DBSession
 from .          import utils as rpu
 
 
@@ -44,31 +42,30 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, dburl=None, uid=None, cfg=None, _primary=True):
+    def __init__(self, service_url=None, uid=None, cfg=None, _primary=True):
         '''
         Creates a new session.  A new Session instance is created and
         stored in the database.
 
         **Arguments:**
-            * **dburl** (`string`): The MongoDB URL.  If none is given,
-              RP uses the environment variable RADICAL_PILOT_DBURL.  If that is
-              not set, an error will be raised.
-
+            * **service_url** (`string`): The Bridge Service URL.
+              If none is given, RP uses the environment variable
+              RADICAL_PILOT_SERVICE_URL.  If that is not set, an error will be
+              raised.
             * **cfg** (`str` or `dict`): a named or instantiated configuration
               to be used for the session.
 
             * **uid** (`string`): Create a session with this UID.  Session UIDs
               MUST be unique - otherwise they will lead to conflicts in the
               underlying database, resulting in undefined behaviours (or worse).
-
             * **_primary** (`bool`): only sessions created by the original
-              application process (via `rp.Session()`, will connect to the  DB.
+              application process (via `rp.Session()`, will create comm bridges
               Secondary session instances are instantiated internally in
               processes spawned (directly or indirectly) by the initial session,
               for example in some of it's components.  A secondary session will
               inherit the original session ID, but will not attempt to create
-              a new DB collection - if such a DB connection is needed, the
-              component needs to establish that on its own.
+              a new comm bridge - if such a bridge connection is needed, the
+              component will connect to the one created by the primary session.
         '''
 
         # NOTE: `name` and `cfg` are overloaded, the user cannot point to
@@ -79,7 +76,7 @@ class Session(rs.Session):
             name = cfg
             cfg  = None
 
-        self._dbs     = None
+        self._service = None
         self._closed  = False
         self._primary = _primary
 
@@ -90,28 +87,22 @@ class Session(rs.Session):
         self._cfg     = ru.Config('radical.pilot.session',  name=name, cfg=cfg)
         self._rcfgs   = ru.Config('radical.pilot.resource', name='*', expand=False)
 
-        if _primary:
+        pwd = os.getcwd()
 
-            pwd = os.getcwd()
+        if not self._cfg.sid:
+            if uid:
+                self._cfg.sid = uid
+            else:
+                self._cfg.sid = ru.generate_id('rp.session',
+                                               mode=ru.ID_PRIVATE)
+        if not self._cfg.base:
+            self._cfg.base = pwd
 
-            if not self._cfg.sid:
-                if uid:
-                    self._cfg.sid = uid
-                else:
-                    self._cfg.sid = ru.generate_id('rp.session',
-                                                   mode=ru.ID_PRIVATE)
-            if not self._cfg.base:
-                self._cfg.base = pwd
+        if not self._cfg.path:
+            self._cfg.path = '%s/%s' % (self._cfg.base, self._cfg.sid)
 
-            if not self._cfg.path:
-                self._cfg.path = '%s/%s' % (self._cfg.base, self._cfg.sid)
-
-            if not self._cfg.client_sandbox:
-                self._cfg.client_sandbox = pwd
-
-        else:
-            for k in ['sid', 'base', 'path']:
-                assert(k in self._cfg), 'non-primary session misses %s' % k
+        if not self._cfg.client_sandbox:
+            self._cfg.client_sandbox = pwd
 
         # change RU defaults to point logfiles etc. to the session sandbox
         def_cfg             = ru.DefaultConfig()
@@ -131,7 +122,7 @@ class Session(rs.Session):
         self._log.info('radical.saga  version: %s' % rs.version_detail)
         self._log.info('radical.utils version: %s' % ru.version_detail)
 
-        self._prof.prof('session_start', uid=self._uid, msg=int(_primary))
+        self._prof.prof('session_start', uid=self._uid)
 
         # now we have config and uid - initialize base class (saga session)
         rs.Session.__init__(self, uid=self._uid)
@@ -145,53 +136,34 @@ class Session(rs.Session):
                             'js_shells'        : dict(),
                             'fs_dirs'          : dict()}
 
-        if _primary:
-            self._initialize_primary(dburl)
-
-        # at this point we have a DB connection, logger, etc, and are done
-        self._prof.prof('session_ok', uid=self._uid, msg=int(_primary))
-
-
-    # --------------------------------------------------------------------------
-    def _initialize_primary(self, dburl):
-
         self._rep.info ('<<new session: ')
         self._rep.plain('[%s]' % self._uid)
 
-        # create db connection - need a dburl to connect to
-        if not dburl: dburl = self._cfg.dburl
-        if not dburl: dburl = self._cfg.default_dburl
-        if not dburl: raise RuntimeError("no db URL (set RADICAL_PILOT_DBURL)")
+        # need a service_url to connect to
+        if not service_url: service_url = self._cfg.service_url
+        if not service_url: service_url = self._cfg.default_service_url
+        if not service_url:
+            raise RuntimeError("no db URL (set RADICAL_PILOT_SERVICE_URL)")
 
-        self._cfg.dburl = dburl
+        # FIXME MONGODB: in this case, start an embedded service
 
-        dburl_no_passwd = ru.Url(dburl)
-        if dburl_no_passwd.get_password():
-            dburl_no_passwd.set_password('****')
+        self._cfg.service_url = service_url
 
-        self._rep.info ('<<database   : ')
-        self._rep.plain('[%s]'    % dburl_no_passwd)
-        self._log.info('dburl %s' % dburl_no_passwd)
+        self._rep.info ('<<bridge     : ')
+        self._rep.plain('[%s]'    % service_url)
 
-        # create/connect database handle on primary sessions
-        try:
-            self._dbs = DBSession(sid=self.uid, dburl=dburl,
-                                  cfg=self._cfg, log=self._log)
+        # create/connect bridge handle on primary sessions
+        self._service     = ru.zmq.Client(url=service_url)
+        self._cfg.bridge  = self._service.request('client_register',
+                                                  {'sid': self._uid})
+        self._log.debug('=== bridge: %s', self._cfg.bridge)
 
-            py_version_detail = sys.version.replace("\n", " ")
-            from . import version_detail as rp_version_detail
-
-            self.inject_metadata({'radical_stack':
-                                         {'rp': rp_version_detail,
-                                          'rs': rs.version_detail,
-                                          'ru': ru.version_detail,
-                                          'py': py_version_detail}})
-        except Exception as e:
-            self._rep.error(">>err\n")
-            self._log.exception('session create failed [%s]' %
-                    dburl_no_passwd)
-            raise RuntimeError ('session create failed [%s]' %
-                    dburl_no_passwd) from e
+      # FIXME MONGODB: to json
+      # self.inject_metadata({'radical_stack':
+      #                              {'rp': rp_version_detail,
+      #                               'rs': rs.version_detail,
+      #                               'ru': ru.version_detail,
+      #                               'py': py_version_detail}})
 
         # primary sessions have a component manager which also manages
         # heartbeat.  'self._cmgr.close()` should be called during termination
@@ -210,16 +182,18 @@ class Session(rs.Session):
 
             # create recording path and record session
             os.system('mkdir -p %s' % self._rec)
-            ru.write_json({'dburl': str(self.dburl)},
+            ru.write_json({'service_url': str(self.service_url)},
                           "%s/session.json" % self._rec)
             self._log.info("recording session in %s" % self._rec)
 
+        # at this point we have a DB connection, logger, etc, and are done
+        self._prof.prof('session_ok', uid=self._uid)
         self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
     # context manager `with` clause
-    # FIXME: cleanup_on_close, terminate_on_close attributes?
+    # FIXME: terminate_on_close attributes?
     #
     def __enter__(self):
         return self
@@ -230,16 +204,13 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def close(self, cleanup=False, terminate=True, download=False):
+    def close(self, terminate=True, download=False):
         '''
 
         Closes the session.  All subsequent attempts access objects attached to
-        the session will result in an error. If cleanup is set to True,
-        the session data is removed from the database.
+        the session will result in an error.
 
         **Arguments:**
-            * **cleanup**   (`bool`):
-              Remove session from MongoDB (implies * terminate)
             * **terminate** (`bool`):
               Shut down all pilots associated with the session.
             * **download** (`bool`):
@@ -256,11 +227,7 @@ class Session(rs.Session):
         self._prof.prof("session_close", uid=self._uid)
 
         # set defaults
-        if cleanup   is None: cleanup   = True
-        if terminate is None: terminate = True
-
-        if  cleanup:
-            # cleanup implies terminate
+        if terminate is None:
             terminate = True
 
         for tmgr_uid, tmgr in self._tmgrs.items():
@@ -276,11 +243,15 @@ class Session(rs.Session):
         if self._cmgr:
             self._cmgr.close()
 
-        if self._dbs:
-            self._log.debug("session %s closes db (%s)", self._uid, cleanup)
-            self._dbs.close(delete=cleanup)
+        if self._service:
+            try:
+                self._log.debug("session %s closes service", self._uid)
+                self._service.request('client_unregister',
+                                      {'sid': self._uid})
+            except:
+                pass
 
-        self._log.debug("session %s closed (delete=%s)", self._uid, cleanup)
+        self._log.debug("session %s closed", self._uid)
         self._prof.prof("session_stop", uid=self._uid)
         self._prof.close()
 
@@ -311,12 +282,12 @@ class Session(rs.Session):
         '''
 
         object_dict = {
-            "uid"       : self._uid,
-            "created"   : self.created,
-            "connected" : self.connected,
-            "closed"    : self.closed,
-            "dburl"     : str(self.dburl),
-            "cfg"       : copy.deepcopy(self._cfg)
+            "uid"        : self._uid,
+            "created"    : self.created,
+            "connected"  : self.connected,
+            "closed"     : self.closed,
+            "service_url": str(self.service_url),
+            "cfg"        : copy.deepcopy(self._cfg)
         }
         return object_dict
 
@@ -353,23 +324,8 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     @property
-    def dburl(self):
-        return self._cfg.dburl
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_db(self):
-
-        if self._dbs: return self._dbs.get_db()
-        else        : return None
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def primary(self):
-        return self._primary
+    def service_url(self):
+        return self._cfg.service_url
 
 
     # --------------------------------------------------------------------------
@@ -383,49 +339,7 @@ class Session(rs.Session):
     #
     @property
     def cmgr(self):
-        assert(self._primary)
         return self._cmgr
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def created(self):
-        '''Returns the UTC date and time the session was created.
-        '''
-        if self._dbs: return self._dbs.created
-        else        : return None
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def connected(self):
-        '''
-        Return time when the session connected to the DB
-        '''
-
-        if self._dbs: return self._dbs.connected
-        else        : return None
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def is_connected(self):
-
-        return self._dbs.is_connected
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def closed(self):
-        '''
-        Returns the time of closing
-        '''
-        if self._dbs: return self._dbs.closed
-        else        : return None
 
 
     # --------------------------------------------------------------------------
@@ -477,17 +391,17 @@ class Session(rs.Session):
         if not isinstance(metadata, dict):
             raise Exception("Session metadata should be a dict!")
 
-        if self._dbs and self._dbs._c:
-            self._dbs._c.update({'type'  : 'session',
-                                 "uid"   : self.uid},
-                                {"$push" : {"metadata": metadata}})
+        # FIXME MONGODB: to json
+      # if self._dbs and self._dbs._c:
+      #     self._dbs._c.update({'type'  : 'session',
+      #                          "uid"   : self.uid},
+      #                         {"$push" : {"metadata": metadata}})
 
 
     # --------------------------------------------------------------------------
     #
     def _register_pmgr(self, pmgr):
 
-        self._dbs.insert_pmgr(pmgr.as_dict())
         self._pmgrs[pmgr.uid] = pmgr
 
 
@@ -537,7 +451,6 @@ class Session(rs.Session):
     #
     def _register_tmgr(self, tmgr):
 
-        self._dbs.insert_tmgr(tmgr.as_dict())
         self._tmgrs[tmgr.uid] = tmgr
 
 
@@ -689,7 +602,7 @@ class Session(rs.Session):
     #
     def fetch_profiles(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_profiles(self._uid, dburl=self.dburl, tgt=tgt,
+        return rpu.fetch_profiles(self._uid, service_url=self.service_url, tgt=tgt,
                                   session=self)
 
 
@@ -697,7 +610,7 @@ class Session(rs.Session):
     #
     def fetch_logfiles(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_logfiles(self._uid, dburl=self.dburl, tgt=tgt,
+        return rpu.fetch_logfiles(self._uid, service_url=self.service_url, tgt=tgt,
                                   session=self)
 
 
@@ -705,7 +618,7 @@ class Session(rs.Session):
     #
     def fetch_json(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt,
+        return rpu.fetch_json(self._uid, service_url=self.service_url, tgt=tgt,
                               session=self)
 
 

@@ -520,8 +520,6 @@ class Component(object):
       # from radical.pilot import constants as rpc
 
         comp = {
-                rpc.WORKER                         : rpt.Worker,
-                rpc.UPDATE_WORKER                  : rpw.Update,
                 rpc.STAGER_WORKER                  : rpw.Stager,
 
                 rpc.PMGR_LAUNCHING_COMPONENT       : rppm.Launching,

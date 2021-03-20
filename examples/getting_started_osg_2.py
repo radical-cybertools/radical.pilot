@@ -196,7 +196,7 @@ if __name__ == '__main__':
         report.header('finalize')
         report.header()
         if session:
-            session.close(cleanup=False)
+            session.close()
 
     report.header()
 

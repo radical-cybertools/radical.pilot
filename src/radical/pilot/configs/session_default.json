@@ -4,12 +4,9 @@
 # a functional rp session, both on the client and on the agent side.
 {
     "default_dburl": "mongodb://rct:rct_test@two.radical-project.org/rct_test",
-    "dburl"        : "${RADICAL_PILOT_DBURL}",
+    "service_url"  : "${RADICAL_PILOT_SERVICE_URL}",
     "session_base" : "${RADICAL_PILOT_SESSION_BASE:$PWD}",
     "record"       : "${RADICAL_PILOT_SESSION_RECORD}",
-
-    "bulk_time"    : 1.0,
-    "bulk_size"    : 1024,
 
     "heartbeat"    : {
         "interval" :  1.0,
@@ -27,7 +24,6 @@
 
     "components" : {
         # how many instances of the respective components should be started
-        "update" : {"count": 1},
         "stager" : {"count": 1}
     }
 }

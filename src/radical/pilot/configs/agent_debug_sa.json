@@ -3,7 +3,6 @@
     "staging_area"         : "staging_area",
     "staging_schema"       : "staging",
     "max_io_loglength"     : 1024,
-    "db_poll_sleeptime"    :  5.0,
 
     "bulk_time"    : 10.0,
     "bulk_size"    : 4096,
@@ -65,7 +64,6 @@
     },
 
     "components" : {
-        "update"                       : {"count" : 1},
         "agent_staging_input"          : {"count" : 4},
         "agent_scheduling"             : {"count" : 1},
         "agent_executing"              : {"count" : 4},

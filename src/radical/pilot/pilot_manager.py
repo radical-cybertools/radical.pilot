@@ -339,7 +339,7 @@ class PilotManager(rpu.Component):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        self._log.debug('=== got control cmd %s: %s', cmd, arg)
+        self._log.debug('got control cmd %s: %s', cmd, arg)
 
         if cmd == 'pilot_activate':
             pilot = arg['pilot']
@@ -372,16 +372,16 @@ class PilotManager(rpu.Component):
                 return
 
             target, passed = rps._pilot_state_progress(pid, current, target)
-            self._log.debug('=== %s current: %s', pid, current)
-            self._log.debug('=== %s target : %s', pid, target )
-            self._log.debug('=== %s passed : %s', pid, passed )
+          # self._log.debug('%s current: %s', pid, current)
+          # self._log.debug('%s target : %s', pid, target )
+          # self._log.debug('%s passed : %s', pid, passed )
 
             if target in [rps.CANCELED, rps.FAILED]:
                 # don't replay intermediate states
                 passed = passed[-1:]
 
             for s in passed:
-                self._log.debug('=== %s advance: %s', pid, s )
+                self._log.debug('%s advance: %s', pid, s )
                 # we got state from either pubsub or DB, so don't publish again.
                 # we also don't need to maintain bulks for that reason.
                 pilot_dict['state'] = s
