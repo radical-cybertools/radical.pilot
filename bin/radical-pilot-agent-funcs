@@ -216,15 +216,25 @@ class Executor(object):
     def prepare_func(self, func):
 
         function_info = {}
-        function_info = pickle.loads(codecs.decode(func.encode(), "base64"))
+
+        try:
+            function_info = pickle.loads(codecs.decode(func.encode(), "base64"))
+        except Exception as e:
+            self._log.error("preparing function for execution failed due to: %s", e)
+            self._log.error(function_info)
 
         code        = function_info["_cud_code"]
         args        = function_info["_cud_args"]
         kwargs      = function_info["_cud_kwargs"]
 
         from radical.pilot.serialize import serializer as serialize
-
-        fn = serialize.FuncSerializer.deserialize(code)
+        
+        try:
+ 
+           fn = serialize.FuncSerializer.deserialize_obj(code)
+        except Exception as e:
+           self._log.error("preparing function for execution failed due to: %s", e)
+           self._log.error(fn)
 
         return fn, args, kwargs
 

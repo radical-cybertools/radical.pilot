@@ -435,13 +435,17 @@ class TaskDescription(ru.Description):
 
             exe = self.get('executable')
             from radical.pilot.serialize import serializer as serialize
-            ser_exe = serialize.FuncSerializer.serialize_file(exe['func'])
-
+            #ser_exe = serialize.FuncSerializer.serialize_file(exe['func'])
+            ser_exe = serialize.FuncSerializer.serialize_obj(exe['func'])
             cu_exe_dict   = {'_cud_code'  :ser_exe,
                              '_cud_args'  :exe['args'],
                              '_cud_kwargs':exe['kwargs']}
-            func_obj = codecs.encode(pickle.dumps(cu_exe_dict), "base64").decode()
-            self['executable'] = func_obj
+            try:
+ 
+               func_obj = codecs.encode(pickle.dumps(cu_exe_dict), "base64").decode()
+               self['executable'] = func_obj
+            except Exception as e:
+               raise ValueError(e)
 
         if not self.get('executable') and \
            not self.get('kernel')     :

@@ -95,9 +95,9 @@ class FuncSerializer(object):
         return  FUNC_FILE_PATH
 
 
-    def deserialize(obj):
+    def deserialize_file(obj):
         """
-        Deserialize function body from object
+        Deserialize function body from file
         """
         result = None
 
@@ -107,16 +107,29 @@ class FuncSerializer(object):
                     result = LOADFILE(f)
                     log.debug(result)
 
-            except Exception:
-                log.error("Failed to deserialize function from file")
-
+            except Exception as e:
+                log.error("Failed to deserialize function from file due to %s:", e)
         else:
-            try:
-                result = LOADOBJ(obj)
-                log.debug(result)
+            log.error("Failed to deserialize function: not a valid file or does not exist %s:", e)
 
-            except Exception:
-                log.error("Failed to deserialize function from object")
         if result is None:
-            raise Exception("Function deserilization failed")
+            raise Exception("Deserilization from file failed")
         return result
+
+    def deserialize_obj(obj):
+        """
+        Deserialize function body from object
+        """
+        result = None
+
+        try:
+            result = LOADOBJ(obj)
+            log.debug(result)
+
+        except Exception as e:
+            log.error("Failed to deserialize function from object due to %s:", e)
+
+        if result is None:
+            raise Exception("Deserilization from object failed")
+        return result
+
