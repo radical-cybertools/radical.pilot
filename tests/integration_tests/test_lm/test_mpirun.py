@@ -15,28 +15,34 @@ class TestTask(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    def setUp(self) -> dict:
-        path = os.path.dirname(__file__) + '../test_config/resources.json'
+    @classmethod
+    def setUpClass(cls) -> None:
+        path = os.path.dirname(__file__) + '/../test_config/resources.json'
         resources = ru.read_json(path)
         hostname = socket.gethostname()
 
         for host in resources.keys():
             if host in hostname:
-                return resources[host]
+                cls.host = host
+                cls.resource = resources[host]
+                break
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(MPIRun, '__init__',   return_value=None)
-    def test_configure(self, mocked_init):
-        cfg = self.setUp()
+    @mock.patch('radical.utils.Logger')
+    def test_configure(self, mocked_init, mocked_Logger):
+
         component = MPIRun(name=None, cfg=None, session=None)
-        component._log = ru.Logger('dummy')
-        component._cfg = {}
+        component.name = 'mpirun'
+        component._log = mocked_Logger
+        component._cfg = ru.Munch({'resource': self.host})
         component.env_removables = []
         component._configure()
-        self.assertEqual(component.launch_command, cfg['mpirun_path'])
-        self.assertEqual(component.mpi_flavor, cfg['mpi_flavor'])
-        self.assertEqual(component.mpi_version, cfg['mpi_version'])
+
+        self.assertEqual(component.launch_command, self.resource['mpirun_path'])
+        self.assertEqual(component.mpi_version, self.resource['mpi_version'])
+        self.assertEqual(component.mpi_flavor, self.resource['mpi_flavor'])
     # --------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------

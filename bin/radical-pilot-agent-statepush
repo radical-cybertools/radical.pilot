@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+
+'''
+This utility will push a pilot state update to MongoDB.  Its purpose is to delay
+that state update until after all profiles and logfiles have been closed and
+packaged, so that the client side can rely on the state update to signal that.
+A state update in the agent process itself wold necessarily happen before
+control is returned to the bootstrapper, and thus before the bootstrapper has
+a chance to pack up the profiles, which results in a race with the client to
+pull those packages.
+
+Note that this tool assumes a specific session straucture in the DB, and thus
+needs to be kept in sync with the respective RP code.
+'''
+
+import os
+import sys
+import time
+
+import radical.utils as ru
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__':
+
+    sid   = None
+    pid   = None
+    state = None
+    cfg   = None
+    dburl = None
+
+    if len(sys.argv) == 3:
+        json  = sys.argv[1]
+        state = sys.argv[2]
+
+        cfg      = ru.read_json(json)
+        sid      = cfg['sid']
+        pid      = cfg['pid']
+        dburl    = cfg['dburl']
+        hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
+
+    elif len(sys.argv) == 4:
+        sid      = sys.argv[1]
+        pid      = sys.argv[2]
+        state    = sys.argv[3]
+        dburl    = os.environ['RADICAL_PILOT_DBURL']
+        hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
+
+    else:
+        raise ValueError('need sid, pid and state arguments %s' % sys.argv[1:])
+
+
+    print('dburl   : %s' % dburl)
+    print('tunnel  : %s' % hostport)
+
+    if hostport:
+        dburl = ru.Url(dburl)
+        dburl.host, dburl.port = hostport.split(':')
+        print('dburl[t]: %s' % dburl)
+
+    print('session : %s' % sid)
+    print('pilot   : %s' % pid)
+    print('state   : %s' % pid)
+
+    # mpongodb_connect wants a string at the moment
+    mongo, db, _, _, _ = ru.mongodb_connect(str(dburl))
+
+    if not mongo or not db:
+        raise RuntimeError('Could not connect to database at %s' % dburl)
+
+    coll = db[sid]
+    ret  = coll.update({'type' : 'pilot',
+                        'uid'  : pid},
+                       {'$push': {'states'  : state},
+                        '$set' : {'state'   : state,
+                                  'finished': time.time()}
+                       })
+
+    print('update  : %s' % ret)
+
+
+# ------------------------------------------------------------------------------
+

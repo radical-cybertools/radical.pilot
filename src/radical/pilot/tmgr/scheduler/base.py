@@ -103,8 +103,8 @@ class TMGRSchedulingComponent(rpu.Component):
             impl = impl(cfg, session)
             return impl
 
-        except KeyError:
-            raise ValueError("Scheduler '%s' unknown or defunct" % name)
+        except KeyError as e:
+            raise ValueError("Scheduler '%s' unknown or defunct" % name) from e
 
 
     # --------------------------------------------------------------------------
@@ -307,6 +307,12 @@ class TMGRSchedulingComponent(rpu.Component):
                             if pid not in to_cancel:
                                 to_cancel[pid] = list()
                             to_cancel[pid].append(uid)
+
+            dbs = self._session._dbs
+
+            if not dbs:
+                # too late, already closing down
+                return True
 
             for pid in to_cancel:
                 # FIXME: MongoDB

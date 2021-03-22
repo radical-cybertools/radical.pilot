@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # pylint: disable=redefined-outer-name
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
