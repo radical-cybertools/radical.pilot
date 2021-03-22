@@ -25,14 +25,12 @@ _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 # agent connections, identified by a common session ID.  A client connection
 # will trigger the creation of the following communication channels:
 #
-#   - control_pubsub_bridge
+#   - proxy_control_pubsub_bridge
 #     links client and agent control pubsubs (includes heartbeat)
-#   - state_pubsub_bridge
+#   - proxy_state_pubsub_bridge
 #     forwards task state updates from agents to client
-#   - agent_input_queue
-#     forwards tasks from the client to the agents
-#   - agent_output_queue
-#     forwards tasks from the agents to the client
+#   - proxy_task_queue
+#     forwards tasks from the client to the agents and vice versa
 #
 #
 # The protocol on the `bridge_request` channel is as follows:
@@ -45,10 +43,9 @@ _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 #       'arg': 'sid': <sid>
 #
 #    reply:
-#       'res': {'control_pubsub'    : {'sub': <url>, 'pub': <url>},
-#               'state_pubsub'      : {'sub': <url>, 'pub': <url>},
-#               'agent_input_queue' : {'put': <url>, 'get': <url>},
-#               'agent_output_queue': {'put': <url>, 'get': <url>}}
+#       'res': {'proxy_control_pubsub': {'sub': <url>, 'pub': <url>},
+#               'proxy_state_pubsub'  : {'sub': <url>, 'pub': <url>},
+#               'proxy_task_queue'    : {'put': <url>, 'get': <url>}}
 #
 #    notes:
 #      - the request will fail if the session ID is known from another
@@ -60,8 +57,8 @@ _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 #        - see semantics of the 'client_unregister' request for details.
 #      - the same termination semantics holds for the 'client_unregister'
 #        request.
-#      - any agent queues which exist for that session at the time of
-#        termination will also be closed, disregarding ay data hekd in those
+#      - any task queues which exist for that session at the time of
+#        termination will also be closed, disregarding any data held in those
 #        queues.
 #
 #
@@ -73,10 +70,9 @@ _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 #       'arg': 'sid': <sid>
 #
 #    reply:
-#       'res': {'control_pubsub'    : {'sub': <url>, 'pub': <url>},
-#               'state_pubsub'      : {'sub': <url>, 'pub': <url>},
-#               'agent_input_queue' : {'put': <url>, 'get': <url>},
-#               'agent_output_queue': {'put': <url>, 'get': <url>}}
+#       'res': {'proxy_control_pubsub': {'sub': <url>, 'pub': <url>},
+#               'proxy_state_pubsub'  : {'sub': <url>, 'pub': <url>},
+#               'proxy_task_queue'    : {'put': <url>, 'get': <url>}}
 #
 #    notes:
 #      - the request will fail if the session ID is not registered (anymore)
@@ -140,7 +136,7 @@ class ZMQBridge(ru.zmq.Server):
         self._lock    = mt.Lock()
         self._clients = dict()
 
-        ru.zmq.Server.__init__(self)
+        ru.zmq.Server.__init__(self, url='tcp://*:10000+')
 
         self._monitor = mt.Thread(target=self._monitor)
         self._monitor.daemon = True
@@ -209,7 +205,7 @@ class ZMQBridge(ru.zmq.Server):
         sid = arg['sid']
 
         if sid in self._clients:
-            return {'err': 'client already registered'}
+            raise RuntimeError('client already registered')
 
         q = mp.Queue()
         term = mp.Event()
@@ -220,14 +216,14 @@ class ZMQBridge(ru.zmq.Server):
             data = q.get(timeout=10)
         except queue.Empty:
             proc.terminate()
-            return {'err': 'worker startup failed'}
+            raise RuntimeError('worker startup failed')
 
         self._clients[sid] = {'proc': proc,
                               'term': term,
                               'data': data,
                               'hb'  : time.time()}
 
-        return {'res': self._clients[sid]['data']}
+        return self._clients[sid]['data']
 
 
     # --------------------------------------------------------------------------
@@ -236,36 +232,36 @@ class ZMQBridge(ru.zmq.Server):
 
         log = ru.Logger('radical.pilot.bridge', level='debug', path=sid)
 
-        control_pubsub = None
-        state_pubsub   = None
-        agent_queue    = None
+        proxy_cp = None
+        proxy_sp = None
+        proxy_aq = None
 
         try:
-            control_pubsub = ru.zmq.PubSub(cfg={'channel': 'control_pubsub',
-                                                'uid'    : 'control_pubsub',
-                                                'type'   : 'pubsub',
-                                                'path'   : sid})
+            proxy_cp = ru.zmq.PubSub(cfg={'channel': 'proxy_control_pubsub',
+                                          'uid'    : 'proxy_control_pubsub',
+                                          'type'   : 'pubsub',
+                                          'path'   : sid})
 
-            state_pubsub   = ru.zmq.PubSub(cfg={'channel': 'state_pubsub',
-                                                'uid'    : 'state_pubsub',
-                                                'type'   : 'pubsub',
-                                                'path'   : sid})
+            proxy_sp = ru.zmq.PubSub(cfg={'channel': 'proxy_state_pubsub',
+                                          'uid'    : 'proxy_state_pubsub',
+                                          'type'   : 'pubsub',
+                                          'path'   : sid})
 
-            agent_queue    = ru.zmq.Queue (cfg={'channel': 'agent_queue',
-                                                'uid'    : 'agent_queue',
-                                                'type'   : 'queue',
-                                                'path'   : sid})
+            proxy_aq = ru.zmq.Queue (cfg={'channel': 'proxy_task_queue',
+                                          'uid'    : 'proxy_task_queue',
+                                          'type'   : 'queue',
+                                          'path'   : sid})
 
-            control_pubsub.start()
-            state_pubsub.start()
-            agent_queue.start()
+            proxy_cp.start()
+            proxy_sp.start()
+            proxy_aq.start()
 
-            data = {'control_pubsub'    : {'pub': str(control_pubsub.addr_pub),
-                                           'sub': str(control_pubsub.addr_sub)},
-                    'state_pubsub'      : {'pub': str(state_pubsub.addr_pub),
-                                           'sub': str(state_pubsub.addr_sub)},
-                    'agent_queue'       : {'put': str(agent_queue._addr_put),
-                                           'get': str(agent_queue._addr_get)}}
+            data = {'proxy_control_pubsub': {'pub': str(proxy_cp.addr_pub),
+                                             'sub': str(proxy_cp.addr_sub)},
+                    'proxy_state_pubsub'  : {'pub': str(proxy_sp.addr_pub),
+                                             'sub': str(proxy_sp.addr_sub)},
+                    'proxy_task_queue'    : {'put': str(proxy_aq.addr_put),
+                                             'get': str(proxy_aq.addr_get)}}
 
             # inform service about endpoint details
             q.put(data)
@@ -280,9 +276,9 @@ class ZMQBridge(ru.zmq.Server):
 
         finally:
 
-            if control_pubsub: control_pubsub.stop()
-            if state_pubsub  : state_pubsub.stop()
-            if agent_queue   : agent_queue.stop()
+            if proxy_cp: proxy_cp.stop()
+            if proxy_sp: proxy_sp.stop()
+            if proxy_aq: proxy_aq.stop()
 
             log.info('terminated')
 
@@ -295,9 +291,9 @@ class ZMQBridge(ru.zmq.Server):
 
         with self._lock:
             if sid not in self._clients:
-                return {'err': 'client not registered'}
+                raise RuntimeError('client %s not registered' % sid)
 
-            return {'res': self._clients[sid]['data']}
+            return self._clients[sid]['data']
 
 
     # --------------------------------------------------------------------------
@@ -309,14 +305,12 @@ class ZMQBridge(ru.zmq.Server):
         with self._lock:
 
             if sid not in self._clients:
-                return {'err': 'client not registered'}
+                raise RuntimeError('client %s not registered' % sid)
 
             self._clients[sid]['term'].set()
             self._clients[sid]['proc'].join()
 
             del(self._clients[sid])
-
-        return {'res': 'ok'}
 
 
     # --------------------------------------------------------------------------
@@ -329,11 +323,9 @@ class ZMQBridge(ru.zmq.Server):
         with self._lock:
 
             if sid not in self._clients:
-                return {'err': 'client not registered'}
+                raise RuntimeError('client %s not registered' % sid)
 
             self._clients[sid]['hb'] = now
-
-        return {'res': 'ok'}
 
 
 # ------------------------------------------------------------------------------

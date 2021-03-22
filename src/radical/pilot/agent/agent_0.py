@@ -18,7 +18,6 @@ import radical.utils       as ru
 from ..   import utils     as rpu
 from ..   import states    as rps
 from ..   import constants as rpc
-from ..db import DBSession
 
 from .resource_manager import ResourceManager
 from .launch_method    import LaunchMethod
@@ -33,12 +32,11 @@ class Agent_0(rpu.Worker):
     the sub-agents die, it will shut down the other sub-agents and itself.
 
     This class inherits the rpu.Worker, so that it can use its communication
-    bridges and callback mechanisms.  Specifically, it will pull the DB for
-    new tasks to be exexuted and forwards them to the agent's component
-    network (see `work()`).  It will also watch the DB for any commands to be
-    forwarded (pilot termination, task cancelation, etc), and will take care
-    of heartbeat messages to be sent to the client module.  To do all this, it
-    initializes a DB connection in `initialize()`.
+    bridges and callback mechanisms.  Specifically, it will pull the tasks from
+    the proxy comm channels and forwards them to the agent's component network
+    (see `work()`).  It will also watch the proxy pubsub for any commands to be
+    enacted or forwarded (pilot termination, task cancelation, etc), and will
+    take care of heartbeat messages to be sent to the client.
     '''
 
     # --------------------------------------------------------------------------
@@ -50,10 +48,14 @@ class Agent_0(rpu.Worker):
         self._pmgr    = cfg.pmgr
         self._pwd     = cfg.pilot_sandbox
         self._session = session
+        self._sid     = self._session.uid
         self._log     = session._log
 
         self._starttime   = time.time()
         self._final_cause = None
+
+        # pick up proxy config from session
+        self._cfg.proxy = self._session._cfg.proxy
 
         rpu.Worker.__init__(self, self._cfg, session)
 
@@ -76,19 +78,14 @@ class Agent_0(rpu.Worker):
         self._cmgr.start_bridges()
         self._cmgr.start_components()
 
-        # connect to client communication channels, maybe
-        self._connect_client()
-
-        # connect to MongoDB for state push/pull
-        self._connect_db()
+        # connect to proxy communication channels, maybe
+        self._connect_proxy()
 
         # create the sub-agent configs and start the sub agents
         self._write_sa_configs()
         self._start_sub_agents()   # TODO: move to cmgr?
 
-        # at this point the session is up and connected, and it should have
-        # brought up all communication bridges and components.  We are
-        # ready to rumble!
+        # handle control messages
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._check_control)
 
         # run our own slow-paced heartbeat monitor to watch pmgr heartbeats
@@ -107,6 +104,21 @@ class Agent_0(rpu.Worker):
         # register pmgr heartbeat
         self._log.info('hb init for %s', self._pmgr)
         self._hb.beat(uid=self._pmgr)
+
+        # register the control callback
+        self.register_subscriber(rpc.PROXY_CONTROL_PUBSUB,
+                                 self._proxy_control_cb)
+
+        # proxy state updates
+        self.register_publisher(rpc.PROXY_STATE_PUBSUB)
+        self.register_subscriber(rpc.STATE_PUBSUB, self._proxy_state_cb)
+
+        # regularly check for lifetime limit
+        self.register_timed_cb(self._check_lifetime, timer=10)
+
+        # as long as we are alive, we also want to keep the proxy alive
+        self._session._run_proxy_hb()
+
 
 
     # --------------------------------------------------------------------------
@@ -128,150 +140,76 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _connect_db(self):
+    def _connect_proxy(self):
 
-        # Check for the RADICAL_PILOT_DB_HOSTPORT env var, which will hold
-        # the address of the tunnelized DB endpoint. If it exists, we
-        # overrule the agent config with it.
-        hostport = os.environ.get('RADICAL_PILOT_DB_HOSTPORT')
-        if hostport:
-            host, port = hostport.split(':', 1)
-            dburl      = ru.Url(self._cfg.dburl)
-            dburl.host = host
-            dburl.port = port
-            self._cfg.dburl = str(dburl)
+        # write config files for proxy channels
+        for p in self._cfg.proxy:
+            ru.write_json('%s.cfg' % p, self._cfg.proxy[p])
 
-        self._dbs = DBSession(sid=self._cfg.sid, dburl=self._cfg.dburl,
-                              cfg=self._cfg, log=self._log)
+        # listen for new tasks from the client
+        self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
+                            rpc.PROXY_TASK_QUEUE,
+                            qname=self._pid,
+                            cb=self._proxy_input_cb)
 
+        # and forward to agent input staging
+        self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
+                             rpc.AGENT_STAGING_INPUT_QUEUE)
 
-    # --------------------------------------------------------------------------
-    #
-    def _connect_client(self):
-
-        # when running on the same host as the client, we may be able to bypass
-        # MongoDB and instead connect to the client's ZMQ communication
-        # channels.
-        #
-        cfg = self._cfg.client_comm
-
-        # connect to the client's scheduler pubsub (to get tasks)
-        self._client_input = ru.zmq.Subscriber(
-                                channel='agent_staging_input_pubsub',
-                                url=cfg.agent_staging_input_pubsub.sub,
-                                topic=self._pid,
-                                cb=self._client_input_cb,
-                                log=self._log,
-                                prof=self._prof)
-        self._client_input.subscribe(self._pid)
-
-        # completed tasks are fed back to the tmgr staging output queue
-        self._client_output = ru.zmq.Putter(rpc.TMGR_STAGING_OUTPUT_QUEUE,
-                                url=cfg.tmgr_staging_output_queue.put)
-
-        # and listen for completed tasks to foward to client
+        # listen for completed tasks to foward to client
         self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
                             rpc.AGENT_COLLECTING_QUEUE,
-                            self._agent_collect_cb)
+                            self._proxy_output_cb)
 
-        # and control pubsub (to register)
-        self._client_ctrl_pub = ru.zmq.Publisher(channel=rpc.CONTROL_PUBSUB,
-                                    url=cfg.control_pubsub.pub,
-                                    log=self._log,
-                                    prof=self._prof)
+        # and register output
+        self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING,
+                             rpc.PROXY_TASK_QUEUE)
 
-        # and control pubsub (to register)
-        self._client_ctrl_sub = ru.zmq.Subscriber(channel=rpc.CONTROL_PUBSUB,
-                                    url=cfg.control_pubsub.sub,
-                                    log=self._log,
-                                    prof=self._prof,
-                                    topic=rpc.CONTROL_PUBSUB)
-
-        # allow control pubsub to connect
-        time.sleep(1)
-
-        # channels are set up, register client
-        self._client_ctrl_pub.put(rpc.CONTROL_PUBSUB,
-                              msg={'cmd': 'pilot_register',
-                                   'arg': {'pid': self._pid}})
-        self._log.debug('pilot registered')
-
-        # and wait for at most 30 seconds for acknoweldgement
-        start = time.time()
-        self._registered = False
-        while True:
-
-            tout = 30 - (time.time() - start)
-            if tout < 0:
-                break
-
-            topic, msg = self._client_ctrl_sub.get_nowait(timeout=tout)
-            if not msg:
-                continue
-
-            cmd = msg['cmd']
-            if cmd != 'pilot_register_ok':
-                continue
-
-            pid = msg['arg']['pid']
-            if pid == self._pid:
-                self._registered = True
-                break
-
-        self._log.debug('registered: %s', self._registered)
-
-
+        # FIXME: register pubsubs
 
 
     # --------------------------------------------------------------------------
     #
-    def _client_input_cb(self, topic, msg):
+    def _proxy_input_cb(self, msg):
 
-        self._log.debug('=== input cb %s: %s', topic, len(msg))
+        self._log.debug('=== proxy input cb: %s', len(msg))
+
+        to_advance = list()
 
         for task in msg:
 
             # make sure the tasks obtain env settings (if needed)
             if 'task_environment' in self._cfg:
+
                 if not task['description'].get('environment'):
                     task['description']['environment'] = dict()
-                for k,v in self._cfg['task_environment'].items():
-                    task['description']['environment'][k] = v
 
-            # we need to make sure to have the correct state:
-          # task['state'] = rps._task_state_collapse(task['states'])
-          # self._prof.prof('get', uid=task['uid'])
+                for k,v in self._cfg['task_environment'].items():
+                    # FIXME: this might overwrite user specified env
+                    task['description']['environment'][k] = v
 
             # FIXME: raise or fail task!
             if task['state'] != rps.AGENT_STAGING_INPUT_PENDING:
                 self._log.error('invalid state: %s:%s:%s', task['uid'],
                         task['state'], task.get('states'))
+                continue
 
-            task['control'] = 'agent'
+            to_advance.append(task)
 
-        # now we really own the CUs, and can start working on them (ie. push
+        # now we really own the tasks and can start working on them (ie. push
         # them into the pipeline).  We don't publish nor profile as advance,
-        # since that happened already on the module side when the state was set.
-        self.advance(msg, publish=False, push=True)
+        # since the state transition happened already on the client side when
+        # the state was set.
+        self.advance(to_advance, publish=False, push=True)
 
 
     # --------------------------------------------------------------------------
     #
-    def _agent_collect_cb(self, msg):
+    def _proxy_output_cb(self, msg):
 
-        self._log.debug('=== collect cb: %s', len(msg))
-
-        if self._client_output:
-            self._log.debug('=== to client: %s', len(msg))
-            self._client_output.put(msg)
-
-        else:
-            self._log.debug('=== to MongoDB: %s', len(msg))
-            for task in msg:
-                task['$all']    = True
-                task['control'] = 'tmgr_pending'
-            self.advance(msg, publish=True, push=False)
-
+        # we just forward the tasks to the task proxy queue
+        self._log.debug('=== proxy output cb: %s', len(msg))
+        self.advance(msg, publish=False, push=True, qname=self._sid)
 
 
     # --------------------------------------------------------------------------
@@ -333,40 +271,19 @@ class Agent_0(rpu.Worker):
     #
     def initialize(self):
 
-        # registers the staging_input_queue as this is what we want to push
-        # tasks to
-        self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
-                             rpc.AGENT_STAGING_INPUT_QUEUE)
-
-        # register the command callback which pulls the DB for commands
-        self.register_timed_cb(self._agent_command_cb,
-                               timer=self._cfg['db_poll_sleeptime'])
-
-      # # start ingest thread to pull in tasks
-      # self._ingest_thread = mt.Thread(target=self._ingest)
-      # self._ingest_thread.daemon = True
-      # self._ingest_thread.start()
-
         # sub-agents are started, components are started, bridges are up: we are
-        # ready to roll!  Send state update via client control pubsub
+        # ready to roll!  Send state update
         rm_info = self._rm.rm_info
         n_nodes = len(rm_info['node_list'])
-        pilot = {
-                'type'     : 'pilot',
-                'uid'      : self._pid,
-                'state'    : rps.PMGR_ACTIVE,
-                'resources': {'rm_info': rm_info,
-                              'cpu'    : rm_info['cores_per_node'] * n_nodes,
-                              'gpu'    : rm_info['gpus_per_node']  * n_nodes}}
 
-        self._client_ctrl_pub.put(topic=rpc.CONTROL_PUBSUB,
-                                  msg={'cmd':  'pilot_activate',
-                                       'arg': {'pilot': pilot}})
+        pilot = {'type'     : 'pilot',
+                 'uid'      : self._pid,
+                 'state'    : rps.PMGR_ACTIVE,
+                 'resources': {'rm_info': rm_info,
+                               'cpu'    : rm_info['cores_per_node'] * n_nodes,
+                               'gpu'    : rm_info['gpus_per_node']  * n_nodes}}
 
-        # also update via MongoDB as fallback
         self.advance(pilot, publish=True, push=False)
-
-        self._log.debug('=== sent pilot_activate')
 
 
     # --------------------------------------------------------------------------
@@ -409,6 +326,17 @@ class Agent_0(rpu.Worker):
         if self._rm:
             self._rm.stop()
 
+        self._log.info('rusage: %s', rpu.get_rusage())
+
+        out, err, log = '', '', ''
+
+        try   : out = open('./agent.0.out', 'r').read(1024)
+        except: pass
+        try   : err = open('./agent.0.err', 'r').read(1024)
+        except: pass
+        try   : log = open('./agent.0.log', 'r').read(1024)
+        except: pass
+
         if   self._final_cause == 'timeout'  : state = rps.DONE
         elif self._final_cause == 'cancel'   : state = rps.CANCELED
         elif self._final_cause == 'sys.exit' : state = rps.CANCELED
@@ -419,29 +347,17 @@ class Agent_0(rpu.Worker):
         with open('./killme.signal', 'w') as fout:
             fout.write('%s\n' % state)
 
-        # we don't rely on the existence / viability of the update worker at
-        # that point.
-        self._log.debug('update db state: %s: %s', state, self._final_cause)
-        self._log.info('rusage: %s', rpu.get_rusage())
+        pilot = {'type'   : 'pilot',
+                 'uid'    : self._pid,
+                 'stdout' : out,
+                 'stderr' : err,
+                 'logfile': log,
+                 'state'  : state}
 
-        out, err, log = '', '', ''
-
-        try   : out   = open('./agent.0.out', 'r').read(1024)
-        except: pass
-        try   : err   = open('./agent.0.err', 'r').read(1024)
-        except: pass
-        try   : log   = open('./agent.0.log', 'r').read(1024)
-        except: pass
-
-        ret = self._dbs._c.update({'type' : 'pilot',
-                                   'uid'  : self._pid},
-                                  {'$set' : {'stdout' : rpu.tail(out),
-                                             'stderr' : rpu.tail(err),
-                                             'logfile': rpu.tail(log),
-                                             'state'  : state},
-                                   '$push': {'states' : state}
-                                  })
-        self._log.debug('update ret: %s', ret)
+        self._log.debug('=== push final state update')
+        self._log.debug('update state: %s: %s', state, self._final_cause)
+        self.publish(rpc.PROXY_STATE_PUBSUB,
+                     topic=rpc.STATE_PUBSUB, msg=[pilot])
 
 
     # --------------------------------------------------------------------
@@ -622,138 +538,80 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _agent_command_cb(self):
+    def _check_lifetime(self):
 
-        if not self._check_commands(): return False
-        if not self._check_rpc     (): return False
-        if not self._check_state   (): return False
+        # Make sure that we haven't exceeded the runtime - otherwise terminate.
+        if self._cfg.runtime:
 
-        return True
+            if time.time() >= self._starttime +  (int(self._cfg.runtime) * 60):
 
-
-    # --------------------------------------------------------------------------
-    #
-    def _check_commands(self):
-
-        # Check if there's a command waiting
-        # FIXME: this pull should be done by the update worker, and commands
-        #        should then be communicated over the command pubsub
-        # FIXME: commands go to pmgr, tmgr, session docs
-        # FIXME: check if pull/wipe are atomic
-        # FIXME: long runnign commands can time out on hb
-        retdoc = self._dbs._c.find_and_modify(
-                    query ={'uid' : self._pid},
-                    fields=['cmds'],                    # get  new commands
-                    update={'$set': {'cmds': list()}})  # wipe old commands
-
-        if not retdoc:
-            return True
-
-        for spec in retdoc.get('cmds', []):
-
-            cmd = spec['cmd']
-            arg = spec['arg']
-
-            self._log.debug('pilot command: %s: %s', cmd, arg)
-            self._prof.prof('cmd', msg="%s : %s" %  (cmd, arg), uid=self._pid)
-
-            if cmd == 'heartbeat' and arg['pmgr'] == self._pmgr:
-                self._hb.beat(uid=self._pmgr)
-
-            elif cmd == 'prep_env':
-                env_spec = arg
-
-                for env_id in env_spec:
-                    # ensure we have a hb period
-                    self._hb.beat(uid=self._pmgr)
-                    self._prepare_env(env_id, env_spec[env_id])
-
-            elif cmd == 'cancel_pilot':
-                self._log.info('cancel pilot cmd')
-                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
-                                                  'arg' : None})
-                self._final_cause = 'cancel'
+                self._log.info('runtime limit (%ss).', self._cfg.runtime * 60)
+                self._final_cause = 'timeout'
                 self.stop()
-
                 return False  # we are done
 
-            elif cmd == 'cancel_tasks':
-                self._log.info('cancel_tasks cmd')
-                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_tasks',
-                                                  'arg' : arg})
-            else:
-                self._log.warn('could not interpret cmd "%s" - ignore', cmd)
-
         return True
 
 
     # --------------------------------------------------------------------------
     #
-    def _check_rpc(self):
-        '''
-        check if the DB has any RPC request for this pilot.  If so, then forward
-        that request as `rpc_req` command on the CONTROL channel, and listen for
-        an `rpc_res` command on the same channel, for the same rpc id.  Once
-        that response is received (from whatever component handled that
-        command), send the response back to the databse for the callee to pick
-        up.
-        '''
+    def _proxy_state_cb(self, topic, msg):
 
-        # FIXME: implement a timeout, and/or a registry of rpc clients
+        # no need to check - blindly forward all messages to the proxy
+        self.publish(rpc.PROXY_STATE_PUBSUB, topic=topic, msg=msg)
 
-        retdoc = self._dbs._c.find_and_modify(
-                    query ={'uid' : self._pid},
-                    fields=['rpc_req'],
-                    update={'$set': {'rpc_req': None}})
 
-        if not retdoc:
-            # no rpc request found
+    # --------------------------------------------------------------------------
+    #
+    def _proxy_control_cb(self, topic, msg):
+
+        self._log.debug('=== proxy control: %s', msg)
+
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        self._log.debug('pilot command: %s: %s', cmd, arg)
+        self._prof.prof('cmd', msg="%s : %s" %  (cmd, arg), uid=self._pid)
+
+
+        if cmd == 'pmgr_heartbeat' and arg['pmgr'] == self._pmgr:
+
+            self._hb.beat(uid=self._pmgr)
             return True
 
-        rpc_req = retdoc.get('rpc_req')
-        if rpc_req is None:
-            # document has no rpc request
+
+        if cmd == 'prep_env':
+
+            env_spec = arg
+            for env_id in env_spec:
+                # ensure we have a hb period
+                self._hb.beat(uid=self._pmgr)
+                self._prepare_env(env_id, env_spec[env_id])
             return True
 
-        self._log.debug('rpc req: %s', rpc_req)
 
-        # RPCs are synchronous right now - we send the RPC on the command
-        # channel, hope that some component picks it up and replies, and then
-        # return that reply.  The reply is received via a temporary callback
-        # defined here, which will receive all CONTROL messages until the right
-        # rpc response comes along.
-        def rpc_cb(topic, msg):
+        if cmd == 'cancel_pilots':
 
-            rpc_id  = rpc_req['uid']
-
-            cmd     = msg['cmd']
-            rpc_res = msg['arg']
-
-            if cmd != 'rpc_res':
-                # not an rpc responese
+            if self._pid not in arg.get('uids'):
+                self._log.debug('=== ignore cancel %s', msg)
                 return True
 
-            if rpc_res['uid'] != rpc_id:
-                # not the right rpc response
-                return True
+            self._log.info('=== cancel pilot cmd')
+            self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
+                                              'arg' : None})
+            self._final_cause = 'cancel'
+            self.stop()
 
-            # send the response to the DB
-            self._dbs._c.update({'type'  : 'pilot',
-                                 'uid'   : self._pid},
-                                {'$set'  : {'rpc_res': rpc_res}})
-
-            # work is done - unregister this temporary cb (rpc_cb)
-            return False
+            return False  # we are done
 
 
-        self.register_subscriber(rpc.CONTROL_PUBSUB, rpc_cb)
+        # all other messages (such as cancel_tasks) are forwarded to the agent
+        # control pubsub, to be picked up by the respective target components
+        self._log.debug('=== fwd control msg %s', msg)
+        self.publish(rpc.CONTROL_PUBSUB, msg)
 
-        # ready to receive and proxy rpc response -- forward rpc request on
-        # control channel
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'rpc_req',
-                                          'arg' :  rpc_req})
-
-        return True  # keeb cb registered (self._check_rpc)
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -804,88 +662,6 @@ class Agent_0(rpu.Worker):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
                                           'arg':  rpc_res})
         return True
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _check_state(self):
-
-        # Make sure that we haven't exceeded the runtime - otherwise terminate.
-        if self._cfg.runtime:
-
-            if time.time() >= self._starttime +  (int(self._cfg.runtime) * 60):
-
-                self._log.info('runtime limit (%ss).', self._cfg.runtime * 60)
-                self._final_cause = 'timeout'
-                self.stop()
-                return False  # we are done
-
-        return True
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _ingest(self):
-
-        while not self._term.is_set():
-            self._check_tasks_cb()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _check_tasks_cb(self):
-
-        # Check for tasks waiting for input staging and log pull.
-        #
-        # FIXME: Unfortunately, 'find_and_modify' is not bulkable, so we have
-        #        to use 'find'.  To avoid finding the same tasks over and over
-        #        again, we update the 'control' field *before* running the next
-        #        find -- so we do it right here.
-        #        This also blocks us from using multiple ingest threads, or from
-        #        doing late binding by task pull :/
-        task_cursor = self._dbs._c.find({'type'    : 'task',
-                                         'pilot'   : self._pid,
-                                         'control' : 'agent_pending'})
-        if not task_cursor.count():
-          # self._log.info('tasks pulled:    0')
-            time.sleep(self._cfg['db_poll_sleeptime'])
-            return
-
-        # update the tasks to avoid pulling them again next time.
-        task_list = list(task_cursor)
-        task_uids = [task['uid'] for task in task_list]
-
-        self._dbs._c.update({'type'  : 'task',
-                             'uid'   : {'$in'     : task_uids}},
-                            {'$set'  : {'control' : 'agent'}},
-                            multi=True)
-
-        self._log.info("=== tasks pulled from db: %4d", len(task_list))
-        self._prof.prof('get', msg='bulk: %d' % len(task_list), uid=self._pid)
-
-        for task in task_list:
-
-            # make sure the tasks obtain env settings (if needed)
-            if 'task_environment' in self._cfg:
-                if not task['description'].get('environment'):
-                    task['description']['environment'] = dict()
-                for k,v in self._cfg['task_environment'].items():
-                    task['description']['environment'][k] = v
-
-            # we need to make sure to have the correct state:
-            task['state'] = rps._task_state_collapse(task['states'])
-            self._prof.prof('get', uid=task['uid'])
-
-            # FIXME: raise or fail task!
-            if task['state'] != rps.AGENT_STAGING_INPUT_PENDING:
-                self._log.error('invalid state: %s', (pprint.pformat(task)))
-
-            task['control'] = 'agent'
-
-        # now we really own the CUs, and can start working on them (ie. push
-        # them into the pipeline).  We don't publish nor profile as advance,
-        # since that happened already on the module side when the state was set.
-        self.advance(task_list, publish=False, push=True)
 
 
     # --------------------------------------------------------------------------

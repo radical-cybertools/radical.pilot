@@ -43,6 +43,10 @@ CONTROL_PUBSUB                 = 'control_pubsub'
 STATE_PUBSUB                   = 'state_pubsub'
 LOG_PUBSUB                     = 'log_pubsub'
 
+PROXY_CONTROL_PUBSUB           = 'proxy_control_pubsub'
+PROXY_STATE_PUBSUB             = 'proxy_state_pubsub'
+PROXY_TASK_QUEUE               = 'proxy_task_queue'
+
 
 # ------------------------------------------------------------------------------
 #

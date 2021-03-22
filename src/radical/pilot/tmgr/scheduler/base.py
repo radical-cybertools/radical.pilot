@@ -309,9 +309,11 @@ class TMGRSchedulingComponent(rpu.Component):
                             to_cancel[pid].append(uid)
 
             for pid in to_cancel:
-                self._session._dbs.pilot_command(cmd='cancel_tasks',
-                                                 arg={'uids' : to_cancel[pid]},
-                                                 pids=pid)
+                # FIXME: MongoDB
+                pass
+              # self._session._dbs.pilot_command(cmd='cancel_tasks',
+              #                                  arg={'uids' : to_cancel[pid]},
+              #                                  pids=pid)
 
         return True
 

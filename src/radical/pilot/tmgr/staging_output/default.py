@@ -40,7 +40,9 @@ class Default(TMGRStagingOutputComponent):
         self._cache = dict()
 
         self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
-                            rpc.TMGR_STAGING_OUTPUT_QUEUE, self.work)
+                            rpc.PROXY_TASK_QUEUE,
+                            qname=self._session.uid,
+                            cb=self.work)
 
         # we don't need an output queue -- tasks will be final
 

@@ -107,6 +107,7 @@ class Default(AgentStagingOutputComponent):
                 no_staging_tasks.append(task)
 
         if no_staging_tasks:
+            self._log.debug('=== push %s tasks', len(no_staging_tasks))
             self.advance(no_staging_tasks, publish=True, push=True)
 
         for task,actionables in staging_tasks:

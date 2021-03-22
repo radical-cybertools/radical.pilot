@@ -5,14 +5,17 @@ __license__   = "MIT"
 
 import os
 import copy
+import time
+
+import threading as mt
 
 import radical.utils                as ru
 import radical.saga                 as rs
 import radical.saga.filesystem      as rsfs
 import radical.saga.utils.pty_shell as rsup
 
-from .constants import RESOURCE_CONFIG_LABEL_DEFAULT
-from .          import utils as rpu
+from . import constants as rpc
+from . import utils     as rpu
 
 
 # ------------------------------------------------------------------------------
@@ -79,6 +82,7 @@ class Session(rs.Session):
         self._service = None
         self._closed  = False
         self._primary = _primary
+        self._t_start = time.time()
 
         self._pmgrs   = dict()  # map IDs to pmgr instances
         self._tmgrs   = dict()  # map IDs to tmgr instances
@@ -115,7 +119,7 @@ class Session(rs.Session):
         self._prof = self._get_profiler(name=self._uid)
         self._rep  = self._get_reporter(name=self._uid)
         self._log  = self._get_logger  (name=self._uid,
-                                       level=self._cfg.get('debug'))
+                                        level=self._cfg.get('debug'))
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s' % rp_version_detail)
@@ -136,59 +140,53 @@ class Session(rs.Session):
                             'js_shells'        : dict(),
                             'fs_dirs'          : dict()}
 
-        self._rep.info ('<<new session: ')
-        self._rep.plain('[%s]' % self._uid)
+        if self._primary:
+            self._rep.info ('<<new session: ')
+            self._rep.plain('[%s]' % self._uid)
 
         # need a service_url to connect to
-        if not service_url: service_url = self._cfg.service_url
-        if not service_url: service_url = self._cfg.default_service_url
         if not service_url:
-            raise RuntimeError("no db URL (set RADICAL_PILOT_SERVICE_URL)")
+            service_url = self._cfg.service_url
 
-        # FIXME MONGODB: in this case, start an embedded service
+        if not service_url:
+            service_url = os.environ.get('RADICAL_PILOT_SERVICE_URL')
+
+        if not service_url:
+            # FIXME MongoDB: in this case, start an embedded service
+            raise RuntimeError("no service url (set RADICAL_PILOT_SERVICE_URL)")
+
 
         self._cfg.service_url = service_url
 
-        self._rep.info ('<<bridge     : ')
-        self._rep.plain('[%s]'    % service_url)
+        if self._primary:
 
-        # create/connect bridge handle on primary sessions
-        self._service     = ru.zmq.Client(url=service_url)
-        self._cfg.bridge  = self._service.request('client_register',
-                                                  {'sid': self._uid})
-        self._log.debug('=== bridge: %s', self._cfg.bridge)
+            self._connect_proxy()
 
-      # FIXME MONGODB: to json
-      # self.inject_metadata({'radical_stack':
-      #                              {'rp': rp_version_detail,
-      #                               'rs': rs.version_detail,
-      #                               'ru': ru.version_detail,
-      #                               'py': py_version_detail}})
+        else:
+            # a non-primary session will query the same service url to obtain
+            # information about the comm channels created by the primary session
+            if not self._cfg.proxy:
+                self._service = ru.zmq.Client(url=self._cfg.service_url)
+                response      = self._service.request('client_lookup',
+                                                      {'sid': self._uid})
+                if response.err:
+                    for line in response.exc:
+                        self._log.error(line)
+                    raise RuntimeError('request failed: %s' % response.err)
 
-        # primary sessions have a component manager which also manages
-        # heartbeat.  'self._cmgr.close()` should be called during termination
-        self._cmgr = rpu.ComponentManager(self._cfg)
-        self._cmgr.start_bridges()
-        self._cmgr.start_components()
+                self._cfg.proxy = response.res
 
-        # expose the cmgr's heartbeat channel to anyone who wants to use it
-        self._cfg.heartbeat = self._cmgr.cfg.heartbeat
+                self._log.debug('=== %s: %s', self._primary, self._cfg.proxy)
 
-        self._rec = False
-        if self._cfg.record:
 
-            # append session ID to recording path
-            self._rec = "%s/%s" % (self._rec, self._uid)
+        # for mostly debug purposes, dump the used session config
+        ru.write_json(self._cfg, '%s/%s.cfg' % (self._cfg.path, self._uid))
 
-            # create recording path and record session
-            os.system('mkdir -p %s' % self._rec)
-            ru.write_json({'service_url': str(self.service_url)},
-                          "%s/session.json" % self._rec)
-            self._log.info("recording session in %s" % self._rec)
-
-        # at this point we have a DB connection, logger, etc, and are done
+        # at this point we have a bridge connection, logger, etc, and are done
         self._prof.prof('session_ok', uid=self._uid)
-        self._rep.ok('>>ok\n')
+
+        if self._primary:
+            self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
@@ -222,7 +220,9 @@ class Session(rs.Session):
         if self._closed:
             return
 
-        self._rep.info('closing session %s' % self._uid)
+        if self._primary:
+            self._rep.info('closing session %s' % self._uid)
+
         self._log.debug("session %s closing", self._uid)
         self._prof.prof("session_close", uid=self._uid)
 
@@ -257,21 +257,114 @@ class Session(rs.Session):
 
         self._closed = True
 
+
         # after all is said and done, we attempt to download the pilot log- and
         # profiles, if so wanted
-        if download:
+        if self._primary and download:
 
             self._prof.prof("session_fetch_start", uid=self._uid)
             self._log.debug('start download')
             tgt = os.getcwd()
-            self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
+            # FIXME: MongoDB
+          # self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
             self.fetch_profiles(tgt=tgt)
             self.fetch_logfiles(tgt=tgt)
 
             self._prof.prof("session_fetch_stop", uid=self._uid)
 
-        self._rep.info('<<session lifetime: %.1fs' % (self.closed - self.created))
-        self._rep.ok('>>ok\n')
+        if self._primary:
+            self._t_stop = time.time()
+            self._rep.info('<<session lifetime: %.1fs'
+                          % (self._t_stop - self._t_start))
+            self._rep.ok('>>ok\n')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _connect_proxy(self):
+
+        assert(self._primary)
+
+        # a primary session will create proxy comm channels
+        self._rep.info ('<<bridge     : ')
+        self._rep.plain('[%s]' % self._cfg.service_url)
+
+        # create/connect bridge handle on primary sessions
+        self._service = ru.zmq.Client(url=self._cfg.service_url)
+        response      = self._service.request('client_register',
+                                              {'sid': self._uid})
+        if response.err:
+            for line in response.exc:
+                self._log.error(line)
+            raise RuntimeError('request failed: %s' % response.err)
+
+        self._cfg.proxy = response.res
+        self._log.debug('=== %s: %s', self._primary, self._cfg.proxy)
+
+        # now that the proxy bridges have been created on the service host,
+        # write config files for them so that all components can use them
+        for p in self._cfg.proxy:
+            ru.write_json('%s.cfg' % p, self._cfg.proxy[p])
+
+        # primary sessions have a component manager which also manages
+        # heartbeat.  'self._cmgr.close()` should be called during
+        # termination
+        self._cmgr = rpu.ComponentManager(self._cfg)
+        self._cmgr.start_bridges()
+        self._cmgr.start_components()
+
+        # expose the cmgr's heartbeat channel to anyone who wants to use it
+        self._cfg.heartbeat = self._cmgr.cfg.heartbeat
+
+        # make sure we send heartbeats to the proxy
+        self._run_proxy_hb()
+
+      # FIXME MONGODB: to json
+      # self.inject_metadata({'radical_stack':
+      #                              {'rp': rp_version_detail,
+      #                               'rs': rs.version_detail,
+      #                               'ru': ru.version_detail,
+      #                               'py': py_version_detail}})
+
+        pwd = self._cfg.path
+
+        # forward any control messages to the proxy
+        def fwd_control(topic, msg):
+            self._log.debug('=== fwd control %s: %s', topic, msg)
+            self._proxy_ctrl_pub.put(rpc.PROXY_CONTROL_PUBSUB, msg)
+
+        self._proxy_ctrl_pub = ru.zmq.Publisher(rpc.PROXY_CONTROL_PUBSUB, path=pwd)
+        self._ctrl_sub = ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, path=pwd)
+        self._ctrl_sub.subscribe(rpc.CONTROL_PUBSUB, fwd_control)
+
+
+        # collect any state updates from the proxy
+        def fwd_state(topic, msg):
+            self._log.debug('=== fwd state   %s: %s', topic, msg)
+            self._state_pub.put(topic, msg)
+
+        self._state_pub = ru.zmq.Publisher(rpc.STATE_PUBSUB, path=pwd)
+        self._proxy_state_sub = ru.zmq.Subscriber(rpc.PROXY_STATE_PUBSUB, path=pwd)
+        self._proxy_state_sub.subscribe(rpc.PROXY_STATE_PUBSUB, fwd_state)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _run_proxy_hb(self):
+
+        self._proxy_heartbeat_thread = mt.Thread(target=self._proxy_hb)
+        self._proxy_heartbeat_thread.daemon = True
+        self._proxy_heartbeat_thread.start()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _proxy_hb(self):
+
+        while True:
+
+            self._service.request('client_heartbeat', {'sid': self._uid})
+            time.sleep(20)
 
 
     # --------------------------------------------------------------------------
@@ -298,6 +391,13 @@ class Session(rs.Session):
         '''Returns a string representation of the object.
         '''
         return str(self.as_dict())
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def primary(self):
+        return self._primary
 
 
     # --------------------------------------------------------------------------
@@ -554,7 +654,7 @@ class Session(rs.Session):
         else:
 
             if not resource_config.label:
-                resource_config.label = RESOURCE_CONFIG_LABEL_DEFAULT
+                resource_config.label = rpc.RESOURCE_CONFIG_LABEL_DEFAULT
 
             elif '.' not in resource_config.label:
                 raise ValueError('Resource config label format should be '
@@ -602,24 +702,21 @@ class Session(rs.Session):
     #
     def fetch_profiles(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_profiles(self._uid, service_url=self.service_url, tgt=tgt,
-                                  session=self)
+        return rpu.fetch_profiles(self._uid, tgt=tgt, session=self)
 
 
     # --------------------------------------------------------------------------
     #
     def fetch_logfiles(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_logfiles(self._uid, service_url=self.service_url, tgt=tgt,
-                                  session=self)
+        return rpu.fetch_logfiles(self._uid, tgt=tgt, session=self)
 
 
     # --------------------------------------------------------------------------
     #
     def fetch_json(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_json(self._uid, service_url=self.service_url, tgt=tgt,
-                              session=self)
+        return rpu.fetch_json(self._uid, tgt=tgt, session=self)
 
 
     # --------------------------------------------------------------------------

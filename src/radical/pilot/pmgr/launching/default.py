@@ -565,6 +565,7 @@ class Default(PMGRLaunchingComponent):
         out, err, ret = ru.sh_callout(cmd, shell=True)
 
         if ret:
+            self._log.debug('cmd: %s', cmd)
             self._log.debug('out: %s', out)
             self._log.debug('err: %s', err)
             raise RuntimeError('callout failed: %s' % cmd)
@@ -654,8 +655,8 @@ class Default(PMGRLaunchingComponent):
 
         # ----------------------------------------------------------------------
         # Database connection parameters
-        sid          = self._session.uid
-        database_url = self._session.cfg.dburl
+        sid         = self._session.uid
+        service_url = self._session.cfg.service_url
 
         # some default values are determined at runtime
         default_virtenv = '%%(resource_sandbox)s/ve.%s.%s' % \
@@ -678,9 +679,9 @@ class Default(PMGRLaunchingComponent):
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
         agent_launch_method     = rcfg.get('agent_launch_method')
-        agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
-        agent_spawner           = rcfg.get('agent_spawner',       DEFAULT_AGENT_SPAWNER)
-        agent_config            = rcfg.get('agent_config',        DEFAULT_AGENT_CONFIG)
+        agent_service_url       = rcfg.get('agent_service_url', service_url)
+        agent_spawner           = rcfg.get('agent_spawner', DEFAULT_AGENT_SPAWNER)
+        agent_config            = rcfg.get('agent_config', DEFAULT_AGENT_CONFIG)
         agent_scheduler         = rcfg.get('agent_scheduler')
         tunnel_bind_device      = rcfg.get('tunnel_bind_device')
         default_queue           = rcfg.get('default_queue')
@@ -766,11 +767,11 @@ class Default(PMGRLaunchingComponent):
             raise RuntimeError("'global_virtenv' is deprecated (%s)" % resource)
 
         # Create a host:port string for use by the bootstrap_0.
-        db_url = rs.Url(agent_dburl)
-        if db_url.port:
-            db_hostport = "%s:%d" % (db_url.host, db_url.port)
+        tmp = rs.Url(agent_service_url)
+        if tmp.port:
+            hostport = "%s:%d" % (tmp.host, tmp.port)
         else:
-            db_hostport = "%s:%d" % (db_url.host, 27017)  # mongodb default
+            hostport = "%s:%d" % (tmp.host, 27017)  # mongodb default
 
         # ----------------------------------------------------------------------
         # the version of the agent is derived from
@@ -940,7 +941,7 @@ class Default(PMGRLaunchingComponent):
         # set optional args
         if resource_manager == "CCM": bootstrap_args += " -c"
         if forward_tunnel_endpoint:   bootstrap_args += " -f '%s'" % forward_tunnel_endpoint
-        if forward_tunnel_endpoint:   bootstrap_args += " -h '%s'" % db_hostport
+        if forward_tunnel_endpoint:   bootstrap_args += " -h '%s'" % hostport
         if python_interpreter:        bootstrap_args += " -i '%s'" % python_interpreter
         if tunnel_bind_device:        bootstrap_args += " -t '%s'" % tunnel_bind_device
         if cleanup:                   bootstrap_args += " -x '%s'" % cleanup
@@ -958,7 +959,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['scheduler']           = agent_scheduler
         agent_cfg['runtime']             = runtime
         agent_cfg['app_comm']            = app_comm
-        agent_cfg['dburl']               = str(database_url)
+        agent_cfg['service_url']         = service_url
         agent_cfg['sid']                 = sid
         agent_cfg['pid']                 = pid
         agent_cfg['pmgr']                = self._pmgr

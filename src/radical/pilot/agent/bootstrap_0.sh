@@ -1793,10 +1793,6 @@ export RADICAL_VERBOSE=DEBUG
 export RADICAL_UTIL_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG
 
-# the agent will *always* use the dburl from the config file, not from the env
-# FIXME: can we better define preference in the session ctor?
-unset RADICAL_PILOT_DBURL
-
 # avoid ntphost lookups on compute nodes
 export RADICAL_PILOT_NTPHOST=$RADICAL_PILOT_NTPHOST
 
@@ -2039,13 +2035,6 @@ then
     final_state='FAILED'
 fi
 
-echo "# -------------------------------------------------------------------"
-echo "# push final pilot state: $SESSION_ID $PILOT_ID $final_state"
-sp=$(which radical-pilot-agent-statepush)
-test -z "$sp" && echo "statepush not found"
-test -z "$sp" || $PYTHON "$sp" agent.0.cfg "$final_state"
-
-echo
 echo "# -------------------------------------------------------------------"
 echo "#"
 echo "# Done, exiting ($AGENT_EXITCODE)"

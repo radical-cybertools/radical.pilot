@@ -606,7 +606,7 @@ def get_session_profile(sid, src=None):
 
 # ------------------------------------------------------------------------------
 #
-def get_session_description(sid, src=None, dburl=None):
+def get_session_description(sid, src=None):
     """
     This will return a description which is usable for radical.analytics
     evaluation.  It informs about
@@ -617,19 +617,12 @@ def get_session_description(sid, src=None, dburl=None):
 
     If `src` is given, it is interpreted as path to search for session
     information (json dump).  `src` defaults to `$PWD/$sid`.
-
-    if `dburl` is given, its value is used to fetch session information from
-    a database.  The dburl value defaults to `RADICAL_PILOT_DBURL`.
     """
 
     if not src:
         src = "%s/%s" % (os.getcwd(), sid)
 
-    if os.path.isfile('%s/%s.json' % (src, sid)):
-        json = ru.read_json('%s/%s.json' % (src, sid))
-    else:
-        ftmp = fetch_json(sid=sid, dburl=dburl, tgt=src, skip_existing=True)
-        json = ru.read_json(ftmp)
+    json = ru.read_json('%s/%s.json' % (src, sid))
 
     # make sure we have uids
     # FIXME v0.47: deprecate

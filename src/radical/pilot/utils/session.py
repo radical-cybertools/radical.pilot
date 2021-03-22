@@ -13,7 +13,7 @@ rs.fs = rs.filesystem
 
 # ------------------------------------------------------------------------------
 #
-def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
+def fetch_profiles (sid, src=None, tgt=None, access=None,
         session=None, skip_existing=False, fetch_client=False, log=None):
     '''
     sid: session for which all profiles are fetched
@@ -33,12 +33,6 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
         rep = ru.Reporter('radical.pilot.utils')
 
     ret = list()
-
-    if not dburl:
-        dburl = os.environ['RADICAL_PILOT_DBURL']
-
-    if not dburl:
-        raise ValueError('RADICAL_PILOT_DBURL is not set')
 
     if not src:
         src = os.getcwd()
@@ -81,12 +75,12 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
             if not os.path.isfile(client_profile):
                 raise RuntimeError('profile %s does not exist' % client_profile)
 
-    _, db, _, _, _ = ru.mongodb_connect (dburl)
-
-    json_docs = get_session_docs(db, sid)
-
-    pilots = json_docs['pilot']
+    # FIXME: MongoDB
+    json_docs  = ...
+    return
+    pilots     = json_docs['pilot']
     num_pilots = len(pilots)
+
     log.debug("Session: %s", sid)
     log.debug("Number of pilots in session: %d", num_pilots)
 
@@ -195,7 +189,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
 # ------------------------------------------------------------------------------
 #
-def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
+def fetch_logfiles (sid, src=None, tgt=None, access=None,
         session=None, skip_existing=False, fetch_client=False, log=None):
     '''
     sid: session for which all logfiles are fetched
@@ -213,12 +207,6 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
         rep = ru.Reporter('radical.pilot.utils')
 
     ret = list()
-
-    if not dburl:
-        dburl = os.environ['RADICAL_PILOT_DBURL']
-
-    if not dburl:
-        raise RuntimeError ('Please set RADICAL_PILOT_DBURL')
 
     if not src:
         src = os.getcwd()
@@ -254,12 +242,13 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
             log_file.copy(ftgt, flags=rs.fs.CREATE_PARENTS)
             log_file.close()
 
-    _, db, _, _, _ = ru.mongodb_connect (dburl)
 
-    json_docs = get_session_docs(db, sid)
-
-    pilots = json_docs['pilot']
+    # FIXME: MongoDB
+    json_docs  = ...
+    return
+    pilots     = json_docs['pilot']
     num_pilots = len(pilots)
+
     log.info("Session: %s", sid)
     log.info("Number of pilots in session: %d", num_pilots)
 
@@ -370,7 +359,7 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
 # ------------------------------------------------------------------------------
 #
-def fetch_json(sid, dburl=None, tgt=None, skip_existing=False, session=None,
+def fetch_json(sid, tgt=None, skip_existing=False, session=None,
         log=None):
     '''
     returns file name
@@ -402,20 +391,10 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False, session=None,
         log.info("session already in %s", dst)
 
     else:
-        if not dburl:
-            dburl = os.environ.get('RADICAL_PILOT_DBURL')
-
-        if not dburl:
-            raise ValueError('RADICAL_PILOT_DBURL is not set')
-
-        mongo, db, _, _, _ = ru.mongodb_connect(dburl)
-
-        json_docs = get_session_docs(db, sid)
+        json_docs = get_session_docs(sid)
         ru.write_json(json_docs, dst)
 
         log.info("session written to %s", dst)
-
-        mongo.close()
 
     rep.ok("+ %s (json)\n" % sid)
     return dst

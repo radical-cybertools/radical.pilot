@@ -34,13 +34,13 @@ TASK_BULK_MKDIR_MECHANISM = 'tar'
 # ------------------------------------------------------------------------------
 #
 class Default(TMGRStagingInputComponent):
-    """
+    '''
     This component performs all tmgr side input staging directives for compute
     tasks.  It gets tasks from the tmgr_staging_input_queue, in
     TMGR_STAGING_INPUT_PENDING state, will advance them to TMGR_STAGING_INPUT
     state while performing the staging, and then moves then to the
     AGENT_SCHEDULING_PENDING state, passing control to the agent.
-    """
+    '''
 
     # --------------------------------------------------------------------------
     #
@@ -63,10 +63,9 @@ class Default(TMGRStagingInputComponent):
         self.register_input(rps.TMGR_STAGING_INPUT_PENDING,
                             rpc.TMGR_STAGING_INPUT_QUEUE, self.work)
 
-        self.register_publisher(rpc.AGENT_STAGING_INPUT_PUBSUB)
-
         # this queue is inaccessible, needs routing via mongodb
-        self.register_output(rps.AGENT_STAGING_INPUT_PENDING, None)
+        self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
+                             rpc.PROXY_TASK_QUEUE)
 
         # we subscribe to the command channel to learn about pilots being added
         # to this task manager.
@@ -126,26 +125,10 @@ class Default(TMGRStagingInputComponent):
         if not state:
             state = rps.AGENT_STAGING_INPUT_PENDING
 
-        if pid not in self._connected:
-
-            self._log.debug('=== send to mdb: %d', len(tasks))
-
-            for task in tasks:
-                # pass control via MongoDB
-                task['$all']    = True
-                task['control'] = 'agent_pending'
-
-            # insert tasks into the database, as a bulk.
-            self._session._dbs.insert_tasks(tasks)
-
-
         # perform and publish state update
-        self.advance(tasks, state, publish=True, push=False)
-
-        # publish to the agent_staging_input_pubsub
+        # push to the proxy queue
         self._log.debug('=== send to pq: %d', len(tasks))
-        self.publish(rpc.AGENT_STAGING_INPUT_PUBSUB, msg=tasks,
-                topic=pid)
+        self.advance(tasks, state, publish=True, push=True, qname=pid)
 
 
     # --------------------------------------------------------------------------
@@ -223,7 +206,7 @@ class Default(TMGRStagingInputComponent):
 
             task_sboxes  = sboxes[pid]
 
-            if len(task_sboxes) >= TASK_BULK_MKDIR_THRESHOLD:
+            if False or len(task_sboxes) >= TASK_BULK_MKDIR_THRESHOLD:
 
                 session_sbox = self._session._get_session_sandbox(pilot)
 
