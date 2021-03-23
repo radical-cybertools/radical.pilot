@@ -290,12 +290,12 @@ class Executor(object):
                 if check_obj(exe) is True:
 
                     try:
-                        self._prof.prof('func_prep', uid=self._uid)
+                        self._prof.prof('func_prep', comp=wid, uid=tid)
 
                         fn, args, kwargs = self.prepare_func(exe)
-                        self._prof.prof('func_start', uid=self._uid)
+                        self._prof.prof('func_start', comp=wid, uid=tid)
                         res = fn(*args, **kwargs)
-                        self._prof.prof('func_stop', uid=self._uid)
+                        self._prof.prof('func_stop', comp=wid, uid=tid)
                         task['stdout'] = res
                         task['state']  = 'DONE'
                     except Exception as e:

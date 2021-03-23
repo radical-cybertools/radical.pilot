@@ -15,10 +15,10 @@ config = Config(
                         login_method = 'gsissh',
                         project = 'unc100',
                         partition = 'gpu', 
-                        walltime = 30,
+                        walltime = 60,
                         managed = True,
-                        max_tasks = 24,
-                        gpus = 4)
+                        max_tasks = 192,
+                        gpus = 32)
                         ],
 strategy= None,
 usage_tracking=True)
@@ -26,14 +26,14 @@ usage_tracking=True)
 parsl.load(config)
 
 @python_app
-def sift(nproc, ngpus)-> str:
+def sift(gpu_id, nproc, ngpus)-> str:
     import os
     import subprocess
     os.system("export LD_LIBRARY_PATH=/oasis/projects/nsf/unc100/aymen/anaconda3/lib:$LD_LIBRARY_PATH")
-    proc = subprocess.Popen("$HOME/RADICAL/integration_usecases/geolocation/CudaSift/cudasift"
+    proc = subprocess.Popen("CUDA_VISIBLE_DEVICES={0} $HOME/RADICAL/integration_usecases/geolocation/CudaSift/cudasift"
                             " $HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40.jpg"
                             " 2000 2000 2000 2000 $HOME/RADICAL/integration_usecases/geolocation/CudaSift/msg-1-fc-40-1.jpg"
-                            " 2000 2000 2000 2000", shell = True, stdout=subprocess.PIPE)
+                            " 2000 2000 2000 2000".format(gpu_id), shell = True, stdout=subprocess.PIPE)
     match_path = str(proc.stdout.readlines()[-1].split()[0], 'utf-8')
     return match_path
 
@@ -76,11 +76,14 @@ def ransac(sift_matches_file, nproc):  #python function has no ptype
 
 sift_results   = []
 ransac_results = []
-num_images     = 2
+num_images     = 64
+num_gpus       = 4
 
-# submit image matching tasks
+# submit image matching tasks [(we will generate a task of num_images * num_gpus) *2]
 for i in range(num_images):
-    sift_results.append(sift(nproc=1, ngpus=1))
+    for j in range(num_gpus):
+        sift_results.append(sift(gpu_id=j ,nproc=1, ngpus=1)) # GPU 0
+        sift_results.append(sift(gpu_id=j ,nproc=1, ngpus=1)) # GPU 0
 
 # print each job status, they will now be finished
 print ("Job Status: {}".format([r.done() for r in sift_results]))
