@@ -1,4 +1,4 @@
-name: Summit Integration Test
+name: Comet Integration Test
 
 on:
   repository_dispatch:
@@ -36,4 +36,4 @@ jobs:
         pip install requests
     - name: Cron
       run: |
-        tests/bin/radical-pilot-test-verify -y 'summit_trigger' -d 7
+        tests/bin/radical-pilot-test-verify -y 'comet' -d 7
