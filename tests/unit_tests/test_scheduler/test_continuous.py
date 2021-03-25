@@ -11,9 +11,9 @@ import os
 from unittest import TestCase
 from unittest import mock
 
-import radical.utils           as ru
+import radical.utils as ru
 
-from   radical.pilot.agent.scheduler.continuous import Continuous
+from radical.pilot.agent.scheduler.continuous import Continuous
 
 
 # ------------------------------------------------------------------------------
@@ -22,7 +22,7 @@ class TestContinuous(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    def setUp(self):
+    def setUpClass(cls):
 
         ret  = list()
         base = os.path.dirname(__file__)
@@ -33,15 +33,9 @@ class TestContinuous(TestCase):
             ret.append(test_cases)
 
         cfg_fname = '%s/test_cases_continuous/test_continuous.json' % base
-        cfg_tests = ru.read_json(cfg_fname)
-
+        cls.cfg_tests = ru.read_json(cfg_fname)
+        cls.tasks = ret
         return cfg_tests, ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def tearDown(self):
-        pass
 
 
     # --------------------------------------------------------------------------
@@ -54,10 +48,9 @@ class TestContinuous(TestCase):
         component._uid = 'agent_scheduling.0000'
         component._log = mocked_Logger
 
-        test_case, _ = self.setUp()
-        for rm_info, cfg, result in zip(test_case['configure']['rm_info'],
-                                        test_case['configure']['cfg'],
-                                        test_case['configure']['result']):
+        for rm_info, cfg, result in zip(self.cfg_tests['configure']['rm_info'],
+                                        self.cfg_tests['configure']['cfg'],
+                                        self.cfg_tests['configure']['result']):
 
             component._rm_info           = rm_info
             component._rm_lm_info        = rm_info['lm_info']
@@ -134,8 +127,7 @@ class TestContinuous(TestCase):
                            mocked_find_resources,
                            mocked_Logger):
 
-        _, cfg = self.setUp()
-        for task_descr in cfg:
+        for task_descr in self.tasks:
             component = Continuous(cfg=None, session=None)
             task = dict()
             task['uid'] = task_descr['task']['uid']
