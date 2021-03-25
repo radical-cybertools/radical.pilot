@@ -106,6 +106,7 @@ def get_version(_mod_root):
         # make sure the version files exist for the runtime version inspection
         _path = '%s/%s' % (src_root, _mod_root)
         with open(_path + '/VERSION', 'w') as f:
+            f.write(_version_base + '\n')
             f.write(_version + '\n')
 
         _sdist_name = '%s-%s.tar.gz' % (name, _version_base)
