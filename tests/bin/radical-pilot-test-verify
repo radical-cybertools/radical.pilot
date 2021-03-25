@@ -6,6 +6,9 @@ import sys
 from datetime import datetime
 from argparse import ArgumentParser
 
+
+# ------------------------------------------------------------------------------
+#
 def main():
 
     parser = ArgumentParser()
@@ -19,15 +22,30 @@ def main():
           '/actions/workflows/%s.yml/runs?event=repository_dispatch' % args.yaml
     resp = requests.get(url)
     workflow_json = resp.json()
+
     if workflow_json['total_count'] > 0:
+
         last_run = workflow_json['workflow_runs'][0]
         finished = last_run['updated_at']
-        status = last_run['conclusion']
-        diff = datetime.now() - datetime.strptime(finished, '%Y-%m-%dT%H:%M:%SZ')
+        status   = last_run['conclusion']
+
+        now      = datetime.now()
+        last     = datetime.strptime(finished, '%Y-%m-%dT%H:%M:%SZ')
+        diff     = now - last
+
         if status == 'success' and diff.days > args.days:
             sys.exit(1)
         else:
             sys.exit(0)
     sys.exit(1)
 
-main()
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__':
+
+    main()
+
+
+# ------------------------------------------------------------------------------
+
