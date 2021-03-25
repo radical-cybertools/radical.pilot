@@ -22,6 +22,7 @@ class TestContinuous(TestCase):
 
     # --------------------------------------------------------------------------
     #
+    @classmethod
     def setUpClass(cls):
 
         ret  = list()
@@ -35,7 +36,7 @@ class TestContinuous(TestCase):
         cfg_fname = '%s/test_cases_continuous/test_continuous.json' % base
         cls.cfg_tests = ru.read_json(cfg_fname)
         cls.tasks = ret
-        return cfg_tests, ret
+#        return cfg_tests, ret
 
 
     # --------------------------------------------------------------------------
@@ -153,8 +154,10 @@ class TestContinuous(TestCase):
                                     'lfs': {'path': '/dev/null', 'size': 1234},
                                     'mem': 128,
                                     'name': 'a',
-                                    'uid': 1}]}
+                                    'uid': 1}]
+
             slot = component.schedule_task(task)
+            print(slot)
             self.assertEqual(slot, test_slot)
             self.assertEqual(component._tag_history, {})
 
