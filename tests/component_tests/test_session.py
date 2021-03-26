@@ -73,6 +73,7 @@ class TestSession(TestCase):
             self._session.get_resource_config(
                 resource='local.localhost', schema='wrong_schema')
 
+
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':

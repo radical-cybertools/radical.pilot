@@ -12,7 +12,6 @@ import radical.saga                 as rs
 import radical.saga.filesystem      as rsfs
 import radical.saga.utils.pty_shell as rsup
 
-from .constants import RESOURCE_CONFIG_LABEL_DEFAULT
 from .db        import DBSession
 from .          import utils as rpu
 
