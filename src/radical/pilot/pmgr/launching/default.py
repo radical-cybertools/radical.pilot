@@ -22,7 +22,7 @@ from ...  import constants     as rpc
 
 from .base import PMGRLaunchingComponent
 
-from ...staging_directives import complete_url, expand_staging_directives
+from ...staging_directives import complete_url, expand_sds
 
 
 # ------------------------------------------------------------------------------
@@ -510,7 +510,7 @@ class Default(PMGRLaunchingComponent):
         # we need the session sandbox url, but that is (at least in principle)
         # dependent on the schema to use for pilot startup.  So we confirm here
         # that the bulk is consistent wrt. to the schema.  Also include
-        # `staging_input` files and place them in the pilots' `staging_area`s.
+        # `staging_input` files and place them in the pilots' sandbox.
         #
         # FIXME: may need to split into schema-specific sub-bulks
         #
@@ -543,7 +543,7 @@ class Default(PMGRLaunchingComponent):
             for fname in ru.as_list(pilot['description'].get('input_staging')):
                 base = os.path.basename(fname)
                 ft_list.append({'src': fname,
-                                'tgt': '%s/staging_area/%s' % (pid, base),
+                                'tgt': '%s/%s' % (pid, base),
                                 'rem': False})
 
             output_staging = pilot['description'].get('output_staging')
@@ -553,13 +553,12 @@ class Default(PMGRLaunchingComponent):
                     for entry in output_staging:
                         fout.write('%s\n' % entry)
 
-<<<<<<< HEAD
-        session_sbox = ru.Url(pilots[0]['session_sandbox']).path
-=======
             # direct staging, use first pilot for staging context
             self._stage_in(pilots[0], info['sds'])
 
->>>>>>> fix/launcher_staging
+
+        session_sbox = ru.Url(pilots[0]['session_sandbox']).path
+
         for ft in ft_list:
             src     = os.path.abspath(ft['src'])
             tgt     = os.path.relpath(os.path.normpath(ft['tgt']), session_sbox)
@@ -614,39 +613,6 @@ class Default(PMGRLaunchingComponent):
                                    'action': rpc.TRANSFER})
         shutil.rmtree(tmp_dir)
 
-<<<<<<< HEAD
-        # we now need to untar on the target machine.
-        js_url = ru.Url(pilots[0]['js_url'])
-
-        # well, we actually don't need to talk to the rm, but only need
-        # a shell on the headnode.  That seems true for all ResourceManager we use right
-        # now.  So, lets convert the URL:
-        if '+' in js_url.scheme:
-            parts = js_url.scheme.split('+')
-            if 'gsissh' in parts: js_url.scheme = 'gsissh'
-            elif  'ssh' in parts: js_url.scheme = 'ssh'
-        else:
-            # In the non-combined '+' case we need to distinguish between
-            # a url that was the result of a hop or a local rm.
-            if js_url.scheme not in ['ssh', 'gsissh']:
-                js_url.scheme = 'fork'
-                js_url.host   = 'localhost'
-
-        with self._cache_lock:
-            if  js_url in self._saga_js_cache:
-                js_tmp  = self._saga_js_cache[js_url]
-            else:
-                js_tmp  = rs.job.Service(js_url, session=self._session)
-                self._saga_js_cache[js_url] = js_tmp
-
-      # cmd = "tar zmxvf %s/%s -C / ; rm -f %s" % \
-        cmd = "tar zmxvf %s/%s -C %s" % (session_sbox, tar_name, session_sbox)
-        j = js_tmp.run_job(cmd)
-        j.wait()
-
-        self._log.debug('tar cmd : %s', cmd)
-        self._log.debug('tar done: %s, %s, %s', j.state, j.stdout, j.stderr)
-=======
      ## # NOTE: the untar was moved into the bootstrapper (see `-z`).  That
      ## #       is actually only correct for the single-pilot case...
      ## # TODO: one tarball per pilot
@@ -683,7 +649,6 @@ class Default(PMGRLaunchingComponent):
      ##
      ## self._log.debug('tar cmd : %s', cmd)
      ## self._log.debug('tar done: %s, %s, %s', j.state, j.stdout, j.stderr)
->>>>>>> fix/launcher_staging
 
         for pilot in pilots:
             self._prof.prof('staging_in_stop',  uid=pilot['uid'])
@@ -1154,8 +1119,8 @@ class Default(PMGRLaunchingComponent):
 
         # always stage the bootstrapper for each pilot, but *not* in the tarball
         bootstrapper_path = os.path.abspath("%s/agent/bootstrap_0.sh"
-                                           % self._root_dir)
-        bootstrap_tgt = '%s/bootstrap_0.sh' % (pilot_sandbox, pid)
+                                            % self._root_dir)
+        bootstrap_tgt = '%s/bootstrap_0.sh' % pilot_sandbox
         ret['sds'].append({'source': bootstrapper_path,
                            'target': bootstrap_tgt,
                            'action': rpc.TRANSFER})
@@ -1297,10 +1262,15 @@ class Default(PMGRLaunchingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _stage(self, sds):
+    def _stage(self, sds, sandbox):
+        '''
+        sandbox (url): the sandbox of the sds' source
+        values: <path>, 'pilot', 'client', 'agent', 'session', 'task', 'resouce'
+                note that 'session' refers to the *remote* session sbox
+        '''
 
         # add uid, ensure its a list, general cleanup
-        sds  = expand_staging_directives(sds)
+        sds  = expand_sds(sds, sandbox)
         uids = [sd['uid'] for sd in sds]
 
         # prepare to wait for completion

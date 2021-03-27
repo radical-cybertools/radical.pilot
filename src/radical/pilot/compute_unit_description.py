@@ -280,7 +280,6 @@ class ComputeUnitDescription(ru.Description):
             'target'  : None, # see 'Location' below
             'action'  : None, # See 'Action operators' below
             'flags'   : None, # See 'Flags' below
-            'priority': 0     # Control ordering of actions (unused)
         }
 
 

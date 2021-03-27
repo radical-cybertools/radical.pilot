@@ -83,6 +83,8 @@ class Stager(rpu.Worker):
     #
     def _handle_staging(self, sds):
 
+        sds = expand_sds(sds)
+
         # Iterate over all directives
         for sd in sds:
 

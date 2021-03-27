@@ -1,128 +1,189 @@
 
 import radical.utils as ru
 
-from .constants import DEFAULT_ACTION, DEFAULT_FLAGS, DEFAULT_PRIORITY
-
-_IN  = 0
-_OUT = 1
+import .constants as rpc
 
 
-# ------------------------------------------------------------------------------
-#
-def expand_description(descr):
-    '''
-    convert any simple, string based staging directive in the description into
-    its dictionary equivalent
+class StagingDirective(ru.Description):
 
-    In this context, the following kinds of expansions are performed:
-
-      in:  ['input.dat']
-      out: {'source' : 'sandbox://client/input.dat',
-            'target' : 'sandbox://task/input.dat',
-            'action' : rp.TRANSFER}
-
-      in:  ['input.dat > staged.dat']
-      out: {'source' : 'sandbox://client/input.dat',
-            'target' : 'sandbox://task/staged.dat',
-            'action' : rp.TRANSFER}
-
-    This method changes the given description in place.
-    '''
-
-    if descr.get('input_staging')  is None: descr['input_staging']  = list()
-    if descr.get('output_staging') is None: descr['output_staging'] = list()
-
-    descr['input_staging' ] = expand_sd(descr['input_staging' ], 'task')
-    descr['output_staging'] = expand_sd(descr['output_staging'], 'client')
-
-    return descr
+    _schema = {
+            rpc.MODE   : str,
+            rpc.UID    : str,
+            rpc.SOURCE : str,
+            rpc.TARGET : str,
+            rpc.ACTION : str,
+            rpc.FLAGS  : int,
+            rpc.PROF_ID: str,
+    }
 
 
-# ------------------------------------------------------------------------------
-#
-def expand_sd(sds, sandbox):
-    '''
-    Take an abbreviated or compressed staging directive, expand it, and expand
-    sandboxes
-    '''
+    _defaults =
+            rpc.MODE   : None,
+            rpc.UID    : None,
+            rpc.SOURCE : None,
+            rpc.TARGET : None,
+            rpc.ACTION : rpc.TRANSFER,
+            rpc.FLAGS  : None,
+            rpc.PROF_ID: None,
+    }
 
 
-    if not sds:
-        return []
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, mode, from_dict=None):
 
-    ret = list()
-    sds = ru.as_list(sds)
+        assert(mode in [IN, OUT])
 
-    for sd in sds:
-
-        if isinstance(sd, str):
+        if isinstance(from_dict, str):
 
             # We detected a string, convert into dict.  The interpretation
             # differs depending of redirection character being present in the
             # string.
 
+            sd = from_dict
+
             if   '>'  in sd: src, tgt = sd.split('>' , 2)
             elif '<'  in sd: tgt, src = sd.split('<' , 2)
             else           : src, tgt = sd, os.path.basename(ru.Url(sd).path)
 
-            # FIXME: ns = session ID
-            expanded = {'source':   src.strip(),
-                        'target':   tgt.strip(),
-                        'action':   DEFAULT_ACTION,
-                        'flags':    DEFAULT_FLAGS,
-                        'priority': DEFAULT_PRIORITY,
-                        'uid':      ru.generate_id('sd.%(item_counter)06d',
-                                                    ru.ID_CUSTOM, ns='foo')
-                       }
+            from_dict = {'source': src.strip(),
+                         'target': tgt.strip(),
+                         'action': DEFAULT_ACTION,
+                         'flags' : DEFAULT_FLAGS,
 
-        elif isinstance(sd, dict):
+        ru.Description.__init__(self, from_dict=from_dict)
 
-            # sanity check on dict syntax
-            valid_keys = ['source', 'target', 'action', 'flags', 'priority',
-                          'uid', 'prof_id']
-            for k in sd:
-                if k not in valid_keys:
-                    raise ValueError('"%s" is invalid on staging directive' % k)
+        self.mode = mode
+        self.uid  = ru.generate_id('sd.%(item_counter)06d', ru.ID_CUSTOM,
+                                                            ns=session.uid)
 
-            src = sd.get('source')
-            tgt = sd.get('target',   os.path.basename(ru.Url(source).path))
 
-            assert(src)
+    # --------------------------------------------------------------------------
+    #
+    def _verify(self):
 
-            if not src:
-                raise Exception("Staging directive dict has no source member!")
+        # TODO: should make sure that expansion happened
+        pass
 
-            # FIXME: ns = session ID
-            expanded = {'source':   src,
-                        'target':   tgt,
-                        'action':   sd.get('action',   DEFAULT_ACTION),
-                        'flags':    sd.get('flags',    DEFAULT_FLAGS),
-                        'priority': sd.get('priority', DEFAULT_PRIORITY),
-                        'uid':      ru.generate_id('sd.%(item_counter)06d',
-                                                    ru.ID_CUSTOM, ns='foo')}
 
-        else:
-            src = sd['source']
-            tgt = sd.get('target', os.path.basename(ru.Url(source).path))
+    # --------------------------------------------------------------------------
+    #
+    def expand(self, session, context):
 
-            assert(src)
+  # def expand_sds(sds, src_ctx, tgt_ctx, session):
+  #     '''
+  #     Take an abbreviated or compressed staging directive and fill in all details
+  #     needed to actually perform the data transfer (or whateve the SD's `action`
+  #     is).
+  #
+  #     A staging directive is a description of a specific data staging operation to
+  #     be performed by RP.  It can have the following keys:
+  #     '''
 
-            if not tgt:
-                tgt = 'sandbox://%s/%s' % (sandbox, src.split('/')[-1])
+        '''
+        convert any simple, string based staging directive in the description
+        into its dictionary equivalent, and expand all file specs to full URLs.
+        the latter expansion is always specific to
 
-            sd_dict = {'source':   src,
-                       'target':   tgt,
-                       'action':   sd.get('action',   DEFAULT_ACTION),
-                       'flags':    sd.get('flags',    DEFAULT_FLAGS),
-                       'priority': sd.get('priority', DEFAULT_PRIORITY)}
+          - the the task to which this staging dorective belongs
+          - the pilot on which that task is scheduled
+          - the session to which that pilot belongs
+          - the resource on which the pilot is executed
 
-        sd_dict['uid'] = ru.generate_id('sd'),
-        ret.append(sd_dict)
+        Directives can refer to sandboxes of other tasks and pilots by
+        specifying the respective UIDs.
+
+        Expansion may not always be possible, for example a pilot sandbox can
+        only be fully expanded once the task has in fact been scheduled onto
+        specific pilot; a specific task sandbox can only be expanded once that
+        task has been scheduled on a pkilot, and that pilot has been scheduled
+        onto a resource.  For those information, the method will refer to the
+        `context` dictionary and expects to find the expanded sandboxes
+        registered under the respective schema.  The `session` argument is used
+        to derive the sandbox locations which are not listed in the `context`,
+        if possible.  This method will raise a ValueError if expansion is not
+        possible due to incomplete information.
+
+
+        The following types of expansions are performed:
+
+          - short form (str) to long form (dict)
+
+            in : ['input.dat']
+            out: {'source' : 'sandbox://client/input.dat',
+                  'target' : 'sandbox://task/input.dat',
+                  'action' : rp.TRANSFER}
+
+            in : ['input.dat > staged.dat']
+            out: {'source' : 'sandbox://client/input.dat',
+                  'target' : 'sandbox://task/staged.dat',
+                  'action' : rp.TRANSFER}
+
+          - sandbox expansion
+
+            in : {'source' : 'sandbox://client/input.dat',
+                  'target' : 'sandbox://task.0000/staged.dat',
+                  'action' : rp.TRANSFER}
+            out: {'source' : 'file:///tmp/input.dat',
+                  'target' : 'sftp://host/tmp/pilot.0000/task.0000/staged.dat',
+                  'action' : rp.TRANSFER}
+
+        The following special sandbox URL schemas are interpreted:
+
+          client:///     - the application workdir on the client host
+          resource:///   - the RP resource sandbox on the remote host
+          session:///    - the RP session  sandbox on the remote host
+          pilot:///      - the RP pilot    sandbox on the remote host
+                           (pilot hosts the task)
+          pilot.0001:/// - the RP resource sandbox on the remote host
+                           (pilot may not host the task)
+          task:///       - the RP resource sandbox on the remote host
+                           (this task)
+          task.0002:///  - the RP resource sandbox on the remote host
+                           (any task)
+        '''
 
         # FIXME: expand sandboxes
-        # FIXME: move to session
+        assert(sd.get('context'))  # needed for sandboxes
 
-    return ret
+        assert(isinstance(sd, dict)):
+
+        # sanity check on dict syntax
+        valid_keys = ['source', 'target', 'action', 'flags', 'uid', 'prof_id']
+        for k in sd:
+            if k not in valid_keys:
+                raise ValueError('"%s" is invalid on staging directive' % k)
+
+        src = sd.get('source')
+        tgt = sd.get('target',   os.path.basename(ru.Url(source).path))
+
+        assert(src)
+
+        if not src:
+            raise Exception("Staging directive dict has no source member!")
+
+        # FIXME: ns = session ID
+        self.source = src
+        self.target = tgt
+
+
+# ------------------------------------------------------------------------------
+#
+class StagingInputDirective(StagingDirective):
+
+    def __init__(self, from_dict=None):
+
+        StagingDirective.__init__(self, mode=rpc.IN, from_dict=from_dict)
+
+
+# ------------------------------------------------------------------------------
+#
+class StagingOutputDirective(StagingDirective):
+
+    def __init__(self, from_dict=None):
+
+        StagingDirective.__init__(self, mode=rpc.OUT, from_dict=from_dict)
+
 
 
 # ------------------------------------------------------------------------------

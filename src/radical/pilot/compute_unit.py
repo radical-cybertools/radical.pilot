@@ -60,8 +60,12 @@ class ComputeUnit(object):
         descr.verify()
 
         # if staging directives exist, expand them to the full dict version
+        # NOTE: make a deepcopy so that deascription can be passed by reference
+        # TODO: measure performance, decide if actually needed
+        self._descr            = expand_description(descr.as_dict(),
+                                                    umgr.session)
+
         self._umgr             = umgr
-        self._descr            = expand_description(descr.as_dict())
         self._session          = self._umgr.session
         self._uid              = ru.generate_id('unit.%(item_counter)06d',
                                                 ru.ID_CUSTOM,

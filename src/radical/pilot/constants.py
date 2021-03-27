@@ -93,12 +93,19 @@ GPU_MPI        = 'GPU_MPI'
 GPU_OpenMP     = 'GPU_OpenMP'
 
 #
-# Defaults
+# staging directives
 #
+MODE             = 'mode'
+IN               = 'in'
+OUT              = 'out'
+UID              = 'uid'
+SOURCE           = 'source'
+TARGET           = 'target'
+ACTION           = 'action'
+FLAGS            = 'flags'
+PROF_ID          = 'prof_id'
 DEFAULT_ACTION   = TRANSFER
-DEFAULT_PRIORITY = 0
 DEFAULT_FLAGS    = CREATE_PARENTS
-STAGING_AREA     = 'staging_area'
 
 
 # scheduler names (and backwards compat)
