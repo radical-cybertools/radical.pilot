@@ -3,6 +3,7 @@
 # pylint: disable=redefined-builtin  # W0622 Redefining built-in 'input'
 
 import os
+import sys
 import copy
 import time
 
@@ -13,12 +14,17 @@ from ..          import constants      as rpc
 from ..          import states         as rps
 
 
+def out(msg):
+    sys.stdout.write('%s\n' % msg)
+    sys.stdout.flush()
+
+
 # ------------------------------------------------------------------------------
 #
 class ComponentManager(object):
     '''
     RP spans a hierarchy of component instances: the application has a pmgr and
-    umgr, and the umgr has a staging component and a scheduling component, and
+    tmgr, and the tmgr has a staging component and a scheduling component, and
     the pmgr has a launching component, and components also can have bridges,
     etc. etc.  This ComponentManager centralises the code needed to spawn,
     manage and terminate such components - any code which needs to create
@@ -487,6 +493,11 @@ class Component(object):
             except:
                 self._log.exception('work cb error [ignored]')
 
+        try:
+            self._finalize()
+        except Exception:
+            self._log.exception('worker thread finalialization failed')
+
 
     # --------------------------------------------------------------------------
     #
@@ -497,21 +508,23 @@ class Component(object):
         #        should really be derived from rp module inspection via an
         #        `ru.PluginManager`.
         #
-        from radical.pilot import worker    as rpw
-        from radical.pilot import pmgr      as rppm
-        from radical.pilot import umgr      as rpum
-        from radical.pilot import agent     as rpa
+        from radical.pilot import worker as rpw
+        from radical.pilot import pmgr   as rppm
+        from radical.pilot import tmgr   as rptm
+        from radical.pilot import agent  as rpa
+        from radical.pilot import raptor as rpt
       # from radical.pilot import constants as rpc
 
         comp = {
+                rpc.WORKER                         : rpt.Worker,
                 rpc.UPDATE_WORKER                  : rpw.Update,
                 rpc.STAGER_WORKER                  : rpw.Stager,
 
                 rpc.PMGR_LAUNCHING_COMPONENT       : rppm.Launching,
 
-                rpc.UMGR_STAGING_INPUT_COMPONENT   : rpum.Input,
-                rpc.UMGR_SCHEDULING_COMPONENT      : rpum.Scheduler,
-                rpc.UMGR_STAGING_OUTPUT_COMPONENT  : rpum.Output,
+                rpc.TMGR_STAGING_INPUT_COMPONENT   : rptm.Input,
+                rpc.TMGR_SCHEDULING_COMPONENT      : rptm.Scheduler,
+                rpc.TMGR_STAGING_OUTPUT_COMPONENT  : rptm.Output,
 
                 rpc.AGENT_STAGING_INPUT_COMPONENT  : rpa.Input,
                 rpc.AGENT_SCHEDULING_COMPONENT     : rpa.Scheduler,
@@ -542,14 +555,14 @@ class Component(object):
         # FIXME: We do not check for types of things to cancel - the UIDs are
         #        supposed to be unique.  That abstraction however breaks as we
         #        currently have no abstract 'cancel' command, but instead use
-        #        'cancel_units'.
+        #        'cancel_tasks'.
 
         self._log.debug('command incoming: %s', msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_units':
+        if cmd == 'cancel_tasks':
 
             uids = arg['uids']
 
@@ -630,6 +643,7 @@ class Component(object):
         self._log.debug('%s close prof', self.uid)
         try:
             self._prof.prof('component_final')
+            self._prof.flush()
             self._prof.close()
         except Exception:
             pass
@@ -656,7 +670,6 @@ class Component(object):
                        ru.get_thread_name(), ru.get_caller_name())
 
         self._term.set()
-        self._finalize()
 
 
     # --------------------------------------------------------------------------
@@ -763,7 +776,7 @@ class Component(object):
 
         states = ru.as_list(states)
         if not states:
-            states = None
+            states = [None]  # worker handles stateless entities
 
         for state in states:
 
@@ -775,8 +788,8 @@ class Component(object):
                         % (self.uid, state, self._outputs[state], output))
 
             if not output:
-
                 # this indicates a final state
+                self._log.debug('%s register output to None %s', self.uid, state)
                 self._outputs[state] = None
 
             else:
@@ -821,7 +834,7 @@ class Component(object):
 
         states = ru.as_list(states)
         if not states:
-            states = None
+            states = [None]  # worker handles stateless entities
 
         for state in states:
 
@@ -845,11 +858,18 @@ class Component(object):
         '''
 
         # NOTE: we do not check if things are actually in the given state
+        things = ru.as_list(things)
+        if not things:
+            # nothing to do
+            return
 
         if state not in self._outputs:
             raise ValueError('state %s has no output registered' % state)
 
-        self._outputs[state].put(things)
+        if self._outputs[state]:
+            # the bridge will sort things into bulks, wit bulk size dependig on
+            # bridge configuration
+            self._outputs[state].put(things)
 
 
     # --------------------------------------------------------------------------
@@ -1123,13 +1143,13 @@ class Component(object):
         This is evaluated in self.publish.
         '''
 
+        if not things:
+            return
+
         if not ts:
             ts = time.time()
 
         things = ru.as_list(things)
-
-        if not things:
-            return
 
         self._log.debug('advance bulk: %s [%s, %s]', len(things), push, publish)
 
@@ -1139,7 +1159,7 @@ class Component(object):
 
             uid = thing['uid']
 
-          # if thing['type'] not in ['unit', 'pilot']:
+          # if thing['type'] not in ['task', 'pilot']:
           #     raise TypeError("thing has unknown type (%s)" % uid)
 
             if state:
@@ -1167,6 +1187,8 @@ class Component(object):
             for thing in things:
                 if '$all' in thing:
                     del(thing['$all'])
+                    if '$set' in thing:
+                        del(thing['$set'])
                     to_publish.append(thing)
 
                 elif thing['state'] in rps.FINAL:
@@ -1176,8 +1198,10 @@ class Component(object):
                     tmp = {'uid'   : thing['uid'],
                            'type'  : thing['type'],
                            'state' : thing['state']}
-                    for key in thing.get('$set', []):
-                        tmp[key] = thing[key]
+                    if '$set' in thing:
+                        for key in thing['$set']:
+                            tmp[key] = thing[key]
+                        del(thing['$set'])
                     to_publish.append(tmp)
 
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
@@ -1187,7 +1211,7 @@ class Component(object):
           #     self._prof.prof('publish', uid=thing['uid'],
           #                     state=thing['state'], ts=ts)
 
-        # never carry $all across component boundaries!
+        # never carry $all and across component boundaries!
         for thing in things:
             if '$all' in thing:
                 del(thing['$all'])
@@ -1212,8 +1236,6 @@ class Component(object):
                 if _state not in self._outputs:
                     # unknown target state -- error
                     for thing in _things:
-                        import pprint
-                        self._log.debug('%s', pprint.pformat(self._outputs))
                         self._log.debug("lost  %s [%s]", thing['uid'], _state)
                         self._prof.prof('lost', uid=thing['uid'], state=_state,
                                         ts=ts)
@@ -1246,15 +1268,7 @@ class Component(object):
         push information into a publication channel
         '''
 
-        if pubsub not in self._publishers:
-            self._log.warn("can't route msg for '%s': %s" % (pubsub,
-                                                 list(self._publishers.keys())))
-            return
-
-          # raise RuntimeError("can't route '%s' notification: %s" % (pubsub,
-          #     self._publishers.keys()))
-
-        if not self._publishers[pubsub]:
+        if not self._publishers.get(pubsub):
             raise RuntimeError("no msg route for '%s': %s" % (pubsub, msg))
 
         self._publishers[pubsub].put(pubsub, msg)

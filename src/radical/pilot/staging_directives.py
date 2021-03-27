@@ -1,4 +1,6 @@
 
+import os
+
 import radical.utils as ru
 
 import .constants as rpc
@@ -16,17 +18,40 @@ class StagingDirective(ru.Description):
             rpc.PROF_ID: str,
     }
 
+      in:  ['input.dat']
+      out: {'source' : 'sandbox://client/input.dat',
+            'target' : 'sandbox://task/input.dat',
+            'action' : rp.TRANSFER}
 
-    _defaults =
-            rpc.MODE   : None,
-            rpc.UID    : None,
-            rpc.SOURCE : None,
-            rpc.TARGET : None,
-            rpc.ACTION : rpc.TRANSFER,
-            rpc.FLAGS  : None,
-            rpc.PROF_ID: None,
-    }
+      in:  ['input.dat > staged.dat']
+      out: {'source' : 'sandbox://client/input.dat',
+            'target' : 'sandbox://task/staged.dat',
+            'action' : rp.TRANSFER}
 
+    This method changes the given description in place - repeated calls on the
+    same description instance will have no effect.  However, we expect this
+    method to be called only once during task construction.
+    '''
+
+    if descr.get('input_staging')  is None: descr['input_staging']  = list()
+    if descr.get('output_staging') is None: descr['output_staging'] = list()
+
+    descr['input_staging' ] = expand_sds(descr['input_staging' ], 'task')
+    descr['output_staging'] = expand_sds(descr['output_staging'], 'client')
+
+    return descr
+
+
+# ------------------------------------------------------------------------------
+#
+def expand_sds(sds, sandbox):
+    '''
+    Take an abbreviated or compressed staging directive, expand it, and expand
+    sandboxes
+    '''
+
+    if not sds:
+        return []
 
     # --------------------------------------------------------------------------
     #
@@ -46,134 +71,56 @@ class StagingDirective(ru.Description):
             elif '<'  in sd: tgt, src = sd.split('<' , 2)
             else           : src, tgt = sd, os.path.basename(ru.Url(sd).path)
 
-            from_dict = {'source': src.strip(),
-                         'target': tgt.strip(),
-                         'action': DEFAULT_ACTION,
-                         'flags' : DEFAULT_FLAGS,
-
-        ru.Description.__init__(self, from_dict=from_dict)
-
-        self.mode = mode
-        self.uid  = ru.generate_id('sd.%(item_counter)06d', ru.ID_CUSTOM,
-                                                            ns=session.uid)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _verify(self):
-
-        # TODO: should make sure that expansion happened
-        pass
-
-
-    # --------------------------------------------------------------------------
-    #
-    def expand(self, session, context):
-
-  # def expand_sds(sds, src_ctx, tgt_ctx, session):
-  #     '''
-  #     Take an abbreviated or compressed staging directive and fill in all details
-  #     needed to actually perform the data transfer (or whateve the SD's `action`
-  #     is).
-  #
-  #     A staging directive is a description of a specific data staging operation to
-  #     be performed by RP.  It can have the following keys:
-  #     '''
-
-        '''
-        convert any simple, string based staging directive in the description
-        into its dictionary equivalent, and expand all file specs to full URLs.
-        the latter expansion is always specific to
-
-          - the the task to which this staging dorective belongs
-          - the pilot on which that task is scheduled
-          - the session to which that pilot belongs
-          - the resource on which the pilot is executed
-
-        Directives can refer to sandboxes of other tasks and pilots by
-        specifying the respective UIDs.
-
-        Expansion may not always be possible, for example a pilot sandbox can
-        only be fully expanded once the task has in fact been scheduled onto
-        specific pilot; a specific task sandbox can only be expanded once that
-        task has been scheduled on a pkilot, and that pilot has been scheduled
-        onto a resource.  For those information, the method will refer to the
-        `context` dictionary and expects to find the expanded sandboxes
-        registered under the respective schema.  The `session` argument is used
-        to derive the sandbox locations which are not listed in the `context`,
-        if possible.  This method will raise a ValueError if expansion is not
-        possible due to incomplete information.
-
-
-        The following types of expansions are performed:
-
-          - short form (str) to long form (dict)
-
-            in : ['input.dat']
-            out: {'source' : 'sandbox://client/input.dat',
-                  'target' : 'sandbox://task/input.dat',
-                  'action' : rp.TRANSFER}
-
-            in : ['input.dat > staged.dat']
-            out: {'source' : 'sandbox://client/input.dat',
-                  'target' : 'sandbox://task/staged.dat',
-                  'action' : rp.TRANSFER}
-
-          - sandbox expansion
-
-            in : {'source' : 'sandbox://client/input.dat',
-                  'target' : 'sandbox://task.0000/staged.dat',
-                  'action' : rp.TRANSFER}
-            out: {'source' : 'file:///tmp/input.dat',
-                  'target' : 'sftp://host/tmp/pilot.0000/task.0000/staged.dat',
-                  'action' : rp.TRANSFER}
-
-        The following special sandbox URL schemas are interpreted:
-
-          client:///     - the application workdir on the client host
-          resource:///   - the RP resource sandbox on the remote host
-          session:///    - the RP session  sandbox on the remote host
-          pilot:///      - the RP pilot    sandbox on the remote host
-                           (pilot hosts the task)
-          pilot.0001:/// - the RP resource sandbox on the remote host
-                           (pilot may not host the task)
-          task:///       - the RP resource sandbox on the remote host
-                           (this task)
-          task.0002:///  - the RP resource sandbox on the remote host
-                           (any task)
-        '''
+            # FIXME: ns = session ID
+            expanded = {
+                    'source':   src.strip(),
+                    'target':   tgt.strip(),
+                    'action':   DEFAULT_ACTION,
+                    'flags':    DEFAULT_FLAGS,
+                    'priority': DEFAULT_PRIORITY,
+            }
 
         # FIXME: expand sandboxes
         assert(sd.get('context'))  # needed for sandboxes
 
         assert(isinstance(sd, dict)):
 
-        # sanity check on dict syntax
-        valid_keys = ['source', 'target', 'action', 'flags', 'uid', 'prof_id']
-        for k in sd:
-            if k not in valid_keys:
-                raise ValueError('"%s" is invalid on staging directive' % k)
+            src = sd.get('source')
+            tgt = sd.get('target', os.path.basename(ru.Url(src).path))
 
-        src = sd.get('source')
-        tgt = sd.get('target',   os.path.basename(ru.Url(source).path))
+            action   = sd.get('action',   DEFAULT_ACTION)
+            flags    = sd.get('flags',    DEFAULT_FLAGS)
+            priority = sd.get('priority', DEFAULT_PRIORITY)
 
-        assert(src)
+            assert(src)
 
-        if not src:
-            raise Exception("Staging directive dict has no source member!")
+            # RCT flags should always be rendered as OR'ed integers - but old
+            # versions of the RP API rendered them as list of strings.  We
+            # convert to the integer version for backward compatibility - but we
+            # complain loudly if we find actual strings.
+            if isinstance(flags, str):
+                raise ValueError('use RP constants for staging flags!')
 
-        # FIXME: ns = session ID
-        self.source = src
-        self.target = tgt
+            int_flags = 0
+            for flag in ru.as_list(flags):
+                if isinstance(flags, str):
+                    raise ValueError('"%s" is no valid RP constant' % flag)
+                int_flags |= flag
+            flags = int_flags
+
+            # FIXME: ID ns = session ID
+            expanded = {'source':   src,
+                        'target':   tgt,
+                        'action':   action,
+                        'flags':    flags,
+                        'priority': priority}
+
+        else:
+            raise TypeError('cannot handle SD type %s' % type(sd))
 
 
-# ------------------------------------------------------------------------------
-#
-class StagingInputDirective(StagingDirective):
-
-    def __init__(self, from_dict=None):
-
-        StagingDirective.__init__(self, mode=rpc.IN, from_dict=from_dict)
+        expanded['uid'] = ru.generate_id('sd')
+        ret.append(expanded)
 
 
 # ------------------------------------------------------------------------------
@@ -188,7 +135,7 @@ class StagingOutputDirective(StagingDirective):
 
 # ------------------------------------------------------------------------------
 #
-def complete_url(path, contexts, log=None):
+def complete_url(path, contexts):
     '''
     Some paths in data staging directives are to be interpreted relative to
     certain locations, namely relative to
@@ -198,6 +145,9 @@ def complete_url(path, contexts, log=None):
         * `sandbox://pilot/`   : the pilot sandbox on the target resource
         * `sandbox://task/`    : the task  sandbox on the target resource
         * `sandbox://<uid>/`   : the task  sandbox for task with given uid
+
+    For the above schemas, we interpret `schema://` the same as `schema:///`,
+    ie. we treat this as a namespace, not as location qualified by a hostname.
 
     The `context` parameter is expected to be a dict which provides a set of
     URLs to be used to expand the path:
@@ -225,21 +175,18 @@ def complete_url(path, contexts, log=None):
     # We assume that the user knows what she is doing when using absolute paths,
     # and make no attempts to verify those.
     if str(path)[0] == '/':
-        if log: log.error('abs path')
-        return ru.Url('file:///' + path), None
+        return ru.Url('file://localhost/' + path)
 
     # we always want a schema, otherwise interpret as path relative to `pwd`
     if '://' not in path:
         # no schema: path relative to `pwd`
         for context in contexts:
-            if 'pwd' in context:
-                if log: log.error('pwd path')
-                return ru.Url(context['pwd'] + '/' + path), None
+            if 'pwd' not in context:
+                return ru.Url(context['pwd'] + '/' + path)
 
     # only expand sandbox schemas
     if not path.startswith('sandbox://'):
-        if log: log.error('norm path')
-        return ru.Url(path), None
+        return ru.Url(path)
 
     _, _, host, rest = path.split('/', 3)
     assert(host)
@@ -251,13 +198,10 @@ def complete_url(path, contexts, log=None):
     # need to do sandbox expansion
     for context in contexts:
         if host in context:
-            if log: log.error('comp path')
-            return ru.Url(context[host] + '/' + rest), None
+            return ru.Url(context[host] + '/' + rest)
 
     # cannot expand: this likely refers to an unknown UID
-    if log: log.error('oops path: %s', host)
-    return [None, host]
-
+    raise ValueError('cannot expand %s', path)
 
 
 # ------------------------------------------------------------------------------

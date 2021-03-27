@@ -15,7 +15,7 @@ from ... import constants as rpc
 # ------------------------------------------------------------------------------
 #
 # This is a simple extension of the Continuous scheduler which evaluates the
-# `order` tag of arriving units, which is expected to have the form
+# `order` tag of arriving tasks, which is expected to have the form
 #
 #   order : {'ns'   : <string>,
 #            'order': <int>,
@@ -28,10 +28,10 @@ from ... import constants as rpc
 # been executed.  The first BoT is expected to have order '0'.
 #
 # The dominant use case for this scheduler is the execution of pipeline stages,
-# where one stage needs to be completed before units from the next stage can be
+# where one stage needs to be completed before tasks from the next stage can be
 # considered for scheduling.
 #
-# FIXME: - failed units cannot yet be recognized
+# FIXME: - failed tasks cannot yet be recognized
 #
 class ContinuousOrdered(Continuous):
 
@@ -48,21 +48,21 @@ class ContinuousOrdered(Continuous):
 
         Continuous._configure(self)
 
-        # This scheduler will wait for state updates, and will consider a unit
+        # This scheduler will wait for state updates, and will consider a task
         # `done` once it reaches a trigger state.  When a state update is found
-        # which shows that the units reached that state, it is marked as 'done'
+        # which shows that the tasks reached that state, it is marked as 'done'
         # in the respective order of its namespace.
         #
-        self._trigger_state = rps.UMGR_STAGING_OUTPUT_PENDING
+        self._trigger_state = rps.TMGR_STAGING_OUTPUT_PENDING
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
 
         # a namespace entry will look like this:
         #
         #   { 'current' : 0,   # BoT currently operated on - starts with '0'
         #     0 :              # sequential BoT numbering  `n`
-        #     {'size': 128,    # number of units to expect   `max`
-        #      'uids': [...]}, # ids    of units to be scheduled
-        #      'done': [...]}, # ids    of units in trigger state
+        #     {'size': 128,    # number of tasks to expect   `max`
+        #      'uids': [...]}, # ids    of tasks to be scheduled
+        #      'done': [...]}, # ids    of tasks in trigger state
         #     },
         #     ...
         #   }
@@ -71,8 +71,8 @@ class ContinuousOrdered(Continuous):
         # runnable once it arrives.
 
         self._lock       = ru.RLock()   # lock on the ns
-        self._units      = dict()       # unit registry (we use uids otherwise)
-        self._unordered  = list()       # IDs of units which are not ordered
+        self._tasks      = dict()       # task registry (we use uids otherwise)
+        self._unordered  = list()       # IDs of tasks which are not ordered
         self._ns         = dict()       # nothing has run, yet
 
         self._ns_init    = {'current' : 0}
@@ -83,32 +83,32 @@ class ContinuousOrdered(Continuous):
 
     # --------------------------------------------------------------------------
     # overload the main method from the base class
-    def _schedule_units(self, units):
+    def _schedule_tasks(self, tasks):
 
-        if not isinstance(units, list):
-            units = [units]
+        if not isinstance(tasks, list):
+            tasks = [tasks]
 
-        self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
+        self.advance(tasks, rps.AGENT_SCHEDULING, publish=True, push=False)
 
         with self._lock:
 
             # cache ID int to avoid repeated parsing
-            for unit in units:
+            for task in tasks:
 
-                uid       = unit['uid']
-                descr     = unit['description']
+                uid       = task['uid']
+                descr     = task['description']
                 order_tag = descr.get('tags', {}).get('order')
 
-                # units w/o order info are handled as usual, and we don't keep
+                # tasks w/o order info are handled as usual, and we don't keep
                 # any infos around
                 if not order_tag:
                   # self._log.debug('no tags for %s', uid)
-                    self._unordered.append(unit)
+                    self._unordered.append(task)
                     continue
 
                 # this uniit wants to be ordered - keep it in our registry
-                assert(uid not in self._units), 'duplicated unit %s' % uid
-                self._units[uid] = unit
+                assert(uid not in self._tasks), 'duplicated task %s' % uid
+                self._tasks[uid] = task
 
                 ns    = order_tag['ns']
                 order = order_tag['order']
@@ -128,10 +128,10 @@ class ContinuousOrdered(Continuous):
                 assert(size == self._ns[ns][order]['size']), \
                        'inconsistent order size'
 
-                # add unit to order
+                # add task to order
                 self._ns[ns][order]['uids'].append(uid)
 
-        # try to schedule known units
+        # try to schedule known tasks
         self._try_schedule()
 
         return True
@@ -140,36 +140,36 @@ class ContinuousOrdered(Continuous):
     # --------------------------------------------------------------------------
     def _try_schedule(self):
         '''
-        Schedule all units in self._unordered.  Then for all name spaces,
-        check if their `current` order has units to schedule.  If not and
-        we see `size` units are `done`, consider the order completed and go
+        Schedule all tasks in self._unordered.  Then for all name spaces,
+        check if their `current` order has tasks to schedule.  If not and
+        we see `size` tasks are `done`, consider the order completed and go
         to the next one.  Break once we find a BoT which is not completely
-        schedulable, either because we did not yet get all its units, or
-        because we run out of resources to place those units.
+        schedulable, either because we did not yet get all its tasks, or
+        because we run out of resources to place those tasks.
         '''
 
       # self._log.debug('try schedule')
-        scheduled = list()  # list of scheduled units
+        scheduled = list()  # list of scheduled tasks
 
         # FIXME: this lock is very aggressive, it should not be held over
         #        the scheduling algorithm's activity.
-        # first schedule unordered units (
+        # first schedule unordered tasks (
         with self._lock:
 
             keep = list()
-            for unit in self._unordered:
+            for task in self._unordered:
 
-                # attempt to schedule this unit (use continuous algorithm)
-                if Continuous._try_allocation(self, unit):
+                # attempt to schedule this task (use continuous algorithm)
+                if Continuous._try_allocation(self, task):
 
                     # success - keep it and try the next one
-                    scheduled.append(unit)
+                    scheduled.append(task)
 
                 else:
-                    # failure - keep unit around
-                    keep.append(unit)
+                    # failure - keep task around
+                    keep.append(task)
 
-            # keep only unscheduleed units
+            # keep only unscheduleed tasks
             self._unordered = keep
 
 
@@ -198,34 +198,34 @@ class ContinuousOrdered(Continuous):
                         continue
 
                     # otherwise we found the order we want to handle
-                    # try to schedule the units in this order
+                    # try to schedule the tasks in this order
                     keep = list()
                     for uid in order['uids']:
 
-                        unit = self._units[uid]
+                        task = self._tasks[uid]
 
-                        # attempt to schedule this unit with the continuous alg
-                        if Continuous._try_allocation(self, unit):
+                        # attempt to schedule this task with the continuous alg
+                        if Continuous._try_allocation(self, task):
 
                             # success - keep it and try the next one
-                            scheduled.append(unit)
+                            scheduled.append(task)
 
                         else:
-                            # failure - keep unit around
+                            # failure - keep task around
                             keep.append(uid)
 
-                    # only keep unscheduled units around
+                    # only keep unscheduled tasks around
                     order['uids'] = keep
 
-                    # we always break after scheduling units from an order.
+                    # we always break after scheduling tasks from an order.
                     # Either we are out of resources, then we have to try again
-                    # later,  or we are out of units, and could switch to the
+                    # later,  or we are out of tasks, and could switch to the
                     # next order -- but that would require state updates from
-                    # the units just submitted, so we break anyway
+                    # the tasks just submitted, so we break anyway
                     break
 
 
-        # advance all scheduled units and push them out
+        # advance all scheduled tasks and push them out
         if scheduled:
             self.advance(scheduled, rps.AGENT_EXECUTING_PENDING,
                          publish=True, push=True)
@@ -238,7 +238,7 @@ class ContinuousOrdered(Continuous):
     #
     def schedule_cb(self, topic, msg):
         '''
-        This cb gets triggered after some units got unscheduled, ie. their
+        This cb gets triggered after some tasks got unscheduled, ie. their
         resources have been freed.  We attempt a new round of scheduling at that
         point.
         '''
@@ -252,7 +252,7 @@ class ContinuousOrdered(Continuous):
     #
     def _state_cb(self, topic, msg):
         '''
-        Get state updates, and trigger a new schedule attempt if any unit
+        Get state updates, and trigger a new schedule attempt if any task
         previously scheduled by us reaches the trigger state.
         '''
 
@@ -273,7 +273,7 @@ class ContinuousOrdered(Continuous):
             ttype = thing['type']
             state = thing['state']
 
-            if ttype != 'unit':
+            if ttype != 'task':
                 continue
 
             # FIXME: this could be optimized by also checking for later states
@@ -281,8 +281,8 @@ class ContinuousOrdered(Continuous):
                 continue
 
             with self._lock:
-                if uid not in self._units:
-                    # unknown unit
+                if uid not in self._tasks:
+                    # unknown task
                     continue
 
             # get and parse order tag.  We don't need to repeat checks
@@ -297,7 +297,7 @@ class ContinuousOrdered(Continuous):
             trigger = True
 
 
-        # did any units trigger a reschedule?
+        # did any tasks trigger a reschedule?
         if trigger:
             self._try_schedule()
 

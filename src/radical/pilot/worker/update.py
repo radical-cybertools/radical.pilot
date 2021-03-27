@@ -3,13 +3,22 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import sys
 import time
 import pymongo
 
-import radical.utils     as ru
+import radical.utils as ru
 
-from .. import utils     as rpu
-from .. import constants as rpc
+from ..   import utils     as rpu
+from ..   import constants as rpc
+
+from ..db import DBSession
+
+
+
+def out(msg):
+    sys.stdout.write('%s\n' % msg)
+    sys.stdout.flush()
 
 
 # ------------------------------------------------------------------------------
@@ -22,7 +31,7 @@ DEFAULT_BULK_COLLECTION_SIZE =  100  # seconds
 #
 class Update(rpu.Worker):
     '''
-    An UpdateWorker pushes CU and Pilot state updates to mongodb.  Its instances
+    An UpdateWorker pushes Task and Pilot state updates to mongodb.  Its instances
     compete for update requests on the update_queue.  Those requests will be
     triplets of collection name, query dict, and update dict.  Update requests
     will be collected into bulks over some time (BULK_COLLECTION_TIME) and
@@ -43,14 +52,13 @@ class Update(rpu.Worker):
         self._sid        = self._cfg['sid']
         self._dburl      = self._cfg['dburl']
 
-        # TODO: get db handle from a connected session
-        _, db, _, _, _   = ru.mongodb_connect(self._dburl)
-        self._mongo_db   = db
-        self._coll       = self._mongo_db[self._sid]
-        self._bulk       = self._coll.initialize_ordered_bulk_op()
-        self._last       = time.time()        # time of last bulk push
-        self._uids       = list()             # list of collected uids
-        self._lock       = ru.Lock()          # protect _bulk
+        # get db handle from a connected, non-primary session
+        self._dbs   = DBSession(self._sid, self._dburl, {}, self._log, connect=True)
+        self._coll  = self._dbs._c
+        self._bulk  = self._coll.initialize_ordered_bulk_op()
+        self._last  = time.time()        # time of last bulk push
+        self._uids  = list()             # list of collected uids
+        self._lock  = ru.Lock()          # protect _bulk
 
         self._bulk_time = self._cfg.bulk_time
         self._bulk_size = self._cfg.bulk_size
@@ -141,7 +149,7 @@ class Update(rpu.Worker):
 
         Supported types are:
 
-          - unit
+          - task
           - pilot
 
         supported 'cmds':
@@ -177,18 +185,18 @@ class Update(rpu.Worker):
 
           # cmds = ['delete',       'update',       'state',
           #         'delete_flush', 'update_flush', 'state_flush', 'flush']
-            if cmd not in ['update']:
-                self._log.info('ignore cmd %s', cmd)
+            if cmd not in ['update', 'insert']:
                 return True
 
-            if not isinstance(things, list):
-                things = [things]
+            if cmd == 'insert':
+                self._dbs.insert_units(ru.as_list(things))
+                return True
 
 
             # FIXME: we don't have any error recovery -- any failure to update
             #        state in the DB will thus result in an exception here and tear
             #        down the module.
-            for thing in things:
+            for thing in ru.as_list(things):
 
                 # got a new request.  Add to bulk (create as needed),
                 # and push bulk if time is up.
@@ -213,7 +221,7 @@ class Update(rpu.Worker):
 
                 for key,val in thing.items():
                     # never set _id, states (to avoid index clash, doubled ops)
-                    if key not in ['_id', 'states']:
+                    if key not in ['_id', 'states', 'cmds']:
                         update_dict['$set'][key] = val
 
                 # we set state, put (more importantly) we push the state onto

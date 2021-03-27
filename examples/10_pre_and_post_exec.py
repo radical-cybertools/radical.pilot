@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 __copyright__ = 'Copyright 2013-2014, http://radical.rutgers.edu'
 __license__   = 'MIT'
@@ -50,7 +50,7 @@ if __name__ == '__main__':
 
         report.header('submit pilots')
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session=session)
 
         # Define an [n]-core local pilot that runs for [x] minutes
@@ -65,53 +65,53 @@ if __name__ == '__main__':
                    'cores'         : config[resource].get('cores', 1),
                    'gpus'          : config[resource].get('gpus', 0),
                   }
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
 
-        report.header('submit units')
+        report.header('submit tasks')
 
-        # Register the ComputePilot in a UnitManager object.
-        umgr = rp.UnitManager(session=session)
-        umgr.add_pilots(pilot)
+        # Register the Pilot in a TaskManager object.
+        tmgr = rp.TaskManager(session=session)
+        tmgr.add_pilots(pilot)
 
-        # Create a workload of ComputeUnits.
-        # Each compute unit runs a specific `echo` command
+        # Create a workload of Tasks.
+        # Each task runs a specific `echo` command
 
-        n = 128   # number of units to run
-        report.info('create %d unit description(s)\n\t' % n)
+        n = 128   # number of tasks to run
+        report.info('create %d task description(s)\n\t' % n)
 
-        cuds = list()
+        tds = list()
         for i in range(0, n):
 
-            # create a new CU description, and fill it.
+            # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.ComputeUnitDescription()
-            cud.pre_exec    = ['export TEST=jabberwocky']
-            cud.executable  = '/bin/echo'
-            cud.arguments   = ['$RP_UNIT_ID greets $TEST']
+            td = rp.TaskDescription()
+            td.pre_exec    = ['export TEST=jabberwocky']
+            td.executable  = '/bin/echo'
+            td.arguments   = ['$RP_TASK_ID greets $TEST']
 
-            cuds.append(cud)
+            tds.append(td)
             report.progress()
         report.ok('>>ok\n')
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(cuds)
+        # assigning Tasks to the Pilots.
+        tasks = tmgr.submit_tasks(tds)
 
-        # Wait for all compute units to reach a final state
+        # Wait for all tasks to reach a final state
         # (DONE, CANCELED or FAILED).
         report.header('gather results')
-        umgr.wait_units()
+        tmgr.wait_tasks()
 
         report.info('\n')
-        for unit in units:
+        for task in tasks:
             report.plain('  * %s: %s, exit: %3s, out: %s\n'
-                    % (unit.uid, unit.state[:4],
-                        unit.exit_code, unit.stdout.strip()[:35]))
+                    % (task.uid, task.state[:4],
+                        task.exit_code, task.stdout.strip()[:35]))
 
 
     except Exception as e:

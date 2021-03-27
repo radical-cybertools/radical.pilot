@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 __author__    = 'RADICAL Team'
 __email__     = 'radical@rutgers.edu'
@@ -106,13 +106,14 @@ def get_version(_mod_root):
         # make sure the version files exist for the runtime version inspection
         _path = '%s/%s' % (src_root, _mod_root)
         with open(_path + '/VERSION', 'w') as f:
-            f.write(_version + '\n')
+            f.write(_version_base + '\n')
+            f.write(_version      + '\n')
 
-        _sdist_name = '%s-%s.tar.gz' % (name, _version)
-        _sdist_name = _sdist_name.replace('/', '-')
-        _sdist_name = _sdist_name.replace('@', '-')
-        _sdist_name = _sdist_name.replace('#', '-')
-        _sdist_name = _sdist_name.replace('_', '-')
+        _sdist_name = '%s-%s.tar.gz' % (name, _version_base)
+      # _sdist_name = _sdist_name.replace('/', '-')
+      # _sdist_name = _sdist_name.replace('@', '-')
+      # _sdist_name = _sdist_name.replace('#', '-')
+      # _sdist_name = _sdist_name.replace('_', '-')
 
         if '--record'    in sys.argv or \
            'bdist_egg'   in sys.argv or \
@@ -180,8 +181,6 @@ df = [('%s/'                      % base, ['docs/source/events.md']),
       ('%s/examples'              % base, glob.glob('examples/*.json')),
       ('%s/examples/docs'         % base, glob.glob('examples/docs/*')),
       ('%s/examples/misc'         % base, glob.glob('examples/misc/*')),
-      ('%s/examples/kmeans'       % base, glob.glob('examples/kmeans/*')),
-      ('%s/examples/mandelbrot'   % base, glob.glob('examples/mandelbrot/*')),
       ('%s/examples/data_staging' % base, glob.glob('examples/data_staging/*')),
 ]
 

@@ -5,13 +5,13 @@
 Using Pre- and Post- exec commands
 **********************************
 
-In some cases, units need customizable setup routines. A frequent example is
+In some cases, tasks need customizable setup routines. A frequent example is
 the use of `module load` commands on various HPC platforms, which are used to
-prepare the runtime environment of the unit's executable in a well defined,
+prepare the runtime environment of the task's executable in a well defined,
 system-specific way.
 
 RP supports the invocation of such commands via the `pre_exec` and `post_exec`
-keys for the unit description.  
+keys for the task description.  
 
 .. note:: Pre- and Post- execution is performed on the *resource headnode*.
           Abusing these commands for any compute or I/O heavy load can lead
@@ -23,14 +23,14 @@ an earlier section, but now rendered via a `pre_exec` command:
 
 .. code-block:: python
 
-    cud = rp.ComputeUnitDescription()
+    cud = rp.TaskDescription()
 
     cud.pre_exec    = ['export TEST=jabberwocky']
     cud.executable  = '/bin/echo'
-    cud.arguments   = ['$RP_UNIT_ID greets $TEST']
+    cud.arguments   = ['$RP_TASK_ID greets $TEST']
 
 which again will make the environment variable `TEST` available during the
-execution of the unit.
+execution of the task.
 
 
 Running the Example

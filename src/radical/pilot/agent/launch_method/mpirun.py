@@ -46,8 +46,13 @@ class MPIRun(LaunchMethod):
                                             'mpirun',             # general case
                                            ])
 
+        # cheyenne is special: it needs MPT behavior (no -host) even for the
+        # default mpirun (not mpirun_mpt).
+        if 'cheyenne' in self._cfg.resource.lower():
+            self._mpt = True
+
         # don't use the full pathname as the user might load a different
-        # compiler / MPI library suite from his CU pre_exec that requires
+        # compiler / MPI library suite from his Task pre_exec that requires
         # the launcher from that version -- see #572.
         # FIXME: then why are we doing this LM setup in the first place??
         if self.launch_command:
@@ -71,16 +76,16 @@ class MPIRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def construct_command(self, t, launch_script_hop):
 
-        slots        = cu['slots']
-        uid          = cu['uid']
-        cud          = cu['description']
-        sandbox      = cu['unit_sandbox_path']
-        task_exec    = cud['executable']
-        task_threads = cud.get('cpu_threads', 1)
-        task_env     = cud.get('environment') or dict()
-        task_args    = cud.get('arguments')   or list()
+        slots        = t['slots']
+        uid          = t['uid']
+        td          = t['description']
+        sandbox      = t['task_sandbox_path']
+        task_exec    = td['executable']
+        task_threads = td.get('cpu_threads', 1)
+        task_env     = td.get('environment') or dict()
+        task_args    = td.get('arguments')   or list()
         task_argstr  = self._create_arg_string(task_args)
 
         if '_dplace' in self.name and task_threads > 1:
@@ -105,9 +110,9 @@ class MPIRun(LaunchMethod):
         # Cheyenne is the only machine that requires mpirun_mpt.  We then
         # have to set MPI_SHEPHERD=true
         if self._mpt:
-            if not cu['description'].get('environment'):
-                cu['description']['environment'] = dict()
-            cu['description']['environment']['MPI_SHEPHERD'] = 'true'
+            if not t['description'].get('environment'):
+                t['description']['environment'] = dict()
+            t['description']['environment']['MPI_SHEPHERD'] = 'true'
 
         # Extract all the hosts from the slots
         host_list = list()
@@ -131,7 +136,7 @@ class MPIRun(LaunchMethod):
             self._dplace += ','.join(core_list)
 
 
-        # If we have a CU with many cores, we will create a hostfile and pass
+        # If we have a Task with many cores, we will create a hostfile and pass
         # that as an argument instead of the individual hosts
         hosts_string     = ''
         mpt_hosts_string = ''

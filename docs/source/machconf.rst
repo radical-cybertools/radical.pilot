@@ -9,7 +9,7 @@ Introduction
 ============
 
 RADICAL-Pilot allows you to launch a pilot allocating a large number of cores
-on a remote HPC cluster. The pilot is then used to run multiple units, each
+on a remote HPC cluster. The pilot is then used to run multiple tasks, each
 with a defined number of cores. This separates resource allocation and
 management from resource usage, and avoids HPC cluster queue policies and
 waiting times which can significantly reduce the total time to completion of
@@ -17,11 +17,11 @@ your application.
 
 If you want to use a remote HPC resource (in this example a cluster named
 "Archer", located at EPSRC, UK) you have to define it in the
-`ComputePilotDescription` object:
+`PilotDescription` object:
 
 .. code-block:: python
 
-    pdesc = radical.pilot.ComputePilotDescription()
+    pdesc = radical.pilot.PilotDescription()
     pdesc.resource = "epsrc.archer"
     pdesc.project  = "e1234"
     pdesc.runtime  = 60
@@ -91,7 +91,7 @@ pre-configured resource in her code like this:
 
 .. code-block:: python
 
-    pdesc = radical.pilot.ComputePilotDescription()
+    pdesc = radical.pilot.PilotDescription()
     pdesc.resource   = "epsrc.archer"
     pdesc.project    = "e1234"
     pdesc.runtime    = 60
@@ -100,7 +100,7 @@ pre-configured resource in her code like this:
 
 The RADICAL-Pilot developer team maintains a growing set of resource
 configuration files. Several of the settings included there can be overridden
-in the ``ComputePilotDescription`` object. For example, the snipped above
+in the ``PilotDescription`` object. For example, the snipped above
 replaces the default queue ``standard`` with the queue ``large``. For a list
 of supported configurations, see :ref:`chapter_resources` and note that those
 resource files can be found under ``radical/pilot/configs/`` in the
@@ -174,7 +174,7 @@ A configuration file has to be valid JSON. The structure is as follows:
 
 The name of your file (here ``resource_lrz.json``) together with the name of
 the resource (``supermuc``) form the resource key which is used in the
-:class:`ComputePilotDescription` resource attribute (``lrz.supermuc``).
+:class:`PilotDescription` resource attribute (``lrz.supermuc``).
 
 All fields are mandatory, unless indicated otherwise below.
 
@@ -185,8 +185,8 @@ All fields are mandatory, unless indicated otherwise below.
 * ``filesystem_endpoint``: access url for file staging (interpreted by SAGA).
 * ``default_queue``: queue to use for pilot submission (optional).
 * ``resource_manager``: type of job management system. Valid values are: ``LOADL``, ``LSF``, ``PBSPRO``, ``SGE``, ``SLURM``, ``TORQUE``, ``FORK``.
-* ``task_launch_method``: type of compute node access, required for non-MPI units. Valid values are: ``SSH``,``APRUN`` or ``LOCAL``.
-* ``mpi_launch_method``: type of MPI support, required for MPI units. Valid values are: ``MPIRUN``, ``MPIEXEC``, ``APRUN``, ``IBRUN``, etc.
+* ``task_launch_method``: type of compute node access, required for non-MPI tasks. Valid values are: ``SSH``,``APRUN`` or ``LOCAL``.
+* ``mpi_launch_method``: type of MPI support, required for MPI tasks. Valid values are: ``MPIRUN``, ``MPIEXEC``, ``APRUN``, ``IBRUN``, etc.
 * ``python_interpreter``: path to python (optional).
 * ``python_dist``: `anaconda` or `default`, i.e., not `anaconda` (mandatory).
 * ``pre_bootstrap_0``: list of commands to execute for initialization of main agent (optional).
@@ -198,32 +198,31 @@ Several configuration files are part of the RADICAL-Pilot installation, and can 
 under ``radical/pilot/configs/`` in the RADICAL-Pilot git repository.
 
 
-Customizing Resource Configurations Programatically
+Customizing Resource Configurations Programmatically
 ===================================================
 
 The set of resource configurations available to the RADICAL-Pilot session is
-accessible programmatically. The example below changes the ``default_queue`` for
-the ``epsrc.archer`` resource.
+accessible programmatically. The example below creates a new resource config
+from the ``xsede.bridges`` resource, and updates attribute ``default_queue``.
 
 .. code-block:: python
 
     import radical.pilot as rp
     import pprint
 
-    RESOURCE = 'epsrc.archer'
+    # resource label should of a format <domain>.<host>
+    RESOURCE     = 'xsede.bridges'
+    NEW_RESOURCE = 'xsede.bridges_debug'
 
     # get a pre-installed resource configuration
     session = rp.Session()
+    # a deep copy of a config from the session is returned
     cfg = session.get_resource_config(RESOURCE)
-    pprint.pprint (cfg)
-
-    # create a new config based on the old one, and set a different launch method
-    new_cfg = rp.ResourceConfig(RESOURCE, cfg)
-    new_cfg.default_queue = 'royal_treatment'
-
-    # now add the entry back.  As we did not change the config name, this will
-    # replace the original configuration.  A completely new configuration would
-    # need a unique label.
-    session.add_resource_config(new_cfg)
-    pprint.pprint (session.get_resource_config(RESOURCE))
+    # update the default queue name
+    cfg.default_queue = 'debug'
+    # set resource label for a new config
+    cfg.label = NEW_RESOURCE
+    # add new resource config back to the session
+    session.add_resource_config(cfg)
+    pprint.pprint(session.get_resource_config(NEW_RESOURCE))
 

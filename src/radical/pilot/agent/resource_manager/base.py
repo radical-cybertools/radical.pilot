@@ -47,7 +47,7 @@ class ResourceManager(object):
     The ResourceManager will reserve nodes for the agent execution, by deriving
     the respectively required node count from the config's 'agents' section.
     Those nodes will be listed in ResourceManager.agent_node_list. Schedulers
-    MUST NOT use the agent_node_list to place compute units -- CUs are limited
+    MUST NOT use the agent_node_list to place tasks -- CUs are limited
     to the nodes in ResourceManager.node_list.
     """
 
@@ -80,6 +80,7 @@ class ResourceManager(object):
         self.lm_info         = dict()
         self.rm_info         = dict()
         self.node_list       = list()
+        self.partitions      = dict()
         self.agent_nodes     = dict()
         self.cores_per_node  = 0
         self.gpus_per_node   = 0
@@ -139,7 +140,7 @@ class ResourceManager(object):
 
         # Check if we can do any work
         if not self.node_list:
-            raise RuntimeError('ResourceManager has no nodes left to run units')
+            raise RuntimeError('ResourceManager has no nodes left to run tasks')
 
         # After ResourceManager configuration, we call any existing config hooks
         # on the launch methods.  Those hooks may need to adjust the
@@ -169,6 +170,14 @@ class ResourceManager(object):
 
             self._log.info("ResourceManager config hook succeeded (%s)" % lm)
 
+        # check for partitions after `rm_config_hook` was applied
+        # NOTE: partition ids should be of a string type, because of JSON
+        #       serialization (agent config), which keeps dict keys as strings
+        if self.lm_info.get('partitions'):
+            for k, v in self.lm_info['partitions'].items():
+                self.partitions[str(k)] = v['nodes']
+                del v['nodes']  # do not keep nodes in `lm_info['partitions']`
+
         # For now assume that all nodes have equal amount of cores and gpus
         cores_avail = (len(self.node_list) + len(self.agent_nodes)) * self.cores_per_node
         gpus_avail  = (len(self.node_list) + len(self.agent_nodes)) * self.gpus_per_node
@@ -190,7 +199,8 @@ class ResourceManager(object):
         #
         # five elements are well defined:
         #   lm_info:        the dict received via the LM's rm_config_hook
-        #   node_list:      a list of node names to be used for unit execution
+        #   node_list:      a list of node names to be used for task execution
+        #   partitions:     a dict with partition id and list of node uids
         #   cores_per_node: as the name says
         #   gpus_per_node:  as the name says
         #   agent_nodes:    list of node names reserved for agent execution
@@ -202,6 +212,7 @@ class ResourceManager(object):
         self.rm_info['name']           = self.name
         self.rm_info['lm_info']        = self.lm_info
         self.rm_info['node_list']      = self.node_list
+        self.rm_info['partitions']     = self.partitions
         self.rm_info['cores_per_node'] = self.cores_per_node
         self.rm_info['gpus_per_node']  = self.gpus_per_node
         self.rm_info['agent_nodes']    = self.agent_nodes

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 __copyright__ = 'Copyright 2013-2014, http://radical.rutgers.edu'
 __license__   = 'MIT'
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     try:
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/../config.json' % os.path.dirname(__file__))
+        config = ru.read_json('%s/../config.json' % pwd)
         report.ok('>>ok\n')
 
         report.header('submit pilots')
@@ -41,14 +41,14 @@ if __name__ == '__main__':
                    'access_schema' : config[resource]['schema'],
                    'cores'         : config[resource]['cores']
                   }
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
         pmgr  = rp.PilotManager(session=session)
         pilot = pmgr.submit_pilots(pdesc)
 
         report.header('submit pipelines')
 
-        umgr = rp.UnitManager(session=session)
-        umgr.add_pilots(pilot)
+        tmgr = rp.TaskManager(session=session)
+        tmgr.add_pilots(pilot)
 
         if len(sys.argv) > 2: N = int(sys.argv[2])
         else                : N = 8
@@ -57,32 +57,32 @@ if __name__ == '__main__':
         n_stages = 5
         n_tasks  = 4
 
-        cuds = list()
+        tds = list()
         for p in range(n_pipes):
             for s in range(n_stages):
                 for t in range(n_tasks):
-                    cud = rp.ComputeUnitDescription()
-                    cud.executable       = '%s/pipeline_task.sh' % pwd
-                    cud.arguments        = [p, s, t, 10]
-                    cud.cpu_processes    = 1
-                    cud.tags             = {'order': {'ns'   : p, 
+                    td = rp.TaskDescription()
+                    td.executable       = '%s/pipeline_task.sh' % pwd
+                    td.arguments        = [p, s, t, 10]
+                    td.cpu_processes    = 1
+                    td.tags             = {'order': {'ns'   : p,
                                                       'order': s,
                                                       'size' : n_tasks}}
-                    cud.name             =  'p%03d-s%03d-t%03d' % (p, s, t)
-                    cuds.append(cud)
+                    td.name             =  'p%03d-s%03d-t%03d' % (p, s, t)
+                    tds.append(td)
                     report.progress()
 
         import random
-        random.shuffle(cuds)
+        random.shuffle(tds)
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        umgr.submit_units(cuds)
+        # assigning Tasks to the Pilots.
+        tmgr.submit_tasks(tds)
 
-        # Wait for all compute units to reach a final state
+        # Wait for all tasks to reach a final state
         report.header('gather results')
-        umgr.wait_units()
+        tmgr.wait_tasks()
 
 
     except Exception as e:
@@ -97,7 +97,7 @@ if __name__ == '__main__':
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
         ru.print_exception_trace()
-        report.warn('exit requested\n')
+        report.warn('exit requested with %s\n' % e)
 
     finally:
         # always clean up the session, no matter if we caught an exception or

@@ -1,18 +1,19 @@
+# pylint: disable=super-init-not-called
 
-__copyright__ = "Copyright 2018, http://radical.rutgers.edu"
-__license__ = "MIT"
-
+__copyright__ = 'Copyright 2018-2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import os
 import pprint
 
+import radical.utils  as ru
+from ... import agent as rpa
+
 from .base import ResourceManager
-import radical.utils as ru
 
 
 # ------------------------------------------------------------------------------
 #
-# pylint: disable=super-init-not-called
 class LSF_SUMMIT(ResourceManager):
 
     # --------------------------------------------------------------------------
@@ -56,6 +57,7 @@ class LSF_SUMMIT(ResourceManager):
         self.rm_info            = dict()
         self.slot_list          = list()
         self.node_list          = list()
+        self.partitions         = dict()
         self.agent_nodes        = dict()
         self.sockets_per_node   = None
         self.cores_per_socket   = None
@@ -119,11 +121,11 @@ class LSF_SUMMIT(ResourceManager):
 
         # Check if we can do any work
         if not self.node_list:
-            raise RuntimeError('ResourceManager has no nodes left to run units')
+            raise RuntimeError('ResourceManager has no nodes left to run tasks')
 
-        # After ResourceManager configuration, we call any existing config hooks on the
-        # launch methods.  Those hooks may need to adjust the ResourceManager settings
-        # (hello ORTE).  We only call LaunchMethod hooks *once*
+        # After ResourceManager configuration, we call any existing config hooks
+        # on the launch methods.  Those hooks may need to adjust the
+        # ResourceManager settings.  We only call LaunchMethod hooks *once*
         launch_methods = set()  # set keeps entries unique
         if 'mpi_launch_method' in self._cfg:
             launch_methods.add(self._cfg['mpi_launch_method'])
@@ -131,18 +133,27 @@ class LSF_SUMMIT(ResourceManager):
         launch_methods.add(self._cfg['agent_launch_method'])
 
         for lm in launch_methods:
-            if lm:
-                try:
-                    from .... import pilot as rp  # pylint: disable=E0402
-                    ru.dict_merge(self.lm_info,
-                            rp.agent.LaunchMethod.rm_config_hook(lm, self._cfg,
-                                                   self, self._log, self._prof))
+            try:
+                ru.dict_merge(
+                    self.lm_info,
+                    rpa.LaunchMethod.rm_config_hook(name=lm,
+                                                    cfg=self._cfg,
+                                                    rm=self,
+                                                    log=self._log,
+                                                    profiler=self._prof))
+            except:
+                self._log.exception("ResourceManager config hook failed")
+                raise
 
-                except:
-                    self._log.exception("rm config hook failed")
-                    raise
+            self._log.info("ResourceManager config hook succeeded (%s)" % lm)
 
-                self._log.info("rm config hook succeeded (%s)" % lm)
+        # check for partitions after `rm_config_hook` was applied
+        # NOTE: partition ids should be of a string type, because of JSON
+        #       serialization (agent config), which keeps dict keys as strings
+        if self.lm_info.get('partitions'):
+            for k, v in self.lm_info['partitions'].items():
+                self.partitions[str(k)] = v['nodes']
+                del v['nodes']  # do not keep nodes in `lm_info['partitions']`
 
       # # For now assume that all nodes have equal amount of cores and gpus
       # cores_avail = (len(self.node_list) + len(self.agent_nodes)) \
@@ -157,7 +168,8 @@ class LSF_SUMMIT(ResourceManager):
         #
         # it defines
         #   lm_info:            dict received via the LM's rm_config_hook
-        #   node_list:          list of node names to be used for unit execution
+        #   node_list:          list of node names to be used for task execution
+        #   partitions:         a dict with partition id and list of node uids
         #   sockets_per_node:   integer number of sockets on a node
         #   cores_per_socket:   integer number of cores per socket
         #   gpus_per_socket:    integer number of gpus per socket
@@ -171,6 +183,7 @@ class LSF_SUMMIT(ResourceManager):
             'name'             : self.name,
             'lm_info'          : self.lm_info,
             'node_list'        : self.node_list,
+            'partitions'       : self.partitions,
             'sockets_per_node' : self.sockets_per_node,
             'cores_per_socket' : self.cores_per_socket * self.smt,
             'gpus_per_socket'  : self.gpus_per_socket,

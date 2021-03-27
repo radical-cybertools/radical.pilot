@@ -12,12 +12,13 @@ import subprocess
 
 import radical.utils as ru
 
-from .... import pilot     as rp
 from ...  import utils     as rpu
 from ...  import states    as rps
 from ...  import constants as rpc
 
-from .base import AgentExecutingComponent
+from ..   import LaunchMethod
+
+from .base           import AgentExecutingComponent
 
 
 # ------------------------------------------------------------------------------
@@ -50,23 +51,16 @@ class FUNCS(AgentExecutingComponent) :
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
-        addr_wrk = self._cfg['bridges']['funcs_req_queue']
-        addr_res = self._cfg['bridges']['funcs_res_queue']
+        req_cfg = ru.read_json('funcs_req_queue.cfg')
+        res_cfg = ru.read_json('funcs_res_queue.cfg')
 
-        self._log.debug('wrk in  addr: %s', addr_wrk['addr_in' ])
-        self._log.debug('res out addr: %s', addr_res['addr_out'])
+        self._req_queue = ru.zmq.Putter('funcs_req_queue', req_cfg['put'])
+        self._res_queue = ru.zmq.Getter('funcs_res_queue', res_cfg['get'])
 
-        self._funcs_req = rpu.Queue(self._session, 'funcs_req_queue',
-                                    rpu.QUEUE_INPUT, self._cfg,
-                                    addr_wrk['addr_in'])
-        self._funcs_res = rpu.Queue(self._session, 'funcs_res_queue',
-                                    rpu.QUEUE_OUTPUT, self._cfg,
-                                    addr_res['addr_out'])
-
-        self._cancel_lock    = ru.RLock()
-        self._cus_to_cancel  = list()
-        self._cus_to_watch   = list()
-        self._watch_queue    = queue.Queue ()
+        self._cancel_lock     = ru.RLock()
+        self._tasks_to_cancel = list()
+        self._tasks_to_watch  = list()
+        self._watch_queue     = queue.Queue ()
 
         self._pid = self._cfg['pid']
 
@@ -77,7 +71,7 @@ class FUNCS(AgentExecutingComponent) :
 
         # we need to launch the executors on all nodes, and use the
         # agent_launcher for that
-        self._launcher = rp.agent.LaunchMethod.create(
+        self._launcher = LaunchMethod.create(
                 name    = self._cfg.get('agent_launch_method'),
                 cfg     = self._cfg,
                 session = self._session)
@@ -104,8 +98,8 @@ class FUNCS(AgentExecutingComponent) :
                                                         'gpus'  : []
                                                        }]
                                     },
-                     'cfg'        : {'addr_wrk'     : addr_wrk['addr_out'],
-                                     'addr_res'     : addr_res['addr_in']
+                     'cfg'        : {'req_get'      : req_cfg['get'],
+                                     'res_put'      : res_cfg['put']
                                     }
                     }
             self._spawn(self._launcher, funcs)
@@ -120,11 +114,11 @@ class FUNCS(AgentExecutingComponent) :
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'cancel_units':
+        if cmd == 'cancel_tasks':
 
-            self._log.info("cancel_units command (%s)" % arg)
+            self._log.info("cancel_tasks command (%s)" % arg)
             with self._cancel_lock:
-                self._cus_to_cancel.extend(arg['uids'])
+                self._tasks_to_cancel.extend(arg['uids'])
 
         return True
 
@@ -133,7 +127,7 @@ class FUNCS(AgentExecutingComponent) :
     #
     def _spawn(self, launcher, funcs):
 
-        # NOTE: see documentation of funcs['sandbox'] semantics in the ComputeUnit
+        # NOTE: see documentation of funcs['sandbox'] semantics in the Task
         #       class definition.
         sandbox = '%s/%s'     % (self._pwd, funcs['uid'])
         fname   = '%s/%s.sh'  % (sandbox,   funcs['uid'])
@@ -159,9 +153,9 @@ class FUNCS(AgentExecutingComponent) :
             fout.write('export RP_SPAWNER_ID="%s"\n' % self.uid)
             fout.write('export RP_FUNCS_ID="%s"\n'   % funcs['uid'])
             fout.write('export RP_GTOD="%s"\n'       % self.gtod)
-            fout.write('export RP_TMP="%s"\n'        % self._cu_tmp)
+            fout.write('export RP_TMP="%s"\n'        % self._task_tmp)
 
-            # also add any env vars requested in the unit description
+            # also add any env vars requested in the task description
             if descr.get('environment', []):
                 for key,val in descr['environment'].items():
                     fout.write('export "%s=%s"\n' % (key, val))
@@ -178,6 +172,8 @@ class FUNCS(AgentExecutingComponent) :
         ferr = open('%s/%s.err' % (sandbox, funcs['uid']), "w")
 
         self._prof.prof('exec_start', uid=funcs['uid'])
+        # we really want to use preexec_fn:
+        # pylint: disable=W1509
         funcs['proc'] = subprocess.Popen(args       = cmdline,
                                          executable = None,
                                          stdin      = None,
@@ -193,16 +189,16 @@ class FUNCS(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
+    def work(self, tasks):
 
-        if not isinstance(units, list):
-            units = [units]
+        if not isinstance(tasks, list):
+            tasks = [tasks]
 
-        self.advance(units, rps.AGENT_EXECUTING, publish=True, push=False)
+        self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        for unit in units:
-            assert(unit['description']['cpu_process_type'] == 'FUNC')
-            self._funcs_req.put(unit)
+        for task in tasks:
+            assert(task['description']['cpu_process_type'] == 'FUNC')
+            self._req_queue.put(task)
 
 
     # --------------------------------------------------------------------------
@@ -211,20 +207,20 @@ class FUNCS(AgentExecutingComponent) :
 
         while not self._terminate.is_set():
 
-            # pull units from "funcs_out_queue"
-            units = self._funcs_res.get_nowait(1000)
+            # pull tasks from "funcs_out_queue"
+            tasks = self._res_queue.get_nowait(1000)
 
-            if units:
+            if tasks:
 
-                for unit in units:
-                    unit['target_state'] = unit['state']
-                    unit['pilot']        = self._pid
+                for task in tasks:
+                    task['target_state'] = task['state']
+                    task['pilot']        = self._pid
 
                   # self._log.debug('got %s [%s] [%s] [%s]',
-                  #                 unit['uid'],    unit['state'],
-                  #                 unit['stdout'], unit['stderr'])
+                  #                 task['uid'],    task['state'],
+                  #                 task['stdout'], task['stderr'])
 
-                self.advance(units, rps.AGENT_STAGING_OUTPUT_PENDING,
+                self.advance(tasks, rps.AGENT_STAGING_OUTPUT_PENDING,
                              publish=True, push=True)
             else:
                 time.sleep(0.1)

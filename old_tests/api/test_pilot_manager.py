@@ -3,7 +3,7 @@
 
 import os
 import sys
-import unittest
+import tasktest
 
 from pymongo import MongoClient
 
@@ -13,7 +13,7 @@ import radical.pilot as rp
 
 # -----------------------------------------------------------------------------
 #
-class Test_PilotManager(unittest.TestCase):
+class Test_PilotManager(tasktest.TestCase):
     # silence deprecation warnings under py3
 
     def failUnless(self, expr):
@@ -73,11 +73,11 @@ class Test_PilotManager(unittest.TestCase):
         assert len(pm2.list_pilots()) == 0, "Wrong number of pilots returned."
 
         for i in range(0, 2):
-            cpd = rp.ComputePilotDescription()
+            cpd = rp.PilotDescription()
             cpd.resource = "local.localhost"
             cpd.cores = 1
             cpd.runtime = 1
-            cpd.sandbox = "/tmp/rp.sandbox.unittests"
+            cpd.sandbox = "/tmp/rp.sandbox.tasktests"
             cpd.cleanup = True
 
             pm1.submit_pilots(descriptions=cpd)
@@ -102,11 +102,11 @@ class Test_PilotManager(unittest.TestCase):
         assert len(pm2.list_pilots()) == 0, "Wrong number of pilots returned."
 
         for i in range(0, 2):
-            cpd = rp.ComputePilotDescription()
+            cpd = rp.PilotDescription()
             cpd.resource = "local.localhost"
             cpd.cores = 1
             cpd.runtime = 1
-            cpd.sandbox = "/tmp/rp.sandbox.unittests"
+            cpd.sandbox = "/tmp/rp.sandbox.tasktests"
             cpd.cleanup = True
 
             pm1.submit_pilots(descriptions=cpd)
@@ -138,11 +138,11 @@ class Test_PilotManager(unittest.TestCase):
         pm2_pilot_uids = []
 
         for i in range(0, 2):
-            cpd = rp.ComputePilotDescription()
+            cpd = rp.PilotDescription()
             cpd.resource = "local.localhost"
             cpd.cores = 1
             cpd.runtime = 1
-            cpd.sandbox = "/tmp/rp.sandbox.unittests"
+            cpd.sandbox = "/tmp/rp.sandbox.tasktests"
             cpd.cleanup = True
 
             pilot_pm1 = pm1.submit_pilots(descriptions=cpd)
@@ -175,18 +175,18 @@ class Test_PilotManager(unittest.TestCase):
 
         pmgr = rp.PilotManager(session=session)
 
-        cpd1 = rp.ComputePilotDescription()
+        cpd1 = rp.PilotDescription()
         cpd1.resource = "local.localhost"
         cpd1.cores = 1
         cpd1.runtime = 1
-        cpd1.sandbox = "/tmp/rp.sandbox.unittests"
+        cpd1.sandbox = "/tmp/rp.sandbox.tasktests"
         cpd1.cleanup = True
 
-        cpd2 = rp.ComputePilotDescription()
+        cpd2 = rp.PilotDescription()
         cpd2.resource = "local.localhost"
         cpd2.cores = 1
         cpd2.runtime = 2
-        cpd2.sandbox = "/tmp/rp.sandbox.unittests"
+        cpd2.sandbox = "/tmp/rp.sandbox.tasktests"
         cpd2.cleanup = True
 
         pilots = pmgr.submit_pilots([cpd1, cpd2])

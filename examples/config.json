@@ -5,7 +5,7 @@
         "queue"    : null,
         "schema"   : null,
         "cores"    : 1,
-        "gpus"     : 2
+        "gpus"     : 0
     },
 
     "local.localhost_prte" : {
@@ -18,11 +18,11 @@
     "local.localhost_funcs" : {
         "project"  : null,
         "queue"    : null,
-        "schema"   : "ssh",
-        "cores"    : 64
+        "schema"   : "local",
+        "cores"    : 16
     },
 
-    "local.debug" : {
+    "local.local" : {
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
@@ -93,11 +93,11 @@
         "cores"    : 40
     },
 
-    "xsede.bridges" : {
+    "xsede.bridges2" : {
         "project"  : null,
-        "queue"    : "RM-small",
+        "queue"    : "RM",
         "schema"   : "gsissh",
-        "cores"    : 24
+        "cores"    : 128
     },
 
     "xsede.wrangler" : {

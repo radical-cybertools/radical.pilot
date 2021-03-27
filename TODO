@@ -8,7 +8,7 @@
   + log file name uniquenenss
   + state history (update ordering)
     + multiple updater instances will compete for state updates and push them
-      out of order, thus screwing with the CU states which end up in the DB.\
+      out of order, thus screwing with the task states which end up in the DB.\
     + limit to one update instance
   + pilot updates via updater (different pubsub channel)
   + make sure finalize is called on terminate (via atexit?)
@@ -25,10 +25,10 @@
     supporting...
   = component failures need to propagate to the agent to trigger shutdown
   = torus scheduler is broken in the split arch
-  - advance() implicitly publishes unit state, but the publisher needs to be
+  - advance() implicitly publishes task state, but the publisher needs to be
     declared explicitly.
   + rename 'worker' to 'sub-agent' to avoid confusion?
-  - executor should write CU script in one go, not incrementally
+  - executor should write the task script in one go, not incrementally
   - component: collapse declare_input and declare_worker
   + cu['_id'] -> cu['uid'] etc
 
@@ -53,7 +53,7 @@
     components
   + shutdown command propagation is broken
 
-  + unit cancelation is best done on component level
+  + task cancelation is best done on component level
     + subscribe to control to get cancel requests
     + for each cancel request
       + add to self._cancel_requested
@@ -74,12 +74,12 @@
 
   + update the backfilling scheduler
   - state notifications should be obtained via a tailed cursor
-  - update worker could check if a unit has multiple state updates pending. If
+  - update worker could check if a task has multiple state updates pending. If
     so, only send the last one.  The client side cann still play callbacks for
     all intermediate states.  That implies delayed filling of the bulk.
   + update worker should not push state_hist on state updates, only on full
     udpdates.
-  - pilot failing during wait_units results in timeout.
+  - pilot failing during wait_tasks results in timeout.
 
   + the update worker should have a list of keys which it needs to push to
     MongoDB, and it should ignore other dict entries.  Alternatively, components
@@ -102,7 +102,7 @@
     which is not
   - pilots canceled but state is not picked up during shutdown, should still
     call callbacks.
-  - umgr wait and pmgr wait report different things, differently
+  - tmgr wait and pmgr wait report different things, differently
     (inclusion of previously final things, final state marker)
 
   - staging directives should be expanded in umgr_input_staging -- at that point
@@ -121,8 +121,8 @@
 
   + open saga ticket: condor staging target should point to the job cwd, not
     to intermediate storage
-  - units can end up in 'CANCELED + agent_pending', so agent pulls unusable
-    units.  Final states should *always* set 'control' to 'umgr' or 'pmgr',
+  - tasks can end up in 'CANCELED + agent_pending', so agent pulls unusable
+    tasks.  Final states should *always* set 'control' to 'tmgr' or 'pmgr',
     respectively
 
   + worker/agent.py -> agent/agent_n.py
@@ -167,10 +167,10 @@ application calls session close
   - session.close() can be called at any point in time
     - in main thread:
       - close all umgrs
-        - cancel any non-final units and wait for them
+        - cancel any non-final tasks and wait for them
           - advance them to CANCELED
           - issue 'cancel' commands (no reschedule)
-          - we want notifications for the unit cancel
+          - we want notifications for the task cancel
           ? do we rely on UpdateWorker to register/store CANCELED advance?
         - stop all components (delegated to session controller)
         - stop all bridges    (delegated to session controller)
@@ -194,7 +194,7 @@ application calls session close
 
     - in other processes / components
       - stop the component
-      - no message is sent, we expect the pmgr, umgr or session watcher to
+      - no message is sent, we expect the pmgr, tmgr or session watcher to
         detect the closed component (if needed), and to start teardown
         -> watcher calling session.close + raise
 
@@ -241,7 +241,7 @@ term iv
 
     - can base bridges still be owned by the session?
 
-    - move pmgr/umgr start_components calls to the component base class, into
+    - move pmgr/tmgr start_components calls to the component base class, into
       initialize_child / parent (depending on spawn).
       - make sure to also call start_bridges, before start_components.
       - keep component and bridge handles in the component and clean out after
@@ -250,4 +250,8 @@ term iv
   + remove exceptions.py
 
   - Exception in SA startup causes hang (agent_0 does not die)
+
+
+  - `PRTE` switches in scheduler should become `partition` switches, where the
+    partitions are defined by the RM
 

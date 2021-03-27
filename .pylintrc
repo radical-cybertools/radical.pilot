@@ -3,7 +3,7 @@
 # A comma-separated list of package or module names from where C extensions may
 # be loaded. Extensions are loading into the active Python interpreter and may
 # run arbitrary code
-extension-pkg-whitelist=
+extension-pkg-whitelist=setproctitle
 
 # Add files or directories to the blacklist. They should be base names, not
 # paths.
@@ -140,7 +140,12 @@ disable=raising-format-tuple,
         relative-import,
         bare-except,
         redefined-outer-name,
-        attribute-defined-outside-init
+        attribute-defined-outside-init,
+        unnecessary-pass,
+        protected-access,
+        eval-used,
+        no-method-argument
+
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option

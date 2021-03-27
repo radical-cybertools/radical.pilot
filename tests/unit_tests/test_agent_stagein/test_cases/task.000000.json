@@ -1,0 +1,26 @@
+
+{
+    "task": {
+        "uid":         "task.000000",
+        "description": {"input_staging": [{"source": "client:///file1",
+                                           "target": "task:///file1",
+                                           "action": "Transfer"},
+                                          {"source": "task:///file2",
+                                           "target": "pilot:///file2",
+                                           "action": "Link"}]
+                                                      }
+    },
+
+    "results": [[{"uid": "task.000000",
+                   "description": {"input_staging": [{"source": "client:///file1",
+                                                      "target": "task:///file1",
+                                                      "action": "Transfer"},
+                                                     {"source": "task:///file2",
+                                                      "target": "pilot:///file2",
+                                                      "action": "Link"}]}}],
+                                                      [[{"source": "task:///file2",
+                                                         "target": "pilot:///file2",
+                                                         "action": "Link"}]]
+                                                    ]
+}
+

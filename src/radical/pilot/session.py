@@ -12,8 +12,9 @@ import radical.saga                 as rs
 import radical.saga.filesystem      as rsfs
 import radical.saga.utils.pty_shell as rsup
 
-from .db import DBSession
-from .   import utils as rpu
+from .constants import RESOURCE_CONFIG_LABEL_DEFAULT
+from .db        import DBSession
+from .          import utils as rpu
 
 
 # ------------------------------------------------------------------------------
@@ -22,8 +23,8 @@ class Session(rs.Session):
     '''
     A Session is the root object of all RP objects in an application instance:
     it holds :class:`radical.pilot.PilotManager` and
-    :class:`radical.pilot.UnitManager` instances which in turn hold
-    :class:`radical.pilot.ComputePilot` and :class:`radical.pilot.ComputeUnit`
+    :class:`radical.pilot.TaskManager` instances which in turn hold
+    :class:`radical.pilot.Pilot` and :class:`radical.pilot.Task`
     instances, and several other components which operate on those stateful
     entities.
     '''
@@ -83,7 +84,7 @@ class Session(rs.Session):
         self._primary = _primary
 
         self._pmgrs   = dict()  # map IDs to pmgr instances
-        self._umgrs   = dict()  # map IDs to umgr instances
+        self._tmgrs   = dict()  # map IDs to tmgr instances
         self._cmgr    = None    # only primary sessions have a cmgr
 
         self._cfg     = ru.Config('radical.pilot.session',  name=name, cfg=cfg)
@@ -168,7 +169,7 @@ class Session(rs.Session):
         if dburl_no_passwd.get_password():
             dburl_no_passwd.set_password('****')
 
-        self._rep.info ('<<database   : ')  
+        self._rep.info ('<<database   : ')
         self._rep.plain('[%s]'    % dburl_no_passwd)
         self._log.info('dburl %s' % dburl_no_passwd)
 
@@ -262,10 +263,10 @@ class Session(rs.Session):
             # cleanup implies terminate
             terminate = True
 
-        for umgr_uid, umgr in self._umgrs.items():
-            self._log.debug("session %s closes umgr   %s", self._uid, umgr_uid)
-            umgr.close()
-            self._log.debug("session %s closed umgr   %s", self._uid, umgr_uid)
+        for tmgr_uid, tmgr in self._tmgrs.items():
+            self._log.debug("session %s closes tmgr   %s", self._uid, tmgr_uid)
+            tmgr.close()
+            self._log.debug("session %s closed tmgr   %s", self._uid, tmgr_uid)
 
         for pmgr_uid, pmgr in self._pmgrs.items():
             self._log.debug("session %s closes pmgr   %s", self._uid, pmgr_uid)
@@ -534,51 +535,51 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _register_umgr(self, umgr):
+    def _register_tmgr(self, tmgr):
 
-        self._dbs.insert_umgr(umgr.as_dict())
-        self._umgrs[umgr.uid] = umgr
+        self._dbs.insert_tmgr(tmgr.as_dict())
+        self._tmgrs[tmgr.uid] = tmgr
 
 
     # --------------------------------------------------------------------------
     #
-    def list_unit_managers(self):
+    def list_task_managers(self):
         '''
-        Lists the unique identifiers of all :class:`radical.pilot.UnitManager`
+        Lists the unique identifiers of all :class:`radical.pilot.TaskManager`
         instances associated with this session.
 
         **Returns:**
-            * A list of :class:`radical.pilot.UnitManager` uids (`list` of `strings`).
+            * A list of :class:`radical.pilot.TaskManager` uids (`list` of `strings`).
         '''
 
-        return list(self._umgrs.keys())
+        return list(self._tmgrs.keys())
 
 
     # --------------------------------------------------------------------------
     #
-    def get_unit_managers(self, umgr_uids=None):
+    def get_task_managers(self, tmgr_uids=None):
         '''
-        returns known UnitManager(s).
+        returns known TaskManager(s).
 
         **Arguments:**
 
-            * **umgr_uids** [`string`]:
-              unique identifier of the UnitManager we want
+            * **tmgr_uids** [`string`]:
+              unique identifier of the TaskManager we want
 
         **Returns:**
-            * One or more [:class:`radical.pilot.UnitManager`] objects.
+            * One or more [:class:`radical.pilot.TaskManager`] objects.
         '''
 
         return_scalar = False
-        if not isinstance(umgr_uids, list):
-            umgr_uids     = [umgr_uids]
+        if not isinstance(tmgr_uids, list):
+            tmgr_uids     = [tmgr_uids]
             return_scalar = True
 
-        if umgr_uids: umgrs = [self._umgrs[uid] for uid in umgr_uids]
-        else        : umgrs =  list(self._umgrs.values())
+        if tmgr_uids: tmgrs = [self._tmgrs[uid] for uid in tmgr_uids]
+        else        : tmgrs =  list(self._tmgrs.values())
 
-        if return_scalar: return umgrs[0]
-        else            : return umgrs
+        if return_scalar: return tmgrs[0]
+        else            : return tmgrs
 
 
     # --------------------------------------------------------------------------
@@ -586,13 +587,11 @@ class Session(rs.Session):
     def list_resources(self):
         '''
         Returns a list of known resource labels which can be used in a pilot
-        description.  Not that resource aliases won't be listed.
+        description.
         '''
 
         resources = list()
         for domain in self._rcfgs:
-            if domain == 'aliases':
-                continue
             for host in self._rcfgs[domain]:
                 resources.append('%s.%s' % (domain, host))
 
@@ -608,34 +607,49 @@ class Session(rs.Session):
 
         For example::
 
-               rc = ru.Config("./mycluster.json")
-               rc.job_manager_endpoint = "ssh+pbs://mycluster
-               rc.filesystem_endpoint  = "sftp://mycluster
-               rc.default_queue        = "private"
+               rc = ru.Config(path='./mycluster.json')
+               rc.label                = 'local.mycluster'
+               rc.job_manager_endpoint = 'ssh+pbs://mycluster'
+               rc.filesystem_endpoint  = 'sftp://mycluster'
+               rc.default_queue        = 'private'
 
                session = rp.Session()
                session.add_resource_config(rc)
 
-               pd = rp.ComputePilotDescription()
-               pd.resource = "mycluster"
+               pd = rp.PilotDescription()
+               pd.resource = 'local.mycluster'
                pd.cores    = 16
                pd.runtime  = 5 # minutes
 
                pilot = pm.submit_pilots(pd)
+
+        NOTE:  if <resource_config>.label is not set, then the default value
+               is assigned - `rp.RESOURCE_CONFIG_LABEL_DEFAULT`
         '''
 
         if isinstance(resource_config, str):
 
-            # let exceptions fall through
             rcs = ru.Config('radical.pilot.resource', name=resource_config)
+            domain = os.path.splitext(os.path.basename(resource_config))[0]
+            if domain not in self._rcfgs:
+                self._rcfgs[domain] = {}
 
             for rc in rcs:
-                self._log.info('load rcfg for %s' % rc)
-                self._rcfgs[rc] = rcs[rc].as_dict()
+                self._log.info('load rcfg for "%s.%s"' % (domain, rc))
+                self._rcfgs[domain][rc] = rcs[rc].as_dict()
 
         else:
-            self._log.debug('load rcfg for %s', resource_config.label)
-            self._rcfgs[resource_config.label] = resource_config.as_dict()
+
+            if not resource_config.label:
+                resource_config.label = RESOURCE_CONFIG_LABEL_DEFAULT
+
+            elif '.' not in resource_config.label:
+                raise ValueError('Resource config label format should be '
+                                 '"<domain>.<host>"')
+
+            domain, host = resource_config.label.split('.', 1)
+            self._log.debug('load rcfg for "%s.%s"', (domain, host))
+            self._rcfgs.setdefault(domain, {})[host] = resource_config.as_dict()
 
 
     # --------------------------------------------------------------------------
@@ -644,11 +658,6 @@ class Session(rs.Session):
         '''
         Returns a dictionary of the requested resource config
         '''
-
-        if  resource in self._rcfgs.get('aliases', {}):
-            self._log.warning("using alias '%s' for deprecated resource '%s'"
-                              % (self._rcfgs.aliases.resource, resource))
-            resource = self._rcfgs.aliases.resource
 
         domain, host = resource.split('.', 1)
         if domain not in self._rcfgs:
@@ -765,7 +774,7 @@ class Session(rs.Session):
                             expand['pd.%s' % k.lower()] = v
                     sandbox_raw = sandbox_raw % expand
 
-                if '_' in sandbox_raw and 'summit' in resource:
+                if '_' in sandbox_raw and 'ornl' in resource:
                     sandbox_raw = sandbox_raw.split('_')[0]
 
                 # If the sandbox contains expandables, we need to resolve those
@@ -894,35 +903,35 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _get_unit_sandbox(self, unit, pilot):
+    def _get_task_sandbox(self, task, pilot):
 
-        # If a sandbox is specified in the unit description, then interpret
+        # If a sandbox is specified in the task description, then interpret
         # relative paths as relativet to the pilot sandbox.
 
-        # unit sandboxes are cached in the unit dict
-        unit_sandbox = unit.get('unit_sandbox')
-        if unit_sandbox:
-            return unit_sandbox
+        # task sandboxes are cached in the task dict
+        task_sandbox = task.get('task_sandbox')
+        if task_sandbox:
+            return task_sandbox
 
         # specified in description?
-        if not unit_sandbox:
-            sandbox  = unit['description'].get('sandbox')
+        if not task_sandbox:
+            sandbox  = task['description'].get('sandbox')
             if sandbox:
-                unit_sandbox = ru.Url(self._get_pilot_sandbox(pilot))
+                task_sandbox = ru.Url(self._get_pilot_sandbox(pilot))
                 if sandbox[0] == '/':
-                    unit_sandbox.path = sandbox
+                    task_sandbox.path = sandbox
                 else:
-                    unit_sandbox.path += '/%s/' % sandbox
+                    task_sandbox.path += '/%s/' % sandbox
 
         # default
-        if not unit_sandbox:
-            unit_sandbox = ru.Url(self._get_pilot_sandbox(pilot))
-            unit_sandbox.path += "/%s/" % unit['uid']
+        if not task_sandbox:
+            task_sandbox = ru.Url(self._get_pilot_sandbox(pilot))
+            task_sandbox.path += "/%s/" % task['uid']
 
         # cache
-        unit['unit_sandbox'] = str(unit_sandbox)
+        task['task_sandbox'] = str(task_sandbox)
 
-        return unit_sandbox
+        return task_sandbox
 
 
     # --------------------------------------------------------------------------
@@ -1013,4 +1022,3 @@ class Session(rs.Session):
 
 
 # ------------------------------------------------------------------------------
-

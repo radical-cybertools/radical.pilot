@@ -10,7 +10,7 @@ package installed ``pip`` or as part of the ``Anaconda`` distribution.
 RADICAL-Pilot **must** be installed in a virtual environment and **cannot** be
 installed as a system-wide Python package.
 
-Requirements 
+Requirements
 ============
 
 RADICAL-Pilot requires: software packages, a properly configured ``ssh``
@@ -37,7 +37,7 @@ SSH
 ---
 
 .. If you plan to use RADICAL-Pilot on remote machines, you would also require to
-.. setup a password-less ssh login to the particular machine. 
+.. setup a password-less ssh login to the particular machine.
 .. (`help <http://www.debian-administration.org/article/152/Password-less_logins_with_OpenSSH>`_)
 
 RADICAL-Pilot requires to setup a password-less ``ssh`` login between the
@@ -57,7 +57,7 @@ MongoDB
 .. RADICAL-Pilot needs access to a ``MongoDB`` database that is reachable from
 .. the Internet. User groups within the same institution or project usually share
 .. a single MongoDB instance.  MongoDB is standard software and available in most
-.. Linux distributions. 
+.. Linux distributions.
 
 .. At the end of this section, we provide brief instructions how to set up a
 .. MongoDB server and discuss some advanced topics, like SSL support and
@@ -68,11 +68,11 @@ execution of an application which uses RADICAL-Pilot. The MongoDB server must
 be reachable from **both**, the host that runs the RADICAL-Pilot application
 and the target resource which runs the pilots.
 
-.. warning:: If you want to run your application on a workstation that does 
-             **not** have a public IP address, but run your tasks on a remote 
-             HPC cluster, installing MongoDB on your workstation won't work. 
-             Without a public IP and a port publicly reachable, the components 
-             of RADICAL-Pilot running on the HPC cluster will not be able to 
+.. warning:: If you want to run your application on a workstation that does
+             **not** have a public IP address, but run your tasks on a remote
+             HPC cluster, installing MongoDB on your workstation won't work.
+             Without a public IP and a port publicly reachable, the components
+             of RADICAL-Pilot running on the HPC cluster will not be able to
              access the MongoDB server.
 
 .. Any MongoDB installation should work out, as long as RADICAL-Pilot is
@@ -156,7 +156,7 @@ installed.
 .. MongoDB Service
 .. ---------------
 
-.. RADICAL-Pilot requires access to a MongoDB server.  
+.. RADICAL-Pilot requires access to a MongoDB server.
 
 
 .. **Install your own MongoDB**
@@ -260,7 +260,7 @@ Support
 RADICAL-Pilot undergoes constant evolution, implementing new capabilities,
 supporting new resources and keeping up with the progressing of its
 dependencies. If you encounter any error, please do not hesitate to contact the
-RADICAL lab team by opening an 
+RADICAL lab team by opening an
 `issue <https://github.com/radical-cybertools/radical.pilot/issues>`_.
 
 .. via the

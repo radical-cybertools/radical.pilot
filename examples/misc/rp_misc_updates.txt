@@ -1,0 +1,106 @@
+/misc/hello_synapse.py (DONE)
+1. declaration of cud.cores is removed since it is not in taskmanager schema.
+session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018359.0002
+session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0009
+
+/misc/ordered_pipelines.py (DONE)
+1. config = ru.read_json('%s/../config.json' %pwd) is the update.
+This is to read the config file successfully.
+session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018359.0009
+session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0010
+
+/misc/profile_analysis.py is removed.
+1. This is because radical.pilot.utils is missing these attributes: 'prof2frame' and 'combine_profiles'
+
+
+/misc/rp_app_comm.py (DONE)
+session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0003
+session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0013
+
+/misc/rp_app_master.py
+/misc/rp_app_worker.py are removed because
+following are not available in os.environ
+'RP_TASK_ID','RP_WORK_QUEUE_IN', 'RP_RESULT_QUEUE_OUT'
+For example, we got error with this line: uid = os.environ['RP_TASK_ID']
+
+/misc/task_overlay.py
+/misc/task_overlay_master.py
+/misc/task_overlay_worker.py
+1. resource is fixed.
+2. import statement is fixed.
+However, it requires a second argument (i.e. worker) when I ran the script.
+It may work with correct arguments.
+session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0060
+
+/misc/wl_shape_02.py (DONE)
+1. pilot.stage_in source path is fixed, and an empty gromacs folder is created
+(maybe this folder should contain some specific scripts similar to those saved
+under ../data/gromacs_mdrun_0/ folder)
+session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0025
+
+
+/misc/dynamic_ec2_pilot.py is removed because in order to run this script
+following environment variables should be set:
+your Amazon EC2 ID, your Amazon EC2 KEY, name of ssh keypair within EC2,
+your ssh keypair to use to access the VM.
+
+/misc/colocated.py (DONE)
+1. config = ru.read_json('%s/../config.json' %pwd) is the update.
+This is to read the config file successfully.
+session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0031
+
+
+/misc/benchmark_driver.py
+1. rp_host is updated as "local.localhost"
+2. rp_project "TG-MCB090174" is removed
+3. declaration of cud.cores and cud.mpi are removed since they are not in taskmanager schema.
+4. task.execution_locations, task.start_time, task.stop_time are excluded from print
+statement since task has not such methods.
+5. rp.TaskManager constructor is called only with session (scheduler is excluded).
+However, state of Pilots are CANCELED. In addition, stats plotter cooments are removed
+since bin/radicalpilot-stats is not working
+session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0056
+
+
+/misc/backfilling.py
+1. pdesc.resource is updated as "local.localhost"
+2. pdesc.project is removed
+3. wait(state=rp.ACTIVE) is updated as (state=rp.PMGR_ACTIVE)
+4. task.executable='SLEEP' is updated as '/bin/sleep'
+However, call_back error is reported in pmgr log file. Further update is needed.
+session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0053
+
+
+/misc/backfilling_recovery.py
+1. rp.Session argument 'name' is updated 'uid'
+2. resource in pilot decription "localhost" is updated as "local.localhost"
+3. state argument 'rp.ACTIVE' is updated as 'rp.PMGR_ACTIVE'
+4. declaration of cud.cores is removed since it is not in taskmanager schema
+5. task.execution_locations, task.start_time, task.stop_time are excluded from print
+statement since task has not such methods.
+However, call_back error is reported in tmgr log file. Further update is needed.
+session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0052
+
+/misc/gpu_pilot.py
+The run is completed but tasks are failed. Need for confirmation to remove the script.
+session id: rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0061
+
+/misc/running_mpi_executables.py
+1. rp_host is updated as "local.localhost"
+2. rp_project "TG-MCB090174" is removed
+3. declaration of cud.cores and cud.mpi are removed since they are not in taskmanager schema.
+4. task.execution_locations, task.start_time, task.stop_time are excluded from print
+statement since task has not such methods.
+However, call_back error is reported in tmgr log file. Further update is needed.
+rp.session.js-17-94.jetstream-cloud.org.aydins.018360.0062
+
+
+
+radical-stack
+  python               : 3.7.6
+  pythonpath           :
+  virtualenv           : /home/aydins/env_rptest
+  radical.entk         : 1.0.1-v1.0.1-13-gca6384b@devel
+  radical.pilot        : 1.2.1
+  radical.saga         : 1.2.0
+  radical.utils        : 1.2.2
