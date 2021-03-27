@@ -15,6 +15,8 @@ import tempfile
 import radical.saga            as rs
 import radical.utils           as ru
 
+rsfs = rs.filesystem
+
 from ...  import states        as rps
 from ...  import constants     as rpc
 from ...  import utils         as rpu
@@ -539,7 +541,8 @@ class Default(PMGRLaunchingComponent):
             tgt_dir = os.path.dirname(tgt)
 
             if tgt_dir.startswith('..'):
-              # raise ValueError('staging tgt %s outside pilot sbox: %s' % (ft['tgt'], tgt))
+              # raise ValueError('staging tgt %s outside pilot sbox: %s'
+              #                  % (ft['tgt'], tgt))
                 tgt = ft['tgt']
                 tgt_dir = os.path.dirname(tgt)
 
@@ -846,13 +849,14 @@ class Default(PMGRLaunchingComponent):
 
         # ----------------------------------------------------------------------
         # sanity checks
-        if not python_dist        : raise RuntimeError("missing python distribution")
-        if not virtenv_dist       : raise RuntimeError("missing virtualenv distribution")
-        if not agent_spawner      : raise RuntimeError("missing agent spawner")
-        if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
-        if not resource_manager   : raise RuntimeError("missing resource manager")
-        if not agent_launch_method: raise RuntimeError("missing agentlaunch method")
-        if not task_launch_method : raise RuntimeError("missing task launch method")
+        RE = RuntimeError
+        if not python_dist        : raise RE("missing python distribution")
+        if not virtenv_dist       : raise RE("missing virtualenv distribution")
+        if not agent_spawner      : raise RE("missing agent spawner")
+        if not agent_scheduler    : raise RE("missing agent scheduler")
+        if not resource_manager   : raise RE("missing resource manager")
+        if not agent_launch_method: raise RE("missing agentlaunch method")
+        if not task_launch_method : raise RE("missing task launch method")
 
         # massage some values
         if not queue:

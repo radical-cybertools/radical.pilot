@@ -74,8 +74,7 @@ class PilotDescription(ru.Description):
        :ref:`chapter_machconf` entry.
        If the key exists, the machine-specifc configuration is loaded from the
        configuration once the PilotDescription is passed to
-       :meth:`radical.pilot.PilotManager.submit_pilots`. If the key doesn't exist,
-       a :class:`radical.pilot.pilotException` is thrown.
+       :meth:`radical.pilot.PilotManager.submit_pilots`.
 
     .. data:: access_schema
 
@@ -93,7 +92,7 @@ class PilotDescription(ru.Description):
 
        [Type: `string`] [optional] The working ("sandbox") directory  of the
        Pilot agent. This parameter is optional. If not set, it defaults
-       to `radical.pilot.sandox` in your home or login directory.
+       to `radical.pilot.sandbox` in your home or login directory.
 
        .. warning:: If you define a Pilot on an HPC cluster and you want
                  to set `sandbox` manually, make sure that it points to a
