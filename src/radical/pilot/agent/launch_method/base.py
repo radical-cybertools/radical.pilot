@@ -203,7 +203,6 @@ class LaunchMethod(object):
         if cls != LaunchMethod:
             raise TypeError("LaunchMethod config hook only available to base class!")
 
-        from .fork           import Fork
         from .prte           import PRTE
         from .prte2          import PRTE2
         from .flux           import Flux
@@ -215,7 +214,6 @@ class LaunchMethod(object):
         # from .orte           import ORTE
 
         impl = {
-            LM_NAME_FORK          : Fork,
             LM_NAME_PRTE          : PRTE,
             LM_NAME_PRTE2         : PRTE2,
             LM_NAME_FLUX          : Flux,

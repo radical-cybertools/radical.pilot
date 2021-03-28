@@ -14,7 +14,7 @@ from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
 
-from . import task_description as rpcud
+from . import task_description as rptd
 
 
 # bulk callbacks are implemented, but are currently not used nor exposed.
@@ -334,8 +334,8 @@ class TaskManager(rpu.Component):
 
                     self._log.debug('task %s is  restartable', task['uid'])
                     task['restarted'] = True
-                    ud = rpcud.TaskDescription(task['description'])
-                    to_restart.append(ud)
+                    td = rptd.TaskDescription(task['description'])
+                    to_restart.append(td)
                     # FIXME: increment some restart counter in the description?
                     # FIXME: reference the resulting new uid in the old task.
 
@@ -737,12 +737,12 @@ class TaskManager(rpu.Component):
         self._rep.progress_tgt(len(descriptions), label='submit')
         tasks = list()
         ret   = list()
-        for ud in descriptions:
+        for td in descriptions:
 
-            if not ud.executable:
+            if not td.executable:
                 raise ValueError('task executable must be defined')
 
-            task = Task(tmgr=self, descr=ud)
+            task = Task(tmgr=self, descr=td)
             tasks.append(task)
 
             # keep tasks around
@@ -830,7 +830,7 @@ class TaskManager(rpu.Component):
     #
     def wait_tasks(self, uids=None, state=None, timeout=None):
         """
-        Returns when one or more :class:`radical.pilot.Tasks` reach a
+        Returns when the given :class:`radical.pilot.Tasks` reach a
         specific state.
 
         If `uids` is `None`, `wait_tasks` returns when **all**

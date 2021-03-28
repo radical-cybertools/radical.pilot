@@ -20,15 +20,9 @@ class Fork(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-        # "Regular" tasks
+
         self.launch_command = ''
 
-    # --------------------------------------------------------------------------
-    #
-    @classmethod
-    def rm_config_hook(cls, name, cfg, rm, log, profiler):
-        return {'version_info': {
-            name: {'version': '0.42', 'version_detail': 'There is no spoon'}}}
 
     # --------------------------------------------------------------------------
     #
@@ -38,16 +32,13 @@ class Fork(LaunchMethod):
         #       the needful
 
         td          = t['description']
-        task_exec    = td['executable']
-        task_args    = td.get('arguments') or []
-        task_argstr  = self._create_arg_string(task_args)
+        task_exec   = td['executable']
+        task_args   = td.get('arguments') or []
+        task_argstr = self._create_arg_string(task_args)
 
-        if task_argstr:
-            command = "%s %s" % (task_exec, task_argstr)
-        else:
-            command = task_exec
+        command = "%s %s" % (task_exec, task_argstr)
 
-        return command, None
+        return command.strip(), None
 
 
 # ------------------------------------------------------------------------------

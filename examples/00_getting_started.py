@@ -56,9 +56,9 @@ if __name__ == '__main__':
                    'runtime'       : 120,  # pilot runtime (min)
                    'exit_on_error' : True,
                    'project'       : config[resource].get('project', None),
-                   'queue'         : config[resource].get('queue', None),
-                   'access_schema' : config[resource].get('schema', None),
-                   'nodes'         : 1024 * 4,
+                   'queue'         : config[resource].get('queue',   None),
+                   'access_schema' : config[resource].get('schema',  None),
+                   'cores'         : config[resource].get('cores',   None),
                   }
         pdesc = rp.PilotDescription(pd_init)
 

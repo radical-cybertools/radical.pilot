@@ -420,10 +420,7 @@ class TaskDescription(ru.Description):
     #
     def __init__(self, from_dict=None):
 
-        ru.Description.__init__(self, from_dict=TaskDescription._defaults)
-
-        if from_dict:
-            self.update(from_dict)
+        ru.Description.__init__(self, from_dict=from_dict)
 
 
     # --------------------------------------------------------------------------
