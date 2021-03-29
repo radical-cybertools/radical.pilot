@@ -340,11 +340,8 @@ class PRTE2(LaunchMethod):
         partition_id = slots.get('partition_id') or partitions.keys()[0]
         dvm_uri = '--dvm-uri "%s"' % partitions[partition_id]['dvm_uri']
 
-        if n_threads == 1: map_to_object = 'hwthread'
-        else             : map_to_object = 'node:HWTCPUS'
-
-        flags  = ' --np %d'                         % n_procs
-        flags += ' --map-by %s:PE=%d:OVERSUBSCRIBE' % (map_to_object, n_threads)
+        flags  = ' --np %d'                                   % n_procs
+        flags += ' --map-by node:HWTCPUS:PE=%d:OVERSUBSCRIBE' % n_threads
         flags += ' --bind-to hwthread:overload-allowed'
         if self._verbose:
             flags += ':REPORT'
