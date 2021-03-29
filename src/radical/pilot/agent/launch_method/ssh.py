@@ -80,17 +80,22 @@ class SSH(LaunchMethod):
         # This is a crude version of env transplanting where we prep the
         # shell command line.  We likely won't survive any complicated vars
         # (multiline, quotes, etc)
-        env_string  = ' '.join(['%s=%s' % (var, os.environ[var])
-                                for var in self.EXPORT_ENV_VARIABLES
-                                if  var in os.environ])
-        env_string += ' '.join(['%s=%s' % (var, task_env[var])
-                                for var in task_env])
+        env_string = ' '.join(['%s=%s' % (var, os.environ[var])
+                               for var in self.EXPORT_ENV_VARIABLES
+                               if  var in os.environ])
+        if task_env:
+            env_string += ' ' + ' '.join(['%s=%s' % (var, task_env[var])
+                                          for var in task_env])
 
         ssh_hop_cmd = "%s %s %s %s" % (self.launch_command, host, env_string,
                                        launch_script_hop)
 
         return task_command, ssh_hop_cmd
 
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_cmd(self):
+        pass
 
 # ------------------------------------------------------------------------------
 
