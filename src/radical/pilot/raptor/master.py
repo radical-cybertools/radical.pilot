@@ -93,19 +93,19 @@ class Master(rpu.Component):
 
         # set up zmq queues between this master and all workers for request
         # distribution and result collection
-        req_cfg = ru.Config(cfg={'channel'  : '%s.to_req' % self._uid,
-                                 'type'     : 'queue',
-                                 'uid'      : self._uid + '.req',
-                                 'path'     : os.getcwd(),
-                                 'stall_hwm': 0,
-                                 'bulk_size': 56})
+        req_cfg = ru.Config(cfg={'channel'   : '%s.to_req' % self._uid,
+                                 'type'      : 'queue',
+                                 'uid'       : self._uid + '.req',
+                                 'path'      : os.getcwd(),
+                                 'stall_hwm' : 0,
+                                 'bulk_size' : 1024})
 
-        res_cfg = ru.Config(cfg={'channel'  : '%s.to_res' % self._uid,
-                                 'type'     : 'queue',
-                                 'uid'      : self._uid + '.res',
-                                 'path'     : os.getcwd(),
-                                 'stall_hwm': 0,
-                                 'bulk_size': 56})
+        res_cfg = ru.Config(cfg={'channel'   : '%s.to_res' % self._uid,
+                                 'type'      : 'queue',
+                                 'uid'       : self._uid + '.res',
+                                 'path'      : os.getcwd(),
+                                 'stall_hwm' : 0,
+                                 'bulk_size' : 1024})
 
         self._req_queue = ru.zmq.Queue(req_cfg)
         self._res_queue = ru.zmq.Queue(res_cfg)
@@ -201,7 +201,7 @@ class Master(rpu.Component):
             self._log.debug('unregister %s', uid)
 
             with self._lock:
-                self._workers[uid]['state'] = 'DONE'
+                self._workers[uid]['status'] = 'DONE'
 
 
     # --------------------------------------------------------------------------
@@ -240,7 +240,8 @@ class Master(rpu.Component):
         descr['cpu_process_type'] = 'MPI'
         descr['cpu_threads']      = cores
         descr['cpu_thread_type']  = 'POSIX'
-        descr['gpu_processses']   = gpus
+        descr['gpu_processes']    = gpus
+
 
         # write config file for all worker ranks.  The worker will live in the
         # master sandbox
@@ -273,6 +274,7 @@ class Master(rpu.Component):
         task = dict()
         task['description']       = td
         task['state']             = rps.AGENT_STAGING_INPUT_PENDING
+        task['status']            = 'NEW'
         task['type']              = 'task'
         task['umgr']              = 'umgr.0000'  # FIXME
         task['pilot']             = os.environ['RP_PILOT_ID']
@@ -315,23 +317,29 @@ class Master(rpu.Component):
         if count:
             self._log.debug('wait for %d workers', count)
             while True:
+                stats = {'NEW'    : 0,
+                         'ACTIVE' : 0,
+                         'DONE'   : 0,
+                         'FAILED' : 0}
+
                 with self._lock:
-                    states = [w['state'] for w in self._workers.values()]
-                n = states.count('ACTIVE')
-                self._log.debug('states [%d]: %s', n,
-                                {k:states.count(k) for k in set(states)})
+                    for w in self._workers.values():
+                        stats[w['status']] += 1
+
+                self._log.debug('stats: %s', stats)
+                n = stats['ACTIVE'] + stats['DONE'] + stats['FAILED']
                 if n >= count:
                     self._log.debug('wait ok')
                     return
-                time.sleep(1)
+                time.sleep(10)
 
         elif uids:
             self._log.debug('wait for workers: %s', uids)
             while True:
                 with self._lock:
-                    states = [self._workers[uid]['state'] for uid in uids]
-                n = states.count('ACTIVE')
-                self._log.debug('states [%d]: %s', n, states)
+                    stats = [self._workers[uid]['status'] for uid in uids]
+                n = stats['ACTIVE'] + stats['DONE'] + stats['FAILED']
+                self._log.debug('stats [%d]: %s', n, stats)
                 if n == len(uids):
                     self._log.debug('wait ok')
                     return

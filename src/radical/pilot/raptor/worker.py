@@ -33,7 +33,8 @@ class Worker(rpu.Component):
         # generate a MPI rank dependent UID for each worker process
         # FIXME: this should be delegated to ru.generate_id
         # FIXME: why do we need to import `os` again after MPI Spawn?
-        import os                                   # pylint: disable=reimported
+        # pylint: disable=reimported
+        import os
 
         # FIXME: rank determination should be moved to RU
         rank = None
@@ -130,12 +131,18 @@ class Worker(rpu.Component):
         # to the master.  This can be used to communicate, for example, worker
         # specific communication endpoints.
 
+        # make sure that channels are up before registering
+        time.sleep(1)
+
         # `info` is a placeholder for any additional meta data communicated to
         # the worker.  Only first rank publishes.
         if self._cfg['rank'] == 0 or True:
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
                                               'arg': {'uid' : self._cfg['wid'],
                                                       'info': self._info}})
+
+        self._log.debug('cores %s', str(self._resources['cores']))
+        self._log.debug('gpus  %s', str(self._resources['cores']))
 
 
     # --------------------------------------------------------------------------
@@ -383,6 +390,28 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def task_pre_exec(self, task):
+        '''
+        This method is called upon receiving a new request, and can be
+        overloaded to perform any preperatory action before the request is acted
+        upon
+        '''
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def task_post_exec(self, task):
+        '''
+        This method is called upon completing a request, and can be
+        overloaded to perform any cleanup action before the request is reported
+        as complete.
+        '''
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
     def _request_cb(self, tasks):
         '''
         grep call type from tasks, check if methods are registered, and
@@ -392,6 +421,8 @@ class Worker(rpu.Component):
         for task in ru.as_list(tasks):
 
             task['worker'] = self._uid
+
+            self.task_pre_exec(task)
 
             try:
                 # ok, we have work to do.  Check the requirements to see how
@@ -471,13 +502,21 @@ class Worker(rpu.Component):
         task['pid'] = os.getpid()
 
         # ----------------------------------------------------------------------
-        def _dispatch_thread():
+        def _dispatch_thread(tlock):
+            # FIXME: do we still need this thread?
+
             import setproctitle
-            setproctitle.setproctitle('dispatch.%s' % task['uid'])
+            setproctitle.setproctitle('rp.dispatch.%s' % task['uid'])
+
+            # make CUDA happy
+            # FIXME: assume physical device numbering for now
+            os.environ['CUDA_VISIBLE_DEVICES'] = \
+                             ','.join(str(i) for i in task['resources']['gpus'])
+
             out, err, ret = self._modes[mode](task.get('data'))
-            res = [task, str(out), str(err), int(ret)]
-            self._log.debug('put 1 result: task %s', task['uid'])
-            self._result_queue.put(res)
+            with tlock:
+                res = [task, str(out), str(err), int(ret)]
+                self._result_queue.put(res)
         # ----------------------------------------------------------------------
 
 
@@ -579,6 +618,7 @@ class Worker(rpu.Component):
                    'ret': ret}
 
             self._res_put.put(res)
+            self.task_post_exec(task)
             self._prof.prof('req_stop', uid=task['uid'], msg=self._uid)
 
         except:
@@ -623,6 +663,16 @@ class Worker(rpu.Component):
 
         while not self._term.is_set():
             time.sleep(1.0)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def test(self, idx, seconds):
+        # pylint: disable=reimported
+        import time
+        print('start idx %6d: %.1f' % (idx, time.time()))
+        time.sleep(seconds)
+        print('stop  idx %6d: %.1f' % (idx, time.time()))
 
 
 # ------------------------------------------------------------------------------
