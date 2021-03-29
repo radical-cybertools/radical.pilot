@@ -10,7 +10,6 @@ import shutil
 from unittest import TestCase, mock
 
 import radical.pilot as rp
-import radical.utils as ru
 
 TEST_CASES_PATH = '%s/test_cases' % os.path.dirname(__file__)
 
@@ -46,37 +45,6 @@ class TestSession(TestCase):
         self.assertIsInstance(listed_resources, list)
         self.assertIn('local.localhost', listed_resources)
 
-    # --------------------------------------------------------------------------
-    #
-    def test_add_resource_config(self):
-
-        cfg_path = os.path.abspath('%s/user_cfg.json' % TEST_CASES_PATH)
-
-        # add resource config by providing config file path
-        self._session.add_resource_config(resource_config=cfg_path)
-
-        # add resource config by providing Config instance
-        user_cfg = ru.Config(path=cfg_path)
-        user_cfg.mpi_launch_method = 'MPIRUN'
-        user_cfg.cores_per_node    = 1024
-        # label with "<domain>.<host>"
-        user_cfg.label = 'local.mpirun_cfg'
-        self._session.add_resource_config(resource_config=user_cfg)
-        # no label, thus default label is assigned
-        user_cfg.label = None
-        self._session.add_resource_config(resource_config=user_cfg)
-
-        # check exception(s)
-        user_cfg.label = 'tmp_cfg'
-        with self.assertRaises(ValueError):
-            self._session.add_resource_config(resource_config=user_cfg)
-
-        # retrieve resource labels and test them
-        listed_resources = self._session.list_resources()
-
-        self.assertIn('user_cfg.user_resource', listed_resources)
-        self.assertIn('local.mpirun_cfg', listed_resources)
-        self.assertIn(rp.RESOURCE_CONFIG_LABEL_DEFAULT, listed_resources)
 
     # --------------------------------------------------------------------------
     #
@@ -105,12 +73,15 @@ class TestSession(TestCase):
             self._session.get_resource_config(
                 resource='local.localhost', schema='wrong_schema')
 
+
 # ------------------------------------------------------------------------------
-
-
+#
 if __name__ == '__main__':
 
     tc = TestSession()
     tc.test_list_resources()
     tc.test_get_resource_config()
-    tc.test_add_resource_config()
+
+
+# ------------------------------------------------------------------------------
+
