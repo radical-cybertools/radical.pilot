@@ -30,6 +30,7 @@ if __name__ == '__main__':
     elif len(sys.argv) == 2: resource = sys.argv[1]
     else                   : resource = 'local.localhost'
 
+
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
     session = rp.Session()
@@ -42,7 +43,7 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         config = ru.read_json('%s/config.json'
-                              % os.path.dirname(os.path.abspath(__file__)))
+                             % os.path.dirname(os.path.abspath(__file__)))
         pmgr   = rp.PilotManager(session=session)
         tmgr   = rp.TaskManager(session=session)
 
