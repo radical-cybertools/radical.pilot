@@ -66,13 +66,6 @@ PILOT_STATE          = 'PILOT_STATE'
 PMGR_METRICS         = [PILOT_STATE]
 
 
-# -----------------------------------------------------------------------------
-#
-# config related
-#
-RESOURCE_CONFIG_LABEL_DEFAULT = 'user.cfg'
-
-
 # ------------------------------------------------------------------------------
 #
 # staging defines

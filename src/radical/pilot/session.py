@@ -12,7 +12,6 @@ import radical.saga                 as rs
 import radical.saga.filesystem      as rsfs
 import radical.saga.utils.pty_shell as rsup
 
-from .constants import RESOURCE_CONFIG_LABEL_DEFAULT
 from .db        import DBSession
 from .          import utils as rpu
 
@@ -600,60 +599,6 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def add_resource_config(self, resource_config):
-        '''
-        Adds a new :class:`ru.Config` to the session's dictionary of known
-        resources, or accept a string which points to a configuration file.
-
-        For example::
-
-               rc = ru.Config(path='./mycluster.json')
-               rc.label                = 'local.mycluster'
-               rc.job_manager_endpoint = 'ssh+pbs://mycluster'
-               rc.filesystem_endpoint  = 'sftp://mycluster'
-               rc.default_queue        = 'private'
-
-               session = rp.Session()
-               session.add_resource_config(rc)
-
-               pd = rp.PilotDescription()
-               pd.resource = 'local.mycluster'
-               pd.cores    = 16
-               pd.runtime  = 5 # minutes
-
-               pilot = pm.submit_pilots(pd)
-
-        NOTE:  if <resource_config>.label is not set, then the default value
-               is assigned - `rp.RESOURCE_CONFIG_LABEL_DEFAULT`
-        '''
-
-        if isinstance(resource_config, str):
-
-            rcs = ru.Config('radical.pilot.resource', name=resource_config)
-            domain = os.path.splitext(os.path.basename(resource_config))[0]
-            if domain not in self._rcfgs:
-                self._rcfgs[domain] = {}
-
-            for rc in rcs:
-                self._log.info('load rcfg for "%s.%s"' % (domain, rc))
-                self._rcfgs[domain][rc] = rcs[rc].as_dict()
-
-        else:
-
-            if not resource_config.label:
-                resource_config.label = RESOURCE_CONFIG_LABEL_DEFAULT
-
-            elif '.' not in resource_config.label:
-                raise ValueError('Resource config label format should be '
-                                 '"<domain>.<host>"')
-
-            domain, host = resource_config.label.split('.', 1)
-            self._log.debug('load rcfg for "%s.%s"', (domain, host))
-            self._rcfgs.setdefault(domain, {})[host] = resource_config.as_dict()
-
-
-    # --------------------------------------------------------------------------
-    #
     def get_resource_config(self, resource, schema=None):
         '''
         Returns a dictionary of the requested resource config
@@ -682,6 +627,7 @@ class Session(rs.Session):
                 # resource config
                 resource_cfg[key] = resource_cfg[schema][key]
 
+        resource_cfg.label = resource
         return resource_cfg
 
 
