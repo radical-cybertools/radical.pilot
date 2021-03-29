@@ -62,7 +62,6 @@ class LaunchMethod(object):
         'PATH',
         'PYTHONPATH',
         'OMP_NUM_THREADS',
-        'CUDA_VISIBLE_DEVICES',
         'RP_AGENT_ID',
         'RP_GTOD',
         'RP_PILOT_ID',
