@@ -39,7 +39,7 @@
     "results": {
         "lm": {
             "mpiexec"     : ["mpiexec -host node1 -n 1    /bin/sleep", null],
-            "mpiexec_mpt" : ["mpiexec_mpt node1 -n 1 -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\" -x \"OMP_NUM_THREADS\" -x \"CUDA_VISIBLE_DEVICES\" -x \"RP_AGENT_ID\" -x \"RP_GTOD\" -x \"RP_PILOT_ID\" -x \"RP_PILOT_STAGING\" -x \"RP_PROF\" -x \"RP_SESSION_ID\" -x \"RP_SPAWNER_ID\" -x \"RP_TMP\" -x \"RP_TASK_ID\" -x \"RP_TASK_NAME\" -x \"RP_PILOT_SANDBOX\" -x \"RADICAL_BASE\" -x \"test_env\" -x \"MPI_SHEPHERD\" omplace /bin/sleep", null]
+            "mpiexec_mpt" : ["mpiexec_mpt node1 -n 1 -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\" -x \"OMP_NUM_THREADS\" -x \"RP_AGENT_ID\" -x \"RP_GTOD\" -x \"RP_PILOT_ID\" -x \"RP_PILOT_STAGING\" -x \"RP_PROF\" -x \"RP_SESSION_ID\" -x \"RP_SPAWNER_ID\" -x \"RP_TMP\" -x \"RP_TASK_ID\" -x \"RP_TASK_NAME\" -x \"RP_PILOT_SANDBOX\" -x \"RADICAL_BASE\" -x \"test_env\" -x \"MPI_SHEPHERD\" omplace /bin/sleep", null]
 }
     }
 }
