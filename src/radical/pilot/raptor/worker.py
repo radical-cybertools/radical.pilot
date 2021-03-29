@@ -111,13 +111,15 @@ class Worker(rpu.Component):
 
         # run worker initialization *before* starting to work on requests.
         # the worker provides three builtin methods:
-        #     eval:  evaluate a piece of python code
-        #     exec:  execute  a command line (fork/exec)
-        #     shell: execute  a shell command
+        #     eval:  evaluate a piece of python code with `eval`
+        #     exec:  evaluate a piece of python code with `exec`
         #     call:  execute  a method or function call
-        self.register_mode('call',  self._call)
+        #     proc:  execute  a command line (fork/exec)
+        #     shell: execute  a shell command
         self.register_mode('eval',  self._eval)
         self.register_mode('exec',  self._exec)
+        self.register_mode('call',  self._call)
+        self.register_mode('proc',  self._proc)
         self.register_mode('shell', self._shell)
 
         self.pre_exec()
@@ -177,6 +179,85 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _eval(self, data):
+        '''
+        We expect data to have a single entry: 'code', containing the Python
+        code to be eval'ed
+        '''
+
+        bak_stdout = sys.stdout
+        bak_stderr = sys.stderr
+
+        try:
+            # redirect stdio to capture them during execution
+            sys.stdout = strout = StringIO()
+            sys.stderr = strerr = StringIO()
+
+            val = eval(data['code'])
+            ret = 0
+
+            self._log.exception('_eval failed: %s' % (data))
+            self._log.exception('_eval failed: %s' % (data))
+            out = strout.getvalue()
+            err = strerr.getvalue() + ('\neval failed: %s' % e)
+            ret = 1
+
+        finally:
+            # restore stdio
+            sys.stdout = bak_stdout
+            sys.stderr = bak_stderr
+
+
+        return out, err, ret, None
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _exec(self, data):
+        '''
+        We expect data to have a single entry: 'code', containing the Python
+        code to be exec'ed.  Data can have an optional entry `pre_exec` which
+        can be used for any import statements and the like which need to run
+        before the executed code.
+        '''
+
+        bak_stdout = sys.stdout
+        bak_stderr = sys.stderr
+
+        try:
+            # redirect stdio to capture them during execution
+            sys.stdout = strout = StringIO()
+            sys.stderr = strerr = StringIO()
+
+            pre  = data.get('pre_exec', '')
+            code = data['code']
+
+            # assign a local variable to capture the code's return value.
+            loc = dict()
+            src = '%s\nresult = {%s}' % (pre, code)
+            exec(src, {}, loc)
+            val = loc['result']
+            out = strout.getvalue()
+            err = strerr.getvalue()
+            ret = 0
+
+        except Exception as e:
+            self._log.exception('_exec failed: %s' % (data))
+            out = strout.getvalue()
+            err = strerr.getvalue() + ('\nexec failed: %s' % e)
+            ret = 1
+
+        finally:
+            # restore stdio
+            sys.stdout = bak_stdout
+            sys.stderr = bak_stderr
+
+
+        return out, err, ret, val
+
+
+    # --------------------------------------------------------------------------
+    #
     def _call(self, data):
         '''
         We expect data to have a three entries: 'method' or 'function',
@@ -202,73 +283,36 @@ class Worker(rpu.Component):
         args   = data.get('args',   [])
         kwargs = data.get('kwargs', {})
 
+        bak_stdout = sys.stdout
+        bak_stderr = sys.stderr
+
         try:
-            out = to_call(*args, **kwargs)
-            err = None
-            ret = 0
+            # redirect stdio to capture them during execution
+            sys.stdout = strout = StringIO()
+            sys.stderr = strerr = StringIO()
+
+            val = to_call(*args, **kwargs)
+            err = strout.getvalue()
+            ret = strerr.getvalue()
 
         except Exception as e:
             self._log.exception('_call failed: %s' % (data))
-            out = None
-            err = 'call failed: %s' % e
+            out = strout.getvalue()
+            err = strerr.getvalue() + ('\ncall failed: %s' % e)
             ret = 1
 
-        return out, err, ret
+        finally:
+            # restore stdio
+            sys.stdout = bak_stdout
+            sys.stderr = bak_stderr
+
+
+        return out, err, ret, val
 
 
     # --------------------------------------------------------------------------
     #
-    # FIXME: an MPI call mode should be added.  That could work along these
-    #        lines of:
-    #
-    # --------------------------------------------------------------------------
-    #  def _mpi(self, data):
-    #
-    #      try:
-    #          cmd = rp.agent.launch_method.construct_command(data,
-    #                  executable=self.exe, args=data['func'])
-    #          out = rp.sh_callout(cmd)
-    #          err = None
-    #          ret = 0
-    #
-    #      except Exception as e:
-    #          self._log.exception('_mpi failed: %s' % (data))
-    #          out = None
-    #          err = 'mpi failed: %s' % e
-    #          ret = 1
-    #
-    #      return out, err, ret
-    # --------------------------------------------------------------------------
-    #
-    # For that to work we would need to be able to create a LM here, but ideally
-    # not replicate the work done in the agent executor.
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _eval(self, data):
-        '''
-        We expect data to have a single entry: 'code', containing the Python
-        code to be eval'ed
-        '''
-
-        try:
-            out = eval(data['code'])
-            err = None
-            ret = 0
-
-        except Exception as e:
-            self._log.exception('_eval failed: %s' % (data))
-            out = None
-            err = 'eval failed: %s' % e
-            ret = 1
-
-        return out, err, ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _exec(self, data):
+    def _proc(self, data):
         '''
         We expect data to have two entries: 'exe', containing the executabele to
         run, and `args` containing a list of arguments (strings) to pass as
@@ -297,7 +341,7 @@ class Worker(rpu.Component):
             err = 'exec failed: %s' % e
             ret = 1
 
-        return out, err, ret
+        return out, err, ret, None
 
 
     # --------------------------------------------------------------------------
@@ -317,7 +361,35 @@ class Worker(rpu.Component):
             err = 'shell failed: %s' % e
             ret = 1
 
-        return out, err, ret
+        return out, err, ret, None
+
+
+    # --------------------------------------------------------------------------
+    #
+    # FIXME: an MPI call mode should be added.  That could work along these
+    #        lines of:
+    #
+    # --------------------------------------------------------------------------
+    #  def _mpi(self, data):
+    #
+    #      try:
+    #          cmd = rp.agent.launch_method.construct_command(data,
+    #                  executable=self.exe, args=data['func'])
+    #          out = rp.sh_callout(cmd)
+    #          err = None
+    #          ret = 0
+    #
+    #      except Exception as e:
+    #          self._log.exception('_mpi failed: %s' % (data))
+    #          out = None
+    #          err = 'mpi failed: %s' % e
+    #          ret = 1
+    #
+    #      return out, err, ret, None
+    # --------------------------------------------------------------------------
+    #
+    # For that to work we would need to be able to create a LM here, but ideally
+    # not replicate the work done in the agent executor.
 
 
     # --------------------------------------------------------------------------
