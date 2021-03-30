@@ -27,15 +27,19 @@ PYTHONPATH=`find $tmpLOC/lib -name "site-packages"`/
 
 pip install ./radical.pilot --upgrade
 pytest -vvv $TEST > output.log 2>&1
+exit_code = "$?"
 
-if test "$?" = 1
+conda deactivate
+module unload anaconda/3.7.0
+
+if test "$exit_code" = 1
 then
     echo 'A test failed'
     radical.pilot/tests/bin/radical-pilot-test-issue -r 'SDSC Comet' -l output.log
     curl -H "Accept: application/vnd.github.everest-preview+json" \
     -H "Authorization: token $GIT_TOKEN" \
     --request POST \
-    --data '{"event_type": "test_result", "client_payload": { "text": "failure"}}' \
+    --data '{"event_type": "test_comet", "client_payload": { "text": "failure"}}' \
     https://api.github.com/repos/radical-cybertools/radical.pilot/dispatches
     sbatch --begin='now+4weeks' comet.sh
 else
@@ -43,7 +47,7 @@ else
     curl -H "Accept: application/vnd.github.everest-preview+json" \
     -H "Authorization: token $GIT_TOKEN" \
     --request POST \
-    --data '{"event_type": "test_result", "client_payload": { "text": "success"}}' \
+    --data '{"event_type": "test_comet", "client_payload": { "text": "success"}}' \
     https://api.github.com/repos/radical-cybertools/radical.pilot/dispatches
     sbatch --begin='now+1week' comet.sh
 fi

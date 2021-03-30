@@ -56,7 +56,7 @@ then
     curl -H "Accept: application/vnd.github.everest-preview+json" \
     -H "Authorization: token $GIT_TOKEN" \
     --request POST \
-    --data '{"event_type": "test_result", "client_payload": { "text": "failure"}}' \
+    --data '{"event_type": "test_summit", "client_payload": { "text": "failure"}}' \
     https://api.github.com/repos/radical-cybertools/radical.pilot/dispatches
 
 else
@@ -66,6 +66,6 @@ else
     curl -H "Accept: application/vnd.github.everest-preview+json" \
     -H "Authorization: token $GIT_TOKEN" \
     --request POST \
-    --data '{"event_type": "test_result", "client_payload": { "text": "success"}}' \
+    --data '{"event_type": "test_summit", "client_payload": { "text": "success"}}' \
     https://api.github.com/repos/radical-cybertools/radical.pilot/dispatches
 fi
