@@ -57,7 +57,7 @@ then
     -H "Authorization: token $GIT_TOKEN" \
     --request POST \
     --data '{"event_type": "test_result", "client_payload": { "text": "failure"}}' \
-    https://api.github.com/repos/radical-cybertools/radical.pilot/summit
+    https://api.github.com/repos/radical-cybertools/radical.pilot/dispatches
 
 else
     echo 'Everything went well'
@@ -67,5 +67,5 @@ else
     -H "Authorization: token $GIT_TOKEN" \
     --request POST \
     --data '{"event_type": "test_result", "client_payload": { "text": "success"}}' \
-    https://api.github.com/repos/radical-cybertools/radical.pilot/summit
+    https://api.github.com/repos/radical-cybertools/radical.pilot/dispatches
 fi
