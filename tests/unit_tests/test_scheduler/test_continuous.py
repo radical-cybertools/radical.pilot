@@ -157,7 +157,7 @@ class TestContinuous(TestCase):
         self.assertEqual(component._tag_history, {'tag.0000': [1, 1]})
         task['description']['tags'] = {'colocate' : 'tag.0001',
                                        'exclusive': False}
-        _ = component.schedule_task(task)
+        component.schedule_task(task)
         self.assertEqual(component._tag_history, {'tag.0000': [1, 1],
                                                   'tag.0001': [1, 1]})
 
