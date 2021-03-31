@@ -33,7 +33,7 @@ from .base import AgentSchedulingComponent
 #                   'name'    : 'aa',
 #                   'uid'     : 'node.0000',
 #                   'cores'   : [0, 1, 2, 3, 4, 5, 6, 7],
-#                   'gpus'    : [0,1, 2],
+#                   'gpus'    : [0, 1, 2],
 #                   'lfs'     : 128,
 #                   'mem'     : 256
 #               },
@@ -41,7 +41,7 @@ from .base import AgentSchedulingComponent
 #                   'name'    : 'bb',
 #                   'uid'     : 'node.0001',
 #                   'cores'   : [0, 1, 2, 3, 4, 5, 6, 7],
-#                   'gpus'    : [0,1, 2],
+#                   'gpus'    : [0, 1, 2],
 #                   'lfs'     : 256,
 #                   'mem'     : 256,
 #                },
@@ -428,8 +428,11 @@ class Continuous(AgentSchedulingComponent):
                     if node_uid not in self._tag_history[tag]:
                         continue
                 # for a new tag check that nodes were not used for previous tags
-                elif node_uid in self._tagged_nodes:
-                    continue
+                else:
+                    # `exclusive` -> not to share nodes between different tags
+                    is_exclusive = td.get('tags', {}).get('exclusive', True)
+                    if is_exclusive and node_uid in self._tagged_nodes:
+                        continue
 
             node_partition_id = None
             if self._rm_partitions:
