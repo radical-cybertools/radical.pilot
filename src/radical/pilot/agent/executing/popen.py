@@ -323,7 +323,7 @@ prof(){
 
             launch_script.write("\n# Exit the script with the return code from the command\n")
             launch_script.write("prof task_stop\n")
-            launch_script.write("echo $RETVAL > ../run_done/$RP_UNIT_ID\n")
+            launch_script.write("echo $RETVAL > ../run_done/$RP_TASK_ID\n")
 
         # done writing to launch script, get it ready for execution.
         st = os.stat(launch_script_name)
