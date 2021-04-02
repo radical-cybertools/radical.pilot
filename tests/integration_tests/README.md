@@ -24,3 +24,7 @@ Example:
 ```
 export GIT_TOKEN=soimethignsomething
 ```
+
+[![Summit Integration Tests](https://github.com/iparask/git_actions/actions/workflows/summit.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/summit.yml)
+[![Bridges2 Integration Tests](https://github.com/iparask/git_actions/actions/workflows/bridges.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/bridges.yml)
+[![Comet Integration Tests](https://github.com/iparask/git_actions/actions/workflows/comet.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/comet.yml)
