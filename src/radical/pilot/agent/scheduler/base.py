@@ -27,7 +27,6 @@ SCHEDULER_NAME_HOMBRE             = "HOMBRE"
 SCHEDULER_NAME_FLUX               = "FLUX"
 SCHEDULER_NAME_TORUS              = "TORUS"
 SCHEDULER_NAME_NOOP               = "NOOP"
-SCHEDULER_NAME_TORUS              = "TORUS"
 
 # SCHEDULER_NAME_YARN               = "YARN"
 # SCHEDULER_NAME_SPARK              = "SPARK"

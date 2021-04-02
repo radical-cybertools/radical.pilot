@@ -101,12 +101,12 @@ class TaskManager(rpu.Component):
         """
 
         self._pilots      = dict()
-        self._pilots_lock = ru.RLock('tmgr.pilots_lock')
+        self._pilots_lock = ru.RLock('%s.pilots_lock' % self._uid)
         self._uids        = list()   # known task UIDs
         self._tasks       = dict()
-        self._tasks_lock  = ru.RLock('tmgr.tasks_lock')
+        self._tasks_lock  = ru.RLock('%s.tasks_lock' % self._uid)
         self._callbacks   = dict()
-        self._cb_lock     = ru.RLock('tmgr.cb_lock')
+        self._tcb_lock    = ru.RLock('%s.tcb_lock' % self._uid)
         self._terminate   = mt.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
@@ -228,7 +228,7 @@ class TaskManager(rpu.Component):
         self._rep.info('<<close task manager')
 
         # disable callbacks during shutdown
-        with self._cb_lock:
+        with self._tcb_lock:
             self._callbacks = dict()
             for m in rpc.TMGR_METRICS:
                 self._callbacks[m] = dict()
@@ -574,7 +574,7 @@ class TaskManager(rpu.Component):
     #
     def _task_cb(self, task, state):
 
-        with self._cb_lock:
+        with self._tcb_lock:
 
             uid      = task.uid
             cb_dicts = list()
@@ -605,7 +605,7 @@ class TaskManager(rpu.Component):
 
         cbs = dict()  # bulked callbacks to call
 
-        with self._cb_lock:
+        with self._tcb_lock:
 
             for metric in metrics:
 
@@ -795,7 +795,7 @@ class TaskManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def list_units(self, uids=None):                                      # noqa
+    def list_units(self):
         '''
         deprecated - use `list_tasks()`
         '''
@@ -1205,7 +1205,7 @@ class TaskManager(rpu.Component):
             raise ValueError('no such task %s' % uid)
 
 
-        with self._cb_lock:
+        with self._tcb_lock:
             cb_name = cb.__name__
 
             if metric not in self._callbacks:
@@ -1235,7 +1235,7 @@ class TaskManager(rpu.Component):
             if metric not in rpc.TMGR_METRICS :
                 raise ValueError ("invalid tmgr metric '%s'" % metric)
 
-        with self._cb_lock:
+        with self._tcb_lock:
 
             for metric in metrics:
 
