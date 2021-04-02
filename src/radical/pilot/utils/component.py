@@ -419,9 +419,9 @@ class Component(object):
         self._workers    = dict()       # methods to work on things
         self._publishers = dict()       # channels to send notifications to
         self._threads    = dict()       # subscriber and idler threads
-        self._cb_lock    = ru.RLock('%s.cb_lock' % self._name)
+        self._cb_lock    = ru.RLock('%s.cb_lock' % self._uid)
                                         # guard threaded callback invokations
-        self._work_lock  = ru.RLock('%s.work_lock' % self._name)
+        self._work_lock  = ru.RLock('%s.work_lock' % self._uid)
                                         # guard threaded callback invokations
 
         self._subscribers = dict()      # ZMQ Subscriber classes
