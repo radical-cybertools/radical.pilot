@@ -1,6 +1,6 @@
 {
     "configure": {
-        "rm_info" : [
+        "rm_info": [
             {
                 "node_list"      : [["a", 1], ["b", 2], ["c", 3]],
                 "lm_info"        : {"cores_per_node": 8},
@@ -19,77 +19,89 @@
             }
         ]
     },
- "allocate" : {"nodes"  : [[{"lfs": {"size": 0, "path": "/dev/null"},
-                                  "cores": [0,0,0,0,0,0,0,0,
-                                            0,0,0,0,0,0,0,0],
-                                  "gpus": [0,0],
-                                  "name": "a",
-                                  "uid": 1,
-                                  "mem": 128},
 
-                                  {"lfs": {"size": 0, "path": "/dev/null"},
-                                  "cores": [0,0,0,0,0,0,0,0,
-                                            0,0,0,0,0,0,0,0],
-                                  "gpus": [0,0,0],
-                                  "name": "b",
-                                  "uid": 2,
-                                  "mem":128},
-
-                                  {"lfs": {"size": 0, "path": "/dev/null"},
-                                  "cores": [0,0,0,0,0,0,0,0,
-                                            0,0,0,0,0,0,0,0],
-                                  "gpus": [0,0,0],
-                                  "name": "c",
-                                  "uid": 3}],
-
-                                [{"lfs": {"size": 0, "path": "/dev/null"}, 
-                                  "cores": [1,0,0,0,0,0,0,0,
-                                            0,0,0,0,0,0,0,0],
-                                  "gpus": [0,0],
-                                  "name": "a",
-                                  "uid": 1,
-                                  "mem": 128},
-
-                                  {"lfs": {"size": 0, "path": "/dev/null"},
-                                  "cores": [0,0,0,0,0,0,0,0,
-                                            0,0,0,0,0,0,0,0],
-                                  "gpus": [0,0,0],
-                                  "name": "b",
-                                  "uid": 2,
-                                  "mem":128},
-
-                                  {"lfs": {"size": 0, "path": "/dev/null"},
-                                  "cores": [0,0,0,0,0,0,0,0,
-                                            0,0,0,0,0,0,0,0],
-                                  "gpus": [0,0,0],
-                                  "name": "c",
-                                  "uid": 3}],
-
-                                  [{"lfs": {"size": 0, "path": "/dev/null"}, 
-                                   "cores": [1,1,1,1,1,1,1,0,
-                                             1,1,1,0,0,0,0,0],
-                                   "gpus": [0,0],
-                                   "name": "a",
-                                   "uid": 1,
-                                   "mem": 128},
-  
-                                    {"lfs": {"size": 0, "path": "/dev/null"},
-                                     "cores": [0,0,0,0,0,0,0,0,
-                                               0,0,0,0,0,0,0,0],
-                                    "gpus": [0,0,0],
-                                    "name": "b",
-                                    "uid": 2,
-                                    "mem":128},
-  
-                                    {"lfs": {"size": 0, "path": "/dev/null"},
-                                    "cores": [0,0,0,0,0,0,0,0,
-                                              0,0,0,0,0,0,0,0],
-                                    "gpus": [0,0,0],
-                                    "name": "c",
-                                    "uid": 3}]
-                               ],
-
- "trigger"  : [{"environment" : {},
+    "allocate": {
+        "nodes": [
+            [
+                {
+                    "uid"        : 1,
+                    "name"       : "a",
+                    "cores"      : [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    "gpus"       : [0,0,0],
+                    "lfs"        : {"size": 0, "path": "/dev/null"},
+                    "mem"        : 1024
+                },
+                {
+                    "uid"        : 2,
+                    "name"       : "b",
+                    "cores"      : [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    "gpus"       : [0,0,0],
+                    "lfs"        : {"size": 0, "path": "/dev/null"},
+                    "mem"        : 1024
+                },
+                {
+                    "uid"        : 3,
+                    "name"       : "c",
+                    "cores"      : [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    "gpus"       : [0,0,0],
+                    "lfs"        : {"size": 0, "path": "/dev/null"},
+                    "mem"        : 1024
+                }
+            ],
+            [
+                {
+                    "uid"        : 1,
+                    "name"       : "a",
+                    "cores"      : [1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    "gpus"       : [1,1,0],
+                    "lfs"        : {"size": 0, "path": "/dev/null"},
+                    "mem"        : 1024
+                },
+                {
+                    "uid"        : 2,
+                    "name"       : "b",
+                    "cores"      : [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    "gpus"       : [0,0,0],
+                    "lfs"        : {"size": 0, "path": "/dev/null"},
+                    "mem"        : 1024
+                },
+                {
+                    "uid"        : 3,
+                    "name"       : "c",
+                    "cores"      : [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    "gpus"       : [0,0,0],
+                    "lfs"        : {"size": 0, "path": "/dev/null"},
+                    "mem"        : 1024
+                }
+            ],
+            [
+                {
+                    "uid"        : 1,
+                    "name"       : "a",
+                    "cores"      : [1,1,1,1,1,1,1,0,1,1,1,0,0,0,0,0],
+                    "gpus"       : [0,0,0],
+                    "lfs"        : {"size": 0, "path": "/dev/null"},
+                    "mem"        : 1024
+                },
+                {
+                    "uid"        : 2,
+                    "name"       : "b",
+                    "cores"      : [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    "gpus"       : [0,0,0],
+                    "lfs"        : {"size": 0, "path": "/dev/null"},
+                    "mem"        : 1024
+                },
+                {
+                    "uid"        : 3,
+                    "name"       : "c",
+                    "cores"      : [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                    "gpus"       : [0,0,0],
+                    "lfs"        : {"size": 0, "path": "/dev/null"},
+                    "mem"        : 1024
+                }
+            ]
+        ],
+        "trigger"  : [{"environment" : {},
                                 "cpu_process_type" : null,
                                 "gpu_process_type" : null,
                                 "cpu_threads" : 1,
