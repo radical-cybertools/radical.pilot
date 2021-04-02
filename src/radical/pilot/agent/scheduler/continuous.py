@@ -430,9 +430,12 @@ class Continuous(AgentSchedulingComponent):
                 # for a new tag check that nodes were not used for previous tags
                 else:
                     # `exclusive` -> not to share nodes between different tags
-                    is_exclusive = td.get('tags', {}).get('exclusive', True)
+                    is_exclusive = td['tags'].get('exclusive', False)
                     if is_exclusive and node_uid in self._tagged_nodes:
-                        continue
+                        if len(self.nodes) > len(self._tagged_nodes):
+                            continue
+                        self._log.warn('not enough nodes for exclusive tags, ' +
+                                       'switched "exclusive" flag to "False"')
 
             node_partition_id = None
             if self._rm_partitions:

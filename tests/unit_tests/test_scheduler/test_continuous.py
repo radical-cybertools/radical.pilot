@@ -152,14 +152,27 @@ class TestContinuous(TestCase):
         self.assertEqual(component.schedule_task(task),
                          test_case['setup']['lm']['slots'])
 
-        # check tags non-exclusiveness
+        # check tags exclusiveness (default: exclusive=False)
 
+        # initial tag is set
         self.assertEqual(component._tag_history, {'tag.0000': [1, 1]})
-        task['description']['tags'] = {'colocate' : 'tag.0001',
-                                       'exclusive': False}
-        component.schedule_task(task)
-        self.assertEqual(component._tag_history, {'tag.0000': [1, 1],
-                                                  'tag.0001': [1, 1]})
+
+        # schedule tasks with new [exclusive] tags
+        node_uids = [n['uid'] for n in nodes]
+        task_tags = ['tag.e.%s' % u for u in node_uids]
+
+        for task_tag in task_tags:
+            # the number of new exclusive tags is equal to the number of
+            # provided nodes, thus, considering earlier defined tag, there are
+            # not enough nodes for exclusive tags
+            task['description']['tags'] = {'colocate' : task_tag,
+                                           'exclusive': True}
+            component.schedule_task(task)
+
+        task_tags.insert(0, 'tag.0000')  # bring initial tag to the list of tags
+        node_uids.append(node_uids[-1])  # last node will be reused
+        tag_history = {task_tags[i]: [u, u] for i, u in enumerate(node_uids)}
+        self.assertEqual(component._tag_history, tag_history)
 
     # --------------------------------------------------------------------------
     #
