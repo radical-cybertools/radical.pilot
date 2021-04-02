@@ -106,7 +106,7 @@ class TaskManager(rpu.Component):
         self._tasks       = dict()
         self._tasks_lock  = ru.RLock('%s.tasks_lock' % self._uid)
         self._callbacks   = dict()
-        self._tcb_lock     = ru.RLock('%s.tcb_lock' % self._uid)
+        self._tcb_lock    = ru.RLock('%s.tcb_lock' % self._uid)
         self._terminate   = mt.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
