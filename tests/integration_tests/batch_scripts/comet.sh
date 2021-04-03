@@ -32,8 +32,18 @@ if test "$?" = 1
 then
     echo 'A test failed'
     radical.pilot/tests/bin/radical-pilot-test-issue -r 'SDSC Comet' -l output.log
+    curl -H "Accept: application/vnd.github.everest-preview+json" \
+    -H "Authorization: token $GIT_TOKEN" \
+    --request POST \
+    --data '{"event_type": "test_result", "client_payload": { "text": "failure"}}' \
+    https://api.github.com/repos/radical-cybertools/radical.pilot/comet
     sbatch --begin='now+4weeks' comet.sh
 else
     echo 'Everything went fine'
+    curl -H "Accept: application/vnd.github.everest-preview+json" \
+    -H "Authorization: token $GIT_TOKEN" \
+    --request POST \
+    --data '{"event_type": "test_result", "client_payload": { "text": "success"}}' \
+    https://api.github.com/repos/radical-cybertools/radical.pilot/comet
     sbatch --begin='now+1week' comet.sh
 fi

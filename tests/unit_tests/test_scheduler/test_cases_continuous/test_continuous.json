@@ -1,6 +1,6 @@
 {
     "configure": {
-        "rm_info" : [
+        "rm_info": [
             {
                 "node_list"     : [["a", 1], ["b", 2], ["c", 3]],
                 "lm_info"       : {"cores_per_node": 8},
@@ -19,6 +19,7 @@
             }
         ]
     },
+
     "allocate" : {
         "nodes"  : [
             [
@@ -230,3 +231,4 @@
         ]
     }
 }
+

@@ -42,8 +42,8 @@
                                         "module load intel/18.0.0",
                                         "module load python3/3.7.0"
                                         ],
-        "default_remote_workdir"      : "$WORK",
-        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
+        "default_remote_workdir"      : "$WORK2",
+        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work2", "$WORK2"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
@@ -90,8 +90,8 @@
                                          "module load intel/18.0.0",
                                          "module load python3/3.7.0"
                                         ],
-        "default_remote_workdir"      : "$WORK",
-        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
+        "default_remote_workdir"      : "$WORK2",
+        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work2", "$WORK2"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
@@ -141,8 +141,8 @@
                                          "module load intel/18.0.0",
                                          "module load python3/3.7.0"
                                         ],
-        "default_remote_workdir"      : "$WORK",
-        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
+        "default_remote_workdir"      : "$WORK2",
+        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work2", "$WORK2"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
@@ -189,8 +189,8 @@
                                          "module load intel/18.0.0",
                                          "module load python3/3.7.0"
                                         ],
-        "default_remote_workdir"      : "$WORK",
-        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
+        "default_remote_workdir"      : "$WORK2",
+        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work2", "$WORK2"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
