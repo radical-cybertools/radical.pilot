@@ -31,16 +31,6 @@ then
     MODULES="$MODULES python-hostlist pyzmq regex requests setproctitle urllib3"
 fi
 
-echo
-echo "script  : $SCRIPT"
-echo "type    : $TYPE"
-echo "prefix  : $PREFIX"
-echo "version : $VERSION"
-echo "modules : $MODULES"
-echo "defaults: $DEFAULTS"
-echo
-
-
 # setuptools="setuptools==0.6c11"
 # pip="pip==1.4.1"
 
@@ -192,7 +182,7 @@ then
 fi
 
 echo -n "create  virtualenv "
-stdbuf -oL $VIRTENV_CMD --no-site-packages -p "python$VERSION" "$PREFIX" | progress
+stdbuf -oL $VIRTENV_CMD -p "python$VERSION" "$PREFIX" | progress
 .          "$PREFIX"/bin/activate
 
 echo -n "update  setuptools "
@@ -253,11 +243,13 @@ fi
 echo
 echo "---------------------------------------------------------------------"
 echo
-echo "PYTHON    : `which $PYTHON` (`python -V`)"
+echo "SCRIPT    : $SCRIPT"
 echo "TYPE      : $TYPE"
 echo "PREFIX    : $PREFIX"
 echo "VERSION   : $VERSION"
 echo "MODULES   : $MODULES"
+echo "DEFAULTS  : $DEFAULTS"
+echo "PYTHON    : `which $PYTHON` (`python -V`)"
 echo "PYTHONPATH: $PYTHONPATH"
 echo
 echo "---------------------------------------------------------------------"
