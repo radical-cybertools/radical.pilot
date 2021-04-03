@@ -129,7 +129,7 @@ class Popen(AgentExecutingComponent) :
                 self._prof.prof('unschedule_start', uid=task['uid'])
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
-                task['control'] = 'umgr_pending'
+                task['control'] = 'tmgr_pending'
                 task['$all']    = True
                 self.advance(task, rps.FAILED, publish=True, push=False)
 
