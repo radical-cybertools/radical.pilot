@@ -399,14 +399,14 @@ class Agent_0(rpu.Worker):
         else   : cmdline = ls_name
 
         # ------------------------------------------------------------------
-        class _S(mp.Process):
+        class _Service(mp.Process):
 
             def __init__(self, cmd, log):
                 self._name = 'rp.services'
                 self._cmd  = cmd.split()
                 self._log  = log
                 self._proc = None
-                super(_S, self).__init__(name=self._name)
+                super(_Service, self).__init__(name=self._name)
                 self.start()
 
 
@@ -433,7 +433,7 @@ class Agent_0(rpu.Worker):
 
         # spawn the services
         self._log.info('start services: %s', cmdline)
-        _S(cmdline, log=self._log)
+        _Service(cmdline, log=self._log)
 
         # FIXME: register heartbeats?
 
