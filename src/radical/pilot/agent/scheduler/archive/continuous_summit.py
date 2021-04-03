@@ -208,10 +208,10 @@ class ContinuousSummit(AgentSchedulingComponent):
         # since we just changed this fundamental setting, we need to
         # recreate the nodelist.
         self.nodes = []
-        for node, node_uid in self._rm_node_list:
+        for node, node_id in self._rm_node_list:
 
             node_entry = {'name'   : node,
-                          'uid'    : node_uid,
+                          'uid'    : node_id,
                           'sockets': list(),
                           'lfs'    : self._rm_lfs_per_node}
 
@@ -240,7 +240,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         # This method needs to change if the DS changes.
         # Current slot DS:
         # slots = {'nodes': [{'name'    : node_name,
-        #                     'uid'     : node_uid,
+        #                     'uid'     : node_id,
         #                     'core_map': core_map,
         #                     'gpu_map' : gpu_map,
         #                     'lfs'     : {'size': lfs,
@@ -261,7 +261,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         #                   'lfs'     : 128}],
 
 
-        # for node_name, node_uid, cores, gpus in slots['nodes']:
+        # for node_name, node_id, cores, gpus in slots['nodes']:
         for node in slots['nodes']:
 
             # Find the entry in the the slots list
@@ -373,8 +373,8 @@ class ContinuousSummit(AgentSchedulingComponent):
             return False
 
 
-        node_uids = [node['uid'] for node in task['slots']['nodes']]
-        self._tag_history[uid] = node_uids
+        node_ids = [node['uid'] for node in task['slots']['nodes']]
+        self._tag_history[uid] = node_ids
 
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=uid)
@@ -706,7 +706,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         gpus      = list()
         lfs       = None
         node_name = None
-        node_uid  = None
+        node_id   = None
         tag       = td.get('tag')
 
         for node in self.nodes:  # FIXME optimization: iteration start
@@ -734,7 +734,7 @@ class ContinuousSummit(AgentSchedulingComponent):
                 len(gpus)  == requested_gpus:
 
                 # we found the needed resources - break out of search loop
-                node_uid  = node['uid']
+                node_id   = node['uid']
                 node_name = node['name']
                 break
 
@@ -756,7 +756,7 @@ class ContinuousSummit(AgentSchedulingComponent):
 
         # all the information for placing the task is acquired - return them
         slots = {'nodes': [{'name'    : node_name,
-                            'uid'     : node_uid,
+                            'uid'     : node_id,
                             'core_map': core_map,
                             'gpu_map' : gpu_map,
                             'lfs'     : {'size': lfs,
@@ -867,7 +867,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         # start the search
         for node in self.nodes:
 
-            node_uid  = node['uid']
+            node_id   = node['uid']
             node_name = node['name']
 
             # If task has a tag, check if the tag is in the tag_history dict,
@@ -942,7 +942,7 @@ class ContinuousSummit(AgentSchedulingComponent):
                 td['environment']['NODE_LFS_PATH'] = lfs_path
 
             slots['nodes'].append({'name'    : node_name,
-                                   'uid'     : node_uid,
+                                   'uid'     : node_id,
                                    'core_map': core_map,
                                    'gpu_map' : gpu_map,
                                    'lfs'     : {'size': lfs,

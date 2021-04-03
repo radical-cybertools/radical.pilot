@@ -271,8 +271,8 @@ class AgentSchedulingComponent(rpu.Component):
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
         self.nodes = list()
-        for node, node_uid in self._rm_node_list:
-            self.nodes.append({'uid'  : node_uid,
+        for node, node_id in self._rm_node_list:
+            self.nodes.append({'uid'  : node_id,
                                'name' : node,
                                'cores': [rpc.FREE] * self._rm_cores_per_node,
                                'gpus' : [rpc.FREE] * self._rm_gpus_per_node,
@@ -381,7 +381,7 @@ class AgentSchedulingComponent(rpu.Component):
         '''
         # This method needs to change if the DS changes.
 
-        # for node_name, node_uid, cores, gpus in slots['ranks']:
+        # for node_name, node_id, cores, gpus in slots['ranks']:
         for rank in slots['ranks']:
 
             # Find the entry in the the slots list

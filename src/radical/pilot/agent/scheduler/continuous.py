@@ -103,10 +103,10 @@ class Continuous(AgentSchedulingComponent):
             self._log.info('blocked gpus : %s' % blocked_gpus)
 
         self.nodes = list()
-        for node, node_uid in self._rm_node_list:
+        for node, node_id in self._rm_node_list:
 
             node_entry = {'name'   : node,
-                          'uid'    : node_uid,
+                          'uid'    : node_id,
                           'cores'  : [rpc.FREE] * self._rm_cores_per_node,
                           'gpus'   : [rpc.FREE] * self._rm_gpus_per_node,
                           'lfs'    :              self._rm_lfs_per_node,
@@ -196,7 +196,7 @@ class Continuous(AgentSchedulingComponent):
 
             {
                 'node_name': 'node_1',
-                'node_uid' : 'node_1',
+                'node_id'  : 'node_1',
                 'cores'    : [1, 2, 4, 5],
                 'gpus'     : [1, 3],
                 'lfs'      : 1234,
@@ -253,7 +253,7 @@ class Continuous(AgentSchedulingComponent):
 
         # we should be able to host the slots - dig out the precise resources
         slots     = list()
-        node_uid  = node['uid']
+        node_id   = node['uid']
         node_name = node['name']
 
         core_idx  = 0
@@ -280,7 +280,7 @@ class Continuous(AgentSchedulingComponent):
             gpu_map  = [[gpu] for gpu in gpus]
 
             slots.append({'node'    : node_name,
-                          'node_id' : node_uid,
+                          'node_id' : node_id,
                           'core_map': core_map,
                           'gpu_map' : gpu_map,
                           'lfs'     : {'size': lfs_per_slot,
@@ -410,10 +410,10 @@ class Continuous(AgentSchedulingComponent):
         # start the search
         for node in self._iterate_nodes():
 
-            node_uid  = node['uid']
+            node_id   = node['uid']
           # node_name = node['name']
 
-          # self._log.debug('next %s : %s', node_uid, node_name)
+          # self._log.debug('next %s : %s', node_id, node_name)
           # self._log.debug('req1: %s = %s + %s', req_slots, rem_slots,
           #                                       len(alc_slots))
 
@@ -425,13 +425,13 @@ class Continuous(AgentSchedulingComponent):
             # used for this node - else continue to the next node.
             if tag is not None:
                 if tag in self._tag_history:
-                    if node_uid not in self._tag_history[tag]:
+                    if node_id not in self._tag_history[tag]:
                         continue
                 # for a new tag check that nodes were not used for previous tags
                 else:
                     # `exclusive` -> not to share nodes between different tags
                     is_exclusive = td['tags'].get('exclusive', False)
-                    if is_exclusive and node_uid in self._tagged_nodes:
+                    if is_exclusive and node_id in self._tagged_nodes:
                         if len(self.nodes) > len(self._tagged_nodes):
                             continue
                         self._log.warn('not enough nodes for exclusive tags, ' +
@@ -443,8 +443,8 @@ class Continuous(AgentSchedulingComponent):
                 # FIXME: handle the case when unit (MPI task) would require
                 #        more nodes than the amount available per partition
                 _skip_node = True
-                for p_id, p_node_uids in self._rm_partitions.items():
-                    if node_uid in p_node_uids:
+                for p_id, p_node_ids in self._rm_partitions.items():
+                    if node_id in p_node_ids:
                         if task_partition_id in [None, p_id]:
                             node_partition_id = p_id
                             _skip_node = False

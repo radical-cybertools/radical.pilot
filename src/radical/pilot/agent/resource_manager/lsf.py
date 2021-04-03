@@ -255,8 +255,8 @@ class LSF(ResourceManager):
 
         # structure of the node list is
         #
-        #   [[node_name_1, node_uid_1],
-        #    [node_name_2, node_uid_2],
+        #   [[node_name_1, node_id_1],
+        #    [node_name_2, node_id_2],
         #    ...
         #   ]
         #
