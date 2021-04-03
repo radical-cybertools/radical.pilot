@@ -188,16 +188,23 @@ class Worker(rpu.Component):
         bak_stdout = sys.stdout
         bak_stderr = sys.stderr
 
+        strout = None
+        strerr = None
+
         try:
             # redirect stdio to capture them during execution
             sys.stdout = strout = io.StringIO()
             sys.stderr = strerr = io.StringIO()
 
             val = eval(data['code'])
+            out = strout.getvalue()
+            err = strerr.getvalue()
             ret = 0
 
+        except Exception as e:
             self._log.exception('_eval failed: %s' % (data))
             self._log.exception('_eval failed: %s' % (data))
+            val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\neval failed: %s' % e)
             ret = 1
@@ -208,7 +215,7 @@ class Worker(rpu.Component):
             sys.stderr = bak_stderr
 
 
-        return out, err, ret, None
+        return out, err, ret, val
 
 
     # --------------------------------------------------------------------------
@@ -223,6 +230,9 @@ class Worker(rpu.Component):
 
         bak_stdout = sys.stdout
         bak_stderr = sys.stderr
+
+        strout = None
+        strerr = None
 
         try:
             # redirect stdio to capture them during execution
@@ -243,6 +253,7 @@ class Worker(rpu.Component):
 
         except Exception as e:
             self._log.exception('_exec failed: %s' % (data))
+            val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\nexec failed: %s' % e)
             ret = 1
@@ -286,17 +297,22 @@ class Worker(rpu.Component):
         bak_stdout = sys.stdout
         bak_stderr = sys.stderr
 
+        strout = None
+        strerr = None
+
         try:
             # redirect stdio to capture them during execution
             sys.stdout = strout = io.StringIO()
             sys.stderr = strerr = io.StringIO()
 
             val = to_call(*args, **kwargs)
-            err = strout.getvalue()
-            ret = strerr.getvalue()
+            out = strout.getvalue()
+            err = strerr.getvalue()
+            ret = 0
 
         except Exception as e:
             self._log.exception('_call failed: %s' % (data))
+            val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\ncall failed: %s' % e)
             ret = 1
