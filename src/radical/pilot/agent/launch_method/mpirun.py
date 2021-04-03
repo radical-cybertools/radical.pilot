@@ -115,9 +115,9 @@ class MPIRun(LaunchMethod):
             # mpirun-mpich-mp  : Mac OSX mpich
             # mpirun-openmpi-mp: Mac OSX openmpi
             # mpirun           : general case
-            cmd = 'which mpirun_mpich_mp   || ' \
-                   'which mpirun-openmpi-mp || ' \
-                   'which mpirun'
+            cmd = 'which mpirun-mpich-mp   || ' \
+                  'which mpirun-openmpi-mp || ' \
+                  'which mpirun'
             out, err, ret = ru.sh_callout(cmd, shell=True, env=self._env)
             command = out.strip()
 
