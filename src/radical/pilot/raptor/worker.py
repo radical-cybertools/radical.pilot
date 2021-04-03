@@ -1,6 +1,6 @@
 
 
-
+import io
 import os
 import sys
 import time
@@ -190,8 +190,8 @@ class Worker(rpu.Component):
 
         try:
             # redirect stdio to capture them during execution
-            sys.stdout = strout = StringIO()
-            sys.stderr = strerr = StringIO()
+            sys.stdout = strout = io.StringIO()
+            sys.stderr = strerr = io.StringIO()
 
             val = eval(data['code'])
             ret = 0
@@ -226,8 +226,8 @@ class Worker(rpu.Component):
 
         try:
             # redirect stdio to capture them during execution
-            sys.stdout = strout = StringIO()
-            sys.stderr = strerr = StringIO()
+            sys.stdout = strout = io.StringIO()
+            sys.stderr = strerr = io.StringIO()
 
             pre  = data.get('pre_exec', '')
             code = data['code']
@@ -288,8 +288,8 @@ class Worker(rpu.Component):
 
         try:
             # redirect stdio to capture them during execution
-            sys.stdout = strout = StringIO()
-            sys.stderr = strerr = StringIO()
+            sys.stdout = strout = io.StringIO()
+            sys.stderr = strerr = io.StringIO()
 
             val = to_call(*args, **kwargs)
             err = strout.getvalue()
