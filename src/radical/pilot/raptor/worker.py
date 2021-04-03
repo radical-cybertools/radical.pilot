@@ -598,7 +598,8 @@ class Worker(rpu.Component):
 
             # make CUDA happy
             # FIXME: assume physical device numbering for now
-            os.environ['CUDA_VISIBLE_DEVICES'] = \
+            if task['resources']['gpus']:
+                os.environ['CUDA_VISIBLE_DEVICES'] = \
                              ','.join(str(i) for i in task['resources']['gpus'])
 
             out, err, ret = self._modes[mode](task.get('data'))
