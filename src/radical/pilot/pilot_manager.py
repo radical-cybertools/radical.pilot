@@ -91,6 +91,9 @@ class PilotManager(rpu.Component):
 
         assert(session.primary), 'pmgr needs primary session'
 
+        self._uid         = ru.generate_id('pmgr.%(item_counter)04d',
+                                           ru.ID_CUSTOM, ns=session.uid)
+
         self._uids        = list()   # known UIDs
         self._pilots      = dict()
         self._pilots_lock = ru.RLock('%s.pilots_lock' % self._uid)
