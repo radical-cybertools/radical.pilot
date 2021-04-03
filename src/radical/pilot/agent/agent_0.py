@@ -91,7 +91,7 @@ class Agent_0(rpu.Worker):
         # FIXME: we need to get pmgr freq
         freq = 10
         tint = freq / 3
-        tout = freq * 3
+        tout = freq * 10
         self._hb = ru.Heartbeat(uid=self._pid,
                                 timeout=tout,
                                 interval=tint,
@@ -741,10 +741,12 @@ class Agent_0(rpu.Worker):
         assert(evers)
 
         rp_cse = 'radical-pilot-create-static-ve'
-        out, err, ret = ru.sh_callout('%s -p ./%s -v %s -m "%s"'
-                                     % (rp_cse, eid, evers, ','.join(emods)))
 
-        assert(not ret), [out, err]
+        # FIXME: env prep is async as to not stall the hb callback.  This
+        #        negates any error checking which is now missing
+        ru.sh_callout_bg('%s -p ./%s -v %s -m "%s" 1>>%s.out 2>>%s.err; touch %s.ok'
+                         % (rp_cse, eid, evers, ','.join(emods),
+                            self.uid, self.uid, eid), shell=True)
 
 
 # ------------------------------------------------------------------------------
