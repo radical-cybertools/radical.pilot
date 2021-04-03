@@ -254,7 +254,9 @@ class Tasker():
                     mpi_kwargs = descr
 
                     try:
+                        self._prof.prof('func_start', comp=wid, uid=tid)
                         state, result = self._worker.launch_mpirun_func(exe, **mpi_kwargs)
+                        self._prof.prof('func_stop', comp=wid, uid=tid)
    
                     except Exception as e:
                         task['stderr'] = str(e)
