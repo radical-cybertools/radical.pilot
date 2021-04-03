@@ -26,7 +26,7 @@ class TestWorker(TestCase):
         ru.zmq.Putter = mock.Mock()
         ru.zmq.Getter = mock.Mock()
 
-        worker = rp.task_overlay.Worker(cfg, session=mock.Mock())
+        worker = rp.raptor.Worker(cfg, session=mock.Mock())
 
         task_1 = {'cores': 1, 'gpus' : 1}
         task_2 = {'cores': 2, 'gpus' : 1}
