@@ -15,6 +15,8 @@ import tempfile
 import radical.saga            as rs
 import radical.utils           as ru
 
+rsfs = rs.filesystem
+
 from ...  import states        as rps
 from ...  import constants     as rpc
 
