@@ -2,7 +2,7 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
+import os
 import time
 import queue
 import logging
@@ -477,7 +477,7 @@ class AgentSchedulingComponent(rpu.Component):
         if not self._waitpool:
             return
 
-        for uid,task in self._waitpool.items():
+        for uid, task in self._waitpool.items():
             ts = task['tuple_size']
             if ts not in self._ts_map:
                 self._ts_map[ts] = set()
@@ -653,18 +653,35 @@ class AgentSchedulingComponent(rpu.Component):
         # We define `tuple_size` as
         #     `(cpu_processes + gpu_processes) * cpu_threads`
         #
-        tasks = list(self._waitpool.values())
-        tasks.sort(key=lambda x:
+        to_wait    = list()
+        to_test    = list()
+        named_envs = dict()
+
+        for task in self._waitpool.values():
+            named_env = task['description'].get('named_env')
+            if named_env:
+                if not named_envs.get(named_env):
+                    # [re]check env: (1) first time check; (2) was not set yet
+                    named_envs[named_env] = os.path.exists('%s.ok' % named_env)
+
+                if named_envs[named_env]:
+                    to_test.append(task)
+                else:
+                    to_wait.append(task)
+            else:
+                to_test.append(task)
+
+        to_test.sort(key=lambda x:
                 (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
                  reverse=True)
 
         # cycle through waitpool, and see if we get anything placed now.
-        scheduled, unscheduled = ru.lazy_bisect(tasks,
+        scheduled, unscheduled = ru.lazy_bisect(to_test,
                                                 check=self._try_allocation,
                                                 on_skip=self._prof_sched_skip,
                                                 log=self._log)
 
-        self._waitpool = {task['uid']:task for task in unscheduled}
+        self._waitpool = {task['uid']: task for task in (unscheduled + to_wait)}
 
         # update task resources
         for task in scheduled:
@@ -716,9 +733,26 @@ class AgentSchedulingComponent(rpu.Component):
 
         # handle largest tasks first
         # FIXME: this needs lazy-bisect
-        to_wait = list()
+        to_wait    = list()
+        named_envs = dict()
         for task in sorted(tasks, key=lambda x: x['tuple_size'][0],
                            reverse=True):
+
+            # FIXME: This is a slow and inefficient way to wait for named VEs.
+            #        The semantics should move to the upcoming eligibility
+            #        checker
+            # FIXME: Note that this code is duplicated in _schedule_waitpool
+            named_env = task['description'].get('named_env')
+            if named_env:
+                if not named_envs.get(named_env):
+                    # [re]check env: (1) first time check; (2) was not set yet
+                    named_envs[named_env] = os.path.exists('%s.ok' % named_env)
+
+                if not named_envs[named_env]:
+                    to_wait.append(task)
+                    self._log.debug('delay %s, no env %s',
+                                    task['uid'], named_env)
+                    continue
 
             # either we can place the task straight away, or we have to
             # put it in the wait pool.
@@ -738,7 +772,7 @@ class AgentSchedulingComponent(rpu.Component):
                 to_wait.append(task)
 
         # all tasks which could not be scheduled are added to the waitpool
-        self._waitpool.update({task['uid']:task for task in to_wait})
+        self._waitpool.update({task['uid']: task for task in to_wait})
 
         # we performed some activity (worked on tasks)
         active = True
@@ -842,8 +876,8 @@ class AgentSchedulingComponent(rpu.Component):
 
         # we placed some previously waiting tasks, and need to remove those from
         # the waitpool
-        self._waitpool = {task['uid']:task for task in self._waitpool.values()
-                                           if  task['uid'] not in placed}
+        self._waitpool = {task['uid']: task for task in self._waitpool.values()
+                                            if  task['uid'] not in placed}
 
         # we have new resources, and were active
         return True, True
