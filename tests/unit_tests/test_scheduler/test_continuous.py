@@ -2,12 +2,11 @@
 
 # pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
-__copyright__ = "Copyright 2013-2021, http://radical.rutgers.edu"
-__license__ = "MIT"
+__copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
+import copy
 import glob
-import pytest
-import os
 
 from unittest import TestCase
 from unittest import mock
@@ -17,6 +16,8 @@ import radical.pilot.constants as rpc
 
 from   radical.pilot.agent.scheduler.continuous import Continuous
 
+TEST_CASES_DIR = 'tests/unit_tests/test_scheduler/test_cases_continuous'
+
 
 # ------------------------------------------------------------------------------
 #
@@ -24,42 +25,29 @@ class TestContinuous(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls) -> None:
 
-        ret  = list()
-        base = os.path.dirname(__file__)
-        pat  = '%s/test_cases_continuous/task*.json' % base
+        cls._test_cases = []
+        for f in glob.glob('%s/task.*.json' % TEST_CASES_DIR):
+            cls._test_cases.append(ru.read_json(f))
 
-        for fin in glob.glob(pat):
-            test_cases = ru.read_json(fin)
-            ret.append(test_cases)
-
-        cfg_fname = '%s/test_cases_continuous/test_continuous.json' % base
-        cfg_tests = ru.read_json(cfg_fname)
-
-        return cfg_tests, ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def tearDown(self):
-        pass
-
+        cls._config = ru.read_json('%s/test_continuous.json' % TEST_CASES_DIR)
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Continuous, '__init__', return_value=None)
-    def test_configure(self, mocked_init):
+    @mock.patch('radical.utils.Logger')
+    def test_configure(self, mocked_init, mocked_Logger):
 
         component = Continuous(cfg=None, session=None)
         component._uid = 'agent_scheduling.0000'
-        component._log = ru.Logger('dummy')
+        component._log = mocked_Logger
 
         # 1) without blocked cores; 2) with blocked cores;
         blocked_cores_list = [[], [0, 1]]
 
-        test_case, _ = self.setUp()
-        for rm_info in test_case['configure']['rm_info']:
+        for rm_info in self._config['configure']['rm_info']:
 
             component._rm_info           = rm_info
             component._rm_lm_info        = rm_info['lm_info']
@@ -106,126 +94,111 @@ class TestContinuous(TestCase):
                         component._rm_cores_per_node,
                         rm_info['cores_per_node'] - len(blocked_cores))
 
-
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Continuous, '__init__', return_value=None)
     @mock.patch.object(Continuous, '_configure', return_value=None)
-    def test_find_resources(self,
-                            mocked_init,
-                            mocked_configure):
-
-        _, cfg = self.setUp()
-        component = Continuous(cfg=None, session=None)
-        component.node = {'name'  : 'a',
-                          'uid'   : 2,
-                          'cores' : [0, 0, 0, 0, 0, 0, 0, 0,
-                                     0, 0, 0, 0, 0, 0, 0, 0],
-                          'lfs'   : {"size": 1234,
-                                     "path" : "/dev/null"},
-                          'mem'   : 1024,
-                          'gpus'  : [0, 0]}
-        component._log = ru.Logger('dummy')
-        component._rm_lfs_per_node = {"path" : "/dev/null", "size" : 1234}
-        component.cores_per_slot   = 16
-        component.gpus_per_slot    = 2
-        component.lfs_per_slot     = 1234
-        component.mem_per_slot     = 1024
-        component.find_slot        = 1
-
-        try:
-            test_slot = component._find_resources(
-                node=component.node,
-                find_slots=component.find_slot,
-                cores_per_slot=component.cores_per_slot,
-                gpus_per_slot=component.gpus_per_slot,
-                lfs_per_slot=component.lfs_per_slot,
-                mem_per_slot=component.mem_per_slot,
-                partial='None')
-            self.assertEqual([cfg[1]['setup']['lm']['slots']], test_slot)
-        except:
-            with pytest.raises(AssertionError):
-                raise
-
-
-    # --------------------------------------------------------------------------
-    #
-    @mock.patch.object(Continuous, '__init__', return_value=None)
-    @mock.patch.object(Continuous, '_configure', return_value=None)
-    @mock.patch.object(Continuous, '_find_resources',
-                       return_value=[{'name'    : 'a',
-                                      'uid'     : 1,
-                                      'core_map': [[0]],
-                                      'gpu_map' : [[0]],
-                                      'lfs'     : {'path': '/dev/null',
-                                                   'size': 1234},
-                                      'mem'     : 128}])
     @mock.patch('radical.utils.Logger')
-    def test_schedule_task(self,
-                           mocked_init,
-                           mocked_configure,
-                           mocked_find_resources,
-                           mocked_Logger):
+    def test_find_resources(self, mocked_init, mocked_configure, mocked_Logger):
 
-        _, cfg = self.setUp()
+        test_case = self._test_cases[0]
+
         component = Continuous(cfg=None, session=None)
-        task = dict()
-        task['uid'] = cfg[1]['task']['uid']
-        task['description'] = cfg[1]['task']['description']
-        component.nodes = cfg[1]['setup']['lm']['slots']['nodes']
-        component._tag_history       = dict()
-        component._rm_cores_per_node = 32
-        component._rm_gpus_per_node  = 2
-        component._rm_lfs_per_node   = {"size": 0, "path": "/dev/null"}
-        component._rm_mem_per_node   = 1024
+        component._uid = 'agent_scheduling.0001'
+        component._log = mocked_Logger
+        component._rm_lfs_per_node = {'size': 1024, 'path': '/dev/null'}
+
+        td = test_case['task']['description']
+        new_slot = component._find_resources(
+            node=self._config['allocate']['nodes'][0][0],
+            find_slots=td['cpu_processes'],
+            cores_per_slot=td['cpu_threads'],
+            gpus_per_slot=td['gpu_processes'],
+            lfs_per_slot=td['lfs_per_process'],
+            mem_per_slot=td['mem_per_process'],
+            partial=False)
+
+        self.assertEqual(new_slot, test_case['setup']['lm']['slots']['nodes'])
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Continuous, '__init__', return_value=None)
+    @mock.patch.object(Continuous, '_configure', return_value=None)
+    @mock.patch('radical.utils.Logger')
+    def test_schedule_task(self, mocked_init, mocked_configure, mocked_Logger):
+
+        test_case = self._test_cases[0]
+        nodes = self._config['allocate']['nodes'][0]
+
+        component = Continuous(cfg=None, session=None)
+        component._uid = 'agent_scheduling.0002'
+        component._log = mocked_Logger
+        component._rm_cores_per_node = len(nodes[0]['cores'])
+        component._rm_gpus_per_node  = len(nodes[0]['gpus'])
+        component._rm_lfs_per_node   = nodes[0]['lfs']
+        component._rm_mem_per_node   = nodes[0]['mem']
         component._rm_lm_info        = dict()
         component._rm_partitions     = dict()
-        component._log               = ru.Logger('dummy')
-        component._dvm_host_list     = None
+        component._tag_history       = dict()
+        component._tagged_nodes      = set()
+        component._scattered         = None
         component._node_offset       = 0
-        test_slot =  {'cores_per_node': 32,
-                      'gpus_per_node': 2,
-                      'lfs_per_node': {'path': '/dev/null', 'size': 0},
-                      'lm_info': {},
-                      'mem_per_node': 1024,
-                      'partition_id': None,
-                      'nodes': [{'core_map': [[0]],
-                                 'gpu_map' : [[0]],
-                                 'lfs': {'path': '/dev/null', 'size': 1234},
-                                 'mem': 128,
-                                 'name': 'a',
-                                 'uid': 1}]}
 
-        self.assertEqual(component.schedule_task(task), test_slot)
-        self.assertEqual(component._tag_history, {})
-      # self.assertEqual(component._tag_history, {'task.000001': [1]})
+        component.nodes              = nodes
 
+        task = {'uid': test_case['task']['uid'],
+                'description': test_case['task']['description']}
+
+        self.assertEqual(component.schedule_task(task),
+                         test_case['setup']['lm']['slots'])
+
+        # check tags exclusiveness (default: exclusive=False)
+
+        # initial tag is set
+        self.assertEqual(component._tag_history, {'tag.0000': [1, 1]})
+
+        # schedule tasks with new [exclusive] tags
+        node_uids = [n['uid'] for n in nodes]
+        task_tags = ['tag.e.%s' % u for u in node_uids]
+
+        for task_tag in task_tags:
+            # the number of new exclusive tags is equal to the number of
+            # provided nodes, thus, considering earlier defined tag, there are
+            # not enough nodes for exclusive tags
+            task['description']['tags'] = {'colocate' : task_tag,
+                                           'exclusive': True}
+            component.schedule_task(task)
+
+        task_tags.insert(0, 'tag.0000')  # bring initial tag to the list of tags
+        node_uids.append(node_uids[-1])  # last node will be reused
+        tag_history = {task_tags[i]: [u, u] for i, u in enumerate(node_uids)}
+        self.assertEqual(component._tag_history, tag_history)
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Continuous, '__init__', return_value=None)
-    def test_unschedule_task(self, mocked_init):
+    @mock.patch('radical.utils.Logger')
+    def test_unschedule_task(self, mocked_init, mocked_Logger):
+
+        test_case = self._test_cases[0]
+        nodes = self._config['allocate']['nodes'][1]
 
         component = Continuous(cfg=None, session=None)
-        _, cfg   = self.setUp()
+        component._uid = 'agent_scheduling.0002'
+        component._log = mocked_Logger
 
-        task = {
-                'description': cfg[1]['task']['description'],
-                'slots'      : cfg[1]['setup']['lm']['slots']
-               }
+        component.nodes = copy.deepcopy(nodes)
 
-        component.nodes = cfg[1]['setup']['lm']['slots']['nodes']
-        component._log  = ru.Logger('dummy')
+        task = {'description': test_case['task']['description'],
+                'slots'      : test_case['setup']['lm']['slots']}
 
+        self.assertEqual(nodes[0], component.nodes[0])
         component.unschedule_task(task)
-        try:
-            self.assertEqual(component.nodes[0]['cores'], [0])
-            self.assertEqual(component.nodes[0]['gpus'], [0])
-        except:
-            with pytest.raises(AssertionError):
-                raise
+        self.assertNotEqual(nodes[0], component.nodes[0])
 
 
+# ------------------------------------------------------------------------------
+#
 if __name__ == '__main__':
 
     tc = TestContinuous()
@@ -233,7 +206,6 @@ if __name__ == '__main__':
     tc.test_unschedule_task()
     tc.test_find_resources()
     tc.test_schedule_task()
-
 
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

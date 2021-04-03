@@ -34,7 +34,7 @@ from .base import AgentSchedulingComponent
 #                   'name'    : 'aa',
 #                   'uid'     : 'node.0000',
 #                   'cores'   : [0, 1, 2, 3, 4, 5, 6, 7],
-#                   'gpus'    : [0,1, 2],
+#                   'gpus'    : [0, 1, 2],
 #                   'lfs'     : 128,
 #                   'mem'     : 256
 #               },
@@ -42,7 +42,7 @@ from .base import AgentSchedulingComponent
 #                   'name'    : 'bb',
 #                   'uid'     : 'node.0001',
 #                   'cores'   : [0, 1, 2, 3, 4, 5, 6, 7],
-#                   'gpus'    : [0,1, 2],
+#                   'gpus'    : [0, 1, 2],
 #                   'lfs'     : 256,
 #                   'mem'     : 256,
 #                },
@@ -77,6 +77,7 @@ class Continuous(AgentSchedulingComponent):
         AgentSchedulingComponent.__init__(self, cfg, session)
 
         self._tag_history   = dict()
+        self._tagged_nodes  = set()
         self._scattered     = None
         self._node_offset   = 0
 
@@ -423,9 +424,19 @@ class Continuous(AgentSchedulingComponent):
             #   - if the previous use included this node
             # If a tag exists, continue to consider this node if the tag was
             # used for this node - else continue to the next node.
-            if tag is not None and tag in self._tag_history:
-                if node_uid not in self._tag_history[tag]:
-                    continue
+            if tag is not None:
+                if tag in self._tag_history:
+                    if node_uid not in self._tag_history[tag]:
+                        continue
+                # for a new tag check that nodes were not used for previous tags
+                else:
+                    # `exclusive` -> not to share nodes between different tags
+                    is_exclusive = td['tags'].get('exclusive', False)
+                    if is_exclusive and node_uid in self._tagged_nodes:
+                        if len(self.nodes) > len(self._tagged_nodes):
+                            continue
+                        self._log.warn('not enough nodes for exclusive tags, ' +
+                                       'switched "exclusive" flag to "False"')
 
             node_partition_id = None
             if self._rm_partitions:
@@ -523,6 +534,7 @@ class Continuous(AgentSchedulingComponent):
         # key before then it will be overwritten)
         if tag is not None and tag != partition:
             self._tag_history[tag] = [node['uid'] for node in slots['nodes']]
+            self._tagged_nodes.update(self._tag_history[tag])
 
         # this should be nicely filled out now - return
         return slots
