@@ -64,6 +64,7 @@ class Default(PMGRLaunchingComponent):
         self._checking      = list()      # pilots to check state on
         self._check_lock    = ru.RLock()  # lock on maipulating the above
         self._saga_js_cache = dict()      # cache of saga job services
+        self._saga_fs_cache = dict()      # cache of saga fs dirs
         self._sandboxes     = dict()      # cache of resource sandbox URLs
         self._cache_lock    = ru.RLock()  # lock for cache
 

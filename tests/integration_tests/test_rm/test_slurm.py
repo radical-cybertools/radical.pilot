@@ -17,6 +17,8 @@ from radical.pilot.agent.resource_manager.slurm import Slurm
 class TestTask(TestCase):
 
     def __init__(self):
+
+        TestCase(__init__(self)
         self.setUpClass()
 
 

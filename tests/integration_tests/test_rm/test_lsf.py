@@ -19,6 +19,8 @@ class TestTask(TestCase):
     # --------------------------------------------------------------------------
     #
     def __init__(self):
+
+        TestCase.__init__(self)
         self.setUpClass()
 
 
