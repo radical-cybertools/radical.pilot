@@ -100,6 +100,9 @@ class TaskManager(rpu.Component):
             * A new `TaskManager` object [:class:`radical.pilot.TaskManager`].
         """
 
+        self._uid         = ru.generate_id('tmgr.%(item_counter)04d',
+                                           ru.ID_CUSTOM, ns=session.uid)
+
         self._pilots      = dict()
         self._pilots_lock = ru.RLock('%s.pilots_lock' % self._uid)
         self._uids        = list()   # known task UIDs
@@ -109,8 +112,6 @@ class TaskManager(rpu.Component):
         self._tcb_lock    = ru.RLock('%s.tcb_lock' % self._uid)
         self._terminate   = mt.Event()
         self._closed      = False
-        self._uid         = ru.generate_id('tmgr.%(item_counter)04d',
-                                           ru.ID_CUSTOM, ns=session.uid)
 
         for m in rpc.TMGR_METRICS:
             self._callbacks[m] = dict()

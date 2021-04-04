@@ -5,36 +5,30 @@ PREFIX=         # full path or virtenv name
 VERSION=        # python version (e.g., 2.7, 3.6, etc.)
                 # NOTE: for virtualenv corresponding version should be installed
 MODULES=        # alternative list of pre-installed modules/packages
+DEFAULTS=       # install default modules
 TYPE='default'  # TBD
 
-while getopts "p:v:m:t:" OPTION; do
+while getopts "p:v:m:dt:" OPTION; do
     case $OPTION in
         p)  PREFIX="$OPTARG"   ;;
         v)  VERSION="$OPTARG"  ;;
         m)  MODULES="$OPTARG"  ;;
+        d)  DEFAULTS=True      ;;
         t)  TYPE="$OPTARG"     ;;
         *)  echo "Unknown option: '$OPTION'='$OPTARG'"
             return 1;;
     esac
 done
 
-echo
-echo "script : $SCRIPT"
-echo "type   : $TYPE"
-echo "prefix : $PREFIX"
-echo "version: $VERSION"
-echo "modules: $MODULES"
-echo
+# move from comma separated to space separated module list
+MODULES=$(echo "$MODULES" | sed -e 's/,/ /g')
 
-if test -z "$MODULES"
+if ! test -z "$DEFAULTS"
 then
     # by default, install all RCT dependencies
-    MODULES="apache-libcloud chardet colorama future idna msgpack"
+    MODULES="$MODULES apache-libcloud chardet colorama future idna msgpack"
     MODULES="$MODULES msgpack-python netifaces ntplib parse pymongo"
     MODULES="$MODULES python-hostlist pyzmq regex requests setproctitle urllib3"
-else
-    # move from comma separated to space separated module list
-    MODULES=$(echo "$MODULES" | sed -e 's/,/ /g')
 fi
 
 # setuptools="setuptools==0.6c11"
@@ -144,6 +138,7 @@ fi
 # create the ve, install bare necessities
 mkdir -p "$PREFIX"
 cd $PREFIX
+PREFIX=`pwd -P`
 
 # for conda environments, install virtualenv in the env
 if ! test -z "$CONDA_DEFAULT_ENV"
@@ -191,14 +186,14 @@ stdbuf -oL $VIRTENV_CMD -p "python$VERSION" "$PREFIX" | progress
 .          "$PREFIX"/bin/activate
 
 echo -n "update  setuptools "
-pip install --no-cache-dir --upgrade --no-build-isolation $setuptools | progress || exit 1
+pip install --no-cache-dir --upgrade $setuptools | progress || exit 1
 echo -n "update  pip "
-pip install --no-cache-dir --upgrade --no-build-isolation $pip        | progress || exit 1
+pip install --no-cache-dir --upgrade $pip        | progress || exit 1
 
 for mod in $MODULES
 do
     echo -n "install $mod "
-    stdbuf -oL pip install --no-cache-dir --upgrade --no-build-isolation $mod | progress   || exit 1
+    stdbuf -oL pip install -I --no-cache-dir --upgrade $mod || exit 1
 done
 
 # install the radical stack (utils, saga, pilot) into a separate tree
@@ -248,11 +243,13 @@ fi
 echo
 echo "---------------------------------------------------------------------"
 echo
-echo "PYTHON    : `which $PYTHON` (`python -V`)"
+echo "SCRIPT    : $SCRIPT"
 echo "TYPE      : $TYPE"
 echo "PREFIX    : $PREFIX"
 echo "VERSION   : $VERSION"
 echo "MODULES   : $MODULES"
+echo "DEFAULTS  : $DEFAULTS"
+echo "PYTHON    : `which $PYTHON` (`python -V`)"
 echo "PYTHONPATH: $PYTHONPATH"
 echo
 echo "---------------------------------------------------------------------"

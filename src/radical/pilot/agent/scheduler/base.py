@@ -2,7 +2,7 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
+import os
 import time
 import queue
 import logging
@@ -482,7 +482,7 @@ class AgentSchedulingComponent(rpu.Component):
 
       # self._prof.prof('tsmap_start')
 
-        for uid,task in self._waitpool.items():
+        for uid, task in self._waitpool.items():
             ts = task['tuple_size']
             if ts not in self._ts_map:
                 self._ts_map[ts] = set()
@@ -662,15 +662,31 @@ class AgentSchedulingComponent(rpu.Component):
         #     `(cpu_processes + gpu_processes) * cpu_threads`
         #
         # FIXME: cache tuple size metric
-        # FIXME: only resort waitpool if we need to
-        tasks = list(self._waitpool.values())
-        tasks.sort(key=lambda x:
-             (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
-              reverse=True)
+        to_wait    = list()
+        to_test    = list()
+        named_envs = dict()
+
+        for task in self._waitpool.values():
+            named_env = task['description'].get('named_env')
+            if named_env:
+                if not named_envs.get(named_env):
+                    # [re]check env: (1) first time check; (2) was not set yet
+                    named_envs[named_env] = os.path.exists('%s.ok' % named_env)
+
+                if named_envs[named_env]:
+                    to_test.append(task)
+                else:
+                    to_wait.append(task)
+            else:
+                to_test.append(task)
+
+        to_test.sort(key=lambda x:
+                (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
+                 reverse=True)
 
       # self._log.debug("schedule waitpool %d", len(tasks))
         # cycle through waitpool, and see if we get anything placed now.
-        scheduled, unscheduled = ru.lazy_bisect(tasks,
+        scheduled, unscheduled = ru.lazy_bisect(to_test,
                                                 check=self._try_allocation,
                                                 on_skip=self._prof_sched_skip,
                                                 log=self._log)
@@ -678,6 +694,7 @@ class AgentSchedulingComponent(rpu.Component):
       # self._log.debug("schedules waitpool %d", len(scheduled))
       # for task in scheduled:
       #     self._prof.prof('schedule_wait', uid=task['uid'])
+        self._waitpool = {task['uid']: task for task in (unscheduled + to_wait)}
 
         # we only need to re-create the waitpool if any tasks were scheduled
         if scheduled:
@@ -750,12 +767,42 @@ class AgentSchedulingComponent(rpu.Component):
 
             # handle largest tasks first
             # FIXME: this needs lazy-bisect
+            to_schedule = list()
+            named_envs  = dict()
+            for task in tasks:
 
-            tasks.sort(key=lambda x: x['tuple_size'][0], reverse=True)
-            scheduled, unscheduled = ru.lazy_bisect(tasks,
+                # FIXME: This is a slow and inefficient way to wait for named VEs.
+                #        The semantics should move to the upcoming eligibility
+                #        checker
+                # FIXME: Note that this code is duplicated in _schedule_waitpool
+                named_env = task['description'].get('named_env')
+                if not named_env:
+                    to_schedule.append(task)
+
+                else:
+                    if not named_envs.get(named_env):
+                        # [re]check env: (1) first time check; (2) was not set yet
+                        named_envs[named_env] = os.path.exists('%s.ok' % named_env)
+
+                    if named_envs[named_env]:
+                        to_schedule.append(task)
+
+                    else:
+                        # put delayed task into the waitpool
+                        self._waitpool[task['uid']] = task
+
+                        self._log.debug('delay %s, no env %s',
+                                        task['uid'], named_env)
+
+
+            to_schedule.sort(key=lambda x: x['tuple_size'][0], reverse=True)
+            scheduled, unscheduled = ru.lazy_bisect(to_schedule,
                                                 check=self._try_allocation,
                                                 on_skip=self._prof_sched_skip,
                                                 log=self._log)
+            self._log.debug('unscheduled incoming: %d', len(scheduled))
+            self._log.debug('scheduled   incoming: %d', len(unscheduled))
+
             if scheduled:
                 for task in scheduled:
 
@@ -782,15 +829,12 @@ class AgentSchedulingComponent(rpu.Component):
                 # if tasks remain waiting, we are out of usable resources
                 resources = False
 
-            self._log.debug('unscheduled incoming: %d', len(scheduled))
-            self._log.debug('scheduled   incoming: %d', len(unscheduled))
-
-            # if we could not schedule any task from the last chunk, then we
-            # should break to allow the unschedule to kick in
-            # NOTE: new incoming tasks *may* have a chance to get scheduled, so
-            #       this is a lucky guess
-            if unscheduled:
+                # if we could not schedule any task from the last chunk, then we
+                # should break to allow the unschedule to kick in
+                # NOTE: new incoming tasks *may* have a chance to get scheduled,
+                #       so this is a lucky(?) guess
                 break
+
 
         self._log.debug("after  schedule incoming: waiting: %d",
                 len(self._waitpool))
@@ -911,6 +955,11 @@ class AgentSchedulingComponent(rpu.Component):
                 self._prof.prof('unschedule_stop', uid=task['uid'])
 
             self._log.debug('unscheduled release      : %d', len(to_release))
+
+        # we placed some previously waiting tasks, and need to remove those from
+        # the waitpool
+        self._waitpool = {task['uid']: task for task in self._waitpool.values()
+                                            if  task['uid'] not in placed}
 
         # if previously waiting tasks were placed, remove them from the waitpool
       # self._log.debug("scheduled  completed %d", len(placed))
