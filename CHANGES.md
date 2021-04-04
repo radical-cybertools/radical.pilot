@@ -4,6 +4,12 @@ For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
 
+1.6.3  Hotfix Release                                                 2021-04-03
+--------------------------------------------------------------------------------
+
+  - fix uid assignment for managers
+
+
 1.6.2  Hotfix Release                                                 2021-03-26
 --------------------------------------------------------------------------------
 
