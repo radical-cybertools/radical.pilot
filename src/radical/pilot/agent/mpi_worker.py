@@ -20,9 +20,9 @@ class MPI_Func_Worker():
 
     def __init__(self):
 
-        self._pwd = os.getcwd()
-        self._uid = os.environ['RP_FUNCS_ID']
-        self._log = ru.Logger(self._uid,   ns='radical.pilot', path=self._pwd)
+        self._pwd  = os.getcwd()
+        self._uid  = os.environ['RP_FUNCS_ID']
+        self._log  = ru.Logger(self._uid,   ns='radical.pilot', path=self._pwd)
         self._log.debug('MPI worker got init')
 
         self.THIS_SCRIPT = os.path.realpath(__file__)
@@ -46,7 +46,7 @@ class MPI_Func_Worker():
     
         from radical.pilot.serialize import serializer as serialize
     
-        fn = serialize.FuncSerializer.deserialize(code)
+        fn = serialize.FuncSerializer.deserialize_obj(code)
         return fn, args, kwargs
     
     
@@ -119,7 +119,6 @@ class MPI_Func_Worker():
                  if executor is not None:
                     result =  executor.map(fn, *args)
                     self._log.debug(result)
-
         except Exception as e:
             self._log.exception('MPICommExecutor failed')
 
