@@ -2,7 +2,7 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
+import os
 import time
 import queue
 import logging
@@ -482,7 +482,7 @@ class AgentSchedulingComponent(rpu.Component):
 
       # self._prof.prof('tsmap_start')
 
-        for uid,task in self._waitpool.items():
+        for uid, task in self._waitpool.items():
             ts = task['tuple_size']
             if ts not in self._ts_map:
                 self._ts_map[ts] = set()
@@ -662,15 +662,31 @@ class AgentSchedulingComponent(rpu.Component):
         #     `(cpu_processes + gpu_processes) * cpu_threads`
         #
         # FIXME: cache tuple size metric
-        # FIXME: only resort waitpool if we need to
-        tasks = list(self._waitpool.values())
-        tasks.sort(key=lambda x:
-             (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
-              reverse=True)
+        to_test    = list()
+        named_envs = dict()
+
+        for task in self._waitpool.values():
+            named_env = task['description'].get('named_env')
+            if named_env:
+                if not named_envs.get(named_env):
+                    # [re]check env: (1) first time check; (2) was not set yet
+                    named_envs[named_env] = os.path.exists('%s.ok' % named_env)
+
+                if named_envs[named_env]:
+                    to_test.append(task)
+                else:
+                    self._waitpool[task['uid']] = task
+                    to_wait.append(task)
+            else:
+                to_test.append(task)
+
+        to_test.sort(key=lambda x:
+                (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
+                 reverse=True)
 
       # self._log.debug("==== schedule waitpool %d", len(tasks))
         # cycle through waitpool, and see if we get anything placed now.
-        scheduled, unscheduled = ru.lazy_bisect(tasks,
+        scheduled, unscheduled = ru.lazy_bisect(to_test,
                                                 check=self._try_allocation,
                                                 on_skip=self._prof_sched_skip,
                                                 log=self._log)
@@ -746,51 +762,80 @@ class AgentSchedulingComponent(rpu.Component):
                 # no resource change, no activity
                 return None
 
-            self._log.debug("==== schedule incoming [%d]", len(tasks))
-
             # handle largest tasks first
             # FIXME: this needs lazy-bisect
+            named_envs  = dict()
+            to_schedule = list()
+            for task in sorted(tasks, key=lambda x: x['tuple_size'][0],
+                               reverse=True):
 
-            tasks.sort(key=lambda x: x['tuple_size'][0], reverse=True)
-            scheduled, unscheduled = ru.lazy_bisect(tasks,
-                                                check=self._try_allocation,
-                                                on_skip=self._prof_sched_skip,
-                                                log=self._log)
-            if scheduled:
-                for task in scheduled:
+                # FIXME: This is a slow and inefficient way to wait for named VEs.
+                #        The semantics should move to the upcoming eligibility
+                #        checker
+                # FIXME: Note that this code is duplicated in _schedule_waitpool
+                named_env = task['description'].get('named_env')
 
-                    # task got scheduled - advance state, notify world about the
-                    # state change, and push it out toward the next component.
-                    self._prof.prof('schedule_first', uid=task['uid'])
-                    td = task['description']
-                    task['$set']      = ['resources']
-                    task['resources'] = {'cpu': td['cpu_processes'] *
-                                                td.get('cpu_threads', 1),
-                                         'gpu': td['gpu_processes']}
+                if not named_env:
+                    to_schedule.append(task)
 
-                self.advance(scheduled, rps.AGENT_EXECUTING_PENDING,
-                                         publish=True, push=True)
+                else:
+                    if not named_envs.get(named_env):
+                        # [re]check env: (1) first time check; (2) was not set yet
+                        named_envs[named_env] = os.path.exists('%s.ok' % named_env)
 
-            # all tasks which could not be scheduled are added to the waitpool
-            if unscheduled:
-                self._waitpool.update({task['uid']:task for task in unscheduled})
+                    if named_envs[named_env]:
+                        to_schedule.append(task)
 
-                # incoming tasks which have to wait are the only reason to
-                # rebuild the tuple_size map.
-                self._ts_valid = False
+                    else:
+                        self._waitpool[task['uid']] = task
+                        self._log.debug('delay %s, no env %s',
+                                        task['uid'], named_env)
 
-                # if tasks remain waiting, we are out of usable resources
-                resources = False
+                self._log.debug("==== schedule incoming [%d]", len(to_schedule))
 
-            self._log.debug('=== unscheduled incoming: %d', len(scheduled))
-            self._log.debug('=== scheduled   incoming: %d', len(unscheduled))
+                # handle largest tasks first
+                # FIXME: this needs lazy-bisect
 
-            # if we could not schedule any task from the last chunk, then we
-            # should break to allow the unschedule to kick in
-            # NOTE: new incoming tasks *may* have a chance to get scheduled, so
-            #       this is a lucky guess
-            if unscheduled:
-                break
+                to_schedule.sort(key=lambda x: x['tuple_size'][0], reverse=True)
+                scheduled, unscheduled = ru.lazy_bisect(to_schedule,
+                                                    check=self._try_allocation,
+                                                    on_skip=self._prof_sched_skip,
+                                                    log=self._log)
+                if scheduled:
+                    for task in scheduled:
+
+                        # task got scheduled - advance state, notify world about the
+                        # state change, and push it out toward the next component.
+                        self._prof.prof('schedule_first', uid=task['uid'])
+                        td = task['description']
+                        task['$set']      = ['resources']
+                        task['resources'] = {'cpu': td['cpu_processes'] *
+                                                    td.get('cpu_threads', 1),
+                                             'gpu': td['gpu_processes']}
+
+                    self.advance(scheduled, rps.AGENT_EXECUTING_PENDING,
+                                             publish=True, push=True)
+
+                # all tasks which could not be scheduled are added to the waitpool
+                if unscheduled:
+                    self._waitpool.update({task['uid']:task for task in unscheduled})
+
+                    # incoming tasks which have to wait are the only reason to
+                    # rebuild the tuple_size map.
+                    self._ts_valid = False
+
+                    # if tasks remain waiting, we are out of usable resources
+                    resources = False
+
+                self._log.debug('=== unscheduled incoming: %d', len(scheduled))
+                self._log.debug('=== scheduled   incoming: %d', len(unscheduled))
+
+                # if we could not schedule any task from the last chunk, then we
+                # should break to allow the unschedule to kick in
+                # NOTE: new incoming tasks *may* have a chance to get scheduled, so
+                #       this is a lucky guess
+                if unscheduled:
+                    break
 
         self._log.debug("==== after  schedule incoming: waiting: %d",
                 len(self._waitpool))
@@ -919,6 +964,10 @@ class AgentSchedulingComponent(rpu.Component):
                 del(self._waitpool[uid])
 
       # self._log.debug("=== unscheduled and replaced : %d / %d", len(to_unschedule), len(placed))
+        # we placed some previously waiting tasks, and need to remove those from
+        # the waitpool
+        self._waitpool = {task['uid']: task for task in self._waitpool.values()
+                                            if  task['uid'] not in placed}
 
         if   to_release: return True   # new resources
         else           : return False
