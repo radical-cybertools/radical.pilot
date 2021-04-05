@@ -39,15 +39,15 @@ then
     curl -H "Accept: application/vnd.github.everest-preview+json" \
     -H "Authorization: token $GIT_TOKEN" \
     --request POST \
-    --data '{"event_type": "test_result", "client_payload": { "text": "failure"}}' \
-    https://api.github.com/repos/radical-cybertools/radical.pilot/bridges
-    sbatch --begin='now+4weeks' bridges.sh
+    --data '{"event_type": "test_bridges2", "client_payload": { "text": "failure"}}' \
+    https://api.github.com/repos/radical-cybertools/radical.pilot/dispatches
+    sbatch --begin='now+4weeks' bridges2.sh
 else
     echo 'Everything went well'
     curl -H "Accept: application/vnd.github.everest-preview+json" \
     -H "Authorization: token $GIT_TOKEN" \
     --request POST \
-    --data '{"event_type": "test_result", "client_payload": { "text": "success"}}' \
-    https://api.github.com/repos/radical-cybertools/radical.pilot/bridges
-    sbatch --begin='now+1week' bridges.sh
+    --data '{"event_type": "test_bridges2", "client_payload": { "text": "success"}}' \
+    https://api.github.com/repos/radical-cybertools/radical.pilot/dispatches
+    sbatch --begin='now+1week' bridges2.sh
 fi
