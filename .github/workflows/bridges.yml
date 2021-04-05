@@ -1,8 +1,8 @@
-name: Bridges Integration Test
+name: Bridges2 Integration Test
 
 on:
   repository_dispatch:
-    types: [ test_result ]
+    types: [ test_bridges2 ]
   schedule:
     - cron: '0 0 1 */1 *'
 
