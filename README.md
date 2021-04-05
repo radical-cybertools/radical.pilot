@@ -31,3 +31,10 @@ supported backends, please refer to the documentation.
 The `devel` branch (and any branch other than master) may not correspond to the
 published documentation and, specifically, may have dependencies which need to
 be resolved manually.
+
+## Integration Tests status
+These badges show the state of the current integration tests on different HPCs RADICAL Pilot supports
+
+[![ORNL Summit Integration Tests](https://github.com/radical-cybertools/radical.pilot/actions/workflows/summit.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/summit.yml)
+[![PSC Bridges2 Integration Tests](https://github.com/radical-cybertools/radical.pilot/actions/workflows/bridges.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/bridges.yml)
+[![SDSC Comet Integration Tests](https://github.com/radical-cybertools/radical.pilot/actions/workflows/comet.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/comet.yml)
