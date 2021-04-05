@@ -101,10 +101,7 @@ class MPI_Func_Worker():
     
     def mpirun_func(self, func):
         self._log.debug('mpirun task file got called with')
-        self._log.debug(func)
         fn, args, kwargs = self.prepare_func(func)
-        self._log.debug(fn)
-        self._log.debug(args)
 
         try:
             from mpi4py import MPI
@@ -113,7 +110,6 @@ class MPI_Func_Worker():
             with MPICommExecutor(MPI.COMM_WORLD, root=0) as executor:
                  if executor is not None:
                     result =  executor.map(fn, *args)
-                    self._log.debug(result)
 
         except Exception as e:
             self._log.exception('MPICommExecutor failed')
