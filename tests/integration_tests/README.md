@@ -89,5 +89,5 @@ This file receives a signal from outside, checks the payload and succeeds or fai
 
 It is necessary to add a badge in the main README file of RP for a resource where integration tests are running. The badge looks like:
 ```
-[![Resource Integration Tests](https://github.com/iparask/radical-cybertools/radical.pilot/actions/workflows/<filename>.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/<filename>.yml)
+[![Resource Integration Tests](https://github.com/radical-cybertools/radical.pilot/actions/workflows/<filename>.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/<filename>.yml)
 ```

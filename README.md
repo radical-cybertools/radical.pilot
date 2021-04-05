@@ -35,6 +35,6 @@ be resolved manually.
 ## Integration Tests status
 These badges show the state of the current integration tests on different HPCs RADICAL Pilot supports
 
-[![ORNL Summit Integration Tests](https://github.com/iparask/radical-cybertools/radical.pilot/actions/workflows/summit.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/summit.yml)
-[![PSC Bridges2 Integration Tests](https://github.com/iparask/radical-cybertools/radical.pilot/actions/workflows/bridges.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/bridges.yml)
-[![SDSC Comet Integration Tests](https://github.com/iparask/radical-cybertools/radical.pilot/actions/workflows/comet.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/comet.yml)
+[![ORNL Summit Integration Tests](https://github.com/radical-cybertools/radical.pilot/actions/workflows/summit.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/summit.yml)
+[![PSC Bridges2 Integration Tests](https://github.com/radical-cybertools/radical.pilot/actions/workflows/bridges.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/bridges.yml)
+[![SDSC Comet Integration Tests](https://github.com/radical-cybertools/radical.pilot/actions/workflows/comet.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/comet.yml)
