@@ -62,16 +62,8 @@ class MPI_Func_Worker():
         
         with sp.Popen(cmds, env=p_env, stdout= sp.PIPE, stderr= sp.PIPE) as proc:
    
-             #try:
              stdout, stderr = proc.communicate()
              retcode = proc.returncode
-             #except:
-             #    proc.kill()
-             #    stdout  = proc.stdout.read() # the process is dead, no deadlock
-             #   stderr  = proc.stderr.read()
-             #   retcode = proc.returncode
-        
-        result = []
 
         if retcode != 0:
             self._log.error('Failed to run task due to {0}'.format(stderr))
