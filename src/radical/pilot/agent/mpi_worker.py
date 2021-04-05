@@ -60,24 +60,27 @@ class MPI_Func_Worker():
         p_env = os.environ.copy()
         p_env['PYTHONPATH'] = ':'.join([os.getcwd()] + os.environ.get('PYTHONPATH', '').split(':'))
         
-        p = sp.Popen(cmds, env=p_env, stdout = sp.PIPE,
-                                      stderr = sp.PIPE)
-        retcode = p.wait()
+        with sp.Popen(cmds, env=p_env, stdout= sp.PIPE, stderr= sp.PIPE) as proc:
+   
+             #try:
+             stdout, stderr = proc.communicate()
+             retcode = proc.returncode
+             #except:
+             #    proc.kill()
+             #    stdout  = proc.stdout.read() # the process is dead, no deadlock
+             #   stderr  = proc.stderr.read()
+             #   retcode = proc.returncode
+        
         result = []
 
         if retcode != 0:
-            self._log.error('Failed to run task')
-            for line in iter(p.stderr.readline,b''):
-                result.append(line.rstrip())
-
-            proc_err = ru.as_string(result)
+            self._log.error('Failed to run task due to {0}'.format(stderr))
+            proc_err = stderr
             return 'FAILED', proc_err 
         else:
-            for line in iter(p.stdout.readline,b''):
-                result.append(line.rstrip())
-            proc_out = ru.as_string(result)
+            proc_out = stdout
             return 'DONE', proc_out
-    
+
     def construct_mpirun_cmds(self, func, **kwargs):
 
         mpi_kwargs = {}
@@ -119,6 +122,7 @@ class MPI_Func_Worker():
                  if executor is not None:
                     result =  executor.map(fn, *args)
                     self._log.debug(result)
+
         except Exception as e:
             self._log.exception('MPICommExecutor failed')
 
