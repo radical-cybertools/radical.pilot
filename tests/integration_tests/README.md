@@ -28,7 +28,7 @@ Please see existing batch scripts for the data specifics.
 
 ## Setup
 
-Tests require that a Github token is set up and included in the `.bashrc` of the account that runs the tests.
+Tests require that a Github token is set up and included in the `.bashrc` of the account that runs the tests. On Summit instead of adding an environment variable, change the `$GIT_TOKEN` entry with your actual token
 
 Example:
 ```
@@ -91,3 +91,6 @@ It is necessary to add a badge in the main README file of RP for a resource wher
 ```
 [![Resource Integration Tests](https://github.com/radical-cybertools/radical.pilot/actions/workflows/<filename>.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/<filename>.yml)
 ```
+
+---
+
