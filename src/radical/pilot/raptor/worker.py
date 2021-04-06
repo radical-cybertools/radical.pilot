@@ -30,7 +30,7 @@ def out(msg):
 #         out('SIGKILL: close %s' % f[0])
 #         os.close(f[1])
 #     sys.exit()
-# 
+#
 # NOTE: this conflicts with the `TERM` signal send by the dispatched process
 # signal.signal(signal.SIGTERM, _close_dfs)
 
@@ -156,6 +156,12 @@ class Worker(rpu.Component):
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
                                               'arg': {'uid' : self._cfg['wid'],
                                                       'info': self._info}})
+
+        # prepare base env dict used for all tasks
+        self._task_env = dict()
+        for k,v in os.environ.items():
+            if k.startswith('RP_'):
+                self._task_env[k] = v
 
 
     # --------------------------------------------------------------------------
@@ -451,6 +457,7 @@ class Worker(rpu.Component):
             self.task_pre_exec(task)
 
             try:
+
                 # ok, we have work to do.  Check the requirements to see how
                 # many cpus and gpus we need to mark as busy
                 while not self._alloc_task(task):
@@ -479,11 +486,14 @@ class Worker(rpu.Component):
                 #
                 # NOTE: we don't use mp.Pool - see __init__ for details
 
+                env = self._task_env
+                env['RP_TASK_ID'] = task['uid']
+
               # ret = self._pool.apply_async(func=self._dispatch, args=[task],
               #                              callback=self._result_cb,
               #                              error_callback=self._error_cb)
-                proc = mp.Process(target=self._dispatch, args=[task])
-                proc.daemon = True
+                proc = mp.Process(target=self._dispatch, args=[task, env])
+              # proc.daemon = True
 
                 with self._plock:
 
@@ -513,7 +523,7 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _dispatch(self, task):
+    def _dispatch(self, task, env):
 
         # this method is running in a process of the process pool, and will now
         # apply the task to the respective execution mode.
@@ -521,6 +531,13 @@ class Worker(rpu.Component):
         # NOTE: application of pre_exec directives may got here
 
         task['pid'] = os.getpid()
+
+        # apply task env settings
+        for k,v in env.items():
+            os.environ[k] = v
+
+        for k,v in task.get('environment', {}).items():
+            os.environ[k] = v
 
         # ----------------------------------------------------------------------
         def t_tout(tout, e_tout, e_done):
