@@ -31,7 +31,7 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, backend='zmq'):
+    def __init__(self, cfg=None, backend='zmq'):
 
         self._backend  = backend     # FIXME: use
 
