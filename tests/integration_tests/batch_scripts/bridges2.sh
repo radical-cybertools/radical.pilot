@@ -9,29 +9,37 @@
 # The next line is required if the user has more than one project
 #SBATCH -A  # Allocation name to charge job against
 
+# ------------------------------------------------------------------------------
+# Test files
 TEST="radical.pilot/tests/integration_tests/test_rm/test_slurm.py
       radical.pilot/tests/integration_tests/test_lm/test_mpirun.py"
 
+# ------------------------------------------------------------------------------
+# Test folder, the same as the sbatch script submit folder
 cd $SLURM_SUBMIT_DIR
 rm -rf radical.pilot testing *.log
 git clone --branch devel https://github.com/radical-cybertools/radical.pilot.git
 
+# ------------------------------------------------------------------------------
+# Python distribution specific. Change if needed.
 module reset
 module load gcc
 module load openmpi/3.1.6-gcc8.3.1
 module load anaconda3
-
 conda create -p testing python=3.7 pytest PyGithub -y -c conda-forge
-
 source activate $PWD/testing
 tmpLOC=`which python`
 tmpLOC=(${tmpLOC///bin/ })
 tmpLOC=`find $tmpLOC/lib -name "site-packages"`/
 PYTHONPATH=$tmpLOC:$PYTHONPATH
 
+# ------------------------------------------------------------------------------
+# Test execution
 pip install ./radical.pilot --upgrade
 pytest -vvv $TEST > output.log 2>&1
 
+# ------------------------------------------------------------------------------
+# Test Reporting
 if test "$?" = 1
 then
     echo 'Test failed'
