@@ -378,10 +378,7 @@ class TaskManager(rpu.Component):
         # FIXME: this needs to be converted into a tailed cursor in the update
         #        worker
         tasks = self._session._dbs.get_tasks(tmgr_uid=self.uid)
-
-        for task in tasks:
-            if not self._update_task(task, publish=True, advance=False):
-                return False
+        self._update_tasks(tasks)
 
         return True
 
@@ -491,84 +488,62 @@ class TaskManager(rpu.Component):
             self._log.debug('ignore state cb msg with cmd %s', cmd)
             return True
 
-        if isinstance(arg, list): things =  arg
-        else                    : things = [arg]
+        things = ru.as_list(arg)
+        tasks  = [thing for thing in things if thing.get('type') == 'task']
 
-        cb_requests = list()
-
-        for thing in things:
-
-            if thing.get('type') == 'task':
-
-                # we got the state update from the state callback - don't
-                # publish it again
-                to_notify = self._update_task(thing, publish=False,
-                                              advance=False)
-                if to_notify:
-                    cb_requests += to_notify
-            else:
-                self._log.debug('tmgr state cb ignores %s/%s', thing.get('uid'),
-                        thing.get('state'))
-
-        if cb_requests:
-            if _USE_BULK_CB:
-                self._bulk_cbs(set([task for task,state in cb_requests]))
-            else:
-                for task,state in cb_requests:
-                    self._task_cb(task, state)
+        self._update_tasks(tasks)
 
         return True
 
 
     # --------------------------------------------------------------------------
     #
-    def _update_task(self, task_dict, publish=False, advance=False):
+    def _update_tasks(self, task_dicts):
 
-        uid = task_dict['uid']
 
         # return information about needed callback and advance activities, so
         # that we don't break bulks here.
         # note however that individual task callbacks are still being called on
         # each task (if any are registered), which can lead to arbitrary,
         # application defined delays.
+
         to_notify = list()
 
         with self._tasks_lock:
 
-            # we don't care about tasks we don't know
-            if uid not in self._tasks:
-                self._log.debug('tmgr: unknown: %s', uid)
-                return None
+            for task_dict in task_dicts:
 
-            task = self._tasks[uid]
+                uid = task_dict['uid']
 
-            # only update on state changes
-            current = task.state
-            target  = task_dict['state']
-            if current == target:
-                self._log.debug('tmgr: static: %s', uid)
-                return None
+                # we don't care about tasks we don't know
+                task = self._tasks.get(uid)
+                if not task:
+                    self._log.debug('tmgr: task unknown: %s', uid)
+                    continue
 
-            target, passed = rps._task_state_progress(uid, current, target)
+                # only update on state changes
+                current = task.state
+                target  = task_dict['state']
+                if current == target:
+                    continue
 
-            if target in [rps.CANCELED, rps.FAILED]:
-                # don't replay intermediate states
-                passed = passed[-1:]
+                target, passed = rps._task_state_progress(uid, current, target)
 
-            for s in passed:
-                task_dict['state'] = s
-                self._tasks[uid]._update(task_dict)
-                to_notify.append([task, s])
+                if target in [rps.CANCELED, rps.FAILED]:
+                    # don't replay intermediate states
+                    passed = passed[-1:]
 
-                # we don't usually advance state at this point, but just keep up
-                # with state changes reported from elsewhere
-                if advance:
-                    self.advance(task_dict, s, publish=publish, push=False,
-                                 prof=False)
+                for s in passed:
+                    task_dict['state'] = s
+                    self._tasks[uid]._update(task_dict)
+                    to_notify.append([task, s])
 
-            self._log.debug('tmgr: notify: %s %s %s', len(to_notify), task_dict,
-                    task_dict['state'])
-            return to_notify
+        if to_notify:
+            if _USE_BULK_CB:
+                self._bulk_cbs(set([task for task,_ in to_notify]))
+            else:
+                for task, state in to_notify:
+                    self._task_cb(task, state)
 
 
     # --------------------------------------------------------------------------
@@ -587,8 +562,8 @@ class TaskManager(rpu.Component):
 
             for cb_dict in cb_dicts:
 
-                cb           = cb_dict['cb']
-                cb_data      = cb_dict['cb_data']
+                cb      = cb_dict['cb']
+                cb_data = cb_dict['cb_data']
 
                 try:
                     if cb_data: cb(task, state, cb_data)
