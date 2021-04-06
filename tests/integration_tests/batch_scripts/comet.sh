@@ -1,37 +1,47 @@
 #!/bin/bash
-#SBATCH -J rp_integration_test  # Job name
-#SBATCH -p compute
-#SBATCH -o rp_integration_test.%j.out   # Name of stdout output file(%j expands to jobId)
-#SBATCH -e rp_integration_test.%j.err   # Name of stderr output file(%j expands to jobId)
-#SBATCH -N 1                # Total number of nodes requested (16 cores/node)
-#SBATCH -n 1                # Total number of mpi tasks requested
-#SBATCH -t 01:00:00         # Run time (hh:mm:ss) - 1.5 hours
-# The next line is required if the user has more than one project
-#SBATCH -A  # Allocation name to charge job against
 
+#SBATCH -J rp_integration_test          # job name
+#SBATCH -o rp_integration_test.%j.out   # stdout file (%j expands to jobId)
+#SBATCH -e rp_integration_test.%j.err   # stderr file (%j expands to jobId)
+#SBATCH -p compute                      # partition to use
+#SBATCH -N 1                            # total number of nodes (16 cores/node)
+#SBATCH -n 24                           # total number of mpi tasks requested
+#SBATCH -t 01:00:00                     # run time (hh:mm:ss) - 0.5 hours
+#SBATCH -A                              # allocation to charge job against
+
+# ------------------------------------------------------------------------------
+# Test files
 TEST="radical.pilot/tests/integration_tests/test_rm/test_slurm.py
       radical.pilot/tests/integration_tests/test_lm/test_ssh.py"
 
+# ------------------------------------------------------------------------------
+# Test folder, the same as the sbatch script submit folder
 cd $SLURM_SUBMIT_DIR
 rm -rf radical.pilot testing *.log
 git clone --branch devel https://github.com/radical-cybertools/radical.pilot.git
 
+# ------------------------------------------------------------------------------
+# Python distribution specific. Change if needed.
 module load anaconda/3.7.0
-
 conda create -p testing python=3.7 pytest PyGithub -y
-
 source activate $PWD/testing
 tmpLOC=`which python`
 tmpLOC=(${tmpLOC///bin/ })
 PYTHONPATH=`find $tmpLOC/lib -name "site-packages"`/
 
+# ------------------------------------------------------------------------------
+# Test execution
 pip install ./radical.pilot --upgrade
 pytest -vvv $TEST > output.log 2>&1
 exit_code = "$?"
 
+# ------------------------------------------------------------------------------
+# Python distribution specific. Change if needed.
 conda deactivate
 module unload anaconda/3.7.0
 
+# ------------------------------------------------------------------------------
+# Test Reporting
 if test "$exit_code" = 1
 then
     echo 'A test failed'
