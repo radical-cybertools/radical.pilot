@@ -8,13 +8,20 @@
 #BSUB -o rp_integration_test.%J
 #BSUB -e rp_integration_test.%J
 
+# ------------------------------------------------------------------------------
+# Test files
 TEST="radical.pilot/tests/integration_tests/test_rm/test_lsf.py
       radical.pilot/tests/integration_tests/test_lm/test_jsrun.py"
 
+# ------------------------------------------------------------------------------
+# Test folder, the same as the sbatch script submit folder
 cd $MEMBERWORK/geo111/integration_tests/
 rm -rf radical.pilot testing *.log
 git clone --branch devel https://github.com/radical-cybertools/radical.pilot.git
 git clone https://code.ornl.gov/t4p/Hello_jsrun.git
+
+# ------------------------------------------------------------------------------
+# Python distribution specific. Change if needed.
 
 cd Hello_jsrun
 module load cuda
@@ -44,9 +51,13 @@ tmpLOC=`find $tmpLOC/lib -name "site-packages"`/
 PYTHONPATH=$tmpLOC:$PYTHONPATH
 
 
+# ------------------------------------------------------------------------------
+# Test execution
 pip install ./radical.pilot --upgrade
 pytest -vvv $TEST > output.log 2>&1
 
+# ------------------------------------------------------------------------------
+# Test Reporting
 if test "$?" = 1
 then
     echo 'Test failed'
