@@ -486,7 +486,15 @@ class PilotManager(rpu.Component):
                                                 if sd['uid'] in uids]
 
         if rps.FAILED in sd_states:
-            raise RuntimeError('pilot staging failed')
+            errs = list()
+            for uid in self._active_sds:
+                if self._active_sds[uid].get('error'):
+                    errs.append(self._active_sds[uid]['error'])
+
+            if errs:
+                raise RuntimeError('pilot staging failed: %s' % errs)
+            else:
+                raise RuntimeError('pilot staging failed')
 
 
     # --------------------------------------------------------------------------

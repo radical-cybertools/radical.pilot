@@ -22,19 +22,23 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session=None):
+    def __init__(self, cfg=None, session=None):
 
         self._session = session
+
+        if cfg is None:
+            cfg = dict()
 
         if isinstance(cfg, str): cfg = ru.Config(cfg=ru.read_json(cfg))
         else                   : cfg = ru.Config(cfg=cfg)
 
+        # FIXME: why do we need to import `os` again after MPI Spawn?
+        import os                                   # pylint: disable=reimported
+        cfg.uid = os.environ['RP_TASK_ID']
+
 
         # generate a MPI rank dependent UID for each worker process
         # FIXME: this should be delegated to ru.generate_id
-        # FIXME: why do we need to import `os` again after MPI Spawn?
-        import os                                   # pylint: disable=reimported
-
         # FIXME: rank determination should be moved to RU
         rank = None
 
