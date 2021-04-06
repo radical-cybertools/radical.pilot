@@ -16,6 +16,8 @@ import radical.utils as ru
 from radical.pilot.agent.scheduler.continuous import Continuous
 
 
+TEST_CASES_DIR = 'tests/unit_tests/test_scheduler/test_cases_continuous'
+
 # ------------------------------------------------------------------------------
 #
 class TestContinuous(TestCase):
@@ -27,16 +29,15 @@ class TestContinuous(TestCase):
 
         ret  = list()
         base = os.path.dirname(__file__)
-        pat  = '%s/test_cases_continuous/task*.json' % base
+        pat  = '%s/task*.json' % TEST_CASES_DIR
 
         for fin in glob.glob(pat):
             test_cases = ru.read_json(fin)
             ret.append(test_cases)
 
-        cfg_fname = '%s/test_cases_continuous/test_continuous.json' % base
+        cfg_fname = '%s/test_continuous.json' % TEST_CASES_DIR
         cls.cfg_tests = ru.read_json(cfg_fname)
         cls.tasks = ret
-#        return cfg_tests, ret
 
 
     # --------------------------------------------------------------------------

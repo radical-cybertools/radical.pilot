@@ -88,16 +88,17 @@ class PilotManager(rpu.Component):
 
         assert(session.primary), 'pmgr needs primary session'
 
+        self._uid         = ru.generate_id('pmgr.%(item_counter)04d',
+                                           ru.ID_CUSTOM, ns=session.uid)
+
         self._uids        = list()   # known UIDs
         self._pilots      = dict()
-        self._pilots_lock = ru.RLock('pmgr.pilots_lock')
+        self._pilots_lock = ru.RLock('%s.pilots_lock' % self._uid)
         self._callbacks   = dict()
-        self._pcb_lock    = ru.RLock('pmgr.pcb_lock')
+        self._pcb_lock    = ru.RLock('%s.pcb_lock' % self._uid)
         self._terminate   = mt.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
-        self._uid         = ru.generate_id('pmgr.%(item_counter)04d',
-                                           ru.ID_CUSTOM, ns=session.uid)
 
         for m in rpc.PMGR_METRICS:
             self._callbacks[m] = dict()
