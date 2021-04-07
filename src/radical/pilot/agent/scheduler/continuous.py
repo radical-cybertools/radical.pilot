@@ -380,12 +380,7 @@ class Continuous(AgentSchedulingComponent):
         # set conditions to find the first matching node
         is_first = True
         is_last  = False
-        tag      = td.get('tag')
-
-        # `tag` will soon be deprecated - check also for `tags: {colocate:uid}`
-        # as the current way to specify colocation requests
-        if not tag:
-            tag = td.get('tags', {}).get('colocate')
+        tag      = td['tags'].get('colocate')
 
         if tag is not None:
             tag = str(tag)

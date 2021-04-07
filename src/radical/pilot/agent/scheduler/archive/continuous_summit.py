@@ -707,7 +707,7 @@ class ContinuousSummit(AgentSchedulingComponent):
         lfs       = None
         node_name = None
         node_uid  = None
-        tag       = td.get('tag')
+        tag       = td['tags'].get('colocate')
 
         for node in self.nodes:  # FIXME optimization: iteration start
 
@@ -862,7 +862,7 @@ class ContinuousSummit(AgentSchedulingComponent):
                  'lm_info'       : self._rm_lm_info,
                 }
 
-        tag = td.get('tag')
+        tag = td['tags'].get('colocate')
 
         # start the search
         for node in self.nodes:
