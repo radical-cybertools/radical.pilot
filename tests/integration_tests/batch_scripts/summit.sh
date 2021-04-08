@@ -14,6 +14,11 @@ TEST="radical.pilot/tests/integration_tests/test_rm/test_lsf.py
       radical.pilot/tests/integration_tests/test_lm/test_jsrun.py"
 
 # ------------------------------------------------------------------------------
+# Git token setup accordingly
+
+GIT_TOKEN=
+
+# ------------------------------------------------------------------------------
 # Test folder, the same as the sbatch script submit folder
 cd $MEMBERWORK/geo111/integration_tests/
 rm -rf radical.pilot testing *.log
