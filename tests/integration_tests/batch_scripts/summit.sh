@@ -14,6 +14,11 @@ TEST="radical.pilot/tests/integration_tests/test_rm/test_lsf.py
       radical.pilot/tests/integration_tests/test_lm/test_jsrun.py"
 
 # ------------------------------------------------------------------------------
+# Git token setup accordingly
+
+GIT_TOKEN=
+
+# ------------------------------------------------------------------------------
 # Test folder, the same as the sbatch script submit folder
 cd $MEMBERWORK/geo111/integration_tests/
 rm -rf radical.pilot testing *.log
@@ -62,18 +67,18 @@ if test "$?" = 1
 then
     echo 'Test failed'
     tests/bin/radical-pilot-test-issue -r 'ORNL Summit' -l output.log
-    time=`date +'%Y:%m:%d:%H:%M:%S' -d 'now + 1 month'`
-    bsub -b=$time summit.sh
     curl -H "Accept: application/vnd.github.everest-preview+json" \
     -H "Authorization: token $GIT_TOKEN" \
     --request POST \
     --data '{"event_type": "test_summit", "client_payload": { "text": "failure"}}' \
     https://api.github.com/repos/radical-cybertools/radical.pilot/dispatches
+    time=`date +'%Y:%m:%d:%H:%M' -d 'now + 1 month'`
+    bsub -b $time summit.sh
 
 else
     echo 'Everything went well'
-    time=`date + '%Y:%m:%d:%H:%M:%S' -d 'now + 1 week'`
-    bsub -b=$time summit.sh
+    time=`date +'%Y:%m:%d:%H:%M' -d 'now + 1 week'`
+    bsub -b $time summit.sh
     curl -H "Accept: application/vnd.github.everest-preview+json" \
     -H "Authorization: token $GIT_TOKEN" \
     --request POST \
