@@ -394,9 +394,6 @@ class Continuous(AgentSchedulingComponent):
                 raise ValueError('partition id (%s) out of range' % partition)
             # partition id becomes a part of a co-locate tag
             colo_tag = partition + ('' if not colo_tag else '_%s' % colo_tag)
-            print(self)
-            print(type(self))
-            print(dir(self))
             if colo_tag not in self._colo_history:
                 self._colo_history[colo_tag] = self._rm_partitions[partition]
         task_partition_id = None
