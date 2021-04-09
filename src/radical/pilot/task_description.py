@@ -42,8 +42,6 @@ STDERR                 = 'stderr'
 RESTARTABLE            = 'restartable'
 SCHEDULER              = 'scheduler'
 TAGS                   = 'tags'
-TAG                    = 'tag'  # temporary: will be merged with "tags"
-                                # (for agent.scheduler.continuous.Continuous)
 METADATA               = 'metadata'
 
 # process / thread types (for both, CPU and GPU processes/threads)
@@ -381,7 +379,6 @@ class TaskDescription(ru.Description):
                RESTARTABLE     : bool        ,
                SCHEDULER       : str         ,
                TAGS            : {None: None},
-               TAG             : None        ,
                METADATA        : None        ,
                CLEANUP         : bool        ,
                PILOT           : str         ,
@@ -417,7 +414,6 @@ class TaskDescription(ru.Description):
                RESTARTABLE     : False       ,
                SCHEDULER       : ''          ,
                TAGS            : dict()      ,
-               TAG             : None        ,
                METADATA        : None        ,
                CLEANUP         : False       ,
                PILOT           : ''          ,
@@ -428,10 +424,7 @@ class TaskDescription(ru.Description):
     #
     def __init__(self, from_dict=None):
 
-        ru.Description.__init__(self, from_dict=TaskDescription._defaults)
-
-        if from_dict:
-            self.update(from_dict)
+        super().__init__(from_dict=from_dict)
 
 
     # --------------------------------------------------------------------------
