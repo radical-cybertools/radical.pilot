@@ -56,8 +56,8 @@
                    "mem"     : 128
                     }]
                   },
-    "results": {"slots": {"cores_per_node": 32,
-                          "gpus_per_node": 2,
+    "results": {"slots": {"cores_per_node": 16,
+                          "gpus_per_node": 3,
                           "lfs_per_node": {"path": "/dev/null", "size": 0},
                           "lm_info": {},
                           "mem_per_node": 1024,
@@ -68,5 +68,5 @@
                                      "name": "a",
                                      "uid": 1}],
                           "partition_id": null},
-                "colo_history": {"": [1]}}
+                "colo_history": [{"": [1]}, null]}
 }

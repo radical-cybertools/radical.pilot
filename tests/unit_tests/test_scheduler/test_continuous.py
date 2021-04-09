@@ -27,16 +27,15 @@ class TestContinuous(TestCase):
     @classmethod
     def setUpClass(cls):
 
-        ret  = list()
+        cls._test_cases  = list()
         pat  = '%s/task*.json' % TEST_CASES_DIR
 
         for fin in glob.glob(pat):
             test_cases = ru.read_json(fin)
-            ret.append(test_cases)
+            cls._test_cases.append(test_cases)
 
         cfg_fname = '%s/test_continuous.json' % TEST_CASES_DIR
-        cls.cfg_tests = ru.read_json(cfg_fname)
-        cls.tasks = ret
+        cls._config = ru.read_json(cfg_fname)
 
 
     # --------------------------------------------------------------------------
@@ -49,9 +48,9 @@ class TestContinuous(TestCase):
         component._uid = 'agent_scheduling.0000'
         component._log = mocked_Logger
 
-        for rm_info, cfg, result in zip(self.cfg_tests['configure']['rm_info'],
-                                        self.cfg_tests['configure']['cfg'],
-                                        self.cfg_tests['configure']['result']):
+        for rm_info, cfg, result in zip(self._config['configure']['rm_info'],
+                                        self._config['configure']['cfg'],
+                                        self._config['configure']['result']):
 
             component._rm_info           = rm_info
             component._rm_lm_info        = rm_info['lm_info']
@@ -72,41 +71,26 @@ class TestContinuous(TestCase):
     @mock.patch.object(Continuous, '__init__', return_value=None)
     @mock.patch.object(Continuous, '_configure', return_value=None)
     @mock.patch('radical.utils.Logger')
-    def test_find_resources(self, mocked_init, mocked_configure, mocked_logger):
+    def test_find_resources(self, mocked_init, mocked_configure, mocked_Logger):
+
+        test_case = self._test_cases[0]
 
         component = Continuous(cfg=None, session=None)
-        result = [{'uid': 2,
-                   'name': 'a',
-                   'core_map': [[0, 1, 2, 3]],
-                   'gpu_map': [[0], [1]],
-                   'lfs': {'size': 1234, 'path': '/dev/null'},
-                   'mem': 1024}]
-        component.node = {'name'  : 'a',
-                          'uid'   : 2,
-                          'cores' : [0, 0, 0, 0, 0, 0, 0, 0,
-                                     0, 0, 0, 0, 0, 0, 0, 0],
-                          'lfs'   : {"size": 1234,
-                                     "path" : "/dev/null"},
-                          'mem'   : 1024,
-                          'gpus'  : [0, 0]}
-        component._log = mocked_logger
-        component._rm_lfs_per_node = {"path" : "/dev/null", "size" : 1234}
-        component.cores_per_slot   = 4
-        component.gpus_per_slot    = 2
-        component.lfs_per_slot     = 1234
-        component.mem_per_slot     = 1024
-        component.find_slot        = 1
+        component._uid = 'agent_scheduling.0001'
+        component._log = mocked_Logger
+        component._rm_lfs_per_node = {'size': 1024, 'path': '/dev/null'}
 
-        test_slot = component._find_resources(
-                node=component.node,
-                find_slots=component.find_slot,
-                cores_per_slot=component.cores_per_slot,
-                gpus_per_slot=component.gpus_per_slot,
-                lfs_per_slot=component.lfs_per_slot,
-                mem_per_slot=component.mem_per_slot,
-                partial='None')
+        td = test_case['task']['description']
+        new_slot = component._find_resources(
+            node=self._config['allocate']['nodes'][0][0],
+            find_slots=td['cpu_processes'],
+            cores_per_slot=td['cpu_threads'],
+            gpus_per_slot=td['gpu_processes'],
+            lfs_per_slot=td['lfs_per_process'],
+            mem_per_slot=td['mem_per_process'],
+            partial=False)
 
-        self.assertEqual(test_slot, result)
+        self.assertEqual(new_slot, test_case['setup']['lm']['slots']['nodes'])
 
 
     # --------------------------------------------------------------------------
@@ -130,19 +114,19 @@ class TestContinuous(TestCase):
                            mocked_find_resources,
                            mocked_change_slot_states,
                            mocked_Logger):
-
-        for task_descr in self.tasks:
+        self.maxDiff = None
+        for task_descr in self._test_cases:
             component = Continuous(cfg=None, session=None)
             task = dict()
             task['uid'] = task_descr['task']['uid']
             task['description'] = task_descr['task']['description']
-            nodes = self.cfg_tests['allocate']['nodes'][0]
+            nodes = self._config['allocate']['nodes'][0]
             component.nodes = nodes
             component._colo_history      = dict()
-            component._rm_cores_per_node = 32
-            component._rm_gpus_per_node  = 2
-            component._rm_lfs_per_node   = {"size": 0, "path": "/dev/null"}
-            component._rm_mem_per_node   = 1024
+            component._rm_cores_per_node = len(nodes[0]['cores'])
+            component._rm_gpus_per_node  = len(nodes[0]['gpus'])
+            component._rm_lfs_per_node   = nodes[0]['lfs']
+            component._rm_mem_per_node   = nodes[0]['mem']
             component._rm_lm_info        = dict()
             component._rm_partitions     = dict()
             component._log               = mocked_Logger
@@ -150,10 +134,9 @@ class TestContinuous(TestCase):
             component._scattered         = None
             component._dvm_host_list     = None
             component._node_offset       = 0
-
             slot = component.schedule_task(task)
             self.assertEqual(slot, task_descr['results']['slots'])
-            self.assertEqual(component._colo_history, task_descr['results']['colo_history'])
+            self.assertEqual(component._colo_history, task_descr['results']['colo_history'][0])
 
             # schedule tasks with new [exclusive] tags
             node_uids = [n['uid'] for n in nodes]
@@ -181,7 +164,7 @@ class TestContinuous(TestCase):
     def test_unschedule_task(self, mocked_init, mocked_change_slot_states,
                                    mocked_Logger):
 
-        for task_descr in self.tasks:
+        for task_descr in self._test_cases:
             task = {
                     'description': task_descr['task']['description'],
                     'slots'      : task_descr['setup']['lm']['slots']
