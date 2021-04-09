@@ -11,8 +11,8 @@ from .base import AgentSchedulingComponent
 # ------------------------------------------------------------------------------
 #
 # This is a continuous scheduler with awareness of a node's file-storage and
-# memory capabilities.  The scheduler respects node tagging (place task on same
-# node as other tasks with the same tag).
+# memory capabilities.  The scheduler respects colocate tagging (place task on
+# same node as other tasks with the same tag).
 #
 #
 # Continuous:
@@ -54,9 +54,9 @@ from .base import AgentSchedulingComponent
 #
 # Task Tagging:
 #
-# The scheduler attempts to schedule tasks with the same tag onto the same node,
-# so that the task can reuse the previous task's data.  This assumes that
-# storage is not freed when the tasks finishes.
+# The scheduler attempts to schedule tasks with the same colocate tag onto the
+# same node, so that the task can reuse the previous task's data.  This assumes
+# that storage is not freed when the tasks finishes.
 #
 # FIXME: the alert reader will realize a discrepancy in the above set of
 #        assumptions.
@@ -75,10 +75,10 @@ class Continuous(AgentSchedulingComponent):
 
         AgentSchedulingComponent.__init__(self, cfg, session)
 
-        self._tag_history   = dict()
-        self._tagged_nodes  = set()
-        self._scattered     = None
-        self._node_offset   = 0
+        self._colo_history = dict()
+        self._tagged_nodes = set()
+        self._scattered    = None
+        self._node_offset  = 0
 
 
     # --------------------------------------------------------------------------
@@ -380,15 +380,10 @@ class Continuous(AgentSchedulingComponent):
         # set conditions to find the first matching node
         is_first = True
         is_last  = False
-        tag      = td.get('tag')
+        colo_tag = td['tags'].get('colocate')
 
-        # `tag` will soon be deprecated - check also for `tags: {colocate:uid}`
-        # as the current way to specify colocation requests
-        if not tag:
-            tag = td.get('tags', {}).get('colocate')
-
-        if tag is not None:
-            tag = str(tag)
+        if colo_tag is not None:
+            colo_tag = str(colo_tag)
 
         # in case of PRTE/2 LM: key `partition` from task description attribute
         #                       `tags` represents a DVM ID
@@ -398,9 +393,9 @@ class Continuous(AgentSchedulingComponent):
             if partition not in self._rm_partitions:
                 raise ValueError('partition id (%s) out of range' % partition)
             # partition id becomes a part of a co-locate tag
-            tag = partition + ('' if not tag else '_%s' % tag)
-            if tag not in self._tag_history:
-                self._tag_history[tag] = self._rm_partitions[partition]
+            colo_tag = partition + ('' if not colo_tag else '_%s' % colo_tag)
+            if colo_tag not in self._colo_history:
+                self._colo_history[colo_tag] = self._rm_partitions[partition]
         task_partition_id = None
 
         # what remains to be allocated?  all of it right now.
@@ -418,14 +413,14 @@ class Continuous(AgentSchedulingComponent):
           #                                       len(alc_slots))
 
             # Check if a task is tagged to use this node.  This means we check
-            #   - if a tag exists
-            #   - if the tag has been used before
+            #   - if a colocate tag exists
+            #   - if the colo_tag has been used before
             #   - if the previous use included this node
             # If a tag exists, continue to consider this node if the tag was
             # used for this node - else continue to the next node.
-            if tag is not None:
-                if tag in self._tag_history:
-                    if node_uid not in self._tag_history[tag]:
+            if colo_tag is not None:
+                if colo_tag in self._colo_history:
+                    if node_uid not in self._colo_history[colo_tag]:
                         continue
                 # for a new tag check that nodes were not used for previous tags
                 else:
@@ -531,9 +526,9 @@ class Continuous(AgentSchedulingComponent):
         # if tag `colocate` was provided, then corresponding nodes should be
         # stored in the tag history (if partition nodes were kept under this
         # key before then it will be overwritten)
-        if tag is not None and tag != partition:
-            self._tag_history[tag] = [node['uid'] for node in slots['nodes']]
-            self._tagged_nodes.update(self._tag_history[tag])
+        if colo_tag is not None and colo_tag != partition:
+            self._colo_history[colo_tag] = [node['uid'] for node in slots['nodes']]
+            self._tagged_nodes.update(self._colo_history[colo_tag])
 
         # this should be nicely filled out now - return
         return slots
