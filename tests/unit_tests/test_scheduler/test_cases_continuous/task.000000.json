@@ -78,5 +78,9 @@
                                     "name": "a",
                                     "uid": 1}],
                          "partition_id": null},
-               "colo_history": {"tag.0000": [1, 1]}}
+               "colo_history": [{"tag.0000": [1, 1]},
+                                {"tag.0000": [1, 1],
+                                 "tag.e.1": [1, 1],
+                                 "tag.e.2": [1, 1],
+                                 "tag.e.3": [1, 1]}]}
 }

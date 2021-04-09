@@ -6,8 +6,6 @@ __copyright__ = "Copyright 2013-2021, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 import glob
-import os
-import pprint
 
 from unittest import TestCase
 from unittest import mock
@@ -19,6 +17,7 @@ from radical.pilot.agent.scheduler.continuous import Continuous
 
 TEST_CASES_DIR = 'tests/unit_tests/test_scheduler/test_cases_continuous'
 
+
 # ------------------------------------------------------------------------------
 #
 class TestContinuous(TestCase):
@@ -29,7 +28,6 @@ class TestContinuous(TestCase):
     def setUpClass(cls):
 
         ret  = list()
-        base = os.path.dirname(__file__)
         pat  = '%s/task*.json' % TEST_CASES_DIR
 
         for fin in glob.glob(pat):
@@ -138,7 +136,8 @@ class TestContinuous(TestCase):
             task = dict()
             task['uid'] = task_descr['task']['uid']
             task['description'] = task_descr['task']['description']
-            component.nodes = task_descr['setup']['lm']['slots']['nodes']
+            nodes = self.cfg_tests['allocate']['nodes'][0]
+            component.nodes = nodes
             component._colo_history      = dict()
             component._rm_cores_per_node = 32
             component._rm_gpus_per_node  = 2
@@ -156,6 +155,23 @@ class TestContinuous(TestCase):
             self.assertEqual(slot, task_descr['results']['slots'])
             self.assertEqual(component._colo_history, task_descr['results']['colo_history'])
 
+            # schedule tasks with new [exclusive] tags
+            node_uids = [n['uid'] for n in nodes]
+            task_tags = ['tag.e.%s' % u for u in node_uids]
+
+            for task_tag in task_tags:
+                # the number of new exclusive tags is equal to the number of
+                # provided nodes, thus, considering earlier defined tag, there are
+                # not enough nodes for exclusive tags
+                task['description']['tags'] = {'colocate' : task_tag,
+                                            'exclusive': True}
+                component.schedule_task(task)
+
+            task_tags.insert(0, 'tag.0000')  # bring initial tag to the list of tags
+            node_uids.append(node_uids[-1])  # last node will be reused
+            colo_history = {task_tags[i]: [u, u] for i, u in enumerate(node_uids)}
+            self.assertEqual(component._colo_history, colo_history)
+
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Continuous, '__init__', return_value=None)
@@ -169,7 +185,7 @@ class TestContinuous(TestCase):
             task = {
                     'description': task_descr['task']['description'],
                     'slots'      : task_descr['setup']['lm']['slots']
-                    }
+                   }
             component = Continuous(cfg=None, session=None)
             component.nodes = task_descr['setup']['nodes']
             component._log  = mocked_Logger
