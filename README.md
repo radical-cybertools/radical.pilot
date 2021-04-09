@@ -1,6 +1,6 @@
 # RADICAL-Pilot (RP)
 
-[![Build Status](https://travis-ci.com/radical-cybertools/radical.pilot.svg?branch=devel)](https://travis-ci.com/radical-cybertools/radical.pilot)
+[![Build Status](https://github.com/radical-cybertools/radical.pilot/actions/workflows/python-app.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/python-app.yml)
 [![codecov](https://codecov.io/gh/radical-cybertools/radical.pilot/branch/devel/graph/badge.svg)](https://codecov.io/gh/radical-cybertools/radical.pilot)
 
 RADICAL-Pilot (RP) is a Pilot system written in Python and specialized
