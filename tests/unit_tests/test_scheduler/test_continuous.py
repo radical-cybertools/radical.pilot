@@ -139,7 +139,7 @@ class TestContinuous(TestCase):
         component._rm_mem_per_node   = nodes[0]['mem']
         component._rm_lm_info        = dict()
         component._rm_partitions     = dict()
-        component._tag_history       = dict()
+        component._colo_history      = dict()
         component._tagged_nodes      = set()
         component._scattered         = None
         component._node_offset       = 0
@@ -155,7 +155,7 @@ class TestContinuous(TestCase):
         # check tags exclusiveness (default: exclusive=False)
 
         # initial tag is set
-        self.assertEqual(component._tag_history, {'tag.0000': [1, 1]})
+        self.assertEqual(component._colo_history, {'tag.0000': [1, 1]})
 
         # schedule tasks with new [exclusive] tags
         node_uids = [n['uid'] for n in nodes]
@@ -171,8 +171,8 @@ class TestContinuous(TestCase):
 
         task_tags.insert(0, 'tag.0000')  # bring initial tag to the list of tags
         node_uids.append(node_uids[-1])  # last node will be reused
-        tag_history = {task_tags[i]: [u, u] for i, u in enumerate(node_uids)}
-        self.assertEqual(component._tag_history, tag_history)
+        colo_history = {task_tags[i]: [u, u] for i, u in enumerate(node_uids)}
+        self.assertEqual(component._colo_history, colo_history)
 
     # --------------------------------------------------------------------------
     #
