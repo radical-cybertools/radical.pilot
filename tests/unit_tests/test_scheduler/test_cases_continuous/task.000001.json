@@ -12,7 +12,8 @@
                         "gpu_process_type" : "null",
                         "gpu_thread_type"  : "null",
                         "mem_per_process"  : 128,
-                        "lfs_per_process"  : 0
+                        "lfs_per_process"  : 0,
+                        "tags"             : {"colocate": ""}
                        },
         "task_sandbox_path": "/tmp"
     },
@@ -39,18 +40,33 @@
                 }]
             },
             "task_sandbox": "./"
-        }
-    },
-
-    "results": {
-        "lm": {
-            "fork"    : ["/bin/sleep \"10\" ", null]
         },
-        "resource_file": {
-            "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0}; gpu: {0}}\n"]
-        },
-        "resource_filename": {
-            "jsrun": "rs_layout_task_000001"
-        }
-    }
+        "nodes": [{"name"    : "a",
+                   "uid"     : "1",
+                   "cores"   : [0, 1, 2, 3, 4, 5, 6, 7],
+                   "gpus"    : [0, 1, 2],
+                   "lfs"     : {"size": 0, "path": "/dev/null"},
+                   "mem"     : 0
+                   },
+                  {"name"    : "b",
+                   "uid"     : "2",
+                   "cores"   : [0, 1, 2, 3, 4, 5, 6, 7],
+                   "gpus"    : [0, 1, 2],
+                   "lfs"     : {"size": 0, "path": "/dev/null"},
+                   "mem"     : 128
+                    }]
+                  },
+    "results": {"slots": {"cores_per_node": 32,
+                          "gpus_per_node": 2,
+                          "lfs_per_node": {"path": "/dev/null", "size": 0},
+                          "lm_info": {},
+                          "mem_per_node": 1024,
+                          "nodes": [{"core_map": [[0]],
+                                     "gpu_map": [[0]],
+                                     "lfs": {"path": "/dev/null", "size": 1234},
+                                     "mem": 128,
+                                     "name": "a",
+                                     "uid": 1}],
+                          "partition_id": null},
+                "colo_history": {"": [1]}}
 }

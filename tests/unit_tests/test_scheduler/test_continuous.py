@@ -7,6 +7,7 @@ __license__ = "MIT"
 
 import glob
 import os
+import pprint
 
 from unittest import TestCase
 from unittest import mock
@@ -122,11 +123,14 @@ class TestContinuous(TestCase):
                                       'lfs'     : {'path': '/dev/null',
                                                    'size': 1234},
                                       'mem'     : 128}])
+    @mock.patch.object(Continuous, '_change_slot_states',
+                       return_value=True)
     @mock.patch('radical.utils.Logger')
     def test_schedule_task(self,
                            mocked_init,
                            mocked_configure,
                            mocked_find_resources,
+                           mocked_change_slot_states,
                            mocked_Logger):
 
         for task_descr in self.tasks:
@@ -135,7 +139,7 @@ class TestContinuous(TestCase):
             task['uid'] = task_descr['task']['uid']
             task['description'] = task_descr['task']['description']
             component.nodes = task_descr['setup']['lm']['slots']['nodes']
-            component._tag_history       = dict()
+            component._colo_history      = dict()
             component._rm_cores_per_node = 32
             component._rm_gpus_per_node  = 2
             component._rm_lfs_per_node   = {"size": 0, "path": "/dev/null"}
@@ -143,46 +147,37 @@ class TestContinuous(TestCase):
             component._rm_lm_info        = dict()
             component._rm_partitions     = dict()
             component._log               = mocked_Logger
+            component._tagged_nodes      = set()
+            component._scattered         = None
             component._dvm_host_list     = None
             component._node_offset       = 0
-            test_slot = {'cores_per_node': 32,
-                         'gpus_per_node': 2,
-                         'lfs_per_node': {'path': '/dev/null', 'size': 0},
-                         'lm_info': {},
-                         'mem_per_node': 1024,
-                         'nodes': [{'core_map': [[0]],
-                                    'gpu_map' : [[0]],
-                                    'lfs': {'path': '/dev/null', 'size': 1234},
-                                    'mem': 128,
-                                    'name': 'a',
-                                    'uid': 1}]
 
             slot = component.schedule_task(task)
-            print(slot)
-            self.assertEqual(slot, test_slot)
-            self.assertEqual(component._tag_history, {})
-
+            self.assertEqual(slot, task_descr['results']['slots'])
+            self.assertEqual(component._colo_history, task_descr['results']['colo_history'])
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Continuous, '__init__', return_value=None)
+    @mock.patch.object(Continuous, '_change_slot_states',
+                       return_value=True)
     @mock.patch('radical.utils.Logger')
-    def test_unschedule_task(self, mocked_init, mocked_Logger):
+    def test_unschedule_task(self, mocked_init, mocked_change_slot_states,
+                                   mocked_Logger):
 
-        _, cfg   = self.setUp()
-        for task_descr in cfg:
+        for task_descr in self.tasks:
             task = {
                     'description': task_descr['task']['description'],
                     'slots'      : task_descr['setup']['lm']['slots']
                     }
             component = Continuous(cfg=None, session=None)
-            component.nodes = task_descr['setup']['lm']['slots']['nodes']
+            component.nodes = task_descr['setup']['nodes']
             component._log  = mocked_Logger
 
             component.unschedule_task(task)
 
-            self.assertEqual(component.nodes[0]['cores'], [0])
-            self.assertEqual(component.nodes[0]['gpus'], [0])
+            self.assertEqual(component.nodes[0]['cores'], [0,1,2,3,4,5,6,7])
+            self.assertEqual(component.nodes[0]['gpus'], [0,1,2])
 
 
 if __name__ == '__main__':
