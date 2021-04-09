@@ -39,9 +39,9 @@ Please see existing batch scripts for the data specifics.
 - Finally, the script submits another job to the queue.
 
 ## Setup
-
-Tests require that a Github token is set up and included in the `.bashrc` of
-the account that runs the tests.
+Tests require that a Github token is set up and included in the `.bashrc` of the 
+account that runs the tests. On Summit instead of adding an environment variable, 
+change the `GIT_TOKEN` entry with your actual token.
 
 Example:
 ```
@@ -50,7 +50,9 @@ export GIT_TOKEN=soimethignsomething
 
 ## Create a Github workflow
 
-The last part is to create a Github workflow that provides information about the state of the integration tests. This Github workflow file lives under `.github/workflows`.
+The last part is to create a Github workflow that provides information about the 
+state of the integration tests. This Github workflow file lives under 
+`.github/workflows`.
 
 The template of such a file is:
 ```yaml
@@ -96,11 +98,18 @@ jobs:
 
 ```
 
-This file receives a signal from outside, checks the payload and succeeds or fails based on the payload. Also, it defines a monthly cron job that checks if it received a signal the last week. If not, it fails the test for the specific resource.
+This file receives a signal from outside, checks the payload and succeeds or 
+fails based on the payload. Also, it defines a monthly cron job that checks if 
+it received a signal the last week. If not, it fails the test for the specific 
+resource.
 
 ## Add a badge
 
-It is necessary to add a badge in the main README file of RP for a resource where integration tests are running. The badge looks like:
+It is necessary to add a badge in the main README file of RP for a resource 
+where integration tests are running. The badge looks like:
 ```
 [![Resource Integration Tests](https://github.com/radical-cybertools/radical.pilot/actions/workflows/<filename>.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/<filename>.yml)
 ```
+
+---
+

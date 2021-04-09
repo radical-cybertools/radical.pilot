@@ -83,7 +83,7 @@ class ContinuousSummit(AgentSchedulingComponent):
     def __init__(self, cfg, session):
 
         self.nodes = None
-        self._tag_history = dict()
+        self._colo_history = dict()
 
         AgentSchedulingComponent.__init__(self, cfg, session)
 
@@ -374,7 +374,7 @@ class ContinuousSummit(AgentSchedulingComponent):
 
 
         node_uids = [node['uid'] for node in task['slots']['nodes']]
-        self._tag_history[uid] = node_uids
+        self._colo_history[uid] = node_uids
 
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=uid)
@@ -707,17 +707,18 @@ class ContinuousSummit(AgentSchedulingComponent):
         lfs       = None
         node_name = None
         node_uid  = None
-        tag       = td.get('tag')
+        colo_tag  = td['tags'].get('colocate')
 
         for node in self.nodes:  # FIXME optimization: iteration start
 
-            # If task has a tag, check if the tag is in the tag_history dict,
-            # else it is a invalid tag, continue as if the task does not have
-            # a tag
-            # If the task has a valid tag, find the node that matches the
-            # tag from tag_history dict
-            if tag and tag in self._tag_history:
-                if node['uid'] not in self._tag_history[tag]:
+            # If task has a colocate tag, check if the tag is in the
+            # colo_history dict, else it is a invalid tag, continue as if the
+            # task does not have a tag.
+            #
+            # If the task has a valid colo_tag, find the node that matches the
+            # tag from colo_history dict.
+            if colo_tag and colo_tag in self._colo_history:
+                if node['uid'] not in self._colo_history[colo_tag]:
                     continue
 
             # attempt to find the required number of cores and gpus on this
@@ -862,7 +863,7 @@ class ContinuousSummit(AgentSchedulingComponent):
                  'lm_info'       : self._rm_lm_info,
                 }
 
-        tag = td.get('tag')
+        colo_tag = td['tags'].get('colocate')
 
         # start the search
         for node in self.nodes:
@@ -870,13 +871,14 @@ class ContinuousSummit(AgentSchedulingComponent):
             node_uid  = node['uid']
             node_name = node['name']
 
-            # If task has a tag, check if the tag is in the tag_history dict,
-            # else it is a invalid tag, continue as if the task does not have
-            # a tag
-            # If the task has a valid tag, find the node that matches the
-            # tag from tag_history dict
-            if tag and tag in self._tag_history:
-                if node['uid'] not in self._tag_history[tag]:
+            # If task has a colocate tag, check if the tag is in the
+            # colo_history dict, else it is a invalid tag, continue as if the
+            # task does not have a tag.
+            #
+            # If the task has a valid colo_tag, find the node that matches the
+            # tag from colo_history dict.
+            if colo_tag and colo_tag in self._colo_history:
+                if node['uid'] not in self._colo_history[colo_tag]:
                     continue
 
             # if only a small set of cores/gpus remains unallocated (ie. less
