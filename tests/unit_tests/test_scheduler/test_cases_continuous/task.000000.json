@@ -8,7 +8,7 @@
             "environment"      : {},
             "cpu_processes"    : 2,
             "cpu_threads"      : 1,
-            "cpu_process_type" : "MPI",
+            "cpu_process_type" : "",
             "gpu_processes"    : 1,
             "gpu_process_type" : "",
             "mem_per_process"  : 128,
