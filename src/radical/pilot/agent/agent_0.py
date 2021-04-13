@@ -40,6 +40,7 @@ class Agent_0(rpu.Worker):
     #
     def __init__(self, cfg, session):
 
+        self._uid     = 'agent.0'
         self._cfg     = cfg
         self._pid     = cfg.pid
         self._pmgr    = cfg.pmgr
@@ -51,15 +52,21 @@ class Agent_0(rpu.Worker):
         self._final_cause = None
 
         # this is the earliest point to sync bootstrap and agent profiles
-        prof = ru.Profiler(ns='radical.pilot', name='agent.0')
+        prof = ru.Profiler(ns='radical.pilot', name=self._uid)
         prof.prof('hostname', uid=cfg.pid, msg=ru.get_hostname())
 
-        # store the original environment in `env/orig.env`.  Ensure that current
-        # env settings are removed, to always negate the `pre_bootstrap_*`
-        # directives
-        ru.rec_makedir('./env/')
-        orig = ru.env_read('./orig.env')
-        ru.env_prep(orig, unset=os.environ, script_path='./env/orig.env')
+        # run an inline registry service to share runtime config with other
+        # agents and components
+        reg_uid = 'radical.pilot.reg.%s' % self._uid
+        self._reg_service = ru.zmq.Registry(uid=reg_uid)
+        self._reg_service.start()
+
+        self._reg_addr = self._reg_service.addr
+        self._reg      = ru.zmq.RegistryClient(url=self._reg_addr)
+
+        # let all components know where to look for the registry
+        self._cfg['reg_addr'] = self._reg_addr
+
 
         # connect to MongoDB for state push/pull
         self._connect_db()
@@ -95,7 +102,7 @@ class Agent_0(rpu.Worker):
         freq = 10
         tint = freq / 3
         tout = freq * 10
-        self._hb = ru.Heartbeat(uid=self._pid,
+        self._hb = ru.Heartbeat(uid=self._uid,
                                 timeout=tout,
                                 interval=tint,
                                 beat_cb=self._hb_check,  # no own heartbeat(pmgr pulls)
@@ -717,10 +724,15 @@ class Agent_0(rpu.Worker):
         rp_cse = 'radical-pilot-create-static-ve'
 
         # FIXME: env prep is async as to not stall the hb callback.  This
-        #        negates any error checking which is now missing
-        ru.sh_callout_bg('%s -p ./%s -v %s -m "%s" 1>>%s.out 2>>%s.err; touch %s.ok'
-                         % (rp_cse, eid, evers, ','.join(emods),
-                            self.uid, self.uid, eid), shell=True)
+        #        negates any error checking which is now missing.  We
+        #        asynchroneously communicate success / failure via `$eid.ok`
+        #        / `$eid.fail`, and store stderr and stdout in `$eid.log`
+        #
+        # start env setup from `bs0_0_pre.env`
+        ve_cmd = '%s -p ./%s -v %s -e ". env/bs0_pre_0.sh" -m "%s"' \
+               % (rp_cse, eid, evers, ','.join(emods))
+        ru.sh_callout_bg('%s 1>%s.log 2>&1 && touch %s.ok || touch %s.fail'
+               % (ve_cmd, self.uid, self.uid, eid, eid), shell=True)
 
 
 # ------------------------------------------------------------------------------

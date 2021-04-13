@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import os
 import radical.utils as ru
 
 from .base import LaunchMethod
@@ -14,12 +15,24 @@ class MPIExec(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, session):
+    def __init__(self, name, cfg, log, prof):
 
-        self._mpt     = False
-        self._omplace = False
+        self._mpt      = False
+        self._rsh      = False
+        self._ccmrun   = ''
+        self._omplace  = ''
+        self._dplace   = ''
+        self._info     = None
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        self._env_orig = ru.env_eval('env/bs0_orig.env')
+
+        log.debug('===== lm MPIEXEC init start')
+
+        LaunchMethod.__init__(self, name, cfg, log, prof)
+
+        self._init_from_info()
+        self._log.debug('===== lm MPIEXEC init stop')
+
 
 
     # --------------------------------------------------------------------------

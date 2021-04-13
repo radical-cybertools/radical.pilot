@@ -1,4 +1,16 @@
-#!/bin/bash -l
+#!/bin/sh
+
+# we really want to run in a login shell
+# NOTE: we use `/bin/bash` (not `/bin/sh`) for the tcp scan
+
+exec 2>&1
+
+if ! test "$BS_ENV" = 'OK'
+then
+    SCRIPT=$(readlink -f "$0")
+    exec /usr/bin/env -i HOME="$HOME" SCRIPT="$SCRIPT" BS_ENV="OK" \
+         /bin/bash -l "$SCRIPT" "$@"
+fi
 
 # Unset functions/aliases of commands that will be used during bootstrap as
 # these custom functions can break assumed/expected behavior
@@ -8,6 +20,11 @@ export LC_NUMERIC="C"
 unset PROMPT_COMMAND
 unset -f cd ls uname pwd date bc cat echo grep
 
+# store the sorted env for logging, but also so that we can dig original env
+# settings for task environments, if needed
+mkdir -p env
+env | sort > env/bs0_orig.env
+
 
 # Report where we are, as this is not always what you expect ;-)
 # Save environment, useful for debugging
@@ -15,12 +32,6 @@ echo "# -------------------------------------------------------------------"
 echo "bootstrap_0 running on host: `hostname -f`."
 echo "bootstrap_0 started as     : '$0 $@'"
 echo "safe environment of bootstrap_0"
-
-# store the sorted env for logging, but also so that we can dig original env
-# settings for task environments, if needed
-# NOTE: this assumes that no multi-line values are set in the environment
-env | sort > orig.env
-
 
 # interleave stdout and stderr, to get a coherent set of log messages
 if test -z "$RP_BOOTSTRAP_0_REDIR"
@@ -137,6 +148,29 @@ export PYTHONNOUSERSITE=True
 # during installation.  To speed this up (specifically on cluster compute
 # nodes), we try to convince PIP to run parallel `make`
 export MAKEFLAGS="-j"
+
+
+# ------------------------------------------------------------------------------
+#
+# check what env variables changed from the original env, and create a
+# `deactivate` script which resets the original values.
+#
+create_deactivate()
+{
+    # at this point we activated the agent VE and thus have RU availale.  Use
+    # `radical-utils-env.sh` to create a script to recover the virgin env
+    # (`bs0_orig.env`) from the current state (`bs0_acivate.env`)
+    which radical-utils-env.sh
+    . radical-utils-env.sh
+    env_dump -t env/bs0_active.env
+    env_prep -s env/bs0_orig.env -r env/bs0_active.env -t env/bs0_orig.sh
+
+    # we also prepare a script to return to the `pre_bootstrap_0` state: all
+    # pre_bootstrap_0 commands have been run, but the virtualenv is not yet
+    # activated.  This can be used in case a different VE is to be created or
+    # used.
+    env_prep -s env/bs0_pre_0.env -r env/bs0_active.env -t env/bs0_pre_0.sh
+}
 
 
 # ------------------------------------------------------------------------------
@@ -1463,6 +1497,9 @@ while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:z:" OPTION; do
     esac
 done
 
+# pre_bootstrap_0 is done at this point, save resulting env
+env | sort > env/bs0_pre_0.env
+
 echo '# -------------------------------------------------------------------'
 echo '# untar sandbox'
 echo '# -------------------------------------------------------------------'
@@ -1651,6 +1688,7 @@ rehash "$PYTHON"
 virtenv_setup    "$PILOT_ID"    "$VIRTENV" "$VIRTENV_MODE" \
                  "$PYTHON_DIST" "$VIRTENV_DIST"
 virtenv_activate "$VIRTENV" "$PYTHON_DIST"
+create_deactivate
 
 # ------------------------------------------------------------------------------
 # launch the radical agent

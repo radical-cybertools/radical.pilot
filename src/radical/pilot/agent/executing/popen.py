@@ -582,6 +582,10 @@ class Popen(AgentExecutingComponent) :
 
         ret = launcher.get_launch_cmd(task, exec_script)
 
+        # `./` is usually not in `$PATH`
+        if ret[0] != '/':
+            ret = './' + ret
+
         return ret
 
 
@@ -725,9 +729,9 @@ class Popen(AgentExecutingComponent) :
         #        started.
 
         ret  = ''
-        gmap = rank['gpu_map'][0]
+        gmap = rank['gpu_map']
         if gmap:
-            gpus = ','.join([str(gpu) for gpu in gmap])
+            gpus = ','.join([str(gpu) for gpu in gmap[0]])
             ret += '        export CUDA_VISIBLE_DEVICES=%s\n' % gpus
 
         cmap = rank['core_map'][0]

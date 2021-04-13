@@ -21,43 +21,62 @@ class MPIRun(LaunchMethod):
         self._rsh      = False
         self._ccmrun   = ''
         self._dplace   = ''
-        self._info     = None
+        self._finfo    = 'lm/%s.json' % name
 
-        self._env_orig = ru.env_eval('env/orig.env')
+        self._env_orig = ru.env_eval('env/bs0_orig.env')
 
         log.debug('===== lm MPIRUN init start')
 
         LaunchMethod.__init__(self, name, cfg, log, prof)
 
-        self._init_from_info()
         self._log.debug('===== lm MPIRUN init stop')
 
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_info(self):
+    def _init_from_info(self, info=None):
+        '''
+        The RP launch methods are used in different components: the agent will
+        use them to spawn sub-agents and components, the resource manager may
+        use them to spawn launcher services, and, of course, different execution
+        components (including Raptor and other task overlays) can use them to
+        launch tasks.
+
+        To encourage early failure and to avoid repeated initialization, we
+        expect that relevant information are collected as early as possible and
+        passed as `info` to this method.  This method will then store those data
+        on disk, and once it
+        '''
 
         self._log.debug('===== lm MPIRUN init_info start')
 
-        if self._info:
-
-            self._log.debug('===== lm MPIRUN init_info active: %s', self._info)
-
-            self._command     = self._info['command']
-            self._dplace      = self._info['dplace']
-            self._ccmrun      = self._info['ccmrun']
-            self._mpt         = self._info['mpt']
-            self._rsh         = self._info['rsh']
-            self._mpi_version = self._info['mpi_version']
-            self._mpi_flavor  = self._info['mpi_flavor']
-            self._env_sh      = self._info['env_sh']
-
-            self._env         = ru.env_eval(self._env_sh)
-
-            self._log.debug('===== lm MPIRUN init_info stop: %s', self._command)
+        if info:
+            if os.path.isfile(self._finfo):
+                raise RuntimeError('initialization repeat')
+            ru.write_json(info, self._finfo)
 
         else:
-            self._log.debug('===== lm MPIRUN init_info stop: ---')
+            try:
+                info = ru.read_json(self._finfo)
+            except Exception as e:
+                raise RuntimeError('initialization incomplete') from e
+
+        self._log.debug('===== lm MPIRUN init_info active: %s', info)
+
+        self._command     = info['command']
+        self._dplace      = info['dplace']
+        self._ccmrun      = info['ccmrun']
+        self._mpt         = info['mpt']
+        self._rsh         = info['rsh']
+        self._mpi_version = info['mpi_version']
+        self._mpi_flavor  = info['mpi_flavor']
+        self._env_sh      = info['env_sh']
+
+        # FIXME ENV: set in several places
+        self._env         = ru.env_eval(self._env_sh)
+
+        self._log.debug('===== lm MPIRUN init_info stop: %s', self._command)
+
 
 
     # --------------------------------------------------------------------------
@@ -65,9 +84,6 @@ class MPIRun(LaunchMethod):
     def initialize(self, rm, lmcfg):
 
         self._log.debug('===== lm MPIRUN initialize start')
-
-        if self._info:
-            raise RuntimeError('LM %s already initialized' % self.name)
 
         command     = None
         dplace      = ''
@@ -150,18 +166,18 @@ class MPIRun(LaunchMethod):
 
         # the returned lm_info contains sufficient information to create new,
         # functional instances of this LM without new initialization
-        self._info = {
-                         'command'    : command,
-                         'dplace'     : dplace,
-                         'ccmrun'     : ccmrun,
-                         'mpt'        : mpt,
-                         'rsh'        : rsh,
-                         'mpi_version': mpi_version,
-                         'mpi_flavor' : mpi_flavor,
-                         'env_sh'     : env_sh
-                     }
+        info = {
+                   'command'    : command,
+                   'dplace'     : dplace,
+                   'ccmrun'     : ccmrun,
+                   'mpt'        : mpt,
+                   'rsh'        : rsh,
+                   'mpi_version': mpi_version,
+                   'mpi_flavor' : mpi_flavor,
+                   'env_sh'     : env_sh
+               }
 
-        self._init_from_info()
+        self._init_from_info(info)
 
         self._log.debug('===== lm MPIRUN initialize stop: %s', self._info)
         return self._info

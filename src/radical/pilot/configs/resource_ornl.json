@@ -18,7 +18,7 @@
                                          "SRUN" : {}
                                         },
         "pre_bootstrap_0"             : [
-            "source /sw/andes/python/3.7/anaconda-base/etc/profile.d/conda.sh"],
+            "source /sw/andes/python/3.7/anaconda-base/etc/profile.d/conda.sh"
         ],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",

@@ -114,7 +114,7 @@ class Continuous(AgentSchedulingComponent):
 
             # summit
             if  self._rm_cores_per_node > 40 and \
-                self._cfg['task_launch_method'] == 'JSRUN':
+                'JSRUN' in self._cfg['resource_cfg']['launch_methods']:
 
                 # Summit cannot address the last core of the second socket at
                 # the moment, so we mark it as `DOWN` and the scheduler skips
@@ -149,7 +149,7 @@ class Continuous(AgentSchedulingComponent):
             self.nodes.append(node_entry)
 
         if self._rm_cores_per_node > 40 and \
-           self._cfg['task_launch_method'] == 'JSRUN':
+           'JSRUN' in self._cfg['resource_cfg']['launch_methods']:
             self._rm_cores_per_node -= 1
 
         if blocked_cores or blocked_gpus:
