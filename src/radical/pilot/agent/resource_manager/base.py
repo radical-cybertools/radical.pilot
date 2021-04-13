@@ -62,6 +62,23 @@ class ResourceManager(object):
         self._session        = session
         self._log            = self._session._log
         self._prof           = self._session._prof
+
+        self._reg  = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
+        self._info = self._reg.get('rm.%s' % self.name)
+
+        if self._info:
+            self._log.debug('=== init from info')
+            raise NotImplementedError('rm.init_from_info')
+          # self._init_from_info()
+        else:
+            self._log.debug('=== init from scratch')
+            self._init_from_scratch()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_from_scratch(self):
+
         self.requested_cores = self._cfg['cores']
         self.requested_gpus  = self._cfg['gpus']
 
@@ -142,17 +159,14 @@ class ResourceManager(object):
         launch_methods  = self._cfg.resource_cfg.launch_methods
         self._launchers = dict()
 
-        for name, lmcfg in launch_methods.items():
+        for name, lm_cfg in launch_methods.items():
             if name == 'order':
-                self._launch_order = lmcfg
+                self._launch_order = lm_cfg
                 continue
 
             try:
-                lm = rpa.LaunchMethod.create(name, self._cfg,
-                                                   self._log, self._prof)
-
-                self.lm_info[name]    = lm.initialize(self, lmcfg)
-                self._launchers[name] = lm
+                self._launchers[name] = rpa.LaunchMethod.create(name, lm_cfg,
+                                            self._cfg, self._log, self._prof)
 
             except:
                 self._log.exception('skip LM %s' % name)

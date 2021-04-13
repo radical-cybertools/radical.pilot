@@ -15,7 +15,7 @@ class MPIExec(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, log, prof):
+    def __init__(self, name, lm_cfg, cfg, log, prof):
 
         self._mpt      = False
         self._rsh      = False
@@ -28,7 +28,7 @@ class MPIExec(LaunchMethod):
 
         log.debug('===== lm MPIEXEC init start')
 
-        LaunchMethod.__init__(self, name, cfg, log, prof)
+        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
 
         self._init_from_info()
         self._log.debug('===== lm MPIEXEC init stop')

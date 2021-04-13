@@ -233,7 +233,10 @@ class AgentSchedulingComponent(rpu.Component):
         #
         # NOTE: this information is insufficient for the torus scheduler!
         self._pid               = self._cfg['pid']
-        self._lm_info           = self._cfg['lm_info']
+
+        self._reg               = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
+        self._lm_info           = self._reg.get('lm')
+      # self._lm_info           = self._cfg['lm']
         self._rm_info           = self._cfg['rm_info']
         self._rm_node_list      = self._cfg['rm_info']['node_list']
         self._rm_partitions     = self._cfg['rm_info']['partitions']

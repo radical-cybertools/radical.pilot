@@ -25,9 +25,9 @@ class PRTE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, session):
+    def __init__(self, name, lm_cfg, cfg, session, prof):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        LaunchMethod.__init__(self, name, lm_cfg, cfg, session, prof)
 
         # We remove all PRUN related environment variables from the launcher
         # environment, so that we can use PRUN for both launch of the

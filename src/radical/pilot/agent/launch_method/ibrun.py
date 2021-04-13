@@ -15,9 +15,9 @@ class IBRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, session):
+    def __init__(self, name, lm_cfg, cfg, session, prof):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        LaunchMethod.__init__(self, name, lm_cfg, cfg, session, prof)
 
         self._node_list = self._cfg.rm_info.node_list
 

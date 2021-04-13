@@ -14,16 +14,16 @@ class Fork(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, log, prof):
+    def __init__(self, name, lm_cfg, cfg, log, prof):
 
-        LaunchMethod.__init__(self, name, cfg, log, prof)
+        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
 
         self.node_name = ru.get_hostname()
 
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self, rm, lmcfg):
+    def _init_from_scratch(self, lm_cfg):
 
         return {'version'       : ru.sh_callout('uname'      )[0].strip(),
                 'version_detail': ru.sh_callout('uname -irno')[0].strip()}

@@ -97,16 +97,17 @@ class AgentExecutingComponent(rpu.Component):
         self._launchers    = dict()
         self._launch_order = None
 
-        lm_cfg = self._cfg.resource_cfg.launch_methods
-        for name, lmcfg in lm_cfg.items():
+        self._log.debug('===== cfg ', self._cfg)
+        launch_methods = self._cfg.resource_cfg.launch_methods
+        for name, lm_cfg in launch_methods.items():
 
             if name == 'order':
-                self._launch_order = lmcfg
+                self._launch_order = lm_cfg
                 continue
 
             try:
                 self._log.debug('===== %s create start', name)
-                lm = rpa.LaunchMethod.create(name, self._cfg,
+                lm = rpa.LaunchMethod.create(name, lm_cfg, self._cfg,
                                                    self._log, self._prof)
                 self._launchers[name] = lm
                 self._log.debug('===== %s create stop', name)

@@ -60,14 +60,28 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, log, prof):
+    def __init__(self, name, lm_cfg, cfg, log, prof):
 
         log.debug('===== lm base init start')
-        self.name  = name
-        self._cfg  = cfg
-        self._log  = log
-        self._prof = prof
-        self._pwd  = os.getcwd()
+        self.name    = name
+        self._lm_cfg = cfg
+        self._cfg    = cfg
+        self._log    = log
+        self._prof   = prof
+        self._pwd    = os.getcwd()
+
+        self._reg  = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
+        lm_info = self._reg.get('lm.%s' % self.name)
+
+        lm_info = None  # FIXME
+        if lm_info:
+            self._log.debug('=== init from info: %s', lm_info)
+            raise NotImplementedError('lm.init_from_info')
+          # self._init_from_info(lm_cfg, lm_info)
+        else:
+            self._log.debug('=== init from scratch')
+            lm_info = self._init_from_scratch(lm_cfg)
+            self._reg.put('lm.%s' % self.name, lm_info)
 
         self._info = self._cfg.get('lm_info', {}).get(self.name)
         log.debug('===== lm base init stop: %s', self._info)
@@ -78,7 +92,7 @@ class LaunchMethod(object):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, cfg, log, prof):
+    def create(cls, name, lm_cfg, cfg, log, prof):
 
         log.debug('===== lm create %s start', name)
         # Make sure that we are the base-class!
@@ -129,7 +143,7 @@ class LaunchMethod(object):
                 LM_NAME_SRUN          : Srun,
 
             }[name]
-            return impl(name, cfg, log, prof)
+            return impl(name, lm_cfg, cfg, log, prof)
 
         except KeyError:
             log.exception('invalid lm %s' % name)
@@ -142,7 +156,16 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self, rm, lmcfg):
+    def _init_from_scratch(self, lm_cfg):
+
+        self._log.debug('==== empty init from scratch for %s', self.name)
+
+      # raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_from_info(self, lm_info):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 

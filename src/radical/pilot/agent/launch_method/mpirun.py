@@ -15,7 +15,7 @@ class MPIRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, log, prof):
+    def __init__(self, name, lm_cfg, cfg, log, prof):
 
         self._mpt      = False
         self._rsh      = False
@@ -27,7 +27,7 @@ class MPIRun(LaunchMethod):
 
         log.debug('===== lm MPIRUN init start')
 
-        LaunchMethod.__init__(self, name, cfg, log, prof)
+        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
 
         self._log.debug('===== lm MPIRUN init stop')
 
@@ -81,7 +81,7 @@ class MPIRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def initialize(self, rm, lmcfg):
+    def _init_from_scratch(self, lm_cfg):
 
         self._log.debug('===== lm MPIRUN initialize start')
 

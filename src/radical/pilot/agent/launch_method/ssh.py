@@ -16,9 +16,9 @@ class SSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, session):
+    def __init__(self, name, lm_cfg, cfg, session, prof):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        LaunchMethod.__init__(self, name, lm_cfg, cfg, session, prof)
 
         # Instruct the ExecWorkers to unset this environment variable.
         # Otherwise this will break nested SSH with SHELL spawner, i.e. when

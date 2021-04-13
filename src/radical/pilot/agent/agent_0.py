@@ -165,7 +165,7 @@ class Agent_0(rpu.Worker):
         # also initialize and configure the launch methods, and LM info may are
         # also added to the config.
         self._cfg['rm_info'] = self._rm.rm_info
-        self._cfg['lm_info'] = self._rm.lm_info
+      # self._cfg['lm_info'] = self._rm.lm_info
 
 
     # --------------------------------------------------------------------------
