@@ -76,12 +76,12 @@
         "launch_methods"              : {
                                          "order": ["JSRUN"],
                                          "JSRUN": {
-                                             "env_prep": [
+                                             "pre_exec_cached": [
                                                  "module unload xl",
                                                  "module unload xalt",
                                                  "module unload spectrum-mpi"
                                              ],
-                                             "cmds": [
+                                             "pre_exec": [
                                                  "ulimit -u 65536"
                                              ]
                                          }
@@ -136,7 +136,7 @@
                                          # for sub-agent
                                          "SSH"  : {},
                                          "PRTE" : {
-                                             "env_prep": [
+                                             "pre_exec_cached": [
                                                  "module unload xl",
                                                  "module unload xalt",
                                                  "module unload spectrum-mpi",
@@ -144,7 +144,7 @@
                                                  "module use    /sw/summit/ums/ompix/gcc/6.4.0/modules",
                                                  "module load   prrte/master"
                                              ],
-                                             "cmds": [
+                                             "pre_exec": [
                                                  "ulimit -u 65536"
                                              ]
                                          }

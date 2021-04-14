@@ -70,16 +70,27 @@ class LaunchMethod(object):
         self._prof   = prof
         self._pwd    = os.getcwd()
 
-        self._reg  = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
-        lm_info = self._reg.get('lm.%s' % self.name)
+        self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
+        lm_info   = self._reg.get('lm.%s' % self.name)
 
-        lm_info = None  # FIXME
         if lm_info:
             self._log.debug('=== init from info: %s', lm_info)
-            raise NotImplementedError('lm.init_from_info')
-          # self._init_from_info(lm_cfg, lm_info)
+            self._init_from_info(lm_info, lm_cfg)
         else:
             self._log.debug('=== init from scratch')
+            # if we need to initialize the LM from scratch, we do that in the
+            # env defined by lm_cfg.  That is derived from the original bs0 env
+            env_orig = ru.env_eval('env/bs0_orig.env')
+            env_lm   = ru.env_prep(environment=env_orig,
+                          pre_exec=lm_cfg.get('pre_exec'),
+                          pre_exec_cached=lm_cfg.get('pre_exec_cached'),
+                          script_path=('env/lm_%s.sh' % self.name.lower()))
+
+            envp = ru.EnvProcess(env=env_lm)
+            with envp:
+                envp.put(self._init_from_scratch(lm_cfg))
+            lm_info = envp.get()
+
             lm_info = self._init_from_scratch(lm_cfg)
             self._reg.put('lm.%s' % self.name, lm_info)
 
@@ -165,16 +176,20 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_info(self, lm_info):
+    def _init_from_info(self, lm_info, lm_cfg):
 
-        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+        self._log.debug('==== empty init from info for %s', self.name)
+
+      # raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
 
     # --------------------------------------------------------------------------
     #
     def finalize(self):
 
-        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+        self._log.debug('==== empty finalize for %s', self.name)
+
+      # raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
 
     # --------------------------------------------------------------------------

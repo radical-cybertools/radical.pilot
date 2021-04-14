@@ -25,7 +25,7 @@
                                          "order" : ["FORK", "MPIRUN"],
                                          "FORK"  : {},
                                          "MPIRUN": {
-                                             "env_prep": [
+                                             "pre_exec_cached": [
                                                  "module load gnu/9.1.0",
                                                  "module load openmpi"
                                                  ]
@@ -76,7 +76,7 @@
                                          "order" : ["FORK", "MPIEXEC_MPT"],
                                          "FORK"  : {},
                                          "MPIEXEC_MPT": {
-                                             "env_prep": [
+                                             "pre_exec_cached": [
                                                      "module load gnu/9.1.0",
                                                      "module load mpt/2.22"
                                                  ]

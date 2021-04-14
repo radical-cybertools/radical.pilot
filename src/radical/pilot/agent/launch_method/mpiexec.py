@@ -30,36 +30,57 @@ class MPIExec(LaunchMethod):
 
         LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
 
-        self._init_from_info()
         self._log.debug('===== lm MPIEXEC init stop')
 
 
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def _init_from_scratch(self, lm_cfg):
+
+        # FIXME: this should happen in the lm_env
+
+        lm_info = dict()
+        lm_info['launch_command'] = ru.which([
+            'mpiexec',             # General case
+            'mpiexec.mpich',       # Linux, MPICH
+            'mpiexec.hydra',       # Linux, MPICH
+            'mpiexec.openmpi',     # Linux, MPICH
+            'mpiexec-mpich-mp',    # Mac OSX MacPorts
+            'mpiexec-openmpi-mp',  # Mac OSX MacPorts
+            'mpiexec_mpt',         # Cheyenne (NCAR)
+        ])
 
         if '_mpt' in self.name.lower():
-            self._mpt = True
-            self.launch_command = ru.which([
-                'mpiexec_mpt',        # Cheyenne (NCAR)
-            ])
+            lm_info['mpt'] = True
         else:
-            self.launch_command = ru.which([
-                'mpiexec',            # General case
-                'mpiexec.mpich',      # Linux, MPICH
-                'mpiexec.hydra',      # Linux, MPICH
-                'mpiexec.openmpi',    # Linux, MPICH
-                'mpiexec-mpich-mp',   # Mac OSX MacPorts
-                'mpiexec-openmpi-mp'  # Mac OSX MacPorts
-            ])
+            lm_info['mpt'] = False
 
         # cheyenne also uses omplace
         # FIXME check hostname
-        if self._mpt:
-            self._omplace = True
+        if self._mpt and 'cheyenne' in ru.get_hostname():
+            lm_info['omplace'] = True
+        else:
+            lm_info['omplace'] = False
 
-        self.mpi_version, self.mpi_flavor = self._get_mpi_info(self.launch_command)
+        mpi_version, mpi_flavor = self._get_mpi_info(lm_info['launch_command'])
+        lm_info['mpi_version']  = mpi_version
+        lm_info['mpi_flavor']   = mpi_flavor
+
+        self._init_from_info(lm_info, lm_cfg)
+
+        return lm_info
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_from_info(self, lm_info, lm_cfg):
+
+        self.launch_command = lm_info['launch_command']
+        self.mpt            = lm_info['mpt']
+        self.omplace        = lm_info['omplace']
+        self.mpi_version    = lm_info['mpi_version']
+        self.mpi_flavor     = lm_info['mpi_flavor']
 
 
     # --------------------------------------------------------------------------

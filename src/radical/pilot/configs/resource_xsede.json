@@ -28,12 +28,12 @@
                                          "order": ["FORK", "SSH", "IBRUN"],
                                          "FORK" : {},
                                          "SSH"  : {
-                                             "env_prep": [
+                                             "pre_exec_cached": [
                                                  "module load TACC"
                                              ]
                                          },
                                          "IBRUN": {
-                                             "env_prep": [
+                                             "pre_exec_cached": [
                                                  "module load TACC"
                                              ]
                                          }
@@ -81,7 +81,7 @@
                                          "order" : ["FORK", "MPIRUN"],
                                          "FORK"  : {},
                                          "MPIRUN": {
-                                             "env_prep": [
+                                             "pre_exec_cached": [
                                                  "module load TACC"
                                              ]
                                          }
@@ -130,7 +130,7 @@
                                          "order" : ["FORK", "IBRUN"],
                                          "FORK"  : {},
                                          "IBRUN" : {
-                                             "env_prep": [
+                                             "pre_exec_cached": [
                                                  "module load TACC"
                                              ]
                                          }
@@ -180,7 +180,7 @@
                                          "order": ["FORK", "SRUN"],
                                          "FORK" : {},
                                          "SRUN" : {
-                                             "env_prep": [
+                                             "pre_exec_cached": [
                                                  "module load TACC"
                                              ]
                                          }
@@ -226,12 +226,12 @@
                                          "order": ["FORK", "SSH", "IBRUN"],
                                          "FORK" : {},
                                          "SRUN" : {
-                                             "env_prep": [
+                                             "pre_exec_cached": [
                                                  "module load TACC"
                                              ]
                                          },
                                          "IBRUN" : {
-                                             "env_prep": [
+                                             "pre_exec_cached": [
                                                  "module load TACC"
                                              ]
                                          }
@@ -272,7 +272,7 @@
                                          "order": ["FORK", "SSH", "FUNCS"],
                                          "FORK" : {},
                                          "SRUN" : {
-                                             "env_prep": [
+                                             "pre_exec_cached": [
                                                  "module load TACC"
                                              ]
                                          },
@@ -405,7 +405,7 @@
                                          "FORK"   : {},
                                          "SSH"    : {},
                                          "MPIEXEC": {
-                                             "env_prep": [
+                                             "pre_exec_cached": [
                                                  "module load intel/19.3",
                                                  "module load mpi/intel_openmpi/19.3"
                                              ]
@@ -457,7 +457,7 @@
                                          "FORK"  : {},
                                          "SSH"   : {},
                                          "MPIRUN": {
-                                             "env_prep": [
+                                             "pre_exec_cached": [
                                                  "module load gcc",
                                                  "module load openmpi/3.1.6-gcc8.3.1"
                                              ]
