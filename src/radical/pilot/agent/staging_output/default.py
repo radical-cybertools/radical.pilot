@@ -88,7 +88,8 @@ class Default(AgentStagingOutputComponent):
             #       _handle_task_stdio above).  But we don't need to perform any
             #       other staging for those tasks, and in fact can make them
             #       final.
-            if task['target_state'] != rps.DONE:
+            if task['target_state'] != rps.DONE \
+                    and not task['description'].get('stage_on_error'):
                 task['state'] = task['target_state']
                 self._log.debug('task %s skips staging: %s', uid, task['state'])
                 no_staging_tasks.append(task)

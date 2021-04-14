@@ -677,7 +677,7 @@ class Default(PMGRLaunchingComponent):
             # direct staging, use first pilot for staging context
             # NOTE: this implies that the SDS can only refer to session
             #       sandboxes, not to pilot sandboxes!
-            self._log.debug('==== %s', info['sds'])
+            self._log.debug('%s', info['sds'])
             self._stage_in(pilots[0], info['sds'])
 
         for ft in ft_list:
@@ -1135,7 +1135,7 @@ class Default(PMGRLaunchingComponent):
 
         # always stage agent cfg for each pilot, not in the tarball
         # FIXME: purge the tmp file after staging
-        self._log.debug('=== cfg %s -> %s', agent_cfg['pid'], pilot_sandbox)
+        self._log.debug('cfg %s -> %s', agent_cfg['pid'], pilot_sandbox)
         ret['sds'].append({'source': cfg_tmp_file,
                            'target': '%s/%s' % (pilot['pilot_sandbox'], agent_cfg_name),
                            'action': rpc.TRANSFER})

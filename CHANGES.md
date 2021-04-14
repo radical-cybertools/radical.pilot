@@ -3,6 +3,29 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.6.5  Release                                                        2021-04-14
+--------------------------------------------------------------------------------
+
+  - added flag `exclusive` for tags (in task description, default `False`)
+  - Adding Bridges2 and Comet
+  - always specifu GPU number on srun
+  - apply RP+* env vars to raptor tasks
+  - avoid a termination race
+  - Summit LFS config and JSRUN integration tests
+  - gh workflows and badges
+  - ensure that RU lock names are unique
+  - fixed env creation command and updated env setup check processes
+  - fixed launch command for PRTE2 LM
+  - fix missing event updates
+  - fix ve isolation for prep_env
+  - keep track of tagged nodes (no nodes overlapping between different tags)
+  - ensure conda activate works
+  - allow output staging on failed tasks
+  - python 2 -> 3 fix for shebangs
+  - remove support for add_resource_config
+  - Stampede2 migrates to work2 filesystem
+  - update setup module (use `python3`)
+  
 
 1.6.3  Hotfix Release                                                 2021-04-03
 --------------------------------------------------------------------------------
