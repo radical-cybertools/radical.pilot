@@ -110,6 +110,7 @@ class Srun(LaunchMethod):
         mapping = '--exclusive --cpu-bind=none ' \
                 + '--nodes %d '        % n_nodes \
                 + '--ntasks %d '       % n_tasks \
+                + '--gpus %d '         % (n_gpus * n_tasks) \
                 + '--cpus-per-task %d' % n_task_threads
 
         # check that gpus were requested to be allocated
