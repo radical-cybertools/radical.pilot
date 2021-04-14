@@ -32,6 +32,7 @@ MEM_PER_PROCESS        = 'mem_per_process'
 
 INPUT_STAGING          = 'input_staging'
 OUTPUT_STAGING         = 'output_staging'
+STAGE_ON_ERROR         = 'stage_on_error'
 PRE_EXEC               = 'pre_exec'
 POST_EXEC              = 'post_exec'
 KERNEL                 = 'kernel'
@@ -207,6 +208,16 @@ class TaskDescription(ru.Description):
        default: `{}`
 
 
+    .. data:: stage_on_error
+
+       Output staging is normally skipped on FAILED or CANCELED tasks - but if
+       this flag is set, staging is attemped either way.  This may though lead
+       to additional errors if the tasks did not manage to produce the expected
+       output files to stage.
+
+       default: `False`
+
+
     .. data:: pre_exec
 
        Actions (shell commands) to perform before this task starts (`list` of
@@ -358,6 +369,7 @@ class TaskDescription(ru.Description):
                STDERR          : str         ,
                INPUT_STAGING   : None        ,
                OUTPUT_STAGING  : None        ,
+               STAGE_ON_ERROR  : bool        ,
 
                CPU_PROCESSES   : int         ,
                CPU_PROCESS_TYPE: str         ,
@@ -392,6 +404,7 @@ class TaskDescription(ru.Description):
                STDERR          : ''          ,
                INPUT_STAGING   : list()      ,
                OUTPUT_STAGING  : list()      ,
+               STAGE_ON_ERROR  : False       ,
 
                CPU_PROCESSES   : 1           ,
                CPU_PROCESS_TYPE: ''          ,
