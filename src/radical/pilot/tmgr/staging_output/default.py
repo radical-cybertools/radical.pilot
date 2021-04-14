@@ -156,6 +156,7 @@ class Default(TMGRStagingOutputComponent):
             # Always set CREATE_PARENTS
             flags |= rs.filesystem.CREATE_PARENTS
 
+            self._log.debug('deed: %s: %s -> %s [%s]', saga_dir.url, src, tgt, flags)
             saga_dir.copy(src, tgt, flags=flags)
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
