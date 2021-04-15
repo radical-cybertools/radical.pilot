@@ -17,28 +17,19 @@ class MPIExec(LaunchMethod):
     #
     def __init__(self, name, lm_cfg, cfg, log, prof):
 
-        self._mpt      = False
-        self._rsh      = False
-        self._ccmrun   = ''
-        self._omplace  = ''
-        self._dplace   = ''
-        self._info     = None
-
-        self._env_orig = ru.env_eval('env/bs0_orig.env')
-
-        log.debug('===== lm MPIEXEC init start')
+        self._mpt    : bool  = False
+        self._rsh    : bool  = False
+        self._ccmrun : str   = ''
+        self._omplace: str   = ''
+        self._dplace : str   = ''
 
         LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
-
-        self._log.debug('===== lm MPIEXEC init stop')
 
 
 
     # --------------------------------------------------------------------------
     #
     def _init_from_scratch(self, lm_cfg):
-
-        # FIXME: this should happen in the lm_env
 
         lm_info = dict()
         lm_info['launch_command'] = ru.which([
@@ -57,7 +48,6 @@ class MPIExec(LaunchMethod):
             lm_info['mpt'] = False
 
         # cheyenne also uses omplace
-        # FIXME check hostname
         if self._mpt and 'cheyenne' in ru.get_hostname():
             lm_info['omplace'] = True
         else:

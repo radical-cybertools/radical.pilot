@@ -111,7 +111,6 @@ class AgentExecutingComponent(rpu.Component):
                                                    self._log, self._prof)
                 self._launchers[name] = lm
                 self._log.debug('===== %s create stop', name)
-                self._log.debug('===== %s lm info: %s', name, lm._info)
 
             except:
                 self._log.exception('skip LM %s' % name)

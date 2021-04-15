@@ -74,28 +74,33 @@ class LaunchMethod(object):
         lm_info   = self._reg.get('lm.%s' % self.name)
 
         if lm_info:
+            # we found data in the registry and use it to (re)initialize the LM
             self._log.debug('=== init from info: %s', lm_info)
             self._init_from_info(lm_info, lm_cfg)
+
         else:
+
+            # The registry does not yet contain any info for this LM - we need
+            # to initialize the LM from scratch.  That happens in the env
+            # defined by lm_cfg (derived from the original bs0 env)
             self._log.debug('=== init from scratch')
-            # if we need to initialize the LM from scratch, we do that in the
-            # env defined by lm_cfg.  That is derived from the original bs0 env
             env_orig = ru.env_eval('env/bs0_orig.env')
             env_lm   = ru.env_prep(environment=env_orig,
                           pre_exec=lm_cfg.get('pre_exec'),
                           pre_exec_cached=lm_cfg.get('pre_exec_cached'),
                           script_path=('env/lm_%s.sh' % self.name.lower()))
 
+            # run init_from_scratch in a process under that derived env
             envp = ru.EnvProcess(env=env_lm)
             with envp:
                 envp.put(self._init_from_scratch(lm_cfg))
             lm_info = envp.get()
+            log.debug('===== lm base init stop: %s', lm_info)
 
-            lm_info = self._init_from_scratch(lm_cfg)
+
+            # store the info in the registry for any other instances of the LM
             self._reg.put('lm.%s' % self.name, lm_info)
 
-        self._info = self._cfg.get('lm_info', {}).get(self.name)
-        log.debug('===== lm base init stop: %s', self._info)
 
 
     # --------------------------------------------------------------------------
