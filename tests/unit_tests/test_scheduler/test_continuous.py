@@ -79,8 +79,8 @@ class TestContinuous(TestCase):
 
         for test_case in self._test_cases:
 
-            # value for `slot['lfs']['path']` is taken from
-            # `self._rm_lfs_per_node['path']` directly
+            # value for `slot['lfs']['path']` is taken
+            # from `self._rm_lfs_per_node['path']` directly
             component._rm_lfs_per_node = {'size': 1024, 'path': '/dev/null'}
 
             td = test_case['task']['description']
