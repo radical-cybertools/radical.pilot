@@ -99,15 +99,15 @@ if __name__ == '__main__':
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
             td = rp.TaskDescription()
-            td.executable     = '/bin/echo'
-            td.arguments      = ['$(cat input.dat)', '%d' % i]
+            td.executable     = '/bin/cat'
+            td.arguments      = ['input.dat']
             td.stdout         = 'STDOUT'
             td.input_staging  = {'source': 'pilot:///input.dat',
                                  'target': 'task:///input.dat',
                                  'action': rp.LINK}
             td.output_staging = {'source': 'task:///STDOUT',
                                  'target': 'pilot:///STDOUT.%06d' % i,
-                                 'action': rp.COPY }
+                                 'action': rp.COPY}
             outs.append('STDOUT.%06d' % i)
             tds.append(td)
             report.progress()
