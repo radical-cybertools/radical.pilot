@@ -71,7 +71,7 @@ class ResourceManager(object):
             raise NotImplementedError('rm.init_from_info')
           # self._init_from_info()
         else:
-            self._log.debug('=== init from scratch')
+            self._log.debug('=== RM init from scratch: %s')
             self._init_from_scratch()
 
 
@@ -167,7 +167,6 @@ class ResourceManager(object):
             try:
                 self._launchers[name] = rpa.LaunchMethod.create(name, lm_cfg,
                                             self._cfg, self._log, self._prof)
-
             except:
                 self._log.exception('skip LM %s' % name)
 

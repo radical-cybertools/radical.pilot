@@ -749,20 +749,12 @@ class ContinuousSummit(AgentSchedulingComponent):
         # used to specify process and thread to core mapping.
         core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
 
-        # We need to specify the node lfs path that the task needs to use.
-        # We set it as an environment variable that gets loaded with td
-        # executable.
-        # Assumption enforced: The LFS path is the same across all nodes.
-        td['environment']['NODE_LFS_PATH'] = self._rm_lfs_per_node['path']
-
         # all the information for placing the task is acquired - return them
         slots = {'nodes': [{'name'    : node_name,
                             'uid'     : node_id,
                             'core_map': core_map,
                             'gpu_map' : gpu_map,
-                            'lfs'     : {'size': lfs,
-                                         'path': self._rm_lfs_per_node['path']
-                                        }
+                            'lfs'     : {'size': lfs}
                            }],
                  'cores_per_node': cores_per_node,
                  'gpus_per_node' : gpus_per_node,
@@ -935,20 +927,11 @@ class ContinuousSummit(AgentSchedulingComponent):
             self._log.debug('found %s cores, %s gpus, %s lfs', cores, gpus, lfs)
             core_map, gpu_map = self._get_node_maps(cores, gpus, threads_per_proc)
 
-            # We need to specify the node lfs path that the task needs to use.
-            # We set it as an environment variable that gets loaded with td
-            # executable.
-            # Assumption enforced: The LFS path is the same across all nodes.
-            lfs_path = self._rm_lfs_per_node['path']
-            if 'NODE_LFS_PATH' not in td['environment']:
-                td['environment']['NODE_LFS_PATH'] = lfs_path
-
             slots['nodes'].append({'name'    : node_name,
                                    'uid'     : node_id,
                                    'core_map': core_map,
                                    'gpu_map' : gpu_map,
-                                   'lfs'     : {'size': lfs,
-                                                'path': lfs_path}})
+                                   'lfs'     : {'size': lfs}})
 
             alloced_cores += len(cores)
             alloced_gpus  += len(gpus)

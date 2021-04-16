@@ -231,11 +231,11 @@ create_prof(){
     cat > ./prof <<EOT
 #!/bin/sh
 
-test -z "\$RP_PROF_TGT" && exit
+test -z "\$RP_PROF" && exit
 
-now=\$($(pwd)/gtod)
-printf "%.7f,\$1,\$RP_SPAWNER_ID,MainThread,\$RP_UNIT_ID,AGENT_EXECUTING,\n" \
-       "\$now" >> "\$RP_PROF_TGT"
+now=\$(\$RP_PILOT_SANDBOX/gtod)
+printf "%.7f,\$1,\$RP_SPAWNER_ID,MainThread,\$RP_UNIT_ID,AGENT_EXECUTING,\\\n" \$now
+    >> "\$RP_TASK_SANDBOX/\$RP_TASK_ID.prof"
 
 EOT
 

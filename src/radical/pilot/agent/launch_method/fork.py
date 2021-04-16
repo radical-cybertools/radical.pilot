@@ -23,10 +23,20 @@ class Fork(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, lm_cfg):
+    def _init_from_scratch(self, lm_cfg, env, env_sh):
 
-        return {'version'       : ru.sh_callout('uname'      )[0].strip(),
-                'version_detail': ru.sh_callout('uname -irno')[0].strip()}
+        lm_info = {'env'   : env,
+                   'env_sh': env_sh}
+
+        return lm_info
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_from_info(self, lm_info, lm_cfg):
+
+        self._env         = lm_info['env']
+        self._env_sh      = lm_info['env_sh']
 
 
     # --------------------------------------------------------------------------
@@ -45,7 +55,6 @@ class Fork(LaunchMethod):
             return False
 
         node = task['slots']['ranks'][0]['node']
-        print('====', node, self.node_name)
         if node not in ['localhost', self.node_name]:
             return False
 
@@ -61,7 +70,7 @@ class Fork(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def get_launch_cmd(self, task, exec_script):
+    def get_launch_cmds(self, task, exec_script):
 
         return exec_script
 

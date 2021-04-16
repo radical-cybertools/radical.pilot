@@ -25,9 +25,11 @@
       # "agent_scheduler"             : "CONTINUOUS_COLO",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                         "order"  : ["FORK", "MPIEXEC"],
-                                         "FORK"   : {},
-                                         "MPIEXEC": {}
+                                      #  "order"  : ["FORK", "MPIEXEC", "MPIRUN"],
+                                         "order"  : ["MPIEXEC", "MPIRUN"],
+                                      #  "FORK"   : {},
+                                         "MPIEXEC": {},
+                                         "MPIRUN" : {}
                                         },
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",

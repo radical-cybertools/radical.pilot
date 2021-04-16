@@ -17,24 +17,21 @@ class MPIRun(LaunchMethod):
     #
     def __init__(self, name, lm_cfg, cfg, log, prof):
 
-        self._mpt      = False
-        self._rsh      = False
-        self._ccmrun   = ''
-        self._dplace   = ''
-        self._finfo    = 'lm/%s.json' % name
+        self._mpt    : bool  = False
+        self._rsh    : bool  = False
+        self._ccmrun : str   = ''
+        self._omplace: str   = ''
+        self._dplace : str   = ''
+        self._command: str   = ''
 
         self._env_orig = ru.env_eval('env/bs0_orig.env')
 
-        log.debug('===== lm MPIRUN init start')
-
         LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
-
-        self._log.debug('===== lm MPIRUN init stop')
 
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_info(self, info=None):
+    def _init_from_scratch(self, lm_cfg, env, env_sh):
         '''
         The RP launch methods are used in different components: the agent will
         use them to spawn sub-agents and components, the resource manager may
@@ -42,145 +39,75 @@ class MPIRun(LaunchMethod):
         components (including Raptor and other task overlays) can use them to
         launch tasks.
 
-        To encourage early failure and to avoid repeated initialization, we
-        expect that relevant information are collected as early as possible and
-        passed as `info` to this method.  This method will then store those data
-        on disk, and once it
+        The first use (likely in `agent.0`) will call this initializer to
+        inspect LM properties.  Later uses will be able to use the information
+        gathered and should re-initialize via `_init_from_info()`, using the
+        info dict returned here.
         '''
 
-        self._log.debug('===== lm MPIRUN init_info start')
+        lm_info = {'env'   : env,
+                   'env_sh': env_sh}
 
-        if info:
-            if os.path.isfile(self._finfo):
-                raise RuntimeError('initialization repeat')
-            ru.write_json(info, self._finfo)
+        lm_info['command'] = ru.which([
+            'mpirun',             # general case
+            'mpirun_rsh',         # Gordon (SDSC)
+            'mpirun_mpt',         # Cheyenne (NCAR)
+            'mpirun-mpich-mp',    # Mac OSX mpich
+            'mpirun-openmpi-mp',  # Mac OSX openmpi
+        ])
 
+        if '_mpt' in self.name.lower():
+            lm_info['mpt'] = True
         else:
-            try:
-                info = ru.read_json(self._finfo)
-            except Exception as e:
-                raise RuntimeError('initialization incomplete') from e
+            lm_info['mpt'] = False
 
-        self._log.debug('===== lm MPIRUN init_info active: %s', info)
+        if '_rsh' in self.name.lower():
+            lm_info['rsh'] = True
+        else:
+            lm_info['rsh'] = False
 
-        self._command     = info['command']
-        self._dplace      = info['dplace']
-        self._ccmrun      = info['ccmrun']
-        self._mpt         = info['mpt']
-        self._rsh         = info['rsh']
-        self._mpi_version = info['mpi_version']
-        self._mpi_flavor  = info['mpi_flavor']
-        self._env_sh      = info['env_sh']
+        lm_info['omplace'] = False
+        # cheyenne always needs mpt and omplace
+        if 'cheyenne' in ru.get_hostname():
+            lm_info['mpt']     = True
+            lm_info['omplace'] = True
 
-        # FIXME ENV: set in several places
-        self._env         = ru.env_eval(self._env_sh)
+        # do we need ccmrun or dplace?
+        lm_info['ccmrun'] = ''
+        if '_ccmrun' in self.name:
+            lm_info['ccmrun'] = ru.which('ccmrun')
+            assert(lm_info['ccmrun'])
 
-        self._log.debug('===== lm MPIRUN init_info stop: %s', self._command)
+        lm_info['dplace'] = ''
+        if '_dplace' in self.name:
+            lm_info['dplace'] = ru.which('dplace')
+            assert(lm_info['dplace'])
 
+        mpi_version, mpi_flavor = self._get_mpi_info(lm_info['command'])
+        lm_info['mpi_version']  = mpi_version
+        lm_info['mpi_flavor']   = mpi_flavor
+
+        self._init_from_info(lm_info, lm_cfg)
+
+        return lm_info
 
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, lm_cfg):
+    def _init_from_info(self, lm_info, lm_cfg):
 
-        self._log.debug('===== lm MPIRUN initialize start')
+        self._env         = lm_info['env']
+        self._env_sh      = lm_info['env_sh']
 
-        command     = None
-        dplace      = ''
-        ccmrun      = ''
-        mpt         = False
-        rsh         = False
-        mpi_version = None
-        mpi_flavor  = None
-        env_sh      = '%s/env/%s.env' % (self._pwd, self.name)
+        self._mpt         = lm_info['mpt']
+        self._rsh         = lm_info['rsh']
+        self._dplace      = lm_info['dplace']
+        self._omplace     = lm_info['omplace']
+        self._ccmrun      = lm_info['ccmrun']
+        self._command     = lm_info['command']
 
-        pre_exec  = lmcfg.get('pre_exec', [])
-        cmds      = lmcfg.get('cmds',     [])
-
-        # set up LM environment: first recreate the agent's original env, then
-        # apply the launch method's env_prep commands.  Store the resulting env
-        # in `env/lm_<name>.env`
-        self._env = ru.env_prep(self._env_orig, pre_exec=pre_exec,
-                                cmds=cmds, script_path=env_sh)
-
-        # find the path to the launch method executable, so that we can derive
-        # launcher version and flavor
-
-        if '_rsh' in self.name.lower():
-            # mpirun_rsh : Gordon (SDSC)
-            # mpirun     : general case
-            rsh = True
-            cmd = 'which mpirun_rsh || ' \
-                   'which mpirun'
-            out, err, ret = ru.sh_callout(cmd, shell=True, env=self._env)
-            assert(not ret), err
-            command = out.strip()
-
-
-        elif '_mpt' in self.name.lower():
-            # mpirun_mpt: Cheyenne (NCAR)
-            # mpirun    : general case
-            mpt = True
-            cmd = 'which mpirun_mpt || ' \
-                   'which mpirun'
-            out, err, ret = ru.sh_callout(cmd, shell=True, env=self._env)
-            assert(not ret), err
-            command = out.strip()
-
-        else:
-            # mpirun-mpich-mp  : Mac OSX mpich
-            # mpirun-openmpi-mp: Mac OSX openmpi
-            # mpirun           : general case
-            cmd = 'which mpirun-mpich-mp   || ' \
-                  'which mpirun-openmpi-mp || ' \
-                  'which mpirun'
-            out, err, ret = ru.sh_callout(cmd, shell=True, env=self._env)
-            command = out.strip()
-
-        # cheyenne is special: it needs MPT behavior (no -host) even for the
-        # default mpirun (not mpirun_mpt).
-        if 'cheyenne' in self._cfg.resource.lower():
-            mpt = True
-
-        # which will return the first match in path - dispense of the path part
-        if command:
-            command = os.path.basename(command)
-
-        # do we need ccmrun or dplace?
-        if '_ccmrun' in self.name:
-            out, err, ret = ru.sh_callout('which ccmrun', shell=True,
-                                                          env=self._env)
-            ccmrun = out.strip()
-            if not ccmrun:
-                raise RuntimeError("ccmrun not found!")
-            command = '%s %s' % (ccmrun, command)
-
-        if '_dplace' in self.name:
-            out, err, ret = ru.sh_callout('which dplace', shell=True,
-                                                          env=self._env)
-            dplace = out.strip()
-            if not dplace:
-                raise RuntimeError("dplace not found!")
-
-        mpi_version, mpi_flavor = self._get_mpi_info(command)
-
-        # the returned lm_info contains sufficient information to create new,
-        # functional instances of this LM without new initialization
-        info = {
-                   'command'    : command,
-                   'dplace'     : dplace,
-                   'ccmrun'     : ccmrun,
-                   'mpt'        : mpt,
-                   'rsh'        : rsh,
-                   'mpi_version': mpi_version,
-                   'mpi_flavor' : mpi_flavor,
-                   'env_sh'     : env_sh
-               }
-
-        self._init_from_info(info)
-
-        self._log.debug('===== lm MPIRUN initialize stop: %s', self._info)
-        return self._info
+        self._mpi_version = lm_info['mpi_version']
+        self._mpi_flavor  = lm_info['mpi_flavor']
 
 
     # --------------------------------------------------------------------------
@@ -200,11 +127,12 @@ class MPIRun(LaunchMethod):
         return False
 
 
+
     # --------------------------------------------------------------------------
     #
     def get_launcher_env(self):
 
-        return ['. %s' % self._env_sh]
+        return ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
 
 
     # --------------------------------------------------------------------------
@@ -233,7 +161,7 @@ class MPIRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def get_launch_cmd(self, task, exec_script):
+    def get_launch_cmds(self, task, exec_script):
 
         slots        = task['slots']
         uid          = task['uid']
@@ -297,9 +225,9 @@ class MPIRun(LaunchMethod):
         if self._mpt: np = 1
         else        : np = len(host_list)
 
-        command = ("%s %s -np %d %s %s %s" %
-                   (self._command, mpt_hosts_string, np, self._dplace,
-                                   hosts_string, exec_script))
+        command = ("%s %s %s -np %d %s %s %s %s" %
+                   (self._ccmrun, self._command, mpt_hosts_string, np,
+                    self._dplace, self._omplace, hosts_string, exec_script))
 
         return command
 

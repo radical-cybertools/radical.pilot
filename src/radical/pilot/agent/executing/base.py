@@ -90,8 +90,6 @@ class AgentExecutingComponent(rpu.Component):
 
         self._log.debug('===== exec base initialize')
 
-        self._pwd = os.getcwd()
-
         # The AgentExecutingComponent needs LaunchMethods to construct
         # commands.
         self._launchers    = dict()
@@ -121,13 +119,25 @@ class AgentExecutingComponent(rpu.Component):
         if not self._launch_order:
             self._launch_order = list(self._cfg.resource_cfg.launchers.keys())
 
-        self.gtod = '%s/gtod' % self._pwd
-        self.prof = '%s/prof' % self._pwd
+        self._pwd      = os.path.realpath(os.getcwd())
+        self.sid       = self._cfg['sid']
+        self.lfs       = self._cfg['rm_info']['lfs_per_node']['path']
+        self.resource  = self._cfg['resource']
+        self.rsbox     = self._cfg['resource_sandbox']
+        self.ssbox     = self._cfg['session_sandbox']
+        self.psbox     = self._cfg['pilot_sandbox']
+        self.gtod      = '$RP_PILOT_SANDBOX/gtod'
+        self.prof      = '$RP_PILOT_SANDBOX/prof'
 
-        self._log.debug('===== exec register work start')
+        if self.psbox.startswith(self.ssbox):
+            self.psbox = '$RP_SESSION_SANDBOX%s'  % self.psbox[len(self.ssbox):]
+        if self.ssbox.startswith(self.rsbox):
+            self.ssbox = '$RP_RESOURCE_SANDBOX%s' % self.ssbox[len(self.rsbox):]
+        if self.ssbox.endswith(self.sid):
+            self.ssbox = '%s$RP_SESSION_ID/'      % self.ssbox[:-len(self.sid)]
+
         self.register_input(rps.AGENT_EXECUTING_PENDING,
                             rpc.AGENT_EXECUTING_QUEUE, self.work)
-        self._log.debug('===== exec register work stop')
 
         self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
                              rpc.AGENT_STAGING_OUTPUT_QUEUE)

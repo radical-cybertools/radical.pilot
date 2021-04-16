@@ -909,10 +909,6 @@ class AgentSchedulingComponent(rpu.Component):
         self._change_slot_states(slots, rpc.BUSY)
         task['slots'] = slots
 
-        if slots['lfs_per_node']['path']:
-            task['description']['environment']['NODE_LFS_PATH'] = \
-                slots['lfs_per_node']['path']
-
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=uid)
 

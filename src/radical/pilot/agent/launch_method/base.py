@@ -75,7 +75,6 @@ class LaunchMethod(object):
 
         if lm_info:
             # we found data in the registry and use it to (re)initialize the LM
-            self._log.debug('=== init from info: %s', lm_info)
             self._init_from_info(lm_info, lm_cfg)
 
         else:
@@ -83,24 +82,21 @@ class LaunchMethod(object):
             # The registry does not yet contain any info for this LM - we need
             # to initialize the LM from scratch.  That happens in the env
             # defined by lm_cfg (derived from the original bs0 env)
-            self._log.debug('=== init from scratch')
             env_orig = ru.env_eval('env/bs0_orig.env')
+            env_sh   = 'env/lm_%s.sh' % self.name.lower()
             env_lm   = ru.env_prep(environment=env_orig,
                           pre_exec=lm_cfg.get('pre_exec'),
                           pre_exec_cached=lm_cfg.get('pre_exec_cached'),
-                          script_path=('env/lm_%s.sh' % self.name.lower()))
+                          script_path=(env_sh))
 
             # run init_from_scratch in a process under that derived env
             envp = ru.EnvProcess(env=env_lm)
             with envp:
-                envp.put(self._init_from_scratch(lm_cfg))
+                envp.put(self._init_from_scratch(lm_cfg, env_lm, env_sh))
             lm_info = envp.get()
-            log.debug('===== lm base init stop: %s', lm_info)
-
 
             # store the info in the registry for any other instances of the LM
             self._reg.put('lm.%s' % self.name, lm_info)
-
 
 
     # --------------------------------------------------------------------------
@@ -172,29 +168,23 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, lm_cfg):
+    def _init_from_scratch(self, lm_cfg, env_lm, env_sh):
 
-        self._log.debug('==== empty init from scratch for %s', self.name)
-
-      # raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
 
     # --------------------------------------------------------------------------
     #
     def _init_from_info(self, lm_info, lm_cfg):
 
-        self._log.debug('==== empty init from info for %s', self.name)
-
-      # raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
 
     # --------------------------------------------------------------------------
     #
     def finalize(self):
 
-        self._log.debug('==== empty finalize for %s', self.name)
-
-      # raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
 
     # --------------------------------------------------------------------------
@@ -213,7 +203,7 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_launch_cmd(self):
+    def get_launch_cmds(self):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 

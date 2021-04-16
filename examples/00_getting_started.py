@@ -84,6 +84,7 @@ if __name__ == '__main__':
             td = rp.TaskDescription()
             td.executable    = '/bin/date'
             td.cpu_processes = 1
+            td.cpu_process_type = rp.MPI
             tds.append(td)
             report.progress()
 

@@ -237,7 +237,7 @@ class Popen(AgentExecutingComponent) :
 
             fout.write(self._separator)
             fout.write('# change to task sandbox\n')
-            fout.write('cd %s\n' % sbox)
+            fout.write('cd $RP_TASK_SANDBOX\n')
 
             fout.write(self._separator)
             fout.write('# prepare launcher env\n')
@@ -251,7 +251,7 @@ class Popen(AgentExecutingComponent) :
             fout.write(self._separator)
             fout.write('# launch commands\n')
             fout.write(self._get_prof('launch_submit', tid))
-            fout.write('%s\n' % self._get_launch_cmd(task, launcher, exec_script))
+            fout.write('%s\n' % self._get_launch_cmds(task, launcher, exec_script))
             fout.write('RP_RET=$?\n')
             fout.write(self._get_prof('launch_collect', tid))
 
@@ -283,6 +283,7 @@ class Popen(AgentExecutingComponent) :
             fout.write(self._separator)
             fout.write('# task environment\n')
             fout.write(self._get_rp_env(task))
+            fout.write('\n')
             fout.write(self._get_task_env(task, launcher))
 
             fout.write(self._separator)
@@ -306,9 +307,7 @@ class Popen(AgentExecutingComponent) :
                     fout.write('        ;;\n')
                 fout.write('esac\n\n')
 
-                fout.write('# sync ranks after pre-rank commands\n')
-                fout.write('echo $RP_RANK >> %s.sig\n\n' % 'pre_rank')
-                fout.write(self._get_rank_sync('pre_rank'))
+                fout.write(self._get_rank_sync('pre_rank', n_ranks))
 
             fout.write(self._separator)
             fout.write('# execute ranks\n')
@@ -329,9 +328,7 @@ class Popen(AgentExecutingComponent) :
             if post_rank:
                 fout.write(self._separator)
                 fout.write(self._get_prof('rank_post', tid))
-                fout.write('# sync ranks before post-rank commands\n')
-                fout.write('echo $RP_RANK >> %s.sig\n\n' % 'post_rank')
-                fout.write(self._get_rank_sync('post_rank'))
+                fout.write(self._get_rank_sync('post_rank', n_ranks))
 
                 fout.write('\n# post-rank commands\n')
                 fout.write('case "$RP_RANK" in\n')
@@ -541,6 +538,12 @@ class Popen(AgentExecutingComponent) :
 
 
     # --------------------------------------------------------------------------
+    def _get_check(self, event):
+
+        return ' \\\n        || (echo "%s failed"; false) || exit 1\n' % event
+
+
+    # --------------------------------------------------------------------------
     #
     # launcher
     #
@@ -558,8 +561,7 @@ class Popen(AgentExecutingComponent) :
         ret  = ''
         cmds = launcher.get_launcher_env()
         for cmd in cmds:
-            ret += '%s || (echo "launcher env failed"; false) || exit 1\n' \
-                   % cmd
+            ret += '%s %s' % (cmd, self._get_check('launcher env'))
         return ret
 
 
@@ -570,21 +572,20 @@ class Popen(AgentExecutingComponent) :
         ret  = ''
         cmds = task['description']['pre_launch']
         for cmd in cmds:
-            ret += '%s || (echo "pre_launch failed"; false) || exit 1\n' \
-                   % cmd
+            ret += '%s %s' % (cmd, self._get_check('pre_launch failed'))
 
         return ret
 
 
     # --------------------------------------------------------------------------
     #
-    def _get_launch_cmd(self, task, launcher, exec_script):
+    def _get_launch_cmds(self, task, launcher, exec_script):
 
-        ret = launcher.get_launch_cmd(task, exec_script)
 
-        # `./` is usually not in `$PATH`
-        if ret[0] != '/':
-            ret = './' + ret
+        ret  = ''
+        cmds = ru.as_list(launcher.get_launch_cmds(task, exec_script))
+        for cmd in cmds:
+            ret += '%s %s' % (cmd,  self._get_check('launch failed'))
 
         return ret
 
@@ -596,7 +597,7 @@ class Popen(AgentExecutingComponent) :
         ret  = ''
         cmds = task['description']['post_launch']
         for cmd in cmds:
-            ret += '%s || (echo "post_launch failed"; false) || exit 1\n' % cmd
+            ret += '%s %s' % (cmd, self._get_check('post_launch failed'))
 
         return ret
 
@@ -608,29 +609,34 @@ class Popen(AgentExecutingComponent) :
 
         tid  = task['uid']
         name = task['name'] or tid
-        sbox = task['task_sandbox_path']
+        sbox = os.path.realpath(task['task_sandbox_path'])
+
+        if sbox.startswith(self._pwd):
+            sbox = '$RP_PILOT_SANDBOX%s' % sbox[len(self._pwd):]
 
         ret  = ''
-        ret += 'export RP_SESSION_ID="%s"\n'    % self._cfg['sid']
-        ret += 'export RP_PILOT_ID="%s"\n'      % self._cfg['pid']
-        ret += 'export RP_AGENT_ID="%s"\n'      % self._cfg['aid']
-        ret += 'export RP_SPAWNER_ID="%s"\n'    % self.uid
-        ret += 'export RP_TASK_ID="%s"\n'       % tid
-        ret += 'export RP_TASK_NAME="%s"\n'     % name
-        ret += 'export RP_PILOT_SANDBOX="%s"\n' % self._pwd
-      # ret += 'export RP_TMP="%s"\n'           % self._tmp
-        ret += 'export RP_GTOD="%s"\n'          % self.gtod
-        ret += 'export RP_PROF="%s"\n'          % self.prof
+        ret += 'export RP_TASK_ID="%s"\n'          % tid
+        ret += 'export RP_TASK_NAME="%s"\n'        % name
+        ret += 'export RP_PILOT_ID="%s"\n'         % self._cfg['pid']
+        ret += 'export RP_SESSION_ID="%s"\n'       % self.sid
+        ret += 'export RP_RESOURCE="%s"\n'         % self.resource
+        ret += 'export RP_RESOURCE_SANDBOX="%s"\n' % self.rsbox
+        ret += 'export RP_SESSION_SANDBOX="%s"\n'  % self.ssbox
+        ret += 'export RP_PILOT_SANDBOX="%s"\n'    % self.psbox
+        ret += 'export RP_TASK_SANDBOX="%s"\n'     % sbox
+        ret += 'export RP_LFS="%s"\n'              % self.lfs
+        ret += 'export RP_GTOD="$RP_PILOT_SANDBOX/gtod"\n'
 
         if self._prof.enabled:
-            ret += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sbox, tid)
+            ret += 'export RP_PROF="$RP_PILOT_SANDBOX/prof"\n'
         else:
-            ret += 'unset  RP_PROF_TGT\n'
+            ret += 'unset  RP_PROF\n'
 
         if 'RP_APP_TUNNEL' in os.environ:
             ret += 'export RP_APP_TUNNEL="%s"\n' \
                     % os.environ['RP_APP_TUNNEL']
 
+        ret += '\n'
         return ret
 
 
@@ -664,8 +670,7 @@ class Popen(AgentExecutingComponent) :
 
         cmds = task['description']['pre_exec']
         for cmd in cmds:
-            ret += '%s || (echo "pre_exec failed"; false) || exit 1\n' \
-                   % cmd
+            ret += '%s %s' % (cmd, self._get_check('pre_exec failed'))
 
         return ret
 
@@ -688,8 +693,7 @@ class Popen(AgentExecutingComponent) :
         ret  = ''
         cmds = task['description']['post_exec']
         for cmd in cmds:
-            ret += '%s || (echo "post_exec failed"; false) || exit 1\n' \
-                   % cmd
+            ret += '%s %s' % (cmd, self._get_check('post_exec failed'))
 
         return ret
 
@@ -710,12 +714,19 @@ class Popen(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_rank_sync(self, sig):
+    def _get_rank_sync(self, sig, ranks):
+
+        # FIXME: only sync if LM needs it (`if lm._ranks_need_sync`)
+
+        if ranks == 1:
+            return ''
 
         # FIXME: make sure that all ranks are alive
-        ret  = 'while test $(cat %s.sig | wc -l) -lt $RP_RANKS; do\n' % sig
+        ret  = '# sync ranks before %s commands\n' % sig
+        ret += 'echo $RP_RANK >> %s.sig\n\n' % sig
+        ret += 'while test $(cat %s.sig | wc -l) -lt $RP_RANKS; do\n' % sig
         ret += '    sleep 1\n'
-        ret += 'done\n'
+        ret += 'done\n\n'
 
         return ret
 
@@ -753,8 +764,7 @@ class Popen(AgentExecutingComponent) :
 
         ret = ''
         for cmd in cmds:
-            ret += '        %s || (echo "post_rank failed"; false) || exit 1\n' \
-                   % cmd
+            ret += '        %s %s' % (cmd, self._get_check('post_rank failed'))
 
         return ret
 
