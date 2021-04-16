@@ -222,8 +222,9 @@ class Popen(AgentExecutingComponent) :
 
         self._log.debug('Launching task with %s', launcher.name)
 
-        launch_script = '%s.launch.sh' % tid
-        exec_script   = '%s.exec.sh'   % tid
+        launch_script = '%s.launch.sh'        % tid
+        exec_script   = '%s.exec.sh'          % tid
+        exec_path     = '$RP_TASK_SANDBOX/%s' % exec_script
 
         ru.rec_makedir(sbox)
 
@@ -232,7 +233,6 @@ class Popen(AgentExecutingComponent) :
             fout.write(self._header)
             fout.write(self._separator)
             fout.write(self._get_rp_env(task))
-            fout.write('\n')
             fout.write(self._get_prof('launch_start', tid))
 
             fout.write(self._separator)
@@ -251,7 +251,7 @@ class Popen(AgentExecutingComponent) :
             fout.write(self._separator)
             fout.write('# launch commands\n')
             fout.write(self._get_prof('launch_submit', tid))
-            fout.write('%s\n' % self._get_launch_cmds(task, launcher, exec_script))
+            fout.write('%s\n' % self._get_launch_cmds(task, launcher, exec_path))
             fout.write('RP_RET=$?\n')
             fout.write(self._get_prof('launch_collect', tid))
 
@@ -283,7 +283,6 @@ class Popen(AgentExecutingComponent) :
             fout.write(self._separator)
             fout.write('# task environment\n')
             fout.write(self._get_rp_env(task))
-            fout.write('\n')
             fout.write(self._get_task_env(task, launcher))
 
             fout.write(self._separator)
@@ -540,7 +539,7 @@ class Popen(AgentExecutingComponent) :
     # --------------------------------------------------------------------------
     def _get_check(self, event):
 
-        return ' \\\n        || (echo "%s failed"; false) || exit 1\n' % event
+        return '\\\n        || (echo "%s failed"; false) || exit 1\n' % event
 
 
     # --------------------------------------------------------------------------
@@ -579,11 +578,11 @@ class Popen(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_launch_cmds(self, task, launcher, exec_script):
+    def _get_launch_cmds(self, task, launcher, exec_path):
 
 
         ret  = ''
-        cmds = ru.as_list(launcher.get_launch_cmds(task, exec_script))
+        cmds = ru.as_list(launcher.get_launch_cmds(task, exec_path))
         for cmd in cmds:
             ret += '%s %s' % (cmd,  self._get_check('launch failed'))
 
@@ -636,7 +635,6 @@ class Popen(AgentExecutingComponent) :
             ret += 'export RP_APP_TUNNEL="%s"\n' \
                     % os.environ['RP_APP_TUNNEL']
 
-        ret += '\n'
         return ret
 
 

@@ -70,9 +70,9 @@ class Fork(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def get_launch_cmds(self, task, exec_script):
+    def get_launch_cmds(self, task, exec_path):
 
-        return exec_script
+        return exec_path
 
 
     # --------------------------------------------------------------------------

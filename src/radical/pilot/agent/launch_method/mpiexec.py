@@ -151,7 +151,7 @@ class MPIExec(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def get_launch_cmds(self, task, exec_script):
+    def get_launch_cmds(self, task, exec_path):
 
         slots = task['slots']
 
@@ -194,7 +194,7 @@ class MPIExec(LaunchMethod):
         omplace = ''
         if self._omplace:
             omplace = 'omplace'
-        command_stub = "%s %%s %s %s" % (self._command, omplace, exec_script)
+        command_stub = "%s %%s %s %s" % (self._command, omplace, exec_path)
 
         # cluster hosts by number of slots
         host_string = ''
@@ -235,7 +235,7 @@ class MPIExec(LaunchMethod):
         else:
             ret = command
 
-        return command
+        return command.strip()
 
 
     # --------------------------------------------------------------------------

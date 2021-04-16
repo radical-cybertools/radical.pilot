@@ -66,11 +66,11 @@ class MPIRun(LaunchMethod):
         else:
             lm_info['rsh'] = False
 
-        lm_info['omplace'] = False
+        lm_info['omplace'] = ''
         # cheyenne always needs mpt and omplace
         if 'cheyenne' in ru.get_hostname():
+            lm_info['omplace'] = ru.which('omplace')
             lm_info['mpt']     = True
-            lm_info['omplace'] = True
 
         # do we need ccmrun or dplace?
         lm_info['ccmrun'] = ''
@@ -161,7 +161,7 @@ class MPIRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def get_launch_cmds(self, task, exec_script):
+    def get_launch_cmds(self, task, exec_path):
 
         slots        = task['slots']
         uid          = task['uid']
@@ -227,9 +227,9 @@ class MPIRun(LaunchMethod):
 
         command = ("%s %s %s -np %d %s %s %s %s" %
                    (self._ccmrun, self._command, mpt_hosts_string, np,
-                    self._dplace, self._omplace, hosts_string, exec_script))
+                    self._dplace, self._omplace, hosts_string, exec_path))
 
-        return command
+        return command.strip()
 
 
     # --------------------------------------------------------------------------

@@ -26,7 +26,7 @@
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
                                       #  "order"  : ["FORK", "MPIEXEC", "MPIRUN"],
-                                         "order"  : ["MPIEXEC", "MPIRUN"],
+                                         "order"  : ["MPIRUN"],
                                       #  "FORK"   : {},
                                          "MPIEXEC": {},
                                          "MPIRUN" : {}
