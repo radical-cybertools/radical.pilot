@@ -388,11 +388,8 @@ class Popen(AgentExecutingComponent) :
         task['stdout'] = ''
         task['stderr'] = ''
 
-        task['stdout_file'] = os.path.join(sbox, stdout_file)
-        task['stderr_file'] = os.path.join(sbox, stderr_file)
-
-        _stdout_file_h = open(task['stdout_file'], 'a')
-        _stderr_file_h = open(task['stderr_file'], 'a')
+        _stdout_file_h = open(stdout_file, 'a')
+        _stderr_file_h = open(stderr_file, 'a')
 
         self._log.info('Launching task %s via %s in %s', tid, cmdline, sbox)
 
