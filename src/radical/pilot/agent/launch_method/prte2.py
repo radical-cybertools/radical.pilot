@@ -363,6 +363,12 @@ class PRTE2(LaunchMethod):
         if task_args_str:
             task_exec += ' %s' % task_args_str
 
+        if td.get('gpu_processes'):
+            # input data is edited here to keep PRUN setup within LM
+            td['environment'] \
+                ['PMIX_MCA_pmdl_ompi5_include_envars'] = 'OMPI_*,CUDA_*'
+            flags += ' --personality ompi'
+
         cmd = '%s %s %s %s' % (self.launch_command, dvm_uri, flags, task_exec)
 
         return cmd, None
