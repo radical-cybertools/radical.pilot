@@ -268,8 +268,8 @@ prof(){
 
             # also add any env vars requested in the task description
             if descr['environment']:
-                for key,val in descr['environment'].items():
-                    env_string += 'export "%s=%s"\n' % (key, val)
+                for key, val in descr['environment'].items():
+                    env_string += 'export %s="%s"\n' % (key, val)
 
             launch_script.write('\n# Environment variables\n%s\n' % env_string)
             launch_script.write('prof task_start\n')
