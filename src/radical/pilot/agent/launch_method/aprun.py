@@ -15,36 +15,102 @@ ARG_MAX = 4096
 
 # ------------------------------------------------------------------------------
 #
+# aprun: job launcher for Cray systems (alps-run)
+# TODO : ensure that only one concurrent aprun per node is executed!
+#
 class APRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, lm_cfg, cfg, session, prof):
+    def __init__(self, name, lm_cfg, cfg, log, prof):
 
-        LaunchMethod.__init__(self, name, lm_cfg, cfg, session, prof)
+        self._command: str   = ''
 
+        self._env_orig = ru.env_eval('env/bs0_orig.env')
 
-    # --------------------------------------------------------------------------
-    #
-    def _configure(self):
-        # aprun: job launcher for Cray systems
-        self.launch_command = ru.which('aprun')
-
-        # TODO: ensure that only one concurrent aprun per node is executed!
+        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
 
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, t, launch_script_hop):
+    def _init_from_scratch(self, lm_cfg, env, env_sh):
 
-        td        = t['description']
-        slots      = t['slots']
+        lm_info = {'env'    : env,
+                   'env_sh' : env_sh,
+                   'command': ru.which('aprun')}
+
+        self._init_from_info(lm_info, lm_cfg)
+
+        return lm_info
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_from_info(self, lm_info, lm_cfg):
+
+        self._env         = lm_info['env']
+        self._env_sh      = lm_info['env_sh']
+        self._command     = lm_info['command']
+
+        self._mpi_version = lm_info['mpi_version']
+        self._mpi_flavor  = lm_info['mpi_flavor']
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def can_launch(self, task):
+
+        # aprun can launch any executable
+        if task['description']['executable']:
+            return True
+        return False
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launcher_env(self):
+
+        return ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_task_env(self, spec):
+
+        name = spec['name']
+        cmds = spec['cmds']
+
+        # we assume that the launcher env is still active in the task execution
+        # script.  We thus remove the launcher env from the task env before
+        # applying the task env's pre_exec commands
+        tgt = '%s/env/%s.env' % (self._pwd, name)
+        self._log.debug('=== tgt : %s', tgt)
+
+        if not os.path.isfile(tgt):
+
+            # the env does not yet exists - create
+            ru.env_prep(self._env_orig,
+                        unset=self._env,
+                        pre_exec=cmds,
+                        script_path=tgt)
+
+        return tgt
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launch_cmds(self, task, exec_path):
+
+        td         = task['description']
+        slots      = task['slots']
         executable = td['executable']
-        args       = td['arguments']
-        argstr     = self._create_arg_string(args)
-
-        if argstr: cmd = "%s %s" % (executable, argstr)
-        else     : cmd = executable
 
         # we get something like the following from the scheduler:
         #
@@ -139,11 +205,8 @@ class APRun(LaunchMethod):
                                   'gpu' : list()}
 
             # add all cpu and gpu process slots to the node list.
-            for cpu_slot in rank['core_map']: nodes[node_id]['cpu'].append(cpu_slot)
-
-
-        self._log.debug('aprun slots: %s', pprint.pformat(slots))
-        self._log.debug('      nodes: %s', pprint.pformat(nodes))
+            for cpu_slot in rank['core_map']:
+                nodes[node_id]['cpu'].append(cpu_slot)
 
         # create a node_spec for each node, which contains the aprun options for
         # that node to start the number of application processes on the given
@@ -153,9 +216,6 @@ class APRun(LaunchMethod):
 
             cpu_slots = nodes[node_id]['cpu']
             gpu_slots = nodes[node_id]['gpu']
-
-            self._log.debug('cpu_slots: %s', pprint.pformat(cpu_slots))
-            self._log.debug('gpu_slots: %s', pprint.pformat(gpu_slots))
 
             assert(cpu_slots)
 
@@ -198,7 +258,7 @@ class APRun(LaunchMethod):
 
         # Now that we have the node specs, and also know what nodes to apply
         # them to, we can construct the aprun command:
-        aprun_command = self.launch_command
+        ret = self._command
         for node_spec,info in list(node_specs.items()):
 
             # nprocs must be uniform
@@ -206,15 +266,40 @@ class APRun(LaunchMethod):
             nprocs      = nprocs_list[0]
             assert(len(nprocs_list) == 1), nprocs_list
 
-            aprun_command += ' -n %d -N %s -L %s %s %s :' % \
+            ret += ' -n %d -N %s -L %s %s %s :' % \
                              (nprocs * len(info['nodes']), nprocs,
-                              ','.join(info['nodes']), node_spec, cmd)
+                              ','.join(info['nodes']), node_spec, exec_path)
 
         # remove trailing colon from above
-        aprun_command = aprun_command[:-1]
-        self._log.debug('aprun cmd: %s', aprun_command)
+        ret = ret[:-1]
+        self._log.debug('aprun cmd: %s', ret)
 
-        return aprun_command, None
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_cmd(self):
+
+        # FIXME: do we have an APLS_RANK?
+
+        ret  = 'test -z "$MPI_RANK"  || export RP_RANK=$MPI_RANK\n'
+        ret += 'test -z "$PMIX_RANK" || export RP_RANK=$PMIX_RANK\n'
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_exec(self, task, rank_id, rank):
+
+        td           = task['description']
+        task_exec    = td['executable']
+        task_args    = td['arguments']
+        task_argstr  = self._create_arg_string(task_args)
+        command      = "%s %s" % (task_exec, task_argstr)
+
+        return command.rstrip()
 
 
 # ------------------------------------------------------------------------------

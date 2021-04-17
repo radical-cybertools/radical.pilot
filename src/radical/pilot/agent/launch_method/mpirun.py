@@ -121,11 +121,10 @@ class MPIRun(LaunchMethod):
     #
     def can_launch(self, task):
 
-        if task['description']['cpu_process_type'] == 'MPI':
+        # mpirun can launch any executable
+        if task['description']['executable']:
             return True
-
         return False
-
 
 
     # --------------------------------------------------------------------------
@@ -225,11 +224,11 @@ class MPIRun(LaunchMethod):
         if self._mpt: np = 1
         else        : np = len(host_list)
 
-        command = ("%s %s %s -np %d %s %s %s %s" %
-                   (self._ccmrun, self._command, mpt_hosts_string, np,
-                    self._dplace, self._omplace, hosts_string, exec_path))
+        ret = "%s %s %s -np %d %s %s %s %s" \
+                % (self._ccmrun, self._command, mpt_hosts_string, np,
+                   self._dplace, self._omplace, hosts_string, exec_path)
 
-        return command.strip()
+        return ret.strip()
 
 
     # --------------------------------------------------------------------------

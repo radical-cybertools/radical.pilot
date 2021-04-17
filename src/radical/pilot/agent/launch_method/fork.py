@@ -35,8 +35,8 @@ class Fork(LaunchMethod):
     #
     def _init_from_info(self, lm_info, lm_cfg):
 
-        self._env         = lm_info['env']
-        self._env_sh      = lm_info['env_sh']
+        self._env    = lm_info['env']
+        self._env_sh = lm_info['env_sh']
 
 
     # --------------------------------------------------------------------------
