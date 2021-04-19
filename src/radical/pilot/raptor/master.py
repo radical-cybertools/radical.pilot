@@ -8,6 +8,7 @@ import json
 import threading         as mt
 
 import radical.utils     as ru
+from radical.utils.profile import combine_profiles
 
 from .. import Session, TaskDescription
 from .. import utils     as rpu
@@ -50,6 +51,9 @@ class Master(rpu.Component):
         self._session  = Session(cfg=cfg, uid=cfg.sid, _primary=False)
         cfg            = self._get_config(cfg)
 
+        self._req_cbs  = list()  # cb invoked for incoming requests
+        self._res_cbs  = list()  # cb invoked for completed requests
+
         rpu.Component.__init__(self, cfg, self._session)
 
         self.register_publisher(rpc.STATE_PUBSUB)
@@ -78,7 +82,7 @@ class Master(rpu.Component):
         # begin to receive tasks in that queue
         self._input_getter = ru.zmq.Getter(qname,
                                       self._input_queue.addr_get,
-                                      cb=self._receive_tasks)
+                                      cb=self._request_cb)
 
         # and register that input queue with the scheduler
         self.publish(rpc.CONTROL_PUBSUB,
@@ -173,6 +177,20 @@ class Master(rpu.Component):
     @property
     def workers(self):
         return self._workers
+
+
+    # --------------------------------------------------------------------------
+    #
+    def register_req_cb(self, cb):
+
+        self._req_cbs.append(cb)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def register_res_cb(self, cb):
+
+        self._res_cbs.append(cb)
 
 
     # --------------------------------------------------------------------------
@@ -423,24 +441,6 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _receive_tasks(self, tasks):
-
-        requests = list()
-        for task in ru.as_list(tasks):
-
-            # FIXME: abuse of arguments
-            req = json.loads(task['description']['arguments'][0])
-            req['is_task'] = True
-            req['uid']     = task['uid']
-            req['task']    = task  # this duplicates the request :-/
-
-            requests.append(req)
-
-        self.request(requests)
-
-
-    # --------------------------------------------------------------------------
-    #
     def request(self, reqs):
         '''
         submit a list of work request (function call spec) to the request queue
@@ -468,12 +468,28 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def result_cb(self, requests):
-        '''
-        this method can be overloaded by the deriving class
-        '''
+    def _request_cb(self, tasks):
 
-        pass
+        requests = list()
+        for task in ru.as_list(tasks):
+
+            # FIXME: abuse of arguments
+            req = json.loads(task['description']['arguments'][0])
+            req['is_task'] = True
+            req['uid']     = task['uid']
+            req['task']    = task  # this duplicates the request :-/
+
+            for cb in self._req_cbs:
+                try:
+                    req = cb(req)
+                except:
+                    self._log.exception('request cb failed')
+
+            if req :
+                requests.append(req)
+
+        if requests:
+            self.request(requests)
 
 
     # --------------------------------------------------------------------------
@@ -486,14 +502,14 @@ class Master(rpu.Component):
         err = msg['err']
         ret = msg['ret']
 
-        try:
-            req = self._requests[uid]
-            req.set_result(out, err, ret)
+        req = self._requests[uid]
+        req.set_result(out, err, ret)
 
-            self.result_cb([req])
-
-        except:
-            self._log.exception('result callback failed')
+        for cb in self._res_cbs:
+            try:
+                cb(req)
+            except:
+                self._log.exception('result callback failed')
 
         # if the request is a task, also push it into the output queue
         if req.task:
