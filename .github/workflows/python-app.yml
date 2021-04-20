@@ -10,8 +10,8 @@ on:
     branches: [ devel ]
 
 jobs:
-  test:
 
+  test:
     runs-on: ubuntu-latest
     services:
       mongodb:
@@ -19,7 +19,6 @@ jobs:
         ports:
         # will assign a random free host port
         - 27017/tcp
-
     steps:
     - uses: actions/checkout@v2
       with:
@@ -45,13 +44,15 @@ jobs:
         # If we were running the job on in a container this would be mongodb
         MONGODB_HOST: localhost
         MONGODB_PORT: ${{ job.services.mongodb.ports[27017] }} # get randomly assigned published port
-        RADILCAL_PILOT_DBURL:  mongodb://localhost:${{ job.services.mongodb.ports[27017] }}/test
-        LOC: ./testenv/lib/python3.6/site-packages
+        RADICAL_PILOT_DBURL:  mongodb://localhost:${{ job.services.mongodb.ports[27017] }}/test
       run: |
         . testenv/bin/activate
-        coverage run --include=$LOC/radical/pilot/* -m pytest -ra --timeout=600 -vvv --showlocals tests/unit_tests/ tests/component_tests/
+        coverage run --source=radical.pilot -m pytest -ra --timeout=600 -vvv --showlocals tests/unit_tests/ tests/component_tests/
+        coverage xml
     - name: Codecov
       uses: codecov/codecov-action@v1
+      with:
+        file: ./coverage.xml
 
   flake8:
     runs-on: ubuntu-latest
