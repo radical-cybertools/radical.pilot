@@ -10,6 +10,3 @@ coverage:
 
 github_checks:
   annotations: false
-
-fixes:
-  - "*/site-packages/radical/pilot/::src/radical/pilot/"
