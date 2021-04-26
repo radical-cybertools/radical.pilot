@@ -623,9 +623,9 @@ class Worker(rpu.Component):
                 os.environ['CUDA_VISIBLE_DEVICES'] = \
                              ','.join(str(i) for i in task['resources']['gpus'])
 
-            out, err, ret = self._modes[mode](task.get('data'))
+            out, err, ret, val = self._modes[mode](task.get('data'))
             with tlock:
-                res = [task, str(out), str(err), int(ret)]
+                res = [task, str(out), str(err), int(ret), val]
                 self._result_queue.put(res)
         # ----------------------------------------------------------------------
 
@@ -639,8 +639,8 @@ class Worker(rpu.Component):
             tout = task.get('timeout')
             self._log.debug('dispatch with tout %s', tout)
 
-            out, err, ret = self._modes[mode](task.get('data'))
-            res = [task, str(out), str(err), int(ret)]
+            out, err, ret, val = self._modes[mode](task.get('data'))
+            res = [task, str(out), str(err), int(ret), val]
             self._log.debug('put 1 result: task %s', task['uid'])
             self._result_queue.put(res)
 
@@ -712,7 +712,7 @@ class Worker(rpu.Component):
     def _result_cb(self, result):
 
         try:
-            task, out, err, ret = result
+            task, out, err, ret, val = result
             self._log.debug('result cb: task %s', task['uid'])
 
             with self._plock:
@@ -725,7 +725,8 @@ class Worker(rpu.Component):
             res = {'req': task['uid'],
                    'out': out,
                    'err': err,
-                   'ret': ret}
+                   'ret': ret,
+                   'val': val}
 
             self._res_put.put(res)
             self.task_post_exec(task)
