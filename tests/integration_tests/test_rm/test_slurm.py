@@ -19,7 +19,7 @@ class TestTask(TestCase):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def setUpClass(cls) -> None:
+    def setUpClass(cls):
         path = os.path.dirname(__file__) + '/../test_config/resources.json'
         resources = ru.read_json(path)
         hostname = socket.gethostname()
