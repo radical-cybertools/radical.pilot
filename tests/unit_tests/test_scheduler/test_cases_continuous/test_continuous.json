@@ -17,6 +17,69 @@
                 "lfs_per_node"   : {"size": 0, "path": "/dev/null"},
                 "mem_per_node"   : 128
             }
+        ],
+        "resource_cfg": [
+            {
+                "blocked_cores"  :  []
+            },
+            {
+                "blocked_cores"  :  [0, 2],
+                "blocked_gpus"   :  [1]
+            }
+        ],
+        "result": [
+            [
+                {
+                    "name"       : "a",
+                    "uid"        : 1,
+                    "cores"      : [0, 0, 0, 0, 0, 0, 0, 0],
+                    "gpus"       : [0, 0],
+                    "lfs"        : {"size": 0, "path": "/dev/null"},
+                    "mem"        : 128
+                },
+                {
+                    "name"       : "b",
+                    "uid"        : 2,
+                    "cores"      : [0, 0, 0, 0, 0, 0, 0, 0],
+                    "gpus"       : [0, 0],
+                    "lfs"        : {"size": 0, "path": "/dev/null"},
+                    "mem"        : 128
+                },
+                {
+                    "name"       : "c",
+                    "uid"        : 3,
+                    "cores"      : [0, 0, 0, 0, 0, 0, 0, 0],
+                    "gpus"       : [0, 0],
+                    "lfs"        : {"size": 0, "path": "/dev/null"},
+                    "mem"        : 128
+                }
+            ],
+            [
+                {
+                    "name"       : "a",
+                    "uid"        : 1,
+                    "cores"      : [2, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "gpus"       : [0, 2],
+                    "lfs"        : {"size": 0, "path": "/dev/null"},
+                    "mem"        : 128
+                },
+                {
+                    "name"       : "b",
+                    "uid"        : 2,
+                    "cores"      : [2, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "gpus"       : [0, 2],
+                    "lfs"        : {"size": 0, "path": "/dev/null"},
+                    "mem"        : 128
+                },
+                {
+                    "name"       : "c",
+                    "uid"        : 3,
+                    "cores"      : [2, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "gpus"       : [0, 2],
+                    "lfs"        : {"size": 0, "path": "/dev/null"},
+                    "mem"        : 128
+                }
+            ]
         ]
     },
 
