@@ -1,7 +1,7 @@
 # This workflow will install Python dependencies, run tests and lint with a single version of Python
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
-name: Python application
+name: Build
 
 on:
   push:
@@ -10,8 +10,8 @@ on:
     branches: [ devel ]
 
 jobs:
-  test:
 
+  test:
     runs-on: ubuntu-latest
     services:
       mongodb:
@@ -19,7 +19,6 @@ jobs:
         ports:
         # will assign a random free host port
         - 27017/tcp
-
     steps:
     - uses: actions/checkout@v2
       with:
@@ -30,26 +29,31 @@ jobs:
         python-version: 3.6.13
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install . --upgrade
-        pip install psutil
-        pip install coverage
-        pip install codecov
-        pip install pytest
-        pip install pytest-timeout
+        python -m venv testenv
+        . testenv/bin/activate
+        python -m pip install --upgrade pip setuptools
+        python -m pip install --upgrade .
+        python -m pip install psutil
+        python -m pip install coverage
+        python -m pip install codecov
+        python -m pip install pytest
+        python -m pip install pytest-timeout
     - name: Test with pytest
       env:
         # use localhost for the host here because we are running the job on the VM.
         # If we were running the job on in a container this would be mongodb
         MONGODB_HOST: localhost
         MONGODB_PORT: ${{ job.services.mongodb.ports[27017] }} # get randomly assigned published port
-        RADILCAL_PILOT_DBURL:  mongodb://localhost:${{ job.services.mongodb.ports[27017] }}/test
-        LOC: /opt/hostedtoolcache/Python/3.6.13/x64/lib/python3.6/site-packages
+        RADICAL_PILOT_DBURL:  mongodb://localhost:${{ job.services.mongodb.ports[27017] }}/test
+        LOC: testenv/lib/python3.6/site-packages
       run: |
+        . testenv/bin/activate
         coverage run --include=$LOC/radical/pilot/* -m pytest -ra --timeout=600 -vvv --showlocals tests/unit_tests/ tests/component_tests/
+        coverage xml
     - name: Codecov
-      uses: codecov/codecov-action@v1.2.2
-
+      uses: codecov/codecov-action@v1
+      with:
+        file: ./coverage.xml
 
   flake8:
     runs-on: ubuntu-latest
@@ -60,15 +64,18 @@ jobs:
     - name: Set up Python 3.6
       uses: actions/setup-python@v2
       with:
-        python-version: 3.6
+        python-version: 3.6.13
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install . --upgrade
-        pip install flake8
-        pip install flake8-per-file-ignores
+        python -m venv testenv
+        . testenv/bin/activate
+        python -m pip install --upgrade pip setuptools
+        python -m pip install --upgrade .
+        python -m pip install flake8
+        python -m pip install flake8-per-file-ignores
     - name: Lint with flake8
       run: |
+        . testenv/bin/activate
         LOG=`git log -n 1 | grep Merge`
         NEW=`echo $LOG | cut -d ' ' -f2`
         OLD=`echo $LOG | cut -d ' ' -f3`
@@ -85,26 +92,20 @@ jobs:
     - name: Set up Python 3.6
       uses: actions/setup-python@v2
       with:
-        python-version: 3.6
+        python-version: 3.6.13
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install . --upgrade
-        pip install psutil
-        pip install coverage
-        pip install codecov
-        pip install pytest
-        pip install pytest-timeout
-        pip install PyGithub
-        pip install pylint
+        python -m venv testenv
+        . testenv/bin/activate
+        python -m pip install --upgrade pip setuptools
+        python -m pip install --upgrade .
+        python -m pip install pylint
     - name: Lint with pylint
       run: |
+        . testenv/bin/activate
         LOG=`git log -n 1 | grep Merge`
         NEW=`echo $LOG | cut -d ' ' -f2`
         OLD=`echo $LOG | cut -d ' ' -f3`
         DIFF=`git diff  --name-only --diff-filter=db $NEW..$OLD`
         FILTERED=$(for f in $DIFF; do echo $f; done | grep -v '/archive/' | grep -e '\.py$' |  sed "s|^|$PWD/|")
         test -z "$FILTERED" && echo 'nothing to pylint' || pylint $FILTERED
-
-
-
