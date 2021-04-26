@@ -7,6 +7,9 @@ import sys
 import radical.utils as ru
 import radical.pilot as rp
 
+print('RP: %s %s' % (rp.__file__, dir(rp)))
+sys.stdout.flush()
+
 
 # This script has to run as a task within an pilot allocation, and is
 # a demonstration of a task overlay within the RCT framework.
@@ -52,18 +55,63 @@ class MyMaster(rp.raptor.Master):
         # Work items MUST be serializable dictionaries.
         idx   = rank
         total = int(eval(self._cfg.workload.total))                       # noqa
-        while idx < 1:
+        while idx < total:
 
-            uid  = 'request.%06d' % idx
-            item = {'uid'    : uid,
-                    'mode'   : 'call',
-                    'cores'  : 1,
-                    'gpus'   : 0,
-                    'timeout': self._cfg.workload.timeout,
-                    'data'   : {'method': 'hello',
-                                'kwargs': {'count': idx,
-                                           'uid'  : uid}}}
-          # self.request(item)
+            uid  = 'request.eval.%06d' % idx
+            item = {'uid'  :   uid,
+                    'mode' :  'eval',
+                    'cores':  1,
+                  # 'gpus' :  1,
+                    'data' : {
+                        'code': 'print("hello stdout"); return "hello world"'
+                   }}
+            self.request(item)
+
+
+            uid  = 'request.exec.%06d' % idx
+            item = {'uid'  :   uid,
+                    'mode' :  'exec',
+                    'cores':  1,
+                  # 'gpus' :  1,
+                    'data' : {
+                        'pre_exec': 'import time',
+                        'code'    : 'print("hello stdout"); return "hello world"'
+                    }}
+            self.request(item)
+
+
+            uid  = 'request.call.%06d' % idx
+            item = {'uid'  :   uid,
+                    'mode' :  'call',
+                    'cores':  1,
+                  # 'gpus' :  1,
+                    'data' : {'method': 'hello',
+                              'kwargs': {'count': idx,
+                                         'uid'  : uid}
+                   }}
+            self.request(item)
+
+
+            uid  = 'request.proc.%06d' % idx
+            item = {'uid'  :   uid,
+                    'mode' :  'proc',
+                    'cores':  1,
+                  # 'gpus' :  1,
+                    'data' : {'exe' : '/bin/echo',
+                              'args': ['hello', 'world']
+                   }}
+            self.request(item)
+
+            uid  = 'request.shell.%06d' % idx
+            item = {'uid'  :   uid,
+                    'mode' :  'shell',
+                    'cores':  1,
+                  # 'gpus' :  1,
+                    'data' : {'env' : {'WORLD': 'world'},
+                              'cmd' : '/bin/echo "hello $WORLD"'
+                   }}
+            self.request(item)
+
             idx += world_size
 
         self._prof.prof('create_stop')
@@ -94,7 +142,7 @@ if __name__ == '__main__':
     cpn        = cfg.cpn
     gpn        = cfg.gpn
     descr      = cfg.worker_descr
-    worker     = os.path.basename(cfg.worker.replace('py', 'sh'))
+    worker     = os.path.basename(cfg.worker)
     pwd        = os.getcwd()
 
     # add data staging to worker: link input_dir, impress_dir, and oe_license
@@ -113,7 +161,7 @@ if __name__ == '__main__':
     # those workers and execute them.  Insert one smaller worker (see above)
     # NOTE: this assumes a certain worker size / layout
     print('workers: %d' % n_workers)
-    master.submit(descr=descr, count=1, cores=cpn, gpus=gpn)
+    master.submit(descr=descr, count=n_workers, cores=cpn, gpus=gpn)
 
     # wait until `m` of those workers are up
     # This is optional, work requests can be submitted before and will wait in

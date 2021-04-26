@@ -374,8 +374,6 @@ class AgentSchedulingComponent(rpu.Component):
         We listen on the control channel for raptor queue registration commands
         '''
 
-        self._log.debug('=== command incoming: %s', msg)
-
         cmd = msg['cmd']
         arg = msg['arg']
 
@@ -391,9 +389,6 @@ class AgentSchedulingComponent(rpu.Component):
 
                 self._raptor_queues[name] = ru.zmq.Putter(queue, addr)
 
-                self._log.debug('=== names in rt: %s',
-                        list(self._raptor_tasks.keys()))
-
                 if name in self._raptor_tasks:
 
                     tasks = self._raptor_tasks[name]
@@ -402,19 +397,17 @@ class AgentSchedulingComponent(rpu.Component):
                     self._log.debug('relay %d tasks to raptor %d', len(tasks), name)
                     self._raptor_queues[name].put(tasks)
 
-            self._log.debug('=== rqueues 1: %s', self._raptor_queues)
-
 
         elif cmd == 'unregister_raptor_queue':
 
             name = arg['name']
-
             self._log.debug('unregister raptor queue: %s', name)
 
             with self._raptor_lock:
 
                 if name not in self._raptor_queues:
                     self._log.warn('raptor queue %s unknown [%s]', name, msg)
+
                 else:
                     del(self._raptor_queues[name])
 
@@ -799,7 +792,6 @@ class AgentSchedulingComponent(rpu.Component):
                     # check if this task is to be scheduled by sub-schedulers
                     # like raptor
                     raptor = task['description'].get('scheduler')
-                    self._log.debug('=== raptor %s: %s', task['uid'], raptor)
                     if raptor:
                         if raptor not in to_raptor:
                             to_raptor[raptor] = [task]
@@ -818,19 +810,19 @@ class AgentSchedulingComponent(rpu.Component):
         # forward raptor tasks to their designated raptor
         if to_raptor:
 
-            self._log.debug('=== fwd to raptor: %d', len(to_raptor))
-
             with self._raptor_lock:
-
-                self._log.debug('=== rqueues 2: %s', self._raptor_queues)
 
                 for name in to_raptor:
 
                     if name in self._raptor_queues:
-                        self._log.debug('=== fwd to %s: %d', name, len(to_raptor[name]))
+                        self._log.debug('fwd %s: %d', name,
+                                        len(to_raptor[name]))
                         self._raptor_queues[name].put(to_raptor[name])
+
                     else:
-                        self._log.debug('=== cache %s: %d', name, len(to_raptor[name]))
+                        self._log.debug('cache %s: %d', name,
+                                        len(to_raptor[name]))
+
                         if name not in self._raptor_tasks:
                             self._raptor_tasks[name] = to_raptor[name]
                         else:

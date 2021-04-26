@@ -3,6 +3,7 @@
 import os
 import sys
 import json
+import time
 
 import radical.utils as ru
 import radical.pilot as rp
@@ -30,9 +31,6 @@ if __name__ == '__main__':
     master    = '%s/%s' % (cfg_dir, cfg.master)
     worker    = '%s/%s' % (cfg_dir, cfg.worker)
 
-    master_sh = master.replace('py', 'sh')
-    worker_sh = worker.replace('py', 'sh')
-
     session   = rp.Session()
     try:
         pd = rp.PilotDescription(cfg.pilot_descr)
@@ -42,31 +40,21 @@ if __name__ == '__main__':
 
         tds = list()
 
-      # for i in range(n_masters):
-        for i in range(1):
+        for i in range(n_masters):
             td = rp.TaskDescription(cfg.master_descr)
-            td.uid            = 'raptor.test'
-          # td.uid            = ru.generate_id('master.%(item_counter)06d',
-          #                                    ru.ID_CUSTOM,
-          #                                    ns=session.uid)
+            td.uid            = ru.generate_id('master.%(item_counter)06d',
+                                               ru.ID_CUSTOM,
+                                               ns=session.uid)
             td.executable     = "/bin/sh"
             td.cpu_threads    = cpn
             td.gpu_processes  = gpn
-            td.arguments      = [os.path.basename(master_sh), cfg_file, i]
+            td.arguments      = [os.path.basename(master), cfg_file, i]
             td.input_staging  = [{'source': master,
                                   'target': os.path.basename(master),
                                   'action': rp.TRANSFER,
                                   'flags' : rp.DEFAULT_FLAGS},
                                  {'source': worker,
                                   'target': os.path.basename(worker),
-                                  'action': rp.TRANSFER,
-                                  'flags' : rp.DEFAULT_FLAGS},
-                                 {'source': master_sh,
-                                  'target': os.path.basename(master_sh),
-                                  'action': rp.TRANSFER,
-                                  'flags' : rp.DEFAULT_FLAGS},
-                                 {'source': worker_sh,
-                                  'target': os.path.basename(worker_sh),
                                   'action': rp.TRANSFER,
                                   'flags' : rp.DEFAULT_FLAGS},
                                  {'source': cfg_file,
@@ -80,12 +68,17 @@ if __name__ == '__main__':
         tmgr  = rp.TaskManager(session=session)
         pilot = pmgr.submit_pilots(pd)
         task  = tmgr.submit_tasks(tds)
+        pilot.prepare_env({'ve_raptor' : {'type'   : 'virtualenv',
+                                          'version': '3.8',
+                                          'setup'  : ['radical.pilot']}})
+
+
 
         requests = list()
-        for i in range(2):
+        for i in range(eval(cfg.workload.total)):
 
             td  = rp.TaskDescription()
-            uid = 'raptor.req.%06d' % i
+            uid = 'req.%06d' % i
             # ------------------------------------------------------------------
             # work serialization goes here
             work = json.dumps({'mode'   :  'call',
@@ -97,14 +90,18 @@ if __name__ == '__main__':
             # ------------------------------------------------------------------
             requests.append(rp.TaskDescription({
                                'uid'       : uid,
-                               'executable': 'raptor',
-                               'scheduler' : 'raptor.test',
+                               'executable': '-',
+                               'scheduler' : 'master.%06d' % (i % n_masters),
                                'arguments' : [work]}))
+            break
+
 
         tmgr.submit_tasks(requests)
 
         tmgr.add_pilots(pilot)
         tmgr.wait_tasks(uids=[r['uid'] for r in requests])
+
+        time.sleep(120)
 
     finally:
         session.close(download=True)
