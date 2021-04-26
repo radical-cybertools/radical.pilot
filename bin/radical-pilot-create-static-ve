@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -x
 
 SCRIPT="$0"
 PREFIX=         # full path or virtenv name
@@ -19,6 +19,13 @@ while getopts "p:v:m:dt:" OPTION; do
             return 1;;
     esac
 done
+
+test -z "$VERSION" && VERSION='3.8'
+test -z "$PREFIX"  && echo "no prefix" && exit
+
+unset PYTHONPATH
+echo "[$0 $*]"
+env > $PREFIX.env
 
 # move from comma separated to space separated module list
 MODULES=$(echo "$MODULES" | sed -e 's/,/ /g')
@@ -158,6 +165,8 @@ fi
 
 
 VIRTENV_CMD="$(which virtualenv 2>/dev/null)"
+VIRTENV_CMD="python$VERSION -m venv"
+
 if test -z "$VIRTENV_CMD"
 then
     echo -n "install private virtualenv "
@@ -182,7 +191,7 @@ then
 fi
 
 echo -n "create  virtualenv "
-stdbuf -oL $VIRTENV_CMD -p "python$VERSION" "$PREFIX" | progress
+stdbuf -oL $VIRTENV_CMD "$PREFIX" | progress
 .          "$PREFIX"/bin/activate
 
 echo -n "update  setuptools "

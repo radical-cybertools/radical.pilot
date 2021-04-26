@@ -31,9 +31,6 @@ if __name__ == '__main__':
     master    = '%s/%s' % (cfg_dir, cfg.master)
     worker    = '%s/%s' % (cfg_dir, cfg.worker)
 
-    master_sh = master.replace('py', 'sh')
-    worker_sh = worker.replace('py', 'sh')
-
     session   = rp.Session()
     try:
         pd = rp.PilotDescription(cfg.pilot_descr)
@@ -51,21 +48,13 @@ if __name__ == '__main__':
             td.executable     = "/bin/sh"
             td.cpu_threads    = cpn
             td.gpu_processes  = gpn
-            td.arguments      = [os.path.basename(master_sh), cfg_file, i]
+            td.arguments      = [os.path.basename(master), cfg_file, i]
             td.input_staging  = [{'source': master,
                                   'target': os.path.basename(master),
                                   'action': rp.TRANSFER,
                                   'flags' : rp.DEFAULT_FLAGS},
                                  {'source': worker,
                                   'target': os.path.basename(worker),
-                                  'action': rp.TRANSFER,
-                                  'flags' : rp.DEFAULT_FLAGS},
-                                 {'source': master_sh,
-                                  'target': os.path.basename(master_sh),
-                                  'action': rp.TRANSFER,
-                                  'flags' : rp.DEFAULT_FLAGS},
-                                 {'source': worker_sh,
-                                  'target': os.path.basename(worker_sh),
                                   'action': rp.TRANSFER,
                                   'flags' : rp.DEFAULT_FLAGS},
                                  {'source': cfg_file,
@@ -79,6 +68,11 @@ if __name__ == '__main__':
         tmgr  = rp.TaskManager(session=session)
         pilot = pmgr.submit_pilots(pd)
         task  = tmgr.submit_tasks(tds)
+        pilot.prepare_env({'ve_raptor' : {'type'   : 'virtualenv',
+                                          'version': '3.8',
+                                          'setup'  : ['radical.pilot']}})
+
+
 
         requests = list()
         for i in range(eval(cfg.workload.total)):

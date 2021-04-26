@@ -142,7 +142,7 @@ if __name__ == '__main__':
     cpn        = cfg.cpn
     gpn        = cfg.gpn
     descr      = cfg.worker_descr
-    worker     = os.path.basename(cfg.worker.replace('py', 'sh'))
+    worker     = os.path.basename(cfg.worker)
     pwd        = os.getcwd()
 
     # add data staging to worker: link input_dir, impress_dir, and oe_license
