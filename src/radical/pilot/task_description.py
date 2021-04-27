@@ -51,6 +51,7 @@ CUDA                   = 'CUDA'
 FUNC                   = 'FUNC'
 # FIXME: move process/thread types to `radical.pilot.constants`
 
+
 # ------------------------------------------------------------------------------
 #
 class TaskDescription(ru.Description):
