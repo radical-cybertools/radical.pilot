@@ -2,6 +2,7 @@
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+
 import radical.utils as ru
 
 from .base import LaunchMethod
@@ -13,17 +14,54 @@ class JSRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, lm_cfg, cfg, session, prof):
+    def __init__(self, name, lm_cfg, cfg, log, prof):
 
-        LaunchMethod.__init__(self, name, lm_cfg, cfg, session, prof)
+        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
+
+        self._command   = None
 
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def _init_from_scratch(self, lm_cfg, env, env_sh):
 
-        self.launch_command = ru.which('jsrun')
-        assert(self.launch_command)
+        lm_info = {'env'    : env,
+                   'env_sh' : env_sh,
+                   'command': ru.which('jsrun')}
+
+        return lm_info
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_from_info(self, lm_info, lm_cfg):
+
+        self._env     = lm_info['env']
+        self._env_sh  = lm_info['env_sh']
+        self._command = lm_info['command']
+
+        assert(self._command)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def can_launch(self, task):
+
+        return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launcher_env(self):
+
+        return ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
 
 
     # --------------------------------------------------------------------------
@@ -106,24 +144,17 @@ class JSRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, t, launch_script_hop):
+    def get_launch_cmds(self, task, exec_path):
 
-        uid          = t['uid']
-        slots        = t['slots']
-        td           = t['description']
-        task_exec    = td['executable']
-        task_args    = td.get('arguments')   or list()
-        task_argstr  = self._create_arg_string(task_args)
-        task_sandbox = t['task_sandbox_path']
+        uid          = task['uid']
+        slots        = task['slots']
+        td           = task['description']
+        task_sandbox = task['task_sandbox_path']
 
         assert(slots), 'missing slots for %s' % uid
 
         self._log.debug('prep %s', uid)
 
-        if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
-        else          : task_command = task_exec
-
-        env_string = ''
         # from https://www.olcf.ornl.gov/ \
         #             wp-content/uploads/2018/11/multi-gpu-workshop.pdf
         #
@@ -142,15 +173,33 @@ class JSRUN(LaunchMethod):
         rs_fname = self._create_resource_set_file(slots=slots, uid=uid,
                                                   sandbox=task_sandbox)
 
-      # flags = '-n%d -a1 ' % (task_procs)
-        command = '%s --erf_input %s %s %s %s' % (self.launch_command, rs_fname,
-                                                  smpiargs, env_string,
-                                                  task_command)
+        ret = '%s --erf_input %s %s %s' % (self._command, rs_fname,
+                                               smpiargs, exec_path)
+        return ret
 
-      # with open('./commands.log', 'a') as fout:
-      #     fout.write('%s\n' % command)
 
-        return command, None
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_cmd(self):
+
+        # FIXME: does JSRUN set a rank env?
+        ret  = 'test -z "$MPI_RANK"  || export RP_RANK=$MPI_RANK\n'
+        ret += 'test -z "$PMIX_RANK" || export RP_RANK=$PMIX_RANK\n'
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_exec(self, task, rank_id, rank):
+
+        td          = task['description']
+        task_exec   = td['executable']
+        task_args   = td.get('arguments')
+        task_argstr = self._create_arg_string(task_args)
+        command     = "%s %s" % (task_exec, task_argstr)
+
+        return command.rstrip()
 
 
 # ------------------------------------------------------------------------------

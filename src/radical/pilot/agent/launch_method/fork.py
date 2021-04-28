@@ -65,7 +65,7 @@ class Fork(LaunchMethod):
     #
     def get_launcher_env(self):
 
-        return list()
+        return ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
 
 
     # --------------------------------------------------------------------------

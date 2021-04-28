@@ -215,27 +215,23 @@ class MPIExec(LaunchMethod):
 
             # Create a hostfile from the list of hosts.  We create that in the
             # task sandbox
-            hostfile = '%s/mpi_hostfile' % t['task_sandbox_path']
+            hostfile = '%s/mpi_hostfile' % task['task_sandbox_path']
             with open(hostfile, 'w') as f:
                 for node,nslots in list(host_slots.items()):
                     f.write('%20s \tslots=%s\n' % (node, nslots))
             host_string = "-hostfile %s" % hostfile
 
-        command = command_stub % host_string
-        self._log.debug('mpiexec cmd: %s', command)
+        ret = command_stub % host_string
+        self._log.debug('mpiexec cmd: %s', ret)
 
-        assert(len(command) <= arg_max)
-
-        ret = ''
+        assert(len(ret) <= arg_max)
 
         # Cheyenne is the only machine that requires mpirun_mpt.  We then
         # have to set MPI_SHEPHERD=true
         if self._mpt:
-            ret = 'export MPI_SHEPHERD=true\n%s' % command
-        else:
-            ret = command
+            ret = 'export MPI_SHEPHERD=true\n%s' % ret
 
-        return command.strip()
+        return ret.strip()
 
 
     # --------------------------------------------------------------------------

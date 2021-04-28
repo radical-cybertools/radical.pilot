@@ -32,31 +32,13 @@ class PRTE2(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, lm_cfg, cfg, session, prof):
+    def __init__(self, name, lm_cfg, cfg, log, prof):
 
-        LaunchMethod.__init__(self, name, lm_cfg, cfg, session, prof)
+        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
 
-        # We remove all PRUN related environment variables from the launcher
-        # environment, so that we can use PRUN for both launch of the
-        # (sub-)agent and Task execution.
-        self.env_removables.extend(['OMPI_', 'OPAL_', 'PMIX_'])
+        self._env_orig = ru.env_eval('env/bs0_orig.env')
+        self._verbose  = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
 
-        self._verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
-
-    # --------------------------------------------------------------------------
-    #
-    def get_rank_cmd(self):
-
-        return "echo $PMIX_RANK"
-
-    # --------------------------------------------------------------------------
-    #
-    def _configure(self):
-
-        if not ru.which('prun'):
-            raise Exception('prun command not found')
-
-        self.launch_command = 'prun'
 
     # --------------------------------------------------------------------------
     #
@@ -314,19 +296,93 @@ class PRTE2(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, t, launch_script_hop):
+    def _init_from_scratch(self, lm_cfg, env, env_sh):
+
+        lm_info = {'env'    : env,
+                   'env_sh' : env_sh,
+                   'command': ru.which('prun')}
+
+        return lm_info
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_from_info(self, lm_info, lm_cfg):
+
+        self._env     = lm_info['env']
+        self._env_sh  = lm_info['env_sh']
+        self._command = lm_info['command']
+
+        assert(self._command)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def can_launch(self, task):
+
+        # mpirun can launch any executable
+        if task['description']['executable']:
+            return True
+        return False
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launcher_env(self):
+
+        return ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_task_env(self, spec):
+
+        name = spec['name']
+        cmds = spec['cmds']
+
+        # we assume that the launcher env is still active in the task execution
+        # script.  We thus remove the launcher env from the task env before
+        # applying the task env's pre_exec commands
+        tgt = '%s/env/%s.env' % (self._pwd, name)
+        self._log.debug('=== tgt : %s', tgt)
+
+        if not os.path.isfile(tgt):
+
+            # the env does not yet exists - create
+            ru.env_prep(self._env_orig,
+                        unset=self._env,
+                        pre_exec=cmds,
+                        script_path=tgt)
+
+        return tgt
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launch_cmds(self, task, exec_path):
 
         # latest implementation of PRRTE is able to handle bulk submissions
         # of prun-commands, but in case errors will come out then the delay
         # should be set: `time.sleep(.1)`
 
-        slots     = t['slots']
-        td        = t['description']
+        slots = task['slots']
+        td    = task['description']
+        flags = ''
 
-        task_exec = td['executable']
-        task_args = td.get('arguments') or []
+        if td.get('gpu_processes'):
+            # input data is edited here to keep PRUN setup within LM
+            td['environment'] \
+                ['PMIX_MCA_pmdl_ompi5_include_envars'] = 'OMPI_*,CUDA_*'
+            flags += ' --personality ompi'
 
-        n_procs   = td.get('cpu_processes') or 1
+        n_procs   = td['cpu_processes']
         n_threads = td.get('cpu_threads')   or 1
 
         if not slots.get('lm_info'):
@@ -335,14 +391,16 @@ class PRTE2(LaunchMethod):
         if not slots['lm_info'].get('partitions'):
             raise RuntimeError('no partitions (%s): %s' % (self.name, slots))
 
-        partitions = slots['lm_info']['partitions']
+
         # `partition_id` should be set in a scheduler
+        partitions   = slots['lm_info']['partitions']
         partition_id = slots.get('partition_id') or partitions.keys()[0]
         dvm_uri = '--dvm-uri "%s"' % partitions[partition_id]['dvm_uri']
 
-        flags  = ' --np %d'                                   % n_procs
+        flags += ' --np %d'                                   % n_procs
         flags += ' --map-by node:HWTCPUS:PE=%d:OVERSUBSCRIBE' % n_threads
         flags += ' --bind-to hwthread:overload-allowed'
+
         if self._verbose:
             flags += ':REPORT'
 
@@ -359,18 +417,30 @@ class PRTE2(LaunchMethod):
         flags += ' --pmixmca ptl_base_max_msg_size %d' % PTL_MAX_MSG_SIZE
         flags += ' --verbose'  # needed to get prte profile events
 
-        task_args_str = self._create_arg_string(task_args)
-        if task_args_str:
-            task_exec += ' %s' % task_args_str
+        cmd = '%s %s %s %s' % (self._command, dvm_uri, flags, exec_path)
 
-        if td.get('gpu_processes'):
-            # input data is edited here to keep PRUN setup within LM
-            td['environment'] \
-                ['PMIX_MCA_pmdl_ompi5_include_envars'] = 'OMPI_*,CUDA_*'
-            flags += ' --personality ompi'
+        return cmd
 
-        cmd = '%s %s %s %s' % (self.launch_command, dvm_uri, flags, task_exec)
 
-        return cmd, None
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_cmd(self):
+
+        return "echo $PMIX_RANK"
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_exec(self, task, rank_id, rank):
+
+        td           = task['description']
+        task_exec    = td['executable']
+        task_args    = td['arguments']
+        task_argstr  = self._create_arg_string(task_args)
+        command      = "%s %s" % (task_exec, task_argstr)
+
+        return command.rstrip()
+
 
 # ------------------------------------------------------------------------------
+

@@ -122,13 +122,10 @@ class LaunchMethod(object):
         from .mpiexec        import MPIExec
         from .mpirun         import MPIRun
         from .jsrun          import JSRUN
-        from .prte           import PRTE
         from .prte2          import PRTE2
         from .flux           import Flux
         from .rsh            import RSH
         from .ssh            import SSH
-        from .yarn           import Yarn
-        from .spark          import Spark
         from .srun           import Srun
 
         try:
@@ -145,13 +142,10 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_MPT    : MPIRun,
                 LM_NAME_MPIRUN_DPLACE : MPIRun,
                 LM_NAME_JSRUN         : JSRUN,
-                LM_NAME_PRTE          : PRTE,
                 LM_NAME_PRTE2         : PRTE2,
                 LM_NAME_FLUX          : Flux,
                 LM_NAME_RSH           : RSH,
                 LM_NAME_SSH           : SSH,
-                LM_NAME_YARN          : Yarn,
-                LM_NAME_SPARK         : Spark,
                 LM_NAME_SRUN          : Srun,
 
             }[name]

@@ -2,8 +2,8 @@
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os
 
-import pprint
 import radical.utils as ru
 
 from .base import LaunchMethod
@@ -108,9 +108,7 @@ class APRun(LaunchMethod):
     #
     def get_launch_cmds(self, task, exec_path):
 
-        td         = task['description']
-        slots      = task['slots']
-        executable = td['executable']
+        slots = task['slots']
 
         # we get something like the following from the scheduler:
         #
@@ -215,7 +213,7 @@ class APRun(LaunchMethod):
         for node_id in nodes:
 
             cpu_slots = nodes[node_id]['cpu']
-            gpu_slots = nodes[node_id]['gpu']
+          # gpu_slots = nodes[node_id]['gpu']
 
             assert(cpu_slots)
 

@@ -43,6 +43,8 @@ class IBRun(LaunchMethod):
         self._env_sh  = lm_info['env_sh']
         self._command = lm_info['command']
 
+        assert(self._command)
+
 
     # --------------------------------------------------------------------------
     #
@@ -54,14 +56,6 @@ class IBRun(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def can_launch(self, task):
-
-        # ensure single rank on localhost
-        if len(task['slots']['ranks']) > 1:
-            return False
-
-        node = task['slots']['ranks'][0]['node']
-        if node not in ['localhost', self.node_name]:
-            return False
 
         return True
 
@@ -83,7 +77,7 @@ class IBRun(LaunchMethod):
 
         # Usage of env variable TACC_TASKS_PER_NODE is purely for MPI tasks,
         # threads are not considered (info provided by TACC support)
-        n_node_tasks = int(task_env.get('TACC_TASKS_PER_NODE') or
+        n_node_tasks = int(task['environment'].get('TACC_TASKS_PER_NODE') or
                            self._cfg.get('cores_per_node', 1))
 
         # TACC_TASKS_PER_NODE is used to set the actual number of running tasks,
@@ -109,7 +103,7 @@ class IBRun(LaunchMethod):
             ibrun_offset = min(offsets)
 
         ret = "%s -n %s -o %d %s" % (self._command, n_tasks, ibrun_offset,
-                                     script_path)
+                                     exec_path)
 
         return ret
 
