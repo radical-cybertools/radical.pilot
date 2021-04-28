@@ -1,4 +1,0 @@
-[run]
-include =
- $LOC/radical/pilot/*
-
