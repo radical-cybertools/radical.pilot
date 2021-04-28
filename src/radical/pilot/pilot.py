@@ -18,24 +18,24 @@ from .staging_directives import complete_url
 # ------------------------------------------------------------------------------
 #
 class Pilot(object):
-    '''
+    """
     A Pilot represent a resource overlay on a local or remote resource.
 
     .. note:: A Pilot cannot be created directly. The factory method
               :meth:`radical.pilot.PilotManager.submit_pilots` has to be
               used instead.
 
-        **Example**::
+    **Example**::
 
-              pm = radical.pilot.PilotManager(session=s)
-              pd = radical.pilot.PilotDescription()
+          pm = radical.pilot.PilotManager(session=s)
+          pd = radical.pilot.PilotDescription()
 
-              pd.resource = "local.localhost"
-              pd.cores    = 2
-              pd.runtime  = 5 # minutes
+          pd.resource = "local.localhost"
+          pd.cores    = 2
+          pd.runtime  = 5 # minutes
 
-              pilot = pm.submit_pilots(pd)
-    '''
+          pilot = pm.submit_pilots(pd)
+    """
 
     # --------------------------------------------------------------------------
     # In terms of implementation, a Pilot is not much more than a dict whose
