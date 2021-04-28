@@ -1,14 +1,16 @@
 
-__copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import pickle
 import codecs
+
 import radical.utils as ru
 
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
+#
 UID                    = 'uid'
 NAME                   = 'name'
 EXECUTABLE             = 'executable'
@@ -17,7 +19,6 @@ ENVIRONMENT            = 'environment'
 NAMED_ENV              = 'named_env'
 SANDBOX                = 'sandbox'
 
-CORES                  = 'cores'  # deprecated
 CPU_PROCESSES          = 'cpu_processes'
 CPU_PROCESS_TYPE       = 'cpu_process_type'
 CPU_THREADS            = 'cpu_threads'
@@ -53,6 +54,9 @@ CUDA                   = 'CUDA'
 FUNC                   = 'FUNC'
 MPI_FUNC               = 'MPI_FUNC'
 
+# FIXME: move process/thread types to `radical.pilot.constants`
+
+
 # ------------------------------------------------------------------------------
 #
 class TaskDescription(ru.Description):
@@ -62,170 +66,132 @@ class TaskDescription(ru.Description):
     :meth:`radical.pilot.TaskManager.submit_tasks` to instantiate and run
     a new task.
 
-
     .. note:: A TaskDescription **MUST** define at least an
               `executable` or `kernel` -- all other elements are optional.
 
-
     .. data:: uid
 
-       A unique ID for the task (`string`).  This attribute is optional,
-       a unique ID will be assigned by RP if the field is not set.
-
-       default: `None`
-
+       [type: `str` | default: `""`] A unique ID for the task. This attribute
+       is optional, a unique ID will be assigned by RP if the field is not set.
 
     .. data:: name
 
-       A descriptive name for the task (`string`).  This attribute can
-       be used to map individual tasks back to application level workloads.
-
-       default: `None`
-
+       [type: `str` | default: `""`] A descriptive name for the task. This
+       attribute can be used to map individual tasks back to application level
+       workloads.
 
     .. data:: executable
 
-       The executable to launch (`string`).  The executable is expected to be
-       either available via `$PATH` on the target resource, or to be an absolute
-       path.
-
-       default: `None`
-
+       [type: `str` | default: `""`] The executable to launch. The executable
+       is expected to be either available via `$PATH` on the target resource,
+       or to be an absolute path.
 
     .. data:: cpu_processes
-       number of application processes to start on CPU cores
 
-       default: 0
-
+       [type: `int` | default: `1`] The number of application processes to start
+       on CPU cores.
 
     .. data:: cpu_threads
-       number of threads each process will start on CPU cores
 
-       default: 1
-
+       [type: `int` | default: `1`] The number of threads each process will
+       start on CPU cores.
 
     .. data:: cpu_process_type
-       process type, determines startup method (POSIX, MPI)
 
-       default: POSIX
-
+       [type: `str` | default: `""`] The process type, determines startup
+       method (`<empty>/POSIX`, `MPI`).
 
     .. data:: cpu_thread_type
-       thread type, influences startup and environment (POSIX, OpenMP)
 
-       default: POSIX
-
+       [type: `str` | default: `""`] The thread type, influences startup and
+       environment (`<empty>/POSIX`, `OpenMP`).
 
     .. data:: gpu_processes
-       number of application processes to start on GPU cores
 
-       default: 0
-
+       [type: `int` | default: `0`] The number of application processes to
+       start on GPU cores.
 
     .. data:: gpu_threads
-       number of threads each process will start on GPU cores
 
-       default: 1
-
+       [type: `int` | default: `1`] The number of threads each process will
+       start on GPU cores.
 
     .. data:: gpu_process_type
-       process type, determines startup method (POSIX, MPI)
 
-       default: POSIX
-
+       [type: `str` | default: `""`] The process type, determines startup
+       method (`<empty>/POSIX`, `MPI`).
 
     .. data:: gpu_thread_type
-       thread type, influences startup and environment (POSIX, OpenMP, CUDA)
 
-       default: POSIX
+       [type: `str` | default: `""`] The thread type, influences startup and
+       environment (`<empty>/POSIX`, `OpenMP`, `CUDA`).
 
+    .. data:: lfs_per_process
 
-    .. data:: lfs (local file storage)
-       amount of data (MB) required on the local file system of the node
+       [type: `int` | default: `0`] Local File Storage per process - amount of
+       data (MB) required on the local file system of the node.
 
-       default: 0
+    .. data:: mem_per_process
 
+       [type: `int` | default: `0`] Amount of physical memory required per
+       process.
 
     .. data:: arguments
 
-       The command line arguments for the given `executable` (`list` of
-       `strings`).
-
-       default: `[]`
-
+       [type: `list` | default: `[]`] The command line arguments for the given
+       `executable` (`list` of `strings`).
 
     .. data:: environment
 
-       Environment variables to set in the environment before execution
-       (`dict`).
-
-       default: `{}`
-
+       [type: `dict` | default: `{}`] Environment variables to set in the
+       environment before the execution (launching picked `LaunchMethod`).
 
     .. data:: named_env
 
-       A named environment as prepared by the pilot.  The task will fail if that
-       environment does not exist.
-       (`str`).
-
-       default: `None`
-
+       [type: `str` | default: `""`] A named virtual environment as prepared by
+       the pilot. The task will fail if that environment does not exist.
 
     .. data:: sandbox
 
-       (`Attribute`) This specifies the working directory of the task.  That
-       directory *MUST* be relative to the pilot sandbox.  It will be created if
-       it does not exist.  By default, the sandbox has the name of the task's
-       uid.
-
+       [type: `str` | default: `""`] This specifies the working directory of
+       the task. That directory *MUST* be relative to the pilot sandbox. It
+       will be created if it does not exist. By default, the sandbox has
+       the name of the task's uid.
 
     .. data:: stdout
 
-       The name of the file to store stdout in (`string`).
-
-       default: `STDOUT`
-
+       [type: `str` | default: `""`] The name of the file to store stdout. If
+       not set then the name of the following format will be used: `<uid>.out`.
 
     .. data:: stderr
 
-       The name of the file to store stderr in (`string`).
-
-       default: `STDERR`
-
+       [type: `str` | default: `""`] The name of the file to store stderr. If
+       not set then the name of the following format will be used: `<uid>.err`.
 
     .. data:: input_staging
 
-       The files that need to be staged before execution (`list` of `staging
-       directives`, see below).
-
-       default: `{}`
-
+       [type: `list` | default: `[]`] The files that need to be staged before
+       the execution (`list` of `staging directives`, see below).
 
     .. data:: output_staging
 
-       The files that need to be staged after execution (`list` of `staging
-       directives`, see below).
-
-       default: `{}`
-
+       [type: `list` | default: `[]`] The files that need to be staged after
+       the execution (`list` of `staging directives`, see below).
 
     .. data:: stage_on_error
 
-       Output staging is normally skipped on FAILED or CANCELED tasks - but if
-       this flag is set, staging is attemped either way.  This may though lead
-       to additional errors if the tasks did not manage to produce the expected
-       output files to stage.
-
-       default: `False`
-
+       [type: `bool` | default: `False`] Output staging is normally skipped on
+       `FAILED` or `CANCELED` tasks, but if this flag is set, staging is
+       attempted either way. This may though lead to additional errors if the
+       tasks did not manage to produce the expected output files to stage.
 
     .. data:: pre_exec
 
-       Actions (shell commands) to perform before this task starts (`list` of
-       `strings`).  Note that the set of shell commands given here are expected
-       to load environments, check for work directories and data, etc.  They are
-       not expected to consume any significant amount of CPU time or other
-       resources!  Deviating from that rule will likely result in reduced
+       [type: `list` | default: `[]`] Actions (shell commands) to perform before
+       this task starts. Note that the set of shell commands given here are
+       expected to load environments, check for work directories and data, etc.
+       They are not expected to consume any significant amount of CPU time or
+       other resources! Deviating from that rule will likely result in reduced
        overall throughput.
 
        No assumption should be made as to where these commands are executed
@@ -239,96 +205,77 @@ class TaskDescription(ru.Description):
        `FAILED` state, and no execution of the actual workload will be
        attempted.
 
-       default: `[]`
-
-
     .. data:: post_exec
 
-       Actions (shell commands) to perform after this task finishes (`list` of
-       `strings`).  The same remarks as on `pre_exec` apply, inclusive the point
-       on error handling, which again will cause the task to fail, even if the
-       actual execution was successful.
-
-       default: `[]`
-
+       [type: `list` | default: `[]`] Actions (shell commands) to perform after
+       this task finishes. The same remarks as on `pre_exec` apply, inclusive
+       the point on error handling, which again will cause the task to fail,
+       even if the actual execution was successful.
 
     .. data:: kernel
 
-       Name of a simulation kernel which expands to description attributes once
-       the task is scheduled to a pilot and resource. TODO: explain in detail,
-       referencing ENMDTK.
-
-       default: `None`
-
+       [type: `str` | default: `""`] Name of a simulation kernel, which expands
+       to description attributes once the task is scheduled to a pilot and
+       resource. `TODO: explain in detail, referencing EnTK.`
 
     .. data:: restartable
 
-       If the task starts to execute on a pilot, but cannot finish because the
-       pilot fails or is canceled, the task can be restarted.
-
-       default: `False`
-
+       [type: `bool` | default: `False`] If the task starts to execute on
+       a pilot, but cannot finish because the pilot fails or is canceled,
+       the task can be restarted.
 
     .. data:: tags
 
-       Configuration specific tags which influence task scheduling and
-       execution.
-
+       [type: `dict` | default: `{}`] Configuration specific tags, which
+       influence task scheduling and execution (e.g., tasks co-location).
 
     .. data:: metadata
 
-       User defined metadata.
-
-       default: `None`
-
+       [type: `ANY` | default: `None`] User defined metadata.
 
     .. data:: cleanup
 
-       If cleanup (a `bool`) is set to `True`, the pilot will delete the entire
-       task sandbox upon termination. This includes all generated output data in
-       that sandbox.  Output staging will be performed before cleanup.
-
-       Note that task sandboxes are also deleted if the pilot's own `cleanup`
-       flag is set.
-
-       default: `False`
-
+       [type: `bool` | default: `False`] If cleanup flag is set, the pilot will
+       delete the entire task sandbox upon termination. This includes all
+       generated output data in that sandbox. Output staging will be performed
+       before cleanup. Note that task sandboxes are also deleted if the pilot's
+       own `cleanup` flag is set.
 
     .. data:: pilot
 
-       If specified as `string` (pilot uid), the task is submitted to the pilot
-       with the given ID.  If that pilot is not known to the task manager, an
-       exception is raised.
+       [type: `str` | default: `""`] Pilot `uid`, if specified, the task is
+       submitted to the pilot with the given ID. If that pilot is not known to
+       the TaskManager, an exception is raised.
 
 
     Staging Directives
     ==================
 
-    The Staging Directives are specified using a dict in the following form:
+    The Staging Directives are specified using a dict in the following form::
 
-        staging_directive = {
-            'source'  : None, # see 'Location' below
-            'target'  : None, # see 'Location' below
-            'action'  : None, # See 'Action operators' below
-            'flags'   : None, # See 'Flags' below
-            'priority': 0     # Control ordering of actions (unused)
-        }
+          staging_directive = {
+             'source'  : None, # see 'Location' below
+             'target'  : None, # see 'Location' below
+             'action'  : None, # See 'Action operators' below
+             'flags'   : None, # See 'Flags' below
+             'priority': 0     # Control ordering of actions (unused)
+          }
 
 
     Locations
     ---------
 
-      `source` and `target` locations can be given as strings or `ru.URL`
+      `source` and `target` locations can be given as strings or `ru.Url`
       instances.  Strings containing `://` are converted into URLs immediately.
       Otherwise they are considered absolute or relative paths and are then
       interpreted in the context of the client's working directory.
 
-      RP accepts the following special URL schemas:
+      Special URL schemas:
 
-        * `client://`  : relative to the client's working directory
-        * `resource://`: relative to the RP    sandbox on the target resource
-        * `pilot://`   : relative to the pilot sandbox on the target resource
-        * `task://`    : relative to the task  sandbox on the target resource
+        * `client://`   : relative to the client's working directory
+        * `resource://` : relative to the RP    sandbox on the target resource
+        * `pilot://`    : relative to the pilot sandbox on the target resource
+        * `task://`     : relative to the task  sandbox on the target resource
 
       In all these cases, the `hostname` element of the URL is expected to be
       empty, and the path is *always* considered relative to the locations
@@ -339,90 +286,93 @@ class TaskDescription(ru.Description):
     Action operators
     ----------------
 
-      RP accepts the following action operators:
+      Action operators:
 
-        * rp.TRANSFER: remote file transfer from `source` URL to `target` URL.
-        * rp.COPY    : local file copy, ie. not crossing host boundaries
-        * rp.MOVE    : local file move
-        * rp.LINK    : local file symlink
+        * rp.TRANSFER : remote file transfer from `source` URL to `target` URL
+        * rp.COPY     : local file copy, i.e., not crossing host boundaries
+        * rp.MOVE     : local file move
+        * rp.LINK     : local file symlink
 
 
     Flags
     -----
 
-      rp.CREATE_PARENTS: create the directory hierarchy for targets on the fly
-      rp.RECURSIVE     : if `source` is a directory, handle it recursively
+      Flags:
+
+        * rp.CREATE_PARENTS : create the directory hierarchy for targets on
+        the fly
+        * rp.RECURSIVE      : if `source` is a directory, handles it recursively
 
     """
 
     _schema = {
-               EXECUTABLE      : None        ,
-               UID             : str         ,
-               NAME            : str         ,
-               KERNEL          : str         ,
-               SANDBOX         : str         ,
-               ARGUMENTS       : [str]       ,
-               ENVIRONMENT     : {str: str}  ,
-               NAMED_ENV       : str         ,
-               PRE_EXEC        : [str]       ,
-               POST_EXEC       : [str]       ,
-               STDOUT          : str         ,
-               STDERR          : str         ,
-               INPUT_STAGING   : None        ,
-               OUTPUT_STAGING  : None        ,
-               STAGE_ON_ERROR  : bool        ,
+        UID             : str         ,
+        NAME            : str         ,
+        EXECUTABLE      : None        ,
+        KERNEL          : str         ,
+        SANDBOX         : str         ,
+        ARGUMENTS       : [str]       ,
+        ENVIRONMENT     : {str: str}  ,
+        NAMED_ENV       : str         ,
+        PRE_EXEC        : [str]       ,
+        POST_EXEC       : [str]       ,
+        STDOUT          : str         ,
+        STDERR          : str         ,
+        INPUT_STAGING   : [None]      ,
+        OUTPUT_STAGING  : [None]      ,
+        STAGE_ON_ERROR  : bool        ,
 
-               CPU_PROCESSES   : int         ,
-               CPU_PROCESS_TYPE: str         ,
-               CPU_THREADS     : int         ,
-               CPU_THREAD_TYPE : str         ,
-               GPU_PROCESSES   : int         ,
-               GPU_PROCESS_TYPE: str         ,
-               GPU_THREADS     : int         ,
-               GPU_THREAD_TYPE : str         ,
-               LFS_PER_PROCESS : int         ,
-               MEM_PER_PROCESS : int         ,
+        CPU_PROCESSES   : int         ,
+        CPU_PROCESS_TYPE: str         ,
+        CPU_THREADS     : int         ,
+        CPU_THREAD_TYPE : str         ,
+        GPU_PROCESSES   : int         ,
+        GPU_PROCESS_TYPE: str         ,
+        GPU_THREADS     : int         ,
+        GPU_THREAD_TYPE : str         ,
+        LFS_PER_PROCESS : int         ,
+        MEM_PER_PROCESS : int         ,
 
-               RESTARTABLE     : bool        ,
-               TAGS            : {None: None},
-               METADATA        : None        ,
-               CLEANUP         : bool        ,
-               PILOT           : str         ,
+        RESTARTABLE     : bool        ,
+        TAGS            : {None: None},
+        METADATA        : None        ,
+        CLEANUP         : bool        ,
+        PILOT           : str         ,
     }
 
     _defaults = {
-               UID             : ''          ,
-               NAME            : ''          ,
-               EXECUTABLE      : None        ,
-               KERNEL          : ''          ,
-               SANDBOX         : ''          ,
-               ARGUMENTS       : list()      ,
-               ENVIRONMENT     : dict()      ,
-               NAMED_ENV       : ''          ,
-               PRE_EXEC        : list()      ,
-               POST_EXEC       : list()      ,
-               STDOUT          : ''          ,
-               STDERR          : ''          ,
-               INPUT_STAGING   : list()      ,
-               OUTPUT_STAGING  : list()      ,
-               STAGE_ON_ERROR  : False       ,
+        UID             : ''          ,
+        NAME            : ''          ,
+        EXECUTABLE      : ''          ,
+        KERNEL          : ''          ,
+        SANDBOX         : ''          ,
+        ARGUMENTS       : list()      ,
+        ENVIRONMENT     : dict()      ,
+        NAMED_ENV       : ''          ,
+        PRE_EXEC        : list()      ,
+        POST_EXEC       : list()      ,
+        STDOUT          : ''          ,
+        STDERR          : ''          ,
+        INPUT_STAGING   : list()      ,
+        OUTPUT_STAGING  : list()      ,
+        STAGE_ON_ERROR  : False       ,
 
-               CPU_PROCESSES   : 1           ,
-               CPU_PROCESS_TYPE: ''          ,
-               CPU_THREADS     : 1           ,
-               CPU_THREAD_TYPE : ''          ,
-               GPU_PROCESSES   : 0           ,
-               GPU_PROCESS_TYPE: ''          ,
-               GPU_THREADS     : 1           ,
-               GPU_THREAD_TYPE : ''          ,
-               LFS_PER_PROCESS : 0           ,
-               MEM_PER_PROCESS : 0           ,
+        CPU_PROCESSES   : 1           ,
+        CPU_PROCESS_TYPE: ''          ,
+        CPU_THREADS     : 1           ,
+        CPU_THREAD_TYPE : ''          ,
+        GPU_PROCESSES   : 0           ,
+        GPU_PROCESS_TYPE: ''          ,
+        GPU_THREADS     : 1           ,
+        GPU_THREAD_TYPE : ''          ,
+        LFS_PER_PROCESS : 0           ,
+        MEM_PER_PROCESS : 0           ,
 
-               RESTARTABLE     : False       ,
-               TAGS            : dict()      ,
-               METADATA        : None        ,
-               CLEANUP         : False       ,
-               PILOT           : ''          ,
+        RESTARTABLE     : False       ,
+        TAGS            : dict()      ,
+        METADATA        : None        ,
+        CLEANUP         : False       ,
+        PILOT           : ''          ,
     }
 
 
