@@ -234,7 +234,7 @@ create_prof(){
 test -z "\$RP_PROF" && exit
 
 now=\$(\$RP_PILOT_SANDBOX/gtod)
-printf "%.7f,\$1,\$RP_SPAWNER_ID,MainThread,\$RP_UNIT_ID,AGENT_EXECUTING,\\\n" \$now
+printf "%.7f,\$1,\$RP_SPAWNER_ID,MainThread,\$RP_UNIT_ID,AGENT_EXECUTING,\\\n" \$now\\
     >> "\$RP_TASK_SANDBOX/\$RP_TASK_ID.prof"
 
 EOT

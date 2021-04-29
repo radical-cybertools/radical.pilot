@@ -122,10 +122,11 @@ class Default(AgentStagingOutputComponent):
     #
     def _handle_task_stdio(self, task):
 
-        sandbox = task['task_sandbox_path']
-        uid     = task['uid']
+        sbox = task['task_sandbox_path']
+        uid  = task['uid']
 
         self._prof.prof('staging_stdout_start', uid=uid)
+        self._log.debug('=== out: %s', task.get('stdout_file'))
 
         # TODO: disable this at scale?
         if task.get('stdout_file') and os.path.isfile(task['stdout_file']):
@@ -168,7 +169,7 @@ class Default(AgentStagingOutputComponent):
         self._prof.prof('staging_stderr_stop', uid=uid)
         self._prof.prof('staging_uprof_start', uid=uid)
 
-        task_prof = "%s/%s.prof" % (sandbox, uid)
+        task_prof = "%s/%s.prof" % (sbox, uid)
         if os.path.isfile(task_prof):
             try:
                 with open(task_prof, 'r') as prof_f:

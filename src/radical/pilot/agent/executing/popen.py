@@ -382,14 +382,17 @@ class Popen(AgentExecutingComponent) :
         cmdline = '/bin/sh %s' % launch_script
 
         # prepare stdout/stderr
-        stdout_file = td.get('stdout') or '%s.out' % tid
-        stderr_file = td.get('stderr') or '%s.err' % tid
+        stdout_file = td.get('stdout') or '%s/%s.out' % (sbox, tid)
+        stderr_file = td.get('stderr') or '%s/%s.err' % (sbox, tid)
 
         task['stdout'] = ''
         task['stderr'] = ''
 
         _stdout_file_h = open(stdout_file, 'a')
         _stderr_file_h = open(stderr_file, 'a')
+
+        task['stdout_file'] = stdout_file
+        task['stderr_file'] = stderr_file
 
         self._log.info('Launching task %s via %s in %s', tid, cmdline, sbox)
 
