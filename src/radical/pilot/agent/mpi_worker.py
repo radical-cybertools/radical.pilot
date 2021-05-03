@@ -21,7 +21,7 @@ class MPI_Func_Worker():
     def __init__(self):
 
         self._pwd  = os.getcwd()
-        self._uid  = os.environ['RP_FUNCS_ID']
+        self._uid  = os.environ.get('RP_FUNCS_ID')#os.environ['RP_FUNCS_ID']
         self._log  = ru.Logger(self._uid,   ns='radical.pilot', path=self._pwd)
         self._log.debug('MPI worker got init')
 
@@ -50,12 +50,12 @@ class MPI_Func_Worker():
         return fn, args, kwargs
     
     
-    def launch_mpirun_func(self, func, **kwargs):
+    def launch_mpirun_func(self, func, hosts,**kwargs):
 
         self._log.debug('launch mpirun task file Got called with')
         self._log.debug(func)
       
-        cmds = self.construct_mpirun_cmds(func, **kwargs)
+        cmds = self.construct_mpirun_cmds(func, hosts, **kwargs)
         self._log.debug('MPIRUN Command is %s',cmds)
         p_env = os.environ.copy()
         p_env['PYTHONPATH'] = ':'.join([os.getcwd()] + os.environ.get('PYTHONPATH', '').split(':'))
@@ -73,12 +73,18 @@ class MPI_Func_Worker():
             proc_out = stdout
             return 'DONE', proc_out
 
-    def construct_mpirun_cmds(self, func, **kwargs):
+    def construct_mpirun_cmds(self, func, hosts, **kwargs):
 
         mpi_kwargs = {}
 
         if 'cpu_processes' in kwargs:
-            mpi_kwargs['np'] = kwargs['cpu_processes']
+            p1 = eval(hosts)
+            p2 = ",".join([str(s) for s in list(p1)])
+            p3 = p2.split(",")
+            p4 = '%s' % ",".join(p3)
+            mpi_kwargs['np'] = len(p3)
+            mpi_kwargs['host'] = p4#kwargs['cpu_processes']
+            
         else:
             pass
         if 'cpu_threads' in kwargs:

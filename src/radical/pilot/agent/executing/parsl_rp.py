@@ -4,6 +4,7 @@ import os
 import re
 import shlex
 import parsl
+import time
 import queue
 import pickle
 import logging
@@ -88,7 +89,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.report.header("Initializing RADICALExecutor with ParSL version %s :" % parsl.__version__)
         self.pmgr    = rp.PilotManager(session=self.session)
         self.tmgr    = rp.TaskManager(session=self.session)
-
+        
     def task_state_cb(self, task, state):
 
         """
@@ -128,6 +129,9 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         pdesc = rp.PilotDescription(pd_init)
         pilot = self.pmgr.submit_pilots(pdesc)
         self.tmgr.add_pilots(pilot)
+        pilot.wait(state=rp.PMGR_ACTIVE)
+        time.sleep(60)
+        self.report.header('PMGR Is Active submitting tasks now')
 
         return True
     

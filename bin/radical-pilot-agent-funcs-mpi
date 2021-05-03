@@ -234,6 +234,36 @@ class Tasker():
 
             self._prof.prof('task_get', comp=wid, uid=tid)
 
+            def breakdown(cpt):
+                
+                import re
+                import hostlist
+                self._log.debug('Entering breakdown function: ') 
+                #self._log.debug('cpt: ', str(cpt))
+                node_list = os.environ['SLURM_NODELIST']
+                #self._log.debug('node_list: ', str(node_list))
+                slurm_nodes = hostlist.expand_hostlist(node_list)
+                #self._log.debug('slurm_nodes: ', str(slurm_nodes))
+                host_list = []
+                cores_per_task = cpt
+                cores_per_node = os.environ['SLURM_CPUS_ON_NODE']
+                nodes_per_task = int(cores_per_task/int(cores_per_node))
+                func_id = os.environ['RP_FUNCS_ID'] 
+                exec_id = int(re.sub("^0+(?!$)", "", func_id.split('.')[1]))
+                #self._log.debug('exec_id: ', str(exec_id))
+
+                dual_nodes = [*zip( slurm_nodes[::2],  slurm_nodes[1::2])]
+                task_matrix = [list(elem) for elem in dual_nodes]
+
+                #self._log.debug('task_matrix: ', str(task_matrix))
+                for i in range(nodes_per_task):
+                    for j in range(int(cores_per_node)):
+                        host_list.append(task_matrix[exec_id][i])
+                hosts = ", ".join(repr(e) for e in host_list)
+                
+                return hosts
+
+
             def check_obj(obj):
                 '''
                 Check the object type if pickled or not
@@ -251,11 +281,13 @@ class Tasker():
                 if check_obj(exe) is True:
                     state      = None
                     result     = None
+                    cores_per_task = descr['cpu_processes']
+                    hosts =  breakdown(cores_per_task)
                     mpi_kwargs = descr
 
                     try:
                         self._prof.prof('worker_start', comp=wid, uid=tid) 
-                        state, result = self._worker.launch_mpirun_func(exe, **mpi_kwargs)
+                        state, result = self._worker.launch_mpirun_func(exe, hosts, **mpi_kwargs)
                         self._prof.prof('worker_stop', comp=wid, uid=tid)
    
                     except Exception as e:

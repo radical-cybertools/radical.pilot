@@ -89,7 +89,15 @@ class MPIFUNCS(AgentExecutingComponent) :
         if not exe:
             exe = '%s/rp_install/bin/radical-pilot-agent-funcs-mpi' % self._pwd
 
-        for idx, node in enumerate(self._cfg['rm_info']['node_list']):
+
+        # Since we know that every task is a multinode, we take half of the nodes and
+        # spawn executros on them, then the rest of the nodes (the other half) 
+        # will be utilized by the mpi_workers inside every executor.
+        # So the mpi worker will see 2 nodes for every task and occupy it
+
+        spl = int(len(self._cfg['rm_info']['node_list'])/2)  
+
+        for idx, node in enumerate(self._cfg['rm_info']['node_list'][:spl]):
             uid   = 'func_exec.%04d' % idx
             pwd   = '%s/%s' % (self._pwd, uid)
             funcs = {'uid'        : uid,
@@ -154,13 +162,15 @@ class MPIFUNCS(AgentExecutingComponent) :
             fout.write('#!/bin/sh\n\n')
 
             # Create string for environment variable setting
-            fout.write('export RP_SESSION_ID="%s"\n' % self._cfg['sid'])
-            fout.write('export RP_PILOT_ID="%s"\n'   % self._cfg['pid'])
-            fout.write('export RP_AGENT_ID="%s"\n'   % self._cfg['aid'])
-            fout.write('export RP_SPAWNER_ID="%s"\n' % self.uid)
-            fout.write('export RP_FUNCS_ID="%s"\n'   % funcs['uid'])
-            fout.write('export RP_GTOD="%s"\n'       % self.gtod)
-            fout.write('export RP_TMP="%s"\n'        % self._task_tmp)
+            fout.write('export RP_SESSION_ID="%s"\n'      % self._cfg['sid'])
+            fout.write('export RP_PILOT_ID="%s"\n'        % self._cfg['pid'])
+            fout.write('export RP_AGENT_ID="%s"\n'        % self._cfg['aid'])
+            fout.write('export RP_SPAWNER_ID="%s"\n'      % self.uid)
+            fout.write('export RP_FUNCS_ID="%s"\n'        % funcs['uid'])
+            fout.write('export RP_GTOD="%s"\n'            % self.gtod)
+            fout.write('export RP_TMP="%s"\n'             % self._task_tmp)
+            fout.write('export SLURM_NODELIST="%s"\n'     % os.environ['SLURM_NODELIST'])
+            fout.write('export SLURM_CPUS_ON_NODE="%s"\n' % os.environ['SLURM_CPUS_ON_NODE'])
 
             # also add any env vars requested in the task description
             if descr.get('environment', []):
