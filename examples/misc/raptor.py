@@ -99,8 +99,6 @@ if __name__ == '__main__':
                                'executable': '-',
                                'scheduler' : 'master.%06d' % (i % n_masters),
                                'arguments' : [work]}))
-            break
-
 
         tmgr.submit_tasks(requests)
 

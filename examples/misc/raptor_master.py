@@ -100,6 +100,7 @@ class MyMaster(rp.raptor.Master):
                    }}
             self.request(item)
 
+
             uid  = 'request.shell.%06d' % idx
             item = {'uid'  :   uid,
                     'mode' :  'shell',
