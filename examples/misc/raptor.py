@@ -84,7 +84,7 @@ if __name__ == '__main__':
         for i in range(eval(cfg.workload.total)):
 
             td  = rp.TaskDescription()
-            uid = 'req.%06d' % i
+            uid = 'request.req.%06d' % i
             # ------------------------------------------------------------------
             # work serialization goes here
             work = json.dumps({'mode'      :  'call',

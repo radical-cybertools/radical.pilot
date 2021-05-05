@@ -1328,14 +1328,9 @@ verify_rp_install()
     echo
     echo "`$PYTHON --version` ($PYTHON)"
     echo "PYTHONPATH: $PYTHONPATH"
-    radical-stack
- (  $PYTHON -c 'import radical.utils as ru; print("RU: %s %s" % (ru.version_detail, ru.__file__))' \
- && $PYTHON -c 'import radical.saga  as rs; print("RS: %s %s" % (rs.version_detail, rs.__file__))' \
- && $PYTHON -c 'import radical.pilot as rp; print("RP: %s %s" % (rp.version_detail, rp.__file__))' \
- && (echo 'install ok!'; true) \
- ) \
- || (echo 'install failed!'; false) \
- || exit 1
+    radical-stack \
+        || (echo 'install failed!'; false) \
+        || exit 1
     echo
     echo "---------------------------------------------------------------------"
     echo
