@@ -125,7 +125,7 @@ def get_version(_mod_root):
             # the formerly derived version as ./VERSION
             shutil.move("VERSION", "VERSION.bak")              # backup
             shutil.copy("%s/VERSION" % _path, "VERSION")       # version to use
-            os.system  ("python setup.py sdist")               # build sdist
+            os.system  ("python3 setup.py sdist")               # build sdist
             shutil.copy('dist/%s' % _sdist_name,
                         '%s/%s'   % (_mod_root, _sdist_name))  # copy into tree
             shutil.move('VERSION.bak', 'VERSION')              # restore version
@@ -166,7 +166,7 @@ class RunTwine(Command):
     def initialize_options(self): pass
     def finalize_options(self):   pass
     def run(self):
-        _, _, ret = sh_callout('python setup.py sdist upload -r pypi')
+        _, _, ret = sh_callout('python3 setup.py sdist upload -r pypi')
         raise SystemExit(ret)
 
 
