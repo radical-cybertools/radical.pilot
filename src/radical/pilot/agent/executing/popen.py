@@ -14,7 +14,6 @@ import atexit
 import pprint
 import signal
 import threading as mt
-import traceback
 import subprocess
 
 import radical.utils as ru
@@ -104,28 +103,26 @@ class Popen(AgentExecutingComponent) :
     #
     def work(self, tasks):
 
-        self._log.debug('===== popen work start')
 
         self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        for task in ru.as_list(tasks):
+        for task in tasks:
 
             try:
                 self._handle_task(task)
 
-            except Exception as e:
-                # append the startup error to the task's stderr.  This is
+            except Exception:
+                # append the startup error to the tasks stderr.  This is
                 # not completely correct (as this text is not produced
                 # by the task), but it seems the most intuitive way to
                 # communicate that error to the application/user.
-                self._log.exception('error running task')
-
-                if not task.get('stderr'):
+                self._log.exception("error running Task")
+                if task['stderr'] is None:
                     task['stderr'] = ''
-                task['stderr'] += '\nPilot cannot start task:\n%s\n%s' \
-                                % (str(e), traceback.format_exc())
+                task['stderr'] += '\nPilot cannot start task:\n'
+                task['stderr'] += '\n'.join(ru.get_exception_trace())
 
-                # Free the Slots, Flee the Flots, Ree the Frots!
+                # can't rely on the executor base to free the task resources
                 self._prof.prof('unschedule_start', uid=task['uid'])
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
@@ -137,6 +134,23 @@ class Popen(AgentExecutingComponent) :
     # --------------------------------------------------------------------------
     #
     def _handle_task(self, task):
+
+        # before we start handling the task, check if it should run in a names
+        # env.  If so, inject the activation of that env in the task's pre_exec
+        # directives.
+        descr = task['description']
+
+        # ensure that the named env exists
+        env = descr.get('named_env')
+        if env:
+            if not os.path.isdir('%s/%s' % (self._pwd, env)):
+                raise ValueError('invalid named env %s for task %s'
+                                % (env, task['uid']))
+            pre = ru.as_list(descr.get('pre_exec'))
+            pre.insert(0, '. %s/%s/bin/activate' % (self._pwd, env))
+            pre.insert(0, '. %s/deactivate'      % (self._pwd))
+            descr['pre_exec'] = pre
+
 
         # create two shell scripts: a launcher script (task.launch.sh) which
         # sets the launcher environment, performs pre_launch commands, and then
@@ -210,6 +224,10 @@ class Popen(AgentExecutingComponent) :
         #       pre_rank and post_rank dictionaries are rendered as strings.
         #       This should be changed to more intuitive integers once MongoDB
         #       is phased out.
+        #
+        # prep stdout/err so that we can append w/o checking for None
+        task['stdout'] = ''
+        task['stderr'] = ''
 
         tid  = task['uid']
         td   = task['description']
