@@ -70,7 +70,7 @@ class Sleep(AgentExecutingComponent) :
             try:
                 self._handle_task(task)
 
-            except Exception as e:
+            except Exception:
                 # append the startup error to the tasks stderr.  This is
                 # not completely correct (as this text is not produced
                 # by the task), but it seems the most intuitive way to
@@ -130,9 +130,6 @@ class Sleep(AgentExecutingComponent) :
                 self._prof.prof('exec_stop',        uid=uid)
                 self._prof.prof('unschedule_start', uid=uid)
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
-
-            self._prof.prof('unschedule_start', uid=task['uid'])
-            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
             self.advance(to_finish, rps.AGENT_STAGING_OUTPUT_PENDING,
                                     publish=True, push=True)

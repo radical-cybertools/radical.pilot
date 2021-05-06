@@ -15,7 +15,6 @@ import pprint
 import signal
 import tempfile
 import threading as mt
-import traceback
 import subprocess
 
 import radical.utils as ru
@@ -129,7 +128,7 @@ class Popen(AgentExecutingComponent) :
             try:
                 self._handle_task(task)
 
-            except Exception as e:
+            except Exception:
                 # append the startup error to the tasks stderr.  This is
                 # not completely correct (as this text is not produced
                 # by the task), but it seems the most intuitive way to

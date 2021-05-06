@@ -186,7 +186,7 @@ class Shell(AgentExecutingComponent):
             try:
                 self._handle_task(task)
 
-            except Exception as e:
+            except Exception:
                 # append the startup error to the tasks stderr.  This is
                 # not completely correct (as this text is not produced
                 # by the task), but it seems the most intuitive way to

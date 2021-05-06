@@ -1,3 +1,4 @@
+# pylint: disable=import-error
 
 __copyright__ = 'Copyright 2013-2020, http://radical.rutgers.edu'
 __license__   = 'MIT'
@@ -183,7 +184,7 @@ class Flux(AgentExecutingComponent) :
 
         for event in events:
 
-            flux_id, flux_state = event
+            flux_state = event[1]  # event: flux_id, flux_state
             state = self._event_map[flux_state]
 
             if state is None:
@@ -246,7 +247,7 @@ class Flux(AgentExecutingComponent) :
                                     if flux_id in events: del(events[flux_id])
                                     if flux_id in tasks : del(tasks[flux_id])
 
-                        except Exception as e:
+                        except Exception:
 
                             self._log.exception("error collecting Task")
                             if task['stderr'] is None:
@@ -268,7 +269,7 @@ class Flux(AgentExecutingComponent) :
 
                     for event in self._event_q.get_nowait():
 
-                        flux_id, flux_event = event
+                        flux_id = event[0]  # event: flux_id, flux_state
 
                         if flux_id in tasks:
 
