@@ -97,7 +97,6 @@ if __name__ == '__main__':
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
         tmgr.wait_tasks()
 
-
     except Exception as e:
         # Something unexpected happened in the pilot code above
         report.error('caught Exception: %s\n' % e)
