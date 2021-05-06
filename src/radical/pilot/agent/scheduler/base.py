@@ -521,9 +521,6 @@ class AgentSchedulingComponent(rpu.Component):
         process (self._schedule_tasks).
         '''
 
-        # unify handling of bulks / non-bulks
-        tasks = ru.as_list(tasks)
-
         # advance state, publish state change, and push to scheduler process
         self.advance(tasks, rps.AGENT_SCHEDULING, publish=True, push=False)
         self._queue_sched.put(tasks)
