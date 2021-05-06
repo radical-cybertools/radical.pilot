@@ -15,7 +15,6 @@ import pprint
 import signal
 import tempfile
 import threading as mt
-import traceback
 import subprocess
 
 import radical.utils as ru
@@ -122,70 +121,68 @@ class Popen(AgentExecutingComponent) :
     #
     def work(self, tasks):
 
-        if not isinstance(tasks, list):
-            tasks = [tasks]
-
         self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
         for task in tasks:
-            self._handle_task(task)
+
+            try:
+                self._handle_task(task)
+
+            except Exception:
+                # append the startup error to the tasks stderr.  This is
+                # not completely correct (as this text is not produced
+                # by the task), but it seems the most intuitive way to
+                # communicate that error to the application/user.
+                self._log.exception("error running Task")
+                if task['stderr'] is None:
+                    task['stderr'] = ''
+                task['stderr'] += '\nPilot cannot start task:\n'
+                task['stderr'] += '\n'.join(ru.get_exception_trace())
+
+                # can't rely on the executor base to free the task resources
+                self._prof.prof('unschedule_start', uid=task['uid'])
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+
+                self.advance(task, rps.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
     #
     def _handle_task(self, task):
 
-        try:
-            descr = task['description']
+        descr = task['description']
 
-            # ensure that the named env exists
-            env = descr.get('named_env')
-            if env:
-                if not os.path.isdir('%s/%s' % (self._pwd, env)):
-                    raise ValueError('invalid named env %s for task %s'
-                                    % (env, task['uid']))
-                pre = ru.as_list(descr.get('pre_exec'))
-                pre.insert(0, '. %s/%s/bin/activate' % (self._pwd, env))
-                pre.insert(0, '. %s/deactivate'      % (self._pwd))
-                descr['pre_exec'] = pre
+        # ensure that the named env exists
+        env = descr.get('named_env')
+        if env:
+            if not os.path.isdir('%s/%s' % (self._pwd, env)):
+                raise ValueError('invalid named env %s for task %s'
+                                % (env, task['uid']))
+            pre = ru.as_list(descr.get('pre_exec'))
+            pre.insert(0, '. %s/%s/bin/activate' % (self._pwd, env))
+            pre.insert(0, '. %s/deactivate'      % (self._pwd))
+            descr['pre_exec'] = pre
 
 
-            # prep stdout/err so that we can append w/o checking for None
-            task['stdout'] = ''
-            task['stderr'] = ''
+        # prep stdout/err so that we can append w/o checking for None
+        task['stdout'] = ''
+        task['stderr'] = ''
 
-            cpt = descr['cpu_process_type']
-          # gpt = descr['gpu_process_type']  # FIXME: use
+        cpt = descr['cpu_process_type']
+      # gpt = descr['gpu_process_type']  # FIXME: use
 
-            # FIXME: this switch is insufficient for mixed tasks (MPI/OpenMP)
-            if cpt == 'MPI': launcher = self._mpi_launcher
-            else           : launcher = self._task_launcher
+        # FIXME: this switch is insufficient for mixed tasks (MPI/OpenMP)
+        if cpt == 'MPI': launcher = self._mpi_launcher
+        else           : launcher = self._task_launcher
 
-            if not launcher:
-                raise RuntimeError("no launcher (process type = %s)" % cpt)
+        if not launcher:
+            raise RuntimeError("no launcher (process type = %s)" % cpt)
 
-            self._log.debug("Launching task with %s (%s).",
-                            launcher.name, launcher.launch_command)
+        self._log.debug("Launching task with %s (%s).",
+                        launcher.name, launcher.launch_command)
 
-            # Start a new subprocess to launch the task
-            self.spawn(launcher=launcher, task=task)
-
-        except Exception as e:
-            # append the startup error to the tasks stderr.  This is
-            # not completely correct (as this text is not produced
-            # by the task), but it seems the most intuitive way to
-            # communicate that error to the application/user.
-            self._log.exception("error running Task")
-            if task.get('stderr') is None:
-                task['stderr'] = ''
-            task['stderr'] += "\nPilot cannot start task:\n%s\n%s" \
-                            % (str(e), traceback.format_exc())
-
-            # Free the Slots, Flee the Flots, Ree the Frots!
-            self._prof.prof('unschedule_start', uid=task['uid'])
-            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
-
-            self.advance(task, rps.FAILED, publish=True, push=False)
+        # Start a new subprocess to launch the task
+        self.spawn(launcher=launcher, task=task)
 
 
     # --------------------------------------------------------------------------
