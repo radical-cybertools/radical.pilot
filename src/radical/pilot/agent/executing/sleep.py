@@ -63,23 +63,29 @@ class Sleep(AgentExecutingComponent) :
     #
     def work(self, tasks):
 
-        if not isinstance(tasks, list):
-            tasks = [tasks]
-
         self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        now = time.time()
-        for t in tasks:
-            uid = t['uid']
-            self._prof.prof('exec_start',      uid=uid)
-            self._prof.prof('exec_ok',         uid=uid)
-            self._prof.prof('task_start',      uid=uid)
-            self._prof.prof('task_exec_start', uid=uid)
-            self._prof.prof('app_start',       uid=uid)
+        for task in tasks:
 
-            t['deadline'] = now + float(t['description']['arguments'][0])
+            try:
+                self._handle_task(task)
 
-        self._log.debug('started new tasks        : %d', len(tasks))
+            except Exception:
+                # append the startup error to the tasks stderr.  This is
+                # not completely correct (as this text is not produced
+                # by the task), but it seems the most intuitive way to
+                # communicate that error to the application/user.
+                self._log.exception("error running Task")
+                if task['stderr'] is None:
+                    task['stderr'] = ''
+                task['stderr'] += '\nPilot cannot start task:\n'
+                task['stderr'] += '\n'.join(ru.get_exception_trace())
+
+                # can't rely on the executor base to free the task resources
+                self._prof.prof('unschedule_start', uid=task['uid'])
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+
+                self.advance(task, rps.FAILED, publish=True, push=False)
 
         with self._tasks_lock:
             self._tasks.extend(tasks)
@@ -87,15 +93,31 @@ class Sleep(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def _collect(self):
+    def _handle_task(self, task):
+
+        now = time.time()
+
+        task['to_finish'] = now + float(task['description']['arguments'][0])
+
+        uid = task['uid']
+        self._prof.prof('exec_start',      uid=uid)
+        self._prof.prof('exec_ok',         uid=uid)
+        self._prof.prof('task_start',      uid=uid)
+        self._prof.prof('task_exec_start', uid=uid)
+        self._prof.prof('app_start',       uid=uid)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _timed(self):
 
         while not self._terminate.is_set():
 
-            with self._tasks_lock:
+            to_finish   = list()
+            to_continue = list()
+            now         = time.time()
 
-                to_finish   = list()
-                to_continue = list()
-                now         = time.time()
+            with self._tasks_lock:
 
                 for task in self._tasks:
                     if task['deadline'] <= now: to_finish.append(task)
@@ -107,11 +129,10 @@ class Sleep(AgentExecutingComponent) :
                 time.sleep(self._delay)
                 continue
 
-            uids = list()
-            for t in to_finish:
-                uid = t['uid']
-                uids.append(uid)
-                t['target_state'] = 'DONE'
+            for task in to_finish:
+                uid = task['uid']
+                task['target_state'] = 'DONE'
+
                 self._prof.prof('app_stop',         uid=uid)
                 self._prof.prof('task_exec_stop',   uid=uid)
                 self._prof.prof('task_stop',        uid=uid)
@@ -121,7 +142,6 @@ class Sleep(AgentExecutingComponent) :
             self._log.debug('collected                : %d', len(to_finish))
 
             self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, to_finish)
-
             self.advance(to_finish, rps.AGENT_STAGING_OUTPUT_PENDING,
                                     publish=True, push=True)
 
