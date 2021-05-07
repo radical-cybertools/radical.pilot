@@ -98,7 +98,7 @@ if __name__ == '__main__':
 
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            td = rp.TaskDescription()
+            td = rp.ExecutableTaskDescription()
             td.executable = '/bin/echo'
             td.arguments  = ['$RP_PILOT_ID']
 

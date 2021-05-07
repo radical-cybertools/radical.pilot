@@ -131,7 +131,7 @@ if __name__ == '__main__':
 
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            td = rp.TaskDescription()
+            td = rp.ExecutableTaskDescription()
             # trigger an error now and then
           # if i % 2:
             td.executable = '/bin/echo'

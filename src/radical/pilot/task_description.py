@@ -10,8 +10,6 @@ import radical.utils as ru
 #
 UID                    = 'uid'
 NAME                   = 'name'
-EXECUTABLE             = 'executable'
-ARGUMENTS              = 'arguments'
 ENVIRONMENT            = 'environment'
 NAMED_ENV              = 'named_env'
 SANDBOX                = 'sandbox'
@@ -52,6 +50,22 @@ FUNC                   = 'FUNC'
 # FIXME: move process/thread types to `radical.pilot.constants`
 
 
+# ExecutableTaskDescription
+EXECUTABLE             = 'executable'
+ARGUMENTS              = 'arguments'
+
+# ShellTaskDescription
+SCRIPT                 = 'script'
+
+# EvalTaskDescription
+CODE                   = 'code'
+
+# CallableTaskDescription
+CALLABLE               = 'callable'
+ARGS                   = 'args'
+KWARGS                 = 'kwargs'
+
+
 # ------------------------------------------------------------------------------
 #
 class TaskDescription(ru.Description):
@@ -60,9 +74,6 @@ class TaskDescription(ru.Description):
     of a :class:`radical.pilot.Task` and is passed as a parameter to
     :meth:`radical.pilot.TaskManager.submit_tasks` to instantiate and run
     a new task.
-
-    .. note:: A TaskDescription **MUST** define at least an
-              `executable` or `kernel` -- all other elements are optional.
 
     .. data:: uid
 
@@ -74,12 +85,6 @@ class TaskDescription(ru.Description):
        [type: `str` | default: `""`] A descriptive name for the task. This
        attribute can be used to map individual tasks back to application level
        workloads.
-
-    .. data:: executable
-
-       [type: `str` | default: `""`] The executable to launch. The executable
-       is expected to be either available via `$PATH` on the target resource,
-       or to be an absolute path.
 
     .. data:: cpu_processes
 
@@ -130,11 +135,6 @@ class TaskDescription(ru.Description):
 
        [type: `int` | default: `0`] Amount of physical memory required per
        process.
-
-    .. data:: arguments
-
-       [type: `list` | default: `[]`] The command line arguments for the given
-       `executable` (`list` of `strings`).
 
     .. data:: environment
 
@@ -206,12 +206,6 @@ class TaskDescription(ru.Description):
        this task finishes. The same remarks as on `pre_exec` apply, inclusive
        the point on error handling, which again will cause the task to fail,
        even if the actual execution was successful.
-
-    .. data:: kernel
-
-       [type: `str` | default: `""`] Name of a simulation kernel, which expands
-       to description attributes once the task is scheduled to a pilot and
-       resource. `TODO: explain in detail, referencing EnTK.`
 
     .. data:: restartable
 
@@ -301,12 +295,10 @@ class TaskDescription(ru.Description):
     """
 
     _schema = {
+        'type'          : str         ,
         UID             : str         ,
         NAME            : str         ,
-        EXECUTABLE      : str         ,
-        KERNEL          : str         ,
         SANDBOX         : str         ,
-        ARGUMENTS       : [str]       ,
         ENVIRONMENT     : {str: str}  ,
         NAMED_ENV       : str         ,
         PRE_EXEC        : [str]       ,
@@ -336,18 +328,16 @@ class TaskDescription(ru.Description):
     }
 
     _defaults = {
-        UID             : ''          ,
-        NAME            : ''          ,
-        EXECUTABLE      : ''          ,
-        KERNEL          : ''          ,
-        SANDBOX         : ''          ,
-        ARGUMENTS       : list()      ,
+        'type'          : None        ,
+        UID             : None        ,
+        NAME            : None        ,
+        SANDBOX         : None        ,
         ENVIRONMENT     : dict()      ,
-        NAMED_ENV       : ''          ,
+        NAMED_ENV       : None        ,
         PRE_EXEC        : list()      ,
         POST_EXEC       : list()      ,
-        STDOUT          : ''          ,
-        STDERR          : ''          ,
+        STDOUT          : None        ,
+        STDERR          : None        ,
         INPUT_STAGING   : list()      ,
         OUTPUT_STAGING  : list()      ,
         STAGE_ON_ERROR  : False       ,
@@ -378,13 +368,194 @@ class TaskDescription(ru.Description):
         super().__init__(from_dict=from_dict)
 
 
+    @staticmethod
+    def create(from_dict):
+
+        if 'executable' in from_dict:
+            return ExecutableTaskDescription(from_dict=from_dict)
+
+        if 'script' in from_dict:
+            return ShellTaskDescription(from_dict=from_dict)
+
+        if 'code' in from_dict:
+            return EvalTaskDescription(from_dict=from_dict)
+
+        if 'callable' in from_dict:
+            return CallableTaskDescription(from_dict=from_dict)
+
+
+# ------------------------------------------------------------------------------
+#
+class ExecutableTaskDescription(TaskDescription):
+    '''
+    A task description for workloads which are defined by an executable and
+    arguments.
+
+    .. data:: executable
+
+       [type: `str` | default: `""`] The executable to launch. The executable
+       is expected to be either available via `$PATH` on the target resource,
+       or to be an absolute path.
+
+    .. data:: arguments
+
+       [type: `list` | default: `[]`] The command line arguments for the given
+       `executable` (`list` of `strings`).
+    '''
+
+
+    _schema_extend = {
+        EXECUTABLE:  str,
+        ARGUMENTS : [str],
+    }
+
+    _defaults_extend = {
+        'type'    : 'executable',
+        EXECUTABLE: None,
+        ARGUMENTS : list(),
+    }
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, from_dict=None):
+
+        super().__init__(from_dict=from_dict)
+
+
     # --------------------------------------------------------------------------
     #
     def _verify(self):
 
-        if not self.get('executable') and \
-           not self.get('kernel')     :
-            raise ValueError("Task description needs 'executable' or 'kernel'")
+        if not self.get('executable'):
+            raise ValueError("ExecutableTaskDescription needs 'executable'")
+
+
+# ------------------------------------------------------------------------------
+#
+class EvalTaskDescription(TaskDescription):
+    '''
+    A task description for workloads which are defined by an python code snipped
+    to be passed to `eval`.
+
+    .. data:: code
+
+       [type: `str` | default: `""`] The code to evaluate.
+    '''
+
+    _schema_extend = {
+        CODE: str,
+    }
+
+    _defaults_extend = {
+        'type': 'eval',
+        CODE  : None,
+    }
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, from_dict=None):
+
+        super().__init__(from_dict=from_dict)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _verify(self):
+
+        if not self.get('code'):
+            raise ValueError("EvalTaskDescription needs 'code'")
+
+
+# ------------------------------------------------------------------------------
+#
+class ShellTaskDescription(TaskDescription):
+    '''
+    A task description for workloads which are defined by a shell script to be
+    executed.
+
+    .. data:: script
+
+       [type: `str` | default: `""`] The script to run.
+    '''
+
+    _schema_extend = {
+        SCRIPT: str,
+    }
+
+    _defaults_extend = {
+        'type': 'shell',
+        SCRIPT: None,
+    }
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, from_dict=None):
+
+        super().__init__(from_dict=from_dict)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _verify(self):
+
+        if not self.get('script'):
+            raise ValueError("ShellTaskDescription needs 'script'")
+
+
+# ------------------------------------------------------------------------------
+#
+class CallableTaskDescription(TaskDescription):
+    '''
+    A task description for workloads which are defined by a python callable and
+    it's arguments.
+
+    .. data:: callable
+
+       [type: `str` | default: `""`] a callable, either a free Python function
+       or some other callable which is known to the backend executor.
+
+    .. data:: args
+
+       [type: `list` | default : `()`] a list of serializable (pickle-able)
+       arguments, passed as `*args` to the callable.
+
+    .. data:: kwargs
+
+       [type: `dict` | default : `{}`] a dict of named, serializable
+       (pickle-able) arguments, passed as `**kwargs` to the callable.
+    '''
+
+
+    _schema_extend = {
+        CALLABLE: str,
+        ARGS    : [None],
+        KWARGS  : {str: None},
+    }
+
+    _defaults_extend = {
+        'type'  : 'callable',
+        CALLABLE: None,
+        ARGS    : list(),
+        KWARGS  : dict()
+    }
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, from_dict=None):
+
+        super().__init__(from_dict=from_dict)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _verify(self):
+
+        if not self.get('callable'):
+            raise ValueError("CallableTaskDescription needs 'callable'")
 
 
 # ------------------------------------------------------------------------------

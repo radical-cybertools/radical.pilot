@@ -98,7 +98,7 @@ if __name__ == '__main__':
 
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            td = rp.TaskDescription()
+            td = rp.ExecutableTaskDescription()
             td.executable     = '/bin/cat'
             td.arguments      = ['input.dat']
             td.stdout         = 'STDOUT'

@@ -22,7 +22,11 @@ from .context                   import Context
 from .task_manager              import TaskManager
 from .task                      import Task
 from .task_description          import TaskDescription
-from .task_description          import POSIX, MPI, OpenMP, CUDA, FUNC
+from .task_description          import ShellTaskDescription
+from .task_description          import ExecutableTaskDescription
+from .task_description          import EvalTaskDescription
+from .task_description          import CallableTaskDescription
+from .task_description          import POSIX, MPI, OpenMP, CUDA
 
 from .pilot_manager             import PilotManager
 from .pilot                     import Pilot

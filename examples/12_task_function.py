@@ -76,7 +76,7 @@ if __name__ == '__main__':
         # Create a workload of Tasks.
         # Each task runs '/bin/date'.
 
-        n = 1024 * 2
+        n = 10
         report.progress_tgt(n, label='create')
 
         tds = list()
@@ -84,14 +84,10 @@ if __name__ == '__main__':
 
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            td = rp.TaskDescription()
-            td.pre_exec         = ['import math']
-            td.executable       = 'math.exp'
-            td.arguments        = [i]
-            td.gpu_processes    = 0
-            td.cpu_processes    = 1
-            td.cpu_threads      = 1
-            td.cpu_process_type = rp.FUNC
+            td = rp.CallableTaskDescription()
+            td.pre_exec = ['import math']
+            td.callable = 'math.exp'
+            td.args     = [i]
             tds.append(td)
             report.progress()
 

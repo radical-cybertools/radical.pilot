@@ -345,8 +345,8 @@ class TaskManager(rpu.Component):
 
                     self._log.debug('task %s is  restartable', task['uid'])
                     task['restarted'] = True
-                    ud = rpcud.TaskDescription(task['description'])
-                    to_restart.append(ud)
+                    td = rpcud.TaskDescription(task['description'])
+                    to_restart.append(td)
                     # FIXME: increment some restart counter in the description?
                     # FIXME: reference the resulting new uid in the old task.
 
@@ -833,12 +833,9 @@ class TaskManager(rpu.Component):
         # we return a list of tasks
         self._rep.progress_tgt(len(descriptions), label='submit')
         tasks = list()
-        for ud in descriptions:
+        for td in descriptions:
 
-            if not ud.executable:
-                raise ValueError('task executable must be defined')
-
-            task = Task(tmgr=self, descr=ud)
+            task = Task(tmgr=self, descr=td)
             tasks.append(task)
 
             # keep tasks around
@@ -846,7 +843,7 @@ class TaskManager(rpu.Component):
                 self._tasks[task.uid] = task
 
             if self._session._rec:
-                ru.write_json(ud.as_dict(), "%s/%s.batch.%03d.json"
+                ru.write_json(td.as_dict(), "%s/%s.batch.%03d.json"
                         % (self._session._rec, task.uid, self._rec_id))
 
             self._rep.progress()

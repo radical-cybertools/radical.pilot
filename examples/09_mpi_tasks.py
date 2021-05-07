@@ -92,7 +92,7 @@ if __name__ == '__main__':
 
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            td = rp.TaskDescription()
+            td = rp.ExecutableTaskDescription()
             td.executable       = '/bin/sh'
             td.arguments        = ['09_mpi_tasks.sh']
             td.input_staging    = ['%s/09_mpi_tasks.sh' % PWD]

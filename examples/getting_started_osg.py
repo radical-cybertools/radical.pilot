@@ -96,7 +96,7 @@ if __name__ == "__main__":
 
         tds = list()
         for task_count in range(0, TASKS):
-            td = rp.TaskDescription()
+            td = rp.ExecutableTaskDescription()
             td.executable     = "/bin/sh"
             td.arguments      = ["-c", "echo $HOSTNAME:$OSG_HOSTNAME && sleep %d" % SLEEP]
             td.cores          = 1

@@ -117,7 +117,7 @@ if __name__ == "__main__":
         n    = 1024 * 3
         tds = list()
         for _ in range(n):
-            td = rp.TaskDescription()
+            td = rp.ExecutableTaskDescription()
             if random.random() < 0.5:
                 td.executable = '/bin/true'
             else:

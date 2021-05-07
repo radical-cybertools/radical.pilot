@@ -78,7 +78,7 @@ if __name__ == '__main__':
         n = 4   # number of tasks to run
 
         # create a folder to the remote machine
-        t               = rp.TaskDescription()
+        t               = rp.ExecutableTaskDescription()
         t.executable    = 'python'
         t.arguments     = ['make_folders.py', n]
         t.input_staging = ['make_folders.py']
@@ -97,7 +97,7 @@ if __name__ == '__main__':
             full  = '%s/%s'  % (path, fname)
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
-            td = rp.TaskDescription()
+            td = rp.ExecutableTaskDescription()
             td.executable     = '/usr/bin/wc'
             td.arguments      = ['-c', fname]
             td.input_staging  = {'source': full,
