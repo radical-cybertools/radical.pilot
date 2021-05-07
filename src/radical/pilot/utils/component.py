@@ -1059,7 +1059,8 @@ class Component(object):
             things = ru.as_list(things)
 
             if not things:
-                continue
+                # return to have a chance to catch term signals
+                return True
 
             # the worker target depends on the state of things, so we
             # need to sort the things into buckets by state before
