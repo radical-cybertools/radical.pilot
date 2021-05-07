@@ -395,7 +395,8 @@
         "pre_bootstrap_0"             : ["module purge",
                                          "module load slurm",
                                          "module load anaconda3",
-                                         "module load intel/18.4"
+                                         "module load intel/19.3",
+                                         "module load mpi/intel_openmpi/19.3"
                                         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/home", "/pylon1", "/pylon5"],
