@@ -135,21 +135,21 @@ class Popen(AgentExecutingComponent) :
     #
     def _handle_task(self, task):
 
-        # before we start handling the task, check if it should run in a names
+        # before we start handling the task, check if it should run in a named
         # env.  If so, inject the activation of that env in the task's pre_exec
         # directives.
-        descr = task['description']
+        td = task['description']
 
         # ensure that the named env exists
-        env = descr.get('named_env')
+        env = td.get('named_env')
         if env:
             if not os.path.isdir('%s/%s' % (self._pwd, env)):
                 raise ValueError('invalid named env %s for task %s'
                                 % (env, task['uid']))
-            pre = ru.as_list(descr.get('pre_exec'))
+            pre = ru.as_list(td.get('pre_exec'))
             pre.insert(0, '. %s/%s/bin/activate' % (self._pwd, env))
             pre.insert(0, '. %s/deactivate'      % (self._pwd))
-            descr['pre_exec'] = pre
+            td['pre_exec'] = pre
 
 
         # create two shell scripts: a launcher script (task.launch.sh) which
@@ -236,7 +236,7 @@ class Popen(AgentExecutingComponent) :
         launcher = self.find_launcher(task)
 
         if not launcher:
-            raise RuntimeError('no launcher foud for task %s' % tid)
+            raise RuntimeError('no launcher found for task %s' % tid)
 
         self._log.debug('Launching task with %s', launcher.name)
 
@@ -386,15 +386,16 @@ class Popen(AgentExecutingComponent) :
         os.chmod('%s/%s' % (sbox, launch_script), st.st_mode | stat.S_IEXEC)
         os.chmod('%s/%s' % (sbox, exec_script),   st.st_mode | stat.S_IEXEC)
 
-        tid  = task['uid']
-        td   = task['description']
-        sbox = task['task_sandbox_path']
-
         # make sure the sandbox exists
         slots_fname = '%s/%s.sl' % (sbox, tid)
 
         with open(slots_fname, 'w') as fout:
             fout.write('\n%s\n\n' % pprint.pformat(task['slots']))
+
+        # make sure the sandbox exists
+        self._prof.prof('exec_mkdir', uid=tid)
+        ru.rec_makedir(sbox)
+        self._prof.prof('exec_mkdir_done', uid=tid)
 
         # launch and exec sript are done, get ready for execution.
         cmdline = '/bin/sh %s' % launch_script
@@ -424,7 +425,7 @@ class Popen(AgentExecutingComponent) :
                                       close_fds  = True,
                                       shell      = True,
                                       cwd        = sbox)
-        self._prof.prof('exec_ok', uid=task['uid'])
+        self._prof.prof('exec_ok', uid=tid)
 
         # store pid for last-effort termination
         _pids.append(task['proc'].pid)
@@ -441,12 +442,15 @@ class Popen(AgentExecutingComponent) :
 
                 tasks = list()
                 try:
-                    # we don't want to only wait for one Task -- then we would
-                    # pull Task state too frequently.  OTOH, we also don't want to
-                    # learn about tasks until all slots are filled, because then
-                    # we may not be able to catch finishing tasks in time -- so
-                    # there is a fine balance here.  Balance means 100 (FIXME).
+
+                    # FIXME: we don't want to only wait for one Task -- then we
+                    #        would pull Task state too frequently.  OTOH, we
+                    #        also don't want to learn about tasks until all
+                    #        slots are filled, because then we may not be able
+                    #        to catch finishing tasks in time -- so there is
+                    #        a fine balance here.  Balance means 100.
                     MAX_QUEUE_BULKSIZE = 100
+
                     while len(tasks) < MAX_QUEUE_BULKSIZE :
                         tasks.append (self._watch_queue.get_nowait())
 
@@ -481,18 +485,18 @@ class Popen(AgentExecutingComponent) :
 
             # poll subprocess object
             exit_code = task['proc'].poll()
-            uid       = task['uid']
+            tid       = task['uid']
 
             if exit_code is None:
                 # Process is still running
 
-                if task['uid'] in self._tasks_to_cancel:
+                if tid in self._tasks_to_cancel:
 
                     # FIXME: there is a race condition between the state poll
                     # above and the kill command below.  We probably should pull
                     # state after kill again?
 
-                    self._prof.prof('exec_cancel_start', uid=uid)
+                    self._prof.prof('exec_cancel_start', uid=tid)
 
                     # We got a request to cancel this task - send SIGTERM to the
                     # process group (which should include the actual launch
@@ -507,12 +511,12 @@ class Popen(AgentExecutingComponent) :
                     task['proc'].wait()  # make sure proc is collected
 
                     with self._cancel_lock:
-                        self._tasks_to_cancel.remove(uid)
+                        self._tasks_to_cancel.remove(tid)
 
-                    self._prof.prof('exec_cancel_stop', uid=uid)
+                    self._prof.prof('exec_cancel_stop', uid=tid)
 
                     del(task['proc'])  # proc is not json serializable
-                    self._prof.prof('unschedule_start', uid=task['uid'])
+                    self._prof.prof('unschedule_start', uid=tid)
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
                     self.advance(task, rps.CANCELED, publish=True, push=False)
 
@@ -521,21 +525,21 @@ class Popen(AgentExecutingComponent) :
 
             else:
 
-                self._prof.prof('exec_stop', uid=uid)
+                self._prof.prof('exec_stop', uid=tid)
 
                 # make sure proc is collected
                 task['proc'].wait()
 
                 # we have a valid return code -- task is final
                 action += 1
-                self._log.info("Task %s has return code %s.", uid, exit_code)
+                self._log.info("Task %s has return code %s.", tid, exit_code)
 
                 task['exit_code'] = exit_code
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._tasks_to_watch.remove(task)
                 del(task['proc'])  # proc is not json serializable
-                self._prof.prof('unschedule_start', uid=task['uid'])
+                self._prof.prof('unschedule_start', uid=tid)
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
                 if exit_code != 0:
@@ -544,12 +548,13 @@ class Popen(AgentExecutingComponent) :
 
                 else:
                     # The task finished cleanly, see if we need to deal with
-                    # output data.  We always move to stageout, even if there are no
-                    # directives -- at the very least, we'll upload stdout/stderr
+                    # output data.  We always move to stageout, even if there
+                    # are no directives -- at the very least, we'll upload
+                    # stdout/stderr
                     task['target_state'] = rps.DONE
 
                 self.advance(task, rps.AGENT_STAGING_OUTPUT_PENDING,
-                                   publish=True,  push=True)
+                                   publish=True, push=True)
 
         return action
 

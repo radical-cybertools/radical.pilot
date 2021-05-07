@@ -160,11 +160,7 @@ def complete_url(path, context, log=None):
 
     # FIXME: consider evaluation of env vars
 
-    purl = ru.Url(path)
-
-    log.debug('<- %s (%s)', path, type(path))
-    log.debug('   %s', purl)
-
+    purl     = ru.Url(path)
     str_path = str(path)
 
     # we always want a schema, and fall back to file:// or pwd://, depending if
@@ -183,10 +179,9 @@ def complete_url(path, context, log=None):
 
     if schema == 'client':
         # 'client' is 'pwd' in client context.
-        # We don't check context though.
+        # FIXME: We don't check context though.
         schema = 'pwd'
 
-    log.debug('   %s', schema)
     if schema in list(context.keys()):
 
         # we interpret any hostname as part of the path element
@@ -208,7 +203,6 @@ def complete_url(path, context, log=None):
     if not purl.schema:
         purl.schema = 'file'
 
-    log.debug('-> %s', purl)
     return purl
 
 

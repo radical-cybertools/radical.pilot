@@ -33,6 +33,20 @@ echo "bootstrap_0 running on host: `hostname -f`."
 echo "bootstrap_0 started as     : '$0 $@'"
 echo "safe environment of bootstrap_0"
 
+# store the sorted env for logging, but also so that we can dig original env
+# settings for task environments, if needed
+env | sort > env.orig
+
+
+# create a `deactivate` script
+old_path=$(  grep 'export PATH='       env.orig | cut -f 2- -d '=')
+old_pypath=$(grep 'export PYTHONPATH=' env.orig | cut -f 2- -d '=')
+old_pyhome=$(grep 'export PYTHONHOME=' env.orig | cut -f 2- -d '=')
+
+echo "export PATH='$old_path'"          > deactivate
+echo "export PYTHONPATH='$old_pypath'" >> deactivate
+echo "export PYTHONHOME='$old_pyhome'" >> deactivate
+
 # interleave stdout and stderr, to get a coherent set of log messages
 if test -z "$RP_BOOTSTRAP_0_REDIR"
 then

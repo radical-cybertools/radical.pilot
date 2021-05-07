@@ -8,7 +8,7 @@ import sys
 import radical.pilot as rp
 
 SHARED_INPUT_FILE = 'shared_input_file.txt'
-MY_STAGING_AREA = 'staging:///'
+MY_STAGING_AREA = 'pilot:///'
 
 # ------------------------------------------------------------------------------
 #
