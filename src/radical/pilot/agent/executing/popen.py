@@ -210,6 +210,10 @@ class Popen(AgentExecutingComponent) :
             launch_script.write('\n%s\n\n' % pprint.pformat(task['slots']))
 
         with open(launch_script_name, "w") as launch_script:
+
+            td = task['description']
+            tid = task['uid']
+
             launch_script.write('#!/bin/sh\n\n')
 
             # Create string for environment variable setting
@@ -220,21 +224,22 @@ class Popen(AgentExecutingComponent) :
             env_string += 'export RP_PILOT_ID="%s"\n'      % self._cfg['pid']
             env_string += 'export RP_AGENT_ID="%s"\n'      % self._cfg['aid']
             env_string += 'export RP_SPAWNER_ID="%s"\n'    % self.uid
-            env_string += 'export RP_TASK_ID="%s"\n'       % task['uid']
-            env_string += 'export RP_TASK_NAME="%s"\n'     % task['description'].get('name')
+            env_string += 'export RP_TASK_ID="%s"\n'       % tid
+            env_string += 'export RP_TASK_NAME="%s"\n'     % td.get('name')
             env_string += 'export RP_GTOD="%s"\n'          % self.gtod
             env_string += 'export RP_TMP="%s"\n'           % self._task_tmp
             env_string += 'export RP_PILOT_SANDBOX="%s"\n' % self._pwd
             env_string += 'export RP_PILOT_STAGING="%s"\n' % self._pwd
 
             if self._prof.enabled:
-                env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, task['uid'])
+                env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, tid)
 
             else:
                 env_string += 'unset  RP_PROF\n'
 
             if 'RP_APP_TUNNEL' in os.environ:
-                env_string += 'export RP_APP_TUNNEL="%s"\n' % os.environ['RP_APP_TUNNEL']
+                env_string += 'export RP_APP_TUNNEL="%s"\n' \
+                        % os.environ['RP_APP_TUNNEL']
 
             env_string += '''
 prof(){
@@ -249,12 +254,13 @@ prof(){
 }
 '''
 
-            # FIXME: this should be set by an LaunchMethod filter or something (GPU)
+            # FIXME: this should be set by an LaunchMethod filter or something
             env_string += 'export OMP_NUM_THREADS="%s"\n' % descr['cpu_threads']
 
             # The actual command line, constructed per launch-method
             try:
-                launch_command, hop_cmd = launcher.construct_command(task, launch_script_name)
+                launch_command, hop_cmd = launcher.construct_command(task,
+                                                             launch_script_name)
 
                 if hop_cmd : cmdline = hop_cmd
                 else       : cmdline = launch_script_name
@@ -306,7 +312,7 @@ prof(){
                 launch_script.write('%s\n' % post)
                 launch_script.write('prof task_post_stop "$ret=RETVAL"\n')
 
-            launch_script.write("\n# Exit the script with the return code from the command\n")
+            launch_script.write("\n# Exit script with command return code\n")
             launch_script.write("prof task_stop\n")
             launch_script.write("exit $RETVAL\n")
 
@@ -324,7 +330,8 @@ prof(){
         _stdout_file_h = open(task['stdout_file'], 'a')
         _stderr_file_h = open(task['stderr_file'], 'a')
 
-        self._log.info("Launching task %s via %s in %s", task['uid'], cmdline, sandbox)
+        self._log.info("Launching task %s via %s in %s", task['uid'], cmdline,
+                                                                      sandbox)
 
         self._prof.prof('exec_start', uid=task['uid'])
         task['proc'] = subprocess.Popen(args       = cmdline,
@@ -353,12 +360,15 @@ prof(){
 
                 tasks = list()
                 try:
-                    # we don't want to only wait for one Task -- then we would
-                    # pull Task state too frequently.  OTOH, we also don't want to
-                    # learn about tasks until all slots are filled, because then
-                    # we may not be able to catch finishing tasks in time -- so
-                    # there is a fine balance here.  Balance means 100 (FIXME).
+
+                    # FIXME: we don't want to only wait for one Task -- then we
+                    #        would pull Task state too frequently.  OTOH, we
+                    #        also don't want to learn about tasks until all
+                    #        slots are filled, because then we may not be able
+                    #        to catch finishing tasks in time -- so there is
+                    #        a fine balance here.  Balance means 100.
                     MAX_QUEUE_BULKSIZE = 100
+
                     while len(tasks) < MAX_QUEUE_BULKSIZE :
                         tasks.append (self._watch_queue.get_nowait())
 
@@ -456,11 +466,13 @@ prof(){
 
                 else:
                     # The task finished cleanly, see if we need to deal with
-                    # output data.  We always move to stageout, even if there are no
-                    # directives -- at the very least, we'll upload stdout/stderr
+                    # output data.  We always move to stageout, even if there
+                    # are no directives -- at the very least, we'll upload
+                    # stdout/stderr
                     task['target_state'] = rps.DONE
 
-                self.advance(task, rps.AGENT_STAGING_OUTPUT_PENDING, publish=True, push=True)
+                self.advance(task, rps.AGENT_STAGING_OUTPUT_PENDING,
+                                   publish=True, push=True)
 
         return action
 
