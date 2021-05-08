@@ -1042,7 +1042,7 @@ class Component(object):
         attempt on getting a thing is up.
         '''
 
-        # if no action occurs in this iteration, idle
+        # if there is nothing to check, idle a bit
         if not self._inputs:
             time.sleep(0.1)
             return True
@@ -1059,6 +1059,7 @@ class Component(object):
             things = ru.as_list(things)
 
             if not things:
+                # return to have a chance to catch term signals
                 return True
 
             # the worker target depends on the state of things, so we
