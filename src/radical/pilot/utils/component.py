@@ -1045,7 +1045,7 @@ class Component(object):
         attempt on getting a thing is up.
         '''
 
-        # if no action occurs in this iteration, idle
+        # if there is nothing to check, idle a bit
         if not self._inputs:
             time.sleep(0.01)
             return True
@@ -1063,6 +1063,7 @@ class Component(object):
             things = input.get_nowait(200)  # in microseconds
 
             if not things:
+                # return to have a chance to catch term signals
                 return True
 
             self._log.debug('== work_cb %s got %d ', name, len(things))
