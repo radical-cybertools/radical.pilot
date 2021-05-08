@@ -516,8 +516,6 @@ class Component(object):
         from radical.pilot import pmgr   as rppm
         from radical.pilot import tmgr   as rptm
         from radical.pilot import agent  as rpa
-        from radical.pilot import raptor as rpt
-      # from radical.pilot import constants as rpc
 
         comp = {
                 rpc.STAGER_WORKER                  : rpw.Stager,
@@ -1049,7 +1047,7 @@ class Component(object):
         attempt on getting a thing is up.
         '''
 
-        # if no action occurs in this iteration, idle
+        # if there is nothing to check, idle a bit
         if not self._inputs:
             time.sleep(0.1)
             return True
@@ -1068,10 +1066,9 @@ class Component(object):
           #                                         qname, len(things))
 
             if not things:
-                continue
 
-          # self._log.debug('work_cb %s:%s got %d (%s) : %s ', queue.channel,
-          #         qname, len(things), things[0]['state'], states)
+                # return to have a chance to catch term signals
+                return True
 
             # the worker target depends on the state of things, so we
             # need to sort the things into buckets by state before
@@ -1079,7 +1076,6 @@ class Component(object):
             buckets = dict()
             for thing in things:
                 state = thing.get('state')  # can be stateless
-                uid   = thing.get('uid')    # and not have uids
 
                 if state not in buckets:
                     buckets[state] = list()

@@ -1,6 +1,5 @@
 
 {
-
     "target" : "local",
     "mode"   : "shared",
 
@@ -8,14 +7,12 @@
     "bulk_size"         : 1024,
 
     "network_interface" : "ipogif0",
+    "max_io_loglength"  : 1024,
 
     "heartbeat"    : {
         "interval" :  1.0,
         "timeout"  : 60.0
     },
-
-    "staging_schema"       : "staging",
-    "max_io_loglength"     : 1024,
 
     "bridges" : {
         "agent_staging_input_queue"  : { "kind"      : "queue",
