@@ -152,7 +152,6 @@ class FUNCS(AgentExecutingComponent) :
             fout.write('#!/bin/sh\n\n')
 
             # Create string for environment variable setting
-            fout.write('env | sort > env\n')
             fout.write('export RP_SESSION_ID="%s"\n' % self._cfg['sid'])
             fout.write('export RP_PILOT_ID="%s"\n'   % self._cfg['pid'])
             fout.write('export RP_AGENT_ID="%s"\n'   % self._cfg['aid'])
