@@ -47,3 +47,4 @@ for i in items:
 total = app_sum(inputs=mapped_results, nproc=1)
 
 print(total.result())
+

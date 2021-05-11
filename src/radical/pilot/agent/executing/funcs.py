@@ -152,6 +152,7 @@ class FUNCS(AgentExecutingComponent) :
             fout.write('#!/bin/sh\n\n')
 
             # Create string for environment variable setting
+            fout.write('env | sort > env\n')
             fout.write('export RP_SESSION_ID="%s"\n' % self._cfg['sid'])
             fout.write('export RP_PILOT_ID="%s"\n'   % self._cfg['pid'])
             fout.write('export RP_AGENT_ID="%s"\n'   % self._cfg['aid'])
@@ -165,7 +166,7 @@ class FUNCS(AgentExecutingComponent) :
                 for key,val in descr['environment'].items():
                     fout.write('export "%s=%s"\n' % (key, val))
 
-            fout.write('\n%s\n\n' % launch_cmd)
+            fout.write('\npython3 %s\n\n' % launch_cmd)
             fout.write('RETVAL=$?\n')
             fout.write("exit $RETVAL\n")
 
@@ -218,12 +219,13 @@ class FUNCS(AgentExecutingComponent) :
             if tasks:
 
                 for task in tasks:
-                    task['target_state'] = task['state']
-                    task['pilot']        = self._pid
 
                   # self._log.debug('got %s [%s] [%s] [%s]',
                   #                 task['uid'],    task['state'],
                   #                 task['stdout'], task['stderr'])
+
+                    task['target_state'] = task['state']
+                    task['pilot']        = self._pid
 
                 self.advance(tasks, rps.AGENT_STAGING_OUTPUT_PENDING,
                              publish=True, push=True)
