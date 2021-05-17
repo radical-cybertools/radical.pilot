@@ -11,6 +11,7 @@ import time
 import pprint
 import shutil
 import tempfile
+import threading as mt
 
 import radical.saga            as rs
 import radical.utils           as ru
@@ -58,12 +59,12 @@ class Default(PMGRLaunchingComponent):
         # pilot jobs to the resource management system (ResourceManager).
 
         self._pilots        = dict()      # dict for all known pilots
-        self._pilots_lock   = ru.RLock()  # lock on maipulating the above
+        self._pilots_lock   = mt.RLock()  # lock on maipulating the above
         self._checking      = list()      # pilots to check state on
-        self._check_lock    = ru.RLock()  # lock on maipulating the above
+        self._check_lock    = mt.RLock()  # lock on maipulating the above
         self._saga_js_cache = dict()      # cache of saga job services
         self._sandboxes     = dict()      # cache of resource sandbox URLs
-        self._cache_lock    = ru.RLock()  # lock for cache
+        self._cache_lock    = mt.RLock()  # lock for cache
 
         self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
         self._root_dir      = "%s/../../"   % self._mod_dir
@@ -82,7 +83,7 @@ class Default(PMGRLaunchingComponent):
         # also listen for completed staging directives
         self.register_subscriber(rpc.STAGER_RESPONSE_PUBSUB, self._staging_ack_cb)
         self._active_sds = dict()
-        self._sds_lock   = ru.Lock('launcher_sds_lock')
+        self._sds_lock   = mt.Lock()
 
 
         self._log.info(ru.get_version([self._mod_dir, self._root_dir]))

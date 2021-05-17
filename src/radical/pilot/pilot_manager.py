@@ -93,9 +93,9 @@ class PilotManager(rpu.Component):
 
         self._uids        = list()   # known UIDs
         self._pilots      = dict()
-        self._pilots_lock = ru.RLock('%s.pilots_lock' % self._uid)
+        self._pilots_lock = mt.RLock()
         self._callbacks   = dict()
-        self._pcb_lock    = ru.RLock('%s.pcb_lock' % self._uid)
+        self._pcb_lock    = mt.RLock()
         self._terminate   = mt.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
@@ -143,7 +143,7 @@ class PilotManager(rpu.Component):
         # we also listen for completed staging directives
         self.register_subscriber(rpc.STAGER_RESPONSE_PUBSUB, self._staging_ack_cb)
         self._active_sds = dict()
-        self._sds_lock   = ru.Lock('pmgr_sds_lock')
+        self._sds_lock   = mt.Lock()
 
         # register the state notification pull cb and hb pull cb
         # FIXME: we may want to have the frequency configurable
