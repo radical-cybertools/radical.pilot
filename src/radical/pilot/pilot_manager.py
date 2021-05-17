@@ -872,9 +872,9 @@ class PilotManager(rpu.Component):
             raise ValueError ("invalid pmgr metric '%s'" % metric)
 
         with self._pcb_lock:
-            cb_name = cb.__name__
-            self._callbacks[metric][cb_name] = {'cb'      : cb,
-                                                'cb_data' : cb_data}
+            cb_id = id(cb)
+            self._callbacks[metric][cb_id] = {'cb'      : cb,
+                                              'cb_data' : cb_data}
 
 
     # --------------------------------------------------------------------------
@@ -896,16 +896,16 @@ class PilotManager(rpu.Component):
             for metric in metrics:
 
                 if cb:
-                    to_delete = [cb.__name__]
+                    to_delete = [id(cb)]
                 else:
                     to_delete = list(self._callbacks[metric].keys())
 
-                for cb_name in to_delete:
+                for cb_id in to_delete:
 
-                    if cb_name not in self._callbacks[metric]:
-                        raise ValueError("unknown callback '%s'" % cb_name)
+                    if cb_id not in self._callbacks[metric]:
+                        raise ValueError("unknown callback '%s'" % cb_id)
 
-                    del(self._callbacks[metric][cb_name])
+                    del(self._callbacks[metric][cb_id])
 
 
     # --------------------------------------------------------------------------

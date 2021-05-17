@@ -1182,7 +1182,7 @@ class TaskManager(rpu.Component):
 
 
         with self._tcb_lock:
-            cb_name = cb.__name__
+            cb_id = id(cb)
 
             if metric not in self._callbacks:
                 self._callbacks[metric] = dict()
@@ -1190,8 +1190,8 @@ class TaskManager(rpu.Component):
             if uid not in self._callbacks[metric]:
                 self._callbacks[metric][uid] = dict()
 
-            self._callbacks[metric][uid][cb_name] = {'cb'      : cb,
-                                                     'cb_data' : cb_data}
+            self._callbacks[metric][uid][cb_id] = {'cb'      : cb,
+                                                   'cb_data' : cb_data}
 
 
     # --------------------------------------------------------------------------
@@ -1225,16 +1225,16 @@ class TaskManager(rpu.Component):
                     raise ValueError("cb target '%s' invalid" % uid)
 
                 if cb:
-                    to_delete = [cb.__name__]
+                    to_delete = [id(cb)]
                 else:
                     to_delete = list(self._callbacks[metric][uid].keys())
 
-                for cb_name in to_delete:
+                for cb_id in to_delete:
 
-                    if cb_name not in self._callbacks[uid][metric]:
-                        raise ValueError("cb %s not registered" % cb_name)
+                    if cb_id not in self._callbacks[uid][metric]:
+                        raise ValueError("cb %s not registered" % cb_id)
 
-                    del(self._callbacks[uid][metric][cb_name])
+                    del(self._callbacks[uid][metric][cb_id])
 
 
     # --------------------------------------------------------------------------
