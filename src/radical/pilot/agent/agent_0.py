@@ -76,6 +76,9 @@ class Agent_0(rpu.Worker):
         self._cmgr.start_bridges()
         self._cmgr.start_components()
 
+        # start any services if they are requested
+        self._start_services()
+
         # create the sub-agent configs and start the sub agents
         self._write_sa_configs()
         self._start_sub_agents()   # TODO: move to cmgr?
@@ -324,6 +327,121 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
+    def _start_services(self):
+        '''
+        If a `./services` file exist, reserve a compute node and run that file
+        there as bash script.
+        '''
+
+        if not os.path.isfile('./services'):
+            return
+
+        # launch the `./services` script on the service node reserved by the RM.
+        # We use the agent launch method for this.
+        agent_lm = None
+        agent_lm = LaunchMethod.create(
+            name    = self._cfg['agent_launch_method'],
+            cfg     = self._cfg,
+            session = self._session)
+
+        node = self._cfg['rm_info']['service_node']
+        bs_name = "%s/bootstrap_2.sh" % (self._pwd)
+        ls_name = "%s/services.sh"    % self._pwd
+        threads = self._cfg['rm_info']['cores_per_node']
+        slots   = {
+                    'cpu_processes'    : 1,
+                    'cpu_threads'      : threads,
+                    'gpu_processes'    : 0,
+                    'gpu_threads'      : 0,
+                  # 'nodes'            : [[node[0], node[1], [[0]], []]],
+                    'nodes'            : [{'name'    : node[0],
+                                           'uid'     : node[1],
+                                           'core_map': [[0]],
+                                           'gpu_map' : [],
+                                           'lfs'     : {'path': '/tmp', 'size': 0}
+                                         }],
+                    'cores_per_node'   : self._cfg['rm_info']['cores_per_node'],
+                    'gpus_per_node'    : self._cfg['rm_info']['gpus_per_node'],
+                    'lm_info'          : self._cfg['rm_info']['lm_info'],
+                  }
+        service_cmd = {
+                    'uid'              : 'rp.services',
+                    'slots'            : slots,
+                    'task_sandbox_path': self._pwd,
+                    'description'      : {'cpu_processes'    : 1,
+                                          'cpu_threads'      : threads,
+                                          'gpu_process_type' : 'posix',
+                                          'gpu_thread_type'  : 'posix',
+                                          'executable'       : "/bin/sh",
+                                          'mpi'              : False,
+                                          'arguments'        : [bs_name,
+                                                                'services'],
+                                         }
+                }
+        cmd, hop = agent_lm.construct_command(service_cmd,
+        launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "%s"' % ls_name)
+
+        with open (ls_name, 'w') as ls:
+            # note that 'exec' only makes sense if we don't add any
+            # commands (such as post-processing) after it.
+            ls.write('#!/bin/sh\n\n')
+            for k,v in service_cmd['description'].get('environment', {}).items():
+                ls.write('export "%s"="%s"\n' % (k, v))
+            ls.write('\n')
+            for pe_cmd in service_cmd['description'].get('pre_exec', []):
+                ls.write('%s\n' % pe_cmd)
+            ls.write('\n')
+            ls.write('exec %s\n\n' % cmd)
+            st = os.stat(ls_name)
+            os.chmod(ls_name, st.st_mode | stat.S_IEXEC)
+
+        if hop : cmdline = hop
+        else   : cmdline = ls_name
+
+        # ------------------------------------------------------------------
+        class _Service(mp.Process):
+
+            def __init__(self, cmd, log):
+                self._name = 'rp.services'
+                self._cmd  = cmd.split()
+                self._log  = log
+                self._proc = None
+                super(_Service, self).__init__(name=self._name)
+                self.start()
+
+
+            def run(self):
+
+                sys.stdout = open('%s.out' % self._name, 'a')
+                sys.stderr = open('%s.err' % self._name, 'a')
+                out        = open('%s.out' % self._name, 'a')
+                err        = open('%s.err' % self._name, 'a')
+                self._proc = sp.Popen(args=self._cmd, stdout=out, stderr=err)
+                self._log.debug('services %s spawned [%s]', self._name,
+                        self._proc)
+
+                assert(self._proc)
+
+                # FIXME: lifetime, use daemon agent launcher
+                while True:
+                    time.sleep(0.1)
+                    if self._proc.poll() is None:
+                        return True   # all is well
+                    else:
+                        return False  # proc is gone - terminate
+        # ------------------------------------------------------------------
+
+        # spawn the services
+        self._log.info('start services: %s', cmdline)
+        _Service(cmdline, log=self._log)
+
+        # FIXME: register heartbeats?
+
+        self._log.debug('services started done')
+
+
+    # --------------------------------------------------------------------------
+    #
     def _start_sub_agents(self):
         '''
         For the list of sub_agents, get a launch command and launch that
@@ -378,7 +496,7 @@ class Agent_0(rpu.Worker):
                 ls_name = "%s/%s.sh" % (self._pwd, sa)
                 slots = {
                     'cpu_processes'    : 1,
-                    'cpu_threads'      : 1,
+                    'cpu_threads'      : self._cfg['rm_info']['cores_per_node'],
                     'gpu_processes'    : 0,
                     'gpu_threads'      : 0,
                   # 'nodes'            : [[node[0], node[1], [[0]], []]],
