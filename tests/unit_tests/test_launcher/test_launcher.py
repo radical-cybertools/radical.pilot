@@ -116,6 +116,7 @@ class TestLauncher(TestCase):
                                          'cleanup'        : 0,
                                          'memory'         : 0,
                                          'candidate_hosts': None,
+                                         'services'       : [],
                                          }
                    }
         ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')
@@ -136,6 +137,7 @@ class TestLauncher(TestCase):
                                          'cleanup'        : 0,
                                          'memory'         : 0,
                                          'candidate_hosts': None,
+                                         'services'       : [],
                                          }
                    }
         ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')

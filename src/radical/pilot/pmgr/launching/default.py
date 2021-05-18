@@ -674,6 +674,7 @@ class Default(PMGRLaunchingComponent):
         project         = pilot['description']['project']
         cleanup         = pilot['description']['cleanup']
         candidate_hosts = pilot['description']['candidate_hosts']
+        services        = pilot['description']['services']
 
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
@@ -700,16 +701,17 @@ class Default(PMGRLaunchingComponent):
         lfs_size_per_node       = rcfg.get('lfs_size_per_node',  0)
         python_dist             = rcfg.get('python_dist')
         virtenv_dist            = rcfg.get('virtenv_dist',        DEFAULT_VIRTENV_DIST)
-        task_tmp                  = rcfg.get('task_tmp')
+        task_tmp                = rcfg.get('task_tmp')
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
         stage_cacerts           = rcfg.get('stage_cacerts', False)
-        task_pre_exec             = rcfg.get('task_pre_exec')
-        task_post_exec            = rcfg.get('task_post_exec')
-        export_to_task            = rcfg.get('export_to_task')
+        task_pre_exec           = rcfg.get('task_pre_exec')
+        task_post_exec          = rcfg.get('task_post_exec')
+        export_to_task          = rcfg.get('export_to_task')
         mandatory_args          = rcfg.get('mandatory_args', [])
         system_architecture     = rcfg.get('system_architecture', {})
         saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
+        services               += rcfg.get('services', [])
 
         self._log.debug(pprint.pformat(rcfg))
 
@@ -946,6 +948,8 @@ class Default(PMGRLaunchingComponent):
         if tunnel_bind_device:        bootstrap_args += " -t '%s'" % tunnel_bind_device
         if cleanup:                   bootstrap_args += " -x '%s'" % cleanup
 
+        for arg in services:
+            bootstrap_args += " -j '%s'" % arg
         for arg in pre_bootstrap_0:
             bootstrap_args += " -e '%s'" % arg
         for arg in pre_bootstrap_1:

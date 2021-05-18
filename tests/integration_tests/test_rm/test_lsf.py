@@ -15,6 +15,15 @@ from radical.pilot.agent.resource_manager.lsf_summit import LSF_SUMMIT
 #
 class TestTask(TestCase):
 
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self):
+
+        TestCase.__init__(self)
+        self.setUpClass()
+
+
     # --------------------------------------------------------------------------
     #
     @classmethod
@@ -29,6 +38,9 @@ class TestTask(TestCase):
     @mock.patch.object(LSF_SUMMIT, '__init__',   return_value=None)
     @mock.patch('radical.utils.Logger')
     def test_configure(self, mocked_init, mocked_Logger):
+
+        if not self.host:
+            return
 
         component = LSF_SUMMIT(cfg=None, session=None)
         component._log    = mocked_Logger
