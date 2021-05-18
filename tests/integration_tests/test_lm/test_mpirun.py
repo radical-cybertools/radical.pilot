@@ -1,4 +1,5 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
+
 import os
 import socket
 
@@ -17,6 +18,7 @@ class TestTask(TestCase):
     #
     @classmethod
     def setUpClass(cls) -> None:
+
         path = os.path.dirname(__file__) + '/../test_config/resources.json'
         resources = ru.read_json(path)
         hostname = socket.gethostname()
@@ -27,14 +29,18 @@ class TestTask(TestCase):
                 cls.resource = resources[host]
                 break
 
+
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(MPIRun, '__init__',   return_value=None)
     @mock.patch('radical.utils.Logger')
     def test_configure(self, mocked_init, mocked_Logger):
 
+        if not self.host:
+            return
+
         component = MPIRun(name=None, cfg=None, session=None)
-        component.name = 'mpirun'
+        component.name = 'MPIRUN'
         component._log = mocked_Logger
         component._cfg = ru.Munch({'resource': self.host})
         component.env_removables = []
@@ -43,7 +49,7 @@ class TestTask(TestCase):
         self.assertEqual(component.launch_command, self.resource['mpirun_path'])
         self.assertEqual(component.mpi_version, self.resource['mpi_version'])
         self.assertEqual(component.mpi_flavor, self.resource['mpi_flavor'])
-    # --------------------------------------------------------------------------
+
 
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter
