@@ -16,6 +16,12 @@ from radical.pilot.agent.resource_manager.slurm import Slurm
 #
 class TestTask(TestCase):
 
+    def __init__(self):
+
+        TestCase.__init__(self)
+        self.setUpClass()
+
+
     # --------------------------------------------------------------------------
     #
     @classmethod
@@ -30,15 +36,19 @@ class TestTask(TestCase):
                 cls.resource = resources[host]
                 break
 
+
     # ------------------------------------------------------------------------------
     #
     @mock.patch.object(Slurm, '__init__',   return_value=None)
     @mock.patch('radical.utils.Logger')
     def test_configure(self, mocked_init, mocked_Logger):
 
+        if not self.host:
+            return
+
         component = Slurm(cfg=None, session=None)
         component._log    = mocked_Logger
-        component._cfg    = {}
+        component._cfg    = ru.Munch({'resource': self.host})
         component.lm_info = {'cores_per_node': None}
         component._configure()
 
