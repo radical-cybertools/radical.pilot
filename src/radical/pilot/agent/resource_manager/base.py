@@ -82,6 +82,7 @@ class ResourceManager(object):
         self.node_list       = list()
         self.partitions      = dict()
         self.agent_nodes     = dict()
+        self.service_node    = None
         self.cores_per_node  = 0
         self.gpus_per_node   = 0
         self.lfs_per_node    = 0
@@ -121,6 +122,11 @@ class ResourceManager(object):
             raise RuntimeError('ResourceManager configuration invalid (%s)(%s)' %
                     (self.node_list, self.cores_per_node))
 
+        # reserve a service node if needed
+        if os.path.isfile('./services'):
+            self.service_node = self.node_list.pop()
+            self._log.debug('service node: %s', self.service_node)
+
         # Check if the ResourceManager implementation reserved agent nodes.
         # If not, pick the first couple of nodes from the nodelist as fallback.
         if self._agent_reqs and not self.agent_nodes:
@@ -133,7 +139,6 @@ class ResourceManager(object):
                 if not self.node_list:
                     break
 
-        if self.agent_nodes:
             self._log.info('Reserved nodes: %s' % list(self.agent_nodes.values()))
             self._log.info('Agent    nodes: %s' % list(self.agent_nodes.keys()))
             self._log.info('Worker   nodes: %s' % self.node_list)
@@ -216,6 +221,7 @@ class ResourceManager(object):
         self.rm_info['cores_per_node'] = self.cores_per_node
         self.rm_info['gpus_per_node']  = self.gpus_per_node
         self.rm_info['agent_nodes']    = self.agent_nodes
+        self.rm_info['service_node']   = self.service_node
         self.rm_info['lfs_per_node']   = self.lfs_per_node
         self.rm_info['mem_per_node']   = self.mem_per_node
 
