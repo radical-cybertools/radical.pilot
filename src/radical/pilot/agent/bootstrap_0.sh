@@ -1,16 +1,7 @@
 #!/bin/sh
 
-# we really want to run in a login shell
-# NOTE: we use `/bin/bash` (not `/bin/sh`) for the tcp scan
-
+# combine stdout and stderr
 exec 2>&1
-
-if ! test "$BS_ENV" = 'OK'
-then
-    SCRIPT=$(readlink -f "$0")
-    exec /usr/bin/env -i HOME="$HOME" SCRIPT="$SCRIPT" BS_ENV="OK" \
-         /bin/bash -l "$SCRIPT" "$@"
-fi
 
 # Unset functions/aliases of commands that will be used during bootstrap as
 # these custom functions can break assumed/expected behavior
@@ -23,7 +14,7 @@ unset -f cd ls uname pwd date bc cat echo grep
 # store the sorted env for logging, but also so that we can dig original env
 # settings for task environments, if needed
 mkdir -p env
-env | sort > env/bs0_orig.env
+env > env/bs0_orig.env
 
 
 # Report where we are, as this is not always what you expect ;-)
@@ -32,11 +23,6 @@ echo "# -------------------------------------------------------------------"
 echo "bootstrap_0 running on host: `hostname -f`."
 echo "bootstrap_0 started as     : '$0 $@'"
 echo "safe environment of bootstrap_0"
-
-# store the sorted env for logging, but also so that we can dig original env
-# settings for task environments, if needed
-env | sort > env.orig
-
 
 # create a `deactivate` script
 old_path=$(  grep 'export PATH='       env.orig | cut -f 2- -d '=')
@@ -1512,7 +1498,7 @@ while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:z:" OPTION; do
 done
 
 # pre_bootstrap_0 is done at this point, save resulting env
-env | sort > env/bs0_pre_0.env
+env > env/bs0_pre_0.env
 
 echo '# -------------------------------------------------------------------'
 echo '# untar sandbox'

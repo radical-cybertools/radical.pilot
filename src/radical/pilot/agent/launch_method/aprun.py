@@ -39,8 +39,6 @@ class APRun(LaunchMethod):
                    'env_sh' : env_sh,
                    'command': ru.which('aprun')}
 
-        self._init_from_info(lm_info, lm_cfg)
-
         return lm_info
 
 

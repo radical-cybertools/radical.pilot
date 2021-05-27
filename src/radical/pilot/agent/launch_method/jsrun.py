@@ -19,6 +19,7 @@ class JSRUN(LaunchMethod):
         LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
 
         self._command   = None
+        self._log.debug('=== JSRUN: after init: %s' % self._command)
 
 
     # --------------------------------------------------------------------------
@@ -29,6 +30,7 @@ class JSRUN(LaunchMethod):
                    'env_sh' : env_sh,
                    'command': ru.which('jsrun')}
 
+        self._log.debug('=== JSRUN: from scratch: %s' % lm_info['command'])
         return lm_info
 
 
@@ -39,6 +41,8 @@ class JSRUN(LaunchMethod):
         self._env     = lm_info['env']
         self._env_sh  = lm_info['env_sh']
         self._command = lm_info['command']
+
+        self._log.debug('=== JSRUN: from info: %s' % self._command)
 
         assert(self._command)
 

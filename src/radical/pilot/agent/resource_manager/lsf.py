@@ -41,7 +41,7 @@ class LSF(ResourceManager):
         # advantage that we have the code content that will be required when
         # we implement 3, the long term approach.
 
-        # ResourceManager.__init__(self, cfg, session)
+        ResourceManager.__init__(self, cfg, session)
 
         self.name            = type(self).__name__
         self._cfg            = cfg
@@ -121,28 +121,28 @@ class LSF(ResourceManager):
         if not self.node_list:
             raise RuntimeError('ResourceManager has no nodes left to run units')
 
-        # After ResourceManager configuration, we call any existing config hooks on the
-        # launch methods.  Those hooks may need to adjust the ResourceManager settings
-        # (hello ORTE).  We only call LaunchMethod hooks *once*
-        launch_methods = set()  # set keeps entries unique
-        if 'mpi_launch_method' in self._cfg:
-            launch_methods.add(self._cfg['mpi_launch_method'])
-        launch_methods.add(self._cfg['task_launch_method'])
-        launch_methods.add(self._cfg['agent_launch_method'])
-
-        for lm in launch_methods:
-            if lm:
-                try:
-                    from .... import pilot as rp  # pylint: disable=E0402
-                    ru.dict_merge(self.lm_info,
-                            rp.agent.LaunchMethod.rm_config_hook(lm, self._cfg,
-                                                   self, self._log, self._prof))
-
-                except:
-                    self._log.exception("rm config hook failed")
-                    raise
-
-                self._log.info("rm config hook succeeded (%s)" % lm)
+      # # After ResourceManager configuration, we call any existing config hooks on the
+      # # launch methods.  Those hooks may need to adjust the ResourceManager settings
+      # # (hello ORTE).  We only call LaunchMethod hooks *once*
+      # launch_methods = set()  # set keeps entries unique
+      # if 'mpi_launch_method' in self._cfg:
+      #     launch_methods.add(self._cfg['mpi_launch_method'])
+      # launch_methods.add(self._cfg['task_launch_method'])
+      # launch_methods.add(self._cfg['agent_launch_method'])
+      #
+      # for lm in launch_methods:
+      #     if lm:
+      #         try:
+      #             from .... import pilot as rp  # pylint: disable=E0402
+      #             ru.dict_merge(self.lm_info,
+      #                     rp.agent.LaunchMethod.rm_config_hook(lm, self._cfg,
+      #                                            self, self._log, self._prof))
+      #
+      #         except:
+      #             self._log.exception("rm config hook failed")
+      #             raise
+      #
+      #         self._log.info("rm config hook succeeded (%s)" % lm)
 
       # # For now assume that all nodes have equal amount of cores and gpus
       # cores_avail = (len(self.node_list) + len(self.agent_nodes)) \

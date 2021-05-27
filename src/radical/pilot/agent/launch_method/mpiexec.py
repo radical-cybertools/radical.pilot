@@ -77,8 +77,6 @@ class MPIExec(LaunchMethod):
         lm_info['mpi_version']  = mpi_version
         lm_info['mpi_flavor']   = mpi_flavor
 
-        self._init_from_info(lm_info, lm_cfg)
-
         return lm_info
 
 

@@ -94,6 +94,7 @@ class LaunchMethod(object):
             with envp:
                 envp.put(self._init_from_scratch(lm_cfg, env_lm, env_sh))
             lm_info = envp.get()
+            self._init_from_info(lm_info, lm_cfg)
 
             # store the info in the registry for any other instances of the LM
             self._reg.put('lm.%s' % self.name, lm_info)
