@@ -47,9 +47,6 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"                : ["LMOD_CMD",
-                                         "LMOD_SYSTEM_DEFAULT_MODULES",
-                                         "LD_LIBRARY_PATH"],
         "task_pre_exec"               : []
     },
 
@@ -95,9 +92,6 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"                : ["LMOD_CMD",
-                                         "LMOD_SYSTEM_DEFAULT_MODULES",
-                                         "LD_LIBRARY_PATH"],
         "task_pre_exec"               : ["module restore"]
     },
 
@@ -146,9 +140,6 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"                : ["LMOD_CMD",
-                                         "LMOD_SYSTEM_DEFAULT_MODULES",
-                                         "LD_LIBRARY_PATH"],
         "task_pre_exec"               : []
     },
 
@@ -237,9 +228,6 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"                : ["LMOD_CMD",
-                                         "LMOD_SYSTEM_DEFAULT_MODULES",
-                                         "LD_LIBRARY_PATH"],
         "task_pre_exec"               : []
     },
 
@@ -463,7 +451,6 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda",
-        "export_to_task"                : [],
         "task_pre_exec"               : [],
         "system_architecture"         : {"gpu": "p100"},
         "gpus_per_node"               : 2
@@ -515,7 +502,6 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda",
-        "export_to_task"              : [],
         "task_pre_exec"               : [],
         "gpus_per_node"               : 8,
         "system_architecture"         : {"gpu": "v100"}

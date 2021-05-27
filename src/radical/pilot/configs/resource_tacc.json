@@ -35,9 +35,6 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"                : ["LMOD_CMD",
-                                         "LMOD_SYSTEM_DEFAULT_MODULES",
-                                         "LD_LIBRARY_PATH"],
         "task_pre_exec"               : []
     },
 
@@ -77,9 +74,6 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"                : ["LMOD_CMD",
-                                         "LMOD_SYSTEM_DEFAULT_MODULES",
-                                         "LD_LIBRARY_PATH"],
         "task_pre_exec"               : []
     },
 
@@ -174,11 +168,7 @@
         "valid_roots"                 : ["$SCRATCH", "$WORK"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "default",
-        "export_to_task"                : ["LMOD_CMD",
-                                         "LMOD_SYSTEM_DEFAULT_MODULES",
-                                         "LD_LIBRARY_PATH"
-                                        ]
+        "python_dist"                 : "default"
     }
 }
 

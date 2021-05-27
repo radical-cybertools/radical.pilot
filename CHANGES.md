@@ -3,6 +3,24 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.6.6  Release                                                        2021-05-18
+--------------------------------------------------------------------------------
+
+  - added flags to keep `prun` aware of gpus (PRTE2 LM)
+  - add service node support
+  - Bridges mpiexec confing fix
+  - task level profiling now python independent
+  - executor errors should not affect task bulks
+  - revive ibrun support, include layout support
+  - MPI standard prescribes -H, not -host
+  - remove pilot staging area
+  - reduce profiling verbosity
+  - restore original env before task execution
+  - scattered repex staging fixes
+  - slurm env fixes
+  - updated documentation for `PilotDescription` and `TaskDescription`
+
+
 1.6.5  Release                                                        2021-04-14
 --------------------------------------------------------------------------------
 

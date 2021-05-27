@@ -99,19 +99,6 @@ class Shell(AgentExecutingComponent):
                 if e.startswith(r):
                     os.environ.pop(e, None)
 
-        # if we need to transplant any original env into the Task, we dig the
-        # respective keys from the dump made by bootstrap_0.sh
-        self._env_task_export = dict()
-        if self._cfg.get('export_to_task'):
-            with open('env.orig', 'r') as f:
-                for line in f.readlines():
-                    if '=' in line:
-                        k,v = line.split('=', 1)
-                        key = k.strip()
-                        val = v.strip()
-                        if key in self._cfg['export_to_task']:
-                            self._env_task_export[key] = val
-
         # the registry keeps track of tasks to watch, indexed by their shell
         # spawner process ID.  As the registry is shared between the spawner and
         # watcher thread, we use a lock while accessing it.
@@ -320,10 +307,6 @@ prof(){
     echo "$now,$event,task_script,MainThread,$RP_TASK_ID,AGENT_EXECUTING," >> $RP_PROF
 }
 '''
-
-        # also add any env vars requested for export by the resource config
-        for k,v in self._env_task_export.items():
-            env += "export %s=%s\n" % (k,v)
 
         # also add any env vars requested in hte task description
         if descr['environment']:
