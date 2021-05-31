@@ -28,9 +28,6 @@ if __name__ == '__main__':
     nodes     =  n_masters + (n_masters * n_workers)
     print('nodes', nodes)
 
-    master    = '%s/%s' % (cfg_dir, cfg.master)
-    worker    = '%s/%s' % (cfg_dir, cfg.worker)
-
     session   = rp.Session()
     try:
         pd = rp.PilotDescription(cfg.pilot_descr)
@@ -48,13 +45,21 @@ if __name__ == '__main__':
             td.executable     = "/bin/sh"
             td.cpu_threads    = cpn
             td.gpu_processes  = gpn
-            td.arguments      = [os.path.basename(master), cfg_file, i]
-            td.input_staging  = [{'source': master,
-                                  'target': os.path.basename(master),
+            td.arguments      = ['./raptor_master.sh', cfg_file, i]
+            td.input_staging  = [{'source': 'raptor_master.sh',
+                                  'target': 'raptor_master.sh',
                                   'action': rp.TRANSFER,
                                   'flags' : rp.DEFAULT_FLAGS},
-                                 {'source': worker,
-                                  'target': os.path.basename(worker),
+                                 {'source': 'raptor_worker.sh',
+                                  'target': 'raptor_worker.sh',
+                                  'action': rp.TRANSFER,
+                                  'flags' : rp.DEFAULT_FLAGS},
+                                 {'source': 'raptor_master.py',
+                                  'target': 'raptor_master.py',
+                                  'action': rp.TRANSFER,
+                                  'flags' : rp.DEFAULT_FLAGS},
+                                 {'source': 'raptor_worker.py',
+                                  'target': 'raptor_worker.py',
                                   'action': rp.TRANSFER,
                                   'flags' : rp.DEFAULT_FLAGS},
                                  {'source': cfg_file,
@@ -78,7 +83,7 @@ if __name__ == '__main__':
         for i in range(eval(cfg.workload.total)):
 
             td  = rp.TaskDescription()
-            uid = 'req.%06d' % i
+            uid = 'request.req.%06d' % i
             # ------------------------------------------------------------------
             # work serialization goes here
             work = json.dumps({'mode'   :  'call',
@@ -93,8 +98,6 @@ if __name__ == '__main__':
                                'executable': '-',
                                'scheduler' : 'master.%06d' % (i % n_masters),
                                'arguments' : [work]}))
-            break
-
 
         tmgr.submit_tasks(requests)
 

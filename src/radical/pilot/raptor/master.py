@@ -8,6 +8,7 @@ import json
 import threading         as mt
 
 import radical.utils     as ru
+from radical.utils.profile import combine_profiles
 
 from .. import Session, TaskDescription
 from .. import utils     as rpu
@@ -63,6 +64,31 @@ class Master(rpu.Component):
         # send new worker tasks and agent input staging / agent scheduler
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
                              rpc.AGENT_STAGING_INPUT_QUEUE)
+
+        # set up zmq queues between the agent scheduler and this master so that
+        # we can receive new requests from RP tasks
+        qname = '%s_input_queue' % self._uid
+        input_cfg = ru.Config(cfg={'channel'   : qname,
+                                   'type'      : 'queue',
+                                   'uid'       : '%s_input' % self._uid,
+                                   'path'      : os.getcwd(),
+                                   'stall_hwm' : 0,
+                                   'bulk_size' : 56})
+
+        self._input_queue  = ru.zmq.Queue(input_cfg)
+        self._input_queue.start()
+
+        # begin to receive tasks in that queue
+        self._input_getter = ru.zmq.Getter(qname,
+                                      self._input_queue.addr_get,
+                                      cb=self._request_cb)
+
+        # and register that input queue with the scheduler
+        self.publish(rpc.CONTROL_PUBSUB,
+                      {'cmd': 'register_raptor_queue',
+                       'arg': {'name' : self._uid,
+                               'queue': qname,
+                               'addr' : str(self._input_queue.addr_put)}})
 
         # send completed request tasks to agent output staging / tmgr
         self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
@@ -180,6 +206,20 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def request_cb(self, req):
+
+        return req
+
+
+    # --------------------------------------------------------------------------
+    #
+    def result_cb(self, cb):
+
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
     def _control_cb(self, topic, msg):
 
         cmd = msg['cmd']
@@ -193,9 +233,12 @@ class Master(rpu.Component):
             self._log.debug('register %s', uid)
 
             with self._lock:
+                if 'uid' not in self._workers:
+                    return
                 self._workers[uid]['info']  = info
                 self._workers[uid]['state'] = 'ACTIVE'
-                self._log.debug('info: %s', info)
+
+            self._log.debug('info: %s', info)
 
 
         elif cmd == 'worker_unregister':
@@ -204,6 +247,8 @@ class Master(rpu.Component):
             self._log.debug('unregister %s', uid)
 
             with self._lock:
+                if 'uid' not in self._workers:
+                    return
                 self._workers[uid]['status'] = 'DONE'
 
 
@@ -351,21 +396,6 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def create_work_items(self):
-        '''
-        This method can be implemented by the child class.  It is expected to
-        return a list of work items.  When calling `run()`, the master will
-        distribute those work items to the workers and collect the results.
-        Run will finish once all work items are collected.
-
-        NOTE: work items are expected to be serializable dictionaries.
-        '''
-
-        pass
-
-
-    # --------------------------------------------------------------------------
-    #
     def start(self):
 
         self._thread = mt.Thread(target=self._run)
@@ -407,14 +437,7 @@ class Master(rpu.Component):
     #
     def _run(self):
 
-        # get work from the overloading implementation
-        try:
-            self.create_work_items()
-
-        except Exception:
-            self._log.exception('failed to create work')
-            self._log.debug('set term from run')
-            self._term.set()
+        # FIXME: only now subscribe to request input channels
 
         # wait for the submitted requests to complete
         while not self._term.is_set():
@@ -422,24 +445,6 @@ class Master(rpu.Component):
             self._log.debug('still alive')
 
             time.sleep(1.0)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _receive_tasks(self, tasks):
-
-        requests = list()
-        for task in ru.as_list(tasks):
-
-            # FIXME: abuse of arguments
-            req = json.loads(task['description']['arguments'][0])
-            req['is_task'] = True
-            req['uid']     = task['uid']
-            req['task']    = task  # this duplicates the request :-/
-
-            requests.append(req)
-
-        self.request(requests)
 
 
     # --------------------------------------------------------------------------
@@ -471,45 +476,66 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def result_cb(self, requests):
-        '''
-        this method can be overloaded by the deriving class
-        '''
+    def _request_cb(self, tasks):
 
-        pass
+        tasks = ru.as_list(tasks)
+
+        requests = list()
+        for task in tasks:
+
+            # FIXME: abuse of arguments
+            req = json.loads(task['description']['arguments'][0])
+
+            req['is_task'] = True
+            req['uid']     = task['uid']
+            req['task']    = task  # this duplicates the request :-/
+            requests.append(req)
+
+        try:
+            filtered = self.request_cb(requests)
+            if filtered:
+                self.request(filtered)
+
+        except:
+            self._log.exception('request cb failed')
+            # FIXME: fail the request
+
+
 
 
     # --------------------------------------------------------------------------
     #
-    def _result_cb(self, msg):
+    def _result_cb(self, msgs):
 
-        # update result and error information for the corresponding request UID
-        uid = msg['req']
-        out = msg['out']
-        err = msg['err']
-        ret = msg['ret']
+        for msg in ru.as_list(msgs):
 
-        try:
+            # update result and error information for the corresponding request UID
+            uid = msg['req']
+            out = msg['out']
+            err = msg['err']
+            ret = msg['ret']
+            val = msg['val']
+
             req = self._requests[uid]
-            req.set_result(out, err, ret)
+            req.set_result(out, err, ret, val)
 
-            self.result_cb([req])
+            try:
+                self.result_cb(req)
+            except:
+                self._log.exception('result callback failed')
 
-        except:
-            self._log.exception('result callback failed')
+            # if the request is a task, also push it into the output queue
+            if req.task:
 
-        # if the request is a task, also push it into the output queue
-        if req.task:
+                req.task['stdout']    = out
+                req.task['stderr']    = err
+                req.task['exit_code'] = ret
 
-            req.task['stdout']    = out
-            req.task['stderr']    = err
-            req.task['exit_code'] = ret
+                if ret == 0: req.task['target_state'] = rps.DONE
+                else       : req.task['target_state'] = rps.FAILED
 
-            if ret == 0: req.task['target_state'] = rps.DONE
-            else       : req.task['target_state'] = rps.FAILED
-
-            self.advance(req.task, rps.AGENT_STAGING_OUTPUT_PENDING,
-                                   publish=True, push=True)
+                self.advance(req.task, rps.AGENT_STAGING_OUTPUT_PENDING,
+                                       publish=True, push=True)
 
 
     # --------------------------------------------------------------------------
