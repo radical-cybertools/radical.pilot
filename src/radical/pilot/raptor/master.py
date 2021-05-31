@@ -296,7 +296,7 @@ class Master(rpu.Component):
         task['state']             = rps.AGENT_STAGING_INPUT_PENDING
         task['status']            = 'NEW'
         task['type']              = 'task'
-        task['umgr']              = 'umgr.0000'  # FIXME
+        task['tmgr']              = 'tmgr.0000'  # FIXME
         task['pilot']             = os.environ['RP_PILOT_ID']
         task['uid']               = uid
         task['task_sandbox_path'] = sbox

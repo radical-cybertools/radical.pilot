@@ -500,7 +500,6 @@ class TaskManager(rpu.Component):
     #
     def _update_tasks(self, task_dicts):
 
-
         # return information about needed callback and advance activities, so
         # that we don't break bulks here.
         # note however that individual task callbacks are still being called on
@@ -1118,12 +1117,6 @@ class TaskManager(rpu.Component):
 
         # we also inform all pilots about the cancelation request
         self._session._dbs.pilot_command(cmd='cancel_tasks', arg={'uids':uids})
-
-        # In the default case of calling 'advance' above, we just set the state,
-        # so we *know* tasks are canceled.  But we nevertheless wait until that
-        # state progression trickled through, so that the application will see
-        # the same state on task inspection.
-        self.wait_tasks(uids=uids)
 
 
     # --------------------------------------------------------------------------
