@@ -8,14 +8,15 @@
                         "cpu_threads"   : 4,
                         "environment"   : {"test_env": "test_val"}
                        },
-        "task_sandbox_path": "/tmp"
+        "task_sandbox_path": "/tmp",
+        "slots": null
     },
 
     "setup" : {},
 
     "results": {
         "lm": {
-            "srun" : ["/bin/srun --exclusive --cpu-bind=none --nodes 1 --ntasks 1 --gpus 1 --cpus-per-task 4 --export=ALL,test_env=\"test_val\" /bin/sleep", null]
+            "srun" : "/bin/srun --exclusive --cpu-bind=none --nodes 1 --ntasks 1 --gpus 1 --cpus-per-task 4 "
         }
     }
 }
