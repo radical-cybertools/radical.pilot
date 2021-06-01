@@ -198,7 +198,7 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_launch_cmds(self):
+    def get_launch_cmds(self, task, exec_path):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
@@ -273,7 +273,7 @@ class LaunchMethod(object):
         for (host, count) in list(count_dict.items()):
             hosts.extend([host] * count)
 
-        # sort the list for readbility
+        # sort the list for readability
         hosts.sort()
 
         return hosts
