@@ -145,7 +145,7 @@ class Srun(LaunchMethod):
             mapping += ' --nodefile=%s' % nodefile
 
         cmd = '%s %s %s' % (self._command, mapping, exec_path)
-        return cmd
+        return cmd.rstrip()
 
 
     # --------------------------------------------------------------------------

@@ -1,5 +1,7 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
+import os
+
 from unittest import mock, TestCase
 
 from .test_common import setUp
@@ -74,7 +76,7 @@ class TestSrun(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Srun, '__init__', return_value=None)
-    def test_get_launch_cmds(self, mocked_init):
+    def test_get_launch_rank_cmds(self, mocked_init):
 
         lm_srun = Srun(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
         lm_srun._cfg     = {}
@@ -83,10 +85,18 @@ class TestSrun(TestCase):
         test_cases = setUp('lm', 'srun')
         for task, result in test_cases:
             if result != 'RuntimeError':
-                command = lm_srun.get_launch_cmds(task, '')
-                self.assertEqual(command, result, msg=task['uid'])
 
-        # TODO: set test with `slots`
+                command = lm_srun.get_launch_cmds(task, '')
+                self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
+
+                if task.get('slots'):
+                    file_name = '%(task_sandbox_path)s/%(uid)s.nodes' % task
+                    self.assertTrue(os.path.isfile(file_name))
+
+                command = lm_srun.get_rank_exec(task, None, None)
+                self.assertEqual(command, result['rank_exec'], msg=task['uid'])
+
+# ------------------------------------------------------------------------------
 
 
 if __name__ == '__main__':
@@ -96,7 +106,7 @@ if __name__ == '__main__':
     tc.test_init_from_scratch_fail()
     tc.test_init_from_info()
     tc.test_can_launch()
-    tc.test_get_launch_cmds()
+    tc.test_get_launch_rank_cmds()
 
 
 # ------------------------------------------------------------------------------
