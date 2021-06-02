@@ -1,17 +1,18 @@
 
 {
     "task": {
-        "uid":         "task.000008",
-        "description": {"executable"    : "/bin/sleep",
-                        "arguments"     : null,
-                        "cpu_processes" : 1,
-                        "environment"   : {"test_env":"test_val"}
-                       },
-        "task_sandbox_path": "/tmp"
+        "uid"               : "task.000008",
+        "description": {
+            "executable"    : "/bin/sleep",
+            "arguments"     : null,
+            "cpu_processes" : 1,
+            "environment"   : {"test_env": "test_val"}
+        },
+        "task_sandbox_path" : "/tmp"
     },
 
-    "setup" : {
-        "lm" : {
+    "setup": {
+        "lm": {
             "slots": {
                 "ranks": [],
                 "cores_per_node": 16,

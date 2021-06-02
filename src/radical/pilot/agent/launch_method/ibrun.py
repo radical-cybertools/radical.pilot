@@ -77,8 +77,10 @@ class IBRun(LaunchMethod):
 
         # Usage of env variable TACC_TASKS_PER_NODE is purely for MPI tasks,
         # threads are not considered (info provided by TACC support)
-        n_node_tasks = int(task['environment'].get('TACC_TASKS_PER_NODE') or
+        n_node_tasks = int(td['environment'].get('TACC_TASKS_PER_NODE') or
                            self._cfg.get('cores_per_node', 1))
+
+        assert slots['ranks'], 'task.slots.ranks is not set'
 
         # TACC_TASKS_PER_NODE is used to set the actual number of running tasks,
         # if not set, then ibrun script will use the default slurm setting for
@@ -102,10 +104,9 @@ class IBRun(LaunchMethod):
         if offsets:
             ibrun_offset = min(offsets)
 
-        ret = "%s -n %s -o %d %s" % (self._command, n_tasks, ibrun_offset,
+        cmd = '%s -n %s -o %d %s' % (self._command, n_tasks, ibrun_offset,
                                      exec_path)
-
-        return ret
+        return cmd.rstrip()
 
 
     # --------------------------------------------------------------------------
@@ -127,7 +128,7 @@ class IBRun(LaunchMethod):
         task_exec   = td['executable']
         task_args   = td.get('arguments')
         task_argstr = self._create_arg_string(task_args)
-        command     = "%s %s" % (task_exec, task_argstr)
+        command     = '%s %s' % (task_exec, task_argstr)
 
         return command.rstrip()
 

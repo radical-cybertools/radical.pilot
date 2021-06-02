@@ -1,18 +1,20 @@
 
 {
     "task": {
-        "uid":         "task.000007",
-        "description": {"executable"       : "/bin/sleep",
-                        "arguments"        : ["10"],
-                        "cpu_processes"    : 2,
-                        "cpu_threads"      : 2,
-                        "cpu_process_type" : "MPI"
-                       },
-        "task_sandbox_path": "/tmp"
+        "uid"                  : "task.000007",
+        "description": {
+            "executable"       : "/bin/sleep",
+            "arguments"        : ["10"],
+            "cpu_processes"    : 2,
+            "cpu_threads"      : 2,
+            "cpu_process_type" : "MPI",
+            "environment"      : {}
+        },
+        "task_sandbox_path"    : "/tmp"
     },
 
-    "setup" : {
-        "lm" : {
+    "setup": {
+        "lm": {
             "slots": {
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
@@ -37,12 +39,16 @@
     },
 
     "results": {
-        "lm": { "ibrun"  : ["ibrun -n 2 -o 0 /bin/sleep \"10\" ",null],
-                "spark"  : "RuntimeError",
-                "ssh"    : "RuntimeError",
-                "rsh"    : "RuntimeError",
-                "jsrun"  : ["jsrun --erf_input rs_layout_task_000007   /bin/sleep \"10\" ",null],
-                "prte2"  : "RuntimeError"
+        "lm": {
+            "ibrun"  : {
+                "launch_cmd" : "ibrun -n 2 -o 0",
+                "rank_exec"  : "/bin/sleep \"10\""
+            },
+            "spark"  : "RuntimeError",
+            "ssh"    : "RuntimeError",
+            "rsh"    : "RuntimeError",
+            "jsrun"  : ["jsrun --erf_input rs_layout_task_000007   /bin/sleep \"10\" ",null],
+            "prte2"  : "RuntimeError"
         },
         "resource_file": {
             "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0,1}}\n","rank: 1: { host: node2; cpu: {0,1}}\n"]

@@ -1,16 +1,20 @@
 
 {
     "task": {
-        "uid":         "task.000002",
-        "description": {"executable" : "spark-submit",
-                        "arguments"  : ["test.py"],
-                        "cpu_processes" : 1},
-        "task_sandbox_path": "/tmp"
+        "uid"               : "task.000002",
+        "description": {
+            "executable"    : "spark-submit",
+            "arguments"     : ["test.py"],
+            "cpu_processes" : 1,
+            "environment"   : {}
+        },
+        "task_sandbox_path" : "/tmp"
     },
 
-    "setup" : {
-        "lm" : {
-             "slots" :{
+    "setup": {
+        "lm": {
+             "slots": {
+                 "ranks"         : [],
                  "cores_per_node": 24,
                  "gpus_per_node" : 0,
                  "lm_info"       : {"spark_home"     : "/",

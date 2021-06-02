@@ -1,21 +1,22 @@
 
 {
     "task": {
-        "uid":         "task.000005",
-        "description": {"executable"       : "/bin/sleep",
-                        "arguments"        : ["10"],
-                        "gpu_processes"    : 1,
-                        "cpu_processes"    : 1,
-                        "cpu_process_type" : "MPI",
-                        "gpu_process_type" : "MPI",
-                        "gpu_thread_type"  : "CUDA",
-                        "environment"      : {"CUDA_VISIBLE_DEVICES": 0}
-                       },
-        "task_sandbox_path": "/tmp"
+        "uid"                  : "task.000005",
+        "description": {
+            "executable"       : "/bin/sleep",
+            "arguments"        : ["10"],
+            "gpu_processes"    : 1,
+            "cpu_processes"    : 1,
+            "cpu_process_type" : "MPI",
+            "gpu_process_type" : "MPI",
+            "gpu_thread_type"  : "CUDA",
+            "environment"      : {"CUDA_VISIBLE_DEVICES": 0}
+        },
+        "task_sandbox_path"    : "/tmp"
     },
 
-    "setup" : {
-        "lm" : {
+    "setup": {
+        "lm": {
             "slots": {
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
@@ -44,7 +45,10 @@
             "fork"    : ["/bin/sleep \"10\" ", null],
             "aprun"   : ["aprun -n 1 -N 1 -L node1 -d 1 -cc 0 /bin/sleep \"10\"  ", null],
             "mpirun"  : ["mpirun  -np 1  -host node1  /bin/sleep \"10\"", null],
-            "ibrun"   : ["ibrun -n 1 -o 0 /bin/sleep \"10\" ", null],
+            "ibrun"   : {
+                "launch_cmd" : "ibrun -n 1 -o 0",
+                "rank_exec"  : "/bin/sleep \"10\""
+            },
             "ssh"     : {
                 "launch_cmd" : "ssh node1",
                 "rank_exec"  : "/bin/sleep \"10\""

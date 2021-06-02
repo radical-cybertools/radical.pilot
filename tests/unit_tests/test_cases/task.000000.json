@@ -1,16 +1,18 @@
 
 {
     "task": {
-        "uid":         "task.000000",
-        "description": {"executable"   : "/bin/sleep",
-                        "arguments"    : null,
-                        "cpu_processes" : 1
-                       },
-        "task_sandbox_path": "/tmp"
+        "uid"               : "task.000000",
+        "description": {
+            "executable"    : "/bin/sleep",
+            "arguments"     : null,
+            "cpu_processes" : 1,
+            "environment"   : {}
+        },
+        "task_sandbox_path" : "/tmp"
     },
 
-    "setup" : {
-        "lm" : {
+    "setup": {
+        "lm": {
             "slots": {
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
@@ -45,7 +47,10 @@
             "fork"    : ["/bin/sleep", null],
             "aprun"   : ["aprun -n 1 -N 1 -L node1 -d 1 -cc 0 /bin/sleep ", null],
             "mpirun"  : ["mpirun  -np 1  -host node1  /bin/sleep", null],
-            "ibrun"   : ["ibrun -n 1 -o 0 /bin/sleep", null],
+            "ibrun"   : {
+                "launch_cmd" : "ibrun -n 1 -o 0",
+                "rank_exec"  : "/bin/sleep"
+            },
             "spark"   : ["//bin/sleep     ",null],
             "ccmrun"  : ["ccmrun -n 1 /bin/sleep ",null],
             "jsrun"   : ["jsrun --erf_input rs_layout_task_000000   /bin/sleep",null],
