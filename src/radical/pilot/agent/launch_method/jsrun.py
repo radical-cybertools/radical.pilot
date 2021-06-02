@@ -16,8 +16,7 @@ class JSRUN(LaunchMethod):
     #
     def __init__(self, name, lm_cfg, cfg, log, prof):
 
-
-        self._command = None
+        self._command: str = ''
 
         LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
 

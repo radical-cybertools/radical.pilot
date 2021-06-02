@@ -18,10 +18,10 @@ class CCMRun(LaunchMethod):
     #
     def __init__(self, name, lm_cfg, cfg, log, prof):
 
-        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
+        self._command : str = ''
+        self.node_name: str = ru.get_hostname() or ''
 
-        self._command  = None
-        self.node_name = ru.get_hostname()
+        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
 
 
     # --------------------------------------------------------------------------

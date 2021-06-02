@@ -16,9 +16,9 @@ class Fork(LaunchMethod):
     #
     def __init__(self, name, lm_cfg, cfg, log, prof):
 
-        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
+        self.node_name: str = ru.get_hostname() or ''
 
-        self.node_name = ru.get_hostname()
+        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
 
 
     # --------------------------------------------------------------------------

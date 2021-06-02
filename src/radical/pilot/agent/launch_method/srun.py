@@ -34,9 +34,9 @@ class Srun(LaunchMethod):
     #
     def __init__(self, name, lm_cfg, cfg, log, prof):
 
-        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
+        self._command: str = ''
 
-        self._command   = None
+        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
 
 
     # --------------------------------------------------------------------------

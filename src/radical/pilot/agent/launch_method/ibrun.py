@@ -18,10 +18,10 @@ class IBRun(LaunchMethod):
     #
     def __init__(self, name, lm_cfg, cfg, log, prof):
 
-        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
+        self._command  : str  = ''
+        self._node_list: list = self._cfg.rm_info.node_list or []
 
-        self._command   = None
-        self._node_list = self._cfg.rm_info.node_list
+        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
 
 
     # --------------------------------------------------------------------------
