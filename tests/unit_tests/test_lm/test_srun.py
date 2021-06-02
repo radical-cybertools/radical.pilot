@@ -76,11 +76,25 @@ class TestSrun(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Srun, '__init__', return_value=None)
+    def test_get_launcher_env(self, mocked_init):
+
+        lm_srun = Srun(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_info = {'env'    : {'test_env': 'test_value'},
+                   'env_sh' : 'env/lm_srun.sh',
+                   'command': '/bin/srun'}
+        lm_srun._init_from_info(lm_info, {})
+        lm_env = lm_srun.get_launcher_env()
+
+        self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_info['env_sh'], lm_env)
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Srun, '__init__', return_value=None)
     def test_get_launch_rank_cmds(self, mocked_init):
 
         lm_srun = Srun(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
         lm_srun._cfg     = {}
-        lm_srun._command = '/bin/srun'
+        lm_srun._command = 'srun'
 
         test_cases = setUp('lm', 'srun')
         for task, result in test_cases:
@@ -106,6 +120,7 @@ if __name__ == '__main__':
     tc.test_init_from_scratch_fail()
     tc.test_init_from_info()
     tc.test_can_launch()
+    tc.test_get_launcher_env()
     tc.test_get_launch_rank_cmds()
 
 
