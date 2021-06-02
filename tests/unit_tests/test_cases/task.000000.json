@@ -44,7 +44,9 @@
 
     "results": {
         "lm": {
-            "fork"    : ["/bin/sleep", null],
+            "fork"    : {
+                "rank_exec"  : "/bin/sleep"
+            },
             "aprun"   : ["aprun -n 1 -N 1 -L node1 -d 1 -cc 0 /bin/sleep ", null],
             "mpirun"  : ["mpirun  -np 1  -host node1  /bin/sleep", null],
             "ibrun"   : {
