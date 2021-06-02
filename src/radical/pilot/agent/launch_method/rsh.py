@@ -73,13 +73,12 @@ class RSH(LaunchMethod):
 
         slots = task['slots']
 
-        if len(slots['ranks']) > 1:
-            raise RuntimeError('ssh cannot run multi-rank tasks')
+        if len(slots['ranks']) != 1:
+            raise RuntimeError('rsh cannot run multi-rank tasks')
 
-        host  = slots['ranks'][0]['node']
-        ret   = "%s %s %s" % (self._command, host, exec_path)
-
-        return ret
+        host = slots['ranks'][0]['node']
+        cmd  = '%s %s %s' % (self._command, host, exec_path)
+        return cmd.rstrip()
 
 
     # --------------------------------------------------------------------------
@@ -97,7 +96,7 @@ class RSH(LaunchMethod):
         task_exec   = td['executable']
         task_args   = td.get('arguments')
         task_argstr = self._create_arg_string(task_args)
-        command     = "%s %s" % (task_exec, task_argstr)
+        command     = '%s %s' % (task_exec, task_argstr)
 
         return command.rstrip()
 

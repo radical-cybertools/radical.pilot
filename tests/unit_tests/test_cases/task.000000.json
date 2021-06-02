@@ -47,7 +47,6 @@
             "mpirun"  : ["mpirun  -np 1  -host node1  /bin/sleep", null],
             "ibrun"   : ["ibrun -n 1 -o 0 /bin/sleep", null],
             "spark"   : ["//bin/sleep     ",null],
-            "rsh"     : "ValueError",
             "ccmrun"  : ["ccmrun -n 1 /bin/sleep ",null],
             "jsrun"   : ["jsrun --erf_input rs_layout_task_000000   /bin/sleep",null],
             "mpiexec" : ["mpiexec -host node1 -n 1    /bin/sleep",null],

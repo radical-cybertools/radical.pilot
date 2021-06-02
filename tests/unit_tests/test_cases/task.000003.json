@@ -39,7 +39,10 @@
                 "launch_cmd" : "ssh node1",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
-            "rsh"     : ["/bin/sleep \"10\" ","rsh node1 LD_LIBRARY_PATH=/usr/local/lib/ PATH=test_path 1"],
+            "rsh"     : {
+                "launch_cmd" : "rsh node1",
+                "rank_exec"  : "/bin/sleep \"10\""
+            },
             "spark"   : "RuntimeError",
             "jsrun"   : ["jsrun --erf_input rs_layout_task_000003   /bin/sleep \"10\" ",null],
             "mpiexec" : ["mpiexec -host node1 -n 1    /bin/sleep \"10\" ", null]
