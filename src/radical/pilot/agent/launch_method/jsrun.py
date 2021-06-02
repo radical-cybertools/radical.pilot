@@ -146,12 +146,12 @@ class JSRUN(LaunchMethod):
     #
     def get_launch_cmds(self, task, exec_path):
 
-        uid          = task['uid']
-        slots        = task['slots']
-        td           = task['description']
-        task_sandbox = task['task_sandbox_path']
+        uid   = task['uid']
+        slots = task['slots']
+        td    = task['description']
+        sbox  = task['task_sandbox_path']
 
-        assert(slots), 'missing slots for %s' % uid
+        assert slots['ranks'], 'task.slots.ranks is not set'
 
         self._log.debug('prep %s', uid)
 
@@ -171,11 +171,11 @@ class JSRUN(LaunchMethod):
             smpiargs = ''
 
         rs_fname = self._create_resource_set_file(slots=slots, uid=uid,
-                                                  sandbox=task_sandbox)
+                                                  sandbox=sbox)
 
-        ret = '%s --erf_input %s %s %s' % (self._command, rs_fname,
-                                               smpiargs, exec_path)
-        return ret
+        cmd = '%s --erf_input %s %s %s' % (self._command, rs_fname,
+                                           smpiargs, exec_path)
+        return cmd.rstrip()
 
 
     # --------------------------------------------------------------------------
@@ -197,7 +197,7 @@ class JSRUN(LaunchMethod):
         task_exec   = td['executable']
         task_args   = td.get('arguments')
         task_argstr = self._create_arg_string(task_args)
-        command     = "%s %s" % (task_exec, task_argstr)
+        command     = '%s %s' % (task_exec, task_argstr)
 
         return command.rstrip()
 

@@ -47,14 +47,17 @@
             "spark"  : "RuntimeError",
             "ssh"    : "RuntimeError",
             "rsh"    : "RuntimeError",
-            "jsrun"  : ["jsrun --erf_input rs_layout_task_000007   /bin/sleep \"10\" ",null],
+            "jsrun"  : {
+                "launch_cmd" : "jsrun --erf_input rs_layout_task_000007",
+                "rank_exec"  : "/bin/sleep \"10\""
+            },
             "prte2"  : "RuntimeError"
         },
         "resource_file": {
             "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0,1}}\n","rank: 1: { host: node2; cpu: {0,1}}\n"]
         },
         "resource_filename": {
-            "jsrun": "rs_layout_task_000007"
+            "jsrun" : "rs_layout_task_000007"
         }
     }
 }

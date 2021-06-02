@@ -46,13 +46,16 @@
             },
             "spark" : "RuntimeError",
             "yarn"  : "RuntimeError",
-            "jsrun"   : ["jsrun --erf_input rs_layout_task_000013   /bin/sleep \"10\" ", null]
+            "jsrun" : {
+                "launch_cmd" : "jsrun --erf_input rs_layout_task_000013",
+                "rank_exec"  : "/bin/sleep \"10\""
+            }
         },
         "resource_file": {
             "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0}; gpu: {0,1}}\n"]
         },
         "resource_filename": {
-            "jsrun": "rs_layout_task_000013"
+            "jsrun" : "rs_layout_task_000013"
         }
     }
 }
