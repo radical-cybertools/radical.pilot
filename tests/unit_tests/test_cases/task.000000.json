@@ -54,7 +54,10 @@
                 "rank_exec"  : "/bin/sleep"
             },
             "spark"   : ["//bin/sleep     ",null],
-            "ccmrun"  : ["ccmrun -n 1 /bin/sleep ",null],
+            "ccmrun"  : {
+                "launch_cmd" : "ccmrun -n 1",
+                "rank_exec"  : "/bin/sleep"
+            },
             "jsrun"   : {
                 "launch_cmd" : "jsrun --erf_input rs_layout_task_000000",
                 "rank_exec"  : "/bin/sleep"

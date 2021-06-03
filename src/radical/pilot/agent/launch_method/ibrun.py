@@ -43,7 +43,7 @@ class IBRun(LaunchMethod):
         self._env_sh  = lm_info['env_sh']
         self._command = lm_info['command']
 
-        assert(self._command)
+        assert self._command
 
 
     # --------------------------------------------------------------------------
