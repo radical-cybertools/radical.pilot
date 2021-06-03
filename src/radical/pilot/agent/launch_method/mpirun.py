@@ -20,8 +20,8 @@ class MPIRun(LaunchMethod):
         self._mpt    : bool  = False
         self._rsh    : bool  = False
         self._ccmrun : str   = ''
-        self._omplace: str   = ''
         self._dplace : str   = ''
+        self._omplace: str   = ''
         self._command: str   = ''
 
         self._env_orig = ru.env_eval('env/bs0_orig.env')
@@ -45,43 +45,42 @@ class MPIRun(LaunchMethod):
         info dict returned here.
         '''
 
-        lm_info = {'env'   : env,
-                   'env_sh': env_sh}
-
-        lm_info['command'] = ru.which([
-            'mpirun',             # general case
-            'mpirun_rsh',         # Gordon (SDSC)
-            'mpirun_mpt',         # Cheyenne (NCAR)
-            'mpirun-mpich-mp',    # Mac OSX mpich
-            'mpirun-openmpi-mp',  # Mac OSX openmpi
-        ])
+        lm_info = {
+            'env'    : env,
+            'env_sh' : env_sh,
+            'command': ru.which([
+                'mpirun',             # general case
+                'mpirun_rsh',         # Gordon (SDSC)
+                'mpirun_mpt',         # Cheyenne (NCAR)
+                'mpirun-mpich-mp',    # Mac OSX mpich
+                'mpirun-openmpi-mp',  # Mac OSX openmpi
+            ]),
+            'mpt'    : False,
+            'rsh'    : False,
+            'ccmrun' : '',
+            'dplace' : '',
+            'omplace': ''
+        }
 
         if '_mpt' in self.name.lower():
             lm_info['mpt'] = True
-        else:
-            lm_info['mpt'] = False
 
         if '_rsh' in self.name.lower():
             lm_info['rsh'] = True
-        else:
-            lm_info['rsh'] = False
 
-        lm_info['omplace'] = ''
+        # do we need ccmrun or dplace?
+        if '_ccmrun' in self.name.lower():
+            lm_info['ccmrun'] = ru.which('ccmrun')
+            assert lm_info['ccmrun']
+
+        if '_dplace' in self.name.lower():
+            lm_info['dplace'] = ru.which('dplace')
+            assert lm_info['dplace']
+
         # cheyenne always needs mpt and omplace
         if 'cheyenne' in ru.get_hostname():
             lm_info['omplace'] = ru.which('omplace')
             lm_info['mpt']     = True
-
-        # do we need ccmrun or dplace?
-        lm_info['ccmrun'] = ''
-        if '_ccmrun' in self.name:
-            lm_info['ccmrun'] = ru.which('ccmrun')
-            assert(lm_info['ccmrun'])
-
-        lm_info['dplace'] = ''
-        if '_dplace' in self.name:
-            lm_info['dplace'] = ru.which('dplace')
-            assert(lm_info['dplace'])
 
         mpi_version, mpi_flavor = self._get_mpi_info(lm_info['command'])
         lm_info['mpi_version']  = mpi_version
@@ -96,13 +95,13 @@ class MPIRun(LaunchMethod):
 
         self._env         = lm_info['env']
         self._env_sh      = lm_info['env_sh']
+        self._command     = lm_info['command']
 
         self._mpt         = lm_info['mpt']
         self._rsh         = lm_info['rsh']
+        self._ccmrun      = lm_info['ccmrun']
         self._dplace      = lm_info['dplace']
         self._omplace     = lm_info['omplace']
-        self._ccmrun      = lm_info['ccmrun']
-        self._command     = lm_info['command']
 
         self._mpi_version = lm_info['mpi_version']
         self._mpi_flavor  = lm_info['mpi_flavor']
@@ -213,8 +212,8 @@ class MPIRun(LaunchMethod):
 
         else:
             # Construct the hosts_string ('h1,h2,..,hN')
-            if self._mpt: mpt_hosts_string = '%s'       % ",".join(host_list)
-            else        : hosts_string     = '-host %s' % ",".join(host_list)
+            if self._mpt: mpt_hosts_string = '%s'       % ','.join(host_list)
+            else        : hosts_string     = '-host %s' % ','.join(host_list)
 
         # -np:  usually len(host_list), meaning N processes over N hosts, but
         # for Cheyenne (mpt) the specification of -host lands N processes on
@@ -222,11 +221,11 @@ class MPIRun(LaunchMethod):
         if self._mpt: np = 1
         else        : np = len(host_list)
 
-        ret = "%s %s %s -np %d %s %s %s %s" \
-                % (self._ccmrun, self._command, mpt_hosts_string, np,
-                   self._dplace, self._omplace, hosts_string, exec_path)
+        cmd = '%s %s %s -np %d %s %s %s %s' % \
+            (self._ccmrun, self._command, mpt_hosts_string, np,
+             self._dplace, self._omplace, hosts_string, exec_path)
 
-        return ret.strip()
+        return cmd.strip()
 
 
     # --------------------------------------------------------------------------
@@ -249,7 +248,7 @@ class MPIRun(LaunchMethod):
         task_exec    = td['executable']
         task_args    = td['arguments']
         task_argstr  = self._create_arg_string(task_args)
-        command      = "%s %s" % (task_exec, task_argstr)
+        command      = '%s %s' % (task_exec, task_argstr)
 
         return command.rstrip()
 

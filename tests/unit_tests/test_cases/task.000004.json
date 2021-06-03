@@ -37,7 +37,10 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "aprun" : ["aprun -n 1 -N 1 -L node1 -d 1 -cc 0 /bin/sleep \"10\"  ", null],
-            "mpirun": ["mpirun  -np 1  -host node1  /bin/sleep \"10\"", null],
+            "mpirun": {
+                "launch_cmd" : "mpirun  -np 1   -host node1",
+                "rank_exec"  : "/bin/sleep \"10\""
+            },
             "ibrun" : {
                 "launch_cmd" : "ibrun -n 1 -o 0",
                 "rank_exec"  : "/bin/sleep \"10\""
