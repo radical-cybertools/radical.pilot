@@ -58,7 +58,10 @@
                 "launch_cmd" : "jsrun --erf_input rs_layout_task_000003",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
-            "mpiexec" : ["mpiexec -host node1 -n 1    /bin/sleep \"10\" ", null]
+            "mpiexec" : {
+                "launch_cmd" : "mpiexec -host node1 -n 1",
+                "rank_exec"  : "/bin/sleep \"10\""
+            }
         },
         "resource_file": {
             "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0,1,2,3}}\n"]

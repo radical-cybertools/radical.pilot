@@ -6,6 +6,7 @@ __license__   = "MIT"
 import os
 import radical.utils as ru
 
+from ... import constants as rpc
 from .base import LaunchMethod
 
 
@@ -20,8 +21,8 @@ class MPIExec(LaunchMethod):
         self._mpt    : bool  = False
         self._rsh    : bool  = False
         self._ccmrun : str   = ''
-        self._omplace: str   = ''
         self._dplace : str   = ''
+        self._omplace: str   = ''
         self._command: str   = ''
 
         self._env_orig = ru.env_eval('env/bs0_orig.env')
@@ -33,45 +34,44 @@ class MPIExec(LaunchMethod):
     #
     def _init_from_scratch(self, lm_cfg, env, env_sh):
 
-        lm_info = {'env'   : env,
-                   'env_sh': env_sh}
-
-        lm_info['command'] = ru.which([
-            'mpiexec',             # General case
-            'mpiexec.mpich',       # Linux, MPICH
-            'mpiexec.hydra',       # Linux, MPICH
-            'mpiexec.openmpi',     # Linux, MPICH
-            'mpiexec-mpich-mp',    # Mac OSX MacPorts
-            'mpiexec-openmpi-mp',  # Mac OSX MacPorts
-            'mpiexec_mpt',         # Cheyenne (NCAR)
-        ])
+        lm_info = {
+            'env'    : env,
+            'env_sh' : env_sh,
+            'command': ru.which([
+                'mpiexec',             # General case
+                'mpiexec.mpich',       # Linux, MPICH
+                'mpiexec.hydra',       # Linux, MPICH
+                'mpiexec.openmpi',     # Linux, MPICH
+                'mpiexec-mpich-mp',    # Mac OSX MacPorts
+                'mpiexec-openmpi-mp',  # Mac OSX MacPorts
+                'mpiexec_mpt',         # Cheyenne (NCAR)
+            ]),
+            'mpt'    : False,
+            'rsh'    : False,
+            'ccmrun' : '',
+            'dplace' : '',
+            'omplace': ''
+        }
 
         if '_mpt' in self.name.lower():
             lm_info['mpt'] = True
-        else:
-            lm_info['mpt'] = False
 
         if '_rsh' in self.name.lower():
             lm_info['rsh'] = True
-        else:
-            lm_info['rsh'] = False
-
-        lm_info['omplace'] = False
-        # cheyenne always needs mpt and omplace
-        if 'cheyenne' in ru.get_hostname():
-            lm_info['mpt']     = True
-            lm_info['omplace'] = True
 
         # do we need ccmrun or dplace?
-        lm_info['ccmrun'] = ''
-        if '_ccmrun' in self.name:
+        if '_ccmrun' in self.name.lower():
             lm_info['ccmrun'] = ru.which('ccmrun')
-            assert(lm_info['ccmrun'])
+            assert lm_info['ccmrun']
 
-        lm_info['dplace'] = ''
-        if '_dplace' in self.name:
+        if '_dplace' in self.name.lower():
             lm_info['dplace'] = ru.which('dplace')
-            assert(lm_info['dplace'])
+            assert lm_info['dplace']
+
+        # cheyenne always needs mpt and omplace
+        if 'cheyenne' in ru.get_hostname():
+            lm_info['omplace'] = 'omplace'
+            lm_info['mpt']     = True
 
         mpi_version, mpi_flavor = self._get_mpi_info(lm_info['command'])
         lm_info['mpi_version']  = mpi_version
@@ -90,7 +90,7 @@ class MPIExec(LaunchMethod):
         self._mpt         = lm_info['mpt']
         self._rsh         = lm_info['rsh']
         self._dplace      = lm_info['dplace']
-        self._omplace     = lm_info['omplace']
+        self._omplace     = 'omplace' if lm_info['omplace'] else ''
         self._ccmrun      = lm_info['ccmrun']
         self._command     = lm_info['command']
 
@@ -109,7 +109,7 @@ class MPIExec(LaunchMethod):
     #
     def can_launch(self, task):
 
-        if task['description']['cpu_process_type'] == 'MPI':
+        if task['description']['cpu_process_type'] == rpc.MPI:
             return True
 
         return False
@@ -189,47 +189,44 @@ class MPIExec(LaunchMethod):
         arg_max = 4096
 
         # This is the command w/o the host string
-        omplace = ''
-        if self._omplace:
-            omplace = 'omplace'
-        command_stub = "%s %%s %s %s" % (self._command, omplace, exec_path)
+        cmd_stub = '%s %%s %s %s' % (self._command, self._omplace, exec_path)
 
         # cluster hosts by number of slots
         host_string = ''
         if not self._mpt:
-            for node,nslots in list(host_slots.items()):
+            for node, nslots in list(host_slots.items()):
                 host_string += '-host '
                 host_string += '%s -n %s ' % (','.join([node] * nslots), nslots)
         else:
             hosts = list()
-            for node,nslots in list(host_slots.items()):
+            for node, nslots in list(host_slots.items()):
                 hosts += [node] * nslots
             host_string += ','.join(hosts)
             host_string += ' -n 1'
 
-        command = command_stub % host_string
+        cmd = cmd_stub % host_string
 
-        if len(command) > arg_max:
+        if len(cmd) > arg_max:
 
             # Create a hostfile from the list of hosts.  We create that in the
             # task sandbox
             hostfile = '%s/mpi_hostfile' % task['task_sandbox_path']
             with open(hostfile, 'w') as f:
-                for node,nslots in list(host_slots.items()):
+                for node, nslots in list(host_slots.items()):
                     f.write('%20s \tslots=%s\n' % (node, nslots))
-            host_string = "-hostfile %s" % hostfile
+            host_string = '-hostfile %s' % hostfile
 
-        ret = command_stub % host_string
-        self._log.debug('mpiexec cmd: %s', ret)
+        cmd = cmd_stub % host_string
+        self._log.debug('mpiexec cmd: %s', cmd)
 
-        assert(len(ret) <= arg_max)
+        assert(len(cmd) <= arg_max)
 
-        # Cheyenne is the only machine that requires mpirun_mpt.  We then
-        # have to set MPI_SHEPHERD=true
+        # Cheyenne is the only machine that requires mpiexec_mpt.
+        # We then have to set MPI_SHEPHERD=true
         if self._mpt:
-            ret = 'export MPI_SHEPHERD=true\n%s' % ret
+            cmd = 'export MPI_SHEPHERD=true\n%s' % cmd
 
-        return ret.strip()
+        return cmd.strip()
 
 
     # --------------------------------------------------------------------------
@@ -252,7 +249,7 @@ class MPIExec(LaunchMethod):
         task_exec    = td['executable']
         task_args    = td['arguments']
         task_argstr  = self._create_arg_string(task_args)
-        command      = "%s %s" % (task_exec, task_argstr)
+        command      = '%s %s' % (task_exec, task_argstr)
 
         return command.rstrip()
 

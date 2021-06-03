@@ -47,13 +47,10 @@ class TestMPIRun(TestCase):
 
         lm_mpirun = MPIRun(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
 
-        lm_mpirun.name = 'mpirun_mpt'
-        lm_info = lm_mpirun._init_from_scratch({}, {}, '')
-        self.assertTrue(lm_info['mpt'])
-
-        lm_mpirun.name = 'mpirun_rsh'
-        lm_info = lm_mpirun._init_from_scratch({}, {}, '')
-        self.assertTrue(lm_info['rsh'])
+        for _flag in ['mpt', 'rsh']:
+            lm_mpirun.name = 'mpirun_%s' % _flag
+            lm_info = lm_mpirun._init_from_scratch({}, {}, '')
+            self.assertTrue(lm_info[_flag])
 
         for _flavor in ['ccmrun', 'dplace']:
             lm_mpirun.name = 'mpirun_%s' % _flavor
@@ -64,6 +61,7 @@ class TestMPIRun(TestCase):
                 mocked_which.return_value = ''
                 lm_mpirun._init_from_scratch({}, {}, '')
 
+        lm_mpirun.name = 'mpirun'
         mocked_hostname.return_value = 'cheyenne'
         mocked_which.return_value = '/usr/bin/omplace'
         lm_info = lm_mpirun._init_from_scratch({}, {}, '')
