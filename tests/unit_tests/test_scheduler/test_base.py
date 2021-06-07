@@ -5,8 +5,7 @@
 import threading
 import os
 
-from unittest import mock
-from unittest import TestCase
+from unittest import mock, TestCase
 
 import radical.utils as ru
 
@@ -15,7 +14,7 @@ from radical.pilot.agent.scheduler.base import AgentSchedulingComponent
 
 # ------------------------------------------------------------------------------
 #
-class TestBase(TestCase):
+class TestBaseScheduling(TestCase):
 
     # --------------------------------------------------------------------------
     #
@@ -50,24 +49,19 @@ class TestBase(TestCase):
                 component._change_slot_states(slots=slot, new_state=new_state)
                 self.assertEqual(component.nodes, result)
 
-
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    @mock.patch.object(AgentSchedulingComponent, '__init__',
-                       return_value=None)
-    @mock.patch.object(AgentSchedulingComponent, '_handle_cuda',
-                       return_value=True)
+    @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
     @mock.patch.object(AgentSchedulingComponent, '_change_slot_states',
                        return_value=True)
-    def test_try_allocation(self, mocked_init, mocked_handle_cuda,
-                            mocked_change_slot_states):
+    @mock.patch('radical.utils.Logger')
+    @mock.patch('radical.utils.Profiler')
+    def test_try_allocation(self, mocked_profiler, mocked_logger,
+                            mocked_change_slot_states, mocked_init):
 
-        component = AgentSchedulingComponent()
-        component._log           = ru.Logger('dummy')
-        component._allocate_slot = mock.Mock(side_effect=[None,
-                                                          {'slot':'test_slot'}])
-        component._prof          = mock.Mock()
-        component._prof.prof     = mock.Mock(return_value=True)
+        component = AgentSchedulingComponent(cfg=None, session=None)
+        component._log           = mocked_logger()
+        component._prof          = mocked_profiler()
         component._wait_pool     = list()
         component._wait_lock     = threading.RLock()
         component._slot_lock     = threading.RLock()
@@ -87,62 +81,55 @@ class TestBase(TestCase):
             self.assertEqual(task['description']['environment'],
                              result['description']['environment'])
 
+    # --------------------------------------------------------------------------
+    #
+    # @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
+    # def test_handle_cuda(self,mocked_init):
+    #
+    #     tests     = self.setUp()
+    #     setups    = tests['handle_cuda']['setup']
+    #     tasks     = tests['handle_cuda']['task']
+    #     results   = tests['handle_cuda']['results']
+    #     component = AgentSchedulingComponent()
+    #     component._log = ru.Logger('dummy')
+    #
+    #     for setup, task, result in zip(setups, tasks, results):
+    #         component._cfg = setup
+    #         if result == 'ValueError':
+    #             with self.assertRaises(ValueError):
+    #                 component._handle_cuda(task)
+    #         else:
+    #             component._handle_cuda(task)
+    #             task_env = task['description']['environment']
+    #             if result == 'KeyError':
+    #                 with self.assertRaises(KeyError):
+    #                     self.assertIsNone(task_env['CUDA_VISIBLE_DEVICES'])
+    #             else:
+    #                 self.assertEqual(task_env['CUDA_VISIBLE_DEVICES'], result)
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
-    def test_handle_cuda(self,mocked_init):
+    def test_get_node_maps(self, mocked_init):
 
-        tests     = self.setUp()
-        setups    = tests['handle_cuda']['setup']
-        tasks     = tests['handle_cuda']['task']
-        results   = tests['handle_cuda']['results']
-        component = AgentSchedulingComponent()
-        component._log = ru.Logger('dummy')
-
-        for setup, task, result in zip(setups, tasks, results):
-            component._cfg = setup
-            if result == 'ValueError':
-                with self.assertRaises(ValueError):
-                    component._handle_cuda(task)
-            else:
-                component._handle_cuda(task)
-                task_env = task['description']['environment']
-                if result == 'KeyError':
-                    with self.assertRaises(KeyError):
-                        self.assertIsNone(task_env['CUDA_VISIBLE_DEVICES'])
-                else:
-                    self.assertEqual(task_env['CUDA_VISIBLE_DEVICES'], result)
-
-
-    # --------------------------------------------------------------------------
-    #
-    @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
-    def test_get_node_maps(self,mocked_init):
-        component = AgentSchedulingComponent()
+        component = AgentSchedulingComponent(cfg=None, session=None)
 
         cores = [1, 2, 3, 4, 5, 6, 7, 8]
         gpus  = [1, 2]
-        tpp   = 4
+        tpp   = 4  # threads_per_proc
         core_map, gpu_map = component._get_node_maps(cores, gpus, tpp)
         self.assertEqual(core_map, [[1, 2, 3, 4], [5, 6, 7, 8]])
-        self.assertEqual(gpu_map, [[1], [2]])
-
-
-if __name__ == '__main__':
-
-    tc = TestBase()
-    tc.test_get_node_maps()
-    tc.test_handle_cuda()
-    tc.test_try_allocation()
-    tc.test_change_slot_states()
-
+        self.assertEqual(gpu_map,  [[1], [2]])
 
 # ------------------------------------------------------------------------------
+
+
 if __name__ == '__main__':
 
-    tb = TestBase()
-    tb.test_change_slot_states()
+    tc = TestBaseScheduling()
+    tc.test_change_slot_states()
+    tc.test_try_allocation()
+    tc.test_get_node_maps()
 
 
 # ------------------------------------------------------------------------------
