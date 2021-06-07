@@ -217,6 +217,7 @@
                 "lfs_per_process" : 0
             }
         ],
+
         "ranks": [
             {
                 "node"    : "a",
@@ -243,6 +244,7 @@
                 "mem"     : 1024
             }
         ],
+
         "final_state" : [
             [
                 {
@@ -292,8 +294,7 @@
             ],
             "Error"
         ]
-    }
-
+    },
 
     "final_state" : [
                   [{"lfs": {"size": 0, "path": "/dev/null"},
