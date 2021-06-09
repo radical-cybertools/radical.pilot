@@ -41,21 +41,21 @@ atexit.register(_kill)
 
 # ------------------------------------------------------------------------------
 #
-class Popen(AgentExecutingComponent) :
+class Popen(AgentExecutingComponent):
 
     _header    = '#!/bin/sh\n'
-    _separator = '\n# -------------------------------------------------------' \
-                 '-----------------------\n'
+    _separator = """
+# ------------------------------------------------------------------------------
+"""
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, session):
 
         session._log.debug('===== popen init start')
-        self._watcher   = None
-        self._terminate = mt.Event()
+        AgentExecutingComponent.__init__(self, cfg, session)
 
-        AgentExecutingComponent.__init__ (self, cfg, session)
+        self._proc_term = mt.Event()
         session._log.debug('===== popen init stop')
 
 
@@ -66,10 +66,10 @@ class Popen(AgentExecutingComponent) :
         self._log.debug('===== popen initialize start')
         AgentExecutingComponent.initialize(self)
 
-        self._cancel_lock     = ru.RLock()
+        self._cancel_lock     = mt.RLock()
         self._tasks_to_cancel = list()
         self._tasks_to_watch  = list()
-        self._watch_queue     = queue.Queue ()
+        self._watch_queue     = queue.Queue()
 
         self._pid = self._cfg['pid']
 
@@ -80,6 +80,12 @@ class Popen(AgentExecutingComponent) :
 
         self._log.debug('===== popen initialize stop')
 
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        # FIXME: should be moved to base class `AgentExecutingComponent`?
+        self._proc_term.set()
 
     # --------------------------------------------------------------------------
     #
@@ -98,11 +104,9 @@ class Popen(AgentExecutingComponent) :
 
         return True
 
-
     # --------------------------------------------------------------------------
     #
     def work(self, tasks):
-
 
         self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
@@ -138,7 +142,9 @@ class Popen(AgentExecutingComponent) :
         # before we start handling the task, check if it should run in a named
         # env.  If so, inject the activation of that env in the task's pre_exec
         # directives.
-        td = task['description']
+        tid  = task['uid']
+        td   = task['description']
+        sbox = task['task_sandbox_path']
 
         # ensure that the named env exists
         env = td.get('named_env')
@@ -228,10 +234,6 @@ class Popen(AgentExecutingComponent) :
         # prep stdout/err so that we can append w/o checking for None
         task['stdout'] = ''
         task['stderr'] = ''
-
-        tid  = task['uid']
-        td   = task['description']
-        sbox = task['task_sandbox_path']
 
         launcher = self.find_launcher(task)
 
@@ -381,10 +383,10 @@ class Popen(AgentExecutingComponent) :
       #     td['pre_exec'] = pre
 
         # make sure scripts are executable
-        st = os.stat('%s/%s' % (sbox, launch_script))
-        st = os.stat('%s/%s' % (sbox, exec_script))
-        os.chmod('%s/%s' % (sbox, launch_script), st.st_mode | stat.S_IEXEC)
-        os.chmod('%s/%s' % (sbox, exec_script),   st.st_mode | stat.S_IEXEC)
+        st_l = os.stat('%s/%s' % (sbox, launch_script))
+        st_e = os.stat('%s/%s' % (sbox, exec_script))
+        os.chmod('%s/%s' % (sbox, launch_script), st_l.st_mode | stat.S_IEXEC)
+        os.chmod('%s/%s' % (sbox, exec_script),   st_e.st_mode | stat.S_IEXEC)
 
         # make sure the sandbox exists
         slots_fname = '%s/%s.sl' % (sbox, tid)
@@ -397,15 +399,12 @@ class Popen(AgentExecutingComponent) :
         ru.rec_makedir(sbox)
         self._prof.prof('exec_mkdir_done', uid=tid)
 
-        # launch and exec sript are done, get ready for execution.
+        # launch and exec script are done, get ready for execution.
         cmdline = '/bin/sh %s' % launch_script
 
         # prepare stdout/stderr
         stdout_file = td.get('stdout') or '%s/%s.out' % (sbox, tid)
         stderr_file = td.get('stderr') or '%s/%s.err' % (sbox, tid)
-
-        task['stdout'] = ''
-        task['stderr'] = ''
 
         _stdout_file_h = open(stdout_file, 'a')
         _stderr_file_h = open(stderr_file, 'a')
@@ -438,7 +437,7 @@ class Popen(AgentExecutingComponent) :
     def _watch(self):
 
         try:
-            while not self._terminate.is_set():
+            while not self._proc_term.is_set():
 
                 tasks = list()
                 try:
@@ -639,7 +638,7 @@ class Popen(AgentExecutingComponent) :
         ret  = ''
         ret += 'export RP_TASK_ID="%s"\n'          % tid
         ret += 'export RP_TASK_NAME="%s"\n'        % name
-        ret += 'export RP_PILOT_ID="%s"\n'         % self._cfg['pid']
+        ret += 'export RP_PILOT_ID="%s"\n'         % self._pid
         ret += 'export RP_SESSION_ID="%s"\n'       % self.sid
         ret += 'export RP_RESOURCE="%s"\n'         % self.resource
         ret += 'export RP_RESOURCE_SANDBOX="%s"\n' % self.rsbox
@@ -723,9 +722,10 @@ class Popen(AgentExecutingComponent) :
     #
     # rank
     #
-    def _get_pre_rank(self, rank_id, cmds=[]):
+    def _get_pre_rank(self, rank_id, cmds=None):
 
         ret = ''
+        cmds = cmds or []
         for cmd in cmds:
             # FIXME: exit on error, but don't stall other ranks on sync
             ret += '        %s\n' % cmd
@@ -781,9 +781,10 @@ class Popen(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def _get_post_rank(self, rank_id, rank, cmds=[]):
+    def _get_post_rank(self, rank_id, rank, cmds=None):
 
         ret = ''
+        cmds = cmds or []
         for cmd in cmds:
             ret += '        %s %s' % (cmd, self._get_check('post_rank failed'))
 
