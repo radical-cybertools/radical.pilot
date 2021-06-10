@@ -1328,7 +1328,7 @@ verify_rp_install()
     echo
     echo "`$PYTHON --version` ($PYTHON)"
     echo "PYTHONPATH: $PYTHONPATH"
-    $PYTHON $RP_INSTALL/bin/radical-stack \
+    $PYTHON $(which radical-stack) \
         || (echo 'install failed!'; false) \
         || exit 1
     echo
