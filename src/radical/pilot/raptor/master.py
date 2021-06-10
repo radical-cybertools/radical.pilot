@@ -78,13 +78,6 @@ class Master(rpu.Component):
         self._input_queue  = ru.zmq.Queue(input_cfg)
         self._input_queue.start()
 
-        # and register that input queue with the scheduler
-        self.publish(rpc.CONTROL_PUBSUB,
-                      {'cmd': 'register_raptor_queue',
-                       'arg': {'name' : self._uid,
-                               'queue': qname,
-                               'addr' : str(self._input_queue.addr_put)}})
-
         # send completed request tasks to agent output staging / tmgr
         self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
                              rpc.AGENT_STAGING_OUTPUT_QUEUE)
@@ -145,18 +138,14 @@ class Master(rpu.Component):
                                    'stall_hwm' : 0,
                                    'bulk_size' : 56})
 
-        self._input_queue  = ru.zmq.Queue(input_cfg)
-        self._input_queue.start()
-
 
         # begin to receive tasks in that queue
         self._input_getter = ru.zmq.Getter(qname,
                                       self._input_queue.addr_get,
                                       cb=self._request_cb)
 
-
         # and register that input queue with the scheduler
-        self._log.debug('=== registered raptor queue')
+        self._log.debug('registered raptor queue')
         self.publish(rpc.CONTROL_PUBSUB,
                       {'cmd': 'register_raptor_queue',
                        'arg': {'name' : self._uid,
