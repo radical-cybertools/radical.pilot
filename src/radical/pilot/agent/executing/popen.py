@@ -385,6 +385,9 @@ class Popen(AgentExecutingComponent) :
         stdout_file = td.get('stdout') or '%s/%s.out' % (sbox, tid)
         stderr_file = td.get('stderr') or '%s/%s.err' % (sbox, tid)
 
+        if stdout_file[0] != '/': stdout_file = '%s/%s' % (sbox, stdout_file)
+        if stderr_file[0] != '/': stderr_file = '%s/%s' % (sbox, stderr_file)
+
         task['stdout'] = ''
         task['stderr'] = ''
 
