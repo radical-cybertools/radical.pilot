@@ -1,14 +1,16 @@
 
 {
     "task": {
-        "uid":         "task.000006",
-        "description": {"executable"       : "/bin/sleep",
-                        "arguments"        : ["10"],
-                        "cpu_processes"    : 2,
-                        "cpu_threads"      : 2,
-                        "cpu_process_type" : "MPI"
-                       },
-        "task_sandbox_path": "/tmp"
+        "uid"                  : "task.000006",
+        "description": {
+            "executable"       : "/bin/sleep",
+            "arguments"        : ["10"],
+            "cpu_processes"    : 2,
+            "cpu_threads"      : 2,
+            "cpu_process_type" : "MPI",
+            "environment"      : {}
+        },
+        "task_sandbox_path"    : "/tmp"
     },
 
     "setup" : {
@@ -32,18 +34,32 @@
 
     "results": {
         "lm": {
-            "fork"  : ["/bin/sleep \"10\" ", null],
+            "fork"  : {
+                "rank_exec"  : "/bin/sleep \"10\""
+            },
             "aprun" : ["aprun -n 2 -N 2 -L node1 -d 2 -cc 0,1:2,3 /bin/sleep \"10\"  ", null],
-            "mpirun": ["mpirun  -np 2  -host node1,node1  /bin/sleep \"10\"", null],
-            "ibrun" : ["ibrun -n 2 -o 0 /bin/sleep \"10\" ", null],
-            "ssh"   : ["/bin/sleep \"10\" ","ssh node1 LD_LIBRARY_PATH=/usr/local/lib/ PATH=test_path 1"],
-            "jsrun" : ["jsrun --erf_input rs_layout_task_000006   /bin/sleep \"10\" ",null]
+            "mpirun": {
+                "launch_cmd" : "mpirun  -np 2   -host node1,node1",
+                "rank_exec"  : "/bin/sleep \"10\""
+            },
+            "ibrun" : {
+                "launch_cmd" : "ibrun -n 2 -o 0",
+                "rank_exec"  : "/bin/sleep \"10\""
+            },
+            "ssh"   : {
+                "launch_cmd" : "ssh node1",
+                "rank_exec"  : "/bin/sleep \"10\""
+            },
+            "jsrun" : {
+                "launch_cmd" : "jsrun --erf_input rs_layout_task_000006",
+                "rank_exec"  : "/bin/sleep \"10\""
+            }
         },
         "resource_file": {
             "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0,1}}\n","rank: 1: { host: node1; cpu: {2,3}}\n"]
         },
         "resource_filename": {
-            "jsrun": "rs_layout_task_000006"
+            "jsrun" : "rs_layout_task_000006"
         }
     }
 }

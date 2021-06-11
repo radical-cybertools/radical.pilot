@@ -99,19 +99,6 @@ class Shell(AgentExecutingComponent):
                 if e.startswith(r):
                     os.environ.pop(e, None)
 
-        # if we need to transplant any original env into the Task, we dig the
-        # respective keys from the dump made by bootstrap_0.sh
-        self._env_task_export = dict()
-        if self._cfg.get('export_to_task'):
-            with open('env.orig', 'r') as f:
-                for line in f.readlines():
-                    if '=' in line:
-                        k,v = line.split('=', 1)
-                        key = k.strip()
-                        val = v.strip()
-                        if key in self._cfg['export_to_task']:
-                            self._env_task_export[key] = val
-
         # the registry keeps track of tasks to watch, indexed by their shell
         # spawner process ID.  As the registry is shared between the spawner and
         # watcher thread, we use a lock while accessing it.
@@ -179,14 +166,29 @@ class Shell(AgentExecutingComponent):
     #
     def work(self, tasks):
 
-        if not isinstance(tasks, list):
-            tasks = [tasks]
-
         self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
         for task in tasks:
 
-            self._handle_task(task)
+            try:
+                self._handle_task(task)
+
+            except Exception:
+                # append the startup error to the tasks stderr.  This is
+                # not completely correct (as this text is not produced
+                # by the task), but it seems the most intuitive way to
+                # communicate that error to the application/user.
+                self._log.exception("error running Task")
+                if task['stderr'] is None:
+                    task['stderr'] = ''
+                task['stderr'] += '\nPilot cannot start task:\n'
+                task['stderr'] += '\n'.join(ru.get_exception_trace())
+
+                # can't rely on the executor base to free the task resources
+                self._prof.prof('unschedule_start', uid=task['uid'])
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+
+                self.advance(task, rps.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -291,6 +293,7 @@ class Shell(AgentExecutingComponent):
         env  += 'export RP_TASK_NAME="%s"\n'     % task['description'].get('name')
         env  += 'export RP_GTOD="%s"\n'          % task['gtod']
         env  += 'export RP_PILOT_STAGING="%s"\n' % self._pwd
+
         if self._prof.enabled:
             env += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, task['uid'])
         env  += '''
@@ -304,10 +307,6 @@ prof(){
     echo "$now,$event,task_script,MainThread,$RP_TASK_ID,AGENT_EXECUTING," >> $RP_PROF
 }
 '''
-
-        # also add any env vars requested for export by the resource config
-        for k,v in self._env_task_export.items():
-            env += "export %s=%s\n" % (k,v)
 
         # also add any env vars requested in hte task description
         if descr['environment']:

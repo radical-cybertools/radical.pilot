@@ -195,11 +195,12 @@ class Continuous(AgentSchedulingComponent):
         slots of the following structure:
 
             {
-                'node_name': 'node_1',
-                'node_id'  : 'node_1',
-                'cores'    : [1, 2, 4, 5],
-                'gpus'     : [1, 3],
-                'lfs'      : 1234,
+                'node'     : 'node_name',
+                'node_id'  : 'node.0001',
+                'core_map' : [[1, 2, 4, 5]],
+                'gpu_map'  : [[1, 3]],
+                'lfs'      : {'size': 1234,
+                              'path': '/tmp'},
                 'mem'      : 4321
             }
 
@@ -527,8 +528,8 @@ class Continuous(AgentSchedulingComponent):
         # stored in the tag history (if partition nodes were kept under this
         # key before then it will be overwritten)
         if colo_tag is not None and colo_tag != partition:
-            self._colo_history[colo_tag] = [node['uid']
-                                            for node in slots['nodes']]
+            self._colo_history[colo_tag] = [node['node_id']
+                                            for node in slots['ranks']]
             self._tagged_nodes.update(self._colo_history[colo_tag])
 
         # this should be nicely filled out now - return

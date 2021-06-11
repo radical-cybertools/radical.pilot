@@ -1,18 +1,20 @@
 
 {
     "task": {
-        "uid":         "task.000004",
-        "description": {"executable"    : "/bin/sleep",
-                        "arguments"     : ["10"],
-                        "cpu_processes" : 1,
-                        "cpu_threads"   : 1,
-                        "gpu_processes" : 1
-                       },
-        "task_sandbox_path": "/tmp"
+        "uid"               : "task.000004",
+        "description": {
+            "executable"    : "/bin/sleep",
+            "arguments"     : ["10"],
+            "cpu_processes" : 1,
+            "cpu_threads"   : 1,
+            "gpu_processes" : 1,
+            "environment"   : {}
+        },
+        "task_sandbox_path" : "/tmp"
     },
 
-    "setup" : {
-        "lm" : {
+    "setup": {
+        "lm": {
             "slots": {
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
@@ -31,11 +33,22 @@
 
     "results": {
         "lm": {
-            "fork"  : ["/bin/sleep \"10\" ", null],
+            "fork"  : {
+                "rank_exec"  : "/bin/sleep \"10\""
+            },
             "aprun" : ["aprun -n 1 -N 1 -L node1 -d 1 -cc 0 /bin/sleep \"10\"  ", null],
-            "mpirun": ["mpirun  -np 1  -host node1  /bin/sleep \"10\"", null],
-            "ibrun" : ["ibrun -n 1 -o 0 /bin/sleep \"10\" ", null],
-            "ssh"   : ["/bin/sleep \"10\" ","ssh node1 LD_LIBRARY_PATH=/usr/local/lib/ PATH=test_path 1"],
+            "mpirun": {
+                "launch_cmd" : "mpirun  -np 1   -host node1",
+                "rank_exec"  : "/bin/sleep \"10\""
+            },
+            "ibrun" : {
+                "launch_cmd" : "ibrun -n 1 -o 0",
+                "rank_exec"  : "/bin/sleep \"10\""
+            },
+            "ssh"   : {
+                "launch_cmd" : "ssh node1",
+                "rank_exec"  : "/bin/sleep \"10\""
+            },
             "spark" : "RuntimeError",
             "yarn"  : "RuntimeError"
         }

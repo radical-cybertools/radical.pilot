@@ -1,160 +1,143 @@
 #!/usr/bin/env python3
 
-# pylint: disable=protected-access, unused-argument, no-value-for-parameter
+# pylint: disable=protected-access, unused-argument
 
-__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
+__copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
-import unittest
 import os
+import threading as mt
 
-from unittest import mock
-
+import radical.pilot.states as rps
 import radical.utils as ru
 
-from radical.pilot.agent.launch_method.base import LaunchMethod
+from unittest import mock, TestCase
+
+from radical.pilot.agent.launch_method.fork import Fork
 from radical.pilot.agent.executing.popen    import Popen
+
+TEST_CASES_DIR = 'tests/unit_tests/test_executing/test_cases'
 
 
 # ------------------------------------------------------------------------------
 #
+class TestPopen(TestCase):
 
-
-class TestBase(unittest.TestCase):
-
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    def setUp(self):
-
-        fname = os.path.dirname(__file__) + '/test_cases/test_base.json'
-
-        return ru.read_json(fname)
-
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._test_case = ru.read_json('%s/test_base.json' % TEST_CASES_DIR)
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Popen, '__init__', return_value=None)
-    @mock.patch.object(Popen, 'initialize', return_value=None)
-    def test_handle_task(self, mocked_init, mocked_initialize):
+    @mock.patch('radical.utils.Logger')
+    def test_command_cb(self, mocked_logger, mocked_init):
 
-        global_launcher = []
-        global_tasks    = []
+        pex = Popen(cfg=None, session=None)
+        pex._log             = mocked_logger()
+        pex._cancel_lock     = mt.RLock()
+        pex._tasks_to_cancel = []
 
-        def spawn_side_effect(launcher, task):
-            nonlocal global_launcher
-            nonlocal global_tasks
-            global_launcher.append(launcher)
-            global_tasks.append(task)
+        msg = {'cmd': '', 'arg': {'uids': ['task.0000', 'task.0001']}}
+        self.assertTrue(pex.command_cb(topic=None, msg=msg))
+        # tasks were not added to the list `_tasks_to_cancel`
+        self.assertFalse(pex._tasks_to_cancel)
 
-        tests = self.setUp()
-        task  = dict()
-
-        task['uid']         = tests['task']['uid']
-        task['description'] = tests['task']['description']
-
-        component = Popen()
-        component._mpi_launcher          = mock.Mock()
-        component._mpi_launcher.name     = 'mpiexec'
-        component._mpi_launcher.command  = 'mpiexec'
-        component._task_launcher         = mock.Mock()
-        component._task_launcher.name    = 'ssh'
-        component._task_launcher.command = 'ssh'
-
-        component.spawn = mock.MagicMock(side_effect=spawn_side_effect
-                               (launcher=component._mpi_launcher, task=task))
-
-        component._log = ru.Logger('dummy')
-        component._handle_task(task)
-        self.assertEqual(task, global_tasks[0])
-
+        msg['cmd'] = 'cancel_tasks'
+        self.assertTrue(pex.command_cb(topic=None, msg=msg))
+        # tasks were added to the list `_tasks_to_cancel`
+        self.assertEqual(pex._tasks_to_cancel, msg['arg']['uids'])
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Popen, '__init__', return_value=None)
-    @mock.patch.object(Popen, 'initialize', return_value=None)
-    def test_check_running(self, mocked_init, mocked_initialize):
+    @mock.patch.object(Popen, 'find_launcher', return_value=None)
+    @mock.patch.object(Fork, '__init__', return_value=None)
+    @mock.patch('subprocess.Popen')
+    def test_handle_task(self, mocked_sp_popen, mocked_lm_init,
+                         mocked_find_launcher, mocked_init):
 
-        global_tasks   = []
-        global_state   = None
-        global_publish = None
-        global_push    = None
+        task = dict(self._test_case['task'])
+        task['slots'] = self._test_case['setup']['slots']
 
-        def _advance_side_effect(task, state, publish, push):
-            nonlocal global_tasks
-            nonlocal global_state
-            nonlocal global_publish
-            nonlocal global_push
+        pex = Popen(cfg=None, session=None)
 
-            global_tasks.append(task)
-            global_state   = 'FAILED'
-            global_publish = True
-            global_push    = True
+        with self.assertRaises(RuntimeError):
+            # no launcher
+            pex._handle_task(task)
 
-        tests = self.setUp()
-        task = dict()
-        task = tests['task']
+        pex._log = pex._prof = pex._watch_queue = mock.Mock()
+        pex._pwd     = ''
+        pex._pid     = 'pilot.0000'
+        pex.sid      = 'session.0000'
+        pex.resource = 'resource_label'
+        pex.rsbox    = ''
+        pex.ssbox    = ''
+        pex.psbox    = ''
+        pex.lfs      = '/tmp'
+
+        launcher = Fork(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        launcher.name    = 'FORK'
+        launcher._env_sh = 'env/lm_fork.sh'
+        mocked_find_launcher.return_value = launcher
+
+        pex._handle_task(task)
+
+        for prefix in ['.launch.sh', '.exec.sh', '.sl']:
+            path = '%s/%s%s' % (task['task_sandbox_path'], task['uid'], prefix)
+            self.assertTrue(os.path.isfile(path))
+            try   : os.remove(path)
+            except: pass
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Popen, '__init__', return_value=None)
+    @mock.patch('os.killpg')
+    def test_check_running(self, mocked_killpg, mocked_init):
+
+        task = dict(self._test_case['task'])
         task['target_state'] = None
-        task['proc']         = mock.Mock()
-        task['proc'].poll    = mock.Mock(return_value=1)
-        task['proc'].wait    = mock.Mock(return_value=1)
 
-        component = Popen()
-        component._tasks_to_watch = list()
-        component._tasks_to_cancel = list()
-        component._tasks_to_watch.append(task)
-        component.advance = mock.MagicMock(side_effect=_advance_side_effect)
-        component._prof = mock.Mock()
-        component.publish = mock.Mock()
-        component._log = ru.Logger('dummy')
-        component._check_running()
-        self.assertEqual(task['target_state'], global_state)
+        pex = Popen(cfg=None, session=None)
+        pex._tasks_to_watch  = []
+        pex._tasks_to_cancel = []
+        pex._cancel_lock     = mt.RLock()
+        pex._log    = pex._prof   = mock.Mock()
+        pex.advance = pex.publish = mock.Mock()
 
-    # --------------------------------------------------------------------------
-    #
-    @mock.patch.object(Popen, '__init__', return_value=None)
-    @mock.patch.object(Popen, 'initialize', return_value=None)
-    @mock.patch.object(LaunchMethod, '__init__', return_value=None)
-    @mock.patch.object(LaunchMethod, 'construct_command',
-                       return_value=('mpiexec echo hello',None))
-    def test_spawn(self, mocked_init, mocked_initialize,
-                   mocked_launchmethod, mocked_construct_command):
-        tests = self.setUp()
-        _pids = []
-        task = dict()
-        task = tests['task']
-        task['slots'] = tests['setup']['slots']
-        task['task_sandbox_path'] = tests['setup']['lm']['task_sandbox']
+        # case 1: exit_code is None, task to be cancelled
+        task['proc'] = mock.Mock()
+        task['proc'].poll.return_value = None
+        pex._tasks_to_watch.append(task)
+        pex._tasks_to_cancel.append(task['uid'])
+        pex._check_running()
+        self.assertFalse(pex._tasks_to_cancel)
 
-        launcher  = LaunchMethod()
-        component = Popen()
-        component._cfg = dict()
+        # case 2: exit_code == 0
+        task['proc'] = mock.Mock()
+        task['proc'].poll.return_value = 0
+        pex._tasks_to_watch.append(task)
+        pex._check_running()
+        self.assertEqual(task['target_state'], rps.DONE)
 
-        component._cfg['sid']  = 'sid0'
-        component._cfg['pid']  = 'pid0'
-        component._cfg['aid']  = 'aid0'
-        component._uid         = mock.Mock()
-        component.gtod         = mock.Mock()
-        component._pwd         = mock.Mock()
-        component._prof        = mock.Mock()
-        component._task_tmp    = mock.Mock()
-        component._watch_queue = mock.Mock()
-        component._log         = ru.Logger('dummy')
-
-        component.spawn(launcher=launcher, task=task)
-        self.assertEqual(len(_pids), 0)
-
-
-if __name__ == '__main__':
-
-    tc = TestBase()
-    tc.test_spawn()
-    tc.test_check_running()
-    tc.test_handle_task()
+        # case 3: exit_code == 1
+        task['proc'] = mock.Mock()
+        task['proc'].poll.return_value = 1
+        pex._tasks_to_watch.append(task)
+        pex._check_running()
+        self.assertEqual(task['target_state'], rps.FAILED)
 
 # ------------------------------------------------------------------------------
+
+
 if __name__ == '__main__':
 
-    tb = TestBase()
-    tb.test_spawn()
+    tc = TestPopen()
+    tc.test_command_cb()
+    tc.test_check_running()
+    tc.test_handle_task()
 
 
 # ------------------------------------------------------------------------------

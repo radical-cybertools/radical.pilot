@@ -24,7 +24,7 @@ class APRun(LaunchMethod):
     #
     def __init__(self, name, lm_cfg, cfg, log, prof):
 
-        self._command: str   = ''
+        self._command: str = ''
 
         self._env_orig = ru.env_eval('env/bs0_orig.env')
 
@@ -38,8 +38,6 @@ class APRun(LaunchMethod):
         lm_info = {'env'    : env,
                    'env_sh' : env_sh,
                    'command': ru.which('aprun')}
-
-        self._init_from_info(lm_info, lm_cfg)
 
         return lm_info
 

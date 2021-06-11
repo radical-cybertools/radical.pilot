@@ -55,11 +55,11 @@ class AgentExecutingComponent(rpu.Component):
     @classmethod
     def create(cls, cfg, session):
 
-        name = cfg['spawner']
-
         # Make sure that we are the base-class!
         if cls != AgentExecutingComponent:
             raise TypeError('Factory only available to base class!')
+
+        name = cfg['spawner']
 
         from .popen    import Popen
         from .shell    import Shell
@@ -105,19 +105,18 @@ class AgentExecutingComponent(rpu.Component):
 
             try:
                 self._log.debug('===== %s create start', name)
-                lm = rpa.LaunchMethod.create(name, lm_cfg, self._cfg,
-                                                   self._log, self._prof)
+                lm = rpa.LaunchMethod.create(name, lm_cfg,
+                                             self._cfg, self._log, self._prof)
                 self._launchers[name] = lm
                 self._log.debug('===== %s create stop', name)
 
             except:
                 self._log.exception('skip LM %s' % name)
 
-
-        assert(self._launchers)
+        assert self._launchers
 
         if not self._launch_order:
-            self._launch_order = list(self._cfg.resource_cfg.launchers.keys())
+            self._launch_order = list(launch_methods.keys())
 
         self._pwd      = os.path.realpath(os.getcwd())
         self.sid       = self._cfg['sid']

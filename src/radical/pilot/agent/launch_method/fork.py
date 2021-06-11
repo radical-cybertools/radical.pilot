@@ -16,9 +16,9 @@ class Fork(LaunchMethod):
     #
     def __init__(self, name, lm_cfg, cfg, log, prof):
 
-        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
+        self.node_name: str = ru.get_hostname() or ''
 
-        self.node_name = ru.get_hostname()
+        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
 
 
     # --------------------------------------------------------------------------
@@ -90,7 +90,7 @@ class Fork(LaunchMethod):
         task_exec   = td['executable']
         task_args   = td.get('arguments')
         task_argstr = self._create_arg_string(task_args)
-        command     = "%s %s" % (task_exec, task_argstr)
+        command     = '%s %s' % (task_exec, task_argstr)
 
         return command.rstrip()
 

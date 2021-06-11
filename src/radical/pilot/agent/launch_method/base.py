@@ -94,6 +94,7 @@ class LaunchMethod(object):
             with envp:
                 envp.put(self._init_from_scratch(lm_cfg, env_lm, env_sh))
             lm_info = envp.get()
+            self._init_from_info(lm_info, lm_cfg)
 
             # store the info in the registry for any other instances of the LM
             self._reg.put('lm.%s' % self.name, lm_info)
@@ -197,7 +198,7 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_launch_cmds(self):
+    def get_launch_cmds(self, task, exec_path):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
@@ -272,7 +273,7 @@ class LaunchMethod(object):
         for (host, count) in list(count_dict.items()):
             hosts.extend([host] * count)
 
-        # sort the list for readbility
+        # sort the list for readability
         hosts.sort()
 
         return hosts

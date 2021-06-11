@@ -18,10 +18,10 @@ class CCMRun(LaunchMethod):
     #
     def __init__(self, name, lm_cfg, cfg, log, prof):
 
-        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
+        self._command : str = ''
+        self.node_name: str = ru.get_hostname() or ''
 
-        self._command  = None
-        self.node_name = ru.get_hostname()
+        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
 
 
     # --------------------------------------------------------------------------
@@ -42,6 +42,8 @@ class CCMRun(LaunchMethod):
         self._env     = lm_info['env']
         self._env_sh  = lm_info['env_sh']
         self._command = lm_info['command']
+
+        assert self._command
 
 
     # --------------------------------------------------------------------------
@@ -80,9 +82,9 @@ class CCMRun(LaunchMethod):
         # NOTE: we actually ignore the slots defined by the scheduler
         # FIXME: cpu_threads
         task_cores = task['description']['cpu_processes']
-        ret = "%s -n %d %s %s" % (self._command, task_cores, exec_path)
+        cmd = '%s -n %d %s' % (self._command, task_cores, exec_path)
 
-        return ret
+        return cmd.rstrip()
 
 
     # --------------------------------------------------------------------------
@@ -100,7 +102,7 @@ class CCMRun(LaunchMethod):
         task_exec   = td['executable']
         task_args   = td.get('arguments')
         task_argstr = self._create_arg_string(task_args)
-        command     = "%s %s" % (task_exec, task_argstr)
+        command     = '%s %s' % (task_exec, task_argstr)
 
         return command.rstrip()
 

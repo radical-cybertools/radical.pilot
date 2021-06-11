@@ -8,8 +8,7 @@ __license__   = 'MIT'
 import copy
 import glob
 
-from unittest import TestCase
-from unittest import mock
+from unittest import mock, TestCase
 
 import radical.utils           as ru
 import radical.pilot.constants as rpc
@@ -98,7 +97,7 @@ class TestContinuous(TestCase):
                 raise AssertionError('Test should be redefined (%s)' %
                                      test_case['task']['uid'])
 
-            self.assertEqual(alc_slots, test_case['result']['slots']['nodes'])
+            self.assertEqual(alc_slots, test_case['result']['slots']['ranks'])
 
     # --------------------------------------------------------------------------
     #
@@ -119,8 +118,8 @@ class TestContinuous(TestCase):
             component._rm_gpus_per_node  = len(nodes[0]['gpus'])
             component._rm_lfs_per_node   = nodes[0]['lfs']
             component._rm_mem_per_node   = nodes[0]['mem']
-            component._rm_lm_info        = dict()
             component._rm_partitions     = dict()
+            component._lm_info           = dict()
             component._colo_history      = dict()
             component._tagged_nodes      = set()
             component._scattered         = None
@@ -187,17 +186,9 @@ if __name__ == '__main__':
 
     tc = TestContinuous()
     tc.test_configure()
-    tc.test_unschedule_task()
     tc.test_find_resources()
     tc.test_schedule_task()
-
-# ------------------------------------------------------------------------------
-#
-if __name__ == '__main__':
-
-    tc = TestContinuous()
-    tc.test_schedule_unit()
-    tc.test_unschedule_unit()
+    tc.test_unschedule_task()
 
 
 # ------------------------------------------------------------------------------

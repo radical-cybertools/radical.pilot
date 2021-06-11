@@ -83,19 +83,6 @@ class ABDS(AgentExecutingComponent):
         self.gtod   = "%s/gtod" % self._pwd
         self.tmpdir = tempfile.gettempdir()
 
-        # if we need to transplant any original env into the Task, we dig the
-        # respective keys from the dump made by bootstrap_0.sh
-        self._env_task_export = dict()
-        if self._cfg.get('export_to_task'):
-            with open('env.orig', 'r') as f:
-                for line in f.readlines():
-                    if '=' in line:
-                        k,v = line.split('=', 1)
-                        key = k.strip()
-                        val = v.strip()
-                        if key in self._cfg['export_to_task']:
-                            self._env_task_export[key] = val
-
 
     # --------------------------------------------------------------------------
     #
@@ -252,10 +239,6 @@ class ABDS(AgentExecutingComponent):
             env_string += 'export RP_PILOT_STAGING="%s"\n' % self._pwd
             if self._prof.enabled:
                 env_string += 'export RP_PROF="%s/%s.prof"\n' % (sandbox, task['uid'])
-
-            # also add any env vars requested for export by the resource config
-            for k,v in self._env_task_export.items():
-                env_string += "export %s=%s\n" % (k,v)
 
             env_string += '''
 prof(){

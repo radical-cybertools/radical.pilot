@@ -1,16 +1,18 @@
 
 {
     "task": {
-        "uid":         "task.000000",
-        "description": {"executable"   : "/bin/sleep",
-                        "arguments"    : null,
-                        "cpu_processes" : 1
-                       },
-        "task_sandbox_path": "/tmp"
+        "uid"               : "task.000000",
+        "description": {
+            "executable"    : "/bin/sleep",
+            "arguments"     : null,
+            "cpu_processes" : 1,
+            "environment"   : {}
+        },
+        "task_sandbox_path" : "/tmp"
     },
 
-    "setup" : {
-        "lm" : {
+    "setup": {
+        "lm": {
             "slots": {
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
@@ -42,17 +44,31 @@
 
     "results": {
         "lm": {
-            "fork"    : ["/bin/sleep", null],
-            # "orte"    : ["orterun  --hnp \"dvm_uri\" -np 1 --bind-to none -host node1 -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep", null],
+            "fork"    : {
+                "rank_exec"  : "/bin/sleep"
+            },
             "aprun"   : ["aprun -n 1 -N 1 -L node1 -d 1 -cc 0 /bin/sleep ", null],
-            "mpirun"  : ["mpirun  -np 1  -host node1  /bin/sleep", null],
-            "ibrun"   : ["ibrun -n 1 -o 0 /bin/sleep", null],
-            "ssh"     : "ValueError",
+            "mpirun"  : {
+                "launch_cmd" : "mpirun  -np 1   -host node1",
+                "rank_exec"  : "/bin/sleep"
+            },
+            "ibrun"   : {
+                "launch_cmd" : "ibrun -n 1 -o 0",
+                "rank_exec"  : "/bin/sleep"
+            },
             "spark"   : ["//bin/sleep     ",null],
-            "rsh"     : "ValueError",
-            "ccmrun"  : ["ccmrun -n 1 /bin/sleep ",null],
-            "jsrun"   : ["jsrun --erf_input rs_layout_task_000000   /bin/sleep",null],
-            "mpiexec" : ["mpiexec -host node1 -n 1    /bin/sleep",null],
+            "ccmrun"  : {
+                "launch_cmd" : "ccmrun -n 1",
+                "rank_exec"  : "/bin/sleep"
+            },
+            "jsrun"   : {
+                "launch_cmd" : "jsrun --erf_input rs_layout_task_000000",
+                "rank_exec"  : "/bin/sleep"
+            },
+            "mpiexec" : {
+                "launch_cmd" : "mpiexec -host node1 -n 1",
+                "rank_exec"  : "/bin/sleep"
+            },
             "prte"    : ["prun --hnp \"dvm_uri\"  -np 1 --cpus-per-proc 1 --bind-to hwthread:overload-allowed --use-hwthread-cpus --oversubscribe --pmca ptl_base_max_msg_size 1073741824 -host node1 --verbose  /bin/sleep", null],
             "prte2"   : ["prun --dvm-uri \"dvm_uri\"  --np 1 --map-by node:HWTCPUS:PE=1:OVERSUBSCRIBE --bind-to hwthread:overload-allowed --host node1:1 --pmixmca ptl_base_max_msg_size 1073741824 --verbose /bin/sleep", null]
         },
@@ -60,7 +76,7 @@
             "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0}}\n"]
         },
         "resource_filename": {
-            "jsrun": "rs_layout_task_000000"
+            "jsrun" : "rs_layout_task_000000"
         }
     }
 }

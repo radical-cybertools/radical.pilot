@@ -34,9 +34,9 @@ class Srun(LaunchMethod):
     #
     def __init__(self, name, lm_cfg, cfg, log, prof):
 
-        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
+        self._command: str = ''
 
-        self._command   = None
+        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
 
 
     # --------------------------------------------------------------------------
@@ -145,7 +145,7 @@ class Srun(LaunchMethod):
             mapping += ' --nodefile=%s' % nodefile
 
         cmd = '%s %s %s' % (self._command, mapping, exec_path)
-        return cmd
+        return cmd.rstrip()
 
 
     # --------------------------------------------------------------------------
@@ -167,7 +167,7 @@ class Srun(LaunchMethod):
         task_exec   = td['executable']
         task_args   = td.get('arguments')
         task_argstr = self._create_arg_string(task_args)
-        command     = "%s %s" % (task_exec, task_argstr)
+        command     = '%s %s' % (task_exec, task_argstr)
 
         return command.rstrip()
 

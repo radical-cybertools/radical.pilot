@@ -1,17 +1,18 @@
 
 {
     "task": {
-        "uid":         "task.000009",
-        "description": {"executable"    : "/bin/sleep",
-                        "arguments"     : null,
-                        "cpu_processes" : 1,
-                        "environment"   : {"test_env":"test_val"}
-                       },
-        "task_sandbox_path": "/tmp"
+        "uid"               : "task.000009",
+        "description": {
+            "executable"    : "/bin/sleep",
+            "arguments"     : null,
+            "cpu_processes" : 1,
+            "environment"   : {"test_env": "test_val"}
+        },
+        "task_sandbox_path" : "/tmp"
     },
 
-    "setup" : {
-        "lm" : {
+    "setup": {
+        "lm": {
             "slots": {
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
@@ -38,9 +39,15 @@
 
     "results": {
         "lm": {
-            "mpiexec"     : ["mpiexec -host node1 -n 1    /bin/sleep", null],
-            "mpiexec_mpt" : ["mpiexec_mpt node1 -n 1 -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\" -x \"OMP_NUM_THREADS\" -x \"RP_AGENT_ID\" -x \"RP_GTOD\" -x \"RP_PILOT_ID\" -x \"RP_PILOT_STAGING\" -x \"RP_PROF\" -x \"RP_SESSION_ID\" -x \"RP_SPAWNER_ID\" -x \"RP_TMP\" -x \"RP_TASK_ID\" -x \"RP_TASK_NAME\" -x \"RP_PILOT_SANDBOX\" -x \"RADICAL_BASE\" -x \"test_env\" -x \"MPI_SHEPHERD\" omplace /bin/sleep", null]
-}
+            "mpiexec"     : {
+                "launch_cmd" : "mpiexec -host node1 -n 1",
+                "rank_exec"  : "/bin/sleep"
+            },
+            "mpiexec_mpt" : {
+                "launch_cmd" : "export MPI_SHEPHERD=true\nmpiexec_mpt node1 -n 1 omplace",
+                "rank_exec"  : "/bin/sleep"
+            }
+        }
     }
 }
 

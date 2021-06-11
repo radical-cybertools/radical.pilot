@@ -239,11 +239,12 @@ class AgentSchedulingComponent(rpu.Component):
       # self._lm_info           = self._cfg['lm']
         self._rm_info           = self._cfg['rm_info']
         self._rm_node_list      = self._cfg['rm_info']['node_list']
-        self._rm_partitions     = self._cfg['rm_info']['partitions']
         self._rm_cores_per_node = self._cfg['rm_info']['cores_per_node']
         self._rm_gpus_per_node  = self._cfg['rm_info']['gpus_per_node']
         self._rm_lfs_per_node   = self._cfg['rm_info']['lfs_per_node']
         self._rm_mem_per_node   = self._cfg['rm_info']['mem_per_node']
+
+        self._rm_partitions     = self._cfg['rm_info'].get('partitions')
 
         if not self._rm_node_list:
             raise RuntimeError("ResourceManager %s didn't _configure node_list."
@@ -518,9 +519,6 @@ class AgentSchedulingComponent(rpu.Component):
         and then puts them forward onto the queue towards the actual scheduling
         process (self._schedule_tasks).
         '''
-
-        # unify handling of bulks / non-bulks
-        tasks = ru.as_list(tasks)
 
         # advance state, publish state change, and push to scheduler process
         self.advance(tasks, rps.AGENT_SCHEDULING, publish=True, push=False)

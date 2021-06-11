@@ -1,18 +1,19 @@
 
 {
     "task": {
-        "uid":         "task.000011",
-        "description": {"executable"    : "/bin/sleep",
-                        "arguments"     : null,
-                        "cpu_processes" : 4,
-                        "cpu_threads"   : 4,
-                        "environment"   : {"TACC_TASKS_PER_NODE": "4"}
-                       },
-        "task_sandbox_path": "/tmp"
+        "uid"               : "task.000011",
+        "description": {
+            "executable"    : "/bin/sleep",
+            "arguments"     : null,
+            "cpu_processes" : 4,
+            "cpu_threads"   : 4,
+            "environment"   : {"TACC_TASKS_PER_NODE": "4"}
+        },
+        "task_sandbox_path" : "/tmp"
     },
 
-    "setup" : {
-        "lm" : {
+    "setup": {
+        "lm": {
             "slots": {
                 "ranks": [{"node"    : "node2",
                            "node_id" : "node2",
@@ -26,7 +27,10 @@
 
     "results": {
         "lm": {
-            "ibrun" : ["ibrun -n 4 -o 4 /bin/sleep", null]
+            "ibrun" : {
+                "launch_cmd" : "ibrun -n 4 -o 4",
+                "rank_exec"  : "/bin/sleep"
+            }
         }
     }
 }
