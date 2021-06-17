@@ -84,15 +84,15 @@ class ResourceManager(object):
 
         self._log.info('Configuring ResourceManager %s.', self.name)
 
-        self.lm_info         = dict()
-        self.rm_info         = dict()
-        self.node_list       = list()
-        self.partitions      = dict()
-        self.agent_nodes     = dict()
+        self.lm_info         = {}
+        self.rm_info         = {}
+        self.node_list       = []
+        self.partitions      = {}
+        self.agent_nodes     = {}
         self.service_node    = None
         self.cores_per_node  = 0
         self.gpus_per_node   = 0
-        self.lfs_per_node    = 0
+        self.lfs_per_node    = {}
         self.mem_per_node    = 0
         self.smt             = int(os.environ.get('RADICAL_SAGA_SMT', 1))
 

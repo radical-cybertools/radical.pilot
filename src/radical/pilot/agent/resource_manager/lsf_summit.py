@@ -53,16 +53,16 @@ class LSF_SUMMIT(ResourceManager):
 
         self._log.info("Configuring ResourceManager %s.", self.name)
 
-        self.lm_info            = dict()
-        self.rm_info            = dict()
-        self.slot_list          = list()
-        self.node_list          = list()
-        self.partitions         = dict()
-        self.agent_nodes        = dict()
+        self.lm_info            = {}
+        self.rm_info            = {}
+        self.slot_list          = []
+        self.node_list          = []
+        self.partitions         = {}
+        self.agent_nodes        = {}
         self.sockets_per_node   = None
         self.cores_per_socket   = None
         self.gpus_per_socket    = None
-        self.lfs_per_node       = None
+        self.lfs_per_node       = {}
         self.mem_per_node       = None
         self.smt                = int(os.environ.get('RADICAL_SAGA_SMT', 1))
 
@@ -263,7 +263,8 @@ class LSF_SUMMIT(ResourceManager):
         lsf_gpus_per_socket = int(lsf_gpus_per_node / lsf_sockets_per_node)
 
         # get lfs info from configs, too
-        lsf_lfs_per_node = {'path': self._cfg.get('lfs_path_per_node', None),
+        lsf_lfs_per_node = {'path': ru.expand_env(
+                                    self._cfg.get('lfs_path_per_node')),
                             'size': self._cfg.get('lfs_size_per_node', 0)}
 
         # structure of the node list is

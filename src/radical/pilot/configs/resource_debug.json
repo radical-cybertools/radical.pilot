@@ -11,7 +11,6 @@
         },
         "default_queue"               : "",
         "resource_manager"            : "FORK",
-        "lfs_per_node"                : "/tmp",
         "agent_config"                : "default_sa",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
@@ -32,8 +31,8 @@
         "virtenv_dist"                : "system",
         "cores_per_node"              :  16,
         "gpus_per_node"               :   4,
-        "lfs_per_node"                :  {"path" : "/tmp",
-                                          "size" : 100}
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 100
     },
 
     "summit": {
@@ -47,7 +46,6 @@
         },
         "default_queue"               : "",
         "resource_manager"            : "DEBUG",
-        "lfs_per_node"                : "/tmp",
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS_SUMMIT",
         "agent_spawner"               : "SHELLFS",
@@ -68,8 +66,8 @@
         "cores_per_socket"            : 21,
         "gpus_per_socket"             :  3,
         "sockets_per_node"            :  2,
-        "lfs_per_node"                :  {"path" : "/tmp",
-                                          "size" : 100}
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 100
     }
 }
 

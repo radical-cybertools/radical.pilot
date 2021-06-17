@@ -14,9 +14,9 @@
     "setup": {
         "lm": {
             "slots": {
-                "ranks": [],
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
+                "lfs_per_node"  : {"path": null, "size": 0},
                 "lm_info"       : {
                                    "spark_home"     : "/",
                                    "master_ip"      : "test_ip",
@@ -25,7 +25,7 @@
                                    "launch_command" : "",
                                    "nodename"       : "test"
                                   },
-                "lfs_per_node"  : 0
+                "ranks"         : []
             }
         }
     },

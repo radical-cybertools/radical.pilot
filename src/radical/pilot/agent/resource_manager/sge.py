@@ -52,10 +52,9 @@ class SGE(ResourceManager):
         sge_core_counts      = list(set(sge_cores_count_list))
         sge_gpus_per_node    = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
 
-        sge_lfs_per_node     = {'path' : ru.expand_env(
-                                           self._cfg.get('lfs_path_per_node')),
-                               'size' :    self._cfg.get('lfs_size_per_node', 0)
-                              }
+        sge_lfs_per_node     = {'path': ru.expand_env(
+                                        self._cfg.get('lfs_path_per_node')),
+                                'size': self._cfg.get('lfs_size_per_node', 0)}
 
         # Check if nodes have the same core count
         if len(sge_core_counts) == 1:

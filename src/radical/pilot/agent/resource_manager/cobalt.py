@@ -44,13 +44,12 @@ class Cobalt(ResourceManager):
         core_counts      = list(set([int(x) for x in out.split()]))
         assert(len(core_counts) == 1), core_counts
         cores_per_node   = core_counts[0]
-
         gpus_per_node    = self._cfg.get('gpus_per_node', 0)
-        lfs_per_node     = {'path': ru.expand_env(
-                                       self._cfg.get('lfs_path_per_node')),
-                            'size':    self._cfg.get('lfs_size_per_node', 0)
-                           }
         mem_per_node     = self._cfg.get('mem_per_node', 0)
+
+        lfs_per_node     = {'path': ru.expand_env(
+                                    self._cfg.get('lfs_path_per_node')),
+                            'size': self._cfg.get('lfs_size_per_node', 0)}
 
         self._log.info("Found unique core counts: %s", cores_per_node)
 

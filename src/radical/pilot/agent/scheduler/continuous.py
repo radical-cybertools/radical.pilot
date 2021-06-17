@@ -34,7 +34,7 @@ from .base import AgentSchedulingComponent
 #                   'uid'     : 'node.0000',
 #                   'cores'   : [0, 1, 2, 3, 4, 5, 6, 7],
 #                   'gpus'    : [0, 1, 2],
-#                   'lfs'     : 128,
+#                   'lfs'     : {'path': '/tmp', 'size': 128},
 #                   'mem'     : 256
 #               },
 #               {
@@ -42,14 +42,14 @@ from .base import AgentSchedulingComponent
 #                   'uid'     : 'node.0001',
 #                   'cores'   : [0, 1, 2, 3, 4, 5, 6, 7],
 #                   'gpus'    : [0, 1, 2],
-#                   'lfs'     : 256,
+#                   'lfs'     : {'path': '/tmp', 'size': 256},
 #                   'mem'     : 256,
 #                },
 #                ...
 #              ]
 #
-# lfs storage and memory is specified in MByte.  The scheduler assumes that
-# both are freed when the task finishes.
+# lfs storage (size) and memory is specified in MByte.  The scheduler assumes
+# that both are freed when the task finishes.
 #
 #
 # Task Tagging:
