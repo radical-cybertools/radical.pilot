@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 
-# pylint: disable=protected-access, no-value-for-parameter, unused-argument
-
-import threading
-import os
-
-from unittest import mock, TestCase
+# pylint: disable=protected-access, unused-argument
 
 import radical.utils as ru
 
+from unittest import mock, TestCase
+
 from radical.pilot.agent.scheduler.base import AgentSchedulingComponent
+
+TEST_CASES_DIR = 'tests/unit_tests/test_scheduler/test_cases'
 
 
 # ------------------------------------------------------------------------------
@@ -18,80 +17,106 @@ class TestBaseScheduling(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls) -> None:
 
-        fname = os.path.dirname(__file__) + '/test_cases/test_base.json'
-        tc    = ru.read_json(fname)
+        # provided JSON file (with test cases) should NOT contain any comments
+        cls._test_cases = ru.read_json('%s/test_base.json' % TEST_CASES_DIR,
+                                       filter_comments=False)
 
-        return tc
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
+    @mock.patch('radical.pilot.agent.scheduler.base.ru.zmq')
+    @mock.patch('radical.pilot.agent.scheduler.base.mp')
+    def test_initialize(self, mocked_mp, mocked_zmq, mocked_init):
+
+        sched = AgentSchedulingComponent(cfg=None, session=None)
+        sched._configure = sched._schedule_tasks = mock.Mock()
+        sched.slot_status = sched.work = sched.unschedule_cb = mock.Mock()
+        sched.register_input = sched.register_subscriber = mock.Mock()
+
+        for c in self._test_cases['initialize']:
+            sched._cfg = ru.Config(from_dict=c['config'])
+
+            if c['result'] == 'RuntimeError':
+                # not set: `node_list` or `cores_per_node` or `gpus_per_node`
+                with self.assertRaises(RuntimeError):
+                    sched.initialize()
+            else:
+                sched.initialize()
+                self.assertEqual(ru.demunch(sched.nodes), c['result'])
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
     def test_change_slot_states(self, mocked_init):
 
-        tests      = self.setUp()
-        nodes      = tests['change_slots']['nodes']
-        slots      = tests['change_slots']['slots']
-        new_states = tests['change_slots']['new_state']
-        results    = tests['change_slots']['results']
+        sched = AgentSchedulingComponent(cfg=None, session=None)
 
-        component = AgentSchedulingComponent()
-
-        for node, slot, new_state, result \
-                in zip(nodes, slots, new_states, results):
-            component.nodes = node
-            if result == 'RuntimeError':
+        for c in self._test_cases['change_slots']:
+            sched.nodes = c['nodes']
+            if c['result'] == 'RuntimeError':
                 with self.assertRaises(RuntimeError):
-                    component._change_slot_states(slots=slot,
-                                                  new_state=new_state)
+                    sched._change_slot_states(slots=c['slots'],
+                                              new_state=c['new_state'])
             else:
-                component._change_slot_states(slots=slot, new_state=new_state)
-                self.assertEqual(component.nodes, result)
+                sched._change_slot_states(slots=c['slots'],
+                                          new_state=c['new_state'])
+                self.assertEqual(sched.nodes, c['result'])
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
-    @mock.patch.object(AgentSchedulingComponent, '_change_slot_states',
-                       return_value=True)
     @mock.patch('radical.utils.Logger')
+    def test_slot_status(self, mocked_logger, mocked_init):
+
+        sched = AgentSchedulingComponent(cfg=None, session=None)
+        sched._log = mocked_logger
+
+        for c in self._test_cases['slot_status']:
+            sched.nodes = c['nodes']
+            self.assertEqual(sched.slot_status(), c['result'])
+
+        # if log is NOT enabled for `logging.DEBUG`
+        sched._log.isEnabledFor.return_value = False
+        self.assertIsNone(sched.slot_status())
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
+    @mock.patch.object(AgentSchedulingComponent, 'schedule_task')
+    @mock.patch.object(AgentSchedulingComponent, '_change_slot_states')
     @mock.patch('radical.utils.Profiler')
-    def test_try_allocation(self, mocked_profiler, mocked_logger,
-                            mocked_change_slot_states, mocked_init):
+    def test_try_allocation(self, mocked_profiler, mocked_change_slot_states,
+                            mocked_schedule_task, mocked_init):
 
-        component = AgentSchedulingComponent(cfg=None, session=None)
-        component._log           = mocked_logger()
-        component._prof          = mocked_profiler()
-        component._wait_pool     = list()
-        component._wait_lock     = threading.RLock()
-        component._slot_lock     = threading.RLock()
+        sched = AgentSchedulingComponent(cfg=None, session=None)
+        sched._prof = mocked_profiler
 
-        tests = self.setUp()['try_allocation']
-        for input_data, result in zip(tests['setup'], tests['results']):
-            component.schedule_task = mock.Mock(
-                return_value=input_data['scheduled_task_slots'])
+        # no `slots` from `schedule_task` method
+        sched.schedule_task.return_value = None
+        self.assertFalse(sched._try_allocation(task={'uid': 'task.0000'}))
 
-            task = input_data['task']
-            component._try_allocation(task=task)
+        for c in self._test_cases['try_allocation']:
+            sched.schedule_task.return_value = c['slots']
+            self.assertTrue(sched._try_allocation(task=c['task']))
+            self.assertEqual(c['task']['slots'], c['slots'])
 
-            # test task's slots
-            self.assertEqual(task['slots'], result['slots'])
-
-            # test environment variable(s)
-            self.assertEqual(task['description']['environment'],
-                             result['description']['environment'])
+            # FIXME: extend with updated task description environment
 
     # --------------------------------------------------------------------------
     #
     # @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
-    # def test_handle_cuda(self,mocked_init):
+    # @mock.patch('radical.utils.Logger')
+    # def test_handle_cuda(self, mocked_logger, mocked_init):
     #
-    #     tests     = self.setUp()
-    #     setups    = tests['handle_cuda']['setup']
-    #     tasks     = tests['handle_cuda']['task']
-    #     results   = tests['handle_cuda']['results']
-    #     component = AgentSchedulingComponent()
-    #     component._log = ru.Logger('dummy')
+    #     tests     = self._test_cases['handle_cuda']:
+    #     setups    = tests['setup']
+    #     tasks     = tests['task']
+    #     results   = tests['results']
+    #     component = AgentSchedulingComponent(cfg=None, session=None)
+    #     component._log = mocked_logger
     #
     #     for setup, task, result in zip(setups, tasks, results):
     #         component._cfg = setup
@@ -107,30 +132,17 @@ class TestBaseScheduling(TestCase):
     #             else:
     #                 self.assertEqual(task_env['CUDA_VISIBLE_DEVICES'], result)
 
-    # --------------------------------------------------------------------------
-    #
-    @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
-    def test_get_node_maps(self, mocked_init):
-
-        component = AgentSchedulingComponent(cfg=None, session=None)
-
-        cores = [1, 2, 3, 4, 5, 6, 7, 8]
-        gpus  = [1, 2]
-        tpp   = 4  # threads_per_proc
-        core_map, gpu_map = component._get_node_maps(cores, gpus, tpp)
-        self.assertEqual(core_map, [[1, 2, 3, 4], [5, 6, 7, 8]])
-        self.assertEqual(gpu_map,  [[1], [2]])
 
 # ------------------------------------------------------------------------------
-
-
+#
 if __name__ == '__main__':
 
     tc = TestBaseScheduling()
+    tc.test_initialize()
     tc.test_change_slot_states()
+    tc.test_slot_status()
     tc.test_try_allocation()
-    tc.test_get_node_maps()
 
 
 # ------------------------------------------------------------------------------
-# pylint: enable=protected-access, unused-argument, no-value-for-parameter
+# pylint: enable=protected-access, unused-argument

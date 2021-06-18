@@ -15,8 +15,7 @@ import radical.pilot.constants as rpc
 
 from radical.pilot.agent.scheduler.continuous import Continuous
 
-
-TEST_CASES_DIR = 'tests/unit_tests/test_scheduler/test_cases_continuous'
+TEST_CASES_DIR = 'tests/unit_tests/test_scheduler/test_cases'
 
 
 # ------------------------------------------------------------------------------
@@ -38,11 +37,11 @@ class TestContinuous(TestCase):
     #
     @mock.patch.object(Continuous, '__init__', return_value=None)
     @mock.patch('radical.utils.Logger')
-    def test_configure(self, mocked_init, mocked_Logger):
+    def test_configure(self, mocked_logger, mocked_init):
 
         component = Continuous(cfg=None, session=None)
         component._uid = 'agent_scheduling.0000'
-        component._log = mocked_Logger
+        component._log = mocked_logger
 
         for rm_info, resource_cfg, result in zip(
                 self._config['configure']['rm_info'],
@@ -50,7 +49,6 @@ class TestContinuous(TestCase):
                 self._config['configure']['result']):
 
             component._rm_info           = rm_info
-            component._rm_lm_info        = rm_info['lm_info']
             component._rm_node_list      = rm_info['node_list']
             component._rm_cores_per_node = rm_info['cores_per_node']
             component._rm_gpus_per_node  = rm_info['gpus_per_node']
@@ -70,11 +68,11 @@ class TestContinuous(TestCase):
     @mock.patch.object(Continuous, '__init__', return_value=None)
     @mock.patch.object(Continuous, '_configure', return_value=None)
     @mock.patch('radical.utils.Logger')
-    def test_find_resources(self, mocked_init, mocked_configure, mocked_Logger):
+    def test_find_resources(self, mocked_logger, mocked_configure, mocked_init):
 
         component = Continuous(cfg=None, session=None)
         component._uid = 'agent_scheduling.0001'
-        component._log = mocked_Logger
+        component._log = mocked_logger
 
         for test_case in self._test_cases:
 
@@ -104,11 +102,11 @@ class TestContinuous(TestCase):
     @mock.patch.object(Continuous, '__init__', return_value=None)
     @mock.patch.object(Continuous, '_configure', return_value=None)
     @mock.patch('radical.utils.Logger')
-    def test_schedule_task(self, mocked_init, mocked_configure, mocked_Logger):
+    def test_schedule_task(self, mocked_logger, mocked_configure, mocked_init):
 
         component = Continuous(cfg=None, session=None)
         component._uid = 'agent_scheduling.0002'
-        component._log = mocked_Logger
+        component._log = mocked_logger
 
         for test_case in self._test_cases:
 
@@ -118,9 +116,9 @@ class TestContinuous(TestCase):
             component._rm_gpus_per_node  = len(nodes[0]['gpus'])
             component._rm_lfs_per_node   = nodes[0]['lfs']
             component._rm_mem_per_node   = nodes[0]['mem']
-            component._rm_partitions     = dict()
-            component._lm_info           = dict()
-            component._colo_history      = dict()
+            component._rm_partitions     = {}
+            component._lm_info           = {}
+            component._colo_history      = {}
             component._tagged_nodes      = set()
             component._scattered         = None
             component._node_offset       = 0
@@ -156,11 +154,11 @@ class TestContinuous(TestCase):
     #
     @mock.patch.object(Continuous, '__init__', return_value=None)
     @mock.patch('radical.utils.Logger')
-    def test_unschedule_task(self, mocked_init, mocked_Logger):
+    def test_unschedule_task(self, mocked_logger, mocked_init):
 
         component = Continuous(cfg=None, session=None)
         component._uid = 'agent_scheduling.0003'
-        component._log = mocked_Logger
+        component._log = mocked_logger
 
         for test_case in self._test_cases:
 

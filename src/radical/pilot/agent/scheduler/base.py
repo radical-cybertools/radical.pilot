@@ -915,49 +915,6 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _get_node_maps(self, cores, gpus, threads_per_proc):
-        '''
-        For a given set of cores and gpus, chunk them into sub-sets so that each
-        sub-set can host one application process and all threads of that
-        process.  Note that we currently consider all GPU applications to be
-        single-threaded.
-
-        example:
-            cores  : [1, 2, 3, 4, 5, 6, 7, 8]
-            gpus   : [1, 2]
-            tpp    : 4
-            result : [[1, 2, 3, 4], [5, 6, 7, 8]], [[1], [2]]
-
-        For more details, see top level comment of `base.py`.
-        '''
-
-        core_map = list()
-        gpu_map  = list()
-
-        # make sure the core sets can host the requested number of threads
-        assert(not len(cores) % threads_per_proc)
-        n_procs =  int(len(cores) / threads_per_proc)
-
-        idx = 0
-        for _ in range(n_procs):
-            p_map = list()
-            for _ in range(threads_per_proc):
-                p_map.append(cores[idx])
-                idx += 1
-            core_map.append(p_map)
-
-        assert(idx == len(cores)), \
-              ('%s -- %s -- %s -- %s' % idx, len(cores), cores, n_procs)
-
-        # gpu procs are considered single threaded right now (FIXME)
-        for g in gpus:
-            gpu_map.append([g])
-
-        return core_map, gpu_map
-
-
-    # --------------------------------------------------------------------------
-    #
     def _set_tuple_size(self, task):
         '''
         Scheduling, in very general terms, maps resource request to available
