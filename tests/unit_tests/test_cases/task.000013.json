@@ -48,8 +48,6 @@
                 "launch_cmd" : "ssh node1",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
-            "spark" : "RuntimeError",
-            "yarn"  : "RuntimeError",
             "jsrun" : {
                 "launch_cmd" : "jsrun --erf_input rs_layout_task_000013",
                 "rank_exec"  : "/bin/sleep \"10\""

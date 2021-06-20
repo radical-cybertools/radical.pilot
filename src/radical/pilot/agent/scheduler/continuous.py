@@ -386,8 +386,8 @@ class Continuous(AgentSchedulingComponent):
         if colo_tag is not None:
             colo_tag = str(colo_tag)
 
-        # in case of PRTE/2 LM: key `partition` from task description attribute
-        #                       `tags` represents a DVM ID
+        # in case of PRTE LM: key `partition` from task description attribute
+        #                     `tags` represents a DVM ID
         partition = td.get('tags', {}).get('partition')
         if self._rm_partitions and partition is not None:
             partition = str(partition)

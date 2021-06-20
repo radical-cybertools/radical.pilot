@@ -26,25 +26,22 @@ LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
 LM_NAME_JSRUN         = 'JSRUN'
 LM_NAME_PRTE          = 'PRTE'
-LM_NAME_PRTE2         = 'PRTE2'
 LM_NAME_FLUX          = 'FLUX'
-LM_NAME_ORTE          = 'ORTE'
-LM_NAME_ORTE_LIB      = 'ORTE_LIB'
 LM_NAME_RSH           = 'RSH'
 LM_NAME_SSH           = 'SSH'
-LM_NAME_YARN          = 'YARN'
-LM_NAME_SPARK         = 'SPARK'
 LM_NAME_SRUN          = 'SRUN'
 
 # deprecated
 # LM_NAME_POE           = 'POE'
 # LM_NAME_DPLACE        = 'DPLACE'
 # LM_NAME_RUNJOB        = 'RUNJOB'
-
-# deprecated
 # LM_NAME_POE           = 'POE'
 # LM_NAME_DPLACE        = 'DPLACE'
 # LM_NAME_RUNJOB        = 'RUNJOB'
+# LM_NAME_YARN          = 'YARN'
+# LM_NAME_SPARK         = 'SPARK'
+# LM_NAME_ORTE          = 'ORTE'
+# LM_NAME_ORTE_LIB      = 'ORTE_LIB'
 
 PWD = os.getcwd()
 
@@ -123,7 +120,7 @@ class LaunchMethod(object):
         from .mpiexec        import MPIExec
         from .mpirun         import MPIRun
         from .jsrun          import JSRUN
-        from .prte2          import PRTE2
+        from .prte           import PRTE
         from .flux           import Flux
         from .rsh            import RSH
         from .ssh            import SSH
@@ -143,7 +140,7 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_MPT    : MPIRun,
                 LM_NAME_MPIRUN_DPLACE : MPIRun,
                 LM_NAME_JSRUN         : JSRUN,
-                LM_NAME_PRTE2         : PRTE2,
+                LM_NAME_PRTE          : PRTE,
                 LM_NAME_FLUX          : Flux,
                 LM_NAME_RSH           : RSH,
                 LM_NAME_SSH           : SSH,

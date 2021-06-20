@@ -47,9 +47,7 @@
             "ssh"   : {
                 "launch_cmd" : "ssh node1",
                 "rank_exec"  : "/bin/sleep \"10\""
-            },
-            "spark" : "RuntimeError",
-            "yarn"  : "RuntimeError"
+            }
         }
     }
 }
