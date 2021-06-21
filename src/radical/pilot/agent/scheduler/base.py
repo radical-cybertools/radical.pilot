@@ -892,6 +892,8 @@ class AgentSchedulingComponent(rpu.Component):
         '''
 
         uid = task['uid']
+        td  = task['description']
+
       # self._prof.prof('schedule_try', uid=uid)
 
         slots = self.schedule_task(task)
@@ -906,6 +908,13 @@ class AgentSchedulingComponent(rpu.Component):
         # it enacted by the executor
         self._change_slot_states(slots, rpc.BUSY)
         task['slots'] = slots
+
+
+        # We need to specify the node lfs path that the task needs to use.
+        # We set it as an environment variable that gets loaded with td
+        # executable.
+        # Assumption enforced: The LFS path is the same across all nodes.
+        td['environment']['RP_LFS_PATH'] = self._rm_lfs_per_node['path']
 
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=uid)

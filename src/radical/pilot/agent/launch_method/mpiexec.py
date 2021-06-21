@@ -109,11 +109,11 @@ class MPIExec(LaunchMethod):
     #
     def can_launch(self, task):
 
-        if task['description']['cpu_process_type'] == rpc.MPI:
+        # mpirun can launch any executable
+        if task['description']['executable']:
             return True
 
         return False
-
 
 
     # --------------------------------------------------------------------------
@@ -121,30 +121,6 @@ class MPIExec(LaunchMethod):
     def get_launcher_env(self):
 
         return ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_task_env(self, spec):
-
-        name = spec['name']
-        cmds = spec['cmds']
-
-        # we assume that the launcher env is still active in the task execution
-        # script.  We thus remove the launcher env from the task env before
-        # applying the task env's pre_exec commands
-        tgt = '%s/env/%s.env' % (self._pwd, name)
-        self._log.debug('=== tgt : %s', tgt)
-
-        if not os.path.isfile(tgt):
-
-            # the env does not yet exists - create
-            ru.env_prep(self._env_orig,
-                        unset=self._env,
-                        pre_exec=cmds,
-                        script_path=tgt)
-
-        return tgt
 
 
     # --------------------------------------------------------------------------

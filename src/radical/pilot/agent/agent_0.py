@@ -535,22 +535,24 @@ class Agent_0(rpu.Worker):
                 if not launcher:
                     raise RuntimeError('no launch method found for sub agent')
 
-                with open(launch_script, 'w') as fout:
 
-                    fout.write('#!/bin/sh\n\n')
-                    cmds = launcher.get_launcher_env()
-                    for cmd in cmds:
-                        fout.write('%s || exit 1\n' % cmd)
-                    fout.write('%s\n' % launcher.get_launch_cmd(agent_task,
-                                                                exec_script))
-                    fout.write('exit $?\n\n')
+                tmp  = '#!/bin/sh\n\n'
+                cmds = launcher.get_launcher_env()
+                for cmd in cmds:
+                    tmp += '%s || exit 1\n' % cmd
+                tmp += '%s\nexit $?\n\n' % launcher.get_launch_cmd(agent_task,
+                                                                   exec_script)
+                with open(launch_script, 'w') as fout:
+                    fout.write(tmp)
+
+
+                tmp  = '#!/bin/sh\n\n'
+                tmp += '. ./env/agent.env\n'
+                tmp += '/bin/sh -l ./bootstrap_2.sh %s\n\n' % sa
 
                 with open(exec_script, 'w') as fout:
+                    fout.write(tmp)
 
-                    # FIXME: source agent env
-                    fout.write('#!/bin/sh\n\n')
-                    fout.write('. ./env/agent.env\n')
-                    fout.write('/bin/sh -l ./bootstrap_2.sh %s\n\n' % sa)
 
                 # make sure scripts are executable
                 st = os.stat(launch_script)
@@ -558,11 +560,15 @@ class Agent_0(rpu.Worker):
                 os.chmod(launch_script, st.st_mode | stat.S_IEXEC)
                 os.chmod(exec_script,   st.st_mode | stat.S_IEXEC)
 
-            # spawn the sub-agent
-            cmdline = './%s' % launch_script
+                # spawn the sub-agent
+                cmdline = './%s' % launch_script
+
+            else:
+                raise ValueError('agent target unknown (%s)' % target)
+
             self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
-            ru.sh_callout_bg(launch_script, stdout='%s.out' % sa,
-                                            stderr='%s.err' % sa)
+            ru.sh_callout_bg(cmdline, stdout='%s.out' % sa,
+                                      stderr='%s.err' % sa)
 
             # FIXME: register heartbeats?
 

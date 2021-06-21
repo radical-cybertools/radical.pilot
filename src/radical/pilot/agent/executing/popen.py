@@ -250,125 +250,132 @@ class Popen(AgentExecutingComponent):
 
         with open('%s/%s' % (sbox, launch_script), 'w') as fout:
 
-            fout.write(self._header)
-            fout.write(self._separator)
-            fout.write(self._get_rp_env(task))
-            fout.write(self._get_prof('launch_start', tid))
+            tmp  = ''
+            tmp += self._header
+            tmp += self._separator
+            tmp += self._get_rp_env(task)
+            tmp += self._get_prof('launch_start', tid)
 
-            fout.write(self._separator)
-            fout.write('# change to task sandbox\n')
-            fout.write('cd $RP_TASK_SANDBOX\n')
+            tmp += self._separator
+            tmp += '# change to task sandbox\n'
+            tmp += 'cd $RP_TASK_SANDBOX\n'
 
-            fout.write(self._separator)
-            fout.write('# prepare launcher env\n')
-            fout.write(self._get_launch_env(task, launcher))
+            tmp += self._separator
+            tmp += '# prepare launcher env\n'
+            tmp += self._get_launch_env(task, launcher)
 
-            fout.write(self._separator)
-            fout.write('# pre-launch commands\n')
-            fout.write(self._get_prof('launch_pre', tid))
-            fout.write(self._get_pre_launch(task, launcher))
+            tmp += self._separator
+            tmp += '# pre-launch commands\n'
+            tmp += self._get_prof('launch_pre', tid)
+            tmp += self._get_pre_launch(task, launcher)
 
-            fout.write(self._separator)
-            fout.write('# launch commands\n')
-            fout.write(self._get_prof('launch_submit', tid))
-            fout.write('%s\n' % self._get_launch_cmds(task, launcher, exec_path))
-            fout.write('RP_RET=$?\n')
-            fout.write(self._get_prof('launch_collect', tid))
+            tmp += self._separator
+            tmp += '# launch commands\n'
+            tmp += self._get_prof('launch_submit', tid)
+            tmp += '%s\n' % self._get_launch_cmds(task, launcher, exec_path)
+            tmp += 'RP_RET=$?\n'
+            tmp += self._get_prof('launch_collect', tid)
 
-            fout.write(self._separator)
-            fout.write('# post-launch commands\n')
-            fout.write(self._get_prof('launch_post', tid))
-            fout.write(self._get_post_launch(task, launcher))
+            tmp += self._separator
+            tmp += '# post-launch commands\n'
+            tmp += self._get_prof('launch_post', tid)
+            tmp += self._get_post_launch(task, launcher)
 
-            fout.write(self._separator)
-            fout.write(self._get_prof('launch_stop', tid))
-            fout.write('exit $RP_RET\n')
+            tmp += self._separator
+            tmp += self._get_prof('launch_stop', tid)
+            tmp += 'exit $RP_RET\n'
 
-            fout.write(self._separator)
-            fout.write('\n')
+            tmp += self._separator
+            tmp += '\n'
+
+            fout.write(tmp)
+
 
         ranks   = task['slots']['ranks']
         n_ranks = len(ranks)
 
         with open('%s/%s' % (sbox, exec_script), 'w') as fout:
 
-            fout.write(self._header)
-            fout.write(self._separator)
-            fout.write(self._get_prof('exec_start', tid))
+            tmp  = ''
+            tmp += self._header
+            tmp += self._separator
+            tmp += self._get_prof('exec_start', tid)
 
-            fout.write(self._separator)
-            fout.write('# rank ID\n')
-            fout.write(self._get_rank_ids(n_ranks, launcher))
+            tmp += self._separator
+            tmp += '# rank ID\n'
+            tmp += self._get_rank_ids(n_ranks, launcher)
 
-            fout.write(self._separator)
-            fout.write('# task environment\n')
-            fout.write(self._get_rp_env(task))
-            fout.write(self._get_task_env(task, launcher))
+            tmp += self._separator
+            tmp += '# task environment\n'
+            tmp += self._get_rp_env(task)
+            tmp += self._get_task_env(task, launcher)
 
-            fout.write(self._separator)
-            fout.write('# pre-exec commands\n')
-            fout.write(self._get_prof('exec_pre', tid))
-            fout.write(self._get_pre_exec(task))
+            tmp += self._separator
+            tmp += '# pre-exec commands\n'
+            tmp += self._get_prof('exec_pre', tid)
+            tmp += self._get_pre_exec(task)
 
             # pre_rank list is applied to rank 0, dict to the ranks listed
             pre_rank = td['pre_rank']
             if isinstance(pre_rank, list): pre_rank = {'0': pre_rank}
 
             if pre_rank:
-                fout.write(self._separator)
-                fout.write(self._get_prof('rank_pre', tid))
-                fout.write('# pre-rank commands\n')
-                fout.write('case "$RP_RANK" in\n')
+                tmp += self._separator
+                tmp += self._get_prof('rank_pre', tid)
+                tmp += '# pre-rank commands\n'
+                tmp += 'case "$RP_RANK" in\n'
                 for rank_id, cmds in pre_rank.items():
                     rank_id = int(rank_id)
-                    fout.write('    %d)\n' % rank_id)
-                    fout.write(self._get_pre_rank(rank_id, cmds))
-                    fout.write('        ;;\n')
-                fout.write('esac\n\n')
+                    tmp += '    %d)\n' % rank_id
+                    tmp += self._get_pre_rank(rank_id, cmds)
+                    tmp += '        ;;\n'
+                tmp += 'esac\n\n'
 
-                fout.write(self._get_rank_sync('pre_rank', n_ranks))
+                tmp += self._get_rank_sync('pre_rank', n_ranks)
 
-            fout.write(self._separator)
-            fout.write('# execute ranks\n')
-            fout.write(self._get_prof('rank_start', tid))
-            fout.write('case "$RP_RANK" in\n')
+            tmp += self._separator
+            tmp += '# execute ranks\n'
+            tmp += self._get_prof('rank_start', tid)
+            tmp += 'case "$RP_RANK" in\n'
             for rank_id, rank in enumerate(ranks):
-                fout.write('    %d)\n' % rank_id)
-                fout.write(self._get_rank_exec(task, rank_id, rank, launcher))
-                fout.write('        ;;\n')
-            fout.write('esac\n')
-            fout.write(self._get_prof('rank_stop', tid))
-            fout.write('RP_RET=$?\n')
+                tmp += '    %d)\n' % rank_id
+                tmp += self._get_rank_exec(task, rank_id, rank, launcher)
+                tmp += '        ;;\n'
+            tmp += 'esac\n'
+            tmp += self._get_prof('rank_stop', tid)
+            tmp += 'RP_RET=$?\n'
 
             # post_rank list is applied to rank 0, dict to the ranks listed
             post_rank = td['post_rank']
             if isinstance(post_rank, list): post_rank = {'0': post_rank}
 
             if post_rank:
-                fout.write(self._separator)
-                fout.write(self._get_prof('rank_post', tid))
-                fout.write(self._get_rank_sync('post_rank', n_ranks))
+                tmp += self._separator
+                tmp += self._get_prof('rank_post', tid)
+                tmp += self._get_rank_sync('post_rank', n_ranks)
 
-                fout.write('\n# post-rank commands\n')
-                fout.write('case "$RP_RANK" in\n')
+                tmp += '\n# post-rank commands\n'
+                tmp += 'case "$RP_RANK" in\n'
                 for rank_id, cmds in post_rank.items():
                     rank_id = int(rank_id)
-                    fout.write('    %d)\n' % rank_id)
-                    fout.write(self._get_post_rank(rank_id, rank, cmds))
-                    fout.write('        ;;\n')
-                fout.write('esac\n\n')
+                    tmp += '    %d)\n' % rank_id
+                    tmp += self._get_post_rank(rank_id, rank, cmds)
+                    tmp += '        ;;\n'
+                tmp += 'esac\n\n'
 
-            fout.write(self._separator)
-            fout.write(self._get_prof('exec_post', tid))
-            fout.write('# post exec commands\n')
-            fout.write(self._get_post_exec(task))
+            tmp += self._separator
+            tmp += self._get_prof('exec_post', tid)
+            tmp += '# post exec commands\n'
+            tmp += self._get_post_exec(task)
 
-            fout.write(self._separator)
-            fout.write(self._get_prof('exec_stop', tid))
-            fout.write('exit $RP_RET\n')
+            tmp += self._separator
+            tmp += self._get_prof('exec_stop', tid)
+            tmp += 'exit $RP_RET\n'
 
-            fout.write(self._separator)
-            fout.write('\n')
+            tmp += self._separator
+            tmp += '\n'
+
+            fout.write(tmp)
 
 
       # # ensure that the named env exists
@@ -768,6 +775,8 @@ class Popen(AgentExecutingComponent):
 
         ret  = ''
         gmap = rank['gpu_map']
+
+        # FIXME: need to distinguish between logical and physical IDs
         if gmap:
             gpus = ','.join([str(gpu) for gpu in gmap[0]])
             ret += '        export CUDA_VISIBLE_DEVICES=%s\n' % gpus
