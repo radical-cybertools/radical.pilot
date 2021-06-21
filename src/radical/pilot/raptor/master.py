@@ -47,6 +47,7 @@ class Master(rpu.Component):
 
         if not cfg:
             cfg = ru.Config(cfg={})
+
         cfg.sid        = os.environ['RP_SESSION_ID']
         cfg.base       = os.environ['RP_PILOT_SANDBOX']
         cfg.path       = os.environ['RP_PILOT_SANDBOX']
@@ -75,7 +76,7 @@ class Master(rpu.Component):
                                    'stall_hwm' : 0,
                                    'bulk_size' : 56})
 
-        self._input_queue  = ru.zmq.Queue(input_cfg)
+        self._input_queue = ru.zmq.Queue(input_cfg)
         self._input_queue.start()
 
         # send completed request tasks to agent output staging / tmgr
