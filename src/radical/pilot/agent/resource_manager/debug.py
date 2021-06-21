@@ -30,7 +30,8 @@ class Debug(ResourceManager):
         cps      = self._cfg['cores_per_socket']
         gps      = self._cfg['gpus_per_socket' ]
         spn      = self._cfg['sockets_per_node']
-        lpn      = self._cfg['lfs_per_node'    ]
+        lpn      = {'path': self._cfg.get('lfs_path_per_node'),
+                    'size': self._cfg.get('lfs_size_per_node', 0)}
 
         cpn      = (cps * spn)
         cores    = self._cfg['cores']

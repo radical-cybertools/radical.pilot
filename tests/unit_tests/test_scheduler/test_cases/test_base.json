@@ -1,281 +1,207 @@
 
 {
-    "change_slots": {
-        "nodes":[
-            [
-                {
-                    "uid"  : "1",
-                    "cores": [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
-                    "lfs"  : { "size": 100, "path": "test" },
-                    "mem"  : 1024
+    "initialize": [
+        {
+            "config": {
+                "pid"               : "pid.0000",
+                "rm_info": {
+                    "name"          : "RM",
+                    "node_list"     : [],
+                    "cores_per_node": 12,
+                    "gpus_per_node" : 4,
+                    "lfs_per_node"  : {"path": "/tmp", "size": 0},
+                    "mem_per_node"  : 0
                 }
-            ],
-            [
-                {
-                    "uid"  : "2",
-                    "cores": [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
-                    "gpus" : [ 0, 0, 0 ],
-                    "lfs"  : { "size": 100, "path": "test" },
-                    "mem"  : 1024
+            },
+            "result": "RuntimeError"
+        },
+        {
+            "config": {
+                "pid"               : "pid.0001",
+                "rm_info": {
+                    "name"          : "RM",
+                    "node_list"     : [["node-00", "00"], ["node-01", "01"]],
+                    "cores_per_node": null,
+                    "gpus_per_node" : 4,
+                    "lfs_per_node"  : {"path": "/tmp", "size": 0},
+                    "mem_per_node"  : 0
                 }
-            ],
-            [
-                {
-                    "uid"  : "2",
-                    "cores": [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
-                    "gpus" : [ 0, 0, 0 ],
-                    "lfs"  : { "size": 100, "path": "test" },
-                    "mem"  : 1024
+            },
+            "result": "RuntimeError"
+        },
+        {
+            "config": {
+                "pid"               : "pid.0002",
+                "rm_info": {
+                    "name"          : "RM",
+                    "node_list"     : [["node-00", "00"], ["node-01", "01"]],
+                    "cores_per_node": 12,
+                    "gpus_per_node" : null,
+                    "lfs_per_node"  : {"path": "/tmp", "size": 0},
+                    "mem_per_node"  : 0
                 }
-            ],
-            [
-                {
-                    "uid"  : "2",
-                    "cores": [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
-                    "gpus" : [ 0, 1, 0 ],
-                    "lfs"  : { "path": "test", "size": 100 },
-                    "mem"  : 1014
+            },
+            "result": "RuntimeError"
+        },
+        {
+            "config": {
+                "pid"               : "pid.0003",
+                "rm_info": {
+                    "name"          : "RM",
+                    "node_list"     : [["node-00", "00"], ["node-01", "01"]],
+                    "cores_per_node": 12,
+                    "gpus_per_node" : 4,
+                    "lfs_per_node"  : {"path": "/tmp", "size": 0},
+                    "mem_per_node"  : 0
                 }
-            ],
-            [
+            },
+            "result": [
                 {
-                    "uid"  : "2",
-                    "cores": [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
-                    "gpus" : [ 0, 0, 0 ],
-                    "lfs"  : { "size": 100, "path": "test" },
-                    "mem"  : 1024
+                    "uid"  : "00",
+                    "name" : "node-00",
+                    "cores": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "gpus" : [0, 0, 0, 0],
+                    "lfs"  : {"path": "/tmp", "size": 0},
+                    "mem"  : 0
+                },
+                {
+                    "uid"  : "01",
+                    "name" : "node-01",
+                    "cores": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "gpus" : [0, 0, 0, 0],
+                    "lfs"  : {"path": "/tmp", "size": 0},
+                    "mem"  : 0
                 }
             ]
-        ],
-        "slots":[
-            {
-                "lm_info"       : "INFO",
-                "cores_per_node": 16,
-                "gpus_per_node" : 6,
-                "lfs_per_node"  : { "size": 0, "path": "/dev/null" },
-                "ranks": [
-                    {
-                        "node"    : "a",
-                        "node_id" : "1",
-                        "core_map": [ [ 0 ] ],
-                        "gpu_map" : [ ],
-                        "lfs"     : { "path": "/dev/null", "size": 0 },
-                        "mem"     : null
-                    }
-                ]
+        }
+    ],
+
+    "change_slots": [
+        {
+            "nodes": [{"uid"    : "n.0000",
+                       "name"   : "node-0000",
+                       "cores"  : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       "gpus"   : [],
+                       "lfs"    : {"path": "/tmp", "size": 100},
+                       "mem"    : 1024}],
+            "slots": {
+                "cores_per_node": 12,
+                "gpus_per_node" : 0,
+                "lfs_per_node"  : {"path": "/tmp/test", "size": 100},
+                "lm_info"       : {},
+                "ranks"         : [{"node"    : "node-0000",
+                                    "node_id" : "n.0000",
+                                    "core_map": [[0]],
+                                    "gpu_map" : [],
+                                    "lfs"     : {"path": "/tmp", "size": 25},
+                                    "mem"     : 0}]
             },
-            {
-                "lm_info"       : "INFO",
-                "cores_per_node": 16,
-                "gpus_per_node" : 6,
-                "lfs_per_node"  : { "size" : 0, "path" : "/dev/null" },
-                "ranks"         : [
-                    {
-                        "node"    : "a",
-                        "node_id" : "2",
-                        "core_map": [[ 0 ]],
-                        "gpu_map" : [[ 1 ]],
-                        "lfs"     : { "path": "/dev/null", "size": 0 },
-                        "mem"     : 10
-                    }
-                ]
+            "new_state": 1,
+            "result": [{"uid"   : "n.0000",
+                       "name"   : "node-0000",
+                       "cores"  : [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       "gpus"   : [],
+                       "lfs"    : {"path": "/tmp", "size": 75},
+                       "mem"    : 1024}]
+        },
+        {
+            "nodes": [{"uid"    : "n.0001",
+                       "name"   : "node-0001",
+                       "cores"  : [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       "gpus"   : [0, 1, 0, 0],
+                       "lfs"    : {"path": "/tmp", "size": 30},
+                       "mem"    : 1024}],
+            "slots": {
+                "cores_per_node": 12,
+                "gpus_per_node" : 4,
+                "lfs_per_node"  : {"path": "/tmp/test", "size": 100},
+                "lm_info"       : {},
+                "ranks"         : [{"node"    : "node-0001",
+                                    "node_id" : "n.0001",
+                                    "core_map": [[0]],
+                                    "gpu_map" : [[1]],
+                                    "lfs"     : {"path": "/tmp", "size": 70},
+                                    "mem"     : 0}]
             },
-            {
-                "lm_info"       : "INFO",
-                "cores_per_node": 16,
-                "gpus_per_node" : 6,
-                "lfs_per_node"  : { "size" : 0, "path" : "/dev/null" },
-                "ranks"         : [
-                    {
-                        "node"    : "a",
-                        "node_id" : "2",
-                        "core_map": [ [ 0 ] ],
-                        "gpu_map" : [ [ 1 ] ],
-                        "lfs"     : { "path": "/dev/null", "size": 0 },
-                        "mem"     : 10
-                    }
-                ]
+            "new_state": 0,
+            "result": [{"uid"   : "n.0001",
+                       "name"   : "node-0001",
+                       "cores"  : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       "gpus"   : [0, 0, 0, 0],
+                       "lfs"    : {"path": "/tmp", "size": 100},
+                       "mem"    : 1024}]
+        },
+        {
+            "nodes": [{"uid"    : "n.9999",
+                       "name"   : "non-allocated-node",
+                       "cores"  : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       "gpus"   : [0, 0],
+                       "lfs"    : {"path": "/tmp", "size": 100},
+                       "mem"    : 1024}],
+            "slots": {
+                "cores_per_node": 12,
+                "gpus_per_node" : 2,
+                "lfs_per_node"  : {"path": "/tmp/test", "size": 100},
+                "lm_info"       : {},
+                "ranks"         : [{"node"    : "node-0003",
+                                    "node_id" : "n.0003",
+                                    "core_map": [[0]],
+                                    "gpu_map" : [[1]],
+                                    "lfs"     : {"path": "/tmp", "size": 100},
+                                    "mem"     : 0}]
             },
-            {
-                "lm_info"       : "INFO",
-                "cores_per_node": 16,
-                "gpus_per_node" : 6,
-                "lfs_per_node"  : { "size": 0, "path": "/dev/null" },
-                "ranks"         : [
-                    {
-                        "node"    : "a",
-                        "node_id" : "2",
-                        "core_map": [ [ 0 ] ],
-                        "gpu_map" : [ [ 1 ] ],
-                        "lfs"     : { "path": "/dev/null", "size": 0 },
-                        "mem"     : 10
-                    }
-                ]
-            },
-            {
-                "lm_info"       : "INFO",
-                "cores_per_node": 16,
-                "gpus_per_node" : 6,
-                "lfs_per_node"  : { "size": 0, "path": "/dev/null" },
-                "ranks"         : [
-                    {
-                        "node"    : "a",
-                        "node_id" : "1",
-                        "core_map": [ [ 0 ] ],
-                        "gpu_map" : [ ],
-                        "lfs"     : { "path": "/dev/null", "size": 0 },
-                        "mem"     : null
-                    }
-                ]
-            }
-        ],
-        "new_state": [
-            1, 1, 1, 0, 1
-        ],
-        "results": [
-            [
-                {
-                    "uid"  : "1",
-                    "cores": [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
-                    "lfs"  : { "path": "test", "size": 100 },
-                    "mem"  : 1024
-                }
-            ],
-            [
-                {
-                    "uid"  : "2",
-                    "cores": [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
-                    "lfs"  : { "path": "test", "size": 100 },
-                    "gpus" : [ 0,1,0 ],
-                    "mem"  : 1014
-                }
-            ],
-            [
-                {
-                    "uid"  : "2",
-                    "cores": [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
-                    "gpus" : [ 0,1,0 ],
-                    "lfs"  : { "path": "test", "size": 100 },
-                    "mem"  : 1014
-                }
-            ],
-            [
-                {
-                    "uid"  : "2",
-                    "cores": [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
-                    "gpus" : [ 0,0,0 ],
-                    "lfs"  : { "path": "test", "size": 100 },
-                    "mem"  : 1024
-                }
-            ],
-            "RuntimeError"
-        ]
-    },
-    "try_allocation":{
-        "setup": [
-            {
-                "task": {
-                    "uid": "task.000000",
-                    "description": {
-                        "executable" : "/bin/sleep",
-                        "environment": {
-                        }
-                    }
-                },
-                "scheduled_task_slots": {
-                    "lm_info"       : "INFO",
-                    "cores_per_node": 16,
-                    "gpus_per_node" : 6,
-                    "lfs_per_node"  : { "size": 0, "path": "/dev/null" },
-                    "ranks"         : [
-                        {
-                            "node"    : "a",
-                            "node_id" : "1",
-                            "core_map": [ [ 0 ] ],
-                            "gpu_map" : null,
-                            "lfs"     : { "path": "/dev/null", "size": 0 },
-                            "mem"     : null
-                        }
-                    ]
-                }
-            },
-            {
-                "task": {
-                    "uid": "task.000001",
-                    "description": {
-                        "executable" : "/bin/sleep",
-                        "environment": { }
-                    }
-                },
-                "scheduled_task_slots": {
-                    "lm_info"       : "INFO",
-                    "cores_per_node": 16,
-                    "gpus_per_node" : 6,
-                    "lfs_per_node"  : { "size": 0, "path": null },
-                    "ranks"         : [
-                        {
-                            "node"    : "a",
-                            "node_id" : "1",
-                            "core_map": [ [ 0 ] ],
-                            "gpu_map" : null,
-                            "lfs"     : { "path": null, "size": 0 },
-                            "mem"     : null
-                        }
-                    ]
-                }
-            }
-        ],
-        "results": [
-            {
-                "uid": "task.000000",
+            "new_state": 1,
+            "result": "RuntimeError"
+        }
+    ],
+
+    "slot_status": [
+        {
+            "nodes": [{"uid"    : "n.0000",
+                       "name"   : "node-0000",
+                       "cores"  : [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 2, 2],
+                       "gpus"   : [0, 0, 0, 0],
+                       "lfs"    : {"path": "/tmp", "size": 100},
+                       "mem"    : 1024}],
+            "result": "|####------!!:----|"
+        },
+        {
+            "nodes": [{"uid"    : "n.0001",
+                       "name"   : "node-0001",
+                       "cores"  : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2],
+                       "gpus"   : [],
+                       "lfs"    : {"path": "/tmp", "size": 100},
+                       "mem"    : 1024}],
+            "result": "|----------!!:|"
+        }
+    ],
+
+    "try_allocation": [
+        {
+            "task": {
+                "uid"            : "task.000000",
                 "description": {
                     "executable" : "/bin/sleep",
-                    "environment": {
-                        "NODE_LFS_PATH": "/dev/null"
-                    }
-                },
-                "slots": {
-                    "cores_per_node": 16,
-                    "lm_info"       : "INFO",
-                    "gpus_per_node" : 6,
-                    "lfs_per_node"  : { "path": "/dev/null", "size": 0 },
-                    "ranks"         : [
-                        {
-                            "node"    : "a",
-                            "node_id" : "1",
-                            "core_map": [ [ 0 ] ],
-                            "gpu_map" : null,
-                            "lfs"     : { "path": "/dev/null", "size": 0 },
-                            "mem"     : null
-                        }
-                    ]
+                    "environment": {}
                 }
             },
-            {
-                "uid": "task.000001",
-                "description": {
-                    "executable": "/bin/sleep",
-                    "environment": { }
-                },
-                "slots": {
-                    "lm_info"       : "INFO",
-                    "cores_per_node": 16,
-                    "gpus_per_node" : 6,
-                    "lfs_per_node"  : { "path": null, "size": 0 },
-                    "ranks": [
-                        {
-                            "node"    : "a",
-                            "node_id" : "1",
-                            "core_map": [ [ 0 ] ],
-                            "gpu_map" : null,
-                            "lfs"     : { "path": null, "size": 0 },
-                            "mem"     : null
-                        }
-                    ]
-                }
+            "slots": {
+                "cores_per_node" : 12,
+                "gpus_per_node"  : 4,
+                "lfs_per_node"   : {"path": "/tmp", "size": 0},
+                "mem_per_node"   : 1024,
+                "lm_info"        : {},
+                "partition_id"   : null,
+                "ranks"          : [{"node"    : "node-0000",
+                                     "node_id" : "n.0000",
+                                     "core_map": [[0]],
+                                     "gpu_map" : [[0]],
+                                     "lfs"     : {"path": "/tmp", "size": 0},
+                                     "mem"     : 128}]
             }
-        ]
-    },
+        }
+    ],
+
     "handle_cuda": {
         "setup": [
             { "rm_info":{ "lm_info":{                                } } },

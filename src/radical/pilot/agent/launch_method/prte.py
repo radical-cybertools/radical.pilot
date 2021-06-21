@@ -23,7 +23,7 @@ DVM_HOSTS_FILE_TPL = '%(base_path)s/prrte.%(dvm_id)03d.hosts'
 
 # ------------------------------------------------------------------------------
 #
-class PRTE2(LaunchMethod):
+class PRTE(LaunchMethod):
 
     """
     PMIx Reference Run Time Environment v2
@@ -34,11 +34,10 @@ class PRTE2(LaunchMethod):
     #
     def __init__(self, name, lm_cfg, cfg, log, prof):
 
-        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
-
-        self._env_orig = ru.env_eval('env/bs0_orig.env')
         self._verbose  = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
+        self._env_orig = ru.env_eval('env/bs0_orig.env')
 
+        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
 
     # --------------------------------------------------------------------------
     #
@@ -54,7 +53,7 @@ class PRTE2(LaunchMethod):
 
         prte_info = {}
         # get OpenRTE/PRTE version
-        out, _, _ = ru.sh_callout('prte_info | grep "RTE"', shell=True)
+        out = ru.sh_callout('prte_info | grep "RTE"', shell=True)[0]
         for line in out.split('\n'):
 
             line = line.strip()
@@ -304,7 +303,6 @@ class PRTE2(LaunchMethod):
 
         return lm_info
 
-
     # --------------------------------------------------------------------------
     #
     def _init_from_info(self, lm_info, lm_cfg):
@@ -313,8 +311,7 @@ class PRTE2(LaunchMethod):
         self._env_sh  = lm_info['env_sh']
         self._command = lm_info['command']
 
-        assert(self._command)
-
+        assert self._command
 
     # --------------------------------------------------------------------------
     #
@@ -322,16 +319,13 @@ class PRTE2(LaunchMethod):
 
         pass
 
-
     # --------------------------------------------------------------------------
     #
     def can_launch(self, task):
 
-        # mpirun can launch any executable
         if task['description']['executable']:
             return True
         return False
-
 
     # --------------------------------------------------------------------------
     #
@@ -339,6 +333,28 @@ class PRTE2(LaunchMethod):
 
         return ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
 
+    # --------------------------------------------------------------------------
+    #
+    def get_task_env(self, spec):
+
+        name = spec['name']
+        cmds = spec['cmds']
+
+        # we assume that the launcher env is still active in the task execution
+        # script.  We thus remove the launcher env from the task env before
+        # applying the task env's pre_exec commands
+        tgt = '%s/env/%s.env' % (self._pwd, name)
+        self._log.debug('=== tgt : %s', tgt)
+
+        if not os.path.isfile(tgt):
+
+            # the env does not yet exists - create
+            ru.env_prep(self._env_orig,
+                        unset=self._env,
+                        pre_exec=cmds,
+                        script_path=tgt)
+
+        return tgt
 
     # --------------------------------------------------------------------------
     #
@@ -348,18 +364,12 @@ class PRTE2(LaunchMethod):
         # of prun-commands, but in case errors will come out then the delay
         # should be set: `time.sleep(.1)`
 
-        slots = task['slots']
-        td    = task['description']
-        flags = ''
-
-        if td.get('gpu_processes'):
-            # input data is edited here to keep PRUN setup within LM
-            td['environment'] \
-                ['PMIX_MCA_pmdl_ompi5_include_envars'] = 'OMPI_*,CUDA_*'
-            flags += ' --personality ompi'
+        slots     = task['slots']
+        td        = task['description']
 
         n_procs   = td['cpu_processes']
-        n_threads = td.get('cpu_threads')   or 1
+        n_threads = td['cpu_threads']
+        n_gpus    = td['gpu_processes']
 
         if not slots.get('lm_info'):
             raise RuntimeError('lm_info not set (%s): %s' % (self.name, slots))
@@ -367,15 +377,21 @@ class PRTE2(LaunchMethod):
         if not slots['lm_info'].get('partitions'):
             raise RuntimeError('no partitions (%s): %s' % (self.name, slots))
 
-
         # `partition_id` should be set in a scheduler
         partitions   = slots['lm_info']['partitions']
         partition_id = slots.get('partition_id') or partitions.keys()[0]
         dvm_uri = '--dvm-uri "%s"' % partitions[partition_id]['dvm_uri']
 
-        flags += ' --np %d'                                   % n_procs
-        flags += ' --map-by node:HWTCPUS:PE=%d:OVERSUBSCRIBE' % n_threads
-        flags += ' --bind-to hwthread:overload-allowed'
+        flags = ''
+        if n_gpus:
+            # input data is edited here to keep PRUN setup within LM
+            td['environment'] \
+                ['PMIX_MCA_pmdl_ompi5_include_envars'] = 'OMPI_*,CUDA_*'
+            flags += '--personality ompi '
+
+        flags += '--np %d '                                   % n_procs
+        flags += '--map-by node:HWTCPUS:PE=%d:OVERSUBSCRIBE ' % n_threads
+        flags += '--bind-to hwthread:overload-allowed'
 
         if self._verbose:
             flags += ':REPORT'
@@ -395,15 +411,13 @@ class PRTE2(LaunchMethod):
 
         cmd = '%s %s %s %s' % (self._command, dvm_uri, flags, exec_path)
 
-        return cmd
-
+        return cmd.strip()
 
     # --------------------------------------------------------------------------
     #
     def get_rank_cmd(self):
 
         return "echo $PMIX_RANK"
-
 
     # --------------------------------------------------------------------------
     #
@@ -413,7 +427,7 @@ class PRTE2(LaunchMethod):
         task_exec    = td['executable']
         task_args    = td['arguments']
         task_argstr  = self._create_arg_string(task_args)
-        command      = "%s %s" % (task_exec, task_argstr)
+        command      = '%s %s' % (task_exec, task_argstr)
 
         return command.rstrip()
 

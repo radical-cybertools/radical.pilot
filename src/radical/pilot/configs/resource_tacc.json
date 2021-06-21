@@ -104,13 +104,10 @@
                                          "SSH"  : {},
                                          "PRTE" : {
                                              "pre_exec_cached": [
-                                                 "module use /work/05445/naughton/rp/ums/ompix/gcc/6.3.0/modules",
-                                               # "module use /work/05445/naughton/rp/ums/ompix/intel/19.0.5/modules",
                                                  "module unload xalt",
                                                  "module load gcc/6.3.0",
-                                                 "module load prrte/1.0.0_devtiming",
-                                               # "module load prrte/master",
-                                                 "export PRRTE_PREFIX=$PRRTE_DIR"
+                                                 "module use /work/05445/naughton/rp/ums/ompix/gcc/6.3.0/modules",
+                                                 "module load prrte/master"
                                              ]
                                          }
                                         },

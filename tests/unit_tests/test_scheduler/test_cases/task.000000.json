@@ -18,7 +18,7 @@
         "task_sandbox_path"    : "/tmp"
     },
 
-    "setup" : {
+    "setup": {
         "nodes": [
             {
                 "name"       : "a",

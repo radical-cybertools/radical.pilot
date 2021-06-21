@@ -3,9 +3,11 @@
     "task": {
         "uid"               : "task.000002",
         "description": {
-            "executable"    : "spark-submit",
+            "executable"    : "/bin/sh",
             "arguments"     : ["test.py"],
             "cpu_processes" : 1,
+            "cpu_threads"   : 1,
+            "gpu_processes" : 0,
             "environment"   : {}
         },
         "task_sandbox_path" : "/tmp"
@@ -17,22 +19,15 @@
                  "ranks"         : [],
                  "cores_per_node": 24,
                  "gpus_per_node" : 0,
-                 "lm_info"       : {"spark_home"     : "/",
-                                    "master_ip"      : "test_ip",
-                                    "lm_detail"      : "spark://test_ip:7077",
-                                    "name"           : "spark",
-                                    "launch_command" : "",
-                                    "nodename"       : "test"
-                 }
+                 "lm_info"       : {}
              }
         }
     },
 
     "results": {
         "lm": {
-            "spark"  : ["/spark-submit    test.py", null],
-            "ibrun"  : "AssertionError",
-            "prte2"  : "RuntimeError"
+            "ibrun" : "AssertionError",
+            "prte"  : "RuntimeError"
         }
     }
 }

@@ -26,25 +26,22 @@ LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
 LM_NAME_JSRUN         = 'JSRUN'
 LM_NAME_PRTE          = 'PRTE'
-LM_NAME_PRTE2         = 'PRTE2'
 LM_NAME_FLUX          = 'FLUX'
-LM_NAME_ORTE          = 'ORTE'
-LM_NAME_ORTE_LIB      = 'ORTE_LIB'
 LM_NAME_RSH           = 'RSH'
 LM_NAME_SSH           = 'SSH'
-LM_NAME_YARN          = 'YARN'
-LM_NAME_SPARK         = 'SPARK'
 LM_NAME_SRUN          = 'SRUN'
 
 # deprecated
 # LM_NAME_POE           = 'POE'
 # LM_NAME_DPLACE        = 'DPLACE'
 # LM_NAME_RUNJOB        = 'RUNJOB'
-
-# deprecated
 # LM_NAME_POE           = 'POE'
 # LM_NAME_DPLACE        = 'DPLACE'
 # LM_NAME_RUNJOB        = 'RUNJOB'
+# LM_NAME_YARN          = 'YARN'
+# LM_NAME_SPARK         = 'SPARK'
+# LM_NAME_ORTE          = 'ORTE'
+# LM_NAME_ORTE_LIB      = 'ORTE_LIB'
 
 PWD = os.getcwd()
 
@@ -123,7 +120,7 @@ class LaunchMethod(object):
         from .mpiexec        import MPIExec
         from .mpirun         import MPIRun
         from .jsrun          import JSRUN
-        from .prte2          import PRTE2
+        from .prte           import PRTE
         from .flux           import Flux
         from .rsh            import RSH
         from .ssh            import SSH
@@ -143,7 +140,7 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_MPT    : MPIRun,
                 LM_NAME_MPIRUN_DPLACE : MPIRun,
                 LM_NAME_JSRUN         : JSRUN,
-                LM_NAME_PRTE2         : PRTE2,
+                LM_NAME_PRTE          : PRTE,
                 LM_NAME_FLUX          : Flux,
                 LM_NAME_RSH           : RSH,
                 LM_NAME_SSH           : SSH,
@@ -194,30 +191,6 @@ class LaunchMethod(object):
     def get_launcher_env(self):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_task_env(self, spec):
-
-        name = spec['name']
-        cmds = spec['cmds']
-
-        # we assume that the launcher env is still active in the task execution
-        # script.  We thus remove the launcher env from the task env before
-        # applying the task env's pre_exec commands
-        tgt = '%s/env/%s.env' % (self._pwd, name)
-        self._log.debug('=== tgt : %s', tgt)
-
-        if not os.path.isfile(tgt):
-
-            # the env does not yet exists - create
-            ru.env_prep(self._env_orig,
-                        unset=self._env,
-                        pre_exec=cmds,
-                        script_path=tgt)
-
-        return tgt
 
 
     # --------------------------------------------------------------------------

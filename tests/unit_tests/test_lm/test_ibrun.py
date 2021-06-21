@@ -53,8 +53,8 @@ class TestIBRun(TestCase):
 
         lm_ibrun = IBRun(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
         lm_info = {'env'    : {'test_env': 'test_value'},
-                   'env_sh' : 'env/lm_srun.sh',
-                   'command': '/bin/srun'}
+                   'env_sh' : 'env/lm_ibrun.sh',
+                   'command': '/bin/ibrun'}
         lm_ibrun._init_from_info(lm_info, {})
         lm_env = lm_ibrun.get_launcher_env()
 

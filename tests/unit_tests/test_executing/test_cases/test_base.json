@@ -32,15 +32,14 @@
         "slots": {
             "cores_per_node": 16,
             "gpus_per_node" : 0,
+            "lfs_per_node"  : {"path": "/dev/null", "size": 0},
             "lm_info"       : {},
-            "lfs_per_node"  : 0,
             "ranks"         : [{"node"    : "a",
                                 "node_id" : "1",
                                 "core_map": [[0]],
                                 "gpu_map" : [],
                                 "mem"     : 0,
-                                "lfs"     : {"size": 0,
-                                             "path": "/dev/null"}
+                                "lfs"     : {"path": "/dev/null", "size": 0}
             }]
         }
     },

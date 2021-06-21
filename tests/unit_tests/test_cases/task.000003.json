@@ -17,14 +17,13 @@
             "slots": {
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
+                "lfs_per_node"  : {"path": null, "size": 0},
                 "lm_info"       : {},
-                "lfs_per_node"  : 0,
                 "ranks"         : [{"node"    : "node1",
                                     "node_id" : "node1",
                                     "core_map": [[0,1,2,3]],
                                     "gpu_map" : [],
-                                    "lfs"     : {"size": 0,
-                                                 "path": null}
+                                    "lfs"     : {"path": null, "size": 0}
                 }]
             },
             "task_sandbox": "./"
@@ -53,7 +52,6 @@
                 "launch_cmd" : "rsh node1",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
-            "spark"   : "RuntimeError",
             "jsrun"   : {
                 "launch_cmd" : "jsrun --erf_input rs_layout_task_000003",
                 "rank_exec"  : "/bin/sleep \"10\""
