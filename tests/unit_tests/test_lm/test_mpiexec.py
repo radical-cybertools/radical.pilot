@@ -2,12 +2,12 @@
 
 from unittest import mock, TestCase
 
-from radical.pilot import constants as rpc
-
 from .test_common import setUp
 from radical.pilot.agent.launch_method.mpiexec import MPIExec
 
 
+# ------------------------------------------------------------------------------
+#
 class TestMPIExec(TestCase):
 
     # --------------------------------------------------------------------------
@@ -107,9 +107,9 @@ class TestMPIExec(TestCase):
 
         lm_mpiexec = MPIExec(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
         self.assertTrue(lm_mpiexec.can_launch(
-            task={'description': {'cpu_process_type': rpc.MPI}}))
+            task={'description': {'executable': 'script'}}))
         self.assertFalse(lm_mpiexec.can_launch(
-            task={'description': {'cpu_process_type': rpc.SERIAL}}))
+            task={'description': {'executable': None}}))
 
     # --------------------------------------------------------------------------
     #

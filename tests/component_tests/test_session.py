@@ -1,4 +1,4 @@
-# pylint: disable=protected-access, unused-argument
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 __copyright__ = 'Copyright 2020, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
@@ -73,9 +73,9 @@ class TestSession(TestCase):
             self._session.get_resource_config(
                 resource='local.localhost', schema='wrong_schema')
 
-
 # ------------------------------------------------------------------------------
-#
+
+
 if __name__ == '__main__':
 
     tc = TestSession()

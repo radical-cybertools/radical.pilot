@@ -27,7 +27,7 @@
                                        "0" : {"dvm_uri": "dvm_uri"}
                                    }
                 },
-                "lfs_per_node"  : 0,
+                "lfs_per_node"  : {"path": null, "size": 0},
                 "partition_id"  : "0",
                 "ranks"         : [{"node"    : "node1",
                                     "node_id" : "node1",

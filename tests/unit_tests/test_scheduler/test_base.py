@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# pylint: disable=protected-access, unused-argument
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import radical.utils as ru
 
@@ -92,11 +92,13 @@ class TestBaseScheduling(TestCase):
                             mocked_schedule_task, mocked_init):
 
         sched = AgentSchedulingComponent(cfg=None, session=None)
-        sched._prof = mocked_profiler
+        sched._prof            = mocked_profiler
+        sched._rm_lfs_per_node = {'path': '/tmp', 'size': 0}
 
         # no `slots` from `schedule_task` method
         sched.schedule_task.return_value = None
-        self.assertFalse(sched._try_allocation(task={'uid': 'task.0000'}))
+        self.assertFalse(sched._try_allocation(task={'uid'        : 'task.0000',
+                                                     'description': {}}))
 
         for c in self._test_cases['try_allocation']:
             sched.schedule_task.return_value = c['slots']
@@ -145,4 +147,4 @@ if __name__ == '__main__':
 
 
 # ------------------------------------------------------------------------------
-# pylint: enable=protected-access, unused-argument
+# pylint: enable=protected-access, unused-argument, no-value-for-parameter

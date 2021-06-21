@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# pylint: disable=protected-access, unused-argument
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
@@ -77,6 +77,8 @@ class TestPopen(TestCase):
         pex.ssbox    = ''
         pex.psbox    = ''
         pex.lfs      = '/tmp'
+        pex.gtod     = ''
+        pex.prof     = ''
 
         launcher = Fork(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
         launcher.name    = 'FORK'

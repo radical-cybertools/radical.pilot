@@ -195,6 +195,30 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
+    def get_task_env(self, spec):
+
+        name = spec['name']
+        cmds = spec['cmds']
+
+        # we assume that the launcher env is still active in the task execution
+        # script.  We thus remove the launcher env from the task env before
+        # applying the task env's pre_exec commands
+        tgt = '%s/env/%s.env' % (self._pwd, name)
+        self._log.debug('=== tgt : %s', tgt)
+
+        if not os.path.isfile(tgt):
+
+            # the env does not yet exists - create
+            ru.env_prep(self._env_orig,
+                        unset=self._env,
+                        pre_exec=cmds,
+                        script_path=tgt)
+
+        return tgt
+
+
+    # --------------------------------------------------------------------------
+    #
     def get_launch_cmds(self, task, exec_path):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
