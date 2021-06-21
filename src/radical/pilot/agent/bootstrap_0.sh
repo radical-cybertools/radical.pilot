@@ -227,15 +227,14 @@ create_gtod()
 #
 create_prof(){
 
-
     cat > ./prof <<EOT
 #!/bin/sh
 
-test -z "\$RP_PROF" && exit
+test -z "\$RP_PROF_TGT" && exit
 
-now=\$(\$RP_PILOT_SANDBOX/gtod)
+now=\$(\$RP_PILOT_GTOD)
 printf "%.7f,\$1,\$RP_SPAWNER_ID,MainThread,\$RP_UNIT_ID,AGENT_EXECUTING,\\\n" \$now\\
-    >> "\$RP_TASK_SANDBOX/\$RP_TASK_ID.prof"
+    >> "\$RP_PROF_TGT"
 
 EOT
 

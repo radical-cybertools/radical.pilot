@@ -659,12 +659,13 @@ class Popen(AgentExecutingComponent):
         ret += 'export RP_PILOT_SANDBOX="%s"\n'    % self.psbox
         ret += 'export RP_TASK_SANDBOX="%s"\n'     % sbox
         ret += 'export RP_LFS="%s"\n'              % self.lfs
-        ret += 'export RP_GTOD="$RP_PILOT_SANDBOX/gtod"\n'
+        ret += 'export RP_GTOD="%s"\n'             % self.gtod
+        ret += 'export RP_PROF="%s"\n'             % self.prof
 
         if self._prof.enabled:
-            ret += 'export RP_PROF="$RP_PILOT_SANDBOX/prof"\n'
+            ret += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sbox, tid)
         else:
-            ret += 'unset  RP_PROF\n'
+            ret += 'unset  RP_PROF_TGT'
 
         if 'RP_APP_TUNNEL' in os.environ:
             ret += 'export RP_APP_TUNNEL="%s"\n' \
