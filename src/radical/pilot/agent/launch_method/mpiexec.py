@@ -90,12 +90,16 @@ class MPIExec(LaunchMethod):
         self._mpt         = lm_info['mpt']
         self._rsh         = lm_info['rsh']
         self._dplace      = lm_info['dplace']
-        self._omplace     = 'omplace' if lm_info['omplace'] else ''
+        self._omplace     = lm_info['omplace']
         self._ccmrun      = lm_info['ccmrun']
         self._command     = lm_info['command']
 
         self._mpi_version = lm_info['mpi_version']
         self._mpi_flavor  = lm_info['mpi_flavor']
+
+        # ensure empty string on unset omplace
+        if not self._omplace:
+            self._omplace = ''
 
 
     # --------------------------------------------------------------------------

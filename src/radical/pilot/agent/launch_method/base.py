@@ -59,9 +59,8 @@ class LaunchMethod(object):
     #
     def __init__(self, name, lm_cfg, cfg, log, prof):
 
-        log.debug('===== lm base init start')
         self.name    = name
-        self._lm_cfg = cfg
+        self._lm_cfg = lm_cfg
         self._cfg    = cfg
         self._log    = log
         self._prof   = prof
@@ -89,7 +88,8 @@ class LaunchMethod(object):
             # run init_from_scratch in a process under that derived env
             envp = ru.EnvProcess(env=env_lm)
             with envp:
-                envp.put(self._init_from_scratch(lm_cfg, env_lm, env_sh))
+                data = self._init_from_scratch(lm_cfg, env_lm, env_sh)
+                envp.put(data)
             lm_info = envp.get()
             self._init_from_info(lm_info, lm_cfg)
 
@@ -104,7 +104,6 @@ class LaunchMethod(object):
     @classmethod
     def create(cls, name, lm_cfg, cfg, log, prof):
 
-        log.debug('===== lm create %s start', name)
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
             raise TypeError("LaunchMethod create only available to base class!")
