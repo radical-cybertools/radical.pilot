@@ -2,8 +2,6 @@
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import os
-
 import radical.utils as ru
 
 from .base import LaunchMethod
@@ -30,7 +28,6 @@ class APRun(LaunchMethod):
 
         LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
 
-
     # --------------------------------------------------------------------------
     #
     def _init_from_scratch(self, lm_cfg, env, env_sh):
@@ -49,6 +46,8 @@ class APRun(LaunchMethod):
         self._env         = lm_info['env']
         self._env_sh      = lm_info['env_sh']
         self._command     = lm_info['command']
+
+        assert self._command
 
         self._mpi_version = lm_info['mpi_version']
         self._mpi_flavor  = lm_info['mpi_flavor']
@@ -227,26 +226,25 @@ class APRun(LaunchMethod):
             node_specs[spec_key]['nprocs'].add(nprocs)
             node_specs[spec_key]['nodes' ].append(node_id)
 
-
         # Now that we have the node specs, and also know what nodes to apply
         # them to, we can construct the aprun command:
-        ret = self._command
-        for node_spec,info in list(node_specs.items()):
+        cmd = self._command
+        for node_spec, info in list(node_specs.items()):
 
             # nprocs must be uniform
             nprocs_list = list(info['nprocs'])
             nprocs      = nprocs_list[0]
             assert(len(nprocs_list) == 1), nprocs_list
 
-            ret += ' -n %d -N %s -L %s %s %s :' % \
+            cmd += ' -n %d -N %s -L %s %s %s :' % \
                              (nprocs * len(info['nodes']), nprocs,
                               ','.join(info['nodes']), node_spec, exec_path)
 
         # remove trailing colon from above
-        ret = ret[:-1]
-        self._log.debug('aprun cmd: %s', ret)
+        cmd = cmd[:-1]
+        self._log.debug('aprun cmd: %s', cmd)
 
-        return ret
+        return cmd.rstrip()
 
 
     # --------------------------------------------------------------------------
@@ -269,7 +267,7 @@ class APRun(LaunchMethod):
         task_exec    = td['executable']
         task_args    = td['arguments']
         task_argstr  = self._create_arg_string(task_args)
-        command      = "%s %s" % (task_exec, task_argstr)
+        command      = '%s %s' % (task_exec, task_argstr)
 
         return command.rstrip()
 

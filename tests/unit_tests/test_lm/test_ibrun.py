@@ -54,13 +54,13 @@ class TestIBRun(TestCase):
         lm_ibrun = IBRun(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_ibrun.sh',
-                   'command': '/bin/ibrun'}
+                   'command': '/usr/bin/ibrun'}
         lm_ibrun._init_from_info(lm_info, {})
         lm_env = lm_ibrun.get_launcher_env()
 
         self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_info['env_sh'], lm_env)
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @mock.patch.object(IBRun, '__init__',   return_value=None)
     def test_get_launch_rank_cmds(self, mocked_init):

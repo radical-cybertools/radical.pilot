@@ -35,7 +35,10 @@
             "fork"    : {
                 "rank_exec"  : "/bin/sleep \"10\""
             },
-            "aprun"   : ["aprun -n 1 -N 1 -L node1 -d 4 -cc 0,1,2,3 /bin/sleep \"10\"  ", null],
+            "aprun"   : {
+                "launch_cmd" : "aprun -n 1 -N 1 -L node1 -d 4 -cc 0,1,2,3",
+                "rank_exec"  : "/bin/sleep \"10\""
+            },
             "mpirun"  : {
                 "launch_cmd" : "mpirun  -np 1   -host node1",
                 "rank_exec"  : "/bin/sleep \"10\""
