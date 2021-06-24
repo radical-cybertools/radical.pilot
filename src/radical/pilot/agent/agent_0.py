@@ -4,10 +4,14 @@ __license__   = 'MIT'
 
 
 import os
+import sys
 import copy
 import stat
 import time
 import pprint
+
+import subprocess      as sp
+import multiprocessing as mp
 
 import radical.utils       as ru
 
@@ -349,16 +353,10 @@ class Agent_0(rpu.Worker):
             return
 
         # launch the `./services` script on the service node reserved by the RM.
-        # We use the agent launch method for this.
-        agent_lm = None
-        agent_lm = LaunchMethod.create(
-            name    = self._cfg['agent_launch_method'],
-            cfg     = self._cfg,
-            session = self._session)
-
         node = self._cfg['rm_info']['service_node']
-        bs_name = "%s/bootstrap_2.sh" % (self._pwd)
-        ls_name = "%s/services.sh"    % self._pwd
+        bs_name = "%s/bootstrap_2.sh"     % self._pwd
+        ls_name = "%s/services_launch.sh" % self._pwd
+        ex_name = "%s/services_exec.sh"   % self._pwd
         threads = self._cfg['rm_info']['cores_per_node']
         slots   = {
                     'cpu_processes'    : 1,
@@ -374,9 +372,9 @@ class Agent_0(rpu.Worker):
                                          }],
                     'cores_per_node'   : self._cfg['rm_info']['cores_per_node'],
                     'gpus_per_node'    : self._cfg['rm_info']['gpus_per_node'],
-                    'lm_info'          : self._cfg['rm_info']['lm_info'],
+                    'lm_info'          : self._rm.lm_info,
                   }
-        service_cmd = {
+        service_task = {
                     'uid'              : 'rp.services',
                     'slots'            : slots,
                     'task_sandbox_path': self._pwd,
@@ -390,64 +388,40 @@ class Agent_0(rpu.Worker):
                                                                 'services'],
                                          }
                 }
-        cmd, hop = agent_lm.construct_command(service_cmd,
-        launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "%s"' % ls_name)
 
-        with open (ls_name, 'w') as ls:
-            # note that 'exec' only makes sense if we don't add any
-            # commands (such as post-processing) after it.
-            ls.write('#!/bin/sh\n\n')
-            for k,v in service_cmd['description'].get('environment', {}).items():
-                ls.write('export "%s"="%s"\n' % (k, v))
-            ls.write('\n')
-            for pe_cmd in service_cmd['description'].get('pre_exec', []):
-                ls.write('%s\n' % pe_cmd)
-            ls.write('\n')
-            ls.write('exec %s\n\n' % cmd)
-            st = os.stat(ls_name)
-            os.chmod(ls_name, st.st_mode | stat.S_IEXEC)
+        launcher = self._rm.find_launcher(service_task)
+        if not launcher:
+            raise RuntimeError('no launch method found for sub agent')
 
-        if hop : cmdline = hop
-        else   : cmdline = ls_name
+        tmp  = '#!/bin/sh\n\n'
+        cmds = launcher.get_launcher_env()
+        for cmd in cmds:
+            tmp += '%s || exit 1\n' % cmd
+        cmds = launcher.get_launch_cmd(service_task, ex_name)
+        tmp += '%s\nexit $?\n\n' % '\n'.join(cmds)
 
-        # ------------------------------------------------------------------
-        class _Service(mp.Process):
+        with open(ls_name, 'w') as fout:
+            fout.write(tmp)
 
-            def __init__(self, cmd, log):
-                self._name = 'rp.services'
-                self._cmd  = cmd.split()
-                self._log  = log
-                self._proc = None
-                super(_Service, self).__init__(name=self._name)
-                self.start()
+        tmp  = '#!/bin/sh\n\n'
+        tmp += '. ./env/service.env\n'
+        tmp += '/bin/sh -l ./services\n\n'
+
+        with open(ex_name, 'w') as fout:
+            fout.write(tmp)
 
 
-            def run(self):
+        # make sure scripts are executable
+        st = os.stat(ls_name)
+        st = os.stat(ex_name)
+        os.chmod(ls_name, st.st_mode | stat.S_IEXEC)
+        os.chmod(ex_name, st.st_mode | stat.S_IEXEC)
 
-                sys.stdout = open('%s.out' % self._name, 'a')
-                sys.stderr = open('%s.err' % self._name, 'a')
-                out        = open('%s.out' % self._name, 'a')
-                err        = open('%s.err' % self._name, 'a')
-                self._proc = sp.Popen(args=self._cmd, stdout=out, stderr=err)
-                self._log.debug('services %s spawned [%s]', self._name,
-                        self._proc)
+        # spawn the sub-agent
+        cmdline = './%s' % ls_name
 
-                assert(self._proc)
-
-                # FIXME: lifetime, use daemon agent launcher
-                while True:
-                    time.sleep(0.1)
-                    if self._proc.poll() is None:
-                        return True   # all is well
-                    else:
-                        return False  # proc is gone - terminate
-        # ------------------------------------------------------------------
-
-        # spawn the services
-        self._log.info('start services: %s', cmdline)
-        _Service(cmdline, log=self._log)
-
-        # FIXME: register heartbeats?
+        self._log.info ('create services: %s' % cmdline)
+        ru.sh_callout_bg(cmdline, stdout='services.out', stderr='services.err')
 
         self._log.debug('services started done')
 
@@ -480,12 +454,17 @@ class Agent_0(rpu.Worker):
 
             target = self._cfg['agents'][sa]['target']
 
+            if target not in ['local', 'node']:
+
+                raise ValueError('agent target unknown (%s)' % target)
+
             if target == 'local':
 
                 # start agent locally
                 cmdline = '/bin/sh -l %s/bootstrap_2.sh %s' % (self._pwd, sa)
 
-            elif target == 'node':
+
+            else:  # target == 'node':
 
                 node = self._cfg['rm_info']['agent_nodes'][sa]
                 # start agent remotely, use launch method
@@ -501,6 +480,8 @@ class Agent_0(rpu.Worker):
                 bs_name       = "%s/bootstrap_2.sh" % (self._pwd)
                 launch_script = "%s/%s.launch.sh"   % (self._pwd, sa)
                 exec_script   = "%s/%s.exec.sh"     % (self._pwd, sa)
+                pprint.pprint(self._cfg)
+                pprint.pprint(self._rm.lm_info)
                 slots = {
                     'cpu_processes'    : 1,
                     'cpu_threads'      : self._cfg['rm_info']['cores_per_node'],
@@ -515,7 +496,7 @@ class Agent_0(rpu.Worker):
                                          }],
                     'cores_per_node'   : self._cfg['rm_info']['cores_per_node'],
                     'gpus_per_node'    : self._cfg['rm_info']['gpus_per_node'],
-                    'lm_info'          : self._cfg['lm_info'],
+                    'lm_info'          : self._rm.lm_info,
                 }
                 agent_task = {
                     'uid'              : sa,
@@ -540,8 +521,9 @@ class Agent_0(rpu.Worker):
                 cmds = launcher.get_launcher_env()
                 for cmd in cmds:
                     tmp += '%s || exit 1\n' % cmd
-                tmp += '%s\nexit $?\n\n' % launcher.get_launch_cmd(agent_task,
-                                                                   exec_script)
+                cmds = launcher.get_launch_cmds(agent_task, exec_script)
+                tmp += '%s\nexit $?\n\n' % '\n'.join(cmds)
+
                 with open(launch_script, 'w') as fout:
                     fout.write(tmp)
 
@@ -553,7 +535,6 @@ class Agent_0(rpu.Worker):
                 with open(exec_script, 'w') as fout:
                     fout.write(tmp)
 
-
                 # make sure scripts are executable
                 st = os.stat(launch_script)
                 st = os.stat(exec_script)
@@ -561,10 +542,7 @@ class Agent_0(rpu.Worker):
                 os.chmod(exec_script,   st.st_mode | stat.S_IEXEC)
 
                 # spawn the sub-agent
-                cmdline = './%s' % launch_script
-
-            else:
-                raise ValueError('agent target unknown (%s)' % target)
+                cmdline = launch_script
 
             self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
             ru.sh_callout_bg(cmdline, stdout='%s.out' % sa,
@@ -732,6 +710,7 @@ class Agent_0(rpu.Worker):
             # we don't handle that request
             return True
 
+        ret     = None
         rpc_res = {'uid': arg['uid']}
         try:
             if req == 'hello'   :
@@ -856,7 +835,7 @@ class Agent_0(rpu.Worker):
         ve_cmd = '%s -p ./%s -v %s -e ". env/bs0_pre_0.sh" -m "%s"' \
                % (rp_cse, eid, evers, ','.join(emods))
         ru.sh_callout_bg('%s 1>%s.log 2>&1 && touch %s.ok || touch %s.fail'
-               % (ve_cmd, self.uid, self.uid, eid, eid), shell=True)
+               % (ve_cmd, self.uid, eid, eid), shell=True)
 
 
 # ------------------------------------------------------------------------------
