@@ -684,9 +684,10 @@ class AgentSchedulingComponent(rpu.Component):
                                                 log=self._log)
 
         for task, error in failed:
-            task['stderr']  = error
-            task['control'] = 'tmgr_pending'
-            task['$all']    = True
+            task['stderr']       = error
+            task['control']      = 'tmgr_pending'
+            task['target_state'] = 'FAILED'
+            task['$all']         = True
 
             self._log.error('bisect failed on %s: %s', task['uid'], error)
             self.advance(scheduled, rps.FAILED, publish=True, push=False)
@@ -783,9 +784,10 @@ class AgentSchedulingComponent(rpu.Component):
 
             except Exception as e:
 
-                task['stderr']  = str(e)
-                task['control'] = 'tmgr_pending'
-              # task['$all']    = True
+                task['stderr']       = str(e)
+                task['control']      = 'tmgr_pending'
+                task['target_state'] = 'FAILED'
+                task['$all']         = True
 
                 self._log.exception('scheduling failed for %s', task['uid'])
 
