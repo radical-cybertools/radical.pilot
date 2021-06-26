@@ -76,7 +76,7 @@ class Session(rs.Session):
         Session is used as a Python context manager, such that close() is called
         automatically at the end of a ``with`` block.)
         '''
-        self._close_options = _CloseOptions(**close_options)
+        self._close_options = _CloseOptions(close_options)
         # NOTE: `name` and `cfg` are overloaded, the user cannot point to
         #       a predefined config and amend it at the same time.  This might
         #       be ok for the session, but introduces a minor API inconsistency.
@@ -261,19 +261,16 @@ class Session(rs.Session):
         self._prof.prof("session_close", uid=self._uid)
 
         # Merge kwargs with current defaults stored in self._close_options
-        if terminate is None and cleanup:
-            if not self._close_options.terminate:
-                warnings.warn(
-                    'Overriding *terminate=False* set during Session creation. '
-                    '*cleanup* implies *terminate*.'
-                )
-            terminate = True
-        self._close_options = dataclasses.replace(
-            self._close_options,
-            cleanup=cleanup,
-            terminate=terminate,
-            download=download
+        self._close_options.update(
+            {
+                'cleanup': cleanup,
+                'download': download,
+                'terminate': terminate
+            }
         )
+        self._close_options.verify()  # in case to call for `_verify` method and to convert attributes
+                                      # to their types if needed (but None value will stay if it is set)
+
         del cleanup
         del terminate
         del download
@@ -987,27 +984,33 @@ class Session(rs.Session):
 # ------------------------------------------------------------------------------
 
 
-@dataclasses.dataclass(frozen=True)
-class _CloseOptions:
+class _CloseOptions(ru.Munch):
     """Options and validation for Session.close().
 
     **Arguments:**
         * **cleanup**   (`bool`):
           Remove session from MongoDB (implies * terminate). (default False)
-        * **terminate** (`bool`):
-          Shut down all pilots associated with the session. (default True)
         * **download** (`bool`):
           Fetch pilot profiles and database entries. (default False)
+        * **terminate** (`bool`):
+          Shut down all pilots associated with the session. (default True)
 
     """
-    cleanup: bool = False
+    _schema = {
+        'cleanup'  : bool,
+        'download' : bool,
+        'terminate': bool
+    }
+
+    _defaults = {
+        'cleanup'  : False,
+        'download' : False,
+        'terminate': True
+    }
     # Warning: Previously, passing `cleanup=None` would reverse the default and
     # result in cleanup == True.
 
-    terminate: bool = True
-    download: bool = False
-
-    def __post_init__(self):
+    def _verify(self):
         if self.cleanup and not self.terminate:
             # cleanup implies terminate
             raise ValueError('cleanup implies terminate.')
