@@ -3,11 +3,9 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import dataclasses
 import os
 import sys
 import copy
-import warnings
 
 import radical.utils                as ru
 import radical.saga                 as rs
