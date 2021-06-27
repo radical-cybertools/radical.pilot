@@ -261,7 +261,7 @@ class AgentSchedulingComponent(rpu.Component):
         self._waitpool   = dict()  # map uid:task
         self._ts_map     = dict()
         self._ts_valid   = False   # set to False to trigger re-binning
-        self._active_cnt = 0       # count of currently schedled tasks
+        self._active_cnt = 0       # count of currently scheduled tasks
         self._log.debug('=== active: %s', self._active_cnt)
 
         # the scheduler algorithms have two inputs: tasks to be scheduled, and
