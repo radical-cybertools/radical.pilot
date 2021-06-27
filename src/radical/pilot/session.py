@@ -233,7 +233,7 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def close(self, cleanup=None, terminate=None, download=None):
+    def close(self, **kwargs):
         '''
 
         Closes the session.  All subsequent attempts access objects attached to
@@ -259,19 +259,10 @@ class Session(rs.Session):
         self._prof.prof("session_close", uid=self._uid)
 
         # Merge kwargs with current defaults stored in self._close_options
-        self._close_options.update(
-            {
-                'cleanup': cleanup,
-                'download': download,
-                'terminate': terminate
-            }
-        )
+        self._close_options.update(kwargs)
         self._close_options.verify()  # in case to call for `_verify` method and to convert attributes
                                       # to their types if needed (but None value will stay if it is set)
 
-        del cleanup
-        del terminate
-        del download
         options = self._close_options
 
         for tmgr_uid, tmgr in self._tmgrs.items():
