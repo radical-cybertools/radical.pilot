@@ -30,6 +30,11 @@
                             "stall_hwm" : 1,
                             "bulk_size" : 0},
 
+        "tracer_queue"          : {"kind"      : "queue",
+                                   "log_level" : "error",
+                                   "stall_hwm" : 1,
+                                   "bulk_size" : 0},
+
         "stager_request_queue"  : {"kind"      : "queue",
                                    "log_level" : "error",
                                    "stall_hwm" : 1,

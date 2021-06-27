@@ -60,6 +60,10 @@
                                          "log_level" : "error",
                                          "stall_hwm" : 0,
                                          "bulk_size" : 1},
+        "tracer_queue"               : { "kind"      : "queue",
+                                         "log_level" : "error",
+                                         "stall_hwm" : 0,
+                                         "bulk_size" : 1},
 
         "agent_unschedule_pubsub"    : { "kind"      : "pubsub",
                                          "log_level" : "error"},
@@ -77,6 +81,7 @@
     "components" : {
         # the update worker must live in agent.0, since only that agent is
         # sure to have connectivity toward the DB.
+        "tracer"               : {"count" : 1},
         "update"               : {"count" : 1},
         "agent_staging_input"  : {"count" : 1},
         "agent_scheduling"     : {"count" : 1},

@@ -57,7 +57,7 @@ class Executor(object):
         self._nw   = n_workers
         self._uid  = os.environ['RP_FUNCS_ID']
         self._log  = ru.Logger(self._uid,   ns='radical.pilot', path=pwd)
-        self._prof = ru.Profiler(self._uid, ns='radical.pilot', path=pwd)
+        self._prof = ru.Profiler(self._uid, ns='radical.pilot', target=pwd)
         self._cfg  = ru.read_json('%s/%s.cfg' % (pwd, self._uid))
 
         self._initialize()

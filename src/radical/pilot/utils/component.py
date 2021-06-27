@@ -43,7 +43,7 @@ class ComponentManager(object):
         self._uids = [self._uid]  # uids to track hartbeats for (incl. own)
 
         self._prof = ru.Profiler(self._uid, ns='radical.pilot',
-                               path=self._cfg.path)
+                               target=self._cfg.path)
         self._log  = ru.Logger(self._uid, ns='radical.pilot',
                                path=self._cfg.path)
 
@@ -441,7 +441,7 @@ class Component(object):
       #                            scope='entity',
       #                            start='get',
       #                            stop=['put', 'drop'])
-        self._prof.prof('init1', uid=self._uid, msg=self._prof.path)
+        self._prof.prof('init1', uid=self._uid)
 
         self._q    = None
         self._in   = None
@@ -517,6 +517,7 @@ class Component(object):
 
         comp = {
                 rpc.WORKER                         : rpt.Worker,
+                rpc.TRACER                         : rpw.Tracer,
                 rpc.UPDATE_WORKER                  : rpw.Update,
                 rpc.STAGER_WORKER                  : rpw.Stager,
 

@@ -8,6 +8,9 @@ WORKER                         = 'worker'
 
 UPDATE_WORKER                  = 'update'
 
+TRACER                         = 'tracer'
+TRACER_QUEUE                   = 'tracer_queue'
+
 STAGER_WORKER                  = 'stager'
 STAGER_REQUEST_QUEUE           = 'stager_request_queue'
 STAGER_RESPONSE_PUBSUB         = 'stager_response_pubsub'

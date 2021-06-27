@@ -460,7 +460,14 @@ class Session(rs.Session):
         log files end up in a separate directory with the name of `session.uid`.
         '''
 
-        prof = ru.Profiler(name=name, ns='radical.pilot', path=self._cfg.path)
+        tgt = self._cfg.path
+        try:
+            cfg = ru.read_json('./tracer_queue.cfg')
+            tgt = cfg['put']
+        except:
+            pass
+
+        prof = ru.Profiler(name=name, ns='radical.pilot', target=tgt)
 
         return prof
 

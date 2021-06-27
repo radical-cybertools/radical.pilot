@@ -55,7 +55,7 @@ def main(cfg):
 
     # basic setup: cfg, logger and profiler
     log  = ru.Logger(name=cfg.uid, ns='radical.pilot', path=cfg.path)
-    prof = ru.Profiler(name=cfg.uid, ns='radical.pilot', path=cfg.path)
+    prof = ru.Profiler(name=cfg.uid, ns='radical.pilot', target=cfg.path)
 
     try:
         prof.prof('comp_start', uid=cfg.uid)

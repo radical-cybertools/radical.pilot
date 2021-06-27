@@ -177,7 +177,7 @@ def main():
         pname = 'radical.prte'
 
 
-    prof = ru.Profiler(pname, path=sid)
+    prof = ru.Profiler(pname, target=sid)
 
     # iterate through all `pilot.*` subdirs in the session tree
     for entry in glob.glob('%s/pilot.*' % sid):
