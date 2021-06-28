@@ -216,8 +216,6 @@ class AgentSchedulingComponent(rpu.Component):
     def __init__(self, cfg, session):
 
         self.nodes = None
-        self._uid  = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
-                                    ru.ID_CUSTOM)
         rpu.Component.__init__(self, cfg, session)
 
 
@@ -258,9 +256,11 @@ class AgentSchedulingComponent(rpu.Component):
         # waitlist to a binned list where tasks are binned by size for faster
         # lookups of replacement tasks.  And outdated binlist is mostly
         # sufficient, only rebuild when we run dry
-        self._waitpool = dict()  # map uid:task
-        self._ts_map   = dict()
-        self._ts_valid = False  # set to False to trigger re-binning
+        self._waitpool   = dict()  # map uid:task
+        self._ts_map     = dict()
+        self._ts_valid   = False   # set to False to trigger re-binning
+        self._active_cnt = 0       # count of currently scheduled tasks
+        self._log.debug('=== active: %s', self._active_cnt)
 
         # the scheduler algorithms have two inputs: tasks to be scheduled, and
         # slots becoming available (after tasks complete).
@@ -587,6 +587,9 @@ class AgentSchedulingComponent(rpu.Component):
         self.register_output(rps.AGENT_EXECUTING_PENDING,
                              rpc.AGENT_EXECUTING_QUEUE)
 
+        self._publishers = dict()
+        self.register_publisher(rpc.STATE_PUBSUB)
+
         resources = True  # fresh start, all is free
         while not self._proc_term.is_set():
 
@@ -673,10 +676,19 @@ class AgentSchedulingComponent(rpu.Component):
                  reverse=True)
 
         # cycle through waitpool, and see if we get anything placed now.
-        scheduled, unscheduled = ru.lazy_bisect(to_test,
+        scheduled, unscheduled, failed = ru.lazy_bisect(to_test,
                                                 check=self._try_allocation,
                                                 on_skip=self._prof_sched_skip,
                                                 log=self._log)
+
+        for task, error in failed:
+            task['stderr']       = error
+            task['control']      = 'tmgr_pending'
+            task['target_state'] = 'FAILED'
+            task['$all']         = True
+
+            self._log.error('bisect failed on %s: %s', task['uid'], error)
+            self.advance(scheduled, rps.FAILED, publish=True, push=False)
 
         self._waitpool = {task['uid']: task for task in (unscheduled + to_wait)}
 
@@ -753,20 +765,32 @@ class AgentSchedulingComponent(rpu.Component):
 
             # either we can place the task straight away, or we have to
             # put it in the wait pool.
-            if self._try_allocation(task):
+            try:
+                if self._try_allocation(task):
+                    # task got scheduled - advance state, notify world about the
+                    # state change, and push it out toward the next component.
+                    td = task['description']
+                    task['$set']      = ['resources']
+                    task['resources'] = {'cpu': td['cpu_processes'] *
+                                                td.get('cpu_threads', 1),
+                                         'gpu': td['gpu_processes']}
+                    self.advance(task, rps.AGENT_EXECUTING_PENDING,
+                                 publish=True, push=True)
 
-                # task got scheduled - advance state, notify world about the
-                # state change, and push it out toward the next component.
-                td = task['description']
-                task['$set']      = ['resources']
-                task['resources'] = {'cpu': td['cpu_processes'] *
-                                            td.get('cpu_threads', 1),
-                                     'gpu': td['gpu_processes']}
-                self.advance(task, rps.AGENT_EXECUTING_PENDING,
-                             publish=True, push=True)
+                else:
+                    to_wait.append(task)
 
-            else:
-                to_wait.append(task)
+            except Exception as e:
+
+                task['stderr']       = str(e)
+                task['control']      = 'tmgr_pending'
+                task['target_state'] = 'FAILED'
+                task['$all']         = True
+
+                self._log.exception('scheduling failed for %s', task['uid'])
+
+                self.advance(task, rps.FAILED, publish=True, push=False)
+
 
         # all tasks which could not be scheduled are added to the waitpool
         self._waitpool.update({task['uid']: task for task in to_wait})
@@ -854,6 +878,7 @@ class AgentSchedulingComponent(rpu.Component):
           #     # schedule other tasks of other sizes.
           #     to_release.append(task)
 
+            self._active_cnt -= 1
             to_release.append(task)
 
         if not to_release:
@@ -895,7 +920,15 @@ class AgentSchedulingComponent(rpu.Component):
 
             # schedule failure
           # self._prof.prof('schedule_fail', uid=uid)
+
+            # if schedule fails while no other task is scheduled, then the
+            # `schedule_task` will never be able to succeed - fail that task
+            if self._active_cnt == 0:
+                raise RuntimeError('insufficient resources')
+
             return False
+
+        self._active_cnt += 1
 
         # the task was placed, we need to reflect the allocation in the
         # nodelist state (BUSY) and pass placement to the task, to have
