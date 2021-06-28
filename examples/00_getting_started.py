@@ -66,7 +66,7 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        n = 24  # number of tasks to run
+        n = 1024  # number of tasks to run
         report.header('submit %d tasks' % n)
 
         # Register the pilot in a TaskManager object.
@@ -83,8 +83,7 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             td = rp.TaskDescription()
             td.executable    = '/bin/date'
-            td.cpu_processes = n - i + 1
-            td.cpu_process_type = rp.MPI
+            td.cpu_processes = 1
             tds.append(td)
             report.progress()
 
@@ -93,13 +92,10 @@ if __name__ == '__main__':
         # Submit the previously created task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning tasks to the pilots.
-        tasks = tmgr.submit_tasks(tds)
+        tmgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
         tmgr.wait_tasks()
-
-        for task in tasks:
-            print(task.uid, task.state, task.stdout, task.stderr)
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
