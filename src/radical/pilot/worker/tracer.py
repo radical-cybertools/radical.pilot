@@ -31,6 +31,16 @@ class Tracer(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
+    def __del__(self):
+
+        if self._handle:
+            self._handle.flush()
+            self._handle.close()
+            self._handle = None
+
+
+    # --------------------------------------------------------------------------
+    #
     def initialize(self):
 
       # self.register_input(states=None, input=rpc.TRACER_QUEUE,
@@ -55,15 +65,15 @@ class Tracer(rpu.Worker):
     #
     def _work(self, traces):
 
-        import pprint
+      # import pprint
 
         try:
             for trace in ru.as_list(traces):
-                self._log.debug('===> %s', pprint.pformat(trace))
+              # self._log.debug('===> %s', pprint.pformat(trace))
                 ts, event, comp, thread, uid, state, msg = trace
                 self._handle.write('%.7f,%s,%s,%s,%s,%s,%s\n' %
                                (ts, event, comp, thread, uid, state, msg))
-                self._handle.flush()
+              # self._handle.flush()
         except:
             self._log.exception('oops')
 

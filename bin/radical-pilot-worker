@@ -79,7 +79,7 @@ def wrapped_main(cfg, log, prof):
     worker.start()
 
     # component runs - send heartbeats so that cmgr knows about it
-    hb_pub = ru.zmq.Publisher ('heartbeat', cfg.heartbeat.addr_pub)
+    hb_pub = ru.zmq.Publisher ('heartbeat', cfg.heartbeat.pub)
 
     def hb_beat_cb():
         hb_pub.put('heartbeat', msg={'uid': cfg.uid})
@@ -105,8 +105,8 @@ def wrapped_main(cfg, log, prof):
         if msg['uid'] == cfg.cmgr:
             hb.beat(uid=cfg.cmgr)
 
-    ru.zmq.Subscriber('heartbeat', cfg.heartbeat.addr_sub,
-                      topic='heartbeat', cb=hb_sub_cb,
+    ru.zmq.Subscriber('heartbeat', cfg.heartbeat.sub,
+                      topic='heartbeat', cb=hb_su
                       log=log, prof=prof)
 
     # all is set up - we can sit idle 'til end of time.

@@ -111,7 +111,7 @@ def wrapped_main(cfg, log, prof):
     bridge.start()
 
     # bridge runs - send heartbeats so that cmgr knows about it
-    hb_pub = ru.zmq.Publisher('heartbeat', cfg.heartbeat.addr_pub,
+    hb_pub = ru.zmq.Publisher('heartbeat', cfg.heartbeat.pub,
                               log=log, prof=prof)
 
     def hb_beat_cb():
@@ -138,7 +138,7 @@ def wrapped_main(cfg, log, prof):
         if msg['uid'] == cfg.cmgr:
             hb.beat(uid=cfg.cmgr)
 
-    ru.zmq.Subscriber('heartbeat', cfg.heartbeat.addr_sub,
+    ru.zmq.Subscriber('heartbeat', cfg.heartbeat.sub,
                       topic='heartbeat', cb=hb_sub_cb,
                       log=log, prof=prof)
 

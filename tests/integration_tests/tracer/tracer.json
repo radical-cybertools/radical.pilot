@@ -1,0 +1,16 @@
+{
+    "base": ".",
+    "cmgr": "rp_app",
+    "heartbeat": {
+        "interval": 200,
+        "pub": "tcp://10.0.0.10:41467",
+        "sub": "tcp://10.0.0.10:33189",
+        "timeout": 900
+    },
+    "kind": "tracer",
+    "logdir": ".",
+    "owner": "rp_app",
+    "path": ".",
+    "sid": "rp_app",
+    "uid": "tracer.0000"
+}

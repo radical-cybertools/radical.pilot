@@ -61,8 +61,8 @@ class ComponentManager(object):
         self._hb_bridge = ru.zmq.PubSub(bcfg)
         self._hb_bridge.start()
 
-        self._cfg.heartbeat.addr_pub = str(self._hb_bridge.addr_pub)
-        self._cfg.heartbeat.addr_sub = str(self._hb_bridge.addr_sub)
+        self._cfg.heartbeat.pub = str(self._hb_bridge.addr_pub)
+        self._cfg.heartbeat.sub = str(self._hb_bridge.addr_sub)
 
         # runs a HB monitor on that channel
         self._hb = ru.Heartbeat(uid=self.uid,
@@ -73,10 +73,10 @@ class ComponentManager(object):
                                 log=self._log)
 
         self._hb_pub = ru.zmq.Publisher('heartbeat',
-                                        self._cfg.heartbeat.addr_pub,
+                                        self._cfg.heartbeat.pub,
                                         log=self._log, prof=self._prof)
         self._hb_sub = ru.zmq.Subscriber('heartbeat',
-                                         self._cfg.heartbeat.addr_sub,
+                                         self._cfg.heartbeat.sub,
                                          topic='heartbeat', cb=self._hb_sub_cb,
                                          log=self._log, prof=self._prof)
 
