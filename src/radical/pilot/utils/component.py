@@ -478,12 +478,11 @@ class Component(object):
 
         try:
             self._initialize()
+            sync.set()
 
         except Exception:
             self._log.exception('worker thread initialization failed')
             return
-
-        sync.set()
 
         while not self._term.is_set():
             try:
@@ -547,10 +546,12 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def _cancel_monitor_cb(self, topic, msg):
+    def _base_ctrl_cb(self, topic, msg):
         '''
-        We listen on the control channel for cancel requests, and append any
-        found UIDs to our cancel list.
+        We listen on the control channel for these commands:
+          - cancel_tasks : append UIDs to cancel list
+          - config_tracer: reconfigure tracer to use ZMQ endpoint
+          - terminate    : terminate
         '''
 
         # FIXME: We do not check for types of things to cancel - the UIDs are
@@ -565,22 +566,22 @@ class Component(object):
 
         if cmd == 'cancel_tasks':
 
-            uids = arg['uids']
-
-            if not isinstance(uids, list):
-                uids = [uids]
-
+            uids = ru.as_list(arg['uids'])
             self._log.debug('register for cancellation: %s', uids)
 
             with self._cancel_lock:
                 self._cancel_list += uids
 
-        if cmd == 'terminate':
+        elif cmd == 'config_tracer':
+
+            self._log.debug('reconfigure tracer: %s', arg['target'])
+            self._prof.reconfigure(target=arg['target'])
+
+        elif cmd == 'terminate':
+
             self._log.info('got termination command')
             self.stop()
 
-        else:
-            self._log.debug('command ignored: %s', cmd)
 
         return True
 
@@ -618,7 +619,7 @@ class Component(object):
         # set controller callback to handle cancellation requests
         self._cancel_list = list()
         self._cancel_lock = ru.RLock('%s.cancel_lock' % self._uid)
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._cancel_monitor_cb)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._base_ctrl_cb)
 
         # call component level initialize
         self.initialize()
@@ -984,7 +985,12 @@ class Component(object):
         of notifications on the given pubsub channel.
         '''
 
-        assert(pubsub not in self._publishers)
+        import pprint
+        self._log.debug('=== register: %s', pprint.pformat(self._publishers))
+
+        if pubsub in self._publishers:
+            self._log.debug('known publisher for %s', pubsub)
+            return
 
         # dig the addresses from the bridge's config file
         fname = '%s/%s.cfg' % (self._cfg.path, pubsub)
@@ -1271,6 +1277,9 @@ class Component(object):
         '''
         push information into a publication channel
         '''
+
+        import pprint
+        self._log.debug('=== publish: %s', pprint.pformat(self._publishers))
 
         if not self._publishers.get(pubsub):
             raise RuntimeError("no msg route for '%s': %s" % (pubsub, msg))

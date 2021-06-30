@@ -2,8 +2,8 @@
     "channel": "tracer_queue",
     "heartbeat": {
         "interval": 200,
-        "pub": "tcp://10.0.0.10:41467",
-        "sub": "tcp://10.0.0.10:33189",
+        "pub": "tcp://10.0.0.10:40351",
+        "sub": "tcp://10.0.0.10:37501",
         "timeout": 900
     },
     "kind": "queue",
