@@ -145,9 +145,10 @@ jobs:
         echo "$SID: $SID"
         radical-analytics-inspect "$SID"
         mkdir artifacts
-        cp $SID.* artifacts
+        cp -R $SID* artifacts
     - name: upload artifacts
       uses: actions/upload-artifact@v2
+      when: always
       with:
           name: assets-for-download
           path: artifacts
