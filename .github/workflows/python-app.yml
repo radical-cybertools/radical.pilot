@@ -134,6 +134,7 @@ jobs:
         python -m pip install --upgrade .
         python -m pip install radical.analytics
     - name: analyze example session
+      uses: actions/upload-artifact@v2
       env:
         MONGODB_HOST: localhost
         MONGODB_PORT: ${{ job.services.mongodb.ports[27017] }} # get randomly assigned published port
@@ -145,11 +146,8 @@ jobs:
         echo "$SID: $SID"
         radical-analytics-inspect "$SID"
         mkdir artifacts
-        cp $SID.* artifacts
-    - name: upload artifacts
-      uses: actions/upload-artifact@v2
-      when: always
+        cp -R $SID.* artifacts
       with:
-          name: assets-for-download
-          path: artifacts
+        name: assets-for-download
+        path: artifacts
 
