@@ -140,7 +140,7 @@ jobs:
         RADICAL_PILOT_DBURL:  mongodb://localhost:${{ job.services.mongodb.ports[27017] }}/test
       run: |
         . testenv/bin/activate
-        ./examples/00_getting_started.py
+        ./examples/00_getting_started.py local.localhost_test
         SID=$(ls -rt | grep rp.session)
         echo "$SID: $SID"
         radical-analytics-inspect "$SID"
