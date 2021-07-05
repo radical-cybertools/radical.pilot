@@ -109,3 +109,36 @@ jobs:
         DIFF=`git diff  --name-only --diff-filter=db $NEW..$OLD`
         FILTERED=$(for f in $DIFF; do echo $f; done | grep -v '/archive/' | grep -e '\.py$' |  sed "s|^|$PWD/|")
         test -z "$FILTERED" && echo 'nothing to pylint' || pylint $FILTERED
+
+  analytics:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 2
+    - name: Set up Python 3.6
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.6.13
+    - name: Install dependencies
+      run: |
+        python -m venv testenv
+        . testenv/bin/activate
+        python -m pip install --upgrade pip setuptools
+        python -m pip install --upgrade .
+        python -m pip install radical.analytics
+    - name: analyze example session
+      run: |
+        . testenv/bin/activate
+        ./examples/00_getting_started.py
+        SID=$(ls -rt | grep rp.session)
+        echo "$SID: $SID"
+        radical-analytics-inspect "$SID"
+        mkdir artifacts
+        cp $SID.* artifacts
+    - name: upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+          name: assets-for-download
+          path: artifacts
+
