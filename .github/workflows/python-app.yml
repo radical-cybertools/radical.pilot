@@ -140,6 +140,7 @@ jobs:
         RADICAL_PILOT_DBURL:  mongodb://localhost:${{ job.services.mongodb.ports[27017] }}/test
       run: |
         . testenv/bin/activate
+        pip install ntplib
         ./examples/00_getting_started.py local.localhost_test || true
         SID=$(ls -rt | grep rp.session)
         echo "$SID: $SID"
