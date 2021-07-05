@@ -128,6 +128,10 @@ jobs:
         python -m pip install --upgrade .
         python -m pip install radical.analytics
     - name: analyze example session
+      env:
+        MONGODB_HOST: localhost
+        MONGODB_PORT: ${{ job.services.mongodb.ports[27017] }} # get randomly assigned published port
+        RADICAL_PILOT_DBURL:  mongodb://localhost:${{ job.services.mongodb.ports[27017] }}/test
       run: |
         . testenv/bin/activate
         ./examples/00_getting_started.py
