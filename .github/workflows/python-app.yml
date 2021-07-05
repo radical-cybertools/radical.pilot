@@ -148,6 +148,7 @@ jobs:
         cp $SID.* artifacts
     - name: upload artifacts
       uses: actions/upload-artifact@v2
+      when: always
       with:
           name: assets-for-download
           path: artifacts
