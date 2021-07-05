@@ -112,6 +112,12 @@ jobs:
 
   analytics:
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo
+        ports:
+        # will assign a random free host port
+        - 27017/tcp
     steps:
     - uses: actions/checkout@v2
       with:
