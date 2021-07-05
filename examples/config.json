@@ -10,8 +10,8 @@
 
     "local.localhost_test" : {
         "project"  : null,
-        "queue"    : null,
         "schema"   : null,
+        "queue"    : null,
         "cores"    : 1,
         "gpus"     : 0
     },
