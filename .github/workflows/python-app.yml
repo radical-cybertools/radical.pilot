@@ -154,7 +154,7 @@ jobs:
         ./examples/00_getting_started.py local.localhost_test
         SID=$(ls -rt | grep rp.session)
         echo "$SID: $SID"
-        radical-analytics-inspect "$SID" || true
+        radical-analytics-inspect "$SID"
         mkdir artifacts
         ls -la
         cp -R *.png *.stats artifacts
