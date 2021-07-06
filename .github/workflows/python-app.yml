@@ -146,6 +146,11 @@ jobs:
         git checkout devel
         pip install --upgrade .
         cd ..
+        git clone https://github.com/radical-cybertools/radical.analytics.git
+        cd radical.analytics
+        git checkout feature/utilization
+        pip install --upgrade .
+        cd ..
         ./examples/00_getting_started.py local.localhost_test || true
         SID=$(ls -rt | grep rp.session)
         echo "$SID: $SID"
