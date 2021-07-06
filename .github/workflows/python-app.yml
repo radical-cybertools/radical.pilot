@@ -151,14 +151,13 @@ jobs:
         git checkout feature/utilization
         pip install --upgrade .
         cd ..
-        ./examples/00_getting_started.py local.localhost_test || true
+        ./examples/00_getting_started.py local.localhost_test
         SID=$(ls -rt | grep rp.session)
         echo "$SID: $SID"
         radical-analytics-inspect "$SID" || true
         mkdir artifacts
         ls -la
-        cp -R $SID.* $SID_* artifacts
-        true
+        cp -R *.png artifacts
     - name: upload artifacts
       uses: actions/upload-artifact@v2
       with:
