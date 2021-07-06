@@ -157,7 +157,7 @@ jobs:
         radical-analytics-inspect "$SID" || true
         mkdir artifacts
         ls -la
-        cp -R *.png artifacts
+        cp -R *.png *.stats artifacts
     - name: upload artifacts
       uses: actions/upload-artifact@v2
       with:
