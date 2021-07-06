@@ -141,6 +141,11 @@ jobs:
       run: |
         . testenv/bin/activate
         pip install ntplib
+        git clone https://github.com/radical-cybertools/radical.utils.git
+        cd radical.utils
+        git checkout devel
+        pip install --upgrade .
+        cd ..
         ./examples/00_getting_started.py local.localhost_test || true
         SID=$(ls -rt | grep rp.session)
         echo "$SID: $SID"
