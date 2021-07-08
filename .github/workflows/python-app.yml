@@ -128,7 +128,8 @@ jobs:
         python-version: 3.6.13
     - name: Install dependencies
       run: |
-        apt install texline texlive-fonts-extra texlive-extra-utils texlive-fonts-recommended
+        sudo apt install texline texlive-fonts-extra texlive-extra-utils
+        sudo apt install texlive-fonts-recommended
         python -m venv testenv
         . testenv/bin/activate
         python -m pip install --upgrade pip setuptools
