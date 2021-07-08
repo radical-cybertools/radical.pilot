@@ -66,6 +66,7 @@ class TestBase(TestCase):
         component._log           = ru.Logger('dummy')
         component._allocate_slot = mock.Mock(side_effect=[None,
                                                           {'slot':'test_slot'}])
+        component._active_cnt    = 0
         component._prof          = mock.Mock()
         component._prof.prof     = mock.Mock(return_value=True)
         component._wait_pool     = list()
