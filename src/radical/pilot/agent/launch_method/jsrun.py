@@ -97,12 +97,9 @@ class JSRUN(LaunchMethod):
 
         """
 
-        # if `cpu_index_using: physical` is set to run at Lassen@LLNL,
-        #  then it returns an error "error in ptssup_mkcltsock_afunix()"
-        if slots['nodes'][0]['name'].lower().startswith('lassen'):
-            rs_str = ''
-        else:
-            rs_str = 'cpu_index_using: physical\n'
+        # `cpu_index_using: physical` causes the following issue
+        #    "error in ptssup_mkcltsock_afunix()"
+        rs_str = 'cpu_index_using: logical\n'
         rank = 0
         for node in slots['nodes']:
 
