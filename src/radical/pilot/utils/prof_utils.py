@@ -1174,8 +1174,6 @@ def _get_task_consumption(session, task, rtype, tdurations=None):
         pilot = pilot[0]
 
     # FIXME: it is inefficient to query those values again and again
-    # cpn   = pilot.cfg['resource_details']['rm_info']['cores_per_node']
-    # gpn   = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
     nodes, _, _ = _get_nodes(pilot)
 
     rnd  = 'cores_per_node'
