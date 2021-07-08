@@ -28,6 +28,13 @@ class JSRUN(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
+    def get_rank_cmd(self):
+
+        return "echo $PMIX_RANK"
+
+
+    # --------------------------------------------------------------------------
+    #
     @classmethod
     def rm_config_hook(cls, name, cfg, rm, log, profiler):
 
