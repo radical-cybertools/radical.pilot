@@ -27,6 +27,13 @@ class MPIRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
+    def get_rank_cmd(self):
+
+        return "echo $PMIX_RANK"
+
+
+    # --------------------------------------------------------------------------
+    #
     def _configure(self):
 
         if '_rsh' in self.name.lower():
