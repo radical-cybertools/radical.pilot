@@ -742,10 +742,10 @@ def get_session_description(sid, src=None, dburl=None):
 
 # ------------------------------------------------------------------------------
 #
-def get_node_index(node_list, node, cpn, gpn):
+def get_node_index(node_list, node, pn):
 
-    r0 = node_list.index(node) * (cpn + gpn)
-    r1 = r0 + cpn + gpn - 1
+    r0 = node_list.index(node) * pn
+    r1 = r0 + pn - 1
 
     return [r0, r1]
 
@@ -816,12 +816,16 @@ def cluster_resources(resources):
 
 # ------------------------------------------------------------------------------
 #
-def _get_pilot_provision(pilot):
+def _get_pilot_provision(pilot, rtype):
 
-    pid   = pilot.uid
-    cpn   = pilot.cfg['resource_details']['rm_info']['cores_per_node']
-    gpn   = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
-    ret   = dict()
+    pid = pilot.uid
+    ret = dict()
+    rnd = 'cores_per_node'
+
+    if rtype == 'gpu':
+        rnd = 'gpus_per_node'
+
+    pn = pilot.cfg['resource_details']['rm_info'][rnd]
 
     nodes, _, _ = _get_nodes(pilot)
 
@@ -835,7 +839,7 @@ def _get_pilot_provision(pilot):
             t1 = pilot.events[-1][ru.TIME]
 
         for node in nodes:
-            r0, r1 = get_node_index(nodes, node, cpn, gpn)
+            r0, r1 = get_node_index(nodes, node, pn)
             boxes.append([t0, t1, r0, r1])
 
         ret['total'] = {pid: boxes}
@@ -845,10 +849,11 @@ def _get_pilot_provision(pilot):
 
 # ------------------------------------------------------------------------------
 #
-def get_provided_resources(session):
+def get_provided_resources(session, rtype='cpu'):
     '''
-    For all ra.pilots, return the amount and time of resources provided.
-    This computes sets of 4-tuples of the form: [t0, t1, r0, r1] where:
+    For all ra.pilots, return the amount and time of the type of resources
+    provided. This computes sets of 4-tuples of the form: [t0, t1, r0, r1]
+    where:
 
         t0: time, begin of resource provision
         t1: time, begin of resource provision
@@ -858,10 +863,13 @@ def get_provided_resources(session):
     The tuples are formed so that t0 to t1 and r0 to r1 are continuous.
     '''
 
+    if rtype not in ['cpu', 'gpu']:
+        raise Exception('unknown resource type: %s' % rtype)
+
     provided = dict()
     for p in session.get(etype='pilot'):
 
-        data = _get_pilot_provision(p)
+        data = _get_pilot_provision(p, rtype)
 
         for metric in data:
 
@@ -876,7 +884,7 @@ def get_provided_resources(session):
 
 # ------------------------------------------------------------------------------
 #
-def get_consumed_resources(session, tdurations=None):
+def get_consumed_resources(session, rtype='cpu', tdurations=None):
     '''
     For all ra.pilot or ra.task entities, return the amount and time of
     resources consumed.  A consumed resource is characterized by:
@@ -912,8 +920,8 @@ def get_consumed_resources(session, tdurations=None):
     consumed = dict()
     for e in session.get(etype=['pilot', 'task']):
 
-        if   e.etype == 'pilot': data = _get_pilot_consumption(e)
-        elif e.etype == 'task' : data = _get_task_consumption(session, e,
+        if   e.etype == 'pilot': data = _get_pilot_consumption(e, rtype)
+        elif e.etype == 'task' : data = _get_task_consumption(session, e, rtype,
                                                               tdurations)
 
         for metric in data:
@@ -950,12 +958,17 @@ def get_consumed_resources(session, tdurations=None):
 
         p_min = pt(event=PILOT_DURATIONS['consume']['idle'][0]) [0]
         p_max = pt(event=PILOT_DURATIONS['consume']['idle'][1])[-1]
-      # p_max = pilot.events[-1][ru.TIME]
         log.debug('pmin, pmax: %10.2f / %10.2f', p_min, p_max)
 
-        pid = pilot.uid
-        cpn = pilot.cfg['resource_details']['rm_info']['cores_per_node']
-        gpn = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
+        pid  = pilot.uid
+        rnd  = 'cores_per_node'
+        rmap = 'core_map'
+
+        if rtype == 'gpu':
+            rnd  = 'gpus_per_node'
+            rmap = 'gpu_map'
+
+        pn = pilot.cfg['resource_details']['rm_info'][rnd]
 
         nodes, _, pnodes = _get_nodes(pilot)
 
@@ -968,10 +981,9 @@ def get_consumed_resources(session, tdurations=None):
         # resource id, we set or adjust t_min / t_max.
         resources = dict()
         for pnode in pnodes:
-            idx = get_node_index(nodes, pnode, cpn, gpn)
+            idx = get_node_index(nodes, pnode, pn)
             for c in range(idx[0], idx[1] + 1):
                 resources[c] = [None, None]
-
 
         for task in session.get(etype='task'):
 
@@ -989,20 +1001,11 @@ def get_consumed_resources(session, tdurations=None):
             for snode in snodes:
 
                 node  = [snode['name'], snode['uid']]
-                r0, _ = get_node_index(nodes, node, cpn, gpn)
+                r0, _ = get_node_index(nodes, node, pn)
 
-                for core_map in snode['core_map']:
+                for core_map in snode[rmap]:
                     for core in core_map:
                         idx = r0 + core
-                        t_min = resources[idx][0]
-                        t_max = resources[idx][1]
-                        if t_min is None or t_min > u_min: t_min = u_min
-                        if t_max is None or t_max < u_max: t_max = u_max
-                        resources[idx] = [t_min, t_max]
-
-                for gpu_map in snode['gpu_map']:
-                    for gpu in gpu_map:
-                        idx = r0 + cpn + gpu
                         t_min = resources[idx][0]
                         t_max = resources[idx][1]
                         if t_min is None or t_min > u_min: t_min = u_min
@@ -1082,7 +1085,7 @@ def _get_nodes(pilot):
 
 # ------------------------------------------------------------------------------
 #
-def _get_pilot_consumption(pilot):
+def _get_pilot_consumption(pilot, rtype):
 
     # Pilots consume resources in different ways:
     #
@@ -1101,10 +1104,14 @@ def _get_pilot_consumption(pilot):
     # task*, which allows us to compute tasks specific resource utilization
     # overheads.
 
-    pid   = pilot.uid
-    cpn   = pilot.cfg['resource_details']['rm_info']['cores_per_node']
-    gpn   = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
-    ret   = dict()
+    pid = pilot.uid
+    ret = dict()
+    rnd = 'cores_per_node'
+
+    if rtype == 'gpu':
+        rnd  = 'gpus_per_node'
+
+    pn = pilot.cfg['resource_details']['rm_info'][rnd]
 
     # Account for agent resources.  Agents use full nodes, i.e., cores and GPUs
     # We happen to know that agents use the first nodes in the allocation and
@@ -1123,7 +1130,7 @@ def _get_pilot_consumption(pilot):
 
     if anodes and t0 is not None:
         for anode in anodes:
-            r0, r1 = get_node_index(nodes, anode, cpn, gpn)
+            r0, r1 = get_node_index(nodes, anode, pn)
             boxes.append([t0, t1, r0, r1])
 
     ret['agent'] = {pid: boxes}
@@ -1139,7 +1146,7 @@ def _get_pilot_consumption(pilot):
 
         if t0 is not None:
             for node in pnodes:
-                r0, r1 = get_node_index(nodes, node, cpn, gpn)
+                r0, r1 = get_node_index(nodes, node, pn)
                 boxes.append([t0, t1, r0, r1])
 
         ret[metric] = {pid: boxes}
@@ -1149,7 +1156,7 @@ def _get_pilot_consumption(pilot):
 
 # ------------------------------------------------------------------------------
 #
-def _get_task_consumption(session, task, tdurations=None):
+def _get_task_consumption(session, task, rtype, tdurations=None):
 
     # we need to know what pilot the task ran on.  If we don't find a designated
     # pilot, no resources were consumed
@@ -1167,9 +1174,16 @@ def _get_task_consumption(session, task, tdurations=None):
         pilot = pilot[0]
 
     # FIXME: it is inefficient to query those values again and again
-    cpn   = pilot.cfg['resource_details']['rm_info']['cores_per_node']
-    gpn   = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
     nodes, _, _ = _get_nodes(pilot)
+
+    rnd  = 'cores_per_node'
+    rmap = 'core_map'
+
+    if rtype == 'gpu':
+        rnd  = 'gpus_per_node'
+        rmap = 'gpu_map'
+
+    pn = pilot.cfg['resource_details']['rm_info'][rnd]
 
     # Tasks consume only those resources they are scheduled on.
     if 'slots' not in task.cfg:
@@ -1180,15 +1194,11 @@ def _get_task_consumption(session, task, tdurations=None):
     for snode in snodes:
 
         node  = [snode['name'], snode['uid']]
-        r0, _ = get_node_index(nodes, node, cpn, gpn)
+        r0, _ = get_node_index(nodes, node, pn)
 
-        for core_map in snode['core_map']:
+        for core_map in snode[rmap]:
             for core in core_map:
                 resources.append(r0 + core)
-
-        for gpu_map in snode['gpu_map']:
-            for gpu in gpu_map:
-                resources.append(r0 + cpn + gpu)
 
     # find continuous stretched of resources to minimize number of boxes
     resources = cluster_resources(resources)
@@ -1307,8 +1317,6 @@ def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
             assert(m[2] is None)
             m[2] = metric
 
-
-
         # the inverse of the above where we check stop events, register, and
         # insert start events (in case transitions are not causally ordered)
         m = None
@@ -1327,7 +1335,6 @@ def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
     for t in task_transitions:
         if t[1] is None: t[1] = 'idle'
         if t[2] is None: t[2] = 'idle'
-
 
     # do the same for the pilot metrics / transitions, only that now we
     # translate `None` as `system`, which is where the pilot obtains it's
