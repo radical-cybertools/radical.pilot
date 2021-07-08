@@ -143,8 +143,8 @@ class MPIRun(LaunchMethod):
         if len(host_list) > 42:
 
             # Create a hostfile from the list of hosts
-            hostfile = self._create_hostfile(sandbox, uid, host_list,
-                                             impaired=True)
+            hostfile = ru.create_hostfile(sandbox, uid, host_list,
+                                          impaired=True)
             if self._mpt: hosts_string = '-file %s'     % hostfile
             else        : hosts_string = '-hostfile %s' % hostfile
 
