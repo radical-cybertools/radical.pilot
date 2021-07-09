@@ -16,8 +16,7 @@ class TestSlurm(TestCase):
     #
     @mock.patch.object(Slurm, '__init__',   return_value=None)
     @mock.patch('radical.utils.raise_on')
-    @mock.patch('hostlist.expand_hostlist', return_value=['nodes1', 'nodes2'])
-    def test_configure(self, mocked_init, mocked_raise_on, mocked_expand_hostlist):
+    def test_configure(self, mocked_init, mocked_raise_on):
 
         # Test 1 no config file
         os.environ['SLURM_NODELIST'] = 'nodes-[1-2]'
@@ -34,7 +33,8 @@ class TestSlurm(TestCase):
         sys.stderr.flush()
         component._configure()
 
-        self.assertEqual(component.node_list, [['nodes1','nodes1'],['nodes2','nodes2']])
+        self.assertEqual(component.node_list,
+                         [['nodes-1', 'nodes-1'], ['nodes-2', 'nodes-2']])
         self.assertEqual(component.cores_per_node, 24)
         self.assertEqual(component.gpus_per_node, 0)
         self.assertEqual(component.lfs_per_node, {'path': None, 'size': 0})
@@ -53,7 +53,8 @@ class TestSlurm(TestCase):
                           'lfs_size_per_node': 100}
         component.lm_info = {'cores_per_node': None}
         component._configure()
-        self.assertEqual(component.node_list, [['nodes1','nodes1'],['nodes2','nodes2']])
+        self.assertEqual(component.node_list,
+                         [['nodes-1', 'nodes-1'], ['nodes-2', 'nodes-2']])
         self.assertEqual(component.cores_per_node, 24)
         self.assertEqual(component.gpus_per_node, 1)
         self.assertEqual(component.lfs_per_node, {'path': 'test/', 'size': 100})
@@ -73,7 +74,8 @@ class TestSlurm(TestCase):
                           'lfs_size_per_node': 100}
         component.lm_info = {'cores_per_node': None}
         component._configure()
-        self.assertEqual(component.node_list, [['nodes1','nodes1'],['nodes2','nodes2']])
+        self.assertEqual(component.node_list,
+                         [['nodes-1', 'nodes-1'], ['nodes-2', 'nodes-2']])
         self.assertEqual(component.cores_per_node, 24)
         self.assertEqual(component.gpus_per_node, 1)
         self.assertEqual(component.lfs_per_node, {'path': '/local_folder/', 'size': 100})
@@ -85,8 +87,7 @@ class TestSlurm(TestCase):
     #
     @mock.patch.object(Slurm, '__init__',   return_value=None)
     @mock.patch('radical.utils.raise_on')
-    @mock.patch('hostlist.expand_hostlist', return_value=['nodes1', 'nodes2'])
-    def test_configure_error(self, mocked_init, mocked_raise_on, mocked_expand_hostlist):
+    def test_configure_error(self, mocked_init, mocked_raise_on):
 
         # Test 1 no config file
         if 'SLURM_NODELIST' in os.environ:
