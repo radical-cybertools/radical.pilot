@@ -3,13 +3,9 @@
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
 import os
-import fractions
-import collections
 
 import radical.utils as ru
-from functools import reduce
 
 
 # 'enum' for launch method types
@@ -295,68 +291,6 @@ class LaunchMethod(object):
     def construct_command(self, t, launch_script_hop):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
-
-
-    # --------------------------------------------------------------------------
-    #
-    @classmethod
-    def _create_hostfile(cls, sandbox, uid, all_hosts, separator=' ',
-                         impaired=False):
-
-        # Open appropriately named temporary file
-        # NOTE: we make an assumption about the task sandbox here
-        filename = '%s/%s.hosts' % (sandbox, uid)
-        with open(filename, 'w') as fout:
-
-            if not impaired:
-                # Write "hostN x\nhostM y\n" entries
-                # Create a {'host1': x, 'host2': y} dict
-                counter = collections.Counter(all_hosts)
-
-                # Convert it into an ordered dict,
-                # which hopefully resembles the original ordering
-                count_dict = collections.OrderedDict(sorted(counter.items(),
-                                                     key=lambda t: t[0]))
-
-                for (host, count) in count_dict.items():
-                    fout.write('%s%s%d\n' % (host, separator, count))
-
-            else:
-                # Write "hostN\nhostM\n" entries
-                for host in all_hosts:
-                    fout.write('%s\n' % host)
-
-        # Return the filename, caller is responsible for cleaning up
-        return filename
-
-
-    # --------------------------------------------------------------------------
-    #
-    @classmethod
-    def _compress_hostlist(cls, all_hosts):
-
-        # Return gcd of a list of numbers
-        def gcd_list(l):
-            return reduce(fractions.gcd, l)
-
-        # Create a {'host1': x, 'host2': y} dict
-        count_dict = dict(collections.Counter(all_hosts))
-        # Find the gcd of the host counts
-        host_gcd = gcd_list(set(count_dict.values()))
-
-        # Divide the host counts by the gcd
-        for host in count_dict:
-            count_dict[host] /= host_gcd
-
-        # Recreate a list of hosts based on the normalized dict
-        hosts = list()
-        for (host, count) in list(count_dict.items()):
-            hosts.extend([host] * count)
-
-        # sort the list for readbility
-        hosts.sort()
-
-        return hosts
 
 
     # --------------------------------------------------------------------------
