@@ -57,7 +57,7 @@
             "prte2"   : ["prun --dvm-uri \"dvm_uri\"  --np 1 --map-by node:HWTCPUS:PE=1:OVERSUBSCRIBE --bind-to hwthread:overload-allowed --host node1:1 --pmixmca ptl_base_max_msg_size 1073741824 --verbose /bin/sleep", null]
         },
         "resource_file": {
-            "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0}}\n"]
+            "jsrun" : ["cpu_index_using: logical\n","rank: 0: { host: node1; cpu: {0}}\n"]
         },
         "resource_filename": {
             "jsrun": "rs_layout_task_000000"
