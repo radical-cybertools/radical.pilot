@@ -96,6 +96,9 @@ class Stager(rpu.Worker):
 
             # TODO: respect flags in directive
 
+            # make sure that `error` field exists
+            sd['error'] = None
+
             action  = sd['action']
             flags   = sd['flags']
             uid     = sd['uid']
