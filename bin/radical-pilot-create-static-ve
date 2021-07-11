@@ -28,7 +28,7 @@ then
     # by default, install all RCT dependencies
     MODULES="$MODULES apache-libcloud chardet colorama idna msgpack"
     MODULES="$MODULES msgpack-python netifaces ntplib parse pymongo"
-    MODULES="$MODULES python-hostlist pyzmq regex requests setproctitle urllib3"
+    MODULES="$MODULES pyzmq regex requests setproctitle urllib3"
 fi
 
 # setuptools="setuptools==0.6c11"

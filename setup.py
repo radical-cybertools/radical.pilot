@@ -245,10 +245,9 @@ setup_args = {
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.c',
                                  '*.md', 'VERSION', 'SDIST', sdist_name]},
   # 'setup_requires'     : ['pytest-runner'],
-    'install_requires'   : ['radical.utils>=1.6.6',
+    'install_requires'   : ['radical.utils>=1.6.7',
                             'radical.saga>=1.6.6',
                             'pymongo',
-                            'python-hostlist',
                             'setproctitle'
                            ],
     'extras_require'     : {'autopilot' : ['github3.py']},
