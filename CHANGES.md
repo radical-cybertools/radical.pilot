@@ -3,6 +3,19 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.6.7  Release                                                        2021-07-09
+--------------------------------------------------------------------------------
+
+  - artifact upload for RA integration test
+  - encapsulate kwargs handling for Session.close().
+  - ensure state updates
+  - fail tasks which can never be scheduled
+  - fixed jsrun resource_set_file to use `cpu_index_using: logical`
+  - separate cpu/gpu utilization
+  - fix error handling in data stager
+  - use methods from the new module `host` within RU (>=1.6.7)
+
+
 1.6.6  Release                                                        2021-05-18
 --------------------------------------------------------------------------------
 
