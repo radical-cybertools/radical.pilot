@@ -85,10 +85,10 @@ indication on event ordering *within each individual component*.
     get                 : task    received from application          (uid: task)
 
 
-### UMGRSchedulingComponent (Component)
+### TMGRSchedulingComponent (Component)
 
 
-### UMGRStagingInputComponent (Component)
+### TMGRStagingInputComponent (Component)
 
     create_sandbox_start: create_task_sandbox starts                 (uid: task, [Task-DS])
     create_sandbox_stop : create_task_sandbox stops                  (uid: task, [Task-DS])
@@ -182,28 +182,28 @@ indication on event ordering *within each individual component*.
     exec_start          : pass to exec layer (orte, ssh, mpi...)     (uid: task)
     exec_ok             : exec layer accepted task                   (uid: task)
     exec_fail           : exec layer refused task                    (uid: task, [RUNTIME], optional)
-    cu_start            : cu shell script: starts                    (uid: task)
-    cu_cd_done          : cu shell script: changed workdir           (uid: task)
-    cu_pre_start        : cu shell script: pre-exec starts           (uid: task, [CU_PRE])
-    cu_pre_stop         : cu shell script: pre_exec stopped          (uid: task, [CU_PRE])
-    cu_exec_start       : cu shell script: launch method starts      (uid: task)
+    t_start             : task shell script: starts                  (uid: task)
+    t_cd_done           : task shell script: changed workdir         (uid: task)
+    t_pre_start         : task shell script: pre-exec starts         (uid: task, [CU_PRE])
+    t_pre_stop          : task shell script: pre_exec stopped        (uid: task, [CU_PRE])
+    t_exec_start        : task shell script: launch method starts    (uid: task)
     app_start           : application executable started             (uid: task, [APP])
     app_*               : application specific events                (uid: task, [APP], optional)
     app_stop            : application executable stops               (uid: task, [APP])
-    cu_exec_stop        : cu shell script: launch method returned    (uid: task)
-    cu_post_start       : cu shell script: post-exec starts          (uid: task, [CU_POST])
-    cu_post_stop        : cu shell script: post_exec stopped         (uid: task, [CU_POST])
-    cu_stop             : cu shell script: stops                     (uid: task)
+    t_exec_stop         : tasku shell script: launch method returned (uid: task)
+    t_post_start        : task shell script: post-exec starts        (uid: task, [CU_POST])
+    t_post_stop         : task shell script: post_exec stopped       (uid: task, [CU_POST])
+    t_stop              : task shell script: stops                   (uid: task)
     exec_stop           : exec layer passed back control             (uid: task)
 
     exec_cancel_start   : try to cancel task via exec layer (kill)   (uid: task, [API])
     exec_cancel_stop    : did cancel    task via exec layer (kill)   (uid: task, [API])
 
     partial orders
-    * per task          : exec_start, (exec_ok | exec_fail), cu_start, 
-                          cu_cd_done, cu_pre_start, cu_pre_stop, cu_exec_start,
-                          app_start, app_*, app_stop, cu_exec_stop,
-                          cu_post_start, cu_post_stop, cu_stop, exec_stop
+    * per task          : exec_start, (exec_ok | exec_fail), t_start, 
+                          t_cd_done, t_pre_start, t_pre_stop, t_exec_start,
+                          app_start, app_*, app_stop, t_exec_stop,
+                          cu_post_start, cu_post_stop, t_stop, exec_stop
     * per task          : exec_cancel_start, exec_cancel_stop
 
 
