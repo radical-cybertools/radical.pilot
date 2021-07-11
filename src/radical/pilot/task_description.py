@@ -149,7 +149,8 @@ class TaskDescription(ru.Description):
     .. data:: named_env
 
        [type: `str` | default: `""`] A named virtual environment as prepared by
-       the pilot. The task will fail if that environment does not exist.
+       the pilot. The task will remain in `AGENT_SCHEDULING` state until that
+       environment gets created.
 
     .. data:: sandbox
 

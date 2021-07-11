@@ -829,7 +829,6 @@ class Default(PMGRLaunchingComponent):
         # above syntax is ignored, and the fallback stage@local
         # is used.
 
-
         if not rp_version:
             if virtenv_mode == 'local': rp_version = 'installed'
             else                      : rp_version = DEFAULT_RP_VERSION
@@ -841,6 +840,18 @@ class Default(PMGRLaunchingComponent):
         if rp_version.startswith('@'):
             rp_version  = rp_version[1:]  # strip '@'
 
+        # use local VE ?
+        if virtenv_mode == 'local':
+            if os.environ.get('VIRTUAL_ENV'):
+                python_dist = 'default'
+                virtenv     = os.environ['VIRTUAL_ENV']
+            elif os.environ.get('CONDA_PREFIX'):
+                python_dist = 'anaconda'
+                virtenv     = os.environ['CONDA_PREFIX']
+            else:
+                # we can't use local
+                self._log.error('virtenv_mode is local, no local env found')
+                raise ValueError('no local env found')
 
         # ----------------------------------------------------------------------
         # sanity checks
@@ -874,19 +885,6 @@ class Default(PMGRLaunchingComponent):
             # we never cleanup virtenvs which are not private
             if virtenv_mode != 'private':
                 cleanup = cleanup.replace('v', '')
-
-        # use local VE ?
-        if virtenv_mode == 'local':
-            if os.environ.get('VIRTUAL_ENV'):
-                python_dist = 'default'
-                virtenv     = os.environ['VIRTUAL_ENV']
-            elif os.environ.get('CONDA_PREFIX'):
-                python_dist = 'anaconda'
-                virtenv     = os.environ['CONDA_PREFIX']
-            else:
-                # we can't use local
-                self._log.error('virtenv_mode is local, no local env found')
-                raise ValueError('no local env found')
 
         # if cores_per_node is set (!= None), then we need to
         # allocation full nodes, and thus round up
