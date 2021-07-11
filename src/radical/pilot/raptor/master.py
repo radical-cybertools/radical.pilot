@@ -34,16 +34,20 @@ class Master(rpu.Component):
     #
     def __init__(self, cfg, backend='zmq'):
 
-        self._backend = backend  # FIXME: use
+        self._backend  = backend     # FIXME: use
 
         self._uid      = os.environ['RP_TASK_ID']
         self._name     = os.environ['RP_TASK_NAME']
         self._lock     = ru.Lock('master')
+
         self._workers  = dict()      # wid: worker
         self._requests = dict()      # bookkeeping of submitted requests
         self._lock     = mt.Lock()   # lock the request dist on updates
         self._term     = mt.Event()  # termination signal
         self._thread   = None        # run loop
+
+        if not cfg:
+            cfg = ru.Config(cfg={})
 
         cfg.sid        = os.environ['RP_SESSION_ID']
         cfg.base       = os.environ['RP_PILOT_SANDBOX']

@@ -17,8 +17,7 @@ class TestTorque(TestCase):
     #
     @mock.patch.object(Torque, '__init__', return_value=None)
     @mock.patch('radical.utils.raise_on')
-    @mock.patch('hostlist.expand_hostlist', return_value=['nodes1', 'nodes1'])
-    def test_configure(self, mocked_init, mocked_raise_on, mocked_expand_hoslist):
+    def test_configure(self, mocked_init, mocked_raise_on):
 
         # Test 1 no config file
         base = os.path.dirname(__file__) + '/../'
@@ -64,8 +63,7 @@ class TestTorque(TestCase):
     #
     @mock.patch.object(Torque, '__init__', return_value=None)
     @mock.patch('radical.utils.raise_on')
-    @mock.patch('hostlist.expand_hostlist', return_value=['nodes1', 'nodes1'])
-    def test_configure_error(self, mocked_init, mocked_raise_on, mocked_expand_hoslist):
+    def test_configure_error(self, mocked_init, mocked_raise_on):
 
         # Test 1 no config file check nodefile
         base = os.path.dirname(__file__) + '/../'
