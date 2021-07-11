@@ -42,7 +42,7 @@
             "mpiexec" : ["mpiexec -host node1 -n 1    /bin/sleep \"10\" ", null]
         },
         "resource_file": {
-            "jsrun" : ["cpu_index_using: physical\n","rank: 0: { host: node1; cpu: {0,1,2,3}}\n"]
+            "jsrun" : ["cpu_index_using: logical\n","rank: 0: { host: node1; cpu: {0,1,2,3}}\n"]
         },
         "resource_filename": {
             "jsrun": "rs_layout_task_000003"

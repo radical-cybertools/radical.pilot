@@ -18,6 +18,7 @@ import radical.utils as ru
 # READ the RADICAL-Pilot documentation: https://radicalpilot.readthedocs.io/
 #
 # ------------------------------------------------------------------------------
+pwd = os.path.dirname(os.path.abspath(__file__))
 
 
 # -----------------------------------------------------------------------------
@@ -45,7 +46,7 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
+        config = ru.read_json('%s/config.json' % pwd)
         report.ok('>>ok\n')
 
         report.header('submit pilots')
@@ -78,10 +79,15 @@ if __name__ == '__main__':
         n = 4   # number of tasks to run
 
         # create a folder to the remote machine
+<<<<<<< HEAD
         t               = rp.ExecutableTaskDescription()
         t.executable    = 'python'
+=======
+        t               = rp.TaskDescription()
+        t.executable    = 'python3'
+>>>>>>> devel
         t.arguments     = ['make_folders.py', n]
-        t.input_staging = ['make_folders.py']
+        t.input_staging = ['%s/make_folders.py' % pwd]
 
         print("Creating dummy folder")
         tmgr.submit_tasks([t])

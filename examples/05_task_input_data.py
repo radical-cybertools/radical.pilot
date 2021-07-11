@@ -96,8 +96,8 @@ if __name__ == '__main__':
 
           # this is a shortcut for:
             td.input_staging  = {'source': 'client:///input.dat',
-                                  'target': 'task:///input.dat',
-                                  'action': rp.TRANSFER}
+                                 'target': 'task:///input.dat',
+                                 'action': rp.TRANSFER}
             tds.append(td)
             report.progress()
         report.ok('>>ok\n')
