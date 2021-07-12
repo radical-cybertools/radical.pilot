@@ -41,9 +41,13 @@ class Session(rs.Session):
     # the reporter is an applicataion-level singleton
     _reporter = None
 
+
+
+
     # --------------------------------------------------------------------------
     #
-    def __init__(self, dburl=None, uid=None, cfg=None, _primary=True, **close_options):
+    def __init__(self, dburl=None, uid=None, cfg=None, _primary=True,
+                       **close_options):
         '''
         Creates a new session.  A new Session instance is created and
         stored in the database.
@@ -74,7 +78,13 @@ class Session(rs.Session):
         Session is used as a Python context manager, such that close() is called
         automatically at the end of a ``with`` block.)
         '''
-        self._close_options = _CloseOptions(close_options)
+
+        for opt in close_options:
+            if opt not in ['cleanup', 'download', 'terminate']:
+                raise RuntimeError('invalid option [%s]' % opt)
+
+        self._close_opts = copy.deepcopy(close_options)
+
         # NOTE: `name` and `cfg` are overloaded, the user cannot point to
         #       a predefined config and amend it at the same time.  This might
         #       be ok for the session, but introduces a minor API inconsistency.
@@ -233,7 +243,7 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def close(self, **kwargs):
+    def close(self, cleanup=None, terminate=None, download=None):
         '''
 
         Closes the session.  All subsequent attempts access objects attached to
@@ -241,11 +251,11 @@ class Session(rs.Session):
         the session data is removed from the database.
 
         **Arguments:**
-            * **cleanup**   (`bool`):
+            * **cleanup**   (`bool`): default: False
               Remove session from MongoDB (implies * terminate)
-            * **terminate** (`bool`):
+            * **terminate** (`bool`): default: True
               Shut down all pilots associated with the session.
-            * **download** (`bool`):
+            * **download** (`bool`): default: False
               Fetch pilot profiles and database entries.
 
         '''
@@ -254,17 +264,15 @@ class Session(rs.Session):
         if self._closed:
             return
 
+        if cleanup   is None: cleanup = self._close_opts.get('cleanup',   False)
+        if terminate is None: cleanup = self._close_opts.get('terminate', False)
+        if download  is None: cleanup = self._close_opts.get('download',  False)
+
         self._rep.info('closing session %s' % self._uid)
         self._log.debug("session %s closing", self._uid)
         self._prof.prof("session_close", uid=self._uid)
 
-        # Merge kwargs with current defaults stored in self._close_options
-        self._close_options.update(kwargs)
-        self._close_options.verify()  # in case to call for `_verify` method and to convert attributes
-                                      # to their types if needed (but None value will stay if it is set)
-
-        options = self._close_options
-
+        # Merge kwargs with current defaults stored in self._close_opts
         for tmgr_uid, tmgr in self._tmgrs.items():
             self._log.debug("session %s closes tmgr   %s", self._uid, tmgr_uid)
             tmgr.close()
@@ -272,17 +280,17 @@ class Session(rs.Session):
 
         for pmgr_uid, pmgr in self._pmgrs.items():
             self._log.debug("session %s closes pmgr   %s", self._uid, pmgr_uid)
-            pmgr.close(terminate=options.terminate)
+            pmgr.close(terminate=terminate)
             self._log.debug("session %s closed pmgr   %s", self._uid, pmgr_uid)
 
         if self._cmgr:
             self._cmgr.close()
 
         if self._dbs:
-            self._log.debug("session %s closes db (%s)", self._uid, options.cleanup)
-            self._dbs.close(delete=options.cleanup)
+            self._log.debug("session %s closes db (%s)", self._uid, cleanup)
+            self._dbs.close(delete=cleanup)
 
-        self._log.debug("session %s closed (delete=%s)", self._uid, options.cleanup)
+        self._log.debug("session %s closed (delete=%s)", self._uid, cleanup)
         self._prof.prof("session_stop", uid=self._uid)
         self._prof.close()
 
@@ -290,7 +298,7 @@ class Session(rs.Session):
 
         # after all is said and done, we attempt to download the pilot log- and
         # profiles, if so wanted
-        if options.download:
+        if download:
 
             self._prof.prof("session_fetch_start", uid=self._uid)
             self._log.debug('start download')
@@ -972,34 +980,3 @@ class Session(rs.Session):
 
 # ------------------------------------------------------------------------------
 
-
-class _CloseOptions(ru.Munch):
-    """Options and validation for Session.close().
-
-    **Arguments:**
-        * **cleanup**   (`bool`):
-          Remove session from MongoDB (implies * terminate). (default False)
-        * **download** (`bool`):
-          Fetch pilot profiles and database entries. (default False)
-        * **terminate** (`bool`):
-          Shut down all pilots associated with the session. (default True)
-
-    """
-    _schema = {
-        'cleanup'  : bool,
-        'download' : bool,
-        'terminate': bool
-    }
-
-    _defaults = {
-        'cleanup'  : False,
-        'download' : False,
-        'terminate': True
-    }
-    # Warning: Previously, passing `cleanup=None` would reverse the default and
-    # result in cleanup == True.
-
-    def _verify(self):
-        if self.cleanup and not self.terminate:
-            # cleanup implies terminate
-            raise ValueError('cleanup implies terminate.')

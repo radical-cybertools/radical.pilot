@@ -82,15 +82,15 @@ class TestSession(TestCase):
     def test_close(self, mocked_closed, mocked_created):
 
         # check default values
-        self.assertFalse(self._session._close_options.cleanup)
-        self.assertFalse(self._session._close_options.download)
-        self.assertTrue(self._session._close_options.terminate)
+        self.assertFalse(self._session._close_opts['cleanup'])
+        self.assertFalse(self._session._close_opts['download'])
+        self.assertTrue(self._session._close_opts['terminate'])
 
         # only `True` values are targeted
 
         self._session._closed = False
         self._session.close(cleanup=True)
-        self.assertTrue(self._session._close_options.cleanup)
+        self.assertTrue(self._session._close_opts['cleanup'])
 
         self._session._closed = False
         self._session.fetch_json     = mock.Mock()
