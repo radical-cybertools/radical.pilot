@@ -27,7 +27,7 @@
         "agent_launch_method"         : "SSH",
         "task_launch_method"          : "SSH",
         "mpi_launch_method"           : "IBRUN",
-        "pre_bootstrap_0"             :["module load TACC",
+        "pre_bootstrap_0"             : ["module load TACC",
                                          "module load intel/18.0.0",
                                          "module load python3/3.7.0"
                                         ],
@@ -36,7 +36,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"                : ["LMOD_CMD",
+        "export_to_task"              : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
         "task_pre_exec"               : []
@@ -78,7 +78,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"                : ["LMOD_CMD",
+        "export_to_task"              : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
         "task_pre_exec"               : ["module restore"]
@@ -123,7 +123,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"                : ["LMOD_CMD",
+        "export_to_task"              : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
         "task_pre_exec"               : []
@@ -157,7 +157,7 @@
         "agent_launch_method"         : "IBRUN",
         "task_launch_method"          : "IBRUN",
         "mpi_launch_method"           : "IBRUN",
-        "pre_bootstrap_0"             :["module load TACC",
+        "pre_bootstrap_0"             : ["module load TACC",
                                         "module load intel/18.0.0",
                                         "module load python3/3.7.0"
                                         ],
@@ -199,7 +199,7 @@
         "agent_launch_method"         : "SRUN",
         "task_launch_method"          : "SRUN",
         "mpi_launch_method"           : "SRUN",
-        "pre_bootstrap_0"             :["module load TACC",
+        "pre_bootstrap_0"             : ["module load TACC",
                                          "module load intel/18.0.0",
                                          "module load python3/3.7.0"
                                         ],
@@ -208,7 +208,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"                : ["LMOD_CMD",
+        "export_to_task"              : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
         "task_pre_exec"               : []
@@ -246,7 +246,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "task_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
+        "task_tmp"                    : "/scratch/$USER/$SLURM_JOBID"
     },
 
     "comet_ssh_funcs": {
@@ -280,7 +280,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "task_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
+        "task_tmp"                    : "/scratch/$USER/$SLURM_JOBID"
     },
 
     "comet_spark": {
@@ -360,7 +360,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "task_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
+        "task_tmp"                    : "/scratch/$USER/$SLURM_JOBID"
     },
 
     "bridges_mpiexec": {
@@ -453,6 +453,4 @@
         "gpus_per_node"               : 8,
         "system_architecture"         : {"gpu": "v100"}
     }
-
 }
-
