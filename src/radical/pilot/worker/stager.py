@@ -133,7 +133,7 @@ class Stager(rpu.Worker):
                     self._saga_fs_cache[key] = fs
 
             flags |= rsfs.CREATE_PARENTS
-            if os.path.isdir(src):
+            if os.path.isdir(src) or src.endswith('/'):
                 flags |= rsfs.RECURSIVE
 
             fs.copy(src, tgt, flags=flags)
