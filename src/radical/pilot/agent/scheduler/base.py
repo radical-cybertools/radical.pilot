@@ -15,6 +15,8 @@ from ... import utils     as rpu
 from ... import states    as rps
 from ... import constants as rpc
 
+from ..resource_manager import ResourceManager
+
 
 # ------------------------------------------------------------------------------
 #
@@ -134,9 +136,6 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 #       {                 # [[node,   node_id,   [cpu map],        [gpu map]]]
 #         'ranks'         : [[node_1, node_id_1, [[0, 2], [4, 6]], [[0]    ]],
 #                            [node_2, node_id_2, [[1, 3], [5, 7]], [[0]    ]]],
-#         'cores_per_node': 8,
-#         'gpus_per_node' : 1,
-#         'lm_info'       : { ... }
 #       }
 #     }
 #
@@ -154,24 +153,12 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 # intent to support the launch methods to enact the placement decition made by
 # the scheduler.  In fact, a scheduler may use a completely different slot
 # structure than above - but then is likely bound to a specific launch method
-# which can interpret that structure.  A notable example is the BG/Q torus
-# scheduler which will only work in combination with the dplace launch methods.
-# `lm_info` is an opaque field which allows to communicate specific settings
-# from the rm to the launch method.
-#
-# FIXME: `lm_info` should be communicated to the LM instances in creation, not
-#        as part of the slots.  Its constant anyway, as lm_info is set only
-#        once during rm startup.
-#
-# NOTE:  While the nodelist resources are listed as strings above, we in fact
-#        use a list of integers, to simplify some operations, and to
-#        specifically avoid string copies on manipulations.  We only convert
-#        to a stringlist for visual representation (`self.slot_status()`).
+# which can interpret that structure.
 #
 # NOTE:  The scheduler will allocate one core per node and GPU, as some startup
 #        methods only allow process placements to *cores*, even if GPUs are
 #        present and requested (hi aprun).  We should make this decision
-#        dependent on the `lm_info` field - but at this point we don't have this
+#        dependent on the launch method - but at this point we don't have this
 #        information (at least not readily available).
 #
 # TODO:  use named tuples for the slot structure to make the code more readable,
@@ -237,26 +224,9 @@ class AgentSchedulingComponent(rpu.Component):
         self._reg               = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
         self._lm_info           = self._reg.get('lm')
       # self._lm_info           = self._cfg['lm']
-        self._rm_info           = self._cfg['rm_info']
-        self._rm_node_list      = self._cfg['rm_info']['node_list']
-        self._rm_cores_per_node = self._cfg['rm_info']['cores_per_node']
-        self._rm_gpus_per_node  = self._cfg['rm_info']['gpus_per_node']
-        self._rm_lfs_per_node   = self._cfg['rm_info']['lfs_per_node']
-        self._rm_mem_per_node   = self._cfg['rm_info']['mem_per_node']
-
-        self._rm_partitions     = self._cfg['rm_info'].get('partitions')
-
-        if not self._rm_node_list:
-            raise RuntimeError("ResourceManager %s didn't _configure node_list."
-                              % self._rm_info['name'])
-
-        if self._rm_cores_per_node is None:
-            raise RuntimeError("ResourceManager %s didn't _configure cores_per_node."
-                              % self._rm_info['name'])
-
-        if self._rm_gpus_per_node is None:
-            raise RuntimeError("ResourceManager %s didn't _configure gpus_per_node."
-                              % self._rm_info['name'])
+        self._rm                = ResourceManager.create(
+                                               self._cfg.resource_manager,
+                                               self._cfg, self._log, self._prof)
 
         # create and initialize the wait pool.  Also maintain a mapping of that
         # waitlist to a binned list where tasks are binned by size for faster
@@ -275,13 +245,16 @@ class AgentSchedulingComponent(rpu.Component):
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
         self.nodes = list()
-        for node, node_id in self._rm_node_list:
-            self.nodes.append({'uid'  : node_id,
-                               'name' : node,
-                               'cores': [rpc.FREE] * self._rm_cores_per_node,
-                               'gpus' : [rpc.FREE] * self._rm_gpus_per_node,
-                               'lfs'  :              self._rm_lfs_per_node,
-                               'mem'  :              self._rm_mem_per_node})
+        import pprint
+        self._log.debug(pprint.pformat(self._rm.info))
+        for node, node_id in self._rm.info.node_list:
+            self.nodes.append({
+                'uid'  : node_id,
+                'name' : node,
+                'cores': [rpc.FREE] * self._rm.info.cores_per_node,
+                'gpus' : [rpc.FREE] * self._rm.info.gpus_per_node,
+                'lfs'  :              self._rm.info.lfs_per_node,
+                'mem'  :              self._rm.info.mem_per_node})
 
         # configure the scheduler instance
         self._configure()
@@ -418,11 +391,11 @@ class AgentSchedulingComponent(rpu.Component):
                 for gpu in gslot:
                     node['gpus'][gpu] = new_state
 
-            if rank['lfs']['path']:
+            if rank['lfs']:
                 if new_state == rpc.BUSY:
-                    node['lfs']['size'] -= rank['lfs']['size']
+                    node['lfs'] -= rank['lfs']
                 else:
-                    node['lfs']['size'] += rank['lfs']['size']
+                    node['lfs'] += rank['lfs']
 
             if rank['mem']:
                 if new_state == rpc.BUSY:
@@ -594,8 +567,8 @@ class AgentSchedulingComponent(rpu.Component):
         resources = True  # fresh start, all is free
         while not self._proc_term.is_set():
 
-          # self._log.debug('=== schedule tasks 0: %s, w: %d', resources,
-          #         len(self._waitpool))
+            self._log.debug_3('=== schedule tasks 0: %s, w: %d', resources,
+                    len(self._waitpool))
 
             active = 0  # see if we do anything in this iteration
 
@@ -604,14 +577,14 @@ class AgentSchedulingComponent(rpu.Component):
             if resources:
                 r_wait, a = self._schedule_waitpool()
                 active += int(a)
-              # self._log.debug('=== schedule tasks w: %s %s', r_wait, a)
+                self._log.debug_3('=== schedule tasks w: %s %s', r_wait, a)
 
             # always try to schedule newly incoming tasks
             # running out of resources for incoming could still mean we have
             # smaller slots for waiting tasks, so ignore `r` for now.
             r_inc, a = self._schedule_incoming()
             active += int(a)
-          # self._log.debug('=== schedule tasks i: %s %s', r_inc, a)
+            self._log.debug_3('=== schedule tasks i: %s %s', r_inc, a)
 
             # if we had resources, but could not schedule any incoming not any
             # waiting, then we effectively ran out of *useful* resources
@@ -626,12 +599,12 @@ class AgentSchedulingComponent(rpu.Component):
             if not resources and r:
                 resources = True
             active += int(a)
-          # self._log.debug('=== schedule tasks c: %s %s', r, a)
+            self._log.debug_3('=== schedule tasks c: %s %s', r, a)
 
             if not active:
                 time.sleep(0.1)  # FIXME: configurable
 
-          # self._log.debug('=== schedule tasks x: %s %s', resources, active)
+            self._log.debug_3('=== schedule tasks x: %s %s', resources, active)
 
 
     # --------------------------------------------------------------------------
@@ -908,13 +881,6 @@ class AgentSchedulingComponent(rpu.Component):
         # it enacted by the executor
         self._change_slot_states(slots, rpc.BUSY)
         task['slots'] = slots
-
-
-        # We need to specify the node lfs path that the task needs to use.
-        # We set it as an environment variable that gets loaded with td
-        # executable.
-        # Assumption enforced: The LFS path is the same across all nodes.
-        td['environment']['RP_LFS_PATH'] = self._rm_lfs_per_node['path']
 
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=uid)

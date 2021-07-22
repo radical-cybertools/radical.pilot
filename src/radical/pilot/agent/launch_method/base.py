@@ -57,16 +57,16 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, lm_cfg, cfg, log, prof):
+    def __init__(self, name, lm_cfg, rm_info, log, prof):
 
-        self.name    = name
-        self._lm_cfg = lm_cfg
-        self._cfg    = cfg
-        self._log    = log
-        self._prof   = prof
-        self._pwd    = os.getcwd()
+        self.name     = name
+        self._lm_cfg  = lm_cfg
+        self._rm_info = rm_info
+        self._log     = log
+        self._prof    = prof
+        self._pwd     = os.getcwd()
 
-        self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
+        self._reg = ru.zmq.RegistryClient(url=self._lm_cfg.reg_addr)
         lm_info   = self._reg.get('lm.%s' % self.name)
 
         if lm_info:
@@ -88,7 +88,7 @@ class LaunchMethod(object):
             # run init_from_scratch in a process under that derived env
             envp = ru.EnvProcess(env=env_lm)
             with envp:
-                data = self._init_from_scratch(lm_cfg, env_lm, env_sh)
+                data = self._init_from_scratch(env_lm, env_sh)
                 envp.put(data)
             lm_info = envp.get()
             self._init_from_info(lm_info, lm_cfg)
@@ -102,7 +102,7 @@ class LaunchMethod(object):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, lm_cfg, cfg, log, prof):
+    def create(cls, name, lm_cfg, rm_info, log, prof):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
@@ -146,7 +146,7 @@ class LaunchMethod(object):
                 LM_NAME_SRUN          : Srun,
 
             }[name]
-            return impl(name, lm_cfg, cfg, log, prof)
+            return impl(name, lm_cfg, rm_info, log, prof)
 
         except KeyError:
             log.exception('invalid lm %s' % name)
@@ -159,7 +159,7 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, lm_cfg, env_lm, env_sh):
+    def _init_from_scratch(self, env_lm, env_sh):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 

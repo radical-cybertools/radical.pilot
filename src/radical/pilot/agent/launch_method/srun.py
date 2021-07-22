@@ -32,16 +32,16 @@ class Srun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, lm_cfg, cfg, log, prof):
+    def __init__(self, name, lm_cfg, rm_info, log, prof):
 
         self._command: str = ''
 
-        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
+        LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, lm_cfg, env, env_sh):
+    def _init_from_scratch(self, env, env_sh):
 
         command = ru.which('srun')
 
@@ -116,7 +116,7 @@ class Srun(LaunchMethod):
         if not slots:
             nodefile = None
             n_nodes  = int(math.ceil(float(n_tasks) /
-                                     self._cfg.get('cores_per_node', 1)))
+                                     self._rm_info.get('cores_per_node', 1)))
         else:
             # the scheduler did place tasks - we can't honor the core and gpu
             # mapping (see above), but we at least honor the nodelist.
@@ -138,7 +138,7 @@ class Srun(LaunchMethod):
                 + '--cpus-per-task %d' % n_task_threads
 
         # check that gpus were requested to be allocated
-        if self._cfg.get('gpus'):
+        if self._rm_info.get('gpus'):
             mapping += ' --gpus-per-task %d' % n_gpus
 
         if nodefile:

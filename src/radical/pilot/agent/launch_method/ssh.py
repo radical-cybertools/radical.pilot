@@ -16,14 +16,14 @@ class SSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, lm_cfg, cfg, log, prof):
+    def __init__(self, name, lm_cfg, rm_info, log, prof):
 
-        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
+        LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, lm_cfg, env, env_sh):
+    def _init_from_scratch(self, env, env_sh):
 
         command = ru.which('ssh')
 

@@ -16,14 +16,14 @@ class Cobalt(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg, log, prof):
 
-        ResourceManager.__init__(self, cfg, session)
+        ResourceManager.__init__(self, cfg, log, prof)
 
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def _init_from_scratch(self):
 
         # we only support Cobalt on Theta right now, and since we know that
         # Theta is a Cray, we know that aprun is available.  Alas, aprun

@@ -17,14 +17,14 @@ class Slurm(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg, log, prof):
 
-        ResourceManager.__init__(self, cfg, session)
+        ResourceManager.__init__(self, cfg, log, prof)
 
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def _init_from_scratch(self):
 
         slurm_nodelist = os.environ.get('SLURM_NODELIST')
         if slurm_nodelist is None:

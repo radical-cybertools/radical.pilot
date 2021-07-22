@@ -120,7 +120,6 @@ class AgentExecutingComponent(rpu.Component):
 
         self._pwd      = os.path.realpath(os.getcwd())
         self.sid       = self._cfg['sid']
-        self.lfs       = self._cfg['rm_info']['lfs_per_node']['path']
         self.resource  = self._cfg['resource']
         self.rsbox     = self._cfg['resource_sandbox']
         self.ssbox     = self._cfg['session_sandbox']

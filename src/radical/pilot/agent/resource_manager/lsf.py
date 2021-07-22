@@ -17,7 +17,7 @@ class LSF(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg, log, prof):
 
         # We temporarily do not call the base class constructor. The
         # constraint was not to change the base class at any point.
@@ -41,13 +41,10 @@ class LSF(ResourceManager):
         # advantage that we have the code content that will be required when
         # we implement 3, the long term approach.
 
-        ResourceManager.__init__(self, cfg, session)
+        ResourceManager.__init__(self, cfg, log, prof)
 
         self.name            = type(self).__name__
         self._cfg            = cfg
-        self._session        = session
-        self._log            = self._session._log
-        self._prof           = self._session._prof
         self.requested_cores = self._cfg['cores']
 
         self._log.info("Configuring ResourceManager %s.", self.name)
@@ -88,7 +85,7 @@ class LSF(ResourceManager):
 
         # We are good to get rolling, and to detect the runtime environment of
         # the local ResourceManager.
-        self._configure()
+        self._init_from_scratch()
         self._log.info("Discovered execution environment: %s", self.node_list)
 
         # Make sure we got a valid nodelist and a valid setting for
@@ -119,30 +116,7 @@ class LSF(ResourceManager):
 
         # Check if we can do any work
         if not self.node_list:
-            raise RuntimeError('ResourceManager has no nodes left to run units')
-
-      # # After ResourceManager configuration, we call any existing config hooks on the
-      # # launch methods.  Those hooks may need to adjust the ResourceManager settings
-      # # (hello ORTE).  We only call LaunchMethod hooks *once*
-      # launch_methods = set()  # set keeps entries unique
-      # if 'mpi_launch_method' in self._cfg:
-      #     launch_methods.add(self._cfg['mpi_launch_method'])
-      # launch_methods.add(self._cfg['task_launch_method'])
-      # launch_methods.add(self._cfg['agent_launch_method'])
-      #
-      # for lm in launch_methods:
-      #     if lm:
-      #         try:
-      #             from .... import pilot as rp  # pylint: disable=E0402
-      #             ru.dict_merge(self.lm_info,
-      #                     rp.agent.LaunchMethod.rm_config_hook(lm, self._cfg,
-      #                                            self, self._log, self._prof))
-      #
-      #         except:
-      #             self._log.exception("rm config hook failed")
-      #             raise
-      #
-      #         self._log.info("rm config hook succeeded (%s)" % lm)
+            raise RuntimeError('ResourceManager has no nodes left to run tasks')
 
       # # For now assume that all nodes have equal amount of cores and gpus
       # cores_avail = (len(self.node_list) + len(self.agent_nodes)) \
@@ -157,7 +131,7 @@ class LSF(ResourceManager):
         #
         # it defines
         #   lm_info:            dict received via the LM's rm_config_hook
-        #   node_list:          list of node names to be used for unit execution
+        #   node_list:          list of node names to be used for task execution
         #   sockets_per_node:   integer number of sockets on a node
         #   cores_per_socket:   integer number of cores per socket
         #   gpus_per_socket:    integer number of gpus per socket
@@ -185,7 +159,7 @@ class LSF(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def _init_from_scratch(self):
 
         lsf_hostfile = os.environ.get('LSB_DJOB_HOSTFILE')
         if not lsf_hostfile:

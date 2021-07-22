@@ -38,7 +38,7 @@
         "gpus_per_node"               : 1,
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 1024,
-        "memory_per_node"             : 4096,
+        "mem_per_node"                : 4096,
         "fake_resources"              : true
     },
 
@@ -134,22 +134,24 @@
         "agent_scheduler"             : "FLUX",
         "agent_spawner"               : "FLUX",
         "launch_methods"              : {
-                                         "order": ["FUNCS", "FLUX", "FORK"],
+                                         "order": ["FLUX", "FORK"],
                                          "FORK" : {},
-                                         "FUNCS": {},
-                                         "FLUX" : {}
-                                        },
-        "rp_version"                  : "installed",
-        "virtenv_mode"                : "use",
-        "virtenv"                     : "$HOME/radical/radical.pilot.test/ve3/",
-        "python_dist"                 : "default",
+                                         "FLUX" : { "pre_exec" : [
+                "export FLUX_DIR=/home/merzky/projects/flux/install/",
+                "export PATH=$PATH:$FLUX_DIR/bin",
+                "export PYTHONPATH=$PYTHONPATH:$FLUX_DIR/lib/python3.8/site-packages/"
+                                         ]}},
         "pre_bootstrap_0"             : [
-            "export FLUX_DIR=/home/merzky/projects/flux/install/",
-            "export PATH=$PATH:$FLUX_DIR/bin",
-            "export PYTHONPATH=$PYTHONPATH:$FLUX_DIR/lib/python3.7/site-packages/"
-        ],
+                "export FLUX_DIR=/home/merzky/projects/flux/install/",
+                "export PATH=$PATH:$FLUX_DIR/bin",
+                "export PYTHONPATH=$PYTHONPATH:$FLUX_DIR/lib/python3.8/site-packages/"
+                                        ],
+        "rp_version"                  : "installed",
+        "virtenv_mode"                : "local",
+        "python_dist"                 : "default",
         "cores_per_node"              : 8,
-        "gpus_per_node"               : 1
+        "gpus_per_node"               : 1,
+        "fake_resources"              : true
     },
 
     "localhost_funcs": {

@@ -3,6 +3,7 @@ __copyright__ = 'Copyright 2016, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
 import os
+import math
 
 import radical.utils as ru
 
@@ -24,13 +25,79 @@ RM_NAME_SPARK       = 'SPARK'
 RM_NAME_DEBUG       = 'DEBUG'
 
 
+class RMInfo(ru.Munch):
+    '''
+    Each resource manager instance must gather provide the information defined
+    in this class.  Additional attributes can be attached, but should then only
+    be evaluated by launch methods which are tightly bound to the resource
+    manager type ('friends' in C++ speak).
+    '''
+
+    _schema = {
+            'requested_nodes'  : int,           # number of requested nodes
+            'requested_cores'  : int,           # number of requested cores
+            'requested_gpus'   : int,           # number of requested gpus
+
+            'partitions'       : {int: None},   # partition setup
+            'node_list'        : [None],        # tuples of node uids and names
+            'agent_node_list'  : [str],         # nodes reserved for agent
+            'service_node_list': [str],         # nodes reserved for services
+
+            'sockets_per_node' : int,           # number of sockets per node
+            'cores_per_socket' : int,           # number of cores per socket
+            'threads_per_core' : int,           # number of threads per core
+
+            'gpus_per_socket'  : int,           # number of gpus per socket
+            'threads_per_gpu'  : int,           # number of threads per cgpu
+            'mem_per_gpu'      : int,           # memory per gpu (MB)
+
+            'lfs_per_node'     : int,           # node local FS size (MB)
+            'lfs_path'         : str,           # node local FS path
+            'mem_per_node'     : int,           # memory per node (MB)
+
+            'details'          : {None: None},  # dict of launch method info
+            'lm_info'          : {str: None},   # dict of launch method info
+
+            # backward compatibility / simplicity
+            'cores_per_node'   : int,
+            'gpus_per_node'    : int,
+            'threads_per_node' : int,
+    }
+
+    _defaults = {
+            'agent_node_list'  : list(),       # no sub agents run by default
+            'service_node_list': list(),       # no services run by default
+            'threads_per_core' : 1,            # assume one thread per core
+            'threads_per_gpu'  : 1,            # assume one thread per gpu
+    }
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _verify(self):
+
+        assert(self['requested_nodes'  ] is not None)
+        assert(self['requested_cores'  ] is not None)
+        assert(self['requested_gpus'   ] is not None)
+
+      # assert(self['partitions'       ] is not None)
+        assert(self['node_list'        ] is not None)
+        assert(self['agent_node_list'  ] is not None)
+        assert(self['service_node_list'] is not None)
+
+        assert(self['cores_per_node'   ] is not None)
+        assert(self['gpus_per_node'    ] is not None)
+        assert(self['threads_per_core' ] is not None)
+
+
 # ------------------------------------------------------------------------------
 #
 # Base class for ResourceManager implementations.
 #
 class ResourceManager(object):
     '''
-    The Resource Manager provides three fundamental information:
+    The Resource Manager provides fundamental resource information via
+    `self.info` (see `RMInfo` class definition).
 
       ResourceManager.node_list      : list of node names
       ResourceManager.agent_node_list: list of nodes reserved for agent procs
@@ -55,177 +122,166 @@ class ResourceManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg, log, prof):
 
-        self.name            = type(self).__name__
-        self._cfg            = cfg
-        self._session        = session
-        self._log            = self._session._log
-        self._prof           = self._session._prof
+        self.name     = type(self).__name__
+        self._cfg     = cfg
+        self._log     = log
+        self._prof    = prof
+        self._from    = None
 
-        self._reg  = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
-        self._info = self._reg.get('rm.%s' % self.name)
+        self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
+        info      = self._reg.get('rm.%s' % self.name)
 
-        if self._info:
-            self._log.debug('=== init from info')
-            raise NotImplementedError('rm.init_from_info')
-          # self._init_from_info()
+        if info:
+            self._from = 'info'
+            self._log.debug('=== RM init from info')
+            self._init_from_info(info)
         else:
+            self._from = 'scratch'
             self._log.debug('=== RM init from scratch: %s')
-            self._init_from_scratch()
+            info = self._init_from_scratch()
+            self._init_from_info(info)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def info(self):
+        return self._rm_info
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_from_info(self, info):
+
+        self._rm_info = info
+        self._rm_info.verify()
+
+        self._log.info('Configuring ResourceManager %s (from info)', self.name)
 
 
     # --------------------------------------------------------------------------
     #
     def _init_from_scratch(self):
 
-        self.requested_cores = self._cfg['cores']
-        self.requested_gpus  = self._cfg['gpus']
-
         self._log.info('Configuring ResourceManager %s.', self.name)
 
-        self.lm_info         = {}
-        self.rm_info         = {}
-        self.node_list       = []
-        self.partitions      = {}
-        self.agent_nodes     = {}
-        self.service_node    = None
-        self.cores_per_node  = 0
-        self.gpus_per_node   = 0
-        self.lfs_per_node    = {}
-        self.mem_per_node    = 0
-        self.smt             = int(os.environ.get('RADICAL_SAGA_SMT', 1))
+        info = RMInfo()
 
-        # The ResourceManager will possibly need to reserve nodes for the agent,
-        # according to the agent layout.  We dig out the respective requirements
-        # from the config right here.
-        self._agent_reqs = []
-        agents = self._cfg.get('agents', {})
+        # fill well defined attributes
+        info.requested_cores  = self._cfg['cores']
+        info.requested_gpus   = self._cfg['gpus']
 
-        # FIXME: this loop iterates over all agents *defined* in the layout, not
-        #        over all agents which are to be actually executed, thus
-        #        potentially reserving too many nodes.a
-        # NOTE:  this code path is *within* the agent, so at least agent.0
-        #        cannot possibly land on a different node.
-        for agent in agents:
-            target = agents[agent].get('target')
-            # make sure that the target either 'local', which we will ignore,
-            # or 'node'.
-            if target == 'local':
-                pass  # ignore that one
-            elif target == 'node':
-                self._agent_reqs.append(agent)
-            else:
-                raise ValueError('ill-formatted agent target %s' % target)
+        rcfg = self._cfg['resource_cfg']
+        info.cores_per_node   = rcfg.get('cores_per_node')
+        info.gpus_per_node    = rcfg.get('gpus_per_node')
+        info.mem_per_node     = rcfg.get('mem_per_node')
+        info.lfs_per_node     = rcfg.get('lfs_size_per_node')
+        info.lfs_path         = rcfg.get('lfs_path_per_node')
 
-        # We are good to get rolling, and to detect the runtime environment of
-        # the local ResourceManager.
-        self._configure()
-        self._log.info('Discovered execution environment: %s', self.node_list)
+        # FIXME: the resource config should also provide these attributes
+        info.sockets_per_node = 1
+        info.cores_per_socket = info.cores_per_node
+        info.threads_per_core = int(os.environ.get('RADICAL_SAGA_SMT', 1))
+        info.gpus_per_socket  = info.gpus_per_node
+        info.threads_per_gpu  = 1
+        info.mem_per_gpu      = None
 
-        # Make sure we got a valid nodelist and a valid setting for
-        # cores_per_node
-        if not self.node_list or self.cores_per_node < 1:
-            raise RuntimeError('ResourceManager configuration invalid (%s)(%s)' %
-                    (self.node_list, self.cores_per_node))
 
-        # reserve a service node if needed
+        n_nodes = info.requested_cores / info.cores_per_node
+        if info.gpus_per_node:
+            n_nodes = max(n_nodes, info.requested_gpus  / info.gpus_per_node)
+
+        info.requested_nodes  = int(math.ceil(n_nodes))
+
+
+        # let the specific RM instance fill out the RMInfo attributes
+        info = self._configure(info)
+        self._log.info('Discovered execution environment: %s', info.node_list)
+
+        # we expect to have a valid node list now
+        assert(info.node_list)
+
+
+        # The ResourceManager may need to reserve nodes for sub agents and
+        # service, according to the agent layout and pilot config.  We dig out
+        # the respective requirements from the node list and complain on
+        # insufficient resources
+        agent_nodes   = 0
+        service_nodes = 0
+
+        for agent in self._cfg.get('agents', {}):
+            if self._cfg['agents'][agent].get('target') == 'node':
+                agent_nodes += 1
+
         if os.path.isfile('./services'):
-            self.service_node = self.node_list.pop()
-            self._log.debug('service node: %s', self.service_node)
+            service_nodes += 1
 
         # Check if the ResourceManager implementation reserved agent nodes.
         # If not, pick the first couple of nodes from the nodelist as fallback.
-        if self._agent_reqs and not self.agent_nodes:
-            self._log.info('Determine list of agent nodes generically.')
-            for agent in self._agent_reqs:
-                # Get a node from the end of the node list
-                self.agent_nodes[agent] = self.node_list.pop()
-                # If all nodes are taken by workers now, we can safely stop,
-                # and let the raise below do its thing.
-                if not self.node_list:
-                    break
+        if agent_nodes:
 
-            self._log.info('Reserved nodes: %s' % list(self.agent_nodes.values()))
-            self._log.info('Agent    nodes: %s' % list(self.agent_nodes.keys()))
-            self._log.info('Worker   nodes: %s' % self.node_list)
+            if not info.agent_node_list:
+                info.agent_node_list = list()
+                for i in range(agent_nodes):
+                    info.agent_node_list.append(info.node_list.pop())
 
-        # Check if we can do any work
-        if not self.node_list:
+            assert(agent_nodes == len(info.agent_node_list))
+
+
+        if service_nodes:
+
+            if not info.service_node_list:
+                info.service_node_list = list()
+                for i in range(service_nodes):
+                    info.service_node_list.append(info.node_list.pop())
+
+            assert(service_nodes == len(info.service_node_list))
+
+
+        self._log.info('compute nodes: %s' % len(info.node_list))
+        self._log.info('agent   nodes: %s' % len(info.agent_node_list))
+        self._log.info('service nodes: %s' % len(info.service_node_list))
+
+        # check if we can do any work
+        if not info.node_list:
             raise RuntimeError('ResourceManager has no nodes left to run tasks')
 
+        # we have nodes and node properties - calculate some convinence values
+        # and perform sanity checks
+        total_nodes = len(info.node_list) + agent_nodes + service_nodes
+        cores_avail = total_nodes * info.cores_per_node
+        gpus_avail  = total_nodes * info.gpus_per_node
+
+        assert(total_nodes >= info.requested_nodes)
+        assert(cores_avail >= info.requested_cores)
+        assert(gpus_avail  >= info.requested_gpus)
+
         # After ResourceManager configuration, we will instantiate all launch
-        # methods and call their `configure` method to set them up.  Any other
-        # component can then instantiate the LM's without calling `configure`
-        # again.
-        #
-        # Note that the LM configure may need to adjust the ResourceManager
-        # settings (hello ORTE).
+        # methods to set them up
         launch_methods  = self._cfg.resource_cfg.launch_methods
         self._launchers = dict()
 
         for name, lm_cfg in launch_methods.items():
+
             if name == 'order':
                 self._launch_order = lm_cfg
                 continue
 
             try:
+                lm_cfg['pid']         = self._cfg.pid
+                lm_cfg['reg_addr']    = self._cfg.reg_addr
                 self._launchers[name] = rpa.LaunchMethod.create(name, lm_cfg,
-                                            self._cfg, self._log, self._prof)
+                                            info, self._log, self._prof)
+
             except:
                 self._log.exception('skip LM %s' % name)
 
         if not self._launchers:
             raise RuntimeError('no valid launch methods found')
 
-        # check for partitions after `rm_config_hook` was applied
-        # NOTE: partition ids should be of a string type, because of JSON
-        #       serialization (agent config), which keeps dict keys as strings
-        if self.lm_info.get('partitions'):
-            for k, v in self.lm_info['partitions'].items():
-                self.partitions[str(k)] = v['nodes']
-                del v['nodes']  # do not keep nodes in `lm_info['partitions']`
-
-        # For now assume that all nodes have equal amount of cores and gpus
-        cores_avail = (len(self.node_list) + len(self.agent_nodes)) * self.cores_per_node
-        gpus_avail  = (len(self.node_list) + len(self.agent_nodes)) * self.gpus_per_node
-
-        # on debug runs, we allow more cpus/gpus to appear than physically exist
-        if 'RADICAL_DEBUG' not in os.environ:
-            if cores_avail < int(self.requested_cores):
-                raise ValueError('Not enough cores available (%s < %s).'
-                                % (str(cores_avail), str(self.requested_cores)))
-
-            if gpus_avail < int(self.requested_gpus):
-                raise ValueError('Not enough gpus available (%s < %s).'
-                                % (str(gpus_avail), str(self.requested_gpus)))
-
-
-        # NOTE: self.rm_info is what scheduler and launch method can
-        # ultimately use, as it is included into the cfg passed to all
-        # components.
-        #
-        # five elements are well defined:
-        #   lm_info:        the dict received via the LM's rm_config_hook
-        #   node_list:      a list of node names to be used for task execution
-        #   partitions:     a dict with partition id and list of node uids
-        #   cores_per_node: as the name says
-        #   gpus_per_node:  as the name says
-        #   agent_nodes:    list of node names reserved for agent execution
-        #
-        # That list may turn out to be insufficient for some schedulers.  Yarn
-        # for example may need to communicate YARN service endpoints etc.  an
-        # ResourceManager can thus expand this dict, but is then likely bound to
-        # a specific scheduler which can interpret the additional information.
-        self.rm_info['name']           = self.name
-        self.rm_info['node_list']      = self.node_list
-        self.rm_info['partitions']     = self.partitions
-        self.rm_info['cores_per_node'] = self.cores_per_node
-        self.rm_info['gpus_per_node']  = self.gpus_per_node
-        self.rm_info['agent_nodes']    = self.agent_nodes
-        self.rm_info['service_node']   = self.service_node
-        self.rm_info['lfs_per_node']   = self.lfs_per_node
-        self.rm_info['mem_per_node']   = self.mem_per_node
+        return info
 
 
     # --------------------------------------------------------------------------
@@ -234,7 +290,7 @@ class ResourceManager(object):
     # ResourceManager.
     #
     @classmethod
-    def create(cls, name, cfg, session):
+    def create(cls, name, cfg, log, prof):
 
         from .ccm         import CCM
         from .fork        import Fork
@@ -268,7 +324,7 @@ class ResourceManager(object):
                 RM_NAME_SPARK       : Spark,
                 RM_NAME_DEBUG       : Debug
             }[name]
-            return impl(cfg, session)
+            return impl(cfg, log, prof)
 
         except KeyError as e:
             raise RuntimeError('ResourceManager %s unknown' % name) from e
@@ -283,16 +339,9 @@ class ResourceManager(object):
             try:
                 self._launchers[name].finalize()
 
-            except Exception as e:
+            except Exception:
                 # this is not fatal
                 self._log.exception('LM %s finalize failed' % name)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _configure(self):
-
-        raise NotImplementedError('_Configure missing for %s' % self.name)
 
 
     # --------------------------------------------------------------------------

@@ -12,7 +12,7 @@ class Debug(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg, log, prof):
         '''
         This ResourceManager will digest whatever the respective configs throw at it.
         '''
@@ -20,12 +20,12 @@ class Debug(ResourceManager):
         for k,v in list(cfg['resource_cfg'].items()):
             cfg[k] = v
 
-        ResourceManager.__init__(self, cfg, session)
+        ResourceManager.__init__(self, cfg, log, prof)
 
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def _init_from_scratch(self):
 
         cps      = self._cfg['cores_per_socket']
         gps      = self._cfg['gpus_per_socket' ]

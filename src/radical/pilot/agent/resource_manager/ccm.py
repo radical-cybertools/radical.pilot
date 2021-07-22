@@ -15,14 +15,14 @@ from .base import ResourceManager
 class CCM(ResourceManager):
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg, log, prof):
 
-        ResourceManager.__init__(self, cfg, session)
+        ResourceManager.__init__(self, cfg, log, prof)
 
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def _init_from_scratch(self):
 
         self._log.info("Configured to run on system with %s.", self.name)
 

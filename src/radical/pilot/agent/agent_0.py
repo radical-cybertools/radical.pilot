@@ -50,14 +50,14 @@ class Agent_0(rpu.Worker):
         self._pmgr    = cfg.pmgr
         self._pwd     = cfg.pilot_sandbox
         self._session = session
-        self._log     = session._log
+        self._log     = ru.Logger(self._uid, ns='radical.pilot')
 
         self._starttime   = time.time()
         self._final_cause = None
 
         # this is the earliest point to sync bootstrap and agent profiles
-        prof = ru.Profiler(ns='radical.pilot', name=self._uid)
-        prof.prof('hostname', uid=cfg.pid, msg=ru.get_hostname())
+        self._prof = ru.Profiler(ns='radical.pilot', name=self._uid)
+        self._prof.prof('hostname', uid=cfg.pid, msg=ru.get_hostname())
 
         # run an inline registry service to share runtime config with other
         # agents and components
@@ -166,13 +166,10 @@ class Agent_0(rpu.Worker):
         # information to the config, for the benefit of the scheduler).
 
         self._rm = ResourceManager.create(name=self._cfg.resource_manager,
-                                           cfg=self._cfg, session=self._session)
-
-        # Add the resource manager information to our own config.  The RM will
-        # also initialize and configure the launch methods, and LM info may are
-        # also added to the config.
-        self._cfg['rm_info'] = self._rm.rm_info
-      # self._cfg['lm_info'] = self._rm.lm_info
+                                          cfg=self._cfg, log=self._log,
+                                          prof=self._prof)
+        import pprint
+        self._log.debug(pprint.pformat(self._rm.info))
 
 
     # --------------------------------------------------------------------------
@@ -229,11 +226,7 @@ class Agent_0(rpu.Worker):
         # ready to roll!  Update pilot state.
         pilot = {'type'             : 'pilot',
                  'uid'              : self._pid,
-                 'state'            : rps.PMGR_ACTIVE,
-                 'resource_details' : {
-                     'lm_info'      : self._rm.lm_info,
-                     'rm_info'      : self._rm.rm_info},
-                 '$set'             : ['resource_details']}
+                 'state'            : rps.PMGR_ACTIVE}
         self.advance(pilot, publish=True, push=False)
 
 
@@ -353,26 +346,25 @@ class Agent_0(rpu.Worker):
             return
 
         # launch the `./services` script on the service node reserved by the RM.
-        node = self._cfg['rm_info']['service_node']
+        nodes = self._rm.info.service_node_list
+        assert(nodes)
+
         bs_name = "%s/bootstrap_2.sh"     % self._pwd
         ls_name = "%s/services_launch.sh" % self._pwd
         ex_name = "%s/services_exec.sh"   % self._pwd
-        threads = self._cfg['rm_info']['cores_per_node']
+        threads = self._rm.info.cores_per_node
         slots   = {
                     'cpu_processes'    : 1,
                     'cpu_threads'      : threads,
                     'gpu_processes'    : 0,
                     'gpu_threads'      : 0,
                   # 'nodes'            : [[node[0], node[1], [[0]], []]],
-                    'nodes'            : [{'name'    : node[0],
-                                           'uid'     : node[1],
+                    'nodes'            : [{'name'    : nodes[0][0],
+                                           'uid'     : nodes[0][1],
                                            'core_map': [[0]],
                                            'gpu_map' : [],
                                            'lfs'     : {'path': '/tmp', 'size': 0}
                                          }],
-                    'cores_per_node'   : self._cfg['rm_info']['cores_per_node'],
-                    'gpus_per_node'    : self._cfg['rm_info']['gpus_per_node'],
-                    'lm_info'          : self._rm.lm_info,
                   }
         service_task = {
                     'uid'              : 'rp.services',
@@ -450,7 +442,8 @@ class Agent_0(rpu.Worker):
         # the respective command lines per agent instance, and run via
         # popen.
         #
-        for sa in self._cfg['agents']:
+        assert(len(self._rm.info.agent_node_list) >= len(self._cfg['agents']))
+        for idx, sa in enumerate(self._cfg['agents']):
 
             target = self._cfg['agents'][sa]['target']
 
@@ -466,7 +459,7 @@ class Agent_0(rpu.Worker):
 
             else:  # target == 'node':
 
-                node = self._cfg['rm_info']['agent_nodes'][sa]
+                node = self._rm.info.agent_node_list[idx]
                 # start agent remotely, use launch method
                 # NOTE:  there is some implicit assumption that we can use
                 #        the 'agent_node' string as 'agent_string:0' and
@@ -480,11 +473,10 @@ class Agent_0(rpu.Worker):
                 bs_name       = "%s/bootstrap_2.sh" % (self._pwd)
                 launch_script = "%s/%s.launch.sh"   % (self._pwd, sa)
                 exec_script   = "%s/%s.exec.sh"     % (self._pwd, sa)
-                pprint.pprint(self._cfg)
-                pprint.pprint(self._rm.lm_info)
                 slots = {
                     'cpu_processes'    : 1,
-                    'cpu_threads'      : self._cfg['rm_info']['cores_per_node'],
+                    'cpu_threads'      : self._rm.info.threads_per_core
+                                       * self._rm.info.cores_per_node,
                     'gpu_processes'    : 0,
                     'gpu_threads'      : 0,
                   # 'ranks'            : [[node[0], node[1], [[0]], []]],
@@ -494,9 +486,6 @@ class Agent_0(rpu.Worker):
                                            'gpu_map' : [],
                                            'lfs'     : {'path': '/tmp', 'size': 0}
                                          }],
-                    'cores_per_node'   : self._cfg['rm_info']['cores_per_node'],
-                    'gpus_per_node'    : self._cfg['rm_info']['gpus_per_node'],
-                    'lm_info'          : self._rm.lm_info,
                 }
                 agent_task = {
                     'uid'              : sa,

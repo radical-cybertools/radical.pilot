@@ -18,123 +18,53 @@ class Flux(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, lm_cfg, cfg, session, prof):
+    def __init__(self, name, lm_cfg, rm_info, session, prof):
 
-        LaunchMethod.__init__(self, name, lm_cfg, cfg, session, prof)
+        LaunchMethod.__init__(self, name, lm_cfg, rm_info, session, prof)
 
 
     # --------------------------------------------------------------------------
     #
-    @classmethod
-    def rm_config_hook(cls, name, lmcfg, cfg, rm, logger, profiler):
+    def _configure(self, env):
 
-        profiler.prof('flux_start')
+        self._helper = ru.FluxHelper()
+        self._finfo  = self._helper.start_service(env=env)
+        self._fuid   = self._finfo['uid']
+        self._fex    = self._helper.get_executor(self._fuid)
+        self._fh     = self._helper.get_handle(self._fuid)
 
-        flux = ru.which('flux')
-        if not flux:
-            raise Exception("Couldn't find flux")
+        self._prof.prof('flux_start')
 
-        try:
-            import sys
-            print(sys.path)
-            import flux
-        except:
-            raise Exception("Couldn't import flux")
+        self._details = self._fh.get_info()
 
-      # cmd  = 'flux start -o,-v,-S,log-filename=out'.split()
-      # proc = sp.Popen(cmd, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.STDOUT)
-      # proc.stdin.write(ru.as_bytes('flux getattr local-uri\necho "OK"\n'))
-
-        check = 'flux env; echo "OK"; while true; do echo "ok"; sleep 1; done'
-        start = 'flux start -o,-v,-S,log-filename=out'
-        cmd   = '/bin/bash -c "echo \\\"%s\\\" | %s"' % (check, start)
-        proc  = sp.Popen(cmd, shell=True,
-                          stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.STDOUT)
-
-        flux_env = dict()
-        while True:
-
-            line = ru.as_string(proc.stdout.readline().strip())
-            logger.debug('=== %s', line)
-
-            if line.startswith('export '):
-                k, v = line.split(' ', 1)[1].strip().split('=', 1)
-                flux_env[k] = v.strip('"')
-                logger.debug('%s = %s' % (k, v.strip('"')))
-
-            elif line == 'OK':
-                break
+        return self._details
 
 
-        assert('FLUX_URI' in flux_env)
+    # --------------------------------------------------------------------------
+    #
+    def _terminate(self):
 
-        # TODO check perf implications
-        flux_url             = ru.Url(flux_env['FLUX_URI'])
-        flux_url.host        = ru.get_hostname()
-        flux_url.scheme      = 'ssh'
-        flux_env['FLUX_URI'] = str(flux_url)
+        self._fh.close_service()
 
-        profiler.prof('flux_started')
 
-        # ----------------------------------------------------------------------
-        def _watch_flux(flux_env):
+    # --------------------------------------------------------------------------
+    #
+    def _init_from_scratch(self, env, env_sh):
 
-            logger.info('=== starting flux watcher')
-
-            for k,v in flux_env.items():
-                os.environ[k] = v
-
-            ret = None
-            while not ret:
-
-                out, err, ret = ru.sh_callout('flux ping -c 1 all')
-                logger.debug('=== flux watcher out: %s', out)
-
-                if ret:
-                    logger.error('=== flux watcher err: %s', err)
-                    break
-
-                time.sleep(0.1)
-
-            logger.info('flux stopped?')
-            # FIXME: trigger termination
-        # ----------------------------------------------------------------------
-
-        flux_watcher = mt.Thread(target=_watch_flux, args=[flux_env])
-        flux_watcher.daemon = True
-        flux_watcher.start()
-
-        logger.info("flux startup successful: [%s]", flux_env['FLUX_URI'])
-
-        lm_info = {'flux_env': flux_env,
-                   'flux_pid': proc.pid}
+        lm_info = {'env'    : env,
+                   'env_sh' : env_sh,
+                   'details': self._configure(env)}
 
         return lm_info
 
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def _init_from_info(self, lm_info, lm_cfg):
 
-        pass
-
-
-  # # --------------------------------------------------------------------------
-  # #
-  # def construct_command(self, task, launch_script_hop=None):
-  #
-  #     uid          = task['uid']
-  #     td          = task['description']
-  #     procs        = td['cpu_processes']
-  #     cpn          = td['cpu_threads']
-  #     gpn          = td['gpu_processes']
-  #     task_exec    = td['executable']
-  #     task_args    = td.get('arguments') or list()
-  #     task_sandbox = task['task_sandbox_path']
-  #
-  #     self._log.debug('prep %s', uid)
-  #
-  #     return spec, None
+        self._env     = lm_info['env']
+        self._env_sh  = lm_info['env_sh']
+        self._details = lm_info['details']
 
 
 # ------------------------------------------------------------------------------

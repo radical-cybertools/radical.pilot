@@ -31,6 +31,7 @@ then
     MODULES="$MODULES apache-libcloud chardet colorama future idna msgpack"
     MODULES="$MODULES msgpack-python netifaces ntplib parse pymongo"
     MODULES="$MODULES python-hostlist pyzmq regex requests setproctitle urllib3"
+    MODULES="$MODULES python-string-utils'
 fi
 
 if ! test -z "$ENV_SETUP"

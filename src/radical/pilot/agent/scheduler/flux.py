@@ -37,6 +37,9 @@ class Flux(AgentSchedulingComponent):
 
         import flux
 
+        self._reg  = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
+        self._info = self._reg.get('rm.fork')
+
         flux_url   = self._cfg['lm_info']['flux_env']['FLUX_URI']
         self._flux = flux.Flux(url=flux_url)
 

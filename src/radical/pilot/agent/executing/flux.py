@@ -10,9 +10,10 @@ import threading as mt
 
 import radical.utils as ru
 
-from ...  import states    as rps
-from ...  import constants as rpc
+from ...   import states    as rps
+from ...   import constants as rpc
 
+from ..    import ResourceManager
 from .base import AgentExecutingComponent
 
 
@@ -52,6 +53,14 @@ class Flux(AgentExecutingComponent) :
                            'CLEANUP' : None,
                            'INACTIVE': rps.AGENT_STAGING_OUTPUT_PENDING,
                           }
+
+        # we get an instance of the resource manager (init from registry info)
+        self._rm = ResourceManager.create(name=self._cfg.resource_manager,
+                                          cfg=self._cfg, log=self._log,
+                                          prof=self._prof)
+
+        assert(self._rm.from_info)
+
 
         # thread termination signal
         self._term = mt.Event()

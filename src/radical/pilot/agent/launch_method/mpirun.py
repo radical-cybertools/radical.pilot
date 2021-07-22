@@ -15,7 +15,7 @@ class MPIRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, lm_cfg, cfg, log, prof):
+    def __init__(self, name, lm_cfg, rm_info, log, prof):
 
         self._mpt    : bool  = False
         self._rsh    : bool  = False
@@ -26,12 +26,12 @@ class MPIRun(LaunchMethod):
 
         self._env_orig = ru.env_eval('env/bs0_orig.env')
 
-        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
+        LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, lm_cfg, env, env_sh):
+    def _init_from_scratch(self, env, env_sh):
         '''
         The RP launch methods are used in different components: the agent will
         use them to spawn sub-agents and components, the resource manager may

@@ -15,14 +15,14 @@ class Spark(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, log):
+    def __init__(self, cfg, log, prof):
 
-        ResourceManager.__init__(self, cfg, log)
+        ResourceManager.__init__(self, cfg, log, prof)
 
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def _init_from_scratch(self):
 
         self._log.info("Using SPARK on localhost.")
 

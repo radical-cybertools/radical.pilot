@@ -16,17 +16,17 @@ class IBRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, lm_cfg, cfg, log, prof):
+    def __init__(self, name, lm_cfg, rm_info, log, prof):
 
         self._command  : str  = ''
-        self._node_list: list = self._cfg.rm_info.node_list or []
+        self._node_list: list = self._rm_info.node_list or []
 
-        LaunchMethod.__init__(self, name, lm_cfg, cfg, log, prof)
+        LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, lm_cfg, env, env_sh):
+    def _init_from_scratch(self, env, env_sh):
 
         lm_info = {'env'    : env,
                    'env_sh' : env_sh,
@@ -78,7 +78,7 @@ class IBRun(LaunchMethod):
         # Usage of env variable TACC_TASKS_PER_NODE is purely for MPI tasks,
         # threads are not considered (info provided by TACC support)
         n_node_tasks = int(td['environment'].get('TACC_TASKS_PER_NODE') or
-                           self._cfg.get('cores_per_node', 1))
+                           self._rm_info.get('cores_per_node', 1))
 
         assert slots['ranks'], 'task.slots.ranks is not set'
 

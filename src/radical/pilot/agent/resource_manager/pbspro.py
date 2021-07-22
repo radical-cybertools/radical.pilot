@@ -17,14 +17,14 @@ class PBSPro(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg, log, prof):
 
-        ResourceManager.__init__(self, cfg, session)
+        ResourceManager.__init__(self, cfg, log, prof)
 
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def _init_from_scratch(self):
         # TODO: $NCPUS?!?! = 1 on archer
 
         pbspro_nodefile = os.environ.get('PBS_NODEFILE')

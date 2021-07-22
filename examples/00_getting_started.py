@@ -66,7 +66,7 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        n = 10  # number of tasks to run
+        n = 1024  # number of tasks to run
         report.header('submit %d tasks' % n)
 
         # Register the pilot in a TaskManager object.
@@ -84,7 +84,6 @@ if __name__ == '__main__':
             td = rp.TaskDescription()
             td.executable    = '/bin/date'
             td.cpu_processes = 1
-            td.cpu_process_type = rp.MPI
             tds.append(td)
             report.progress()
 

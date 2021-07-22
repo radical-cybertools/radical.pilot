@@ -46,6 +46,7 @@ class ComponentManager(object):
                                path=self._cfg.path)
         self._log  = ru.Logger(self._uid, ns='radical.pilot',
                                path=self._cfg.path)
+        sys.stdout.write('=== %s' % dir(self._log))
 
         self._prof.prof('init2', uid=self._uid, msg=self._cfg.path)
 

@@ -658,7 +658,8 @@ class Popen(AgentExecutingComponent):
         ret += 'export RP_SESSION_SANDBOX="%s"\n'  % self.ssbox
         ret += 'export RP_PILOT_SANDBOX="%s"\n'    % self.psbox
         ret += 'export RP_TASK_SANDBOX="%s"\n'     % sbox
-        ret += 'export RP_LFS="%s"\n'              % self.lfs
+        # FIXME AM
+      # ret += 'export RP_LFS="%s"\n'              % self.lfs
         ret += 'export RP_GTOD="%s"\n'             % self.gtod
         ret += 'export RP_PROF="%s"\n'             % self.prof
 
