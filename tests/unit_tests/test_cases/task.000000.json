@@ -2,9 +2,10 @@
 {
     "task": {
         "uid":         "task.000000",
-        "description": {"executable"   : "/bin/sleep",
-                        "arguments"    : null,
-                        "cpu_processes" : 1
+        "description": {"executable"    : "/bin/sleep",
+                        "arguments"     : null,
+                        "cpu_processes" : 1,
+                        "cpu_threads"   : 1
                        },
         "task_sandbox_path": "/tmp"
     },
@@ -44,7 +45,7 @@
         "lm": {
             "fork"    : ["/bin/sleep", null],
             # "orte"    : ["orterun  --hnp \"dvm_uri\" -np 1 --bind-to none -host node1 -x \"LD_LIBRARY_PATH\" -x \"PATH\" -x \"PYTHONPATH\"  /bin/sleep", null],
-            "aprun"   : ["aprun -n 1 -N 1 -L node1 -d 1 -cc 0 /bin/sleep ", null],
+            "aprun"   : ["aprun -N 1 -n 1 -d 1 /bin/sleep", null],
             "mpirun"  : ["mpirun  -np 1  -host node1  /bin/sleep", null],
             "ibrun"   : ["ibrun -n 1 -o 0 /bin/sleep", null],
             "ssh"     : "ValueError",

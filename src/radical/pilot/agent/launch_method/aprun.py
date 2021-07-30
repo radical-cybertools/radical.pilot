@@ -1,16 +1,12 @@
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2016-2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
+import os
 
-import pprint
 import radical.utils as ru
 
 from .base import LaunchMethod
-
-# maximum length of command line arguments we support. Beyond that we use
-# a hostfile to specify the process layout.
-ARG_MAX = 4096
 
 
 # ------------------------------------------------------------------------------
@@ -19,203 +15,64 @@ class APRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, session):
-
-        LaunchMethod.__init__(self, name, cfg, session)
-
-
-    # --------------------------------------------------------------------------
-    #
     def _configure(self):
-        # aprun: job launcher for Cray systems
+
         self.launch_command = ru.which('aprun')
-
-        # TODO: ensure that only one concurrent aprun per node is executed!
-
+        # only one instance of `aprun` is allowed per node at any time,
+        # otherwise multiple instances will be executed sequentially
 
     # --------------------------------------------------------------------------
     #
     def construct_command(self, t, launch_script_hop):
 
         td        = t['description']
-        slots      = t['slots']
-        executable = td['executable']
-        args       = td['arguments']
-        argstr     = self._create_arg_string(args)
 
-        if argstr: cmd = "%s %s" % (executable, argstr)
-        else     : cmd = executable
+        task_exec = td['executable']
+        task_args = td['arguments']
 
-        # we get something like the following from the scheduler:
+        ppn = os.environ.get('SAGA_PPN')
+        if ppn:
+            ppn = min(td['cpu_processes'], int(ppn))
+        else:
+            ppn = td['cpu_processes']
+
+        cmd_options = '-N %s ' % ppn + \
+                      '-n %s ' % td['cpu_processes'] + \
+                      '-d %s'  % td['cpu_threads']
+
+        # CPU affinity binding
+        # - use –d and --cc depth to let ALPS control affinity
+        # - use --cc none if you want to use OpenMP (or KMP) env. variables
+        #   to specify affinity: --cc none -e KMP_AFFINITY=<affinity>
+        #   (*) turn off thread affinity: export KMP_AFFINITY=none
         #
-        #     t = { ...
-        #       'cpu_processes'    : 4,
-        #       'cpu_process_type' : 'mpi',
-        #       'cpu_threads'      : 2,
-        #       'gpu_processes     : 2,
-        #       'slots':
-        #       {   # 'nodes': [{'name': node_name,
-        #           #            'uid': node_uid,
-        #           #            'core_map': [core_map],
-        #           #            'gpu_map': [gpu_map],
-        #           #            'lfs': lfs}],
-        #         'nodes'         : [{  'name': node_1,
-        #                               'uid': node_uid_1,
-        #                               'core_map': [[0, 2], [4, 6]],
-        #                               'gpu_map': [[0]],
-        #                               'lfs': 1024},
-        #                            {  'name': node_2,
-        #                               'uid': node_uid_2,
-        #                               'core_map': [[1, 3], [5, 7]],
-        #                               'gpu_map': [[0]],
-        #                               'lfs': 1024}
-        #                            ],
-        #         'cores_per_node': 8,
-        #         'gpus_per_node' : 1,
-        #         'lm_info'       : { ... }
-        #       }
-        #     }
+        # saga_smt = os.environ.get('RADICAL_SAGA_SMT')
+        # if saga_smt:
+        #     cmd_options += ' -j %s' % saga_smt
+        #     cmd_options += ' --cc depth'
+
+        # `share` mode access restricts the application specific cpuset
+        # contents to only the application reserved cores and memory on NUMA
+        # node boundaries, meaning the application will not have access to
+        # cores and memory on other NUMA nodes on that compute node.
         #
-        # The 'nodes' entry here defines what nodes and cores we should ask
-        # aprun to populate with processes.
-        #
-        # The relevant aprun documentation is at (search for `-cc` and `-L`):
-        # http://docs.cray.com/books/S-2496-4101/html-S-2496-4101/cnl_apps.html
-        #
-        #   -L node_list    : candidate nodes to constrain application placement
-        #   -n pes          : number of PEs to place
-        # # -N pes_per_node : number of PEs to place per node
-        #   -d depth        : number of CPUs for each PE and its threads
-        #   -cc cpu_list    : bind processing elements (PEs) to CPUs.
-        #
-        # (CPUs here mostly means cores)
-        #
-        # Example:
-        #     aprun -L node_1 -n 1 -N 1 -d 3 -cc 0,1,2       cmd : \
-        #           -L node_2 -n 1 -N 1 -d 3 -cc 0,1,2       cmd : \
-        #           -L node_3 -n 2 -N 2 -d 3 -cc 0,1,2:3,4,5 cmd :
-        #
-        # Each node can only be used *once* in that way for any individual
-        # aprun command.  This means that the depth must be uniform for that
-        # node, over *both* cpu and gpu processes.  This limits the mixability
-        # of cpu and gpu processes for tasks started via aprun.
-        #
-        # Below we sift through the task slots and create a slot list which
-        # basically defines sets of cores (-cc) for each node (-L).  Those sets
-        # need to have the same size per node (the depth -d).  The number of
-        # sets defines the number of procs to start (-n/-N).
-        #
-        # If the list of arguments for aprun becomes too long, we create
-        # a temporary hostfile instead, and reference it from the aprun command
-        # line.  POSIX specifies 4k characters, and we don't bother to check for
-        # larger sizes, since at that point command lines become unwieldy from
-        # a debugging perspective anyway.
-        #
-        # FIXME: this is not yet implemented, since aprun does not seem to
-        #        support placement files just yet.
-        #
-        # Because of that FIXME above, but also in general to keep the command
-        # line managable, we collapse the aprun node spcs for all nodes with the
-        # same layout:
-        #
-        #   original:
-        #     aprun -L node_1 -n 1  -N 1 -d 3 -cc 0,1,2       cmd : \
-        #           -L node_2 -n 1  -N 1 -d 3 -cc 0,1,2       cmd : \
-        #           -L node_3 -n 2  -N 2 -d 3 -cc 0,1,2:3,4,5 cmd :
-        #
-        #   collapsed:
-        #     aprun -L node_1,node_2 -n 2 -N 1 -d 3 -cc 0,1,2       cmd : \
-        #           -L node_3        -n 2 -N 2 -d 3 -cc 0,1,2:3,4,5 cmd :
-        #
-        # Note that the `-n` argument needs to be adjusted accordingly.
-        #
-        nodes = dict()
-        for node in slots['nodes']:
+        # nodes = set([x['name'] for x in t['slots'].get('nodes', [])])
+        # if len(nodes) < 2:
+        #     cmd_options += ' -F share'  # default is `exclusive`
+        # cmd_options += ' -L %s ' % ','.join(nodes)
 
-            node_id = node['uid']
-            if node_id not in nodes:
-                # keep all cpu and gpu slots, record depths
-                nodes[node_id] = {'cpu' : list(),
-                                  'gpu' : list()}
+        # task_env = td['environment']
+        # cmd_options += ''.join([' -e %s=%s' % x for x in task_env.items()])
+        # if td['cpu_threads'] > 1 and 'OMP_NUM_THREADS' not in task_env:
+        #     cmd_options += ' -e OMP_NUM_THREADS=%(cpu_threads)s' % td
 
-            # add all cpu and gpu process slots to the node list.
-            for cpu_slot in node['core_map']: nodes[node_id]['cpu'].append(cpu_slot)
+        task_args_str = self._create_arg_string(task_args)
+        if task_args_str:
+            task_exec += ' %s' % task_args_str
 
+        cmd = '%s %s %s' % (self.launch_command, cmd_options, task_exec)
+        self._log.debug('aprun cmd: %s', cmd)
 
-        self._log.debug('aprun slots: %s', pprint.pformat(slots))
-        self._log.debug('      nodes: %s', pprint.pformat(nodes))
-
-        # create a node_spec for each node, which contains the aprun options for
-        # that node to start the number of application processes on the given
-        # core.
-        node_specs = dict()
-        for node_id in nodes:
-
-            cpu_slots = nodes[node_id]['cpu']
-            gpu_slots = nodes[node_id]['gpu']
-
-            self._log.debug('cpu_slots: %s', pprint.pformat(cpu_slots))
-            self._log.debug('gpu_slots: %s', pprint.pformat(gpu_slots))
-
-            assert(cpu_slots)
-
-            # make sure all process slots have the same depth
-            if cpu_slots:
-                depths = set()
-                for cpu_slot in cpu_slots:
-                    depths.add(len(cpu_slot))
-                assert(len(depths) == 1), 'aprun implies uniform depths: %s' % depths
-                depth = list(depths)[0]
-            else:
-                depth = 1
-
-            # derive core pinning for each node (gpu's go to core `0`
-            core_specs = list()
-            for cpu_slot in cpu_slots:
-                core_specs.append(','.join([str(core) for core in cpu_slot]))
-            pin_specs  =  ':'.join(core_specs)
-
-            # count toal cpu / gpu processes
-            nprocs = len(cpu_slots)
-
-            # create the unique part of the node spec, and keep spec info like
-            # this:
-            #
-            #   '-d 2 -cc 0,1:2,3' : {'nprocs' : [2, 2],                 # set
-            #                         'nodes'  : ['node_1', 'node_2']},  # list
-            #   ...
-            #
-            # Note that for the same spec string, we should *always* have the
-            # same matching value for `nprocs`.
-            spec_key = '-d %d -cc %s' % (depth, pin_specs)
-            if spec_key not in node_specs:
-                node_specs[spec_key] = {'nprocs': set(),   # number of processes
-                                        'nodes' : list()}  # nodes for this spec
-
-            node_specs[spec_key]['nprocs'].add(nprocs)
-            node_specs[spec_key]['nodes' ].append(node_id)
-
-
-        # Now that we have the node specs, and also know what nodes to apply
-        # them to, we can construct the aprun command:
-        aprun_command = self.launch_command
-        for node_spec,info in list(node_specs.items()):
-
-            # nprocs must be uniform
-            nprocs_list = list(info['nprocs'])
-            nprocs      = nprocs_list[0]
-            assert(len(nprocs_list) == 1), nprocs_list
-
-            aprun_command += ' -n %d -N %s -L %s %s %s :' % \
-                             (nprocs * len(info['nodes']), nprocs,
-                              ','.join(info['nodes']), node_spec, cmd)
-
-        # remove trailing colon from above
-        aprun_command = aprun_command[:-1]
-        self._log.debug('aprun cmd: %s', aprun_command)
-
-        return aprun_command, None
-
+        return cmd.strip(), None
 
 # ------------------------------------------------------------------------------
-
