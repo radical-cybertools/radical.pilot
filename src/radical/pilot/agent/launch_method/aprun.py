@@ -23,6 +23,12 @@ class APRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
+    def get_rank_cmd(self):
+
+        return "echo $PMIX_RANK"
+
+    # --------------------------------------------------------------------------
+    #
     def construct_command(self, t, launch_script_hop):
 
         td        = t['description']
