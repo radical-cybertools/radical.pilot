@@ -112,31 +112,13 @@ class Continuous(AgentSchedulingComponent):
                           'lfs'    :              self._rm_lfs_per_node,
                           'mem'    :              self._rm_mem_per_node}
 
-            # summit
-            if  self._rm_cores_per_node > 40 and \
-                self._cfg['task_launch_method'] == 'JSRUN':
-
-                # Summit cannot address the last core of the second socket at
-                # the moment, so we mark it as `DOWN` and the scheduler skips
-                # it.  We need to check the SMT setting to make sure the right
-                # logical cores are marked.  The error we see on those cores is:
-                # "ERF error: 1+ cpus are not available"
-                #
-                # This is related to the known issue listed on
-                # https://www.olcf.ornl.gov/for-users/system-user-guides \
-                #                          /summit/summit-user-guide/
-                #
-                # "jsrun explicit resource file (ERF) allocates incorrect
-                # resources"
-                #
-                smt = self._rm_info.get('smt', 1)
-
-                # only socket `1` is affected at the moment
-              # for s in [0, 1]:
-                for s in [1]:
-                    for i in range(smt):
-                        idx = s * 21 * smt + i
-                        node_entry['cores'][idx] = rpc.DOWN
+            # NOTE: blocked cores should be in sync with SMT level,
+            #       as well with CPU indexing type ("logical" vs "physical").
+            #       Example of CPU indexing on Summit:
+            #          https://github.com/olcf-tutorials/ERF-CPU-Indexing
+            #
+            # The current approach uses "logical" CPU indexing
+            # FIXME: set cpu_indexing as a parameter in resource config
 
             for idx in blocked_cores:
                 assert(len(node_entry['cores']) > idx)
@@ -147,10 +129,6 @@ class Continuous(AgentSchedulingComponent):
                 node_entry['gpus'][idx] = rpc.DOWN
 
             self.nodes.append(node_entry)
-
-        if self._rm_cores_per_node > 40 and \
-           self._cfg['task_launch_method'] == 'JSRUN':
-            self._rm_cores_per_node -= 1
 
         if blocked_cores or blocked_gpus:
             self._rm_cores_per_node -= len(blocked_cores)

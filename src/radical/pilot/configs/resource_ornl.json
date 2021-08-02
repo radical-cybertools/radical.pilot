@@ -97,6 +97,8 @@
         "virtenv_dist"                : "default",
         "gpus_per_node"               : 6,
         "sockets_per_node"            : 2,
+        "blocked_cores"               : [],
+        "blocked_gpus"                : [],
         "lfs_path_per_node"           : "/tmp",
         "system_architecture"         : {"smt": 4,
                                          "options": ["gpumps", "nvme"]}
