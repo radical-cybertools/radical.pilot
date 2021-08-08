@@ -440,6 +440,8 @@ class AgentSchedulingComponent(rpu.Component):
         if not self._log.isEnabledFor(logging.DEBUG):
             return
 
+        return
+
         if not msg: msg = ''
 
         glyphs = {rpc.FREE : '-',
@@ -593,44 +595,62 @@ class AgentSchedulingComponent(rpu.Component):
         resources = True  # fresh start, all is free
         while not self._proc_term.is_set():
 
-          # self._log.debug('=== schedule tasks 0: %s, w: %d', resources,
-          #         len(self._waitpool))
+            if self._waitpool:
+                self._log.debug('=== schedule tasks 0: %s, w: %d', resources,
+                        len(self._waitpool))
 
             active = 0  # see if we do anything in this iteration
 
             # if we have new resources, try to place waiting tasks.
-            r_wait = False
-            if resources:
+            r_wait = None
+            if resources and self._waitpool:
+                self._log.debug('==== waiting? %s', resources)
                 r_wait, a = self._schedule_waitpool()
                 active += int(a)
-              # self._log.debug('=== schedule tasks w: %s %s', r_wait, a)
+                self._log.debug('=== schedule tasks w: %s %s', r_wait, a)
 
-            # always try to schedule newly incoming tasks
-            # running out of resources for incoming could still mean we have
-            # smaller slots for waiting tasks, so ignore `r` for now.
+                if r_wait is False:
+                    # wait tasks are left but resources are insufficient.  We
+                    # only need to re-attempt to schedule the wait list when new
+                    # resources become available
+                    resources = False
+
+            # always try to schedule new incoming tasks: running out of
+            # resources for waiting tasks above could still mean we have slots
+            # for smaller incoming tasks, so ignore `r_wait` here
             r_inc, a = self._schedule_incoming()
             active += int(a)
-          # self._log.debug('=== schedule tasks i: %s %s', r_inc, a)
+            if int(a):
+                self._log.debug('=== schedule tasks i: %s %s', r_inc, a)
 
-            # if we had resources, but could not schedule any incoming not any
-            # waiting, then we effectively ran out of *useful* resources
-            if resources and (r_wait is False and r_inc is False):
+            # if r_inc ran out of resources and the waitpool did not find enugh
+            # resources either, we don't need to re-attempt waitpool scheduling
+            if r_inc is False and r_wait is False:
                 resources = False
 
             # reclaim resources from completed tasks
             # if tasks got unscheduled (and not replaced), then we have new
             # space to schedule waiting tasks (unless we have resources from
             # before)
-            r, a = self._unschedule_completed()
-            if not resources and r:
+            r_comp, a = self._unschedule_completed()
+            if not resources and r_comp:
+                self._log.debug('==== resources!!!')
                 resources = True
             active += int(a)
-          # self._log.debug('=== schedule tasks c: %s %s', r, a)
+
+          # if int(a):
+          #     self._log.debug('=== schedule tasks c: %s %s', r_comp, a)
+
+            # if we had resources, but could not schedule any incoming not any
+            # waiting, then we effectively ran out of *useful* resources
+          # self._log.debug('==== resources? %s %s %s %s', resources, r_wait,
+          #                                                    r_inc, r_comp)
 
             if not active:
                 time.sleep(0.1)  # FIXME: configurable
 
-          # self._log.debug('=== schedule tasks x: %s %s', resources, active)
+            if active:
+                self._log.debug('=== schedule tasks x: %s %s', resources, active)
 
 
     # --------------------------------------------------------------------------
@@ -645,7 +665,11 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def _schedule_waitpool(self):
 
-      # self.slot_status("before schedule waitpool")
+        self.slot_status("before schedule waitpool")
+      # for task in self._waitpool.values():
+      #     td = task['description']
+      #     self._log.debug('=== wait: %s %-3d', task['uid'],
+      #             td['cpu_processes'] * td['cpu_threads'])
 
         # sort by inverse tuple size to place larger tasks first and backfill
         # with smaller tasks.  We only look at cores right now - this needs
@@ -672,14 +696,17 @@ class AgentSchedulingComponent(rpu.Component):
                 to_test.append(task)
 
         to_test.sort(key=lambda x:
-                (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
-                 reverse=True)
+                (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1])
 
         # cycle through waitpool, and see if we get anything placed now.
+        self._log.debug('==== waiting : -> %d', len(to_test))
         scheduled, unscheduled, failed = ru.lazy_bisect(to_test,
                                                 check=self._try_allocation,
                                                 on_skip=self._prof_sched_skip,
-                                                log=self._log)
+                                                log=self._log,
+                                                ratio=0.5)
+        self._log.debug('==== waiting : -> %d %d %d', len(scheduled),
+                len(unscheduled), len(failed))
 
         for task, error in failed:
             task['stderr']       = error
@@ -699,16 +726,19 @@ class AgentSchedulingComponent(rpu.Component):
             task['resources'] = {'cpu': td['cpu_processes'] *
                                         td.get('cpu_threads', 1),
                                  'gpu': td['gpu_processes']}
+            td = task['description']
+            self._log.debug('=== adv : %s %-3d', task['uid'],
+                    td['cpu_processes'] * td['cpu_threads'])
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
                                                              push=True)
 
         # method counts as `active` if anything was scheduled
         active = bool(scheduled)
 
-        # if we sccheduled some tasks but not all, we ran out of resources
-        resources = not (bool(unscheduled) and bool(unscheduled))
+        # if we could not schedule all tasks, then we ran out of resources
+        resources = not bool(unscheduled)
 
-      # self.slot_status("after  schedule waitpool")
+        self.slot_status("after  schedule waitpool")
         return resources, active
 
 
@@ -738,14 +768,15 @@ class AgentSchedulingComponent(rpu.Component):
             # no resource change, no activity
             return None, False
 
-      # self.slot_status("before schedule incoming [%d]" % len(tasks))
-
+        self.slot_status("before schedule incoming [%d]" % len(tasks))
         # handle largest tasks first
         # FIXME: this needs lazy-bisect
         to_wait    = list()
         named_envs = dict()
-        for task in sorted(tasks, key=lambda x: x['tuple_size'][0],
-                           reverse=True):
+
+        # handle env waiting
+        to_schedule = list()
+        for task in tasks:
 
             # FIXME: This is a slow and inefficient way to wait for named VEs.
             #        The semantics should move to the upcoming eligibility
@@ -753,6 +784,7 @@ class AgentSchedulingComponent(rpu.Component):
             # FIXME: Note that this code is duplicated in _schedule_waitpool
             named_env = task['description'].get('named_env')
             if named_env:
+
                 if not named_envs.get(named_env):
                     # [re]check env: (1) first time check; (2) was not set yet
                     named_envs[named_env] = os.path.exists('%s.ok' % named_env)
@@ -763,49 +795,64 @@ class AgentSchedulingComponent(rpu.Component):
                                     task['uid'], named_env)
                     continue
 
+            # no named env or env is ready
+            to_schedule.append(task)
+
+        to_schedule.sort(reverse=False, key=lambda x:
+                (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1])
+
+        # cycle through task set, and see if we get anything placed
+        self._log.debug('==== incoming:   %d', len(to_schedule))
+        scheduled, unscheduled, failed = ru.lazy_bisect(to_schedule,
+                                                check=self._try_allocation,
+                                                on_skip=self._prof_sched_skip,
+                                                log=self._log,
+                                                ratio=0.5)
+        self._log.debug('==== incoming: -> %d %d %d', len(scheduled),
+                len(unscheduled), len(failed))
+
+        # combine tasks which wait for env with tasks which did not get
+        # scheduled for other reasons
+        unscheduled += to_wait
+
+        for task in scheduled:
+
             # either we can place the task straight away, or we have to
             # put it in the wait pool.
-            try:
-                if self._try_allocation(task):
-                    # task got scheduled - advance state, notify world about the
-                    # state change, and push it out toward the next component.
-                    td = task['description']
-                    task['$set']      = ['resources']
-                    task['resources'] = {'cpu': td['cpu_processes'] *
-                                                td.get('cpu_threads', 1),
-                                         'gpu': td['gpu_processes']}
-                    self.advance(task, rps.AGENT_EXECUTING_PENDING,
-                                 publish=True, push=True)
+            td = task['description']
+            task['$set']      = ['resources']
+            task['resources'] = {'cpu': td['cpu_processes'] *
+                                        td.get('cpu_threads', 1),
+                                 'gpu': td['gpu_processes']}
 
-                else:
-                    to_wait.append(task)
+        self.advance(scheduled, rps.AGENT_EXECUTING_PENDING,
+                                publish=True, push=True)
 
-            except Exception as e:
+        for task, error in failed:
+            task['stderr']       = error
+            task['control']      = 'tmgr_pending'
+            task['target_state'] = 'FAILED'
+            task['$all']         = True
 
-                task['stderr']       = str(e)
-                task['control']      = 'tmgr_pending'
-                task['target_state'] = 'FAILED'
-                task['$all']         = True
+            self._log.error('bisect failed on %s: %s', task['uid'], error)
 
-                self._log.exception('scheduling failed for %s', task['uid'])
-
-                self.advance(task, rps.FAILED, publish=True, push=False)
+        self.advance(failed, rps.FAILED, publish=True, push=False)
 
 
         # all tasks which could not be scheduled are added to the waitpool
-        self._waitpool.update({task['uid']: task for task in to_wait})
+        self._waitpool.update({task['uid']: task for task in unscheduled})
 
         # we performed some activity (worked on tasks)
         active = True
 
         # if tasks remain waiting, we are out of usable resources
-        resources = not bool(to_wait)
+        resources = not bool(unscheduled)
 
         # incoming tasks which have to wait are the only reason to rebuild the
         # tuple_size map
         self._ts_valid = False
 
-      # self.slot_status("after  schedule incoming")
+        self.slot_status("after  schedule incoming")
         return resources, active
 
 
@@ -829,9 +876,9 @@ class AgentSchedulingComponent(rpu.Component):
             # in a max added latency of about 0.1 second, which is one order of
             # magnitude above our noise level again and thus acceptable (tm).
             while not self._proc_term.is_set():
-                task = self._queue_unsched.get(timeout=0.001)
+                task = self._queue_unsched.get(timeout=0.01)
                 to_unschedule.append(task)
-                if len(to_unschedule) > 128:
+                if len(to_unschedule) > 256:
                     break
 
         except queue.Empty:

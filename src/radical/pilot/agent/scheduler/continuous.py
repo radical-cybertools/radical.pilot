@@ -3,6 +3,7 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
 import math as m
+import pprint
 
 from ...   import constants as rpc
 from .base import AgentSchedulingComponent
@@ -406,7 +407,7 @@ class Continuous(AgentSchedulingComponent):
         for node in self._iterate_nodes():
 
             node_uid  = node['uid']
-          # node_name = node['name']
+            node_name = node['name']
 
           # self._log.debug('next %s : %s', node_uid, node_name)
           # self._log.debug('req1: %s = %s + %s', req_slots, rem_slots,
@@ -513,6 +514,8 @@ class Continuous(AgentSchedulingComponent):
 
         # if we did not find enough, there is not much we can do at this point
         if  rem_slots > 0:
+          # self._log.debug('req : %s %s %s %s %s -> ---- %s', req_slots, cores_per_slot,
+          #                 gpus_per_slot, lfs_per_slot, mem_per_slot, colo_tag)
             return None  # signal failure
 
         slots = {'nodes'         : alc_slots,
@@ -529,6 +532,9 @@ class Continuous(AgentSchedulingComponent):
         if colo_tag is not None and colo_tag != partition:
             self._colo_history[colo_tag] = [node['uid'] for node in slots['nodes']]
             self._tagged_nodes.update(self._colo_history[colo_tag])
+
+      # self._log.debug('req : %s %s %s %s %s -> #### %s', req_slots, cores_per_slot,
+      #                 gpus_per_slot, lfs_per_slot, mem_per_slot, colo_tag)
 
         # this should be nicely filled out now - return
         return slots
