@@ -107,7 +107,7 @@ class Task(object):
     #
     def __repr__(self):
 
-        return str(self.as_dict())
+        return f'<{self.__class__.__qualname__} object, uid {self._uid}>'
 
 
     # --------------------------------------------------------------------------
@@ -498,4 +498,3 @@ class Task(object):
 
 
 # ------------------------------------------------------------------------------
-
