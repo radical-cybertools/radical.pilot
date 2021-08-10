@@ -88,12 +88,12 @@ class TestPopen(TestCase):
         mocked_find_launcher.return_value = launcher
 
         pex._handle_task(task)
-      #
-      # for prefix in ['.launch.sh', '.exec.sh', '.sl']:
-      #     path = '%s/%s%s' % (task['task_sandbox_path'], task['uid'], prefix)
-      #     self.assertTrue(os.path.isfile(path))
-      #     try   : os.remove(path)
-      #     except: pass
+
+        for prefix in ['.launch.sh', '.exec.sh', '.sl']:
+            path = '%s/%s%s' % (task['task_sandbox_path'], task['uid'], prefix)
+            self.assertTrue(os.path.isfile(path))
+            try   : os.remove(path)
+            except: pass
 
 
     # --------------------------------------------------------------------------
@@ -136,8 +136,7 @@ class TestPopen(TestCase):
 
 
 # ------------------------------------------------------------------------------
-
-
+#
 if __name__ == '__main__':
 
     tc = TestPopen()
