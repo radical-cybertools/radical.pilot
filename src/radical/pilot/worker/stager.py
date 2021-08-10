@@ -2,6 +2,7 @@
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os
 
 import radical.saga            as rs
 import radical.saga.filesystem as rsfs
@@ -130,6 +131,10 @@ class Stager(rpu.Worker):
                 else:
                     fs = rsfs.Directory(key, session=self._session)
                     self._saga_fs_cache[key] = fs
+
+            flags |= rsfs.CREATE_PARENTS
+            if os.path.isdir(src) or src.endswith('/'):
+                flags |= rsfs.RECURSIVE
 
             fs.copy(src, tgt, flags=flags)
 
