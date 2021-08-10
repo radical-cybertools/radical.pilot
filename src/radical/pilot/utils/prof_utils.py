@@ -409,64 +409,64 @@ PILOT_DURATIONS_DEBUG_RU = {
 # Set of default task durations for RADICAL-Analytics. All the durations
 # are contiguos.
 TASK_DURATIONS_DEBUG_SHORT = {
-    'u_tmgr_create'              : [{'STATE': s.NEW                         },
+    't_tmgr_create'              : [{'STATE': s.NEW                         },
                                     {'STATE': s.TMGR_SCHEDULING_PENDING     }],
-    'u_tmgr_schedule_queue'      : [{'STATE': s.TMGR_SCHEDULING_PENDING     },
+    't_tmgr_schedule_queue'      : [{'STATE': s.TMGR_SCHEDULING_PENDING     },
                                     {'STATE': s.TMGR_SCHEDULING             }],
-    'u_tmgr_schedule'            : [{'STATE': s.TMGR_SCHEDULING             },
+    't_tmgr_schedule'            : [{'STATE': s.TMGR_SCHEDULING             },
                                     {'STATE': s.TMGR_STAGING_INPUT_PENDING  }],
     # push to mongodb
-    'u_tmgr_stage_in_queue'      : [{'STATE': s.TMGR_STAGING_INPUT_PENDING  },
+    't_tmgr_stage_in_queue'      : [{'STATE': s.TMGR_STAGING_INPUT_PENDING  },
                                     {'STATE': s.TMGR_STAGING_INPUT          }],
     # wait in mongodb
-    'u_tmgr_stage_in'            : [{'STATE': s.TMGR_STAGING_INPUT          },
+    't_tmgr_stage_in'            : [{'STATE': s.TMGR_STAGING_INPUT          },
                                     {'STATE': s.AGENT_STAGING_INPUT_PENDING }],
     # pull from mongodb
-    'u_agent_stage_in_queue'     : [{'STATE': s.AGENT_STAGING_INPUT_PENDING },
+    't_agent_stage_in_queue'     : [{'STATE': s.AGENT_STAGING_INPUT_PENDING },
                                     {'STATE': s.AGENT_STAGING_INPUT         }],
-    'u_agent_stage_in'           : [{'STATE': s.AGENT_STAGING_INPUT         },
+    't_agent_stage_in'           : [{'STATE': s.AGENT_STAGING_INPUT         },
                                     {'STATE': s.AGENT_SCHEDULING_PENDING    }],
-    'u_agent_schedule_queue'     : [{'STATE': s.AGENT_SCHEDULING_PENDING    },
+    't_agent_schedule_queue'     : [{'STATE': s.AGENT_SCHEDULING_PENDING    },
                                     {'STATE': s.AGENT_SCHEDULING            }],
-    'u_agent_schedule'           : [{'STATE': s.AGENT_SCHEDULING            },
+    't_agent_schedule'           : [{'STATE': s.AGENT_SCHEDULING            },
                                     {'STATE': s.AGENT_EXECUTING_PENDING     }],
-    'u_agent_execute_queue'      : [{'STATE': s.AGENT_EXECUTING_PENDING     },
+    't_agent_execute_queue'      : [{'STATE': s.AGENT_EXECUTING_PENDING     },
                                     {'STATE': s.AGENT_EXECUTING             }],
-    'u_agent_execute_prepare'    : [{'STATE': s.AGENT_EXECUTING             },
+    't_agent_execute_prepare'    : [{'STATE': s.AGENT_EXECUTING             },
                                     {'EVENT': 'exec_mkdir'                  }],
-    'u_agent_execute_mkdir'      : [{'EVENT': 'exec_mkdir'                  },
+    't_agent_execute_mkdir'      : [{'EVENT': 'exec_mkdir'                  },
                                     {'EVENT': 'exec_mkdir_done'             }],
-    'u_agent_execute_layer_start': [{'EVENT': 'exec_mkdir_done'             },
+    't_agent_execute_layer_start': [{'EVENT': 'exec_mkdir_done'             },
                                     {'EVENT': 'exec_start'                  }],
     # orte, ssh, mpi, ...
-    'u_agent_execute_layer'      : [{'EVENT': 'exec_start'                  },
+    't_agent_execute_layer'      : [{'EVENT': 'exec_start'                  },
                                     [{'EVENT': 'exec_ok'                    },
                                      {'EVENT': 'exec_fail'                  }]],
     # PROBLEM: discontinuity
-    'u_agent_lm_start'           : [{'EVENT': 'task_start'                  },
+    't_agent_lm_start'           : [{'EVENT': 'task_start'                  },
                                     {'EVENT': 'task_pre_start'              }],
-    'u_agent_lm_pre_execute'     : [{'EVENT': 'task_pre_start'              },
+    't_agent_lm_pre_execute'     : [{'EVENT': 'task_pre_start'              },
                                     {'EVENT': 'task_pre_stop'               }],
-    'u_agent_lm_execute_start'   : [{'EVENT': 'task_pre_stop'               },
+    't_agent_lm_execute_start'   : [{'EVENT': 'task_pre_stop'               },
                                     {'EVENT': 'task_exec_start'             }],
-    'u_agent_lm_execute'         : [{'EVENT': 'task_exec_start'             },
+    't_agent_lm_execute'         : [{'EVENT': 'task_exec_start'             },
                                     {'EVENT': 'task_exec_stop'              }],
-    'u_agent_lm_stop'            : [{'EVENT': 'task_exec_stop'              },
+    't_agent_lm_stop'            : [{'EVENT': 'task_exec_stop'              },
                                     {'EVENT': 'task_stop'                   }],
-    'u_agent_stage_out_start'    : [{'EVENT': 'task_stop'                   },
+    't_agent_stage_out_start'    : [{'EVENT': 'task_stop'                   },
                                     {'STATE': s.AGENT_STAGING_OUTPUT_PENDING}],
-    'u_agent_stage_out_queue'    : [{'STATE': s.AGENT_STAGING_OUTPUT_PENDING},
+    't_agent_stage_out_queue'    : [{'STATE': s.AGENT_STAGING_OUTPUT_PENDING},
                                     {'STATE': s.AGENT_STAGING_OUTPUT        }],
-    'u_agent_stage_out'          : [{'STATE': s.AGENT_STAGING_OUTPUT        },
+    't_agent_stage_out'          : [{'STATE': s.AGENT_STAGING_OUTPUT        },
                                     {'STATE': s.TMGR_STAGING_OUTPUT_PENDING }],
     # push/pull mongodb
-    'u_agent_push_to_tmgr'       : [{'STATE': s.TMGR_STAGING_OUTPUT_PENDING },
+    't_agent_push_to_tmgr'       : [{'STATE': s.TMGR_STAGING_OUTPUT_PENDING },
                                     {'STATE': s.TMGR_STAGING_OUTPUT         }],
-    'u_tmgr_destroy'             : [{'STATE': s.TMGR_STAGING_OUTPUT         },
+    't_tmgr_destroy'             : [{'STATE': s.TMGR_STAGING_OUTPUT         },
                                     [{'STATE': s.DONE                       },
                                      {'STATE': s.CANCELED                   },
                                      {'STATE': s.FAILED                     }]],
-    'u_agent_unschedule'         : [{'EVENT': 'unschedule_start'            },
+    't_agent_unschedule'         : [{'EVENT': 'unschedule_start'            },
                                     {'EVENT': 'unschedule_stop'             }]
 }
 
@@ -479,33 +479,33 @@ TASK_DURATIONS_DEBUG = _convert_sdurations(TASK_DURATIONS_DEBUG_SHORT)
 _udd = TASK_DURATIONS_DEBUG
 TASK_DURATIONS_DEBUG_RU = {
     'client' : {
-        'u_tmgr_create'              : _udd['u_tmgr_create'],
-        'u_tmgr_schedule_queue'      : _udd['u_tmgr_schedule_queue'],
-        'u_tmgr_schedule'            : _udd['u_tmgr_schedule'],
-        'u_tmgr_stage_in_queue'      : _udd['u_tmgr_stage_in_queue'],
-        'u_tmgr_stage_in'            : _udd['u_tmgr_stage_in'],
-        'u_tmgr_destroy'             : _udd['u_tmgr_destroy'],
-        'u_agent_unschedule'         : _udd['u_agent_unschedule']
+        't_tmgr_create'              : _udd['t_tmgr_create'],
+        't_tmgr_schedule_queue'      : _udd['t_tmgr_schedule_queue'],
+        't_tmgr_schedule'            : _udd['t_tmgr_schedule'],
+        't_tmgr_stage_in_queue'      : _udd['t_tmgr_stage_in_queue'],
+        't_tmgr_stage_in'            : _udd['t_tmgr_stage_in'],
+        't_tmgr_destroy'             : _udd['t_tmgr_destroy'],
+        't_agent_unschedule'         : _udd['t_agent_unschedule']
     },
     'consume'  : {
-        'u_agent_stage_in_queue'     : _udd['u_agent_stage_in_queue'],
-        'u_agent_stage_in'           : _udd['u_agent_stage_in'],
-        'u_agent_schedule_queue'     : _udd['u_agent_schedule_queue'],
-        'u_agent_schedule'           : _udd['u_agent_schedule'],
-        'u_agent_execute_queue'      : _udd['u_agent_execute_queue'],
-        'u_agent_execute_prepare'    : _udd['u_agent_execute_prepare'],
-        'u_agent_execute_mkdir'      : _udd['u_agent_execute_mkdir'],
-        'u_agent_execute_layer_start': _udd['u_agent_execute_layer_start'],
-        'u_agent_execute_layer'      : _udd['u_agent_execute_layer'],
-        'u_agent_lm_start'           : _udd['u_agent_lm_start'],
-        'u_agent_lm_pre_execute'     : _udd['u_agent_lm_pre_execute'],
-        'u_agent_lm_execute_start'   : _udd['u_agent_lm_execute_start'],
-        'u_agent_lm_execute'         : _udd['u_agent_lm_execute'],
-        'u_agent_lm_stop'            : _udd['u_agent_lm_stop'],
-        'u_agent_stage_out_start'    : _udd['u_agent_stage_out_start'],
-        'u_agent_stage_out_queue'    : _udd['u_agent_stage_out_queue'],
-        'u_agent_stage_out'          : _udd['u_agent_stage_out'],
-        'u_agent_push_to_tmgr'       : _udd['u_agent_push_to_tmgr'],
+        't_agent_stage_in_queue'     : _udd['t_agent_stage_in_queue'],
+        't_agent_stage_in'           : _udd['t_agent_stage_in'],
+        't_agent_schedule_queue'     : _udd['t_agent_schedule_queue'],
+        't_agent_schedule'           : _udd['t_agent_schedule'],
+        't_agent_execute_queue'      : _udd['t_agent_execute_queue'],
+        't_agent_execute_prepare'    : _udd['t_agent_execute_prepare'],
+        't_agent_execute_mkdir'      : _udd['t_agent_execute_mkdir'],
+        't_agent_execute_layer_start': _udd['t_agent_execute_layer_start'],
+        't_agent_execute_layer'      : _udd['t_agent_execute_layer'],
+        't_agent_lm_start'           : _udd['t_agent_lm_start'],
+        't_agent_lm_pre_execute'     : _udd['t_agent_lm_pre_execute'],
+        't_agent_lm_execute_start'   : _udd['t_agent_lm_execute_start'],
+        't_agent_lm_execute'         : _udd['t_agent_lm_execute'],
+        't_agent_lm_stop'            : _udd['t_agent_lm_stop'],
+        't_agent_stage_out_start'    : _udd['t_agent_stage_out_start'],
+        't_agent_stage_out_queue'    : _udd['t_agent_stage_out_queue'],
+        't_agent_stage_out'          : _udd['t_agent_stage_out'],
+        't_agent_push_to_tmgr'       : _udd['t_agent_push_to_tmgr'],
     }
 }
 
@@ -992,9 +992,9 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
 
             try:
                 snodes = task.cfg['slots']['nodes']
-                ut     = task.timestamps
-                u_min  = ut(event=task_durations['consume']['exec_queue'][0]) [0]
-                u_max  = ut(event=task_durations['consume']['unschedule'][1])[-1]
+                tts    = task.timestamps
+                u_min  = tts(event=task_durations['consume']['exec_queue'][0])[0]
+                u_max  = tts(event=task_durations['consume']['unschedule'][1])[-1]
             except:
                 continue
 
