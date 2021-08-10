@@ -19,7 +19,6 @@
         "pre_bootstrap_0"             : ["source /sw/andes/python/3.7/anaconda-base/etc/profile.d/conda.sh"],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
-        "python_dist"                 : "local",
         "virtenv_mode"                : "local",
         "stage_cacerts"               : true,
         "cores_per_node"              : 32
@@ -44,7 +43,6 @@
         "pre_bootstrap_0"             : ["source /sw/andes/python/3.7/anaconda-base/etc/profile.d/conda.sh"],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
-        "python_dist"                 : "local",
         "virtenv_mode"                : "local",
         "stage_cacerts"               : true,
         "cores_per_node"              : 28,
@@ -53,8 +51,8 @@
     },
 
     "summit": {
-        "description"                 : "ORNL's summit, a Cray XK7",
-        "notes"                       : null,
+        "description"                 : "4608 nodes with 2 IBM POWER9 CPUs and 6 NVIDIA Volta V100 GPUs",
+        "notes"                       : "Requires RSA SecurID and uses local virtual env",
         "schemas"                     : ["local"],
         "local"                       : {
             "job_manager_hop"         : "fork://localhost/",
@@ -99,13 +97,13 @@
         "virtenv_dist"                : "default",
         "gpus_per_node"               : 6,
         "sockets_per_node"            : 2,
-        "lfs_per_node"                : "/tmp",
+        "lfs_path_per_node"           : "/tmp",
         "system_architecture"         : {"smt": 4,
                                          "options": ["gpumps", "nvme"]}
     },
 
     "summit_prte": {
-        "description"                 : "ORNL's summit, a Cray XK7",
+        "description"                 : "4608 nodes with 2 IBM POWER9 CPUs and 6 NVIDIA Volta V100 GPUs",
         "notes"                       : "Requires RSA SecurID and uses local virtual env",
         "schemas"                     : ["local"],
         "local"                       : {
@@ -137,12 +135,11 @@
                                          "source /sw/summit/python/3.7/anaconda3/5.3.0/etc/profile.d/conda.sh"],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
-        "python_dist"                 : "local",
         "virtenv_mode"                : "local",
         "stage_cacerts"               : true,
         "gpus_per_node"               : 6,
         "sockets_per_node"            : 2,
-        "lfs_per_node"                : "/tmp",
+        "lfs_path_per_node"           : "/tmp",
         "system_architecture"         : {"smt": 4,
                                          "options": ["gpumps", "nvme"]},
         "dvm_count"                   : 1
