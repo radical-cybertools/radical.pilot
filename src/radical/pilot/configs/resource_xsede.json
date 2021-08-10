@@ -25,8 +25,7 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                         "order": ["FORK", "SSH", "IBRUN"],
-                                         "FORK" : {},
+                                         "order": ["SSH", "IBRUN"],
                                          "SSH"  : {
                                              "pre_exec_cached": [
                                                  "module load TACC"
@@ -171,7 +170,7 @@
         "agent_launch_method"         : "IBRUN",
         "task_launch_method"          : "IBRUN",
         "mpi_launch_method"           : "IBRUN",
-        "pre_bootstrap_0"             :["module load TACC",
+        "pre_bootstrap_0"             : ["module load TACC",
                                         "module load intel/18.0.0",
                                         "module load python3/3.7.0"
                                         ],
@@ -211,15 +210,16 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                         "order": ["FORK", "SRUN"],
-                                         "FORK" : {},
+                                         "order": ["SRUN"],
                                          "SRUN" : {
                                              "pre_exec_cached": [
                                                  "module load TACC"
+                                                 "module load intel/18.0.0",
+                                                 "module load python3/3.7.0"
                                              ]
                                          }
                                         },
-        "pre_bootstrap_0"             :["module load TACC",
+        "pre_bootstrap_0"             : ["module load TACC",
                                          "module load intel/18.0.0",
                                          "module load python3/3.7.0"
                                         ],
@@ -274,7 +274,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "task_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
+        "task_tmp"                    : "/scratch/$USER/$SLURM_JOBID"
     },
 
     "comet_ssh_funcs": {
@@ -316,7 +316,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "task_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
+        "task_tmp"                    : "/scratch/$USER/$SLURM_JOBID"
     },
 
     "comet_spark": {
@@ -402,7 +402,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "task_tmp"                      : "/scratch/$USER/$SLURM_JOBID"
+        "task_tmp"                    : "/scratch/$USER/$SLURM_JOBID"
     },
 
     "bridges_mpiexec": {
@@ -507,4 +507,3 @@
         "system_architecture"         : {"gpu": "v100"}
     }
 }
-

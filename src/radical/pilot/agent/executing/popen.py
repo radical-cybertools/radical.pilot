@@ -31,6 +31,9 @@ _pids = list()
 
 def _kill():
     for pid in _pids:
+        if not isinstance(pid, int):
+            # skip test mocks
+            continue
         try   : os.killpg(pid, signal.SIGTERM)
         except: pass
 

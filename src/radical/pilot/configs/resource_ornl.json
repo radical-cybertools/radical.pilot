@@ -22,7 +22,6 @@
         ],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
-        "python_dist"                 : "local",
         "virtenv_mode"                : "local",
         "stage_cacerts"               : true,
         "cores_per_node"              : 32
@@ -50,7 +49,6 @@
         ],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
-        "python_dist"                 : "local",
         "virtenv_mode"                : "local",
         "stage_cacerts"               : true,
         "cores_per_node"              : 28,
@@ -59,8 +57,8 @@
     },
 
     "summit": {
-        "description"                 : "ORNL's summit, a Cray XK7",
-        "notes"                       : null,
+        "description"                 : "4608 nodes with 2 IBM POWER9 CPUs and 6 NVIDIA Volta V100 GPUs",
+        "notes"                       : "Requires RSA SecurID and uses local virtual env",
         "schemas"                     : ["local"],
         "local"                       : {
             "job_manager_hop"         : "fork://localhost/",
@@ -117,7 +115,7 @@
     },
 
     "summit_prte": {
-        "description"                 : "ORNL's summit, a Cray XK7",
+        "description"                 : "4608 nodes with 2 IBM POWER9 CPUs and 6 NVIDIA Volta V100 GPUs",
         "notes"                       : "Requires RSA SecurID and uses local virtual env",
         "schemas"                     : ["local"],
         "local"                       : {
@@ -156,7 +154,6 @@
         ],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
-        "python_dist"                 : "local",
         "virtenv_mode"                : "local",
         "stage_cacerts"               : true,
         "gpus_per_node"               : 6,

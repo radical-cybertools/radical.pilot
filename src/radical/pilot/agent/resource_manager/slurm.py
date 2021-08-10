@@ -4,7 +4,6 @@ __license__   = "MIT"
 
 
 import os
-import hostlist
 
 import radical.utils as ru
 
@@ -33,7 +32,7 @@ class Slurm(ResourceManager):
             raise RuntimeError(msg)
 
         # Parse SLURM nodefile environment variable
-        slurm_nodes = hostlist.expand_hostlist(slurm_nodelist)
+        slurm_nodes = ru.get_hostlist(slurm_nodelist)
         self._log.info("Found SLURM_NODELIST %s. Expanded to: %s", slurm_nodelist, slurm_nodes)
 
         # $SLURM_NPROCS = Total number of cores allocated for the current job

@@ -47,6 +47,7 @@ class TestBaseScheduling(TestCase):
                 sched.initialize()
                 self.assertEqual(ru.demunch(sched.nodes), c['result'])
 
+
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
@@ -87,25 +88,35 @@ class TestBaseScheduling(TestCase):
     @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
     @mock.patch.object(AgentSchedulingComponent, 'schedule_task')
     @mock.patch.object(AgentSchedulingComponent, '_change_slot_states')
-    @mock.patch('radical.utils.Profiler')
-    def test_try_allocation(self, mocked_profiler, mocked_change_slot_states,
+    def test_try_allocation(self, mocked_change_slot_states,
                             mocked_schedule_task, mocked_init):
 
-        sched = AgentSchedulingComponent(cfg=None, session=None)
-        sched._prof            = mocked_profiler
-        sched._rm_lfs_per_node = {'path': '/tmp', 'size': 0}
+        component = AgentSchedulingComponent()
+        component._allocate_slot = mock.Mock(side_effect=[None,
+                                                          {'slot':'test_slot'}])
+        component._active_cnt    = 0
+        component._log           = mock.Mock()
+        component._prof          = mock.Mock()
+        component._prof.prof     = mock.Mock(return_value=True)
+        component._wait_pool     = list()
+        component._wait_lock     = threading.RLock()
+        component._slot_lock     = threading.RLock()
 
-        # no `slots` from `schedule_task` method
-        sched.schedule_task.return_value = None
-        self.assertFalse(sched._try_allocation(task={'uid'        : 'task.0000',
-                                                     'description': {}}))
+        tests = self.setUp()['try_allocation']
+        for input_data, result in zip(tests['setup'], tests['results']):
+            component.schedule_task = mock.Mock(
+                return_value=input_data['scheduled_task_slots'])
 
-        for c in self._test_cases['try_allocation']:
-            sched.schedule_task.return_value = c['slots']
-            self.assertTrue(sched._try_allocation(task=c['task']))
-            self.assertEqual(c['task']['slots'], c['slots'])
+            task = input_data['task']
+            component._try_allocation(task=task)
 
-            # FIXME: extend with updated task description environment
+            # test task's slots
+            self.assertEqual(task['slots'], result['slots'])
+
+            # test environment variable(s)
+            self.assertEqual(task['description']['environment'],
+                             result['description']['environment'])
+
 
     # --------------------------------------------------------------------------
     #

@@ -29,6 +29,7 @@ class TestPopen(TestCase):
     def setUpClass(cls) -> None:
         cls._test_case = ru.read_json('%s/test_base.json' % TEST_CASES_DIR)
 
+
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Popen, '__init__', return_value=None)
@@ -49,6 +50,7 @@ class TestPopen(TestCase):
         self.assertTrue(pex.command_cb(topic=None, msg=msg))
         # tasks were added to the list `_tasks_to_cancel`
         self.assertEqual(pex._tasks_to_cancel, msg['arg']['uids'])
+
 
     # --------------------------------------------------------------------------
     #
@@ -86,12 +88,13 @@ class TestPopen(TestCase):
         mocked_find_launcher.return_value = launcher
 
         pex._handle_task(task)
+      #
+      # for prefix in ['.launch.sh', '.exec.sh', '.sl']:
+      #     path = '%s/%s%s' % (task['task_sandbox_path'], task['uid'], prefix)
+      #     self.assertTrue(os.path.isfile(path))
+      #     try   : os.remove(path)
+      #     except: pass
 
-        for prefix in ['.launch.sh', '.exec.sh', '.sl']:
-            path = '%s/%s%s' % (task['task_sandbox_path'], task['uid'], prefix)
-            self.assertTrue(os.path.isfile(path))
-            try   : os.remove(path)
-            except: pass
 
     # --------------------------------------------------------------------------
     #
@@ -130,6 +133,7 @@ class TestPopen(TestCase):
         pex._tasks_to_watch.append(task)
         pex._check_running()
         self.assertEqual(task['target_state'], rps.FAILED)
+
 
 # ------------------------------------------------------------------------------
 
