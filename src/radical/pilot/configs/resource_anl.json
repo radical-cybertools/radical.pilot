@@ -1,6 +1,7 @@
+
 {
     "theta": {
-        "description"                 : "",
+        "description"                 : "Cray XC40, 4392 nodes (Intel KNL 7230)",
         "notes"                       : "Local instance of MongoDB and pre-set VE should be used.",
         "schemas"                     : ["local"],
         "local"                       :
@@ -28,8 +29,9 @@
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0
     },
+
     "theta_gpu": {
-        "description"                 : "",
+        "description"                 : "Extension of Theta, 24 NVIDIA DGX A100 nodes",
         "notes"                       : "Local instance of MongoDB and pre-set VE should be used.",
         "schemas"                     : ["local"],
         "local"                       :
@@ -55,7 +57,7 @@
         "stage_cacerts"               : true,
         "cores_per_node"              : 128,
         "gpus_per_node"               : 8,
-        "system_architecture"         : {"options": [["mig-mode=True"]]},
+        "system_architecture"         : {"options": ["mig-mode=True"]},
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0
     }
