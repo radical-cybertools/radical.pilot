@@ -24,12 +24,12 @@
                                          "module load openmpi/gcc"
                                         ],
         "valid_roots"                 : [],
-        "rp_version"                  : "local",
-        "python_dist"                 : "default",
         "default_remote_workdir"      : "/scratch/gpfs/$USER/",
         "virtenv"                     : "/scratch/gpfs/$USER/ve.rp",
         "virtenv_mode"                : "use",
-        "export_to_task"                : [],
+        "python_dist"                 : "default",
+        "rp_version"                  : "local",
+        "export_to_task"              : [],
         "task_pre_exec"               : [],
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
@@ -109,7 +109,7 @@
         "valid_roots"                 : [],
         "rp_version"                  : "local",
         "python_dist"                 : "default",
-        "export_to_task"                : [],
+        "export_to_task"              : [],
         "task_pre_exec"               : [],
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
@@ -153,7 +153,7 @@
         "valid_roots"                 : [],
         "rp_version"                  : "local",
         "python_dist"                 : "default",
-        "export_to_task"                : [],
+        "export_to_task"              : [],
         "task_pre_exec"               : [],
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
@@ -161,4 +161,3 @@
         "forward_tunnel_endpoint"     : "tigergpu.princeton.edu"
     }
 }
-
