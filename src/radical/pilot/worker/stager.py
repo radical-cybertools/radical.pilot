@@ -2,6 +2,7 @@
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os
 
 import radical.saga            as rs
 import radical.saga.filesystem as rsfs
@@ -58,22 +59,30 @@ class Stager(rpu.Worker):
         messages on the control channel
         '''
 
-        self._log.debug('stager got  sds: %s ', [sd['uid'] for sd in sds])
+        try:
+            self._log.debug('stager got  sds: %s ', [sd['uid'] for sd in sds])
 
-        # handle the staging descriptions as bulk and report collective
-        # completion.
-        #
-        # NOTE: should we allow bulk reshuffeling here?
+            # handle the staging descriptions as bulk and report collective
+            # completion.
+            #
+            # NOTE: should we allow bulk reshuffeling here?
 
-        self._handle_staging(sds)
+            self._handle_staging(sds)
 
-        # NOTE: we send completion notifications via pubsub, as we have no
-        #       direct channel to whoever requested the trransfer.  That may
-        #       raise scalability problems in the long run.
-        self.publish(rpc.STAGER_RESPONSE_PUBSUB,
-                     {'cmd': 'staging_result',
-                      'arg': {'sds': sds}})
-        self._log.debug('stager done sds: %s ', [sd['uid'] for sd in sds])
+            # NOTE: we send completion notifications via pubsub, as we have no
+            #       direct channel to whoever requested the trransfer.  That may
+            #       raise scalability problems in the long run.
+            self._log.debug('stager done sds: %s ', [sd['uid'] for sd in sds])
+
+        except Exception as e:
+            for sd in sds:
+                sd['state'] = rps.FAILED
+                sd['error'] = str(e)
+
+        finally:
+            self.publish(rpc.STAGER_RESPONSE_PUBSUB,
+                         {'cmd': 'staging_result',
+                          'arg': {'sds': sds}})
 
         return True
 
@@ -86,6 +95,9 @@ class Stager(rpu.Worker):
         for sd in sds:
 
             # TODO: respect flags in directive
+
+            # make sure that `error` field exists
+            sd['error'] = None
 
             action  = sd['action']
             flags   = sd['flags']
@@ -118,6 +130,10 @@ class Stager(rpu.Worker):
                 else:
                     fs = rsfs.Directory(key, session=self._session)
                     self._saga_fs_cache[key] = fs
+
+            flags |= rsfs.CREATE_PARENTS
+            if os.path.isdir(src) or src.endswith('/'):
+                flags |= rsfs.RECURSIVE
 
             fs.copy(src, tgt, flags=flags)
 

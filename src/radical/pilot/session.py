@@ -45,7 +45,7 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, service_url=None, uid=None, cfg=None, _primary=True):
+    def __init__(self, service_url=None, uid=None, cfg=None, _primary=True, **close_options):
         '''
         Creates a new session.  A new Session instance is created and
         stored in the database.
@@ -55,12 +55,14 @@ class Session(rs.Session):
               If none is given, RP uses the environment variable
               RADICAL_PILOT_SERVICE_URL.  If that is not set, an error will be
               raised.
+
             * **cfg** (`str` or `dict`): a named or instantiated configuration
               to be used for the session.
 
             * **uid** (`string`): Create a session with this UID.  Session UIDs
               MUST be unique - otherwise they will lead to conflicts in the
               underlying database, resulting in undefined behaviours (or worse).
+
             * **_primary** (`bool`): only sessions created by the original
               application process (via `rp.Session()`, will create comm bridges
               Secondary session instances are instantiated internally in
@@ -69,8 +71,13 @@ class Session(rs.Session):
               inherit the original session ID, but will not attempt to create
               a new comm bridge - if such a bridge connection is needed, the
               component will connect to the one created by the primary session.
-        '''
 
+        If additional key word arguments are provided, they will be used as the
+        default arguments to Session.close(). (This can be useful when the
+        Session is used as a Python context manager, such that close() is called
+        automatically at the end of a ``with`` block.)
+        '''
+        self._close_options = _CloseOptions(close_options)
         # NOTE: `name` and `cfg` are overloaded, the user cannot point to
         #       a predefined config and amend it at the same time.  This might
         #       be ok for the session, but introduces a minor API inconsistency.
@@ -191,18 +198,17 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     # context manager `with` clause
-    # FIXME: terminate_on_close attributes?
     #
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.close(download=True)
+        self.close()
 
 
     # --------------------------------------------------------------------------
     #
-    def close(self, terminate=True, download=False):
+    def close(self, **kwargs):
         '''
 
         Closes the session.  All subsequent attempts access objects attached to
@@ -226,9 +232,12 @@ class Session(rs.Session):
         self._log.debug("session %s closing", self._uid)
         self._prof.prof("session_close", uid=self._uid)
 
-        # set defaults
-        if terminate is None:
-            terminate = True
+        # Merge kwargs with current defaults stored in self._close_options
+        self._close_options.update(kwargs)
+        self._close_options.verify()  # in case to call for `_verify` method and to convert attributes
+                                      # to their types if needed (but None value will stay if it is set)
+
+        options = self._close_options
 
         for tmgr_uid, tmgr in self._tmgrs.items():
             self._log.debug("session %s closes tmgr   %s", self._uid, tmgr_uid)
@@ -237,7 +246,7 @@ class Session(rs.Session):
 
         for pmgr_uid, pmgr in self._pmgrs.items():
             self._log.debug("session %s closes pmgr   %s", self._uid, pmgr_uid)
-            pmgr.close(terminate=terminate)
+            pmgr.close(terminate=options.terminate)
             self._log.debug("session %s closed pmgr   %s", self._uid, pmgr_uid)
 
         if self._cmgr:
@@ -260,8 +269,8 @@ class Session(rs.Session):
 
         # after all is said and done, we attempt to download the pilot log- and
         # profiles, if so wanted
-        if self._primary and download:
-
+        if options.download:
+)
             self._prof.prof("session_fetch_start", uid=self._uid)
             self._log.debug('start download')
             tgt = os.getcwd()
@@ -979,3 +988,27 @@ class Session(rs.Session):
 
 
 # ------------------------------------------------------------------------------
+#
+class _CloseOptions(ru.Munch):
+    """Options and validation for Session.close().
+
+    **Arguments:**
+        * **download** (`bool`):
+          Fetch pilot profiles and database entries. (default False)
+        * **terminate** (`bool`):
+          Shut down all pilots associated with the session. (default True)
+
+    """
+    _schema = {
+        'download' : bool,
+        'terminate': bool
+    }
+
+    _defaults = {
+        'download' : False,
+        'terminate': True
+    }
+
+
+# ------------------------------------------------------------------------------
+

@@ -409,64 +409,64 @@ PILOT_DURATIONS_DEBUG_RU = {
 # Set of default task durations for RADICAL-Analytics. All the durations
 # are contiguos.
 TASK_DURATIONS_DEBUG_SHORT = {
-    'u_tmgr_create'              : [{'STATE': s.NEW                         },
+    't_tmgr_create'              : [{'STATE': s.NEW                         },
                                     {'STATE': s.TMGR_SCHEDULING_PENDING     }],
-    'u_tmgr_schedule_queue'      : [{'STATE': s.TMGR_SCHEDULING_PENDING     },
+    't_tmgr_schedule_queue'      : [{'STATE': s.TMGR_SCHEDULING_PENDING     },
                                     {'STATE': s.TMGR_SCHEDULING             }],
-    'u_tmgr_schedule'            : [{'STATE': s.TMGR_SCHEDULING             },
+    't_tmgr_schedule'            : [{'STATE': s.TMGR_SCHEDULING             },
                                     {'STATE': s.TMGR_STAGING_INPUT_PENDING  }],
     # push to mongodb
-    'u_tmgr_stage_in_queue'      : [{'STATE': s.TMGR_STAGING_INPUT_PENDING  },
+    't_tmgr_stage_in_queue'      : [{'STATE': s.TMGR_STAGING_INPUT_PENDING  },
                                     {'STATE': s.TMGR_STAGING_INPUT          }],
     # wait in mongodb
-    'u_tmgr_stage_in'            : [{'STATE': s.TMGR_STAGING_INPUT          },
+    't_tmgr_stage_in'            : [{'STATE': s.TMGR_STAGING_INPUT          },
                                     {'STATE': s.AGENT_STAGING_INPUT_PENDING }],
     # pull from mongodb
-    'u_agent_stage_in_queue'     : [{'STATE': s.AGENT_STAGING_INPUT_PENDING },
+    't_agent_stage_in_queue'     : [{'STATE': s.AGENT_STAGING_INPUT_PENDING },
                                     {'STATE': s.AGENT_STAGING_INPUT         }],
-    'u_agent_stage_in'           : [{'STATE': s.AGENT_STAGING_INPUT         },
+    't_agent_stage_in'           : [{'STATE': s.AGENT_STAGING_INPUT         },
                                     {'STATE': s.AGENT_SCHEDULING_PENDING    }],
-    'u_agent_schedule_queue'     : [{'STATE': s.AGENT_SCHEDULING_PENDING    },
+    't_agent_schedule_queue'     : [{'STATE': s.AGENT_SCHEDULING_PENDING    },
                                     {'STATE': s.AGENT_SCHEDULING            }],
-    'u_agent_schedule'           : [{'STATE': s.AGENT_SCHEDULING            },
+    't_agent_schedule'           : [{'STATE': s.AGENT_SCHEDULING            },
                                     {'STATE': s.AGENT_EXECUTING_PENDING     }],
-    'u_agent_execute_queue'      : [{'STATE': s.AGENT_EXECUTING_PENDING     },
+    't_agent_execute_queue'      : [{'STATE': s.AGENT_EXECUTING_PENDING     },
                                     {'STATE': s.AGENT_EXECUTING             }],
-    'u_agent_execute_prepare'    : [{'STATE': s.AGENT_EXECUTING             },
+    't_agent_execute_prepare'    : [{'STATE': s.AGENT_EXECUTING             },
                                     {'EVENT': 'exec_mkdir'                  }],
-    'u_agent_execute_mkdir'      : [{'EVENT': 'exec_mkdir'                  },
+    't_agent_execute_mkdir'      : [{'EVENT': 'exec_mkdir'                  },
                                     {'EVENT': 'exec_mkdir_done'             }],
-    'u_agent_execute_layer_start': [{'EVENT': 'exec_mkdir_done'             },
+    't_agent_execute_layer_start': [{'EVENT': 'exec_mkdir_done'             },
                                     {'EVENT': 'exec_start'                  }],
     # orte, ssh, mpi, ...
-    'u_agent_execute_layer'      : [{'EVENT': 'exec_start'                  },
+    't_agent_execute_layer'      : [{'EVENT': 'exec_start'                  },
                                     [{'EVENT': 'exec_ok'                    },
                                      {'EVENT': 'exec_fail'                  }]],
     # PROBLEM: discontinuity
-    'u_agent_lm_start'           : [{'EVENT': 'task_start'                  },
+    't_agent_lm_start'           : [{'EVENT': 'task_start'                  },
                                     {'EVENT': 'task_pre_start'              }],
-    'u_agent_lm_pre_execute'     : [{'EVENT': 'task_pre_start'              },
+    't_agent_lm_pre_execute'     : [{'EVENT': 'task_pre_start'              },
                                     {'EVENT': 'task_pre_stop'               }],
-    'u_agent_lm_execute_start'   : [{'EVENT': 'task_pre_stop'               },
+    't_agent_lm_execute_start'   : [{'EVENT': 'task_pre_stop'               },
                                     {'EVENT': 'task_exec_start'             }],
-    'u_agent_lm_execute'         : [{'EVENT': 'task_exec_start'             },
+    't_agent_lm_execute'         : [{'EVENT': 'task_exec_start'             },
                                     {'EVENT': 'task_exec_stop'              }],
-    'u_agent_lm_stop'            : [{'EVENT': 'task_exec_stop'              },
+    't_agent_lm_stop'            : [{'EVENT': 'task_exec_stop'              },
                                     {'EVENT': 'task_stop'                   }],
-    'u_agent_stage_out_start'    : [{'EVENT': 'task_stop'                   },
+    't_agent_stage_out_start'    : [{'EVENT': 'task_stop'                   },
                                     {'STATE': s.AGENT_STAGING_OUTPUT_PENDING}],
-    'u_agent_stage_out_queue'    : [{'STATE': s.AGENT_STAGING_OUTPUT_PENDING},
+    't_agent_stage_out_queue'    : [{'STATE': s.AGENT_STAGING_OUTPUT_PENDING},
                                     {'STATE': s.AGENT_STAGING_OUTPUT        }],
-    'u_agent_stage_out'          : [{'STATE': s.AGENT_STAGING_OUTPUT        },
+    't_agent_stage_out'          : [{'STATE': s.AGENT_STAGING_OUTPUT        },
                                     {'STATE': s.TMGR_STAGING_OUTPUT_PENDING }],
     # push/pull mongodb
-    'u_agent_push_to_tmgr'       : [{'STATE': s.TMGR_STAGING_OUTPUT_PENDING },
+    't_agent_push_to_tmgr'       : [{'STATE': s.TMGR_STAGING_OUTPUT_PENDING },
                                     {'STATE': s.TMGR_STAGING_OUTPUT         }],
-    'u_tmgr_destroy'             : [{'STATE': s.TMGR_STAGING_OUTPUT         },
+    't_tmgr_destroy'             : [{'STATE': s.TMGR_STAGING_OUTPUT         },
                                     [{'STATE': s.DONE                       },
                                      {'STATE': s.CANCELED                   },
                                      {'STATE': s.FAILED                     }]],
-    'u_agent_unschedule'         : [{'EVENT': 'unschedule_start'            },
+    't_agent_unschedule'         : [{'EVENT': 'unschedule_start'            },
                                     {'EVENT': 'unschedule_stop'             }]
 }
 
@@ -479,33 +479,33 @@ TASK_DURATIONS_DEBUG = _convert_sdurations(TASK_DURATIONS_DEBUG_SHORT)
 _udd = TASK_DURATIONS_DEBUG
 TASK_DURATIONS_DEBUG_RU = {
     'client' : {
-        'u_tmgr_create'              : _udd['u_tmgr_create'],
-        'u_tmgr_schedule_queue'      : _udd['u_tmgr_schedule_queue'],
-        'u_tmgr_schedule'            : _udd['u_tmgr_schedule'],
-        'u_tmgr_stage_in_queue'      : _udd['u_tmgr_stage_in_queue'],
-        'u_tmgr_stage_in'            : _udd['u_tmgr_stage_in'],
-        'u_tmgr_destroy'             : _udd['u_tmgr_destroy'],
-        'u_agent_unschedule'         : _udd['u_agent_unschedule']
+        't_tmgr_create'              : _udd['t_tmgr_create'],
+        't_tmgr_schedule_queue'      : _udd['t_tmgr_schedule_queue'],
+        't_tmgr_schedule'            : _udd['t_tmgr_schedule'],
+        't_tmgr_stage_in_queue'      : _udd['t_tmgr_stage_in_queue'],
+        't_tmgr_stage_in'            : _udd['t_tmgr_stage_in'],
+        't_tmgr_destroy'             : _udd['t_tmgr_destroy'],
+        't_agent_unschedule'         : _udd['t_agent_unschedule']
     },
     'consume'  : {
-        'u_agent_stage_in_queue'     : _udd['u_agent_stage_in_queue'],
-        'u_agent_stage_in'           : _udd['u_agent_stage_in'],
-        'u_agent_schedule_queue'     : _udd['u_agent_schedule_queue'],
-        'u_agent_schedule'           : _udd['u_agent_schedule'],
-        'u_agent_execute_queue'      : _udd['u_agent_execute_queue'],
-        'u_agent_execute_prepare'    : _udd['u_agent_execute_prepare'],
-        'u_agent_execute_mkdir'      : _udd['u_agent_execute_mkdir'],
-        'u_agent_execute_layer_start': _udd['u_agent_execute_layer_start'],
-        'u_agent_execute_layer'      : _udd['u_agent_execute_layer'],
-        'u_agent_lm_start'           : _udd['u_agent_lm_start'],
-        'u_agent_lm_pre_execute'     : _udd['u_agent_lm_pre_execute'],
-        'u_agent_lm_execute_start'   : _udd['u_agent_lm_execute_start'],
-        'u_agent_lm_execute'         : _udd['u_agent_lm_execute'],
-        'u_agent_lm_stop'            : _udd['u_agent_lm_stop'],
-        'u_agent_stage_out_start'    : _udd['u_agent_stage_out_start'],
-        'u_agent_stage_out_queue'    : _udd['u_agent_stage_out_queue'],
-        'u_agent_stage_out'          : _udd['u_agent_stage_out'],
-        'u_agent_push_to_tmgr'       : _udd['u_agent_push_to_tmgr'],
+        't_agent_stage_in_queue'     : _udd['t_agent_stage_in_queue'],
+        't_agent_stage_in'           : _udd['t_agent_stage_in'],
+        't_agent_schedule_queue'     : _udd['t_agent_schedule_queue'],
+        't_agent_schedule'           : _udd['t_agent_schedule'],
+        't_agent_execute_queue'      : _udd['t_agent_execute_queue'],
+        't_agent_execute_prepare'    : _udd['t_agent_execute_prepare'],
+        't_agent_execute_mkdir'      : _udd['t_agent_execute_mkdir'],
+        't_agent_execute_layer_start': _udd['t_agent_execute_layer_start'],
+        't_agent_execute_layer'      : _udd['t_agent_execute_layer'],
+        't_agent_lm_start'           : _udd['t_agent_lm_start'],
+        't_agent_lm_pre_execute'     : _udd['t_agent_lm_pre_execute'],
+        't_agent_lm_execute_start'   : _udd['t_agent_lm_execute_start'],
+        't_agent_lm_execute'         : _udd['t_agent_lm_execute'],
+        't_agent_lm_stop'            : _udd['t_agent_lm_stop'],
+        't_agent_stage_out_start'    : _udd['t_agent_stage_out_start'],
+        't_agent_stage_out_queue'    : _udd['t_agent_stage_out_queue'],
+        't_agent_stage_out'          : _udd['t_agent_stage_out'],
+        't_agent_push_to_tmgr'       : _udd['t_agent_push_to_tmgr'],
     }
 }
 
@@ -736,10 +736,10 @@ def get_session_description(sid, src=None):
 
 # ------------------------------------------------------------------------------
 #
-def get_node_index(node_list, node, cpn, gpn):
+def get_node_index(node_list, node, pn):
 
-    r0 = node_list.index(node) * (cpn + gpn)
-    r1 = r0 + cpn + gpn - 1
+    r0 = node_list.index(node) * pn
+    r1 = r0 + pn - 1
 
     return [r0, r1]
 
@@ -810,12 +810,16 @@ def cluster_resources(resources):
 
 # ------------------------------------------------------------------------------
 #
-def _get_pilot_provision(pilot):
+def _get_pilot_provision(pilot, rtype):
 
-    pid   = pilot.uid
-    cpn   = pilot.cfg['resource_details']['rm_info']['cores_per_node']
-    gpn   = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
-    ret   = dict()
+    pid = pilot.uid
+    ret = dict()
+    rnd = 'cores_per_node'
+
+    if rtype == 'gpu':
+        rnd = 'gpus_per_node'
+
+    pn = pilot.cfg['resource_details']['rm_info'][rnd]
 
     nodes, _, _ = _get_nodes(pilot)
 
@@ -829,7 +833,7 @@ def _get_pilot_provision(pilot):
             t1 = pilot.events[-1][ru.TIME]
 
         for node in nodes:
-            r0, r1 = get_node_index(nodes, node, cpn, gpn)
+            r0, r1 = get_node_index(nodes, node, pn)
             boxes.append([t0, t1, r0, r1])
 
         ret['total'] = {pid: boxes}
@@ -839,10 +843,11 @@ def _get_pilot_provision(pilot):
 
 # ------------------------------------------------------------------------------
 #
-def get_provided_resources(session):
+def get_provided_resources(session, rtype='cpu'):
     '''
-    For all ra.pilots, return the amount and time of resources provided.
-    This computes sets of 4-tuples of the form: [t0, t1, r0, r1] where:
+    For all ra.pilots, return the amount and time of the type of resources
+    provided. This computes sets of 4-tuples of the form: [t0, t1, r0, r1]
+    where:
 
         t0: time, begin of resource provision
         t1: time, begin of resource provision
@@ -852,10 +857,13 @@ def get_provided_resources(session):
     The tuples are formed so that t0 to t1 and r0 to r1 are continuous.
     '''
 
+    if rtype not in ['cpu', 'gpu']:
+        raise Exception('unknown resource type: %s' % rtype)
+
     provided = dict()
     for p in session.get(etype='pilot'):
 
-        data = _get_pilot_provision(p)
+        data = _get_pilot_provision(p, rtype)
 
         for metric in data:
 
@@ -870,7 +878,7 @@ def get_provided_resources(session):
 
 # ------------------------------------------------------------------------------
 #
-def get_consumed_resources(session, tdurations=None):
+def get_consumed_resources(session, rtype='cpu', tdurations=None):
     '''
     For all ra.pilot or ra.task entities, return the amount and time of
     resources consumed.  A consumed resource is characterized by:
@@ -906,8 +914,8 @@ def get_consumed_resources(session, tdurations=None):
     consumed = dict()
     for e in session.get(etype=['pilot', 'task']):
 
-        if   e.etype == 'pilot': data = _get_pilot_consumption(e)
-        elif e.etype == 'task' : data = _get_task_consumption(session, e,
+        if   e.etype == 'pilot': data = _get_pilot_consumption(e, rtype)
+        elif e.etype == 'task' : data = _get_task_consumption(session, e, rtype,
                                                               tdurations)
 
         for metric in data:
@@ -944,12 +952,17 @@ def get_consumed_resources(session, tdurations=None):
 
         p_min = pt(event=PILOT_DURATIONS['consume']['idle'][0]) [0]
         p_max = pt(event=PILOT_DURATIONS['consume']['idle'][1])[-1]
-      # p_max = pilot.events[-1][ru.TIME]
         log.debug('pmin, pmax: %10.2f / %10.2f', p_min, p_max)
 
-        pid = pilot.uid
-        cpn = pilot.cfg['resource_details']['rm_info']['cores_per_node']
-        gpn = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
+        pid  = pilot.uid
+        rnd  = 'cores_per_node'
+        rmap = 'core_map'
+
+        if rtype == 'gpu':
+            rnd  = 'gpus_per_node'
+            rmap = 'gpu_map'
+
+        pn = pilot.cfg['resource_details']['rm_info'][rnd]
 
         nodes, _, pnodes = _get_nodes(pilot)
 
@@ -962,10 +975,9 @@ def get_consumed_resources(session, tdurations=None):
         # resource id, we set or adjust t_min / t_max.
         resources = dict()
         for pnode in pnodes:
-            idx = get_node_index(nodes, pnode, cpn, gpn)
+            idx = get_node_index(nodes, pnode, pn)
             for c in range(idx[0], idx[1] + 1):
                 resources[c] = [None, None]
-
 
         for task in session.get(etype='task'):
 
@@ -974,29 +986,20 @@ def get_consumed_resources(session, tdurations=None):
 
             try:
                 snodes = task.cfg['slots']['nodes']
-                ut     = task.timestamps
-                u_min  = ut(event=task_durations['consume']['exec_queue'][0]) [0]
-                u_max  = ut(event=task_durations['consume']['unschedule'][1])[-1]
+                tts    = task.timestamps
+                u_min  = tts(event=task_durations['consume']['exec_queue'][0])[0]
+                u_max  = tts(event=task_durations['consume']['unschedule'][1])[-1]
             except:
                 continue
 
             for snode in snodes:
 
                 node  = [snode['name'], snode['uid']]
-                r0, _ = get_node_index(nodes, node, cpn, gpn)
+                r0, _ = get_node_index(nodes, node, pn)
 
-                for core_map in snode['core_map']:
+                for core_map in snode[rmap]:
                     for core in core_map:
                         idx = r0 + core
-                        t_min = resources[idx][0]
-                        t_max = resources[idx][1]
-                        if t_min is None or t_min > u_min: t_min = u_min
-                        if t_max is None or t_max < u_max: t_max = u_max
-                        resources[idx] = [t_min, t_max]
-
-                for gpu_map in snode['gpu_map']:
-                    for gpu in gpu_map:
-                        idx = r0 + cpn + gpu
                         t_min = resources[idx][0]
                         t_max = resources[idx][1]
                         if t_min is None or t_min > u_min: t_min = u_min
@@ -1076,7 +1079,7 @@ def _get_nodes(pilot):
 
 # ------------------------------------------------------------------------------
 #
-def _get_pilot_consumption(pilot):
+def _get_pilot_consumption(pilot, rtype):
 
     # Pilots consume resources in different ways:
     #
@@ -1095,10 +1098,14 @@ def _get_pilot_consumption(pilot):
     # task*, which allows us to compute tasks specific resource utilization
     # overheads.
 
-    pid   = pilot.uid
-    cpn   = pilot.cfg['resource_details']['rm_info']['cores_per_node']
-    gpn   = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
-    ret   = dict()
+    pid = pilot.uid
+    ret = dict()
+    rnd = 'cores_per_node'
+
+    if rtype == 'gpu':
+        rnd  = 'gpus_per_node'
+
+    pn = pilot.cfg['resource_details']['rm_info'][rnd]
 
     # Account for agent resources.  Agents use full nodes, i.e., cores and GPUs
     # We happen to know that agents use the first nodes in the allocation and
@@ -1117,7 +1124,7 @@ def _get_pilot_consumption(pilot):
 
     if anodes and t0 is not None:
         for anode in anodes:
-            r0, r1 = get_node_index(nodes, anode, cpn, gpn)
+            r0, r1 = get_node_index(nodes, anode, pn)
             boxes.append([t0, t1, r0, r1])
 
     ret['agent'] = {pid: boxes}
@@ -1133,7 +1140,7 @@ def _get_pilot_consumption(pilot):
 
         if t0 is not None:
             for node in pnodes:
-                r0, r1 = get_node_index(nodes, node, cpn, gpn)
+                r0, r1 = get_node_index(nodes, node, pn)
                 boxes.append([t0, t1, r0, r1])
 
         ret[metric] = {pid: boxes}
@@ -1143,7 +1150,7 @@ def _get_pilot_consumption(pilot):
 
 # ------------------------------------------------------------------------------
 #
-def _get_task_consumption(session, task, tdurations=None):
+def _get_task_consumption(session, task, rtype, tdurations=None):
 
     # we need to know what pilot the task ran on.  If we don't find a designated
     # pilot, no resources were consumed
@@ -1161,9 +1168,16 @@ def _get_task_consumption(session, task, tdurations=None):
         pilot = pilot[0]
 
     # FIXME: it is inefficient to query those values again and again
-    cpn   = pilot.cfg['resource_details']['rm_info']['cores_per_node']
-    gpn   = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
     nodes, _, _ = _get_nodes(pilot)
+
+    rnd  = 'cores_per_node'
+    rmap = 'core_map'
+
+    if rtype == 'gpu':
+        rnd  = 'gpus_per_node'
+        rmap = 'gpu_map'
+
+    pn = pilot.cfg['resource_details']['rm_info'][rnd]
 
     # Tasks consume only those resources they are scheduled on.
     if 'slots' not in task.cfg:
@@ -1174,15 +1188,11 @@ def _get_task_consumption(session, task, tdurations=None):
     for snode in snodes:
 
         node  = [snode['name'], snode['uid']]
-        r0, _ = get_node_index(nodes, node, cpn, gpn)
+        r0, _ = get_node_index(nodes, node, pn)
 
-        for core_map in snode['core_map']:
+        for core_map in snode[rmap]:
             for core in core_map:
                 resources.append(r0 + core)
-
-        for gpu_map in snode['gpu_map']:
-            for gpu in gpu_map:
-                resources.append(r0 + cpn + gpu)
 
     # find continuous stretched of resources to minimize number of boxes
     resources = cluster_resources(resources)
@@ -1301,8 +1311,6 @@ def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
             assert(m[2] is None)
             m[2] = metric
 
-
-
         # the inverse of the above where we check stop events, register, and
         # insert start events (in case transitions are not causally ordered)
         m = None
@@ -1321,7 +1329,6 @@ def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
     for t in task_transitions:
         if t[1] is None: t[1] = 'idle'
         if t[2] is None: t[2] = 'idle'
-
 
     # do the same for the pilot metrics / transitions, only that now we
     # translate `None` as `system`, which is where the pilot obtains it's

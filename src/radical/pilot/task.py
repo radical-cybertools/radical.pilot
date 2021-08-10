@@ -481,8 +481,8 @@ class Task(object):
             if timeout and (timeout <= (time.time() - start_wait)):
                 break
 
-          # if self._tmgr._terminate.is_set():
-          #     break
+            if self._tmgr._terminate.is_set():
+                break
 
         return self.state
 

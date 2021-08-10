@@ -121,11 +121,11 @@ VIRTENV_TGZ="$VIRTENV_VER.tar.gz"
 VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/66/f0/6867af06d2e2f511e4e1d7094ff663acdebc4f15d4a0cb0fed1007395124/$VIRTENV_TGZ"
 VIRTENV_IS_ACTIVATED=FALSE
 
-VIRTENV_RADICAL_DEPS="pymongo colorama python-hostlist ntplib "\
-"pyzmq netifaces setproctitle msgpack future regex"
+VIRTENV_RADICAL_DEPS="pymongo colorama ntplib "\
+"pyzmq netifaces setproctitle msgpack regex"
 
-VIRTENV_RADICAL_MODS="pymongo colorama hostlist ntplib "\
-"zmq netifaces setproctitle msgpack future regex"
+VIRTENV_RADICAL_MODS="pymongo colorama ntplib "\
+"zmq netifaces setproctitle msgpack regex"
 
 if ! test -z "$RADICAL_DEBUG"
 then
