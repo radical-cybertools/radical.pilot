@@ -213,7 +213,7 @@
                                          "order": ["SRUN"],
                                          "SRUN" : {
                                              "pre_exec_cached": [
-                                                 "module load TACC"
+                                                 "module load TACC",
                                                  "module load intel/18.0.0",
                                                  "module load python3/3.7.0"
                                              ]
