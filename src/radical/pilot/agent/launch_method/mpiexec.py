@@ -82,24 +82,27 @@ class MPIExec(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_info(self, lm_info, lm_cfg):
+    def _init_from_info(self, lm_info):
 
         self._env         = lm_info['env']
         self._env_sh      = lm_info['env_sh']
+        self._command     = lm_info['command']
+
+        assert self._command
 
         self._mpt         = lm_info['mpt']
         self._rsh         = lm_info['rsh']
         self._dplace      = lm_info['dplace']
-        self._omplace     = lm_info['omplace']
         self._ccmrun      = lm_info['ccmrun']
-        self._command     = lm_info['command']
 
         self._mpi_version = lm_info['mpi_version']
         self._mpi_flavor  = lm_info['mpi_flavor']
 
         # ensure empty string on unset omplace
-        if not self._omplace:
+        if not lm_info['omplace']:
             self._omplace = ''
+        else:
+            self._omplace = 'omplace'
 
 
     # --------------------------------------------------------------------------

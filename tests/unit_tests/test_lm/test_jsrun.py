@@ -32,9 +32,9 @@ class TestJSRun(TestCase):
     @mock.patch('radical.utils.which', return_value='/usr/bin/jsrun')
     def test_init_from_scratch(self, mocked_which, mocked_init):
 
-        lm_jsrun = JSRUN(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_jsrun = JSRUN('', {}, None, None, None)
 
-        lm_info = lm_jsrun._init_from_scratch({}, {}, '')
+        lm_info = lm_jsrun._init_from_scratch({}, '')
         self.assertEqual(lm_info['command'], mocked_which())
 
     # --------------------------------------------------------------------------
@@ -42,26 +42,26 @@ class TestJSRun(TestCase):
     @mock.patch.object(JSRUN, '__init__', return_value=None)
     def test_init_from_info(self, mocked_init):
 
-        lm_jsrun = JSRUN(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_jsrun = JSRUN('', {}, None, None, None)
 
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_jsrun.sh',
                    'command': '/usr/bin/jsrun'}
-        lm_jsrun._init_from_info(lm_info, {})
+        lm_jsrun._init_from_info(lm_info)
         self.assertEqual(lm_jsrun._env,     lm_info['env'])
         self.assertEqual(lm_jsrun._env_sh,  lm_info['env_sh'])
         self.assertEqual(lm_jsrun._command, lm_info['command'])
 
         lm_info['command'] = ''
         with self.assertRaises(AssertionError):
-            lm_jsrun._init_from_info(lm_info, {})
+            lm_jsrun._init_from_info(lm_info)
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(JSRUN, '__init__', return_value=None)
     def test_can_launch(self, mocked_init):
 
-        lm_jsrun = JSRUN(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_jsrun = JSRUN('', {}, None, None, None)
         self.assertTrue(lm_jsrun.can_launch(task=None))
 
     # --------------------------------------------------------------------------
@@ -69,11 +69,11 @@ class TestJSRun(TestCase):
     @mock.patch.object(JSRUN, '__init__', return_value=None)
     def test_get_launcher_env(self, mocked_init):
 
-        lm_jsrun = JSRUN(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_jsrun = JSRUN('', {}, None, None, None)
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_jsrun.sh',
                    'command': '/usr/bin/jsrun'}
-        lm_jsrun._init_from_info(lm_info, {})
+        lm_jsrun._init_from_info(lm_info)
         lm_env = lm_jsrun.get_launcher_env()
 
         self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_info['env_sh'], lm_env)
@@ -83,7 +83,7 @@ class TestJSRun(TestCase):
     @mock.patch.object(JSRUN, '__init__', return_value=None)
     def test_create_resource_set_file(self, mocked_init):
 
-        lm_jsrun = JSRUN(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_jsrun = JSRUN('', {}, None, None, None)
 
         test_cases = setUp('lm', 'jsrun')
         for test_case in test_cases:
@@ -108,7 +108,7 @@ class TestJSRun(TestCase):
     def test_get_launch_rank_cmds(self, mocked_logger, mocked_rs_file,
                                   mocked_init):
 
-        lm_jsrun = JSRUN(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_jsrun = JSRUN('', {}, None, None, None)
         lm_jsrun._log     = mocked_logger
         lm_jsrun._command = 'jsrun'
 

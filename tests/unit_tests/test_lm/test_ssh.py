@@ -6,6 +6,8 @@ from .test_common import setUp
 from radical.pilot.agent.launch_method.ssh import SSH
 
 
+# ------------------------------------------------------------------------------
+#
 class TestSSH(TestCase):
 
     # --------------------------------------------------------------------------
@@ -16,9 +18,9 @@ class TestSSH(TestCase):
     def test_init_from_scratch_not_rsh(self, mocked_islink, mocked_which,
                                        mocked_init):
 
-        lm_ssh = SSH(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_ssh = SSH('', {}, None, None, None)
 
-        lm_info = lm_ssh._init_from_scratch({}, {}, '')
+        lm_info = lm_ssh._init_from_scratch({}, '')
         self.assertIn(mocked_which(), lm_info['command'])
         self.assertIn('StrictHostKeyChecking', lm_info['command'])
 
@@ -34,10 +36,10 @@ class TestSSH(TestCase):
                                       mocked_realpath, mocked_islink,
                                       mocked_which, mocked_init):
 
-        lm_ssh = SSH(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_ssh = SSH('', {}, None, None, None)
         lm_ssh._log = mocked_logger
 
-        lm_info = lm_ssh._init_from_scratch({}, {}, '')
+        lm_info = lm_ssh._init_from_scratch({}, '')
         self.assertNotEqual(lm_info['command'], mocked_which())
         self.assertEqual(lm_info['command'], mocked_realpath())
         self.assertNotIn('StrictHostKeyChecking', lm_info['command'])
@@ -48,29 +50,29 @@ class TestSSH(TestCase):
     @mock.patch('radical.utils.which', return_value=None)
     def test_init_from_scratch_fail(self, mocked_which, mocked_init):
 
-        lm_ssh = SSH(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_ssh = SSH('', {}, None, None, None)
         with self.assertRaises(RuntimeError):
             # error while getting `ssh` command
-            lm_ssh._init_from_scratch({}, {}, '')
+            lm_ssh._init_from_scratch({}, '')
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(SSH, '__init__', return_value=None)
     def test_init_from_info(self, mocked_init):
 
-        lm_ssh = SSH(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_ssh = SSH('', {}, None, None, None)
 
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_ssh.sh',
                    'command': '/usr/bin/ssh'}
-        lm_ssh._init_from_info(lm_info, {})
+        lm_ssh._init_from_info(lm_info)
         self.assertEqual(lm_ssh._env,     lm_info['env'])
         self.assertEqual(lm_ssh._env_sh,  lm_info['env_sh'])
         self.assertEqual(lm_ssh._command, lm_info['command'])
 
         lm_info['command'] = ''
         with self.assertRaises(AssertionError):
-            lm_ssh._init_from_info(lm_info, {})
+            lm_ssh._init_from_info(lm_info)
 
     # --------------------------------------------------------------------------
     #
@@ -80,7 +82,7 @@ class TestSSH(TestCase):
         # ensure single rank
         # (NOTE: full task and rank descriptions are NOT provided)
 
-        lm_ssh = SSH(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_ssh = SSH('', {}, None, None, None)
         self.assertTrue(lm_ssh.can_launch(task={
             'slots': {'ranks': [{'node_id': '00001'}]}}))
         self.assertFalse(lm_ssh.can_launch(task={
@@ -91,21 +93,21 @@ class TestSSH(TestCase):
     @mock.patch.object(SSH, '__init__', return_value=None)
     def test_get_launcher_env(self, mocked_init):
 
-        lm_ssh = SSH(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_ssh = SSH('', {}, None, None, None)
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_ssh.sh',
                    'command': '/usr/bin/ssh'}
-        lm_ssh._init_from_info(lm_info, {})
+        lm_ssh._init_from_info(lm_info)
         lm_env = lm_ssh.get_launcher_env()
 
         self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_info['env_sh'], lm_env)
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @mock.patch.object(SSH, '__init__', return_value=None)
     def test_get_launch_rank_cmds(self, mocked_init):
 
-        lm_ssh = SSH(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_ssh = SSH('', {}, None, None, None)
         lm_ssh._command = 'ssh'
 
         test_cases = setUp('lm', 'ssh')

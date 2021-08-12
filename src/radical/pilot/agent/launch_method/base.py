@@ -1,7 +1,7 @@
 # pylint: disable=protected-access
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2016-2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import os
 
@@ -26,18 +26,6 @@ LM_NAME_FLUX          = 'FLUX'
 LM_NAME_RSH           = 'RSH'
 LM_NAME_SSH           = 'SSH'
 LM_NAME_SRUN          = 'SRUN'
-
-# deprecated
-# LM_NAME_POE           = 'POE'
-# LM_NAME_DPLACE        = 'DPLACE'
-# LM_NAME_RUNJOB        = 'RUNJOB'
-# LM_NAME_POE           = 'POE'
-# LM_NAME_DPLACE        = 'DPLACE'
-# LM_NAME_RUNJOB        = 'RUNJOB'
-# LM_NAME_YARN          = 'YARN'
-# LM_NAME_SPARK         = 'SPARK'
-# LM_NAME_ORTE          = 'ORTE'
-# LM_NAME_ORTE_LIB      = 'ORTE_LIB'
 
 PWD = os.getcwd()
 
@@ -67,7 +55,7 @@ class LaunchMethod(object):
 
         if lm_info:
             # we found data in the registry and use it to (re)initialize the LM
-            self._init_from_info(lm_info, lm_cfg)
+            self._init_from_info(lm_info)
 
         else:
 
@@ -79,7 +67,7 @@ class LaunchMethod(object):
             env_lm   = ru.env_prep(environment=env_orig,
                           pre_exec=lm_cfg.get('pre_exec'),
                           pre_exec_cached=lm_cfg.get('pre_exec_cached'),
-                          script_path=(env_sh))
+                          script_path=env_sh)
 
             # run init_from_scratch in a process under that derived env
             envp = ru.EnvProcess(env=env_lm)
@@ -87,7 +75,7 @@ class LaunchMethod(object):
                 data = self._init_from_scratch(env_lm, env_sh)
                 envp.put(data)
             lm_info = envp.get()
-            self._init_from_info(lm_info, lm_cfg)
+            self._init_from_info(lm_info)
 
             # store the info in the registry for any other instances of the LM
             self._reg.put('lm.%s' % self.name, lm_info)
@@ -162,7 +150,7 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_info(self, lm_info, lm_cfg):
+    def _init_from_info(self, lm_info):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 

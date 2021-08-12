@@ -6,6 +6,8 @@ from .test_common import setUp
 from radical.pilot.agent.launch_method.mpirun import MPIRun
 
 
+# ------------------------------------------------------------------------------
+#
 class TestMPIRun(TestCase):
 
     # --------------------------------------------------------------------------
@@ -17,14 +19,13 @@ class TestMPIRun(TestCase):
     def test_init_from_scratch(self, mocked_hostname, mocked_which,
                                mocked_mpi_info, mocked_init):
 
-        lm_mpirun = MPIRun(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_mpirun = MPIRun('', {}, None, None, None)
         lm_mpirun.name = 'mpirun'
 
-        lm_cfg = {'pre_exec': ['/bin/sleep']}
         env    = {'test_env': 'test_value'}
         env_sh = 'env/lm_%s.sh' % lm_mpirun.name.lower()
 
-        lm_info = lm_mpirun._init_from_scratch(lm_cfg, env, env_sh)
+        lm_info = lm_mpirun._init_from_scratch(env, env_sh)
         self.assertEqual(lm_info['env'],     env)
         self.assertEqual(lm_info['env_sh'],  env_sh)
         self.assertEqual(lm_info['command'], mocked_which())
@@ -45,26 +46,26 @@ class TestMPIRun(TestCase):
     def test_init_from_scratch_with_name(self, mocked_hostname, mocked_which,
                                          mocked_mpi_info, mocked_init):
 
-        lm_mpirun = MPIRun(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_mpirun = MPIRun('', {}, None, None, None)
 
         for _flag in ['mpt', 'rsh']:
             lm_mpirun.name = 'mpirun_%s' % _flag
-            lm_info = lm_mpirun._init_from_scratch({}, {}, '')
+            lm_info = lm_mpirun._init_from_scratch({}, '')
             self.assertTrue(lm_info[_flag])
 
         for _flavor in ['ccmrun', 'dplace']:
             lm_mpirun.name = 'mpirun_%s' % _flavor
             mocked_which.return_value = '/usr/bin/%s' % _flavor
-            lm_info = lm_mpirun._init_from_scratch({}, {}, '')
+            lm_info = lm_mpirun._init_from_scratch({}, '')
             self.assertEqual(lm_info[_flavor], mocked_which())
             with self.assertRaises(AssertionError):
                 mocked_which.return_value = ''
-                lm_mpirun._init_from_scratch({}, {}, '')
+                lm_mpirun._init_from_scratch({}, '')
 
         lm_mpirun.name = 'mpirun'
         mocked_hostname.return_value = 'cheyenne'
         mocked_which.return_value = '/usr/bin/omplace'
-        lm_info = lm_mpirun._init_from_scratch({}, {}, '')
+        lm_info = lm_mpirun._init_from_scratch({}, '')
         self.assertEqual(lm_info['omplace'], mocked_which())
         self.assertTrue(lm_info['mpt'])
 
@@ -73,7 +74,7 @@ class TestMPIRun(TestCase):
     @mock.patch.object(MPIRun, '__init__', return_value=None)
     def test_init_from_info(self, mocked_init):
 
-        lm_mpirun = MPIRun(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_mpirun = MPIRun('', {}, None, None, None)
 
         lm_info = {
             'env'        : {'test_env': 'test_value'},
@@ -87,7 +88,7 @@ class TestMPIRun(TestCase):
             'mpi_version': '1.1.1',
             'mpi_flavor' : 'ORTE'
         }
-        lm_mpirun._init_from_info(lm_info, {})
+        lm_mpirun._init_from_info(lm_info)
         self.assertEqual(lm_mpirun._env,         lm_info['env'])
         self.assertEqual(lm_mpirun._env_sh,      lm_info['env_sh'])
         self.assertEqual(lm_mpirun._command,     lm_info['command'])
@@ -104,7 +105,7 @@ class TestMPIRun(TestCase):
     @mock.patch.object(MPIRun, '__init__', return_value=None)
     def test_can_launch(self, mocked_init):
 
-        lm_mpirun = MPIRun(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_mpirun = MPIRun('', {}, None, None, None)
         self.assertTrue(lm_mpirun.can_launch(
             task={'description': {'executable': 'script'}}))
         self.assertFalse(lm_mpirun.can_launch(
@@ -115,7 +116,7 @@ class TestMPIRun(TestCase):
     @mock.patch.object(MPIRun, '__init__', return_value=None)
     def test_get_launcher_env(self, mocked_init):
 
-        lm_mpirun = MPIRun(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_mpirun = MPIRun('', {}, None, None, None)
         lm_mpirun._env_sh = 'env/lm_mpirun.sh'
 
         lm_env = lm_mpirun.get_launcher_env()
@@ -126,7 +127,7 @@ class TestMPIRun(TestCase):
     @mock.patch.object(MPIRun, '__init__',   return_value=None)
     def test_get_launch_rank_cmds(self, mocked_init):
 
-        lm_mpirun = MPIRun(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_mpirun = MPIRun('', {}, None, None, None)
         lm_mpirun.name     = 'mpirun'
         lm_mpirun._command = 'mpirun'
         lm_mpirun._mpt     = False
