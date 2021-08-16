@@ -3,6 +3,8 @@
 RADICAL-Pilot |version| Documentation
 #####################################
 
+.. py:module:: radical.pilot
+
 RADICAL-Pilot (RP) is a Pilot system `[1]
 <https://dl.acm.org/citation.cfm?id=3177851>`_ `[2]
 <https://ieeexplore.ieee.org/abstract/document/6404423>`_ written in Python
@@ -86,4 +88,3 @@ Contents:
    faq.rst
    developer.rst
    release_notes.rst
-
