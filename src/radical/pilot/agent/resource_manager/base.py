@@ -128,20 +128,27 @@ class ResourceManager(object):
         self._cfg     = cfg
         self._log     = log
         self._prof    = prof
-        self._from    = None
 
         self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
-        info      = self._reg.get('rm.%s' % self.name)
+        data      = self._reg.get('rm.%s' % self.name)
 
-        if info:
-            self._from = 'info'
+        if data:
+
             self._log.debug('=== RM init from info')
-            self._init_from_info(info)
+            info = RMInfo(data)
+
         else:
-            self._from = 'scratch'
             self._log.debug('=== RM init from scratch: %s')
-            info = self._init_from_scratch()
-            self._init_from_info(info)
+
+            # let the base class collect some data, then let the impl take over
+            info = self._prepare_info()
+            info = self._init_from_scratch(info)
+            info = self._prepare_special_nodes(info)
+
+            # have a valid info - store in registry and complete # initialization
+            self._reg.put('rm.%s' % self.name, info)
+
+        self._init_from_info(info)
 
 
     # --------------------------------------------------------------------------
@@ -163,7 +170,7 @@ class ResourceManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self):
+    def _prepare_info(self):
 
         self._log.info('Configuring ResourceManager %s.', self.name)
 
@@ -195,13 +202,24 @@ class ResourceManager(object):
 
         info.requested_nodes  = int(math.ceil(n_nodes))
 
+        return info
 
-        # let the specific RM instance fill out the RMInfo attributes
-        info = self._configure(info)
-        self._log.info('Discovered execution environment: %s', info.node_list)
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_from_scratch(self, info):
+
+        raise NotImplementedError('subclass must implement this method')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _prepare_special_nodes(self, info):
 
         # we expect to have a valid node list now
+        # let the specific RM instance fill out the RMInfo attributes
         assert(info.node_list)
+        self._log.info('node list: %s', info.node_list)
 
 
         # The ResourceManager may need to reserve nodes for sub agents and

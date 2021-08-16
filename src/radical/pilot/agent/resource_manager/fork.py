@@ -23,7 +23,7 @@ class Fork(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self, info):
+    def _init_from_scratch(self, info):
 
         self._log.info("Using fork on localhost.")
 

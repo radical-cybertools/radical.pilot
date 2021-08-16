@@ -99,6 +99,8 @@ class AgentExecutingComponent(rpu.Component):
 
             try:
                 self._log.debug('===== %s create start', name)
+                lm_cfg['pid']         = self._cfg.pid
+                lm_cfg['reg_addr']    = self._cfg.reg_addr
                 lm = rpa.LaunchMethod.create(name, lm_cfg,
                                              self._cfg, self._log, self._prof)
                 self._launchers[name] = lm
