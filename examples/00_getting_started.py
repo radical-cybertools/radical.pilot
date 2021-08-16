@@ -42,7 +42,7 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         config = ru.read_json('%s/config.json'
-                            % os.path.dirname(os.path.abspath(__file__)))
+                            % os.path.dirname(__file__)).get(resource, {})
         pmgr   = rp.PilotManager(session=session)
         tmgr   = rp.TaskManager(session=session)
 

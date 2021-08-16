@@ -42,44 +42,6 @@
         "fake_resources"              : true
     },
 
-    "localhost_test": {
-        "description"                 : "Your local machine.",
-        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "pre_bootstrap_1"             : [
-            "export RP_APP_TUNNEL_ADDR=144.76.72.175:27017",
-            "echo  $RP_APP_TUNNEL_ADDR"
-        ],
-        "default_remote_workdir"      : "$HOME",
-        "resource_manager"            : "FORK",
-        "agent_config"                : "default",
-        "agent_scheduler"             : "CONTINUOUS",
-      # "agent_scheduler"             : "CONTINUOUS_COLO",
-        "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "FORK",
-        "task_launch_method"          : "FORK",
-        "mpi_launch_method"           : "MPIEXEC",
-        "rp_version"                  : "installed",
-        "virtenv_mode"                : "local",
-        "python_dist"                 : "default",
-        "cores_per_node"              : 2,
-        "gpus_per_node"               : 1,
-        "lfs_path_per_node"           : "/tmp",
-        "lfs_size_per_node"           : 1024,
-        "memory_per_node"             : 4096,
-        "fake_resources"              : true
-    },
-
     "localhost_anaconda": {
         "description"                 : "Your local machine.",
         "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
@@ -110,86 +72,6 @@
         "lfs_size_per_node"           : 1024,
         "cores_per_node"              : 8,
         "gpus_per_node"               : 1
-    },
-
-    "localhost_prte": {
-        "description"                 : "Your local machine.",
-        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "default_remote_workdir"      : "$HOME",
-        "resource_manager"            : "FORK",
-      # "agent_type"                  : "default",
-        "agent_type"                  : "multicore",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "SHELLFS",
-        "launch_methods"              : {
-                                         "order": ["FORK", "PRRTE"],
-                                         "FORK" : {},
-                                         "PRRTE": {}
-                                        },
-        "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
-      # "virtenv"                     : "$HOME/radical/radical.pilot.merge/ve/",
-        "python_dist"                 : "default",
-        "pre_bootstrap_0"             : [
-            "export PRRTE_PREFIX=$HOME/radical/prte/install.tn/",
-            "export PATH=$PRRTE_PREFIX/bin/:$PATH",
-            "export LD_LIBRARY_PATH=$PRRTE_PREFIX/lib/:$LD_LIBRARY_PATH",
-            "export PKG_CONFIG_PATH=$PRRTE_PREFIX/share/pkgconfig/:$PKG_CONFIG_PATH"
-        ],
-        "cores_per_node"              : 8,
-        "gpus_per_node"               : 1
-    },
-
-    "localhost_flux": {
-        "description"                 : "",
-        "notes"                       : "",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "default_remote_workdir"      : "$HOME",
-        "resource_manager"            : "FORK",
-        "agent_type"                  : "default",
-        "agent_config"                : "default",
-        "agent_scheduler"             : "FLUX",
-        "agent_spawner"               : "FLUX",
-        "launch_methods"              : {
-                                         "order": ["FLUX", "FORK"],
-                                         "FORK" : {},
-                                         "FLUX" : { "pre_exec" : [
-                "export FLUX_DIR=/home/merzky/projects/flux/install/",
-                "export PATH=$PATH:$FLUX_DIR/bin",
-                "export PYTHONPATH=$PYTHONPATH:$FLUX_DIR/lib/python3.8/site-packages/"
-                                         ]}},
-        "pre_bootstrap_0"             : [
-                "export FLUX_DIR=/home/merzky/projects/flux/install/",
-                "export PATH=$PATH:$FLUX_DIR/bin",
-                "export PYTHONPATH=$PYTHONPATH:$FLUX_DIR/lib/python3.8/site-packages/"
-                                        ],
-        "rp_version"                  : "installed",
-        "virtenv_mode"                : "local",
-        "python_dist"                 : "default",
-        "cores_per_node"              : 8,
-        "gpus_per_node"               : 1,
-        "fake_resources"              : true
     },
 
     "localhost_funcs": {
