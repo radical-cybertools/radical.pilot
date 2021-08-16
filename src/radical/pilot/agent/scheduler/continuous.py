@@ -203,7 +203,6 @@ class Continuous(AgentSchedulingComponent):
                 'core_map' : [[1, 2, 4, 5]],
                 'gpu_map'  : [[1, 3]],
                 'lfs'      : 1234,
-                'lsf_path' : '/tmp',
                 'mem'      : 4321
             }
 

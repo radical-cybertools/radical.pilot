@@ -352,34 +352,26 @@ class Agent_0(rpu.Worker):
         bs_name = "%s/bootstrap_2.sh"     % self._pwd
         ls_name = "%s/services_launch.sh" % self._pwd
         ex_name = "%s/services_exec.sh"   % self._pwd
-        threads = self._rm.info.cores_per_node
-        slots   = {
-                    'cpu_processes'    : 1,
-                    'cpu_threads'      : threads,
-                    'gpu_processes'    : 0,
-                    'gpu_threads'      : 0,
-                  # 'nodes'            : [[node[0], node[1], [[0]], []]],
-                    'nodes'            : [{'name'    : nodes[0][0],
-                                           'uid'     : nodes[0][1],
-                                           'core_map': [[0]],
-                                           'gpu_map' : [],
-                                           'lfs'     : {'path': '/tmp', 'size': 0}
-                                         }],
-                  }
+
+        threads = self._rm.info.cores_per_node * \
+                  self._rm.info.threads_per_core
+
         service_task = {
-                    'uid'              : 'rp.services',
-                    'slots'            : slots,
-                    'task_sandbox_path': self._pwd,
-                    'description'      : {'cpu_processes'    : 1,
-                                          'cpu_threads'      : threads,
-                                          'gpu_process_type' : 'posix',
-                                          'gpu_thread_type'  : 'posix',
-                                          'executable'       : "/bin/sh",
-                                          'mpi'              : False,
-                                          'arguments'        : [bs_name,
-                                                                'services'],
-                                         }
-                }
+            'uid'              : 'rp.services',
+            'task_sandbox_path': self._pwd,
+            'description'      : {'cpu_processes' : 1,
+                                  'cpu_threads'   : threads,
+                                  'gpu_processes' : 0,
+                                  'gpu_threads'   : 0,
+                                  'executable'    : '/bin/sh',
+                                  'arguments'     : [bs_name, 'services']},
+            'slots': {'ranks'  : [{'node'         : nodes[0][0],
+                                   'node_id'      : nodes[0][1],
+                                   'core_map'     : [[0]],
+                                   'gpu_map'      : [],
+                                   'lfs'          : 0,
+                                   'mem'          :0}]}
+        }
 
         launcher = self._rm.find_launcher(service_task)
         if not launcher:
@@ -432,6 +424,8 @@ class Agent_0(rpu.Worker):
         if not self._cfg.get('agents'):
             return
 
+        assert (len(self._rm.info.agent_node_list) >= len(self._cfg['agents']))
+
         self._log.debug('start_sub_agents')
 
         # store the current environment as the sub-agents will use the same
@@ -442,7 +436,10 @@ class Agent_0(rpu.Worker):
         # the respective command lines per agent instance, and run via
         # popen.
         #
-        assert(len(self._rm.info.agent_node_list) >= len(self._cfg['agents']))
+
+        threads = self._rm.info.cores_per_node * \
+                  self._rm.info.threads_per_core
+
         for idx, sa in enumerate(self._cfg['agents']):
 
             target = self._cfg['agents'][sa]['target']
@@ -470,34 +467,25 @@ class Agent_0(rpu.Worker):
                 #        out for the moment, which will make this unable to
                 #        work with a number of launch methods.  Can the
                 #        offset computation be moved to the ResourceManager?
-                bs_name       = "%s/bootstrap_2.sh" % (self._pwd)
-                launch_script = "%s/%s.launch.sh"   % (self._pwd, sa)
-                exec_script   = "%s/%s.exec.sh"     % (self._pwd, sa)
-                slots = {
-                    'cpu_processes'    : 1,
-                    'cpu_threads'      : self._rm.info.threads_per_core
-                                       * self._rm.info.cores_per_node,
-                    'gpu_processes'    : 0,
-                    'gpu_threads'      : 0,
-                  # 'ranks'            : [[node[0], node[1], [[0]], []]],
-                    'ranks'            : [{'node'    : node[0],
-                                           'node_id' : node[1],
-                                           'core_map': [[0]],
-                                           'gpu_map' : [],
-                                           'lfs'     : {'path': '/tmp', 'size': 0}
-                                         }],
-                }
+                bs_name       = '%s/bootstrap_2.sh' % (self._pwd)
+                launch_script = '%s/%s.launch.sh'   % (self._pwd, sa)
+                exec_script   = '%s/%s.exec.sh'     % (self._pwd, sa)
+
                 agent_task = {
                     'uid'              : sa,
-                    'slots'            : slots,
                     'task_sandbox_path': self._pwd,
-                    'description'      : {'cpu_processes'    : 1,
-                                          'gpu_process_type' : 'posix',
-                                          'gpu_thread_type'  : 'posix',
-                                          'executable'       : "/bin/sh",
-                                          'mpi'              : False,
-                                          'arguments'        : [bs_name, sa],
-                                         }
+                    'description'      : {'cpu_processes' : 1,
+                                          'cpu_threads'   : threads,
+                                          'gpu_processes' : 0,
+                                          'gpu_threads'   : 0,
+                                          'executable'    : '/bin/sh',
+                                          'arguments'     : [bs_name, sa]},
+                    'slots': {'ranks'  : [{'node'         : node[0],
+                                           'node_id'      : node[1],
+                                           'core_map'     : [[0]],
+                                           'gpu_map'      : [],
+                                           'lfs'          : 0,
+                                           'mem'          : 0}]}
                 }
 
                 # find a launcher to use

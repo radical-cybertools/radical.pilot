@@ -16,7 +16,7 @@ class TestBaseLaunchMethod(TestCase):
     @mock.patch('radical.utils.Logger')
     def test_get_mpi_info(self, mocked_logger, mocked_sh_callout, mocked_init):
 
-        lm = LaunchMethod(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm = LaunchMethod('', {}, None, None, None)
         lm._log = mocked_logger
 
         with self.assertRaises(ValueError):

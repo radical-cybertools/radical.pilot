@@ -17,17 +17,17 @@ from .base import LaunchMethod
 
 PTL_MAX_MSG_SIZE = 1024 * 1024 * 1024 * 1
 
-DVM_URI_FILE_TPL   = '%(base_path)s/prrte.%(dvm_id)03d.uri'
-DVM_HOSTS_FILE_TPL = '%(base_path)s/prrte.%(dvm_id)03d.hosts'
+DVM_URI_FILE_TPL   = '%(base_path)s/prrte.%(dvm_id)04d.uri'
+DVM_HOSTS_FILE_TPL = '%(base_path)s/prrte.%(dvm_id)04d.hosts'
 
 
 # ------------------------------------------------------------------------------
 #
 class PRTE(LaunchMethod):
-    '''
+    """
     PMIx Reference Run Time Environment v2
     (https://github.com/openpmix/prrte)
-    '''
+    """
 
     # --------------------------------------------------------------------------
     #
@@ -38,28 +38,24 @@ class PRTE(LaunchMethod):
 
         LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
-
     # --------------------------------------------------------------------------
     #
     def __del__(self):
 
         self._terminate()
 
-
     # --------------------------------------------------------------------------
     #
     def _configure(self):
 
-        prte_info = dict()
-        prte_cmd  = ru.which('prte')
+        prte_cmd = ru.which('prte')
         if not prte_cmd:
             raise Exception('prte command not found')
 
         prte_prefix = os.environ.get('UMS_OMPIX_PRRTE_DIR') or \
                       os.environ.get('PRRTE_DIR', '')
 
-
-        # get OpenRTE/PRTE version
+        prte_info = {}  # get OpenRTE/PRTE version
         out = ru.sh_callout('prte_info | grep "RTE"', shell=True)[0]
         for line in out.split('\n'):
 
@@ -75,16 +71,17 @@ class PRTE(LaunchMethod):
                 prte_info['version_detail'] = line.split(':')[1].strip()
 
         if prte_info.get('name'):
-            self._log.info('version of %s: %s [%s]', prte_info['name'],
-                     prte_info.get('version'),
-                     prte_info.get('version_detail'))
+            self._log.info('version of %s: %s [%s]',
+                           prte_info['name'],
+                           prte_info.get('version'),
+                           prte_info.get('version_detail'))
         else:
             self._log.info('version of OpenRTE/PRTE not determined')
 
-        # get `dvm_count` from resource config
-        # FIXME: another option is to introduce `nodes_per_dvm` in config
-        #        dvm_count = math.ceil(len(rm.node_list) / nodes_per_dvm)
-        dvm_count     = self._rm_info['resource_cfg'].get('dvm_count') or 1
+        # get `dvm_count` from resource config (LM config section)
+        # FIXME: another option is to introduce `nodes_per_dvm` in LM config
+        #        dvm_count = math.ceil(len(rm_info.node_list) / nodes_per_dvm)
+        dvm_count     = self._lm_cfg.get('dvm_count') or 1
         nodes_per_dvm = math.ceil(len(self._rm_info['node_list']) / dvm_count)
 
         # additional info to form prrte related files (uri-/hosts-file)
@@ -170,7 +167,8 @@ class PRTE(LaunchMethod):
 
             cmd = cmd.strip()
 
-            self._log.info('start prte-%s on %d nodes [%s]', dvm_id, dvm_size, cmd)
+            self._log.info('start prte-%s on %d nodes [%s]',
+                           dvm_id, dvm_size, cmd)
             self._prof.prof(event='dvm_start',
                             uid=self._lm_cfg['pid'],
                             msg='dvm_id=%s' % dvm_id)
@@ -203,7 +201,8 @@ class PRTE(LaunchMethod):
                 raise Exception('DVM URI not found')
 
             self._log.info('prte-%s startup successful: [%s]', dvm_id, dvm_uri)
-            self._prof.prof(event='dvm_uri', uid=self._lm_cfg['pid'],
+            self._prof.prof(event='dvm_uri',
+                            uid=self._lm_cfg['pid'],
                             msg='dvm_id=%s' % dvm_id)
 
             return dvm_uri
@@ -211,8 +210,7 @@ class PRTE(LaunchMethod):
         # ----------------------------------------------------------------------
 
         # format: {<id>: {'nodes': [...], 'dvm_uri': <uri>}}
-        # `nodes` will be moved to RM, and the rest is LM details per partition
-        partitions = {}
+        dvm_list = {}
 
         # go through every dvm instance
         for _dvm_id in range(dvm_count):
@@ -222,7 +220,8 @@ class PRTE(LaunchMethod):
             dvm_file_info.update({'dvm_id': _dvm_id})
             # write hosts file
             with open(DVM_HOSTS_FILE_TPL % dvm_file_info, 'w') as fout:
-                num_slots = self._rm_info['cores_per_node'] * self._rm_info['smt']
+                num_slots = self._rm_info['cores_per_node'] * \
+                            self._rm_info['threads_per_core']
                 for node in node_list:
                     fout.write('%s slots=%d\n' % (node[0], num_slots))
 
@@ -230,8 +229,7 @@ class PRTE(LaunchMethod):
             _dvm_ready = mt.Event()
             _dvm_uri   = _start_dvm(_dvm_id, _dvm_size, _dvm_ready)
 
-            partition_id = str(_dvm_id)
-            partitions[partition_id] = {
+            dvm_list[str(_dvm_id)] = {
                 'nodes'  : [node[1] for node in node_list],
                 'dvm_uri': _dvm_uri}
 
@@ -246,7 +244,7 @@ class PRTE(LaunchMethod):
             except: pass
 
             # re-start DVM
-            partitions[partition_id]['dvm_uri'] = \
+            dvm_list[str(_dvm_id)]['dvm_uri'] = \
                 _start_dvm(_dvm_id, _dvm_size, _dvm_ready)
 
             # FIXME: with the current approach there is only one attempt to
@@ -255,17 +253,11 @@ class PRTE(LaunchMethod):
             #        of nodes from failed DVM(s) + add time for re-started
             #        DVM to stabilize: `time.sleep(10.)`
 
-        lm_details = {'partitions'  : partitions,
+        lm_details = {'dvm_list'    : dvm_list,
                       'version_info': prte_info,
                       'cvd_id_mode' : 'physical'}
 
-        # we need to inform the actual LaunchMethod instance about partitions
-        # (`partition_id` per task and `dvm_uri` per partition). List of nodes
-        # will be stored in ResourceManager and the rest details about
-        # partitions will be kept in `lm_info`, which will be passed as part of
-        # the slots via the scheduler.
         return lm_details
-
 
     # --------------------------------------------------------------------------
     #
@@ -278,12 +270,12 @@ class PRTE(LaunchMethod):
         if not cmd:
             raise Exception('termination command not found')
 
-        for p_id, p_data in self._rm_info.get('partitions', {}).items():
+        for p_id, p_data in self._details.get('dvm_list', {}).items():
             dvm_uri = p_data['dvm_uri']
             try:
                 self._log.info('terminating prte-%s (%s)', p_id, dvm_uri)
                 _, err, _ = ru.sh_callout('%s --dvm-uri "%s"' % (cmd, dvm_uri))
-                self._log.debug('termination status: %s', err.strip('\n') or '-')
+                self._log.debug('termination state: %s', err.strip('\n') or '-')
                 self._prof.prof(event='dvm_stop', uid=self._lm_cfg['pid'],
                                 msg='dvm_id=%s' % p_id)
 
@@ -293,7 +285,6 @@ class PRTE(LaunchMethod):
                 self._log.debug('prte-%s termination failed (%s)', p_id, dvm_uri)
                 self._prof.prof(event='dvm_fail', uid=self._lm_cfg['pid'],
                                 msg='dvm_id=%s | error: %s' % (p_id, e))
-
 
     # --------------------------------------------------------------------------
     #
@@ -306,10 +297,9 @@ class PRTE(LaunchMethod):
 
         return lm_info
 
-
     # --------------------------------------------------------------------------
     #
-    def _init_from_info(self, lm_info, lm_cfg):
+    def _init_from_info(self, lm_info):
 
         self._env     = lm_info['env']
         self._env_sh  = lm_info['env_sh']
@@ -318,13 +308,11 @@ class PRTE(LaunchMethod):
 
         assert self._command
 
-
     # --------------------------------------------------------------------------
     #
     def finalize(self):
 
         pass
-
 
     # --------------------------------------------------------------------------
     #
@@ -334,13 +322,11 @@ class PRTE(LaunchMethod):
             return True
         return False
 
-
     # --------------------------------------------------------------------------
     #
     def get_launcher_env(self):
 
         return ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
-
 
     # --------------------------------------------------------------------------
     #
@@ -363,10 +349,10 @@ class PRTE(LaunchMethod):
         if not slots['lm_info'].get('partitions'):
             raise RuntimeError('no partitions (%s): %s' % (self.name, slots))
 
+        dvm_list = self._details['dvm_list']
         # `partition_id` should be set in a scheduler
-        partitions   = slots['lm_info']['partitions']
-        partition_id = slots.get('partition_id') or partitions.keys()[0]
-        dvm_uri = '--dvm-uri "%s"' % partitions[partition_id]['dvm_uri']
+        dvm_id  = slots.get('partition_id') or dvm_list.keys()[0]
+        dvm_uri = '--dvm-uri "%s"' % dvm_list[dvm_id]['dvm_uri']
 
         flags = ''
         if n_gpus:
@@ -399,13 +385,11 @@ class PRTE(LaunchMethod):
 
         return cmd.strip()
 
-
     # --------------------------------------------------------------------------
     #
     def get_rank_cmd(self):
 
         return "echo $PMIX_RANK"
-
 
     # --------------------------------------------------------------------------
     #
@@ -418,7 +402,6 @@ class PRTE(LaunchMethod):
         command      = '%s %s' % (task_exec, task_argstr)
 
         return command.rstrip()
-
 
 # ------------------------------------------------------------------------------
 

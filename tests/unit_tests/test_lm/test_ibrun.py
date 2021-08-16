@@ -14,9 +14,9 @@ class TestIBRun(TestCase):
     @mock.patch('radical.utils.which', return_value='/usr/bin/ibrun')
     def test_init_from_scratch(self, mocked_which, mocked_init):
 
-        lm_ibrun = IBRun(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_ibrun = IBRun('', {}, None, None, None)
 
-        lm_info = lm_ibrun._init_from_scratch({}, {}, '')
+        lm_info = lm_ibrun._init_from_scratch({}, '')
         self.assertEqual(lm_info['command'], mocked_which())
 
     # --------------------------------------------------------------------------
@@ -24,26 +24,26 @@ class TestIBRun(TestCase):
     @mock.patch.object(IBRun, '__init__', return_value=None)
     def test_init_from_info(self, mocked_init):
 
-        lm_ibrun = IBRun(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_ibrun = IBRun('', {}, None, None, None)
 
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_ibrun.sh',
                    'command': '/usr/bin/ibrun'}
-        lm_ibrun._init_from_info(lm_info, {})
+        lm_ibrun._init_from_info(lm_info)
         self.assertEqual(lm_ibrun._env,     lm_info['env'])
         self.assertEqual(lm_ibrun._env_sh,  lm_info['env_sh'])
         self.assertEqual(lm_ibrun._command, lm_info['command'])
 
         lm_info['command'] = ''
         with self.assertRaises(AssertionError):
-            lm_ibrun._init_from_info(lm_info, {})
+            lm_ibrun._init_from_info(lm_info)
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(IBRun, '__init__', return_value=None)
     def test_can_launch(self, mocked_init):
 
-        lm_ibrun = IBRun(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_ibrun = IBRun('', {}, None, None, None)
         self.assertTrue(lm_ibrun.can_launch(task=None))
 
     # --------------------------------------------------------------------------
@@ -51,11 +51,11 @@ class TestIBRun(TestCase):
     @mock.patch.object(IBRun, '__init__', return_value=None)
     def test_get_launcher_env(self, mocked_init):
 
-        lm_ibrun = IBRun(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        lm_ibrun = IBRun('', {}, None, None, None)
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_ibrun.sh',
                    'command': '/usr/bin/ibrun'}
-        lm_ibrun._init_from_info(lm_info, {})
+        lm_ibrun._init_from_info(lm_info)
         lm_env = lm_ibrun.get_launcher_env()
 
         self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_info['env_sh'], lm_env)
@@ -65,8 +65,8 @@ class TestIBRun(TestCase):
     @mock.patch.object(IBRun, '__init__',   return_value=None)
     def test_get_launch_rank_cmds(self, mocked_init):
 
-        lm_ibrun = IBRun(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
-        lm_ibrun._cfg = {'cores_per_node': 0}
+        lm_ibrun = IBRun('', {}, None, None, None)
+        lm_ibrun._rm_info = {'core_per_node': 0}
         lm_ibrun._node_list = [['node1'], ['node2']]
         lm_ibrun._command = 'ibrun'
 
