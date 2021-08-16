@@ -55,11 +55,11 @@ if __name__ == '__main__':
         pd_init = {'resource'      : resource,
                    'runtime'       : 30,  # pilot runtime (min)
                    'exit_on_error' : True,
-                   'project'       : config[resource].get('project', None),
-                   'queue'         : config[resource].get('queue', None),
-                   'access_schema' : config[resource].get('schema', None),
+                   'project'       : config.get('project', None),
+                   'queue'         : config.get('queue', None),
+                   'access_schema' : config.get('schema', None),
                    'cores'         : 128,
-                   'gpus'          : config[resource].get('gpus', 0),
+                   'gpus'          : config.get('gpus', 0),
                   }
         pdesc = rp.PilotDescription(pd_init)
 
