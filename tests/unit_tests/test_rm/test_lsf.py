@@ -7,11 +7,9 @@ __license__   = 'MIT'
 
 import os
 
-import radical.utils as ru
-
 from unittest import mock, TestCase
 
-from radical.pilot.agent.resource_manager      import RMInfo
+from radical.pilot.agent.resource_manager     import RMInfo
 from radical.pilot.agent.resource_manager.lsf import LSF
 
 TEST_CASES_DIR = 'tests/unit_tests/test_rm/test_cases'
@@ -70,10 +68,10 @@ class LSFTestCase(TestCase):
         with self.assertRaises(RuntimeError):
             rm_lsf._update_info(None)
 
-        # have 2 sockets per node and 1 GPU per node will cause an error
+        # having 2 sockets per node and 1 GPU per node will cause an error
         os.environ['LSB_DJOB_HOSTFILE'] = self._host_file_path
         rm_info = RMInfo({'sockets_per_node': 2,
-                          'gpus_per_node': 1})
+                          'gpus_per_node'   : 1})
         with self.assertRaises(AssertionError):
             rm_lsf._update_info(rm_info)
 
