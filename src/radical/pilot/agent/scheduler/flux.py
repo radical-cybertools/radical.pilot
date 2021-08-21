@@ -1,6 +1,6 @@
 
-__copyright__ = "Copyright 2017, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2017, http://radical.rutgers.edu'
+__license__   = 'MIT'
 
 
 import json
@@ -70,7 +70,7 @@ class Flux(AgentSchedulingComponent):
           # # FIXME: transfer from executor
           # self._task_environment = self._populate_task_environment()
 
-            jd  = json.dumps(ru.read_json('/home/merzky/projects/flux/spec.json'))
+            jd  = json.dumps(self.task_to_spec(task))
             jid = flux_job.submit(self._flux, jd)
             task['flux_id'] = jid
 
@@ -88,7 +88,7 @@ class Flux(AgentSchedulingComponent):
   #
   #     import tempfile
   #
-  #     self.gtod   = "%s/gtod" % self._pwd
+  #     self.gtod   = '%s/gtod' % self._pwd
   #     self.tmpdir = tempfile.gettempdir()
   #
   #     # if we need to transplant any original env into the Task, we dig the
@@ -108,13 +108,13 @@ class Flux(AgentSchedulingComponent):
   # # --------------------------------------------------------------------------
   # #
   # def _populate_task_environment(self):
-  #     """Derive the environment for the t's from our own environment."""
+  #     '''Derive the environment for the t's from our own environment.'''
   #
   #     # Get the environment of the agent
   #     new_env = copy.deepcopy(os.environ)
   #
   #     #
-  #     # Mimic what virtualenv's "deactivate" would do
+  #     # Mimic what virtualenv's 'deactivate' would do
   #     #
   #     old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
   #     if old_path:
@@ -143,6 +143,50 @@ class Flux(AgentSchedulingComponent):
   #
   #     return new_env
 
+
+    # --------------------------------------------------------------------------
+    #
+    def task_to_spec(self, task):
+
+        td   = task['description']
+        cmd  = '%s %s 1>%s 2>%s' % (td['executable'],
+                      ' '.join(td['arguments']), task['stdout'], task['stderr'])
+
+        spec = {
+            'tasks': [{
+                'slot' : 'task',
+                'count': {
+                    'per_slot': 1
+                },
+                'command': ['/bin/sh', '-c', cmd],
+            }],
+            'attributes': {
+                'system': {
+                    'cwd'     : task['task_sandbox_path'],
+                    'duration': 0,
+                }
+            },
+            'version': 1,
+            'resources': [{
+                'count': td['cpu_processes'],
+                'type' : 'slot',
+                'label': 'task',
+                'with' : [{
+                    'count': td['cpu_threads'],
+                    'type' : 'core'
+              # }, {
+              #     'count': td['gpu_processes'],
+              #     'type' : 'gpu'
+                }]
+            }]
+        }
+
+        if td['gpu_processes']:
+            spec['resources']['with'].append({
+                    'count': td['gpu_processes'],
+                    'type' : 'gpu'})
+
+        return spec
 
 # ------------------------------------------------------------------------------
 
