@@ -55,7 +55,7 @@ class Flux(LaunchMethod):
         while True:
 
             line = ru.as_string(proc.stdout.readline().strip())
-            logger.debug('=== %s', line)
+            logger.debug('flux: %s', line)
 
             if line.startswith('export '):
                 k, v = line.split(' ', 1)[1].strip().split('=', 1)
@@ -87,8 +87,8 @@ class Flux(LaunchMethod):
             ret = None
             while not ret:
 
-                out, err, ret = ru.sh_callout('flux ping -c 1 all')
-                logger.debug('=== flux watcher out: %s', out)
+                out, err, ret = ru.sh_callout('flux ping -c 1 kvs')
+              # logger.debug('=== flux watcher out: %s', out)
 
                 if ret:
                     logger.error('=== flux watcher err: %s', err)
