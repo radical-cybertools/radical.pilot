@@ -33,6 +33,22 @@ class Flux(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
+    def schedule_task(self, task):
+
+        # this abstract method is not used in this implementation
+        assert(False)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def unschedule_task(self, task):
+
+        # this abstract method is not used in this implementation
+        assert(False)
+
+
+    # --------------------------------------------------------------------------
+    #
     def _configure(self):
 
         import flux
@@ -148,10 +164,14 @@ class Flux(AgentSchedulingComponent):
     #
     def task_to_spec(self, task):
 
-        td   = task['description']
-        cmd  = '%s %s 1>%s 2>%s' % (td['executable'],
-                      ' '.join(td['arguments']), task['stdout'], task['stderr'])
+        td     = task['description']
+        uid    = task['uid']
+        sbox   = task['task_sandbox_path']
+        stdout = td.get('stdout') or '%s/%s.out' % (sbox, uid)
+        stderr = td.get('stderr') or '%s/%s.err' % (sbox, uid)
 
+        cmd  = '%s %s 1>%s 2>%s' % (td['executable'], ' '.join(td['arguments']),
+                                    stdout, stderr)
         spec = {
             'tasks': [{
                 'slot' : 'task',
@@ -174,9 +194,9 @@ class Flux(AgentSchedulingComponent):
                 'with' : [{
                     'count': td['cpu_threads'],
                     'type' : 'core'
-              # }, {
-              #     'count': td['gpu_processes'],
-              #     'type' : 'gpu'
+                # }, {
+                #     'count': td['gpu_processes'],
+                #     'type' : 'gpu'
                 }]
             }]
         }
