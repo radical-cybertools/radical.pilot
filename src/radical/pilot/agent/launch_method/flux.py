@@ -85,9 +85,13 @@ class Flux(LaunchMethod):
         assert('FLUX_URI' in flux_env)
 
         # TODO check perf implications
-        flux_url             = ru.Url(flux_env['FLUX_URI'])
-        flux_url.host        = ru.get_hostname()
-        flux_url.scheme      = 'ssh'
+        flux_url = ru.Url(flux_env['FLUX_URI'])
+
+        # switch to ssh when more than one node are used for the agent
+        if len(rm.agent_nodes) > 1:
+            flux_url.host   = ru.get_hostname()
+            flux_url.scheme = 'ssh'
+
         flux_env['FLUX_URI'] = str(flux_url)
 
         profiler.prof('flux_started')
