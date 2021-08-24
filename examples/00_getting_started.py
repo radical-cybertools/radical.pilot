@@ -66,7 +66,7 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        n = 1024  # number of tasks to run
+        n = 2  # number of tasks to run
         report.header('submit %d tasks' % n)
 
         # Register the pilot in a TaskManager object.
@@ -82,8 +82,17 @@ if __name__ == '__main__':
             # create a new task description, and fill it.
             # Here we don't use dict initialization.
             td = rp.TaskDescription()
-            td.executable    = '/bin/date'
-            td.cpu_processes = 1
+            td.uid            = 'task.%03d' % i
+            td.stage_on_error = True
+            td.executable     = '/bin/date'
+            td.cpu_processes  = 1
+            td.output_staging = [
+                    {'source': 'task.%03d.out' % i,
+                     'target': 'copy.%03d.out' % i, 'action': rp.COPY},
+                    {'source': 'task.%03d.out' % i,
+                     'target': 'tran.%03d.out' % i, 'action': rp.TRANSFER}
+            ]
+
             tds.append(td)
             report.progress()
 
