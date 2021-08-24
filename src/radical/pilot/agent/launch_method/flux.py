@@ -20,35 +20,32 @@ class Flux(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self, env):
-
-        self._helper = ru.FluxHelper()
-        self._finfo  = self._helper.start_service(env=env)
-        self._fuid   = self._finfo['uid']
-        self._fex    = self._helper.get_executor(self._fuid)
-        self._fh     = self._helper.get_handle(self._fuid)
-
-        self._prof.prof('flux_start')
-
-        self._details = self._fh.get_info()
-
-        return self._details
-
-
-    # --------------------------------------------------------------------------
-    #
     def _terminate(self):
 
-        self._fh.close_service()
+        if self._fh:
+            self._fh.reset()
 
 
     # --------------------------------------------------------------------------
     #
     def _init_from_scratch(self, env, env_sh):
 
+        self._prof.prof('flux_start')
+        self._fh = ru.FluxHelper()
+
+      # self._fh.start_flux(env=env)  # FIXME
+
+        self._log.debug('==== starting flux')
+        self._fh.start_flux()
+
+        self._details = {'flux_uri': self._fh.uri,
+                         'flux_env': self._fh.env}
+
+        self._prof.prof('flux_start_ok')
+
         lm_info = {'env'    : env,
                    'env_sh' : env_sh,
-                   'details': self._configure(env)}
+                   'details': self._details}
 
         return lm_info
 
@@ -57,9 +54,23 @@ class Flux(LaunchMethod):
     #
     def _init_from_info(self, lm_info):
 
+        self._prof.prof('flux_reconnect')
+
         self._env     = lm_info['env']
         self._env_sh  = lm_info['env_sh']
         self._details = lm_info['details']
+
+        self._fh = ru.FluxHelper()
+        self._fh.connect_flux(uri=self._details['flux_uri'])
+
+        self._prof.prof('flux_reconnect_ok')
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def fh(self):
+        return self._fh
 
 
 # ------------------------------------------------------------------------------

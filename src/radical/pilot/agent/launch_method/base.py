@@ -70,15 +70,19 @@ class LaunchMethod(object):
                           script_path=env_sh)
 
             # run init_from_scratch in a process under that derived env
-            envp = ru.EnvProcess(env=env_lm)
-            with envp:
-                data = self._init_from_scratch(env_lm, env_sh)
-                envp.put(data)
-            lm_info = envp.get()
+            # FIXME
+          # envp = ru.EnvProcess(env=env_lm)
+          # with envp:
+          #     data = self._init_from_scratch(env_lm, env_sh)
+          #     envp.put(data)
+          # lm_info = envp.get()
+
+            lm_info = self._init_from_scratch(env_lm, env_sh)
             self._init_from_info(lm_info)
 
             # store the info in the registry for any other instances of the LM
             self._reg.put('lm.%s' % self.name, lm_info)
+            self._log.debug('=== INFO: %s', pprint.pformat(lm_info))
 
 
     # --------------------------------------------------------------------------

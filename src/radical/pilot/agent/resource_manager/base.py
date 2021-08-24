@@ -145,6 +145,9 @@ class ResourceManager(object):
             info = self._init_from_scratch(info)
             info = self._prepare_special_nodes(info)
 
+            # after rm setup and node config, set up all launch methods
+            info = self._prepare_launch_methods(info)
+
             # have a valid info - store in registry and complete # initialization
             self._reg.put('rm.%s' % self.name, info)
 
@@ -276,8 +279,13 @@ class ResourceManager(object):
         assert(cores_avail >= info.requested_cores)
         assert(gpus_avail  >= info.requested_gpus)
 
-        # After ResourceManager configuration, we will instantiate all launch
-        # methods to set them up
+        return info
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _prepare_launch_methods(self, info):
+
         launch_methods  = self._cfg.resource_cfg.launch_methods
         self._launchers = dict()
 
@@ -288,6 +296,7 @@ class ResourceManager(object):
                 continue
 
             try:
+                self._log.debug('==== prepare lm %s', name)
                 lm_cfg['pid']         = self._cfg.pid
                 lm_cfg['reg_addr']    = self._cfg.reg_addr
                 self._launchers[name] = rpa.LaunchMethod.create(name, lm_cfg,

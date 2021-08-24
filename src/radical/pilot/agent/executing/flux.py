@@ -13,6 +13,7 @@ import radical.utils as ru
 from ...   import states    as rps
 from ...   import constants as rpc
 
+from ..    import LaunchMethod
 from ..    import ResourceManager
 from .base import AgentExecutingComponent
 
@@ -52,6 +53,7 @@ class Flux(AgentExecutingComponent) :
                            'RUN'     : rps.AGENT_EXECUTING,
                            'CLEANUP' : None,
                            'INACTIVE': rps.AGENT_STAGING_OUTPUT_PENDING,
+                           'PRIORITY': None,
                           }
 
         # we get an instance of the resource manager (init from registry info)
@@ -59,7 +61,7 @@ class Flux(AgentExecutingComponent) :
                                           cfg=self._cfg, log=self._log,
                                           prof=self._prof)
 
-        assert(self._rm.from_info)
+      # assert(self._rm.from_info)
 
 
         # thread termination signal
@@ -122,7 +124,7 @@ class Flux(AgentExecutingComponent) :
 
         self._task_q.put(ru.as_list(tasks))
 
-        if self._term:
+        if self._term.is_set():
             self._log.warn('threads triggered termination')
             self.stop()
 
@@ -131,14 +133,14 @@ class Flux(AgentExecutingComponent) :
     #
     def _listen(self):
 
-        flux_handle = None
-
+        lm_cfg  = self._cfg.resource_cfg.launch_methods.get('FLUX')
+        lm_cfg['pid']       = self._cfg.pid
+        lm_cfg['reg_addr']  = self._cfg.reg_addr
+        lm                  = LaunchMethod.create('FLUX', lm_cfg, self._cfg,
+                                                  self._log, self._prof)
         try:
-            # thread local initialization
-            import flux
 
-            flux_url    = self._cfg['lm_info']['flux_env']['FLUX_URI']
-            flux_handle = flux.Flux(url=flux_url)
+            flux_handle = lm.fh.get_handle()
             flux_handle.event_subscribe('job-state')
 
             # FIXME: how tot subscribe for task return code information?
@@ -193,7 +195,7 @@ class Flux(AgentExecutingComponent) :
         for event in events:
 
             flux_state = event[1]  # event: flux_id, flux_state
-            state = self._event_map[flux_state]
+            state = self._event_map.get(flux_state)
 
             if state is None:
                 # ignore this state transition

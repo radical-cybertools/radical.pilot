@@ -165,6 +165,8 @@
         "resource_manager"            : "FORK",
         "agent_type"                  : "default",
         "agent_config"                : "default",
+      # "agent_scheduler"             : "CONTINUOUS",
+      # "agent_spawner"               : "POPEN",
         "agent_scheduler"             : "FLUX",
         "agent_spawner"               : "FLUX",
         "launch_methods"              : {

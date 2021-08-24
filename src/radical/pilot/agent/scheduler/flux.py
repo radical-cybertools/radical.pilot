@@ -35,14 +35,6 @@ class Flux(AgentSchedulingComponent):
     #
     def _configure(self):
 
-        import flux
-
-        self._reg  = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
-        self._info = self._reg.get('rm.fork')
-
-        flux_url   = self._cfg['lm_info']['flux_env']['FLUX_URI']
-        self._flux = flux.Flux(url=flux_url)
-
         # don't advance tasks via the component's `advance()`, but push them
         # toward the executor *without state change* - state changes are
         # performed in retrospect by the executor, based on the scheduling and
@@ -52,10 +44,11 @@ class Flux(AgentSchedulingComponent):
         cfg     = ru.read_json(fname)
         self._q = ru.zmq.Putter(qname, cfg['put'])
 
-        # create job spec via the flux LM
-        self._lm = LaunchMethod.create(name    = 'FLUX',
-                                       cfg     = self._cfg,
-                                       session = self._session)
+        lm_cfg  = self._cfg.resource_cfg.launch_methods.get('FLUX')
+        lm_cfg['pid']       = self._cfg.pid
+        lm_cfg['reg_addr']  = self._cfg.reg_addr
+        self._lm            = LaunchMethod.create('FLUX', lm_cfg, self._cfg,
+                                                  self._log, self._prof)
 
 
     # --------------------------------------------------------------------------
@@ -63,26 +56,20 @@ class Flux(AgentSchedulingComponent):
     def work(self, tasks):
 
         # overload the base class work method
-
-        from flux import job as flux_job
-
+        self._log.debug('==== submit tasks?')
         self.advance(tasks, rps.AGENT_SCHEDULING, publish=True, push=False)
 
-        for task in tasks:
+        # FIXME: need actual job description, obviously
+        jd   = ru.read_json('/home/merzky/projects/flux/spec.json')
+        self._log.debug('==== submit tasks: %s', [jd for task in tasks])
+        jids = self._lm.fh.submit_jobs([jd for task in tasks])
+        self._log.debug('==== submitted tasks')
 
-          # # FIXME: transfer from executor
-          # self._task_environment = self._populate_task_environment()
-
-            jd  = json.dumps(ru.read_json('/home/merzky/projects/flux/spec.json'))
-            jid = flux_job.submit(self._flux, jd)
+        for task, jid in zip(tasks, jids):
+            self._log.debug('==== submit tasks %s -> %s', task['uid'], jid)
             task['flux_id'] = jid
 
-            # publish without state changes - those are retroactively applied
-            # based on flux event timestamps.
-            # TODO: apply some bulking, submission is not really fast.
-            #       But at the end performance is determined by flux now, so
-            #       communication only affects timelyness of state updates.
-            self._q.put(task)
+        self._q.put(tasks)
 
 
   # # --------------------------------------------------------------------------
