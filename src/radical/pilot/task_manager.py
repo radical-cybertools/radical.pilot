@@ -446,7 +446,13 @@ class TaskManager(rpu.Component):
             # only advance tasks to data stager if we need data staging
             # = otherwise finalize them right away
             if task['description'].get('output_staging'):
-                to_stage.append(task)
+                if task['target_state'] != rps.DONE:
+                    if task['description']['stage_on_error']:
+                        to_stage.append(task)
+                    else:
+                        to_finalize.append(task)
+                else:
+                    to_stage.append(task)
             else:
                 to_finalize.append(task)
 
