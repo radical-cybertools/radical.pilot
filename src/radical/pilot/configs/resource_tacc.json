@@ -35,7 +35,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"                : ["LMOD_CMD",
+        "export_to_task"              : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
         "task_pre_exec"               : []
@@ -77,7 +77,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"                : ["LMOD_CMD",
+        "export_to_task"              : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"],
         "task_pre_exec"               : []
@@ -105,16 +105,13 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "PRTE",
-        "mpi_launch_method"           : "PRTE",
+        "task_launch_method"          : "PRTE2",
+        "mpi_launch_method"           : "PRTE2",
         "pre_bootstrap_0"             : [
-            "module use /work/05445/naughton/rp/ums/ompix/gcc/6.3.0/modules",
-          # "module use /work/05445/naughton/rp/ums/ompix/intel/19.0.5/modules",
-            "module unload xalt",
+            "module unload pmix hwloc impi xalt",
             "module load gcc/6.3.0",
-            "module load prrte/1.0.0_devtiming",
-          # "module load prrte/master",
-            "export PRRTE_PREFIX=$PRRTE_DIR"
+            "module use /work2/05445/naughton/rp/ums/ompix/gcc/6.3.0/modules",
+            "module load prrte/master"
         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["$SCRATCH", "$WORK"],
@@ -157,10 +154,9 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"                : ["LMOD_CMD",
+        "export_to_task"              : ["LMOD_CMD",
                                          "LMOD_SYSTEM_DEFAULT_MODULES",
                                          "LD_LIBRARY_PATH"
                                         ]
     }
 }
-
