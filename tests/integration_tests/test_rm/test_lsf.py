@@ -4,67 +4,54 @@
 
 import os
 
-from unittest import mock, TestCase
-
 import radical.utils as ru
 
-from radical.pilot.agent.resource_manager.lsf_summit import LSF_SUMMIT
+from unittest import mock, TestCase
+
+from radical.pilot.agent.resource_manager     import RMInfo
+from radical.pilot.agent.resource_manager.lsf import LSF
 
 
 # ------------------------------------------------------------------------------
 #
-class TestTask(TestCase):
-
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self):
-
-        TestCase.__init__(self)
-        self.setUpClass()
-
+class LSFTestCase(TestCase):
 
     # --------------------------------------------------------------------------
     #
     @classmethod
     def setUpClass(cls):
+
         path = os.path.dirname(__file__) + '/../test_config/resources.json'
-        resources = ru.read_json(path)
-        cls.host = 'summit'
-        cls.resource = resources[cls.host]
+        cls.resource = ru.read_json(path)['summit']
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    @mock.patch.object(LSF_SUMMIT, '__init__',   return_value=None)
+    @mock.patch.object(LSF, '__init__',   return_value=None)
     @mock.patch('radical.utils.Logger')
-    def test_configure(self, mocked_init, mocked_Logger):
+    def test_update_info(self, mocked_logger, mocked_init):
 
-        if not self.host:
+        if not self.resource:
             return
 
-        component = LSF_SUMMIT(cfg=None, session=None)
-        component._log    = mocked_Logger
-        component._cfg    = {}
-        component._configure()
+        rm_lsf = LSF(cfg=None, log=None, prof=None)
+        rm_lsf._log = mocked_logger
 
-        self.assertEqual(component.sockets_per_node, 1)
-        self.assertEqual(component.cores_per_socket, self.resource['cores_per_node'])
-        self.assertEqual(component.gpus_per_socket, 0)
-        self.assertEqual(component.cores_per_node, self.resource['cores_per_node'])
-        self.assertEqual(component.gpus_per_node, 0)
-        self.assertEqual(component.lfs_per_node, {'path': None,
-                                                 'size': 0})
-        self.assertEqual(component.mem_per_node, 0)
+        rm_info = rm_lsf._update_info(RMInfo({'sockets_per_node': 2,
+                                              'gpus_per_node'   : 6}))
 
+        self.assertEqual(rm_info.cores_per_socket,
+                         self.resource['cores_per_socket'])
+        self.assertEqual(rm_info.gpus_per_socket,
+                         self.resource['gpus_per_socket'])
 
 # ------------------------------------------------------------------------------
-#
+
+
 if __name__ == '__main__':
 
-    tt = TestTask()
-    tt.test_configure()
+    tc = LSFTestCase()
+    tc.test_update_info()
 
 
 # ------------------------------------------------------------------------------
-# pylint: enable=protected-access, unused-argument, no-value-for-parameter
 

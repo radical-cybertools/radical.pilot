@@ -1,9 +1,9 @@
 
-__copyright__ = 'Copyright 2016, http://radical.rutgers.edu'
+__copyright__ = 'Copyright 2016-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
-import os
 import math
+import os
 
 import radical.utils as ru
 
@@ -40,8 +40,8 @@ class RMInfo(ru.Munch):
 
             'partitions'       : {int: None},   # partition setup
             'node_list'        : [None],        # tuples of node uids and names
-            'agent_node_list'  : [str],         # nodes reserved for agent
-            'service_node_list': [str],         # nodes reserved for services
+            'agent_node_list'  : [None],        # nodes reserved for sub-agents
+            'service_node_list': [None],        # nodes reserved for services
 
             'sockets_per_node' : int,           # number of sockets per node
             'cores_per_socket' : int,           # number of cores per socket
@@ -65,10 +65,10 @@ class RMInfo(ru.Munch):
     }
 
     _defaults = {
-            'agent_node_list'  : list(),       # no sub agents run by default
-            'service_node_list': list(),       # no services run by default
-            'threads_per_core' : 1,            # assume one thread per core
-            'threads_per_gpu'  : 1,            # assume one thread per gpu
+            'agent_node_list'  : [],            # no sub-agents run by default
+            'service_node_list': [],            # no services run by default
+            'threads_per_core' : 1,             # assume one thread per core
+            'threads_per_gpu'  : 1,             # assume one thread per gpu
     }
 
 
@@ -99,7 +99,7 @@ class ResourceManager(object):
     The Resource Manager provides fundamental resource information via
     `self.info` (see `RMInfo` class definition).
 
-      ResourceManager.node_list      : list of node names
+      ResourceManager.node_list      : list of nodes names and uids
       ResourceManager.agent_node_list: list of nodes reserved for agent procs
       ResourceManager.cores_per_node : number of cores each node has available
       ResourceManager.gpus_per_node  : number of gpus  each node has available
@@ -113,10 +113,10 @@ class ResourceManager(object):
     The ResourceManager will reserve nodes for the agent execution, by deriving
     the respectively required node count from the config's 'agents' section.
     Those nodes will be listed in ResourceManager.agent_node_list. Schedulers
-    MUST NOT use the agent_node_list to place tasks -- CUs are limited
+    MUST NOT use the agent_node_list to place tasks -- Tasks are limited
     to the nodes in ResourceManager.node_list.
 
-    Last but not least, the RM will intialize the launch methods and ensure that
+    Last but not least, the RM will initialize launch methods and ensure that
     the executor (or any other component really) finds them ready to use.
     '''
 
@@ -129,53 +129,51 @@ class ResourceManager(object):
         self._log     = log
         self._prof    = prof
 
+        self._log.info('Configuring ResourceManager %s', self.name)
+
         self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
-        data      = self._reg.get('rm.%s' % self.name)
+        rm_info   = self._reg.get('rm.%s' % self.name.lower())
 
-        if data:
+        if rm_info:
 
-            self._log.debug('=== RM init from info')
-            info = RMInfo(data)
+            self._log.debug('=== RM init from registry')
+            rm_info = RMInfo(rm_info)
 
         else:
-            self._log.debug('=== RM init from scratch: %s')
+            self._log.debug('=== RM init from scratch')
 
             # let the base class collect some data, then let the impl take over
-            info = self._prepare_info()
-            info = self._init_from_scratch(info)
-            info = self._prepare_special_nodes(info)
+            rm_info = self._prepare_info()
+            rm_info = self._init_from_scratch(rm_info)
 
             # after rm setup and node config, set up all launch methods
-            info = self._prepare_launch_methods(info)
+            rm_info = self._prepare_launch_methods(rm_info)
 
             # have a valid info - store in registry and complete # initialization
-            self._reg.put('rm.%s' % self.name, info)
+            self._reg.put('rm.%s' % self.name.lower(), rm_info)
 
-        self._init_from_info(info)
+        self._set_info(rm_info)
 
 
     # --------------------------------------------------------------------------
     #
     @property
     def info(self):
+
         return self._rm_info
 
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_info(self, info):
+    def _set_info(self, info):
 
         self._rm_info = info
         self._rm_info.verify()
-
-        self._log.info('Configuring ResourceManager %s (from info)', self.name)
 
 
     # --------------------------------------------------------------------------
     #
     def _prepare_info(self):
-
-        self._log.info('Configuring ResourceManager %s.', self.name)
 
         info = RMInfo()
 
@@ -186,22 +184,32 @@ class ResourceManager(object):
         rcfg = self._cfg['resource_cfg']
         info.cores_per_node   = rcfg.get('cores_per_node')
         info.gpus_per_node    = rcfg.get('gpus_per_node')
-        info.mem_per_node     = rcfg.get('mem_per_node')
-        info.lfs_per_node     = rcfg.get('lfs_size_per_node')
-        info.lfs_path         = rcfg.get('lfs_path_per_node')
+        info.mem_per_node     = rcfg.get('mem_per_node',      0)
+        info.lfs_per_node     = rcfg.get('lfs_size_per_node', 0)
+        info.lfs_path         = ru.expand_env(rcfg.get('lfs_path_per_node'))
 
-        # FIXME: the resource config should also provide these attributes
-        info.sockets_per_node = 1
-        info.cores_per_socket = info.cores_per_node
+        info.sockets_per_node = rcfg.get('sockets_per_node',  1)
+        info.cores_per_socket = rcfg.get('cores_per_socket')
+        info.gpus_per_socket  = rcfg.get('gpus_per_socket')
+
+        if info.cores_per_socket and not info.cores_per_node:
+            info.cores_per_node    = info.cores_per_socket * \
+                                     info.sockets_per_node
+            if info.gpus_per_socket:
+                info.gpus_per_node = info.gpus_per_socket * \
+                                     info.sockets_per_node
+        elif info.cores_per_node:
+            info.sockets_per_node  = 1
+            info.cores_per_socket  = info.cores_per_node
+            info.gpus_per_socket   = info.gpus_per_node
+
         info.threads_per_core = int(os.environ.get('RADICAL_SAGA_SMT', 1))
-        info.gpus_per_socket  = info.gpus_per_node
         info.threads_per_gpu  = 1
         info.mem_per_gpu      = None
 
-
         n_nodes = info.requested_cores / info.cores_per_node
         if info.gpus_per_node:
-            n_nodes = max(n_nodes, info.requested_gpus  / info.gpus_per_node)
+            n_nodes = max(n_nodes, info.requested_gpus / info.gpus_per_node)
 
         info.requested_nodes  = int(math.ceil(n_nodes))
 
@@ -210,20 +218,21 @@ class ResourceManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, info):
+    def _update_info(self, info):
 
-        raise NotImplementedError('subclass must implement this method')
+        return info
 
 
     # --------------------------------------------------------------------------
     #
-    def _prepare_special_nodes(self, info):
+    def _init_from_scratch(self, info):
+
+        # let the specific RM instance fill out the RMInfo attributes
+        info = self._update_info(info)
 
         # we expect to have a valid node list now
-        # let the specific RM instance fill out the RMInfo attributes
-        assert(info.node_list)
+        assert info.node_list
         self._log.info('node list: %s', info.node_list)
-
 
         # The ResourceManager may need to reserve nodes for sub agents and
         # service, according to the agent layout and pilot config.  We dig out
@@ -250,7 +259,6 @@ class ResourceManager(object):
 
             assert(agent_nodes == len(info.agent_node_list))
 
-
         if service_nodes:
 
             if not info.service_node_list:
@@ -260,7 +268,6 @@ class ResourceManager(object):
 
             assert(service_nodes == len(info.service_node_list))
 
-
         self._log.info('compute nodes: %s' % len(info.node_list))
         self._log.info('agent   nodes: %s' % len(info.agent_node_list))
         self._log.info('service nodes: %s' % len(info.service_node_list))
@@ -269,7 +276,7 @@ class ResourceManager(object):
         if not info.node_list:
             raise RuntimeError('ResourceManager has no nodes left to run tasks')
 
-        # we have nodes and node properties - calculate some convinence values
+        # we have nodes and node properties - calculate some convenience values
         # and perform sanity checks
         total_nodes = len(info.node_list) + agent_nodes + service_nodes
         cores_avail = total_nodes * info.cores_per_node
@@ -299,8 +306,8 @@ class ResourceManager(object):
                 self._log.debug('==== prepare lm %s', name)
                 lm_cfg['pid']         = self._cfg.pid
                 lm_cfg['reg_addr']    = self._cfg.reg_addr
-                self._launchers[name] = rpa.LaunchMethod.create(name, lm_cfg,
-                                            info, self._log, self._prof)
+                self._launchers[name] = rpa.LaunchMethod.create(
+                    name, lm_cfg, info, self._log, self._prof)
 
             except:
                 self._log.exception('skip LM %s' % name)
@@ -363,12 +370,8 @@ class ResourceManager(object):
 
         # clean up launch methods
         for name in self._launchers:
-            try:
-                self._launchers[name].finalize()
-
-            except Exception:
-                # this is not fatal
-                self._log.exception('LM %s finalize failed' % name)
+            try:    self._launchers[name].finalize()
+            except: self._log.exception('LM %s finalize failed', name)
 
 
     # --------------------------------------------------------------------------

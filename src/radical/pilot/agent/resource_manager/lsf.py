@@ -1,171 +1,30 @@
 
-__copyright__ = "Copyright 2018, http://radical.rutgers.edu"
-__license__ = "MIT"
-
+__copyright__ = 'Copyright 2018-2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import os
-import pprint
 
 from .base import ResourceManager
-import radical.utils as ru
 
 
 # ------------------------------------------------------------------------------
 #
-# pylint: disable=super-init-not-called
 class LSF(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, log, prof):
 
-        # We temporarily do not call the base class constructor. The
-        # constraint was not to change the base class at any point.
-        # The constructor of the base class performs certain computations
-        # that are specific to a node architecture, i.e., (i) requirement of
-        # cores_per_node and gpus_per_node, (ii) no requirement for
-        # sockets_per_node, and (iii) no validity checks on cores_per_socket,
-        # gpus_per_socket, and sockets_per_node. It is, hence, incompatible
-        # with the node architecture expected within this module.
-
-        # We have three options:
-        # 1) Change the child class, do not call the base class constructor
-        # 2) Call the base class constructor, make the child class and its node
-        #    structure compatible with that expected in the base class.
-        # 3) Change the base class --- Out of scope of this project
-
-        # 3 is probably the correct approach, but long term. 2 is not a
-        # good approach as we are striving to keep a child class compatible
-        # with a base class (this should never be the case).
-        # We go ahead with 1, process of elimination really, but with the
-        # advantage that we have the code content that will be required when
-        # we implement 3, the long term approach.
-
         ResourceManager.__init__(self, cfg, log, prof)
-
-        self.name            = type(self).__name__
-        self._cfg            = cfg
-        self.requested_cores = self._cfg['cores']
-
-        self._log.info("Configuring ResourceManager %s.", self.name)
-
-        self.lm_info            = {}
-        self.rm_info            = {}
-        self.slot_list          = []
-        self.node_list          = []
-        self.agent_nodes        = {}
-        self.sockets_per_node   = None
-        self.cores_per_socket   = None
-        self.gpus_per_socket    = None
-        self.lfs_per_node       = {}
-        self.mem_per_node       = None
-        self.smt                = int(os.environ.get('RADICAL_SAGA_SMT', 1))
-
-        # The ResourceManager will possibly need to reserve nodes for the agent, according
-        # to the agent layout.  We dig out the respective requirements from the
-        # config right here.
-        self._agent_reqs = []
-        agents = self._cfg.get('agents', {})
-
-        # FIXME: this loop iterates over all agents *defined* in the layout, not
-        #        over all agents which are to be actually executed, thus
-        #        potentially reserving too many nodes.a
-        # NOTE:  this code path is *within* the agent, so at least agent.0
-        #        cannot possibly land on a different node.
-        for agent in agents:
-            target = agents[agent].get('target')
-            # make sure that the target either 'local', which we will ignore,
-            # or 'node'.
-            if target == 'local':
-                pass  # ignore that one
-            elif target == 'node':
-                self._agent_reqs.append(agent)
-            else :
-                raise ValueError("ill-formatted agent target '%s'" % target)
-
-        # We are good to get rolling, and to detect the runtime environment of
-        # the local ResourceManager.
-        self._init_from_scratch()
-        self._log.info("Discovered execution environment: %s", self.node_list)
-
-        # Make sure we got a valid nodelist and a valid setting for
-        # cores_per_socket and sockets_per_node
-        if not self.node_list        or\
-           self.sockets_per_node < 1 or \
-           self.cores_per_socket < 1:
-            raise RuntimeError('ResourceManager configuration invalid (%s)(%s)(%s)' %
-                    (self.node_list, self.sockets_per_node,
-                     self.cores_per_socket))
-
-        # Check if the ResourceManager implementation reserved agent nodes.  If not, pick
-        # the first couple of nodes from the nodelist as a fallback.
-        if self._agent_reqs and not self.agent_nodes:
-            self._log.info('Determine list of agent nodes generically.')
-            for agent in self._agent_reqs:
-                # Get a node from the end of the node list
-                self.agent_nodes[agent] = self.node_list.pop()
-                # If all nodes are taken by workers now, we can safely stop,
-                # and let the raise below do its thing.
-                if not self.node_list:
-                    break
-
-        if self.agent_nodes:
-            self._log.info('agents      : %s' % list(self.agent_nodes.keys()))
-            self._log.info('agent nodes : %s' % list(self.agent_nodes.values()))
-            self._log.info('worker nodes: %s' % self.node_list)
-
-        # Check if we can do any work
-        if not self.node_list:
-            raise RuntimeError('ResourceManager has no nodes left to run tasks')
-
-      # # For now assume that all nodes have equal amount of cores and gpus
-      # cores_avail = (len(self.node_list) + len(self.agent_nodes)) \
-      #             * self.cores_per_socket * self.sockets_per_node
-      # gpus_avail  = (len(self.node_list) + len(self.agent_nodes)) \
-      #             * self.gpus_per_socket * self.sockets_per_node
-
-
-        # NOTE: self.rm_info is what scheduler and launch method can
-        #       ultimately use, as it is included into the cfg passed to all
-        #       components.
-        #
-        # it defines
-        #   lm_info:            dict received via the LM's rm_config_hook
-        #   node_list:          list of node names to be used for task execution
-        #   sockets_per_node:   integer number of sockets on a node
-        #   cores_per_socket:   integer number of cores per socket
-        #   gpus_per_socket:    integer number of gpus per socket
-        #   agent_nodes:        list of node names reserved for agent execution
-        #   lfs_per_node:       dict consisting the path and size of lfs on each node
-        #   mem_per_node:       number of MB per node
-        #   smt:                threads per core (exposed as core in RP)
-        #
-
-        self.rm_info = {
-            'name'             : self.name,
-            'lm_info'          : self.lm_info,
-            'node_list'        : self.node_list,
-            'sockets_per_node' : self.sockets_per_node,
-            'cores_per_socket' : self.cores_per_socket * self.smt,
-            'gpus_per_socket'  : self.gpus_per_socket,
-            'cores_per_node'   : self.sockets_per_node * self.cores_per_socket * self.smt,
-            'gpus_per_node'    : self.sockets_per_node * self.gpus_per_socket,
-            'agent_nodes'      : self.agent_nodes,
-            'lfs_per_node'     : self.lfs_per_node,
-            'mem_per_node'     : self.mem_per_node,
-            'smt'              : self.smt
-        }
-
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self):
+    def _update_info(self, info):
 
         lsf_hostfile = os.environ.get('LSB_DJOB_HOSTFILE')
         if not lsf_hostfile:
-            raise RuntimeError("$LSB_DJOB_HOSTFILE not set!")
+            raise RuntimeError('$LSB_DJOB_HOSTFILE not set')
         self._log.info('LSB_DJOB_HOSTFILE: %s', lsf_hostfile)
-
 
         # LSF hostfile format:
         #
@@ -200,33 +59,20 @@ class LSF(ResourceManager):
                 del lsf_nodes[node]
                 break
 
-        self._log.debug('found %d nodes: %s', len(lsf_nodes), lsf_nodes)
-
         # RP currently requires uniform node configuration, so we expect the
         # same core count for all nodes
         assert(len(set(lsf_nodes.values())) == 1)
-        lsf_cores_per_node = list(lsf_nodes.values())[0]
-        self._log.debug('found %d nodes with %d cores', len(lsf_nodes),
-                                                        lsf_cores_per_node)
-
-        # We cannot inspect gpu and socket numbers yet (TODO), so pull those
-        # from the configuration
-        lsf_sockets_per_node = self._cfg.get('sockets_per_node', 1)
-        lsf_gpus_per_node    = self._cfg.get('gpus_per_node',    0)
-        lsf_mem_per_node     = self._cfg.get('mem_per_node',     0)
+        info.cores_per_node = list(lsf_nodes.values())[0]
+        self._log.debug('found %d nodes with %d cores',
+                        len(lsf_nodes), info.cores_per_node)
 
         # ensure we can derive the number of cores per socket
-        assert(not lsf_cores_per_node % lsf_sockets_per_node)
-        lsf_cores_per_socket = int(lsf_cores_per_node / lsf_sockets_per_node)
+        assert(not info.cores_per_node % info.sockets_per_node)
+        info.cores_per_socket = int(info.cores_per_node / info.sockets_per_node)
 
         # same for gpus
-        assert(not lsf_gpus_per_node % lsf_sockets_per_node)
-        lsf_gpus_per_socket = int(lsf_gpus_per_node / lsf_sockets_per_node)
-
-        # get lfs info from configs, too
-        lsf_lfs_per_node = {'path': ru.expand_env(
-                                    self._cfg.get('lfs_path_per_node')),
-                            'size': self._cfg.get('lfs_size_per_node', 0)}
+        assert(not info.gpus_per_node % info.sockets_per_node)
+        info.gpus_per_socket = int(info.gpus_per_node / info.sockets_per_node)
 
         # structure of the node list is
         #
@@ -238,19 +84,10 @@ class LSF(ResourceManager):
         # While LSF node names are unique and could serve as node uids, we
         # need an integer index later on for resource set specifications.
         # (LSF starts node indexes at 1, not 0)
+        info.node_list = [[name, str(idx + 1)]
+                          for idx, name in enumerate(sorted(lsf_nodes.keys()))]
 
-        node_names     = sorted(lsf_nodes.keys())
-        self.node_list = [[n, str(i + 1)] for i, n
-                                          in  enumerate(node_names)]
-        self._log.debug('node list: %s', pprint.pformat(self.node_list))
-
-        self.sockets_per_node = lsf_sockets_per_node
-        self.cores_per_socket = lsf_cores_per_socket
-        self.gpus_per_socket  = lsf_gpus_per_socket
-        self.cores_per_node   = lsf_cores_per_socket * lsf_sockets_per_node
-        self.gpus_per_node    = lsf_gpus_per_socket * lsf_sockets_per_node
-        self.lfs_per_node     = lsf_lfs_per_node
-        self.mem_per_node     = lsf_mem_per_node
+        return info
 
 
 # ------------------------------------------------------------------------------

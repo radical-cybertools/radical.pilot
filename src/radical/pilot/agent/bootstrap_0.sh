@@ -1830,10 +1830,10 @@ $PREBOOTSTRAP2_EXPANDED
 if test "\$1" = 'services'
 then
     # start the services script
-    exec ./services 1> services.out 2> services.err
+    exec ./services 1>> services.out 2>> services.err
 else
     # start a sub-agent
-    exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
+    exec $AGENT_CMD "\$1" 1>>"\$1.out" 2>>"\$1.err"
 fi
 
 EOT
@@ -1919,12 +1919,12 @@ test -f ./services && chmod 0755     ./services
 profile_event 'bootstrap_0_ok'
 if test -z "$CCM"; then
     ./bootstrap_2.sh 'agent.0'    \
-                   1> agent.0.bootstrap_2.out \
-                   2> agent.0.bootstrap_2.err &
+                   1>> agent.0.bootstrap_2.out \
+                   2>> agent.0.bootstrap_2.err &
 else
     ccmrun ./bootstrap_2.sh 'agent.0'    \
-                   1> agent.0.bootstrap_2.out \
-                   2> agent.0.bootstrap_2.err &
+                   1>> agent.0.bootstrap_2.out \
+                   2>> agent.0.bootstrap_2.err &
 fi
 AGENT_PID=$!
 

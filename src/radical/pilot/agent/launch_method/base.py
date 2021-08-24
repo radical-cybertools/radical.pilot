@@ -43,6 +43,8 @@ class LaunchMethod(object):
     #
     def __init__(self, name, lm_cfg, rm_info, log, prof):
 
+        import pprint
+
         self.name     = name
         self._lm_cfg  = lm_cfg
         self._rm_info = rm_info
@@ -52,6 +54,9 @@ class LaunchMethod(object):
 
         self._reg = ru.zmq.RegistryClient(url=self._lm_cfg.reg_addr)
         lm_info   = self._reg.get('lm.%s' % self.name)
+        self._log.debug('=== addr: %s', self._lm_cfg.reg_addr)
+        self._log.debug('=== name: %s', self.name)
+        self._log.debug('=== info: %s', pprint.pformat(lm_info))
 
         if lm_info:
             # we found data in the registry and use it to (re)initialize the LM

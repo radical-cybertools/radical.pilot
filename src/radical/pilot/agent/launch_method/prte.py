@@ -312,7 +312,7 @@ class PRTE(LaunchMethod):
     #
     def finalize(self):
 
-        pass
+        self._terminate()
 
     # --------------------------------------------------------------------------
     #
