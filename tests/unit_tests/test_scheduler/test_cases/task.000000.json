@@ -25,7 +25,7 @@
                 "uid"        : 1,
                 "cores"      : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                 "gpus"       : [0, 0, 0, 0],
-                "lfs"        : {"size": 0, "path": "/dev/null"},
+                "lfs"        : 0,
                 "mem"        : 1024
             },
             {
@@ -33,7 +33,7 @@
                 "uid"        : 2,
                 "cores"      : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                 "gpus"       : [0, 0, 0, 0],
-                "lfs"        : {"size": 0, "path": "/dev/null"},
+                "lfs"        : 0,
                 "mem"        : 1024
             }
         ]
@@ -41,27 +41,21 @@
 
     "result": {
         "slots": {
-            "cores_per_node"   : 14,
-            "gpus_per_node"    : 4,
-            "lfs_per_node"     : {"size": 0, "path": "/dev/null"},
-            "mem_per_node"     : 1024,
-            "lm_info"          : {},
             "partition_id"     : null,
             "ranks"            : [{"node"    : "a",
                                    "node_id" : 1,
                                    "core_map": [[0]],
                                    "gpu_map" : [[0]],
                                    "mem"     : 128,
-                                   "lfs"     : {"size": 0,
-                                                "path": "/dev/null"}},
+                                   "lfs"     : 0},
                                   {"node"    : "a",
                                    "node_id" : 1,
                                    "core_map": [[1]],
                                    "gpu_map" : [[1]],
                                    "mem"     : 128,
-                                   "lfs"     : {"size": 0,
-                                                "path": "/dev/null"}}]
+                                   "lfs"     : 0}]
         },
         "colo_history": {"tag.0000": [1, 1]}
     }
 }
+

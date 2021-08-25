@@ -78,8 +78,10 @@ class Torque(ResourceManager):
 
         if torque_cores_per_node in [None, 1]:
             # lets see if SAGA has been forthcoming with some information
-            self._log.warning("fall back to $SAGA_PPN : %s", os.environ.get ('SAGA_PPN', None))
-            torque_cores_per_node = int(os.environ.get('SAGA_PPN', torque_cores_per_node))
+            self._log.warning("fall back to $SAGA_PPN : %s",
+                              os.environ.get ('SAGA_PPN', None))
+            torque_cores_per_node = int(os.environ.get('SAGA_PPN',
+                                           torque_cores_per_node))
 
         # Number of entries in nodefile should be PBS_NUM_NODES * PBS_NUM_PPN
         torque_nodes_length = len(torque_nodes)

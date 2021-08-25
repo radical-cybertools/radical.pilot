@@ -5,6 +5,7 @@
 __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
+import os
 import copy
 import glob
 
@@ -15,7 +16,8 @@ import radical.pilot.constants as rpc
 
 from radical.pilot.agent.scheduler.continuous import Continuous
 
-TEST_CASES_DIR = 'tests/unit_tests/test_scheduler/test_cases'
+base = os.path.abspath(os.path.dirname(__file__))
+TEST_CASES_DIR = '%s/test_cases' % base
 
 
 # ------------------------------------------------------------------------------
@@ -33,32 +35,33 @@ class TestContinuous(TestCase):
 
         cls._config = ru.read_json('%s/test_continuous.json' % TEST_CASES_DIR)
 
+
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Continuous, '__init__', return_value=None)
-    @mock.patch('radical.utils.Logger')
-    def test_configure(self, mocked_logger, mocked_init):
+    def test_configure(self, mocked_init):
 
         component = Continuous(cfg=None, session=None)
-        component._uid = 'agent_scheduling.0000'
-        component._log = mocked_logger
+        component._uid  = 'agent_scheduling.0000'
+        component._log  = mock.Mock()
+        component._prof = mock.Mock()
+        component._rm   = ru.Config()
 
         for rm_info, resource_cfg, result in zip(
                 self._config['configure']['rm_info'],
                 self._config['configure']['resource_cfg'],
                 self._config['configure']['result']):
 
-            component._rm_info           = rm_info
-            component._rm_node_list      = rm_info['node_list']
-            component._rm_cores_per_node = rm_info['cores_per_node']
-            component._rm_gpus_per_node  = rm_info['gpus_per_node']
-            component._rm_lfs_per_node   = rm_info['lfs_per_node']
-            component._rm_mem_per_node   = rm_info['mem_per_node']
-            component._cfg               = ru.Config(from_dict={
-                'pid'         : 'pid.0000',
-                'rm_info'     : rm_info,
-                'resource_cfg': resource_cfg
-            })
+            component._rm.info                   = ru.Config(from_dict=rm_info)
+            component._rm.info['node_list']      = rm_info['node_list']
+            component._rm.info['cores_per_node'] = rm_info['cores_per_node']
+            component._rm.info['gpus_per_node']  = rm_info['gpus_per_node']
+            component._rm.info['lfs_per_node']   = rm_info['lfs_per_node']
+            component._rm.info['mem_per_node']   = rm_info['mem_per_node']
+
+            component._cfg = ru.Config(from_dict={'pid'         : 'pid.0000',
+                                                  'rm_info'     : rm_info,
+                                                  'resource_cfg': resource_cfg})
 
             component._configure()
             self.assertEqual(component.nodes, result)
@@ -66,19 +69,16 @@ class TestContinuous(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Continuous, '__init__', return_value=None)
-    @mock.patch.object(Continuous, '_configure', return_value=None)
-    @mock.patch('radical.utils.Logger')
-    def test_find_resources(self, mocked_logger, mocked_configure, mocked_init):
+    def test_find_resources(self, mocked_init):
 
         component = Continuous(cfg=None, session=None)
-        component._uid = 'agent_scheduling.0001'
-        component._log = mocked_logger
+        component._uid  = 'agent_scheduling.0001'
+        component._log  = mock.Mock()
+        component._prof = mock.Mock()
 
         for test_case in self._test_cases:
 
-            # value for `slot['lfs']['path']` is taken
-            # from `self._rm_lfs_per_node['path']` directly
-            component._rm_lfs_per_node = {'size': 1024, 'path': '/dev/null'}
+          # component._rm.info.lfs_per_node = 1024
 
             td = test_case['task']['description']
             alc_slots = component._find_resources(
@@ -97,6 +97,7 @@ class TestContinuous(TestCase):
 
             self.assertEqual(alc_slots, test_case['result']['slots']['ranks'])
 
+
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Continuous, '__init__', return_value=None)
@@ -112,11 +113,14 @@ class TestContinuous(TestCase):
 
             nodes = test_case['setup']['nodes']
 
-            component._rm_cores_per_node = len(nodes[0]['cores'])
-            component._rm_gpus_per_node  = len(nodes[0]['gpus'])
-            component._rm_lfs_per_node   = nodes[0]['lfs']
-            component._rm_mem_per_node   = nodes[0]['mem']
-            component._rm_partitions     = {}
+            component._rm                        = ru.Config()
+            component._rm.info                   = ru.Config()
+            component._rm.info['cores_per_node'] = len(nodes[0]['cores'])
+            component._rm.info['gpus_per_node']  = len(nodes[0]['gpus'])
+            component._rm.info['lfs_per_node']   = nodes[0]['lfs']
+            component._rm.info['mem_per_node']   = nodes[0]['mem']
+            component._rm.info['partitions']     = {}
+
             component._lm_info           = {}
             component._colo_history      = {}
             component._tagged_nodes      = set()
@@ -124,7 +128,7 @@ class TestContinuous(TestCase):
             component._node_offset       = 0
             component.nodes              = nodes
 
-            task = test_case['task']
+            task  = test_case['task']
             slots = component.schedule_task(task)
 
             self.assertEqual(slots, test_case['result']['slots'])
@@ -183,6 +187,7 @@ class TestContinuous(TestCase):
 if __name__ == '__main__':
 
     tc = TestContinuous()
+    tc.setUpClass()
     tc.test_configure()
     tc.test_find_resources()
     tc.test_schedule_task()
