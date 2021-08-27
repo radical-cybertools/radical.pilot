@@ -3,6 +3,8 @@
 __copyright__ = 'Copyright 2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
+import os
+
 import radical.utils as ru
 
 from unittest import mock, TestCase
@@ -32,7 +34,7 @@ class RMBaseTestCase(TestCase):
                           'gpus_per_node'  : 2})
 
         c = ru.zmq.RegistryClient(url=reg.addr)
-        c.put('rm.ResourceManager', rm_info)
+        c.put('rm.resourcemanager', rm_info)
         c.close()
 
         rm = ResourceManager(cfg=ru.Munch({'reg_addr': reg.addr}),
@@ -77,10 +79,14 @@ class RMBaseTestCase(TestCase):
     @mock.patch.object(ResourceManager, '__init__', return_value=None)
     def test_prepare_info(self, mocked_init):
 
+        os.environ['LOCAL'] = '/tmp/local_folder/'
+
         cfg = ru.Munch({'cores': 16,
                         'gpus' : 2,
-                        'resource_cfg': {'cores_per_node': 16,
-                                         'gpus_per_node' : 2}})
+                        'resource_cfg': {'cores_per_node'   : 16,
+                                         'gpus_per_node'    : 2,
+                                         'lfs_path_per_node': '${LOCAL}',
+                                         'lfs_size_per_node': 100}})
 
         rm = ResourceManager(cfg=None, log=None, prof=None)
         rm._cfg = cfg
@@ -95,41 +101,50 @@ class RMBaseTestCase(TestCase):
                          cfg.resource_cfg.cores_per_node)
         self.assertEqual(rm_info.gpus_per_node,
                          cfg.resource_cfg.gpus_per_node)
+        # lfs size and lfs path
+        self.assertEqual(rm_info.lfs_per_node, 100)
+        self.assertEqual(rm_info.lfs_path,     '/tmp/local_folder/')
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(ResourceManager, '__init__', return_value=None)
+    def test_init_from_scratch(self, mocked_init):
+
+        rm = ResourceManager(cfg=None, log=None, prof=None)
+        rm._log = mock.Mock()
+        rm._cfg = ru.Munch({'agents': {'agent.0000': {'target': 'node'}}})
+
+        with self.assertRaises(RuntimeError):
+            # `node_list` became empty b/c of `agent_node_list`
+            rm._init_from_scratch(RMInfo({'node_list': [['node00', '1']]}))
+
+        with self.assertRaises(AssertionError):
+            # `node_list` should not be empty or not being set
+            # this attribute is set by an overwritten method `_update_info`
+            rm._init_from_scratch(RMInfo({'node_list': []}))
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(ResourceManager, '__init__', return_value=None)
     @mock.patch('radical.pilot.agent.resource_manager.base.rpa.LaunchMethod')
-    def test_init_from_scratch(self, mocked_lm, mocked_init):
+    def test_prepare_launch_methods(self, mocked_lm, mocked_init):
 
-        rm_info = RMInfo({'requested_nodes': 1,
-                          'requested_cores': 16,
-                          'requested_gpus': 2,
-                          'node_list': [['node00', '1']],
-                          'cores_per_node': 16,
-                          'gpus_per_node': 2})
+        mocked_lm.create.return_value = mocked_lm
 
         rm = ResourceManager(cfg=None, log=None, prof=None)
         rm._log = rm._prof = mock.Mock()
         rm._cfg = ru.Munch({'pid'     : None,
                             'reg_addr': None,
                             'resource_cfg': {'launch_methods': {'SRUN': {}}}})
-        mocked_lm.create.return_value = mocked_lm
 
-        rm._init_from_scratch(rm_info)
+        rm._prepare_launch_methods(None)
 
         self.assertEqual(rm._launchers['SRUN'], mocked_lm)
 
         rm._cfg.resource_cfg.launch_methods = {}
         with self.assertRaises(RuntimeError):
             # no launch methods
-            rm._init_from_scratch(rm_info)
-
-        rm_info.node_list = []
-        with self.assertRaises(AssertionError):
-            # `node_list` should not be empty or not being set
-            # this attribute is set by an overwritten method `_update_info`
-            rm._init_from_scratch(rm_info)
+            rm._prepare_launch_methods(None)
 
 # ------------------------------------------------------------------------------
 

@@ -147,9 +147,9 @@ class ResourceManager(object):
             rm_info = self._init_from_scratch(rm_info)
 
             # after rm setup and node config, set up all launch methods
-            rm_info = self._prepare_launch_methods(rm_info)
+            self._prepare_launch_methods(rm_info)
 
-            # have a valid info - store in registry and complete # initialization
+            # have a valid info - store in registry and complete initialization
             self._reg.put('rm.%s' % self.name.lower(), rm_info)
 
         self._set_info(rm_info)
@@ -314,8 +314,6 @@ class ResourceManager(object):
 
         if not self._launchers:
             raise RuntimeError('no valid launch methods found')
-
-        return info
 
 
     # --------------------------------------------------------------------------
