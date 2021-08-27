@@ -16,12 +16,6 @@ class PBSPro(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, log, prof):
-
-        ResourceManager.__init__(self, cfg, log, prof)
-
-    # --------------------------------------------------------------------------
-    #
     def _update_info(self, info):
         # TODO: $NCPUS?!?! = 1 on archer
 

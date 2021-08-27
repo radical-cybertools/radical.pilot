@@ -15,12 +15,6 @@ class Slurm(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, log, prof):
-
-        ResourceManager.__init__(self, cfg, log, prof)
-
-    # --------------------------------------------------------------------------
-    #
     def _update_info(self, info):
 
         slurm_nodelist = os.environ.get('SLURM_NODELIST')

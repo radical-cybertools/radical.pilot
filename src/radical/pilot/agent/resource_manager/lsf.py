@@ -13,12 +13,6 @@ class LSF(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, log, prof):
-
-        ResourceManager.__init__(self, cfg, log, prof)
-
-    # --------------------------------------------------------------------------
-    #
     def _update_info(self, info):
 
         lsf_hostfile = os.environ.get('LSB_DJOB_HOSTFILE')

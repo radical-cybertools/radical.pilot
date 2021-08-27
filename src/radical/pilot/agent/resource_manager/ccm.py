@@ -13,12 +13,6 @@ class CCM(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, log, prof):
-
-        ResourceManager.__init__(self, cfg, log, prof)
-
-    # --------------------------------------------------------------------------
-    #
     def _update_info(self, info):
 
         ccm_nodefile_dir  = os.path.expanduser('~/.crayccm')

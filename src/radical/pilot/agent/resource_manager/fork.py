@@ -13,12 +13,6 @@ class Fork(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, log, prof):
-
-        ResourceManager.__init__(self, cfg, log, prof)
-
-    # --------------------------------------------------------------------------
-    #
     def _update_info(self, info):
 
         # check if the requested cores are available
