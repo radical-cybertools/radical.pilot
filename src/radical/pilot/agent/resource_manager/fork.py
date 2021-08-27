@@ -24,7 +24,7 @@ class Fork(ResourceManager):
                     'using %d requested cores instead of %d available cores',
                     info.requested_cores, detected_cores)
             else:
-                if info.requested_cores > detected_cores:
+                if detected_cores < info.requested_cores:
                     raise RuntimeError('insufficient cores found (%d < %d)' %
                                        (detected_cores, info.requested_cores))
 
