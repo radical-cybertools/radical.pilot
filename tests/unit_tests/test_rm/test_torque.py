@@ -2,160 +2,71 @@
 
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
+__copyright__ = 'Copyright 2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
+
 import os
-import warnings
 
 from unittest import mock, TestCase
 
-import radical.utils as ru
-
+from radical.pilot.agent.resource_manager        import RMInfo
 from radical.pilot.agent.resource_manager.torque import Torque
 
-base = os.path.abspath(os.path.dirname(__file__))
+TEST_CASES_DIR = 'tests/unit_tests/test_rm/test_cases'
 
 
 # ------------------------------------------------------------------------------
 #
-class TestTorque(TestCase):
+class TorqueTestCase(TestCase):
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def setUpClass(cls) -> None:
+
+        os.environ['PBS_NODEFILE']  = '%s/nodelist.torque' % TEST_CASES_DIR
+        os.environ['PBS_NCPUS']     = '2'
+        os.environ['PBS_NUM_PPN']   = '4'
+        os.environ['PBS_NUM_NODES'] = '2'
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Torque, '__init__', return_value=None)
-    @mock.patch('radical.utils.raise_on')
-    def test_configure(self, mocked_init, mocked_raise_on):
+    @mock.patch('radical.utils.Logger')
+    def test_update_info(self, mocked_logger, mocked_init):
 
-        # Test 1 no config file
-        os.environ['PBS_NODEFILE']  = '%s/test_cases/nodelist.torque' % base
-        os.environ['PBS_NCPUS']     = '2'
-        os.environ['PBS_NUM_PPN']   = '4'
-        os.environ['PBS_NUM_NODES'] = '2'
+        rm_torque = Torque(cfg=None, log=None, prof=None)
+        rm_torque._log = mocked_logger
 
-        component = Torque(None, None, None)
-        component.name  = 'Torque'
-        component._cfg  = {}
-        component._log  = mock.Mock()
-        component._prof = mock.Mock()
-        component._init_from_scratch()
+        rm_info = rm_torque._update_info(RMInfo())
 
-        self.assertEqual(component.node_list, [['nodes1', 'nodes1']])
-        self.assertEqual(component.cores_per_node, 4)
-        self.assertEqual(component.gpus_per_node, 0)
-        self.assertEqual(component.lfs_per_node, {'path': None, 'size': 0})
+        self.assertEqual(rm_info.node_list, [['nodes1', '1']])
+        self.assertEqual(rm_info.cores_per_node, 4)
 
-        # Test 2 config file
-        os.environ['PBS_NODEFILE']  = '%s/test_cases/nodelist.torque' % base
-        os.environ['PBS_NCPUS']     = '2'
-        os.environ['PBS_NUM_PPN']   = '4'
-        os.environ['PBS_NUM_NODES'] = '2'
-
-        component = Torque(None, None, None)
-        component.name  = 'Torque'
-        component._cfg  = {'cores_per_node'    : 4,
-                           'gpus_per_node'     : 1,
-                           'lfs_path_per_node' : 'test/',
-                           'lfs_size_per_node' : 100}
-        component._log  = mock.Mock()
-        component._prof = mock.Mock()
-
-        component._init_from_scratch()
-
-        self.assertEqual(component.node_list, [['nodes1', 'nodes1']])
-        self.assertEqual(component.cores_per_node, 4)
-        self.assertEqual(component.gpus_per_node, 1)
-        self.assertEqual(component.lfs_per_node, {'path': 'test/', 'size': 100})
-
-
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @mock.patch.object(Torque, '__init__', return_value=None)
-    @mock.patch('radical.utils.raise_on')
-    def test_configure_error(self, mocked_init, mocked_raise_on):
+    @mock.patch('radical.utils.Logger')
+    def test_update_info_error(self, mocked_logger, mocked_init):
 
-        # Test 1 no config file check nodefile
         if 'PBS_NODEFILE' in os.environ:
             del os.environ['PBS_NODEFILE']
 
-        os.environ['PBS_NCPUS']     = '2'
-        os.environ['PBS_NUM_PPN']   = '4'
-        os.environ['PBS_NUM_NODES'] = '2'
-
-        component = Torque(None, None, None)
-        component.name  = 'Torque'
-        component._cfg  = {}
-        component._log  = mock.Mock()
-        component._prof = mock.Mock()
+        rm_torque = Torque(cfg=None, log=None, prof=None)
+        rm_torque._log = mocked_logger
 
         with self.assertRaises(RuntimeError):
-            component._init_from_scratch()
-
-        # Test 2 no config file check Number of CPUS
-        os.environ['PBS_NODEFILE'] = '%s/test_cases/nodelist.torque' % base
-
-        if 'PBS_NCPUS' in os.environ:
-            del os.environ['PBS_NCPUS']
-
-        os.environ['PBS_NUM_PPN']   = '4'
-        os.environ['PBS_NUM_NODES'] = '2'
-
-        component = Torque(None, None, None)
-        component.name  = 'Torque'
-        component._cfg  = {}
-        component._log  = mock.Mock()
-        component._prof = mock.Mock()
-
-        with self.assertWarns(RuntimeWarning):
-            component._init_from_scratch()
-            warnings.warn("PBS_NCPUS not set!", RuntimeWarning)
-
-        # Test 3 no config file check Number of Processes per Node
-        os.environ['PBS_NODEFILE'] = '%s/test_cases/nodelist.torque' % base
-        os.environ['PBS_NCPUS']    = '2'
-
-        if 'PBS_NUM_PPN' in os.environ:
-            del os.environ['PBS_NUM_PPN']
-
-        os.environ['PBS_NUM_NODES'] = '2'
-        os.environ['SAGA_PPN']      = '0'
-
-        component = Torque(None, None, None)
-        component.name  = 'Torque'
-        component._cfg  = {}
-        component._log  = mock.Mock()
-        component._prof = mock.Mock()
-
-        with self.assertWarns(RuntimeWarning):
-            component._init_from_scratch()
-            warnings.warn("PBS_PPN not set!", RuntimeWarning)
-
-        # Test 4 no config file check Number of Nodes
-        os.environ['PBS_NODEFILE'] = '%s/test_cases/nodelist.torque' % base
-        os.environ['PBS_NCPUS']    = '2'
-        os.environ['PBS_NUM_PPN']  = '4'
-
-        if 'PBS_NUM_NODES' in os.environ:
-            del os.environ['PBS_NUM_NODES']
-
-        component = Torque(None, None, None)
-        component.name  = 'Torque'
-        component._cfg  = {}
-        component._log  = mock.Mock()
-        component._prof = mock.Mock()
-
-        with self.assertWarns(RuntimeWarning):
-            component._init_from_scratch()
-            warnings.warn("PBS_NUM_NODES not set!", RuntimeWarning)
-
-
+            rm_torque._update_info(None)
 
 # ------------------------------------------------------------------------------
-#
+
+
 if __name__ == '__main__':
 
-    tc = TestTorque()
-    tc.test_configure()
-    tc.test_configure_error()
+    tc = TorqueTestCase()
+    tc.test_update_info()
+    tc.test_update_info_error()
 
 
 # ------------------------------------------------------------------------------
-# pylint: enable=protected-access, unused-argument, no-value-for-parameter
 
