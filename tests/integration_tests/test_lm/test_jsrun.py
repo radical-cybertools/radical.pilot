@@ -107,5 +107,4 @@ if __name__ == '__main__':
 
 
 # ------------------------------------------------------------------------------
-# pylint: enable=protected-access, unused-argument, no-value-for-parameter
 

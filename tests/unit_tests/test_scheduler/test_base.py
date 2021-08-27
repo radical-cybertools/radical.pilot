@@ -24,6 +24,7 @@ class TestBaseScheduling(TestCase):
         cls._test_cases = ru.read_json('%s/test_base.json' % TEST_CASES_DIR,
                                        filter_comments=False)
 
+
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
@@ -31,10 +32,16 @@ class TestBaseScheduling(TestCase):
     @mock.patch('radical.pilot.agent.scheduler.base.mp')
     def test_initialize(self, mocked_mp, mocked_zmq, mocked_init):
 
-        sched = AgentSchedulingComponent(cfg=None, session=None)
-        sched._configure = sched._schedule_tasks = mock.Mock()
-        sched.slot_status = sched.work = sched.unschedule_cb = mock.Mock()
-        sched.register_input = sched.register_subscriber = mock.Mock()
+        sched = AgentSchedulingComponent(cfg = None, session = None)
+        sched._configure          = mock.Mock()
+        sched._schedule_tasks     = mock.Mock()
+        sched._log                = mock.Mock()
+        sched._prof               = mock.Mock()
+        sched.slot_status         = mock.Mock()
+        sched.work                = mock.Mock()
+        sched.unschedule_cb       = mock.Mock()
+        sched.register_input      = mock.Mock()
+        sched.register_subscriber = mock.Mock()
 
         for c in self._test_cases['initialize']:
             sched._cfg = ru.Config(from_dict=c['config'])
@@ -151,6 +158,7 @@ class TestBaseScheduling(TestCase):
 if __name__ == '__main__':
 
     tc = TestBaseScheduling()
+    tc.setUpClass()
     tc.test_initialize()
     tc.test_change_slot_states()
     tc.test_slot_status()
@@ -158,4 +166,4 @@ if __name__ == '__main__':
 
 
 # ------------------------------------------------------------------------------
-# pylint: enable=protected-access, unused-argument, no-value-for-parameter
+

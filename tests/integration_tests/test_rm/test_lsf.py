@@ -3,6 +3,7 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import os
+import pytest
 
 import radical.utils as ru
 
@@ -27,14 +28,16 @@ class LSFTestCase(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(LSF, '__init__',   return_value=None)
-    @mock.patch('radical.utils.Logger')
-    def test_update_info(self, mocked_logger, mocked_init):
+    @pytest.mark.skipif(
+        'LSB_DJOB_HOSTFILE' not in os.environ,
+        reason='test needs to run in LSF allocation')
+    def test_update_info(self, mocked_init):
 
         if not self.resource:
             return
 
         rm_lsf = LSF(cfg=None, log=None, prof=None)
-        rm_lsf._log = mocked_logger
+        rm_lsf._log = mock.Mock()
 
         rm_info = rm_lsf._update_info(RMInfo({'sockets_per_node': 2,
                                               'gpus_per_node'   : 6}))
@@ -44,12 +47,13 @@ class LSFTestCase(TestCase):
         self.assertEqual(rm_info.gpus_per_socket,
                          self.resource['gpus_per_socket'])
 
+
 # ------------------------------------------------------------------------------
-
-
+#
 if __name__ == '__main__':
 
     tc = LSFTestCase()
+    tc.setUpClass()
     tc.test_update_info()
 
 

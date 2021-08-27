@@ -1,4 +1,13 @@
 {
+    "localhost" : {
+        "cores_per_node"   : 4,
+        "gpus_per_node"    : 0,
+        "ssh_path"         : "/usr/bin/ssh",
+        "mpirun_path"      : "/usr/bin/mpirun",
+        "mpi_flavor"       : "OMPI",
+        "mpi_version"      : "2.1.1",
+        "resource"         : "local.localhost"
+    },
     "comet" : {
         "cores_per_node"   : 24,
         "gpus_per_node"    : 0,

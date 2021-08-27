@@ -3,6 +3,7 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import os
+import pytest
 
 import radical.utils as ru
 
@@ -34,14 +35,16 @@ class SlurmTestCase(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Slurm, '__init__',   return_value=None)
-    @mock.patch('radical.utils.Logger')
-    def test_update_info(self, mocked_logger, mocked_init):
+    @pytest.mark.skipif(
+        'SLURM_NODELIST' not in os.environ,
+        reason='test needs to run in Slurm allocation')
+    def test_update_info(self, mocked_init):
 
         if not self.host:
             return
 
         rm_slurm = Slurm(cfg=None, log=None, prof=None)
-        rm_slurm._log    = mocked_logger
+        rm_slurm._log = mock.Mock()
 
         rm_info = rm_slurm._update_info(RMInfo({'cores_per_node': 0,
                                                 'gpus_per_node' : 0}))
@@ -54,12 +57,13 @@ class SlurmTestCase(TestCase):
         self.assertEqual(rm_info.gpus_per_node,
                          self.resource['gpus_per_node'])
 
+
 # ------------------------------------------------------------------------------
-
-
+#
 if __name__ == '__main__':
 
     tc = SlurmTestCase()
+    tc.setUpClass()
     tc.test_update_info()
 
 

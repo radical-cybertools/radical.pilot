@@ -16,7 +16,7 @@ from unittest import mock, TestCase
 from radical.pilot.agent.launch_method.fork import Fork
 from radical.pilot.agent.executing.popen    import Popen
 
-TEST_CASES_DIR = 'tests/unit_tests/test_executing/test_cases'
+base = os.path.abspath(os.path.dirname(__file__))
 
 
 # ------------------------------------------------------------------------------
@@ -27,7 +27,9 @@ class TestPopen(TestCase):
     #
     @classmethod
     def setUpClass(cls) -> None:
-        cls._test_case = ru.read_json('%s/test_base.json' % TEST_CASES_DIR)
+
+        cls._test_case = ru.read_json('%s/test_cases/test_base.json' % base)
+        assert(cls._test_case), 'how is this test supposed to work???'
 
 
     # --------------------------------------------------------------------------
@@ -78,11 +80,10 @@ class TestPopen(TestCase):
         pex.rsbox    = ''
         pex.ssbox    = ''
         pex.psbox    = ''
-        pex.lfs      = '/tmp'
         pex.gtod     = ''
         pex.prof     = ''
 
-        launcher = Fork(name=None, lm_cfg={}, cfg={}, log=None, prof=None)
+        launcher = Fork(name=None, lm_cfg={}, rm_info={}, log=None, prof=None)
         launcher.name    = 'FORK'
         launcher._env_sh = 'env/lm_fork.sh'
         mocked_find_launcher.return_value = launcher
@@ -140,10 +141,11 @@ class TestPopen(TestCase):
 if __name__ == '__main__':
 
     tc = TestPopen()
+    tc.setUpClass()
     tc.test_command_cb()
     tc.test_check_running()
     tc.test_handle_task()
 
 
 # ------------------------------------------------------------------------------
-# pylint: enable=protected-access, unused-argument, no-value-for-parameter
+
