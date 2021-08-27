@@ -1,12 +1,9 @@
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
-__license__   = "MIT"
-
+__copyright__ = 'Copyright 2016-2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import os
 import signal
-
-import radical.utils as ru
 
 from .base import ResourceManager
 
@@ -17,23 +14,14 @@ class SGE(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, log, prof):
-
-        ResourceManager.__init__(self, cfg, log, prof)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _init_from_scratch(self):
+    def _update_info(self, info):
 
         sge_hostfile = os.environ.get('PE_HOSTFILE')
         if sge_hostfile is None:
-            msg = "$PE_HOSTFILE not set!"
-            self._log.error(msg)
-            raise RuntimeError(msg)
+            raise RuntimeError('$PE_HOSTFILE not set')
+        self._log.info('PE_HOSTFILE: %s', sge_hostfile)
 
         def _sigusr2_handler():
-
             self._log.warn('caught sigusr2')
             self.stop()
 
@@ -45,42 +33,30 @@ class SGE(ResourceManager):
 
         # Parse SGE hostfile for nodes
         sge_node_list = [line.split()[0] for line in open(sge_hostfile)]
-        self._log.info("Found PE_HOSTFILE %s. Expanded to: %s", sge_hostfile, sge_node_list)
 
         # Parse SGE hostfile for cores
         sge_cores_count_list = [int(line.split()[1]) for line in open(sge_hostfile)]
         sge_core_counts      = list(set(sge_cores_count_list))
-        sge_gpus_per_node    = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
-
-        sge_lfs_per_node     = {'path': ru.expand_env(
-                                        self._cfg.get('lfs_path_per_node')),
-                                'size': self._cfg.get('lfs_size_per_node', 0)}
 
         # Check if nodes have the same core count
         if len(sge_core_counts) == 1:
             sge_cores_per_node = min(sge_core_counts)
-            self._log.info("Found unique core counts: %s Using: %d", sge_core_counts, sge_cores_per_node)
-
-            # node names are unique, so can serve as node uids
-            self.node_list      = [[node, node] for node in sge_node_list]
-            self.cores_per_node = sge_cores_per_node
-            self.gpus_per_node  = sge_gpus_per_node
-            self.lfs_per_node   = sge_lfs_per_node
-
+            info.node_list = [[name, str(idx + 1)]
+                              for idx, name in enumerate(sorted(sge_node_list))]
         else:
-            # In case of non-homogeneous counts, consider all slots be single core
+            # Non-homogeneous counts: consider all slots be single core
             sge_cores_per_node = 1
-            self._log.info("Found unique core counts: %s Using: %d", sge_core_counts, sge_cores_per_node)
-            self.cores_per_node = sge_cores_per_node
-            self.gpus_per_node  = sge_gpus_per_node
-            self.lfs_per_node   = sge_lfs_per_node
-
             # Expand node list, create unique IDs for each core
             self.node_list = []
             for node, cores in zip(sge_node_list, sge_cores_count_list):
-                for core in cores:
-                    self.node_list.append(node, '%s_%s' % (node, core))
+                for core in range(cores):
+                    self.node_list.append([node, '%s_%s' % (node, core)])
 
+        self._log.info('Found unique core counts: %s; Using: %d',
+                       sge_core_counts, sge_cores_per_node)
+        info.cores_per_node = sge_cores_per_node
+
+        return info
 
 # ------------------------------------------------------------------------------
 
