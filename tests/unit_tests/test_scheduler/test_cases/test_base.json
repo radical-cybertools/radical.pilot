@@ -4,6 +4,7 @@
         {
             "config": {
                 "pid"               : "pid.0000",
+                "resource_manager"  : "FORK",
                 "rm_info": {
                     "name"          : "RM",
                     "node_list"     : [],
@@ -18,6 +19,7 @@
         {
             "config": {
                 "pid"               : "pid.0001",
+                "resource_manager"  : "FORK",
                 "rm_info": {
                     "name"          : "RM",
                     "node_list"     : [["node-00", "00"], ["node-01", "01"]],
@@ -32,6 +34,7 @@
         {
             "config": {
                 "pid"               : "pid.0002",
+                "resource_manager"  : "FORK",
                 "rm_info": {
                     "name"          : "RM",
                     "node_list"     : [["node-00", "00"], ["node-01", "01"]],
@@ -46,6 +49,7 @@
         {
             "config": {
                 "pid"               : "pid.0003",
+                "resource_manager"  : "FORK",
                 "rm_info": {
                     "name"          : "RM",
                     "node_list"     : [["node-00", "00"], ["node-01", "01"]],
@@ -61,7 +65,7 @@
                     "name" : "node-00",
                     "cores": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     "gpus" : [0, 0, 0, 0],
-                    "lfs"  : {"path": "/tmp", "size": 0},
+                    "lfs"  : 0,
                     "mem"  : 0
                 },
                 {
@@ -69,7 +73,7 @@
                     "name" : "node-01",
                     "cores": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     "gpus" : [0, 0, 0, 0],
-                    "lfs"  : {"path": "/tmp", "size": 0},
+                    "lfs"  : 0,
                     "mem"  : 0
                 }
             ]
@@ -82,18 +86,18 @@
                        "name"   : "node-0000",
                        "cores"  : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                        "gpus"   : [],
-                       "lfs"    : {"path": "/tmp", "size": 100},
+                       "lfs"    : 175,
                        "mem"    : 1024}],
             "slots": {
                 "cores_per_node": 12,
                 "gpus_per_node" : 0,
-                "lfs_per_node"  : {"path": "/tmp/test", "size": 100},
+                "lfs_per_node"  : 100,
                 "lm_info"       : {},
                 "ranks"         : [{"node"    : "node-0000",
                                     "node_id" : "n.0000",
                                     "core_map": [[0]],
                                     "gpu_map" : [],
-                                    "lfs"     : {"path": "/tmp", "size": 25},
+                                    "lfs"     : 100,
                                     "mem"     : 0}]
             },
             "new_state": 1,
@@ -101,7 +105,7 @@
                        "name"   : "node-0000",
                        "cores"  : [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                        "gpus"   : [],
-                       "lfs"    : {"path": "/tmp", "size": 75},
+                       "lfs"    : 75,
                        "mem"    : 1024}]
         },
         {
@@ -109,18 +113,18 @@
                        "name"   : "node-0001",
                        "cores"  : [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                        "gpus"   : [0, 1, 0, 0],
-                       "lfs"    : {"path": "/tmp", "size": 30},
+                       "lfs"    : 30,
                        "mem"    : 1024}],
             "slots": {
                 "cores_per_node": 12,
                 "gpus_per_node" : 4,
-                "lfs_per_node"  : {"path": "/tmp/test", "size": 100},
+                "lfs_per_node"  : 100,
                 "lm_info"       : {},
                 "ranks"         : [{"node"    : "node-0001",
                                     "node_id" : "n.0001",
                                     "core_map": [[0]],
                                     "gpu_map" : [[1]],
-                                    "lfs"     : {"path": "/tmp", "size": 70},
+                                    "lfs"     : 70,
                                     "mem"     : 0}]
             },
             "new_state": 0,
@@ -128,7 +132,7 @@
                        "name"   : "node-0001",
                        "cores"  : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                        "gpus"   : [0, 0, 0, 0],
-                       "lfs"    : {"path": "/tmp", "size": 100},
+                       "lfs"    : 100,
                        "mem"    : 1024}]
         },
         {
@@ -136,18 +140,18 @@
                        "name"   : "non-allocated-node",
                        "cores"  : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                        "gpus"   : [0, 0],
-                       "lfs"    : {"path": "/tmp", "size": 100},
+                       "lfs"    : 100,
                        "mem"    : 1024}],
             "slots": {
                 "cores_per_node": 12,
                 "gpus_per_node" : 2,
-                "lfs_per_node"  : {"path": "/tmp/test", "size": 100},
+                "lfs_per_node"  : 100,
                 "lm_info"       : {},
                 "ranks"         : [{"node"    : "node-0003",
                                     "node_id" : "n.0003",
                                     "core_map": [[0]],
                                     "gpu_map" : [[1]],
-                                    "lfs"     : {"path": "/tmp", "size": 100},
+                                    "lfs"     : 100,
                                     "mem"     : 0}]
             },
             "new_state": 1,
@@ -161,7 +165,7 @@
                        "name"   : "node-0000",
                        "cores"  : [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 2, 2],
                        "gpus"   : [0, 0, 0, 0],
-                       "lfs"    : {"path": "/tmp", "size": 100},
+                       "lfs"    : 100,
                        "mem"    : 1024}],
             "result": "|####------!!:----|"
         },
@@ -170,7 +174,7 @@
                        "name"   : "node-0001",
                        "cores"  : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2],
                        "gpus"   : [],
-                       "lfs"    : {"path": "/tmp", "size": 100},
+                       "lfs"    : 100,
                        "mem"    : 1024}],
             "result": "|----------!!:|"
         }
@@ -188,7 +192,7 @@
             "slots": {
                 "cores_per_node" : 12,
                 "gpus_per_node"  : 4,
-                "lfs_per_node"   : {"path": "/tmp", "size": 0},
+                "lfs_per_node"   : 0,
                 "mem_per_node"   : 1024,
                 "lm_info"        : {},
                 "partition_id"   : null,
@@ -196,7 +200,7 @@
                                      "node_id" : "n.0000",
                                      "core_map": [[0]],
                                      "gpu_map" : [[0]],
-                                     "lfs"     : {"path": "/tmp", "size": 0},
+                                     "lfs"     : 0,
                                      "mem"     : 128}]
             }
         }
@@ -219,14 +223,14 @@
                     "lm_info"       : "INFO",
                     "cores_per_node": 16,
                     "gpus_per_node" : 6,
-                    "lfs_per_node"  : { "size": 0, "path": "/dev/null" },
+                    "lfs_per_node"  : 0,
                     "ranks": [
                         {
                             "node"    : "a",
                             "node_id" : "1",
                             "core_map": [ [ 0 ] ],
                             "gpu_map" : null,
-                            "lfs"     : { "path": "/dev/null", "size": 0 },
+                            "lfs"     : 0,
                             "mem"     : null
                         }
                     ]
@@ -240,14 +244,14 @@
                     "lm_info"       : "INFO",
                     "cores_per_node": 16,
                     "gpus_per_node" : 6,
-                    "lfs_per_node"  : { "size": 0, "path": "/dev/null" },
+                    "lfs_per_node"  : 0,
                     "ranks": [
                         {
                             "node"    : "a",
                             "node_id" : "1",
                             "core_map": [ [ 0 ] ],
                             "gpu_map" : [ [ 1 ] ],
-                            "lfs"     : { "path": "/dev/null", "size": 0 },
+                            "lfs"     : 0,
                             "mem"     : null
                         }
                     ]
@@ -261,14 +265,14 @@
                     "lm_info"       : "INFO",
                     "cores_per_node": 16,
                     "gpus_per_node" : 6,
-                    "lfs_per_node"  : { "size": 0, "path": "/dev/null" },
+                    "lfs_per_node"  : 0,
                     "ranks": [
                         {
                             "node"     : "a",
                             "node_id"  : "1",
                             "core_map" : [ [ 0 ] ],
                             "gpu_map"  : [ [ 0 ],[ 1 ] ],
-                            "lfs"      : { "path": "/dev/null", "size": 0 },
+                            "lfs"      : 0,
                             "mem"      : null
                         }
                     ]
@@ -282,14 +286,14 @@
                     "lm_info"       : "INFO",
                     "cores_per_node": 16,
                     "gpus_per_node" : 6,
-                    "lfs_per_node"  : { "size": 0, "path": "/dev/null" },
+                    "lfs_per_node"  : 0,
                     "ranks": [
                         {
                             "node"    : "a",
                             "node_id" : "1",
                             "core_map": [ [ 0 ] ],
                             "gpu_map" : [ ],
-                            "lfs"     : { "path": "/dev/null", "size": 0 },
+                            "lfs"     : 0,
                             "mem"     : null
                         }
                     ]
@@ -303,14 +307,14 @@
                     "lm_info"       : "INFO",
                     "cores_per_node": 16,
                     "gpus_per_node" : 6,
-                    "lfs_per_node"  : { "size": 0, "path": "/dev/null" },
+                    "lfs_per_node"  : 0,
                     "ranks": [
                         {
                             "node"    : "a",
                             "node_id" : "1",
                             "core_map": [ [ 0 ] ],
                             "gpu_map" : [ [ 0 ] ],
-                            "lfs"     : { "path": "/dev/null", "size": 0 },
+                            "lfs"     : 0,
                             "mem"     : null
                         }
                     ]

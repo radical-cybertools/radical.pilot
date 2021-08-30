@@ -2,6 +2,7 @@
 
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
+import threading
 import radical.utils as ru
 
 from unittest import mock, TestCase
@@ -45,6 +46,9 @@ class TestBaseScheduling(TestCase):
 
         for c in self._test_cases['initialize']:
             sched._cfg = ru.Config(from_dict=c['config'])
+            print('---')
+            import pprint
+            pprint.pprint(sched._cfg)
 
             if c['result'] == 'RuntimeError':
                 # not set: `node_list` or `cores_per_node` or `gpus_per_node`
@@ -98,18 +102,15 @@ class TestBaseScheduling(TestCase):
     def test_try_allocation(self, mocked_change_slot_states,
                             mocked_schedule_task, mocked_init):
 
-        component = AgentSchedulingComponent()
-        component._allocate_slot = mock.Mock(side_effect=[None,
-                                                          {'slot':'test_slot'}])
+        component = AgentSchedulingComponent(None, None)
         component._active_cnt    = 0
         component._log           = mock.Mock()
         component._prof          = mock.Mock()
         component._prof.prof     = mock.Mock(return_value=True)
-        component._wait_pool     = list()
-        component._wait_lock     = threading.RLock()
-        component._slot_lock     = threading.RLock()
 
-        tests = self.setUp()['try_allocation']
+        tests = self._test_cases['try_allocation']
+        # FIXME: the try_allocation part in the test config has no results?
+        assert(False)
         for input_data, result in zip(tests['setup'], tests['results']):
             component.schedule_task = mock.Mock(
                 return_value=input_data['scheduled_task_slots'])

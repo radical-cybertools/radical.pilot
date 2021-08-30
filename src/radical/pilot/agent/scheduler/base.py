@@ -890,7 +890,7 @@ class AgentSchedulingComponent(rpu.Component):
         '''
 
         uid = task['uid']
-        td  = task['description']
+      # td  = task['description']
 
       # self._prof.prof('schedule_try', uid=uid)
 

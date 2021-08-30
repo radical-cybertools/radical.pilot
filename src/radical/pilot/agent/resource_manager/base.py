@@ -211,7 +211,7 @@ class ResourceManager(object):
         if info.gpus_per_node:
             n_nodes = max(n_nodes, info.requested_gpus / info.gpus_per_node)
 
-        info.requested_nodes  = int(math.ceil(n_nodes))
+        info.requested_nodes = int(math.ceil(n_nodes))
 
         return info
 
