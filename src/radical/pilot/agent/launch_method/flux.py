@@ -25,10 +25,26 @@ class Flux(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    @classmethod
-    def rm_config_hook(cls, name, cfg, rm, logger, profiler):
+    def construct_command(self, t, launch_script_hop):
 
-        profiler.prof('flux_start')
+        # this work is currently performed by the scheduler
+        assert(False)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_cmd(self):
+
+        # this work is currently performed by the scheduler
+        assert(False)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def rm_config_hook(cls, name, cfg, rm, log, prof):
+
+        prof.prof('flux_start')
 
         flux = ru.which('flux')
         if not flux:
@@ -38,8 +54,8 @@ class Flux(LaunchMethod):
             import sys
             print(sys.path)
             import flux
-        except:
-            raise Exception("Couldn't import flux")
+        except Exception as e:
+            raise Exception("Couldn't import flux") from e
 
       # cmd  = 'flux start -o,-v,-S,log-filename=out'.split()
       # proc = sp.Popen(cmd, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.STDOUT)
@@ -55,12 +71,12 @@ class Flux(LaunchMethod):
         while True:
 
             line = ru.as_string(proc.stdout.readline().strip())
-            logger.debug('flux output: %s', line)
+            log.debug('flux: %s', line)
 
             if line.startswith('export '):
                 k, v = line.split(' ', 1)[1].strip().split('=', 1)
                 flux_env[k] = v.strip('"')
-                logger.debug('%s = %s' % (k, v.strip('"')))
+                log.debug('%s = %s' % (k, v.strip('"')))
 
             elif line == 'OK':
                 break
@@ -69,17 +85,21 @@ class Flux(LaunchMethod):
         assert('FLUX_URI' in flux_env)
 
         # TODO check perf implications
-        flux_url             = ru.Url(flux_env['FLUX_URI'])
-        flux_url.host        = ru.get_hostname()
-        flux_url.scheme      = 'ssh'
+        flux_url = ru.Url(flux_env['FLUX_URI'])
+
+        # switch to ssh when more than one node are used for the agent
+        if len(rm.agent_nodes) > 1:
+            flux_url.host   = ru.get_hostname()
+            flux_url.scheme = 'ssh'
+
         flux_env['FLUX_URI'] = str(flux_url)
 
-        profiler.prof('flux_started')
+        prof.prof('flux_started')
 
         # ----------------------------------------------------------------------
         def _watch_flux(flux_env):
 
-            logger.info('starting flux watcher')
+            log.info('starting flux watcher')
 
             for k,v in flux_env.items():
                 os.environ[k] = v
@@ -87,16 +107,16 @@ class Flux(LaunchMethod):
             ret = None
             while not ret:
 
-                out, err, ret = ru.sh_callout('flux ping -c 1 all')
-                logger.debug('flux watcher out: %s', out)
+                _, err, ret = ru.sh_callout('flux ping -c 1 kvs')
+              # log.debug('=== flux watcher out: %s', out)
 
                 if ret:
-                    logger.error('flux watcher err: %s', err)
+                    log.error('=== flux watcher err: %s', err)
                     break
 
-                time.sleep(0.1)
+                time.sleep(1)
 
-            logger.info('flux stopped?')
+            log.info('flux stopped?')
             # FIXME: trigger termination
         # ----------------------------------------------------------------------
 
@@ -104,7 +124,7 @@ class Flux(LaunchMethod):
         flux_watcher.daemon = True
         flux_watcher.start()
 
-        logger.info("flux startup successful: [%s]", flux_env['FLUX_URI'])
+        log.info("flux startup successful: [%s]", flux_env['FLUX_URI'])
 
         lm_info = {'flux_env': flux_env,
                    'flux_pid': proc.pid}
