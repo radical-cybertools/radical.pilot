@@ -3,6 +3,13 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.6.8  Hotfix Release                                                 2021-08-24
+--------------------------------------------------------------------------------
+
+  - adapt flux integration to changes in flux event model
+  - fix a merge problem on flux termination handling
+
+
 1.6.7  Release                                                        2021-07-09
 --------------------------------------------------------------------------------
 
