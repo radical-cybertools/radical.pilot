@@ -51,6 +51,7 @@ class Flux(AgentExecutingComponent) :
                            'RUN'     : rps.AGENT_EXECUTING,
                            'CLEANUP' : None,
                            'INACTIVE': rps.AGENT_STAGING_OUTPUT_PENDING,
+                           'PRIORITY': None,
                           }
 
         # thread termination signal
@@ -113,7 +114,7 @@ class Flux(AgentExecutingComponent) :
 
         self._task_q.put(ru.as_list(tasks))
 
-        if self._term:
+        if self._term.is_set():
             self._log.warn('threads triggered termination')
             self.stop()
 
@@ -294,7 +295,6 @@ class Flux(AgentExecutingComponent) :
 
                 if not active:
                     time.sleep(0.01)
-
 
         except Exception:
             self._log.exception('Error in watcher loop')
