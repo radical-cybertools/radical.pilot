@@ -77,12 +77,13 @@ class Flux(AgentSchedulingComponent):
 
         # FIXME: need actual job description, obviously
         jds = [self.task_to_spec(task) for task in tasks]
-        self._log.debug('==== submit tasks: %s', [jd for task in tasks])
-        jids = self._lm.fh.submit_jobs([jd for task in tasks])
+        self._log.debug('==== submit tasks: %s', [jd for jd in jds])
+        jids = self._lm.fh.submit_jobs([jd for jd in jds])
         self._log.debug('==== submitted tasks')
 
         for task, jid in zip(tasks, jids):
             self._log.debug('==== submit tasks %s -> %s', task['uid'], jid)
+            task['flux_id'] = jid
 
         self._q.put(tasks)
 

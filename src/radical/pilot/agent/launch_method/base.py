@@ -168,7 +168,7 @@ class LaunchMethod(object):
     #
     def finalize(self):
 
-        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+        pass
 
 
     # --------------------------------------------------------------------------
