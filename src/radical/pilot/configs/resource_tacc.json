@@ -99,7 +99,7 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                         "order": ["SSH", "PRTE2"],
+                                         "order": ["SSH", "PRTE"],
                                          "SSH"  : {},
                                          "PRTE" : {
                                              "pre_exec_cached": [
