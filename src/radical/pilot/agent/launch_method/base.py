@@ -246,7 +246,7 @@ class LaunchMethod(object):
 
         from .prte           import PRTE
         from .prte2          import PRTE2
-        from .flux           import Flux
+      # from .flux           import Flux
         from .yarn           import Yarn
         from .spark          import Spark
 
@@ -256,7 +256,7 @@ class LaunchMethod(object):
         impl = {
             LM_NAME_PRTE          : PRTE,
             LM_NAME_PRTE2         : PRTE2,
-            LM_NAME_FLUX          : Flux,
+          # LM_NAME_FLUX          : Flux,
             LM_NAME_YARN          : Yarn,
             LM_NAME_SPARK         : Spark
 
