@@ -305,7 +305,6 @@ class Flux(AgentExecutingComponent) :
                 if not active:
                     time.sleep(0.01)
 
-
         except Exception:
             self._log.exception('Error in watcher loop')
             self._term.set()

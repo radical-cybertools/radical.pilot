@@ -22,6 +22,7 @@ LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
 LM_NAME_JSRUN         = 'JSRUN'
 LM_NAME_PRTE          = 'PRTE'
+LM_NAME_PRTE2         = 'PRTE2'
 LM_NAME_FLUX          = 'FLUX'
 LM_NAME_RSH           = 'RSH'
 LM_NAME_SSH           = 'SSH'
@@ -113,6 +114,7 @@ class LaunchMethod(object):
         from .mpirun         import MPIRun
         from .jsrun          import JSRUN
         from .prte           import PRTE
+        from .prte2          import PRTE2
         from .flux           import Flux
         from .rsh            import RSH
         from .ssh            import SSH
@@ -133,6 +135,7 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_DPLACE : MPIRun,
                 LM_NAME_JSRUN         : JSRUN,
                 LM_NAME_PRTE          : PRTE,
+                LM_NAME_PRTE2         : PRTE2,
                 LM_NAME_FLUX          : Flux,
                 LM_NAME_RSH           : RSH,
                 LM_NAME_SSH           : SSH,

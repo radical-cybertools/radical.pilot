@@ -1,6 +1,6 @@
 
-__copyright__ = "Copyright 2017, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2017, http://radical.rutgers.edu'
+__license__   = 'MIT'
 
 
 import json
@@ -33,6 +33,22 @@ class Flux(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
+    def schedule_task(self, task):
+
+        # this abstract method is not used in this implementation
+        assert(False)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def unschedule_task(self, task):
+
+        # this abstract method is not used in this implementation
+        assert(False)
+
+
+    # --------------------------------------------------------------------------
+    #
     def _configure(self):
 
         # don't advance tasks via the component's `advance()`, but push them
@@ -60,56 +76,64 @@ class Flux(AgentSchedulingComponent):
         self.advance(tasks, rps.AGENT_SCHEDULING, publish=True, push=False)
 
         # FIXME: need actual job description, obviously
-        jd   = ru.read_json('/home/merzky/projects/flux/spec.json')
+        jds = [self.task_to_spec(task) for task in tasks]
         self._log.debug('==== submit tasks: %s', [jd for task in tasks])
         jids = self._lm.fh.submit_jobs([jd for task in tasks])
         self._log.debug('==== submitted tasks')
 
         for task, jid in zip(tasks, jids):
             self._log.debug('==== submit tasks %s -> %s', task['uid'], jid)
-            task['flux_id'] = jid
 
         self._q.put(tasks)
 
 
-  # # --------------------------------------------------------------------------
-  # #
-  # def _populate_task_environment(self):
-  #     """Derive the environment for the t's from our own environment."""
-  #
-  #     # Get the environment of the agent
-  #     new_env = copy.deepcopy(os.environ)
-  #
-  #     #
-  #     # Mimic what virtualenv's "deactivate" would do
-  #     #
-  #     old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
-  #     if old_path:
-  #         new_env['PATH'] = old_path
-  #
-  #     old_ppath = new_env.pop('_OLD_VIRTUAL_PYTHONPATH', None)
-  #     if old_ppath:
-  #         new_env['PYTHONPATH'] = old_ppath
-  #
-  #     old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
-  #     if old_home:
-  #         new_env['PYTHON_HOME'] = old_home
-  #
-  #     old_ps = new_env.pop('_OLD_VIRTUAL_PS1', None)
-  #     if old_ps:
-  #         new_env['PS1'] = old_ps
-  #
-  #     new_env.pop('VIRTUAL_ENV', None)
-  #
-  #     # Remove the configured set of environment variables from the
-  #     # environment that we pass to Popen.
-  #     for e in list(new_env.keys()):
-  #         for r in self._lm.env_removables:
-  #             if e.startswith(r):
-  #                 new_env.pop(e, None)
-  #
-  #     return new_env
+    # --------------------------------------------------------------------------
+    #
+    def task_to_spec(self, task):
 
+        td     = task['description']
+        uid    = task['uid']
+        sbox   = task['task_sandbox_path']
+        stdout = td.get('stdout') or '%s/%s.out' % (sbox, uid)
+        stderr = td.get('stderr') or '%s/%s.err' % (sbox, uid)
+
+        cmd  = '%s %s 1>%s 2>%s' % (td['executable'], ' '.join(td['arguments']),
+                                    stdout, stderr)
+        spec = {
+            'tasks': [{
+                'slot' : 'task',
+                'count': {
+                    'per_slot': 1
+                },
+                'command': ['/bin/sh', '-c', cmd],
+            }],
+            'attributes': {
+                'system': {
+                    'cwd'     : task['task_sandbox_path'],
+                    'duration': 0,
+                }
+            },
+            'version': 1,
+            'resources': [{
+                'count': td['cpu_processes'],
+                'type' : 'slot',
+                'label': 'task',
+                'with' : [{
+                    'count': td['cpu_threads'],
+                    'type' : 'core'
+                # }, {
+                #     'count': td['gpu_processes'],
+                #     'type' : 'gpu'
+                }]
+            }]
+        }
+
+        if td['gpu_processes']:
+            spec['resources']['with'].append({
+                    'count': td['gpu_processes'],
+                    'type' : 'gpu'})
+
+        return spec
 
 # ------------------------------------------------------------------------------
 
