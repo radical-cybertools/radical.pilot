@@ -1,3 +1,4 @@
+# pylint: disable=unspecified-encoding
 
 __copyright__ = 'Copyright 2020-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
