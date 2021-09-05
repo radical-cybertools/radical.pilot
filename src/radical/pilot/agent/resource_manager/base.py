@@ -341,25 +341,26 @@ class ResourceManager(object):
         if cls != ResourceManager:
             raise TypeError('ResourceManager Factory only available to base class!')
 
-        try:
-            impl = {
-                RM_NAME_FORK        : Fork,
-                RM_NAME_CCM         : CCM,
-                RM_NAME_LOADLEVELER : LoadLeveler,
-                RM_NAME_LSF         : LSF,
-                RM_NAME_PBSPRO      : PBSPro,
-                RM_NAME_SGE         : SGE,
-                RM_NAME_SLURM       : Slurm,
-                RM_NAME_TORQUE      : Torque,
-                RM_NAME_COBALT      : Cobalt,
-                RM_NAME_YARN        : Yarn,
-                RM_NAME_SPARK       : Spark,
-                RM_NAME_DEBUG       : Debug
-            }[name]
-            return impl(cfg, log, prof)
+        impl = {
+            RM_NAME_FORK        : Fork,
+            RM_NAME_CCM         : CCM,
+            RM_NAME_LOADLEVELER : LoadLeveler,
+            RM_NAME_LSF         : LSF,
+            RM_NAME_PBSPRO      : PBSPro,
+            RM_NAME_SGE         : SGE,
+            RM_NAME_SLURM       : Slurm,
+            RM_NAME_TORQUE      : Torque,
+            RM_NAME_COBALT      : Cobalt,
+            RM_NAME_YARN        : Yarn,
+            RM_NAME_SPARK       : Spark,
+            RM_NAME_DEBUG       : Debug
+        }
 
-        except KeyError as e:
-            raise RuntimeError('ResourceManager %s unknown' % name) from e
+        if name not in impl:
+            raise RuntimeError('ResourceManager %s unknown' % name)
+
+        return impl[name](cfg, log, prof)
+
 
 
     # --------------------------------------------------------------------------

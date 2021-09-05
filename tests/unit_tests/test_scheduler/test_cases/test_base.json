@@ -6,15 +6,36 @@
                 "pid"               : "pid.0000",
                 "resource_manager"  : "FORK",
                 "rm_info": {
-                    "name"          : "RM",
-                    "node_list"     : [],
-                    "cores_per_node": 12,
-                    "gpus_per_node" : 4,
-                    "lfs_per_node"  : {"path": "/tmp", "size": 0},
-                    "mem_per_node"  : 0
+                    "requested_nodes"  : 0,
+                    "requested_cores"  : 0,
+                    "requested_gpus"   : 0,
+
+                    "partitions"       : {},
+                    "node_list"        : [],
+                    "agent_node_list"  : [],
+                    "service_node_list": [],
+
+                    "sockets_per_node" : 1,
+                    "cores_per_socket" : 1,
+                    "threads_per_core" : 1,
+
+                    "gpus_per_socket"  : 1,
+                    "threads_per_gpu"  : 1,
+                    "mem_per_gpu"      : 1,
+
+                    "lfs_per_node"     : 0,
+                    "lfs_path"         : "",
+                    "mem_per_node"     : 0,
+
+                    "details"          : {},
+                    "lm_info"          : {},
+
+                    "cores_per_node"   : 1,
+                    "gpus_per_node"    : 4,
+                    "threads_per_node" : 12
                 }
             },
-            "result": "RuntimeError"
+            "result": "RuntimeError:foo"
         },
         {
             "config": {

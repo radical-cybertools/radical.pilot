@@ -317,30 +317,28 @@ class AgentSchedulingComponent(rpu.Component):
       # from .continuous_fifo    import ContinuousFifo
       # from .scattered          import Scattered
 
-        try:
-            impl = {
 
-                SCHEDULER_NAME_CONTINUOUS_ORDERED : ContinuousOrdered,
-                SCHEDULER_NAME_CONTINUOUS_COLO    : ContinuousColo,
-                SCHEDULER_NAME_CONTINUOUS         : Continuous,
-                SCHEDULER_NAME_HOMBRE             : Hombre,
-                SCHEDULER_NAME_FLUX               : Flux,
-                SCHEDULER_NAME_TORUS              : Torus,
-                SCHEDULER_NAME_NOOP               : Noop,
+        impl = {
 
-              # SCHEDULER_NAME_YARN               : Yarn,
-              # SCHEDULER_NAME_SPARK              : Spark,
-              # SCHEDULER_NAME_CONTINUOUS_SUMMIT  : ContinuousSummit,
-              # SCHEDULER_NAME_CONTINUOUS_FIFO    : ContinuousFifo,
-              # SCHEDULER_NAME_SCATTERED          : Scattered,
+            SCHEDULER_NAME_CONTINUOUS_ORDERED : ContinuousOrdered,
+            SCHEDULER_NAME_CONTINUOUS_COLO    : ContinuousColo,
+            SCHEDULER_NAME_CONTINUOUS         : Continuous,
+            SCHEDULER_NAME_HOMBRE             : Hombre,
+            SCHEDULER_NAME_FLUX               : Flux,
+            SCHEDULER_NAME_TORUS              : Torus,
+            SCHEDULER_NAME_NOOP               : Noop,
 
-            }[name]
+          # SCHEDULER_NAME_YARN               : Yarn,
+          # SCHEDULER_NAME_SPARK              : Spark,
+          # SCHEDULER_NAME_CONTINUOUS_SUMMIT  : ContinuousSummit,
+          # SCHEDULER_NAME_CONTINUOUS_FIFO    : ContinuousFifo,
+          # SCHEDULER_NAME_SCATTERED          : Scattered,
+        }
 
-            impl = impl(cfg, session)
-            return impl
+        if name not in impl:
+            raise ValueError('Scheduler %s unknown' % name)
 
-        except KeyError as e:
-            raise ValueError("Scheduler '%s' unknown or defunct" % name) from e
+        return impl[name](cfg, session)
 
 
     # --------------------------------------------------------------------------

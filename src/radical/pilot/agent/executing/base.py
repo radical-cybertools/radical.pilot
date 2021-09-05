@@ -64,18 +64,18 @@ class AgentExecutingComponent(rpu.Component):
         from .funcs    import FUNCS
         from .sleep    import Sleep
 
-        try:
-            impl = {
-                EXECUTING_NAME_POPEN  : Popen,
-                EXECUTING_NAME_FLUX   : Flux,
-                EXECUTING_NAME_SLEEP  : Sleep,
-                EXECUTING_NAME_FUNCS  : FUNCS,
-            }[name]
-            return impl(cfg, session)
+        impl = {
+            EXECUTING_NAME_POPEN  : Popen,
+            EXECUTING_NAME_FLUX   : Flux,
+            EXECUTING_NAME_SLEEP  : Sleep,
+            EXECUTING_NAME_FUNCS  : FUNCS,
+        }
 
-        except KeyError as e:
-            raise RuntimeError('AgentExecutingComponent %s unknown' % name) \
-                from e
+        if name not in impl:
+            raise ValueError('AgentExecutingComponent %s unknown' % name)
+
+        return impl[name](cfg, session)
+
 
 
     # --------------------------------------------------------------------------

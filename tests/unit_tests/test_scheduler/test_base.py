@@ -2,6 +2,7 @@
 
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
+import pytest
 import threading
 import radical.utils as ru
 
@@ -50,10 +51,12 @@ class TestBaseScheduling(TestCase):
             import pprint
             pprint.pprint(sched._cfg)
 
-            if c['result'] == 'RuntimeError':
+            if 'RuntimeError' in c['result']:
                 # not set: `node_list` or `cores_per_node` or `gpus_per_node`
-                with self.assertRaises(RuntimeError):
-                    sched.initialize()
+                if ':' in c['result']:
+                    pat = c['result'].split(':')[1]
+                    with pytest.raises(RuntimeError, match=r'.*%s.*' % pat):
+                        sched.initialize()
             else:
                 sched.initialize()
                 self.assertEqual(ru.demunch(sched.nodes), c['result'])

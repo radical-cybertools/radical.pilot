@@ -138,12 +138,12 @@ class LaunchMethod(object):
                 LM_NAME_SSH           : SSH,
                 LM_NAME_SRUN          : Srun,
 
-            }[name]
-            return impl(name, lm_cfg, rm_info, log, prof)
+            }
 
-        except KeyError:
-            log.exception('invalid lm %s' % name)
-            raise
+            if name not in impl:
+                raise ValueError('LaunchMethod %s unknown' % name)
+
+            return impl[name](name, lm_cfg, rm_info, log, prof)
 
         except Exception:
             log.exception('unusable lm %s' % name)
