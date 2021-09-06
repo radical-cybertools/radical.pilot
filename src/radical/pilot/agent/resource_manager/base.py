@@ -76,6 +76,18 @@ class RMInfo(ru.Munch):
     #
     def _verify(self):
 
+        if not self.requested_nodes:
+            if self.requested_cores and self.cores_per_node:
+                self.requested_cores = self.requested_cores / self.cores_per_node
+
+        if not self.requested_cores:
+            if self.requested_nodes and self.cores_per_node:
+                self.requested_cores = self.requested_nodes * self.cores_per_node
+
+        if not self.requested_gpus:
+            if self.requested_nodes and self.gpus_per_node:
+                self.requested_gpus = self.requested_nodes * self.gpus_per_node
+
         assert(self['requested_nodes'  ] is not None)
         assert(self['requested_cores'  ] is not None)
         assert(self['requested_gpus'   ] is not None)

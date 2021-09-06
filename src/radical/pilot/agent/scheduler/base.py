@@ -221,7 +221,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         self._reg               = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
         self._lm_info           = self._reg.get('lm')
-      # self._lm_info           = self._cfg['lm']
         self._rm                = ResourceManager.create(
                                                self._cfg.resource_manager,
                                                self._cfg, self._log, self._prof)
@@ -245,8 +244,6 @@ class AgentSchedulingComponent(rpu.Component):
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
         self.nodes = list()
-        import pprint
-        self._log.debug(pprint.pformat(self._rm.info))
         for node, node_id in self._rm.info.node_list:
             self.nodes.append({
                 'uid'  : node_id,

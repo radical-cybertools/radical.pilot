@@ -3,7 +3,6 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import pytest
-import threading
 import radical.utils as ru
 
 from unittest import mock, TestCase
@@ -11,6 +10,17 @@ from unittest import mock, TestCase
 from radical.pilot.agent.scheduler.base import AgentSchedulingComponent
 
 TEST_CASES_DIR = 'tests/unit_tests/test_scheduler/test_cases'
+
+
+# ------------------------------------------------------------------------------
+#
+# mock ru.zmq.RegistryClient class
+#
+class MockRegistry(object):
+
+    def __init__(self, cfg):
+        self._cfg = cfg
+        print('=== init mock registry: %s' % self._cfg)
 
 
 # ------------------------------------------------------------------------------
@@ -23,16 +33,14 @@ class TestBaseScheduling(TestCase):
     def setUpClass(cls) -> None:
 
         # provided JSON file (with test cases) should NOT contain any comments
-        cls._test_cases = ru.read_json('%s/test_base.json' % TEST_CASES_DIR,
-                                       filter_comments=False)
+        cls._test_cases = ru.read_json('%s/test_base.json' % TEST_CASES_DIR)
 
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
-    @mock.patch('radical.pilot.agent.scheduler.base.ru.zmq')
     @mock.patch('radical.pilot.agent.scheduler.base.mp')
-    def test_initialize(self, mocked_mp, mocked_zmq, mocked_init):
+    def test_initialize(self, mocked_mp, mocked_init):
 
         sched = AgentSchedulingComponent(cfg = None, session = None)
         sched._configure          = mock.Mock()
@@ -45,21 +53,36 @@ class TestBaseScheduling(TestCase):
         sched.register_input      = mock.Mock()
         sched.register_subscriber = mock.Mock()
 
-        for c in self._test_cases['initialize']:
-            sched._cfg = ru.Config(from_dict=c['config'])
-            print('---')
-            import pprint
-            pprint.pprint(sched._cfg)
 
-            if 'RuntimeError' in c['result']:
-                # not set: `node_list` or `cores_per_node` or `gpus_per_node`
-                if ':' in c['result']:
-                    pat = c['result'].split(':')[1]
-                    with pytest.raises(RuntimeError, match=r'.*%s.*' % pat):
-                        sched.initialize()
-            else:
-                sched.initialize()
+        for c in self._test_cases['initialize']:
+
+            print(c['config'].keys())
+            import pprint
+            pprint.pprint(c)
+
+            def mock_init(self, url):
+                pass
+
+            def mock_get(self, name):
+                print('=== query %s: %s' % (name, c['config'].get(name)))
+                return c['config'][name]
+
+            sched._cfg = ru.Config(from_dict=c['config'])
+            with mock.patch.object(ru.zmq.RegistryClient, '__init__', mock_init), \
+                 mock.patch.object(ru.zmq.RegistryClient, 'get',      mock_get):
+                if 'RuntimeError' in c['result']:
+                    if ':' in c['result']:
+                        pat = c['result'].split(':')[1]
+                        with pytest.raises(RuntimeError, match=r'.*%s.*' % pat):
+                            sched.initialize()
+                    else:
+                        with pytest.raises(RuntimeError):
+                            sched.initialize()
+                else:
+                    sched.initialize()
                 self.assertEqual(ru.demunch(sched.nodes), c['result'])
+
+            return
 
 
     # --------------------------------------------------------------------------
@@ -111,50 +134,17 @@ class TestBaseScheduling(TestCase):
         component._prof          = mock.Mock()
         component._prof.prof     = mock.Mock(return_value=True)
 
-        tests = self._test_cases['try_allocation']
         # FIXME: the try_allocation part in the test config has no results?
-        assert(False)
-        for input_data, result in zip(tests['setup'], tests['results']):
-            component.schedule_task = mock.Mock(
-                return_value=input_data['scheduled_task_slots'])
+        for c in self._test_cases['try_allocation']:
 
-            task = input_data['task']
+            # FIXME: what the heck are we actually testing if schedule_task
+            #        is mocked?
+
+            task = c['task']
+            component.schedule_task = mock.Mock(return_value=c['slots'])
             component._try_allocation(task=task)
 
-            # test task's slots
-            self.assertEqual(task['slots'], result['slots'])
-
-            # test environment variable(s)
-            self.assertEqual(task['description']['environment'],
-                             result['description']['environment'])
-
-
-    # --------------------------------------------------------------------------
-    #
-    # @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
-    # @mock.patch('radical.utils.Logger')
-    # def test_handle_cuda(self, mocked_logger, mocked_init):
-    #
-    #     tests     = self._test_cases['handle_cuda']:
-    #     setups    = tests['setup']
-    #     tasks     = tests['task']
-    #     results   = tests['results']
-    #     component = AgentSchedulingComponent(cfg=None, session=None)
-    #     component._log = mocked_logger
-    #
-    #     for setup, task, result in zip(setups, tasks, results):
-    #         component._cfg = setup
-    #         if result == 'ValueError':
-    #             with self.assertRaises(ValueError):
-    #                 component._handle_cuda(task)
-    #         else:
-    #             component._handle_cuda(task)
-    #             task_env = task['description']['environment']
-    #             if result == 'KeyError':
-    #                 with self.assertRaises(KeyError):
-    #                     self.assertIsNone(task_env['CUDA_VISIBLE_DEVICES'])
-    #             else:
-    #                 self.assertEqual(task_env['CUDA_VISIBLE_DEVICES'], result)
+            self.assertEqual(task['slots'], c['slots'])
 
 
 # ------------------------------------------------------------------------------

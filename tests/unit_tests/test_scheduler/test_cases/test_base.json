@@ -3,81 +3,17 @@
     "initialize": [
         {
             "config": {
-                "pid"               : "pid.0000",
-                "resource_manager"  : "FORK",
-                "rm_info": {
-                    "requested_nodes"  : 0,
-                    "requested_cores"  : 0,
-                    "requested_gpus"   : 0,
-
-                    "partitions"       : {},
-                    "node_list"        : [],
-                    "agent_node_list"  : [],
-                    "service_node_list": [],
-
-                    "sockets_per_node" : 1,
-                    "cores_per_socket" : 1,
-                    "threads_per_core" : 1,
-
-                    "gpus_per_socket"  : 1,
-                    "threads_per_gpu"  : 1,
-                    "mem_per_gpu"      : 1,
-
-                    "lfs_per_node"     : 0,
-                    "lfs_path"         : "",
-                    "mem_per_node"     : 0,
-
-                    "details"          : {},
-                    "lm_info"          : {},
-
-                    "cores_per_node"   : 1,
-                    "gpus_per_node"    : 4,
-                    "threads_per_node" : 12
-                }
-            },
-            "result": "RuntimeError:foo"
-        },
-        {
-            "config": {
-                "pid"               : "pid.0001",
-                "resource_manager"  : "FORK",
-                "rm_info": {
-                    "name"          : "RM",
-                    "node_list"     : [["node-00", "00"], ["node-01", "01"]],
-                    "cores_per_node": null,
-                    "gpus_per_node" : 4,
-                    "lfs_per_node"  : {"path": "/tmp", "size": 0},
-                    "mem_per_node"  : 0
-                }
-            },
-            "result": "RuntimeError"
-        },
-        {
-            "config": {
-                "pid"               : "pid.0002",
-                "resource_manager"  : "FORK",
-                "rm_info": {
-                    "name"          : "RM",
-                    "node_list"     : [["node-00", "00"], ["node-01", "01"]],
-                    "cores_per_node": 12,
-                    "gpus_per_node" : null,
-                    "lfs_per_node"  : {"path": "/tmp", "size": 0},
-                    "mem_per_node"  : 0
-                }
-            },
-            "result": "RuntimeError"
-        },
-        {
-            "config": {
-                "pid"               : "pid.0003",
-                "resource_manager"  : "FORK",
-                "rm_info": {
-                    "name"          : "RM",
-                    "node_list"     : [["node-00", "00"], ["node-01", "01"]],
-                    "cores_per_node": 12,
-                    "gpus_per_node" : 4,
-                    "lfs_per_node"  : {"path": "/tmp", "size": 0},
-                    "mem_per_node"  : 0
+                "pid"             : "pid.0003",
+                "resource_manager": "FORK",
+                "lm"              : "FORK",
+                "lm_info"         : {},
+                "rm.fork"         : {
+                    "node_list"      : [["node-00", "00"], ["node-01", "01"]],
+                    "cores_per_node" : 12,
+                    "gpus_per_node"  : 4,
+                    "lfs_per_node"   : 0,
+                    "mem_per_node"   : 0,
+                    "requested_nodes": 1
                 }
             },
             "result": [
@@ -225,130 +161,6 @@
                                      "mem"     : 128}]
             }
         }
-    ],
-
-    "handle_cuda": {
-        "setup": [
-            { "rm_info":{ "lm_info":{                                } } },
-            { "rm_info":{ "lm_info":{                                } } },
-            { "rm_info":{ "lm_info":{ "cvd_id_mode":"physical"       } } },
-            { "rm_info":{ "lm_info":{ "cvd_id_mode":"logical"        } } },
-            { "rm_info":{ "lm_info":{ "cvd_id_mode":"something_else" } } }
-        ],
-        "task":[
-            {
-                "description":{
-                    "environment": { }
-                },
-                "slots":{
-                    "lm_info"       : "INFO",
-                    "cores_per_node": 16,
-                    "gpus_per_node" : 6,
-                    "lfs_per_node"  : 0,
-                    "ranks": [
-                        {
-                            "node"    : "a",
-                            "node_id" : "1",
-                            "core_map": [ [ 0 ] ],
-                            "gpu_map" : null,
-                            "lfs"     : 0,
-                            "mem"     : null
-                        }
-                    ]
-                }
-            },
-            {
-                "description":{
-                    "environment": { }
-                },
-                "slots":{
-                    "lm_info"       : "INFO",
-                    "cores_per_node": 16,
-                    "gpus_per_node" : 6,
-                    "lfs_per_node"  : 0,
-                    "ranks": [
-                        {
-                            "node"    : "a",
-                            "node_id" : "1",
-                            "core_map": [ [ 0 ] ],
-                            "gpu_map" : [ [ 1 ] ],
-                            "lfs"     : 0,
-                            "mem"     : null
-                        }
-                    ]
-                }
-            },
-            {
-                "description": {
-                    "environment": { }
-                },
-                "slots":{
-                    "lm_info"       : "INFO",
-                    "cores_per_node": 16,
-                    "gpus_per_node" : 6,
-                    "lfs_per_node"  : 0,
-                    "ranks": [
-                        {
-                            "node"     : "a",
-                            "node_id"  : "1",
-                            "core_map" : [ [ 0 ] ],
-                            "gpu_map"  : [ [ 0 ],[ 1 ] ],
-                            "lfs"      : 0,
-                            "mem"      : null
-                        }
-                    ]
-                }
-            },
-            {
-                "description": {
-                    "environment": { }
-                },
-                "slots":{
-                    "lm_info"       : "INFO",
-                    "cores_per_node": 16,
-                    "gpus_per_node" : 6,
-                    "lfs_per_node"  : 0,
-                    "ranks": [
-                        {
-                            "node"    : "a",
-                            "node_id" : "1",
-                            "core_map": [ [ 0 ] ],
-                            "gpu_map" : [ ],
-                            "lfs"     : 0,
-                            "mem"     : null
-                        }
-                    ]
-                }
-            },
-            {
-                "description": {
-                    "environment": { }
-                },
-                "slots":{
-                    "lm_info"       : "INFO",
-                    "cores_per_node": 16,
-                    "gpus_per_node" : 6,
-                    "lfs_per_node"  : 0,
-                    "ranks": [
-                        {
-                            "node"    : "a",
-                            "node_id" : "1",
-                            "core_map": [ [ 0 ] ],
-                            "gpu_map" : [ [ 0 ] ],
-                            "lfs"     : 0,
-                            "mem"     : null
-                        }
-                    ]
-                }
-            }
-        ],
-        "results": [
-            "KeyError",
-            "1",
-            "0,1",
-            "KeyError",
-            "ValueError"
-        ]
-    }
+    ]
 }
 
