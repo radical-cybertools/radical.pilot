@@ -213,17 +213,12 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def initialize(self):
 
-        # The scheduler needs the ResourceManager information which have been collected
-        # during agent startup.  We dig them out of the config at this point.
-        #
-        # NOTE: this information is insufficient for the torus scheduler!
-        self._pid               = self._cfg['pid']
-
-        self._reg               = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
-        self._lm_info           = self._reg.get('lm')
-        self._rm                = ResourceManager.create(
-                                               self._cfg.resource_manager,
-                                               self._cfg, self._log, self._prof)
+        # The scheduler needs the ResourceManager information which have been
+        # collected during agent startup.
+        self._pid = self._cfg['pid']
+        self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
+        self._rm  = ResourceManager.create(self._cfg.resource_manager,
+                                           self._cfg, self._log, self._prof)
 
         # create and initialize the wait pool.  Also maintain a mapping of that
         # waitlist to a binned list where tasks are binned by size for faster

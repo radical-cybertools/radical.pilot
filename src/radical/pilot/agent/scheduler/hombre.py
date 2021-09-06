@@ -147,7 +147,6 @@ class Hombre(AgentSchedulingComponent):
             return {'ranks'         : list(),
                     'cores_per_node': self.cpn,
                     'gpus_per_node' : self.gpn,
-                    'lm_info'       : self._lm_info,
                     'ncblocks'      : 0,
                     'ngblocks'      : 0}
         # ---------------------------------------------------------------------
