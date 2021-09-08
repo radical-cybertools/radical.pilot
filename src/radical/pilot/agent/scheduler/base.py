@@ -1,6 +1,6 @@
 
-__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import os
 import time
@@ -150,7 +150,7 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 # (`cpu_threads=2`).
 #
 # A scheduler MAY attach other information to the `slots` structure, with the
-# intent to support the launch methods to enact the placement decition made by
+# intent to support the launch methods to enact the placement decision made by
 # the scheduler.  In fact, a scheduler may use a completely different slot
 # structure than above - but then is likely bound to a specific launch method
 # which can interpret that structure.
@@ -202,7 +202,7 @@ class AgentSchedulingComponent(rpu.Component):
 
     def __init__(self, cfg, session):
 
-        self.nodes = None
+        self.nodes = []
         rpu.Component.__init__(self, cfg, session)
 
 
@@ -215,10 +215,8 @@ class AgentSchedulingComponent(rpu.Component):
 
         # The scheduler needs the ResourceManager information which have been
         # collected during agent startup.
-        self._pid = self._cfg['pid']
-        self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
-        self._rm  = ResourceManager.create(self._cfg.resource_manager,
-                                           self._cfg, self._log, self._prof)
+        self._rm = ResourceManager.create(self._cfg.resource_manager,
+                                          self._cfg, self._log, self._prof)
 
         # create and initialize the wait pool.  Also maintain a mapping of that
         # waitlist to a binned list where tasks are binned by size for faster
@@ -238,7 +236,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
-        self.nodes = list()
         for node, node_id in self._rm.info.node_list:
             self.nodes.append({
                 'uid'  : node_id,
