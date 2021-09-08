@@ -7,7 +7,7 @@ import radical.utils as ru
 
 from unittest import mock, TestCase
 
-from radical.pilot.agent.executing.base import AgentExecutingComponent
+from radical.pilot.agent.executing.base  import AgentExecutingComponent
 from radical.pilot.agent.executing.popen import Popen
 
 
@@ -37,8 +37,11 @@ class TestBaseExecuting(TestCase):
                 AgentExecutingComponent.create(cfg=spawner, session=None)
             except:
                 # in case of spawner is not presented in `rpa.executing.base`
-                with self.assertRaises(RuntimeError):
+                with self.assertRaises(ValueError):
                     raise
+
+        # Popen was initialized
+        self.assertTrue(mocked_popen_init.called)
 
     # --------------------------------------------------------------------------
     #
@@ -55,7 +58,7 @@ class TestBaseExecuting(TestCase):
         lm = mocked_lm.return_value
         lm.can_launch.return_value = True
 
-        exec_base._log          = mocked_logger()
+        exec_base._log          = mocked_logger
         exec_base._launchers    = {'launcher_name': lm}
         exec_base._launch_order = exec_base._launchers.keys()
         self.assertIs(exec_base.find_launcher(task=None), lm)
@@ -63,13 +66,14 @@ class TestBaseExecuting(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(AgentExecutingComponent, '__init__', return_value=None)
+    @mock.patch('radical.pilot.agent.executing.base.rpa.ResourceManager')
     @mock.patch('radical.pilot.agent.executing.base.rpa.LaunchMethod')
-    def test_initialize(self, mocked_lm, mocked_init):
+    def test_initialize(self, mocked_lm, mocked_rm, mocked_init):
 
         ec = AgentExecutingComponent(cfg=None, session=None)
         ec._cfg = ru.Munch(from_dict={
             'sid'             : 'sid.0000',
-            'rm_info'         : {'lfs_per_node': {'path': '/tmp'}},
+            'resource_manager': 'FORK',
             'resource_sandbox': '',
             'session_sandbox' : '',
             'pilot_sandbox'   : '',
@@ -82,6 +86,7 @@ class TestBaseExecuting(TestCase):
         ec.register_input     = ec.register_output     = mock.Mock()
         ec.register_publisher = ec.register_subscriber = mock.Mock()
 
+        mocked_rm.create.return_value = mocked_rm
         mocked_lm.create.return_value = mocked_lm
         ec.initialize()
 

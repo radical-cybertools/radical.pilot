@@ -1,5 +1,5 @@
 
-__copyright__ = 'Copyright 2013-2016, http://radical.rutgers.edu'
+__copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
@@ -24,8 +24,8 @@ EXECUTING_NAME_FUNCS   = 'FUNCS'
 #
 class AgentExecutingComponent(rpu.Component):
     '''
-    Manage the creation of Task processes, and watch them until they are completed
-    (one way or the other).  The spawner thus moves the task from
+    Manage the creation of Task processes, and watch them until they are
+    completed (one way or the other).  The spawner thus moves the task from
     PendingExecution to Executing, and then to a final state (or PendingStageOut
     of course).
     '''
@@ -84,6 +84,11 @@ class AgentExecutingComponent(rpu.Component):
 
         self._log.debug('===== exec base initialize')
 
+        # The spawner/executor needs the ResourceManager information which have
+        # been collected during agent startup.
+        self._rm = rpa.ResourceManager.create(self._cfg.resource_manager,
+                                              self._cfg, self._log, self._prof)
+
         # The AgentExecutingComponent needs LaunchMethods to construct
         # commands.
         self._launchers    = dict()
@@ -98,18 +103,16 @@ class AgentExecutingComponent(rpu.Component):
                 continue
 
             try:
-                self._log.debug('===== %s create start', name)
+                self._log.debug('==== prepare lm %s', name)
                 lm_cfg['pid']         = self._cfg.pid
                 lm_cfg['reg_addr']    = self._cfg.reg_addr
-                lm = rpa.LaunchMethod.create(name, lm_cfg,
-                                             self._cfg, self._log, self._prof)
-                self._launchers[name] = lm
-                self._log.debug('===== %s create stop', name)
-
+                self._launchers[name] = rpa.LaunchMethod.create(
+                    name, lm_cfg, self._rm.info, self._log, self._prof)
             except:
                 self._log.exception('skip LM %s' % name)
 
-        assert self._launchers
+        if not self._launchers:
+            raise RuntimeError('no valid launch methods found')
 
         if not self._launch_order:
             self._launch_order = list(launch_methods.keys())
