@@ -65,12 +65,8 @@ class Agent_0(rpu.Worker):
         self._reg_service = ru.zmq.Registry(uid=reg_uid)
         self._reg_service.start()
 
-        self._reg_addr = self._reg_service.addr
-        self._reg      = ru.zmq.RegistryClient(url=self._reg_addr)
-
         # let all components know where to look for the registry
-        self._cfg['reg_addr'] = self._reg_addr
-
+        self._cfg['reg_addr'] = self._reg_service.addr
 
         # connect to MongoDB for state push/pull
         self._connect_db()
@@ -270,6 +266,8 @@ class Agent_0(rpu.Worker):
         if self._rm:
             self._rm.stop()
 
+        self._reg_service.stop()
+
         if   self._final_cause == 'timeout'  : state = rps.DONE
         elif self._final_cause == 'cancel'   : state = rps.CANCELED
         elif self._final_cause == 'sys.exit' : state = rps.CANCELED
@@ -370,7 +368,7 @@ class Agent_0(rpu.Worker):
                                    'core_map'     : [[0]],
                                    'gpu_map'      : [],
                                    'lfs'          : 0,
-                                   'mem'          :0}]}
+                                   'mem'          : 0}]}
         }
 
         launcher = self._rm.find_launcher(service_task)
