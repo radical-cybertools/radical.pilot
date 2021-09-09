@@ -25,6 +25,8 @@ RM_NAME_SPARK       = 'SPARK'
 RM_NAME_DEBUG       = 'DEBUG'
 
 
+# ------------------------------------------------------------------------------
+#
 class RMInfo(ru.Munch):
     '''
     Each resource manager instance must gather provide the information defined
@@ -163,6 +165,9 @@ class ResourceManager(object):
 
             # have a valid info - store in registry and complete initialization
             self._reg.put('rm.%s' % self.name.lower(), rm_info)
+
+        # set up launch methods even when initialized from registry info
+        self._prepare_launch_methods(rm_info)
 
         self._reg.close()
         self._set_info(rm_info)
