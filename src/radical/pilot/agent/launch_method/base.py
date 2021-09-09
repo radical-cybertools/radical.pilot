@@ -276,7 +276,7 @@ class LaunchMethod(object):
         version = None
         flavor  = self.MPI_FLAVOR_UNKNOWN
 
-        out, _, ret = ru.sh_callout('%s -v' % exe)
+        out, _, ret = ru.sh_callout('%s -V' % exe)
 
         if ret:
             out, _, ret = ru.sh_callout('%s --version' % exe)

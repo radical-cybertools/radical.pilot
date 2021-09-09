@@ -52,19 +52,15 @@ class TestBaseScheduling(TestCase):
         sched.unschedule_cb       = mock.Mock()
         sched.register_input      = mock.Mock()
         sched.register_subscriber = mock.Mock()
+        sched.nodes               = list()
 
 
         for c in self._test_cases['initialize']:
-
-            print(c['config'].keys())
-            import pprint
-            pprint.pprint(c)
 
             def mock_init(self, url):
                 pass
 
             def mock_get(self, name):
-                print('=== query %s: %s' % (name, c['config'].get(name)))
                 return c['config'][name]
 
             sched._cfg = ru.Config(from_dict=c['config'])
