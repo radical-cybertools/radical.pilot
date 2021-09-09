@@ -25,14 +25,13 @@
       # "agent_scheduler"             : "CONTINUOUS_COLO",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                      #  "order"  : ["FORK", "MPIEXEC", "MPIRUN"],
-                                         "order"  : ["MPIRUN"],
-                                      #  "FORK"   : {},
+                                         "order"  : ["FORK", "MPIEXEC", "MPIRUN"],
+                                         "FORK"   : {},
                                          "MPIEXEC": {},
                                          "MPIRUN" : {}
                                         },
         "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
+        "virtenv_mode"                : "local",
         "python_dist"                 : "default",
         "cores_per_node"              : 8,
         "gpus_per_node"               : 1,
