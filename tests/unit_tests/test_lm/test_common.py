@@ -11,9 +11,10 @@ import radical.utils as ru
 #
 def setUp(test_type, test_name):
 
-    ret = list()
-    pwd = os.path.dirname(__file__)
-    for fin in glob.glob('%s/../test_cases/task.*.json' % pwd):
+    ret  = list()
+    base = os.path.abspath(os.path.dirname(__file__))
+
+    for fin in glob.glob('%s/test_cases/task.*.json' % base):
 
         tc                = ru.read_json(fin)
         task              = tc['task'   ]
